@@ -37,38 +37,38 @@ Then you can optimize the posterior or draw samples.
 ```{r eval=FALSE}
 library(BayesRTMB)
 
-log_prob <- function(data, param) {
-  lp <- 0
-  lp <- lp + lpdf$normal(param$mu, 0, 1)
-  lp <- lp + lpdf$normal(data$y, param$mu, 1)
-  lp
+Trial <- 10
+Y <- 6
+
+dat <- list(Trial = Trial, Y = Y, a = a, b = b)
+
+par <- list(
+  theta = Dim(lower=0,upper=1)
+)
+
+log_prob <- function(data,par){
+  lp <- lpdf$binomial(data$Y,data$Trial,par$theta)
+  lp <- lp + lpdf$beta(par$theta, 1, 1)
+  return(lp)
 }
 
-data <- list(
-  y = c(0.3, 0.7, -0.1, 0.5)
-)
+mdl <- rtmb_model(dat, par, log_prob)
 
-par_list <- list(
-  mu = Dim()
-)
+fit.mcmc <- mdl$sample()
+fit.mcmc
 
-model <- RTMB_Model$new(
-  data = data,
-  par_list = par_list,
-  log_prob = log_prob
-)
+fit.mcmc$bridgesampling()
 
-fit_map <- model$optimize()
-fit_mcmc <- model$sample(chains = 2, warmup = 500)
+fit.map <- mdl$optimize()
+fit.map
 ```
 
 ## Posterior plots
 
 ```{r eval=FALSE}
-draws <- fit_mcmc$draws()
-plot_trace(draws)
-plot_dens(draws)
-plot_ac(draws, 1)
+fit.mcmc$draws("theta") |> plot_dens()
+fit.mcmc$draws("theta") |> plot_trace()
+fit.mcmc$draws("theta") |> plot_acf()
 ```
 
 ## Main functions
