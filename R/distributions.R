@@ -239,6 +239,16 @@ categorical_lpmf <- function(x, prob) {
   }
 }
 
+#' Categorical log-probability mass function with logit parameterization
+#'
+#' @param x Integer or integer vector. The observed category index.
+#' @param eta A numeric vector of linear predictors (unnormalized log-probabilities).
+#' @return The sum of the log-probability.
+#' @export
+categorical_logit_lpmf <- function(x, eta) {
+  sum(eta[x]) - length(x) * log_sum_exp(eta)
+}
+
 #' Multinomial log-probability mass function
 #'
 #' @param x Vector of counts.
@@ -409,3 +419,30 @@ centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
   }
   return(lp)
 }
+
+#' Best-Worst Scaling log-probability mass function
+#'
+#' @param x Integer. The index of the chosen best-worst pair (1 to C*(C-1)).
+#' @param U A numeric vector of utilities for the items in the current choice set.
+#' @param lambda A numeric scalar for the scale parameter (default is 1).
+#' @return The log-probability of the observed best-worst choice.
+#' @export
+bws_lpmf <- function(x, U, lambda = 1) {
+  C <- length(U)
+  ad_zero <- U[1] * 0
+  U_dif <- rep(ad_zero, C * (C - 1))
+
+  q_idx <- 1
+  for (i in 1:C) {
+    for (j in 1:C) {
+      if (i != j) {
+        U_dif[q_idx] <- U[i] - U[j]
+        q_idx <- q_idx + 1
+      }
+    }
+  }
+
+  eta <- lambda * U_dif
+  return(eta[x] - log_sum_exp(eta))
+}
+
