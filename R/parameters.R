@@ -130,7 +130,7 @@ unconstrained_vector_to_list <- function(vec, par_list) {
   return(res)
 }
 
-# 無制約空間への変換 (★orderedとsimplexのバグを修正済)
+# 無制約空間への変換
 to_unconstrained <- function(para_orig_list, par_list) {
   para_unc <- list()
   for (name in names(par_list)) {
@@ -322,7 +322,7 @@ to_constrained <- function(para_unc_list, par_list) {
       para[[name]] <- p$lower + (p$upper - p$lower) * prob
     } else if (b_type == "ordered") {
       if (p$length > 1) {
-        para[[name]] <- val_unc[1] + cumsum(c(0, exp(val_unc[-1])))
+        para[[name]] <- val_unc[1] + cumsum(c(ad_zero, exp(val_unc[-1])))
       } else {
         para[[name]] <- val_unc
       }
@@ -331,7 +331,9 @@ to_constrained <- function(para_unc_list, par_list) {
     } else if (b_type == "simplex") {
       K <- p$length
       z <- 1 / (1 + exp(-(val_unc - log(1 / (K - seq_len(K - 1))))))
-      rem_prev <- c(1, cumprod(1 - z)[- (K - 1)])
+      ad_one <- ad_zero + 1
+      rem_prev <- c(ad_one, cumprod(1 - z)[- (K - 1)])
+
       x_first <- rem_prev * z
       x_last <- cumprod(1 - z)[K - 1]
       para[[name]] <- c(x_first, x_last)
