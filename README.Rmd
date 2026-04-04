@@ -40,15 +40,17 @@ library(BayesRTMB)
 Trial <- 10
 Y <- 6
 
-dat <- list(Trial = Trial, Y = Y, a = a, b = b)
+dat <- list(Trial = Trial, Y = Y)
 
 par <- list(
   theta = Dim(lower=0,upper=1)
 )
 
-log_prob <- function(data,par){
-  lp <- lpdf$binomial(data$Y,data$Trial,par$theta)
-  lp <- lp + lpdf$beta(par$theta, 1, 1)
+
+log_prob <- function(dat,par){
+  getAll(dat, par)
+  lp <- binomial_lpmf(Y,Trial,par$theta)
+  lp <- lp + beta_lpdf(par$theta, 1, 1)
   return(lp)
 }
 
@@ -61,6 +63,11 @@ fit.mcmc$bridgesampling()
 
 fit.map <- mdl$optimize()
 fit.map
+
+fit.mcmc$draws("theta") |> plot_dens()
+fit.mcmc$draws("theta") |> plot_trace()
+fit.mcmc$draws("theta") |> plot_acf()
+
 ```
 
 ## Posterior plots
