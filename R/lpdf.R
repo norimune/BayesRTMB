@@ -72,11 +72,19 @@ lpdf$binomial <- function(x,size,prob) {
 }
 
 lpdf$bernoulli_logit <- function(x, mu) {
-  sum(x * (-math$log1p_exp(-mu)) + (1 - x) * (-math$log1p_exp(mu)))
+  log1p_exp <- function(x) {
+    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
+    return(max_val + log(exp(x - max_val) + exp(-max_val)))
+  }
+  sum(x * (-log1p_exp(-mu)) + (1 - x) * (-log1p_exp(mu)))
 }
 
 lpdf$binomial_logit <- function(x, size, mu) {
-  sum(lchoose(size, x) + x * (-math$log1p_exp(-mu)) + (size - x) * (-math$log1p_exp(mu)))
+  log1p_exp <- function(x) {
+    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
+    return(max_val + log(exp(x - max_val) + exp(-max_val)))
+  }
+  sum(lchoose(size, x) + x * (-log1p_exp(-mu)) + (size - x) * (-log1p_exp(mu)))
 }
 
 lpdf$poisson <- function(x,mean) {
@@ -107,6 +115,14 @@ lpdf$ordered_logistic <- function(x, eta, cutpoints) {
   N <- length(x)
   K <- length(cutpoints) + 1
 
+  log1p_exp <- function(x) {
+    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
+    return(max_val + log(exp(x - max_val) + exp(-max_val)))
+  }
+  log1m_exp <- function(x) {
+    return(log(1 - exp(x) + 1e-10))
+  }
+
   if (length(eta) == 1 && N > 1) {
     eta_vec <- eta[1] * rep(1, N)
   } else {
@@ -118,13 +134,13 @@ lpdf$ordered_logistic <- function(x, eta, cutpoints) {
     y_i <- x[i]
     eta_i <- eta_vec[i]
     if (y_i == 1) {
-      lp <- lp - math$log1p_exp(-(cutpoints[1] - eta_i))
+      lp <- lp - log1p_exp(-(cutpoints[1] - eta_i))
     } else if (y_i == K) {
-      lp <- lp - math$log1p_exp(cutpoints[K - 1] - eta_i)
+      lp <- lp - log1p_exp(cutpoints[K - 1] - eta_i)
     } else {
-      A <- -math$log1p_exp(-(cutpoints[y_i] - eta_i))
-      B <- -math$log1p_exp(-(cutpoints[y_i-1] - eta_i))
-      lp <- lp + A + math$log1m_exp(B - A)
+      A <- -log1p_exp(-(cutpoints[y_i] - eta_i))
+      B <- -log1p_exp(-(cutpoints[y_i-1] - eta_i))
+      lp <- lp + A + log1m_exp(B - A)
     }
   }
   return(lp)
@@ -140,7 +156,6 @@ lpdf$multi_normal_CF <- function(x, mean, sd, CF_Omega) {
   N <- if (is.matrix(x)) nrow(x) else 1
   K <- ncol(L_Sigma)
 
-  # math環境の関数を使用 (math$log_det_chol 等が登録済みである前提)
   log_det <- 2 * sum(log(diag(L_Sigma)))
 
   if (is.matrix(x)) {
@@ -156,12 +171,21 @@ lpdf$multi_normal_CF <- function(x, mean, sd, CF_Omega) {
 }
 
 lpdf$multi_normal <- function(x, mean, Sigma) {
+
+  log_det_chol <- function(L) {
+    return(2 * sum(log(diag(L))))
+  }
+  quad_form_chol <- function(x, L) {
+    z <- solve(L, x)
+    return(sum(z^2))
+  }
+
   K <- nrow(Sigma)
   eps_mat <- diag(diag(Sigma) * 1e-6 + 1e-8, K)
   safe_Sigma <- Sigma + eps_mat
 
   U <- chol(safe_Sigma)
-  log_det <- math$log_det_chol(U)
+  log_det <- log_det_chol(U)
   L <- t(U)
 
   if (is.matrix(x)) {
@@ -174,7 +198,7 @@ lpdf$multi_normal <- function(x, mean, Sigma) {
   } else {
     k <- length(x)
     # ベクトルに対する計算
-    quad_form <- math$quad_form_chol(x - mean, L)
+    quad_form <- quad_form_chol(x - mean, L)
     return(-0.5 * (k * log(2 * pi) + log_det + quad_form))
   }
 }

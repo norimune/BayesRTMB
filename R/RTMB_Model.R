@@ -491,7 +491,7 @@ RTMB_Model <- R6::R6Class(
             "squared_distance",
             "softmax"
           ),
-          future.packages = c("RTMB")
+          future.packages = c("RTMB","BayesRTMB")
           )
         })
         plan(sequential)
