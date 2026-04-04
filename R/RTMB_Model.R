@@ -462,14 +462,14 @@ RTMB_Model <- R6::R6Class(
 
       results_list <- list()
       if (parallel) {
-        plan(multisession, workers = chains)
+        future::plan(future::multisession, workers = chains)
         cat(paste0("並列サンプリングを開始します (chains = ", chains, ")...\n"))
         iter <- sampling + warmup
         total_updates <- chains * floor(iter / 100)
 
-        with_progress({
-          p <- progressor(steps = total_updates)
-          results_list <- future_lapply(1:chains, function(c) {
+        progressr::with_progress({
+          p <- progressr::progressor(steps = total_updates)
+          results_list <- future.apply::future_lapply(1:chains, function(c) {
             run_chain(c, p_callback = function() p())
           }, future.seed = TRUE,
           future.globals = c(
@@ -494,7 +494,7 @@ RTMB_Model <- R6::R6Class(
           future.packages = c("RTMB","BayesRTMB")
           )
         })
-        plan(sequential)
+        future::plan(future::sequential)
       } else {
         cat(paste0("直列サンプリングを開始します (chains = ", chains, ")...\n"))
         results_list <- lapply(1:chains, function(c) {
