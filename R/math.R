@@ -4,7 +4,7 @@
 #' used to build `log_prob()` functions.
 #'
 #' @export
-math <- new.env(parent = baseenv())
+math <- new.env()
 
 math$inv_logit <- function(x) plogis(x)
 

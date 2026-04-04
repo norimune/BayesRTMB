@@ -4,7 +4,7 @@
 #' used to build `log_prob()` functions.
 #'
 #' @export
-lpdf <- new.env(parent = baseenv())
+lpdf <- new.env()
 
 lpdf$normal <- function(x, mean, sd) {
   sum(dnorm(x, mean = mean, sd = sd, log = TRUE))
