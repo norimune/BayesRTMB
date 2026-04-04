@@ -2,17 +2,17 @@
 % Please edit documentation in R/model.R
 \name{register_math}
 \alias{register_math}
-\title{カスタム数学関数を math 環境に登録する}
+\title{Register a custom mathematical function to the math environment}
 \usage{
 register_math(name, fun, force = FALSE)
 }
 \arguments{
-\item{name}{登録する数学関数の名前（文字列）}
+\item{name}{The name of the mathematical function to register (character string).}
 
-\item{fun}{登録する関数}
+\item{fun}{The function to register.}
 
-\item{force}{すでに同名の関数が存在する場合に上書きするかどうか（デフォルトはFALSE）}
+\item{force}{Logical; whether to overwrite an existing function with the same name (default is FALSE).}
 }
 \description{
-カスタム数学関数を math 環境に登録する
+Register a custom mathematical function to the math environment
 }

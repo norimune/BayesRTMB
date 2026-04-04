@@ -2,17 +2,17 @@
 % Please edit documentation in R/model.R
 \name{register_lpdf}
 \alias{register_lpdf}
-\title{カスタム尤度関数を lpdf 環境に登録する}
+\title{Register a custom likelihood function to the lpdf environment}
 \usage{
 register_lpdf(name, fun, force = FALSE)
 }
 \arguments{
-\item{name}{登録する尤度関数の名前（文字列）}
+\item{name}{The name of the likelihood function to register (character string).}
 
-\item{fun}{尤度を計算する関数}
+\item{fun}{The function to calculate the likelihood.}
 
-\item{force}{すでに同名の関数が存在する場合に上書きするかどうか（デフォルトはFALSE）}
+\item{force}{Logical; whether to overwrite an existing function with the same name (default is FALSE).}
 }
 \description{
-カスタム尤度関数を lpdf 環境に登録する
+Register a custom likelihood function to the lpdf environment
 }

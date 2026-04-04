@@ -2,22 +2,22 @@
 % Please edit documentation in R/model.R
 \name{rtmb_model}
 \alias{rtmb_model}
-\title{RTMB_Modelインスタンスを生成するラッパー関数}
+\title{Wrapper function to create an RTMB_Model instance}
 \usage{
 rtmb_model(data, par_list, log_prob, generate = NULL)
 }
 \arguments{
-\item{data}{モデリングに使用するデータのリスト}
+\item{data}{A list of data used for modeling.}
 
-\item{par_list}{Dim()で定義したパラメータのリスト}
+\item{par_list}{A list of parameters defined by Dim().}
 
-\item{log_prob}{対数事後確率（または対数尤度＋事前分布）を計算する関数}
+\item{log_prob}{A function to calculate the log-posterior probability (or log-likelihood + prior).}
 
-\item{generate}{生成量（Generated Quantities）を計算する関数（オプション）}
+\item{generate}{An optional function to calculate generated quantities.}
 }
 \value{
-RTMB_Model クラスのインスタンス
+An instance of the RTMB_Model class.
 }
 \description{
-RTMB_Modelインスタンスを生成するラッパー関数
+Wrapper function to create an RTMB_Model instance
 }

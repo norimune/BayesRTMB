@@ -2,21 +2,21 @@
 % Please edit documentation in R/parameters.R
 \name{Dim}
 \alias{Dim}
-\title{paramters functions}
+\title{Define parameter dimensions and types}
 \usage{
 Dim(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE)
 }
 \arguments{
-\item{dim}{パラメータの次元}
+\item{dim}{Dimensions of the parameter.}
 
-\item{type}{パラメータの型}
+\item{type}{Type of the parameter.}
 
-\item{lower}{下限}
+\item{lower}{Lower bound.}
 
-\item{upper}{上限}
+\item{upper}{Upper bound.}
 
-\item{random}{変量効果かどうか}
+\item{random}{Logical; whether it is a random effect.}
 }
 \description{
-paramters functions
+Define parameter dimensions and types
 }
