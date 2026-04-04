@@ -135,7 +135,7 @@ lkj_CF_corr_lpdf <- function(CF_Omega, eta = 1) {
 #' @param prob Probability of success.
 #' @return The sum of the log-probability.
 #' @export
-bernoulli_lpdf <- function(x, prob) {
+bernoulli_lpmf <- function(x, prob) {
   sum(dbinom(x, 1, prob, log = TRUE))
 }
 
@@ -145,7 +145,7 @@ bernoulli_lpdf <- function(x, prob) {
 #' @param prob Probability of success.
 #' @return The sum of the log-probability.
 #' @export
-binomial_lpdf <- function(x, size, prob) {
+binomial_lpmf <- function(x, size, prob) {
   sum(dbinom(x, size, prob, log = TRUE))
 }
 
@@ -154,7 +154,7 @@ binomial_lpdf <- function(x, size, prob) {
 #' @param mu Linear predictor (logit probability).
 #' @return The sum of the log-probability.
 #' @export
-bernoulli_logit_lpdf <- function(x, mu) {
+bernoulli_logit_lpmf <- function(x, mu) {
   log1p_exp <- function(x) {
     max_val <- (x + sqrt(x^2 + 1e-10)) / 2
     return(max_val + log(exp(x - max_val) + exp(-max_val)))
@@ -168,7 +168,7 @@ bernoulli_logit_lpdf <- function(x, mu) {
 #' @param mu Linear predictor (logit probability).
 #' @return The sum of the log-probability.
 #' @export
-binomial_logit_lpdf <- function(x, size, mu) {
+binomial_logit_lpmf <- function(x, size, mu) {
   log1p_exp <- function(x) {
     max_val <- (x + sqrt(x^2 + 1e-10)) / 2
     return(max_val + log(exp(x - max_val) + exp(-max_val)))
@@ -181,7 +181,7 @@ binomial_logit_lpdf <- function(x, size, mu) {
 #' @param mean Expected value.
 #' @return The sum of the log-probability.
 #' @export
-poisson_lpdf <- function(x, mean) {
+poisson_lpmf <- function(x, mean) {
   sum(dpois(x, mean, log = TRUE))
 }
 
@@ -191,7 +191,7 @@ poisson_lpdf <- function(x, mean) {
 #' @param prob Probability of success in each trial.
 #' @return The sum of the log-probability.
 #' @export
-neg_binomial_lpdf <- function(x, size, prob) {
+neg_binomial_lpmf <- function(x, size, prob) {
   sum(suppressWarnings(dnbinom(x, size = size, prob = prob, log = TRUE)))
 }
 
@@ -201,7 +201,7 @@ neg_binomial_lpdf <- function(x, size, prob) {
 #' @param size Dispersion parameter.
 #' @return The sum of the log-probability.
 #' @export
-neg_binomial_2_lpdf <- function(x, mu, size) {
+neg_binomial_2_lpmf <- function(x, mu, size) {
   sum(suppressWarnings(dnbinom(x, size = size, mu = mu, log = TRUE)))
 }
 
@@ -210,7 +210,7 @@ neg_binomial_2_lpdf <- function(x, mu, size) {
 #' @param prob Vector or matrix of probabilities.
 #' @return The sum of the log-probability.
 #' @export
-categorical_lpdf <- function(x, prob) {
+categorical_lpmf <- function(x, prob) {
   if (is.matrix(prob)) {
     sum(log(prob[cbind(seq_along(x), x)]))
   } else {
@@ -224,7 +224,7 @@ categorical_lpdf <- function(x, prob) {
 #' @param prob Vector of probabilities for each category.
 #' @return The sum of the log-probability.
 #' @export
-multinomial_lpdf <- function(x, size, prob) {
+multinomial_lpmf <- function(x, size, prob) {
   sum(suppressWarnings(dmultinom(x, size = size, prob = prob, log = TRUE)))
 }
 
@@ -234,7 +234,7 @@ multinomial_lpdf <- function(x, size, prob) {
 #' @param cutpoints Vector of cutpoints.
 #' @return The sum of the log-probability.
 #' @export
-ordered_logistic_lpdf <- function(x, eta, cutpoints) {
+ordered_logistic_lpmf <- function(x, eta, cutpoints) {
   N <- length(x)
   K <- length(cutpoints) + 1
 
