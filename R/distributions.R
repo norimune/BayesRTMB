@@ -1,4 +1,5 @@
-#' @description Normal log-probability density function.
+#' Normal log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param mean Vector of means.
 #' @param sd Vector of standard deviations.
@@ -8,7 +9,8 @@ normal_lpdf <- function(x, mean, sd) {
   sum(dnorm(x, mean = mean, sd = sd, log = TRUE))
 }
 
-#' @description Lognormal log-probability density function.
+#' Lognormal log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param meanlog Mean of the distribution on the log scale.
 #' @param sdlog Standard deviation of the distribution on the log scale.
@@ -18,7 +20,8 @@ lognormal_lpdf <- function(x, meanlog, sdlog) {
   sum(suppressWarnings(dlnorm(x, meanlog = meanlog, sdlog = sdlog, log = TRUE)))
 }
 
-#' @description Exponential log-probability density function.
+#' Exponential log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param rate Vector of rates.
 #' @return The sum of the log-density.
@@ -27,7 +30,8 @@ exponential_lpdf <- function(x, rate) {
   sum(dexp(x, rate, log = TRUE))
 }
 
-#' @description Beta log-probability density function.
+#' Beta log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param a Shape parameter alpha.
 #' @param b Shape parameter beta.
@@ -37,7 +41,8 @@ beta_lpdf <- function(x, a, b) {
   sum(dbeta(x, a, b, log = TRUE))
 }
 
-#' @description Gamma log-probability density function.
+#' Gamma log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param shape Shape parameter.
 #' @param rate Rate parameter.
@@ -47,7 +52,8 @@ gamma_lpdf <- function(x, shape, rate) {
   sum(suppressWarnings(dgamma(x, shape = shape, rate = rate, log = TRUE)))
 }
 
-#' @description Inverse-gamma log-probability density function.
+#' Inverse-gamma log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param shape Shape parameter.
 #' @param scale Scale parameter.
@@ -57,7 +63,8 @@ inverse_gamma_lpdf <- function(x, shape, scale) {
   sum(shape * log(scale) - lgamma(shape) - (shape + 1) * log(x) - scale / x)
 }
 
-#' @description Cauchy log-probability density function.
+#' Cauchy log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param location Location parameter.
 #' @param scale Scale parameter.
@@ -67,7 +74,8 @@ cauchy_lpdf <- function(x, location, scale) {
   sum(suppressWarnings(dcauchy(x, location = location, scale = scale, log = TRUE)))
 }
 
-#' @description Student-t log-probability density function.
+#' Student-t log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param df Degrees of freedom.
 #' @param mu Location parameter.
@@ -78,7 +86,8 @@ student_t_lpdf <- function(x, df, mu = 0, sigma = 1) {
   sum(suppressWarnings(dt((x - mu) / sigma, df = df, log = TRUE) - log(sigma)))
 }
 
-#' @description Laplace log-probability density function.
+#' Laplace log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param location Location parameter.
 #' @param scale Scale parameter.
@@ -88,7 +97,8 @@ laplace_lpdf <- function(x, location = 0, scale = 1) {
   sum(-log(2 * scale) - abs(x - location) / scale)
 }
 
-#' @description Weibull log-probability density function.
+#' Weibull log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param shape Shape parameter.
 #' @param scale Scale parameter.
@@ -98,7 +108,8 @@ weibull_lpdf <- function(x, shape, scale) {
   sum(suppressWarnings(dweibull(x, shape = shape, scale = scale, log = TRUE)))
 }
 
-#' @description Uniform log-probability density function.
+#' Uniform log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param a Lower limit of the distribution.
 #' @param b Upper limit of the distribution.
@@ -108,7 +119,8 @@ uniform_lpdf <- function(x, a, b) {
   sum(dunif(x, a, b, log = TRUE))
 }
 
-#' @description LKJ correlation log-probability density function.
+#' LKJ correlation log-probability density function
+#'
 #' @param Omega Correlation matrix.
 #' @param eta Shape parameter.
 #' @return The log-density.
@@ -120,7 +132,8 @@ lkj_corr_lpdf <- function(Omega, eta = 1) {
   return((eta - 1) * 2 * sum(log(diag(U))))
 }
 
-#' @description LKJ correlation log-probability density function for Cholesky factors.
+#' LKJ correlation log-probability density function for Cholesky factors
+#'
 #' @param CF_Omega Cholesky factor of a correlation matrix.
 #' @param eta Shape parameter.
 #' @return The log-density.
@@ -130,7 +143,8 @@ lkj_CF_corr_lpdf <- function(CF_Omega, eta = 1) {
   return((eta - 1) * 2 * sum(log(diag(CF_Omega))))
 }
 
-#' @description Bernoulli log-probability mass function.
+#' Bernoulli log-probability mass function
+#'
 #' @param x Vector of binary outcomes (0 or 1).
 #' @param prob Probability of success.
 #' @return The sum of the log-probability.
@@ -139,7 +153,8 @@ bernoulli_lpmf <- function(x, prob) {
   sum(dbinom(x, 1, prob, log = TRUE))
 }
 
-#' @description Binomial log-probability mass function.
+#' Binomial log-probability mass function
+#'
 #' @param x Vector of quantiles (number of successes).
 #' @param size Number of trials.
 #' @param prob Probability of success.
@@ -149,7 +164,8 @@ binomial_lpmf <- function(x, size, prob) {
   sum(dbinom(x, size, prob, log = TRUE))
 }
 
-#' @description Bernoulli log-probability mass function with logit parameterization.
+#' Bernoulli log-probability mass function with logit parameterization
+#'
 #' @param x Vector of binary outcomes (0 or 1).
 #' @param mu Linear predictor (logit probability).
 #' @return The sum of the log-probability.
@@ -162,7 +178,8 @@ bernoulli_logit_lpmf <- function(x, mu) {
   sum(x * (-log1p_exp(-mu)) + (1 - x) * (-log1p_exp(mu)))
 }
 
-#' @description Binomial log-probability mass function with logit parameterization.
+#' Binomial log-probability mass function with logit parameterization
+#'
 #' @param x Vector of quantiles (number of successes).
 #' @param size Number of trials.
 #' @param mu Linear predictor (logit probability).
@@ -176,7 +193,8 @@ binomial_logit_lpmf <- function(x, size, mu) {
   sum(lchoose(size, x) + x * (-log1p_exp(-mu)) + (size - x) * (-log1p_exp(mu)))
 }
 
-#' @description Poisson log-probability mass function.
+#' Poisson log-probability mass function
+#'
 #' @param x Vector of quantiles.
 #' @param mean Expected value.
 #' @return The sum of the log-probability.
@@ -185,7 +203,8 @@ poisson_lpmf <- function(x, mean) {
   sum(dpois(x, mean, log = TRUE))
 }
 
-#' @description Negative binomial log-probability mass function.
+#' Negative binomial log-probability mass function
+#'
 #' @param x Vector of quantiles.
 #' @param size Target for number of successful trials.
 #' @param prob Probability of success in each trial.
@@ -195,7 +214,8 @@ neg_binomial_lpmf <- function(x, size, prob) {
   sum(suppressWarnings(dnbinom(x, size = size, prob = prob, log = TRUE)))
 }
 
-#' @description Negative binomial log-probability mass function (alternative parameterization).
+#' Negative binomial log-probability mass function (alternative parameterization)
+#'
 #' @param x Vector of quantiles.
 #' @param mu Mean parameter.
 #' @param size Dispersion parameter.
@@ -205,7 +225,8 @@ neg_binomial_2_lpmf <- function(x, mu, size) {
   sum(suppressWarnings(dnbinom(x, size = size, mu = mu, log = TRUE)))
 }
 
-#' @description Categorical log-probability mass function.
+#' Categorical log-probability mass function
+#'
 #' @param x Vector of categorical outcomes.
 #' @param prob Vector or matrix of probabilities.
 #' @return The sum of the log-probability.
@@ -218,7 +239,8 @@ categorical_lpmf <- function(x, prob) {
   }
 }
 
-#' @description Multinomial log-probability mass function.
+#' Multinomial log-probability mass function
+#'
 #' @param x Vector of counts.
 #' @param size Total number of trials.
 #' @param prob Vector of probabilities for each category.
@@ -228,7 +250,8 @@ multinomial_lpmf <- function(x, size, prob) {
   sum(suppressWarnings(dmultinom(x, size = size, prob = prob, log = TRUE)))
 }
 
-#' @description Ordered logistic log-probability mass function.
+#' Ordered logistic log-probability mass function
+#'
 #' @param x Vector of ordered categorical outcomes.
 #' @param eta Linear predictor.
 #' @param cutpoints Vector of cutpoints.
@@ -269,7 +292,8 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints) {
   return(lp)
 }
 
-#' @description Dirichlet log-probability density function.
+#' Dirichlet log-probability density function
+#'
 #' @param x Vector or matrix of simplexes.
 #' @param alpha Vector of concentration parameters.
 #' @return The sum of the log-density.
@@ -278,7 +302,8 @@ dirichlet_lpdf <- function(x, alpha) {
   sum((alpha - 1) * log(x)) + lgamma(sum(alpha)) - sum(lgamma(alpha))
 }
 
-#' @description Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix.
+#' Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix
+#'
 #' @param x Vector or matrix of quantiles.
 #' @param mean Vector or matrix of means.
 #' @param sd Vector of standard deviations.
@@ -305,7 +330,8 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega) {
   }
 }
 
-#' @description Multivariate normal log-probability density function.
+#' Multivariate normal log-probability density function
+#'
 #' @param x Vector or matrix of quantiles.
 #' @param mean Vector or matrix of means.
 #' @param Sigma Covariance matrix.
@@ -344,7 +370,8 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
   }
 }
 
-#' @description Sum-to-zero multivariate normal log-probability density function.
+#' Sum-to-zero multivariate normal log-probability density function
+#'
 #' @param x Vector of quantiles.
 #' @param sigma Standard deviation parameter.
 #' @param K Dimension. If NULL, inferred from the length of x.
@@ -356,7 +383,8 @@ sum_to_zero_mvnorm_lpdf <- function(x, sigma = 1, K = NULL) {
   return(lp)
 }
 
-#' @description Centered triangular multivariate normal log-probability density function.
+#' Centered triangular multivariate normal log-probability density function
+#'
 #' @param x Matrix of quantiles.
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.

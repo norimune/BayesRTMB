@@ -21,7 +21,7 @@ Imports:
     posterior,
     lme4,
     GPArotation
-RoxygenNote: 7.3.2
+RoxygenNote: 7.3.3
 URL: https://github.com/norimune/BayesRTMB
 BugReports: https://github.com/norimune/BayesRTMB/issues
 Suggests: 
