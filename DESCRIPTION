@@ -8,8 +8,10 @@ Description: A package for MCMC and MAP estimation using RTMB.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true
+Depends: 
+    R (>= 4.1.0),
+    RTMB
 Imports: 
-    RTMB,
     R6,
     MASS,
     mvtnorm,
