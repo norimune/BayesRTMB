@@ -1,11 +1,11 @@
-#' RTMB_Modelインスタンスを生成するラッパー関数
+#' Wrapper function to create an RTMB_Model instance
 #'
-#' @param data モデリングに使用するデータのリスト
-#' @param par_list Dim()で定義したパラメータのリスト
-#' @param log_prob 対数事後確率（または対数尤度＋事前分布）を計算する関数
-#' @param generate 生成量（Generated Quantities）を計算する関数（オプション）
+#' @param data A list of data used for modeling.
+#' @param par_list A list of parameters defined by Dim().
+#' @param log_prob A function to calculate the log-posterior probability (or log-likelihood + prior).
+#' @param generate An optional function to calculate generated quantities.
 #'
-#' @return RTMB_Model クラスのインスタンス
+#' @return An instance of the RTMB_Model class.
 #' @export
 rtmb_model <- function(data, par_list, log_prob, generate=NULL) {
   model_instance <- RTMB_Model$new(
@@ -17,11 +17,11 @@ rtmb_model <- function(data, par_list, log_prob, generate=NULL) {
   return(model_instance)
 }
 
-#' カスタム尤度関数を lpdf 環境に登録する
+#' Register a custom likelihood function to the lpdf environment
 #'
-#' @param name 登録する尤度関数の名前（文字列）
-#' @param fun 尤度を計算する関数
-#' @param force すでに同名の関数が存在する場合に上書きするかどうか（デフォルトはFALSE）
+#' @param name The name of the likelihood function to register (character string).
+#' @param fun The function to calculate the likelihood.
+#' @param force Logical; whether to overwrite an existing function with the same name (default is FALSE).
 #'
 #' @export
 register_lpdf <- function(name, fun, force = FALSE) {
@@ -41,11 +41,11 @@ register_lpdf <- function(name, fun, force = FALSE) {
   message(sprintf("尤度関数 'lpdf$%s' が登録されました。", name))
 }
 
-#' カスタム数学関数を math 環境に登録する
+#' Register a custom mathematical function to the math environment
 #'
-#' @param name 登録する数学関数の名前（文字列）
-#' @param fun 登録する関数
-#' @param force すでに同名の関数が存在する場合に上書きするかどうか（デフォルトはFALSE）
+#' @param name The name of the mathematical function to register (character string).
+#' @param fun The function to register.
+#' @param force Logical; whether to overwrite an existing function with the same name (default is FALSE).
 #'
 #' @export
 register_math <- function(name, fun, force = FALSE) {

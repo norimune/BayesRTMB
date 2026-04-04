@@ -1,10 +1,10 @@
-#' paramters functions
+#' Define parameter dimensions and types
 #'
-#' @param dim パラメータの次元
-#' @param type パラメータの型
-#' @param lower 下限
-#' @param upper 上限
-#' @param random 変量効果かどうか
+#' @param dim Dimensions of the parameter.
+#' @param type Type of the parameter.
+#' @param lower Lower bound.
+#' @param upper Upper bound.
+#' @param random Logical; whether it is a random effect.
 #'
 #' @export
 Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE) {
