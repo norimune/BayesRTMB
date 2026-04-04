@@ -1,6 +1,3 @@
----
-output: github_document
----
 
 # BayesRTMB
 
@@ -18,7 +15,7 @@ The package provides:
 
 You can install the development version from GitHub with:
 
-```r
+``` r
 remotes::install_github("YOUR_GITHUB_NAME/BayesRTMB")
 ```
 
@@ -34,7 +31,7 @@ Then you can optimize the posterior or draw samples.
 
 ## Example
 
-```{r eval=FALSE}
+``` r
 library(BayesRTMB)
 
 log_prob <- function(data, param) {
@@ -64,7 +61,7 @@ fit_mcmc <- model$sample(chains = 2, warmup = 500)
 
 ## Posterior plots
 
-```{r eval=FALSE}
+``` r
 draws <- fit_mcmc$draws()
 plot_trace(draws)
 plot_dens(draws)
@@ -84,5 +81,5 @@ plot_ac(draws, 1)
 
 ## Development status
 
-BayesRTMB is under active development.
-The interface and function names may change in future versions.
+BayesRTMB is under active development. The interface and function names
+may change in future versions.

@@ -117,7 +117,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       ad_obj <- tryCatch({
-        MakeADFun(
+        RTMB::MakeADFun(
           func = f_ad,
           parameters = init_unc_list,
           random = use_random,
