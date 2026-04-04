@@ -1,0 +1,22 @@
+Package: BayesRTMB
+Type: Package
+Title: Bayesian Inference using RTMB
+Version: 0.1.0
+Author: Hiroshi Shimizu
+Maintainer: Hiroshi Shimizu <your-email@example.com>
+Description: A package for MCMC and MAP estimation using RTMB.
+License: MIT + file LICENSE
+Encoding: UTF-8
+LazyData: true
+Imports: 
+    RTMB,
+    R6,
+    MASS,
+    mvtnorm,
+    future,
+    future.apply,
+    progressr,
+    posterior,
+    lme4,
+    GPArotation
+RoxygenNote: 7.3.2
