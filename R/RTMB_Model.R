@@ -100,7 +100,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       cat("Checking RTMB setup...\n")
-      test_ad <- self$build_ad_obj(init = init_vec, laplace = FALSE, include_jacobian = TRUE)
+      test_ad <- self$build_ad_obj(init = init_vec, laplace = FALSE, jacobian_target = "all")
       test_gr <- tryCatch(test_ad$ad_obj$gr(test_ad$ad_obj$par), error = function(e) e)
       if (inherits(test_gr, "error")) {
         stop("MakeADFun の勾配計算でエラーが発生しました。\n[エラー]: ",
@@ -112,7 +112,7 @@ RTMB_Model <- R6::R6Class(
     # ヤコビアンを追加するかどうかを引数で制御
     #' @description Build the RTMB automatic differentiation object.
     #' @return An RTMB objective object.
-    build_ad_obj = function(init = NULL, laplace = FALSE, include_jacobian = TRUE) {
+    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all") {
       random_effs <-
         names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
@@ -139,8 +139,12 @@ RTMB_Model <- R6::R6Class(
         }
         lp <- log_prob_local(data_local, para)
 
-        if (include_jacobian) {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local)
+        # ヤコビアンの対象を条件分岐
+        if (jacobian_target == "all") {
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
+          return(-(lp + lj))
+        } else if (jacobian_target == "random") {
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
           return(-(lp + lj))
         } else {
           return(-lp)
@@ -179,7 +183,8 @@ RTMB_Model <- R6::R6Class(
       cat("Starting optimization...\n")
 
       # MAP推定ではヤコビアンは不要
-      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, include_jacobian = FALSE)
+      jac_target <- if (laplace) "random" else "none"
+      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target)
       ad_obj <- ad_setup$ad_obj
 
       opt <- nlminb(
@@ -461,7 +466,7 @@ RTMB_Model <- R6::R6Class(
         }
 
         # MCMCではヤコビアンが必須
-        ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, include_jacobian = TRUE)
+        ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
         ad_obj <- ad_setup$ad_obj
 
         #if (laplace) {
