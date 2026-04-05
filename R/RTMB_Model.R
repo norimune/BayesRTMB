@@ -67,6 +67,10 @@ RTMB_Model <- R6::R6Class(
       test_para <- constrained_vector_to_list(init_vec, self$par_list)
 
       test_val <- tryCatch({
+        if (!is.null(self$transform)) {
+          test_tran <- self$transform(self$data, test_para)
+          test_para <- c(test_para, test_tran)
+        }
         self$log_prob(self$data, test_para)
       }, error = function(e) {
         stop("R関数(log_prob)のテスト実行でエラーが発生しました。\n[エラー]: "
@@ -94,18 +98,6 @@ RTMB_Model <- R6::R6Class(
           }
         }
       }
-
-      test_val <- tryCatch({
-        # transform が指定されていればテスト実行し、par に結合する
-        if (!is.null(self$transform)) {
-          test_tran <- self$transform(self$data, test_para)
-          test_para <- c(test_para, test_tran)
-        }
-        self$log_prob(self$data, test_para)
-      }, error = function(e) {
-        stop("R関数(log_prob)のテスト実行でエラーが発生しました。\n[エラー]: "
-             , e$message, call. = FALSE)
-      })
 
       cat("Checking RTMB setup...\n")
       test_ad <- self$build_ad_obj(init = init_vec, laplace = FALSE, include_jacobian = TRUE)
