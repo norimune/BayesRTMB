@@ -824,7 +824,7 @@ MCMC_Fit <- R6::R6Class(
 
     #' @description Resolve label switching in posterior draws.
     #' @return Relabeled draws or updated object.
-    resolve_switching = function(target, linked = NULL, overwrite = TRUE) {
+    resolve_switching = function(target, linked = NULL, overwrite = TRUE, scalar_fns = list()) {
       cat(sprintf("Resolving label switching based on '%s'...\n", target))
 
       # 上書きしない場合はクローンを作成
@@ -1006,15 +1006,20 @@ MCMC_Fit <- R6::R6Class(
                 g_arr <- set_values(g_arr, i, c, l_info$idx, g_arr[i, c, l_info$idx][ord])
 
               } else if (K == 2) {
-                # 2群ラベルスイッチ用にスカラー補助変数の反転を許可
+                # 2群ラベルスイッチ用にスカラー補助変数の処理を適用
+                s_fn <- function(x) 1 - x
+                if (!is.null(scalar_fns) && lvar %in% names(scalar_fns)) {
+                  s_fn <- scalar_fns[[lvar]]
+                }
+
                 if (l_info$loc == "fixed_scalar") {
-                  f_arr[i, c, l_info$idx] <- 1 - f_arr[i, c, l_info$idx]
+                  f_arr[i, c, l_info$idx] <- s_fn(f_arr[i, c, l_info$idx])
                 } else if (l_info$loc == "random_scalar") {
-                  r_arr[i, c, l_info$idx] <- 1 - r_arr[i, c, l_info$idx]
+                  r_arr[i, c, l_info$idx] <- s_fn(r_arr[i, c, l_info$idx])
                 } else if (l_info$loc == "tran_scalar") {
-                  t_arr[i, c, l_info$idx] <- 1 - t_arr[i, c, l_info$idx]
+                  t_arr[i, c, l_info$idx] <- s_fn(t_arr[i, c, l_info$idx])
                 } else if (l_info$loc == "gq_scalar") {
-                  g_arr[i, c, l_info$idx] <- 1 - g_arr[i, c, l_info$idx]
+                  g_arr[i, c, l_info$idx] <- s_fn(g_arr[i, c, l_info$idx])
                 }
               }
             }
