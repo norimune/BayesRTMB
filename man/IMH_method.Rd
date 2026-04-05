@@ -2,36 +2,42 @@
 % Please edit documentation in R/IMH.R
 \name{IMH_method}
 \alias{IMH_method}
-\title{Independent Metropolis-Hastings Algorithm}
+\title{Hybrid IMH and Preconditioned MALA sampling using Laplace approximation}
 \usage{
 IMH_method(
-  ad_obj,
-  mu,
-  Sigma,
+  model,
   sampling,
   warmup,
-  chain = 1,
-  update_progress = NULL
+  chain,
+  update_progress = NULL,
+  df = 4,
+  mix_ratio = 0.8,
+  eps_mala = 0.1
 )
 }
 \arguments{
-\item{ad_obj}{AD object from RTMB}
+\item{model}{An RTMB automatic differentiation objective object (`ad_obj`).}
 
-\item{mu}{MAP estimates (mean vector)}
+\item{sampling}{Integer. Number of sampling iterations.}
 
-\item{Sigma}{Covariance matrix from Laplace approximation}
+\item{warmup}{Integer. Number of warmup iterations.}
 
-\item{sampling}{Number of sampling iterations}
+\item{chain}{Integer. The ID of the current MCMC chain.}
 
-\item{warmup}{Number of warmup iterations}
+\item{update_progress}{An optional callback function used to update the progress bar. Default is NULL.}
 
-\item{chain}{Chain ID (for progress reporting)}
+\item{df}{Numeric. Degrees of freedom for the multivariate t-distribution proposal in IMH. Default is 4.}
 
-\item{update_progress}{Callback function for progress reporting}
+\item{mix_ratio}{Numeric. The probability of choosing the IMH step. Default is 0.8 (80% IMH, 20% MALA).}
+
+\item{eps_mala}{Numeric. The step size parameter for the pMALA step. Default is 0.5.}
 }
 \value{
-A list containing samples and diagnostic statistics
+A list containing MCMC results.
 }
 \description{
-Independent Metropolis-Hastings Algorithm
+This function performs a mixture of Independent Metropolis-Hastings (IMH)
+and Preconditioned Metropolis-Adjusted Langevin Algorithm (pMALA).
+The IMH step uses a multivariate t-distribution centered at the MAP estimate.
+The pMALA step uses gradient information preconditioned by the inverse Hessian.
 }
