@@ -173,3 +173,118 @@ NUTS_method <- function(model,
     eps        = eps
   ))
 }
+
+create_NUTS_core <- function(ad_obj) {
+  fn_NUTS <- function(q) -ad_obj$fn(q)
+  gr_NUTS <- function(q) -ad_obj$gr(q)
+
+  calc_H <- function(q, p, M_inv) {
+    fn_NUTS(q) - sum((p^2) * M_inv) / 2
+  }
+
+  safe_uturn <- function(q_plus, q_minus, p, M_inv) {
+    dq <- q_plus - q_minus
+    dot_prod <- sum(dq * (p * M_inv))
+    if (!is.finite(dot_prod)) return(0L)
+    if (dot_prod >= 0) 1L else 0L
+  }
+
+  BuildTree <- function(p, q, gr, log_u, v, j, eps, H0, M_inv) {
+    if (j == 0L) {
+      eps_v <- v * eps
+      p_prime <- p + (eps_v / 2) * gr
+      q_prime <- q + eps_v * M_inv * p_prime
+      gr_prime <- gr_NUTS(q_prime)
+      p_prime <- p_prime + (eps_v / 2) * gr_prime
+
+      H_prime <- calc_H(q_prime, p_prime, M_inv)
+
+      if (!is.finite(H_prime)) {
+        n_prime <- 0L; s_prime <- 0L; alpha_prime <- 0
+      } else {
+        n_prime <- if (isTRUE(log_u <= H_prime)) 1L else 0L
+        s_prime <- if (isTRUE(log_u - 1000 < H_prime)) 1L else 0L
+        alpha_raw <- exp(H_prime - H0)
+        alpha_prime <- if (is.na(alpha_raw)) 0 else min(1, alpha_raw)
+      }
+
+      return(list(
+        p_minus = p_prime, q_minus = q_prime, gr_minus = gr_prime,
+        p_plus  = p_prime, q_plus  = q_prime, gr_plus  = gr_prime,
+        q       = q_prime,
+        n       = n_prime,
+        s       = s_prime,
+        alpha   = alpha_prime,
+        n_alpha = 1L
+      ))
+    }
+
+    out1 <- BuildTree(p, q, gr, log_u, v, j - 1L, eps, H0, M_inv)
+    # isTRUEで確実に論理値にする
+    if (isTRUE(out1$s == 0L)) return(out1)
+
+    if (v == -1L) {
+      out2 <- BuildTree(out1$p_minus, out1$q_minus, out1$gr_minus, log_u, v, j - 1L, eps, H0, M_inv)
+      out1$p_minus <- out2$p_minus; out1$q_minus <- out2$q_minus; out1$gr_minus <- out2$gr_minus
+    } else {
+      out2 <- BuildTree(out1$p_plus, out1$q_plus, out1$gr_plus, log_u, v, j - 1L, eps, H0, M_inv)
+      out1$p_plus <- out2$p_plus; out1$q_plus <- out2$q_plus; out1$gr_plus <- out2$gr_plus
+    }
+
+    total_n <- out1$n + out2$n
+    if (total_n > 0L) {
+      prob <- out2$n / total_n
+      if (isTRUE(runif(1) < prob)) out1$q <- out2$q
+    }
+
+    dq <- out1$q_plus - out1$q_minus
+    sum1 <- sum(dq * (out1$p_minus * M_inv))
+    sum2 <- sum(dq * (out1$p_plus * M_inv))
+
+    # 判定結果にNAが混入しないようisTRUEを使用
+    s_uturn <- isTRUE(sum1 >= 0) && isTRUE(sum2 >= 0)
+
+    out1$n <- total_n
+
+    # 掛け算を使わず、論理積で確実に 0L か 1L にする
+    out1$s <- if (isTRUE(out1$s == 1L) && isTRUE(out2$s == 1L) && s_uturn) 1L else 0L
+
+    out1$alpha <- out1$alpha + out2$alpha
+    out1$n_alpha <- out1$n_alpha + out2$n_alpha
+
+    return(out1)
+  }
+
+  FindReasonableEpsilon <- function(q, M_inv) {
+    eps_try <- 1
+    p <- rnorm(length(q), mean = 0, sd = sqrt(1 / M_inv))
+    gr <- gr_NUTS(q)
+    H_old <- calc_H(q, p, M_inv)
+
+    p_new <- p + (eps_try / 2) * gr
+    q_new <- q + eps_try * M_inv * p_new
+    p_new <- p_new + (eps_try / 2) * gr_NUTS(q_new)
+    H_new <- calc_H(q_new, p_new, M_inv)
+
+    ratio <- if (!is.finite(H_new) || !is.finite(H_old)) 0 else exp(H_new - H_old)
+    a <- if (isTRUE(ratio > 0.5)) 1 else -1
+
+    while (isTRUE(ratio^a > 2^(-a))) {
+      eps_try <- (2^a) * eps_try
+      p_new <- p + (eps_try / 2) * gr
+      q_new <- q + eps_try * M_inv * p_new
+      p_new <- p_new + (eps_try / 2) * gr_NUTS(q_new)
+      H_new <- calc_H(q_new, p_new, M_inv)
+      ratio <- if (!is.finite(H_new) || !is.finite(H_old)) 0 else exp(H_new - H_old)
+      if (eps_try > 1e7 || eps_try < 1e-7) break
+    }
+    eps_try
+  }
+
+  return(list(
+    fn_NUTS = fn_NUTS, gr_NUTS = gr_NUTS, calc_H = calc_H,
+    safe_uturn = safe_uturn, BuildTree = BuildTree,
+    FindReasonableEpsilon = FindReasonableEpsilon
+  ))
+}
+
