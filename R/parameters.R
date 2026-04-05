@@ -57,7 +57,7 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
     R <- dim[1]
     C <- dim[2]
     calc_unc_length <- (R - 1) * C
-  } else if (bounds_type == "centered_tri") {
+  } else if (bounds_type %in% c("centered_tri", "positive_centered_tri")) {
     R <- dim[1]
     C <- dim[2]
     calc_unc_length <- 0
@@ -218,6 +218,28 @@ to_unconstrained <- function(para_orig_list, par_list) {
       }
       para_unc[[name]] <- y
 
+    } else if (b_type == "positive_centered_tri") {
+      R <- p$dim[1]
+      C <- p$dim[2]
+      y <- numeric(p$unc_length)
+      idx <- 1
+      for (d in 1:min(C, R - 1)) {
+        x_d <- val_orig[d:R, d]
+        n_d <- length(x_d)
+
+        u1 <- log(x_d[1])
+        y[idx] <- u1
+
+        if (n_d > 2) {
+          v <- x_d[2:n_d] + x_d[1] / (n_d - 1)
+          Q_d <- stz_basis(n_d - 1)
+          z_d <- as.numeric(crossprod(Q_d, v))
+          y[(idx + 1):(idx + n_d - 2)] <- z_d
+        }
+        idx <- idx + n_d - 1
+      }
+      para_unc[[name]] <- y
+
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
@@ -364,6 +386,32 @@ to_constrained <- function(para_unc_list, par_list) {
       }
       para[[name]] <- L
 
+    } else if (b_type == "positive_centered_tri") {
+      R <- p$dim[1]
+      C <- p$dim[2]
+      L <- matrix(ad_zero, nrow = R, ncol = C)
+      idx <- 1
+      for (d in 1:min(C, R - 1)) {
+        n_d <- R - d + 1
+        x_d <- rep(ad_zero, n_d)
+
+        u1 <- val_unc[idx]
+        x1 <- exp(u1)
+        x_d[1] <- x1
+
+        if (n_d > 2) {
+          z_d <- val_unc[(idx + 1):(idx + n_d - 2)]
+          Q_d <- stz_basis(n_d - 1)
+          v <- as.numeric(Q_d %*% z_d)
+          x_d[2:n_d] <- v - x1 / (n_d - 1)
+        } else if (n_d == 2) {
+          x_d[2] <- -x1
+        }
+        L[d:R, d] <- x_d
+        idx <- idx + n_d - 1
+      }
+      para[[name]] <- L
+
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
@@ -479,7 +527,19 @@ calc_log_jacobian <- function(para_unc_list, par_list) {
     } else if (b_type %in% c("sum_to_zero", "centered_matrix", "centered_tri")) {
       diff_dim <- p$length - p$unc_length
       lj <- lj + (diff_dim / 2) * log(2 * pi)
-
+    } else if (b_type == "positive_centered_tri") {
+      diff_dim <- p$length - p$unc_length
+      lj <- lj + (diff_dim / 2) * log(2 * pi)
+      R <- p$dim[1]
+      C <- p$dim[2]
+      idx <- 1
+      for (d in 1:min(C, R - 1)) {
+        n_d <- R - d + 1
+        u1 <- val_unc[idx]
+        # ヤコビアン log(|J|) = u1 + 0.5 * log(n_d / (n_d - 1))
+        lj <- lj + u1 + 0.5 * log(n_d / (n_d - 1))
+        idx <- idx + n_d - 1
+      }
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
       K <- p$dim[1]
       lj_term <- 0
