@@ -419,6 +419,25 @@ centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
   }
   return(lp)
 }
+#' Positive centered triangular multivariate normal log-probability density function
+#'
+#' @param x Matrix of quantiles.
+#' @param sigma Standard deviation parameter(s).
+#' @return The log-density.
+#' @export
+positive_centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
+  R <- nrow(x)
+  C <- ncol(x)
+  max_d <- min(C, R - 1)
+
+  # 元の centered_tri_mvnormal_lpdf を計算
+  lp <- centered_tri_mvnormal_lpdf(x, sigma)
+
+  # 切断正規分布としての正規化定数を補正（各列で1/2になるため、密度を 2^max_d 倍する）
+  lp <- lp + max_d * log(2)
+
+  return(lp)
+}
 
 #' Best-Worst Scaling log-probability mass function
 #'
