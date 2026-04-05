@@ -498,7 +498,7 @@ to_constrained <- function(para_unc_list, par_list) {
 }
 
 # calc_log_jacobian (★orderedとsimplexのヤコビアンを修正済)
-calc_log_jacobian <- function(para_unc_list, par_list) {
+calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
   lj <- 0
   for (name in names(par_list)) {
     p <- par_list[[name]]
