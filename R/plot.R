@@ -40,9 +40,13 @@ plot_dens <- function(x, mono = FALSE) {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
+  # 変数数に応じて自動でグリッドレイアウトを決定
+  n_cols <- ceiling(sqrt(n_variables))
+  n_rows <- ceiling(n_variables / n_cols)
+
   par(
-    mfrow = c(1, n_variables),
-    mar = c(5.1, 4.1, 1, 1),
+    mfrow = c(n_rows, n_cols),
+    mar = c(4, 4, 3, 1),
     oma = c(0, 0, 2, 0)
   )
 
@@ -53,34 +57,48 @@ plot_dens <- function(x, mono = FALSE) {
   }
 
   for (i in seq_len(n_variables)) {
-    min_data <- min(x[, , i], na.rm = TRUE)
-    max_data <- max(x[, , i], na.rm = TRUE)
-
     dens_list <- vector("list", n_chains)
     max_dens <- 0
+    min_x <- Inf
+    max_x <- -Inf
 
     for (n in seq_len(n_chains)) {
-      dens_list[[n]] <- stats::density(x[, n, i], na.rm = TRUE)
-      max_dens <- max(max_dens, max(dens_list[[n]]$y, na.rm = TRUE))
+      valid_data <- x[, n, i]
+      valid_data <- valid_data[!is.na(valid_data)]
+
+      if (length(valid_data) > 1) {
+        # density 関数が計算した本来のカーブの広さを取得
+        dens_list[[n]] <- stats::density(valid_data)
+        max_dens <- max(max_dens, max(dens_list[[n]]$y))
+        min_x <- min(min_x, min(dens_list[[n]]$x))
+        max_x <- max(max_x, max(dens_list[[n]]$x))
+      }
     }
 
+    if (min_x == Inf || max_x == -Inf) {
+      min_x <- 0; max_x <- 1; max_dens <- 1
+    }
+
+    # 各パラメータごとに独立した xlim, ylim を設定
     plot(
       dens_list[[1]],
       lty = 1,
       col = colors[1],
-      xlab = parnames[i],
-      ylab = "",
-      main = "",
-      xlim = c(min_data, max_data),
-      ylim = c(0, max_dens + 0.15 * max_dens)
+      xlab = "",
+      ylab = "Density",
+      main = parnames[i],
+      xlim = c(min_x, max_x),
+      ylim = c(0, max_dens * 1.15)
     )
 
     legend_text <- "chain1"
 
     if (n_chains > 1) {
       for (n in 2:n_chains) {
-        lines(dens_list[[n]], lty = n, col = colors[n])
-        legend_text <- c(legend_text, paste0("chain", n))
+        if (!is.null(dens_list[[n]])) {
+          lines(dens_list[[n]], lty = n, col = colors[n])
+          legend_text <- c(legend_text, paste0("chain", n))
+        }
       }
     }
 
@@ -95,7 +113,7 @@ plot_dens <- function(x, mono = FALSE) {
     )
   }
 
-  mtext("Density", outer = TRUE)
+  mtext("Density Plot", outer = TRUE, cex = 1.2, font = 2)
 }
 
 #' Plot MCMC trace plots
@@ -149,9 +167,13 @@ plot_trace <- function(x, mono = FALSE) {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
+  # 変数数に応じて自動でグリッドレイアウトを決定
+  n_cols <- ceiling(sqrt(n_variables))
+  n_rows <- ceiling(n_variables / n_cols)
+
   par(
-    mfrow = c(1, n_variables),
-    mar = c(5.1, 4.1, 1, 1),
+    mfrow = c(n_rows, n_cols),
+    mar = c(4, 4, 3, 1),
     oma = c(0, 0, 2, 0)
   )
 
@@ -159,9 +181,10 @@ plot_trace <- function(x, mono = FALSE) {
     min_val <- min(x[, , i], na.rm = TRUE)
     max_val <- max(x[, , i], na.rm = TRUE)
 
-    pad <- 0.1 * (max_val - min_val)
-    if (pad == 0) pad <- 1e-8
-    y_limit <- c(min_val, max_val + pad)
+    # Y軸の上下に5%の余白を持たせる
+    pad <- 0.05 * (max_val - min_val)
+    if (is.na(pad) || pad == 0) pad <- 1e-8
+    y_limit <- c(min_val - pad, max_val + pad)
 
     plot(
       seq_len(iter),
@@ -171,7 +194,7 @@ plot_trace <- function(x, mono = FALSE) {
       col = colors[1],
       lty = ltys[1],
       xlab = "Iteration",
-      ylab = "",
+      ylab = "Value",
       main = parnames[i]
     )
 
@@ -195,7 +218,7 @@ plot_trace <- function(x, mono = FALSE) {
     )
   }
 
-  mtext("Trace Plot", outer = TRUE)
+  mtext("Trace Plot", outer = TRUE, cex = 1.2, font = 2)
 }
 
 #' Plot autocorrelation for one variable across chains
@@ -258,5 +281,5 @@ plot_acf <- function(x, var_idx = 1) {
     abline(h = 0)
   }
 
-  mtext(paste0("Autocorrelation (", parname, ")"), outer = TRUE)
+  mtext(paste0("Autocorrelation (", parname, ")"), outer = TRUE, cex = 1.2, font = 2)
 }
