@@ -46,6 +46,7 @@ RTMB_Model <- R6::R6Class(
     pl_full    = NULL,
 
     # 1. コンストラクタ
+    #' @description Create a new `RTMB_Model` object.
     initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL) {
       self$data <- data
       self$par_list <- lapply(par_list, function(x) {
@@ -108,6 +109,8 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 2. ADオブジェクト生成ファクトリ
+    #' @description Build the RTMB automatic differentiation object.
+    #' @return An RTMB objective object.
     build_ad_obj = function(init = NULL, laplace = FALSE, include_jacobian = TRUE) {
       random_effs <-
         names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
@@ -162,10 +165,14 @@ RTMB_Model <- R6::R6Class(
       ))
     },
 
+
     # 3. 最尤法 / MAP推定 メソッド
+    #' @description Optimize the posterior or marginal posterior.
+    #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, control = list()) {
       cat("Starting optimization...\n")
 
+      # MAP推定ではヤコビアンは不要
       ad_setup <- self$build_ad_obj(init = init, laplace = laplace, include_jacobian = FALSE)
       ad_obj <- ad_setup$ad_obj
 
@@ -277,6 +284,7 @@ RTMB_Model <- R6::R6Class(
           p_info <- self$par_list[[name]]
           if (p_info$random == target_random) {
 
+            # --- Omega (相関行列) を計算して表に追加 ---
             if (p_info$type == "CF_corr") {
               L_est <- con_est_list[[name]]
               Omega_est <- L_est %*% t(L_est)
@@ -325,6 +333,7 @@ RTMB_Model <- R6::R6Class(
               }
             }
 
+            # --- 本来のパラメータ処理 ---
             len <- p_info$length
             f_names <- character(len)
 
@@ -383,6 +392,7 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
+      # --- MAP_Fit インスタンスを返す ---
       res_obj <- MAP_Fit$new(
         par_vec = con_est_vec,
         par = con_est_list,
@@ -397,7 +407,10 @@ RTMB_Model <- R6::R6Class(
       return(res_obj)
     },
 
+
     # 4. MCMC サンプリング メソッド
+    #' @description Draw posterior samples from the model.
+    #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
                       delta=0.8, max_treedepth = 10,
@@ -454,6 +467,7 @@ RTMB_Model <- R6::R6Class(
           init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
         }
 
+        # MCMCではヤコビアンが必須
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, include_jacobian = TRUE)
         ad_obj <- ad_setup$ad_obj
 
@@ -466,7 +480,7 @@ RTMB_Model <- R6::R6Class(
             sampling = sampling,
             warmup = warmup,
             chain = c,
-            update_progress = p_callback # NUTSと同様にコールバックを渡す
+            update_progress = p_callback # プログレスバーのコールバックを渡す
           )
         } else {
           res <- NUTS_method(
@@ -598,6 +612,7 @@ RTMB_Model <- R6::R6Class(
         posterior_mean[names(random_mean)] <- random_mean
       }
 
+      # --- MCMC_Fit インスタンスを返す ---
       res_obj <- MCMC_Fit$new(
         model          = self,
         fit            = fit,
@@ -624,7 +639,10 @@ RTMB_Model <- R6::R6Class(
       return(res_obj)
     },
 
+
     # 5. モデルコードの表示メソッド
+    #' @description Print model code or model structure.
+    #' @return The object itself, invisibly.
     print_code = function() {
       param_lines <- c("par_list <- list(")
       names_pl <- names(self$par_list)
