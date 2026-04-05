@@ -4,14 +4,16 @@
 \alias{rtmb_model}
 \title{Wrapper function to create an RTMB_Model instance}
 \usage{
-rtmb_model(data, par_list, log_prob, generate = NULL)
+rtmb_model(data, par_list, log_prob, transform = NULL, generate = NULL)
 }
 \arguments{
 \item{data}{A list of data used for modeling.}
 
 \item{par_list}{A list of parameters defined by Dim().}
 
-\item{log_prob}{A function to calculate the log-posterior probability (or log-likelihood + prior).}
+\item{log_prob}{A function to calculate the log-posterior probability.}
+
+\item{transform}{An optional function to calculate transformed parameters.}
 
 \item{generate}{An optional function to calculate generated quantities.}
 }

@@ -21,6 +21,10 @@ from MCMC estimation.
 
 \item{\code{random_fit}}{Posterior draws for random effects.}
 
+\item{\code{tran_fit}}{Posterior draws for transformed parameters.}
+
+\item{\code{tran_dims}}{Dimension information for transformed parameters.}
+
 \item{\code{gq_fit}}{Posterior draws for generated quantities.}
 
 \item{\code{gq_dims}}{Dimension information for generated quantities.}
@@ -47,6 +51,7 @@ from MCMC estimation.
 \item \href{#method-mcmc_fit-unconstrain_draws}{\code{MCMC_Fit$unconstrain_draws()}}
 \item \href{#method-mcmc_fit-log_prob}{\code{MCMC_Fit$log_prob()}}
 \item \href{#method-mcmc_fit-bridgesampling}{\code{MCMC_Fit$bridgesampling()}}
+\item \href{#method-mcmc_fit-transformed_draws}{\code{MCMC_Fit$transformed_draws()}}
 \item \href{#method-mcmc_fit-generated_quantities}{\code{MCMC_Fit$generated_quantities()}}
 \item \href{#method-mcmc_fit-internal_rotate}{\code{MCMC_Fit$internal_rotate()}}
 \item \href{#method-mcmc_fit-rotate}{\code{MCMC_Fit$rotate()}}
@@ -121,19 +126,27 @@ The object itself, invisibly.
 \subsection{Method \code{draws()}}{
 Extract posterior draws for selected parameters.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$draws(pars = NULL, chains = NULL, inc_random = FALSE, inc_gq = TRUE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$draws(
+  pars = NULL,
+  chains = NULL,
+  inc_random = FALSE,
+  inc_tran = TRUE,
+  inc_gq = TRUE
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{pars}}{Names of parameters to extract or summarize.}
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
 
-\item{\code{chains}}{Chains to include.}
+\item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
 
-\item{\code{inc_random}}{Logical; whether to include random effects.}
+\item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
 
-\item{\code{inc_gq}}{Logical; whether to include generated quantities.}
+\item{\code{inc_tran}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
+
+\item{\code{inc_gq}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }
@@ -152,6 +165,7 @@ Summarize posterior draws.
   max_rows = 10,
   digits = 2,
   inc_random = FALSE,
+  inc_tran = TRUE,
   inc_gq = TRUE
 )}\if{html}{\out{</div>}}
 }
@@ -159,15 +173,17 @@ Summarize posterior draws.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{pars}}{Names of parameters to extract or summarize.}
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.}
 
-\item{\code{max_rows}}{Maximum number of rows to print in summaries.}
+\item{\code{max_rows}}{Integer; maximum number of rows to print in the summary table. Default is 10.}
 
-\item{\code{digits}}{Number of digits to print.}
+\item{\code{digits}}{Integer; number of decimal places to print. Default is 2.}
 
-\item{\code{inc_random}}{Logical; whether to include random effects.}
+\item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
 
-\item{\code{inc_gq}}{Logical; whether to include generated quantities.}
+\item{\code{inc_tran}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
+
+\item{\code{inc_gq}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }
@@ -221,6 +237,26 @@ Estimate the marginal likelihood by bridge sampling.
 }
 \subsection{Returns}{
 Bridge sampling result.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-transformed_draws"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-transformed_draws}{}}}
+\subsection{Method \code{transformed_draws()}}{
+Compute transformed parameters from posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$transformed_draws(tran_fn = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{tran_fn}}{A function for transformed parameters.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Transformed parameter draws.
 }
 }
 \if{html}{\out{<hr>}}

@@ -6,6 +6,8 @@
 #' @param model An `RTMB_Model` object used for estimation.
 #' @param fit Posterior draws for model parameters.
 #' @param random_fit Posterior draws for random effects, if available.
+#' @param tran_fit Posterior draws for transformed parameters, if available.
+#' @param tran_dims Dimension information for transformed parameters.
 #' @param gq_fit Posterior draws for generated quantities, if available.
 #' @param gq_dims Dimension information for generated quantities.
 #' @param eps Step size used by the sampler.
@@ -21,6 +23,7 @@
 #' @param digits Number of digits to print.
 #' @param method Method name.
 #' @param seed Random seed.
+#' @param tran_fn A function for transformed parameters.
 #' @param gq_fn A function for generated quantities.
 #' @param target Target variable(s) for rotation or relabeling.
 #' @param type Rotation type.
@@ -36,6 +39,8 @@
 #' @field model An `RTMB_Model` object used for estimation.
 #' @field fit Posterior draws for model parameters.
 #' @field random_fit Posterior draws for random effects.
+#' @field tran_fit Posterior draws for transformed parameters.
+#' @field tran_dims Dimension information for transformed parameters.
 #' @field gq_fit Posterior draws for generated quantities.
 #' @field gq_dims Dimension information for generated quantities.
 #' @field eps Step size used by the sampler.
@@ -88,6 +93,11 @@ MCMC_Fit <- R6::R6Class(
       invisible(self)
     },
     #' @description Extract posterior draws for selected parameters.
+    #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
+    #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
+    #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
+    #' @param inc_tran Logical; whether to include transformed parameters in the output. Default is TRUE.
+    #' @param inc_gq Logical; whether to include generated quantities in the output. Default is TRUE.
     #' @return Posterior draws.
     draws = function(pars = NULL, chains = NULL,
                      inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
@@ -176,6 +186,12 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Summarize posterior draws.
+    #' @param pars Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.
+    #' @param max_rows Integer; maximum number of rows to print in the summary table. Default is 10.
+    #' @param digits Integer; number of decimal places to print. Default is 2.
+    #' @param inc_random Logical; whether to include random effects in the summary. Default is FALSE.
+    #' @param inc_tran Logical; whether to include transformed parameters in the summary. Default is TRUE.
+    #' @param inc_gq Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A summary object.
     summary = function(pars = NULL, max_rows = 10, digits = 2,
                        inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE){
