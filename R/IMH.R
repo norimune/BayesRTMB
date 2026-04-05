@@ -1,24 +1,22 @@
-#' Independent Metropolis-Hastings (IMH) sampling using Laplace approximation
+#' Hybrid IMH and Preconditioned MALA sampling using Laplace approximation
 #'
-#' This function performs IMH sampling using a multivariate t-distribution
-#' as the proposal distribution. The proposal distribution is centered at the
-#' MAP estimate, and its scale matrix is derived from the inverse Hessian.
+#' This function performs a mixture of Independent Metropolis-Hastings (IMH)
+#' and Preconditioned Metropolis-Adjusted Langevin Algorithm (pMALA).
+#' The IMH step uses a multivariate t-distribution centered at the MAP estimate.
+#' The pMALA step uses gradient information preconditioned by the inverse Hessian.
 #'
 #' @param model An RTMB automatic differentiation objective object (`ad_obj`).
 #' @param sampling Integer. Number of sampling iterations.
 #' @param warmup Integer. Number of warmup iterations.
 #' @param chain Integer. The ID of the current MCMC chain.
 #' @param update_progress An optional callback function used to update the progress bar. Default is NULL.
-#' @param df Numeric. Degrees of freedom for the multivariate t-distribution proposal. Default is 4.
+#' @param df Numeric. Degrees of freedom for the multivariate t-distribution proposal in IMH. Default is 4.
+#' @param mix_ratio Numeric. The probability of choosing the IMH step. Default is 0.8 (80% IMH, 20% MALA).
+#' @param eps_mala Numeric. The step size parameter for the pMALA step. Default is 0.5.
 #'
-#' @return A list containing:
-#'   \item{para_fixed}{A matrix of posterior samples for the fixed parameters.}
-#'   \item{lp}{A numeric vector of log-posterior values at each iteration.}
-#'   \item{accept}{A numeric vector indicating whether the proposal was accepted (1) or rejected (0).}
-#'   \item{treedepth}{A numeric vector of zeros, included for compatibility with `NUTS_method` outputs.}
-#'   \item{eps}{A scalar 1, as scale adaptation is not suitable for IMH.}
+#' @return A list containing MCMC results.
 #' @export
-IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, df = 4) {
+IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, df = 4, mix_ratio = 0.8, eps_mala = 0.5) {
   iter <- sampling + warmup
   P <- length(model$par)
 
@@ -27,6 +25,13 @@ IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, d
     val <- tryCatch(model$fn(x), error = function(e) Inf)
     if (is.na(val) || is.nan(val)) return(Inf)
     return(val)
+  }
+
+  # 勾配関数（負の対数事後確率の勾配を反転させ、対数事後確率の勾配にする）
+  gr_fn <- function(x) {
+    g <- tryCatch(model$gr(x), error = function(e) rep(NaN, P))
+    if (any(is.nan(g))) return(rep(NaN, P))
+    return(-g)
   }
 
   # MAP推定とヘッシアンの計算
@@ -44,6 +49,7 @@ IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, d
   # 正定値性の保証
   Cov <- Cov + diag(1e-8, P)
   L <- t(chol(Cov))
+  invL <- solve(L) # MALAの後退確率計算用
 
   para_fixed <- array(NA, dim = c(iter, P))
   para_fixed[1, ] <- Map
@@ -51,51 +57,118 @@ IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, d
   lp <- numeric(iter)
   lp[1] <- -fn(Map)
 
+  # 勾配の初期状態
+  gr_curr <- gr_fn(Map)
+
   accept <- numeric(iter)
   accept[1] <- 1
 
-  calc_log_q <- function(d2, P, df) {
+  # t分布の対数密度計算関数
+  calc_log_q_t <- function(d2, P, df) {
     -0.5 * (df + P) * log(1 + d2 / df)
   }
 
   z_curr_raw <- solve(L, para_fixed[1, ] - Map)
-  d2_curr <- sum(z_curr_raw^2)
-  lq_curr <- calc_log_q(d2_curr, P, df)
+  d2_curr_imh <- sum(z_curr_raw^2)
+  lq_curr_imh <- calc_log_q_t(d2_curr_imh, P, df)
 
   for (i in 2:iter) {
     current <- para_fixed[i-1, ]
     lp_curr <- lp[i-1]
 
-    # t分布からのサンプリング (epsによるスケーリングは行わない)
-    z <- rnorm(P)
-    u <- rchisq(1, df = df)
-    scale_factor <- sqrt(df / u)
+    # 手法のランダム選択
+    is_imh <- runif(1) < mix_ratio
 
-    z_scaled <- z * scale_factor
-    propose <- Map + as.vector(L %*% z_scaled)
+    if (is_imh) {
+      # ==========================================
+      # 1. IMH Step
+      # ==========================================
+      z <- rnorm(P)
+      u <- rchisq(1, df = df)
+      scale_factor <- sqrt(df / u)
 
-    d2_prop <- sum(z_scaled^2)
-    lq_prop <- calc_log_q(d2_prop, P, df)
+      z_scaled <- z * scale_factor
+      propose <- Map + as.vector(L %*% z_scaled)
 
-    lp_prop <- -fn(propose)
+      d2_prop <- sum(z_scaled^2)
+      lq_prop_imh <- calc_log_q_t(d2_prop, P, df)
 
-    if (is.infinite(lp_prop) || lp_prop < -1e20) {
-      accept[i] <- 0
-    } else {
-      log_ratio <- (lp_prop - lq_prop) - (lp_curr - lq_curr)
+      lp_prop <- -fn(propose)
 
-      if (log(runif(1)) < log_ratio) {
-        current <- propose
-        lp_curr <- lp_prop
-        lq_curr <- lq_prop
-        accept[i] <- 1
-      } else {
+      if (is.infinite(lp_prop) || lp_prop < -1e20) {
         accept[i] <- 0
+      } else {
+        log_ratio <- (lp_prop - lq_prop_imh) - (lp_curr - lq_curr_imh)
+
+        if (log(runif(1)) < log_ratio) {
+          current <- propose
+          lp_curr <- lp_prop
+          lq_curr_imh <- lq_prop_imh
+          gr_curr <- gr_fn(propose) # MALA用に勾配を更新
+          accept[i] <- 1
+        } else {
+          accept[i] <- 0
+        }
+      }
+
+    } else {
+      # ==========================================
+      # 2. pMALA Step
+      # ==========================================
+      # 勾配が計算できない場合は棄却
+      if (any(is.nan(gr_curr))) {
+        accept[i] <- 0
+        para_fixed[i, ] <- current
+        lp[i] <- lp_curr
+        next
+      }
+
+      # 前進提案 (Forward proposal)
+      z <- rnorm(P)
+      mu_fwd <- current + 0.5 * (eps_mala^2) * as.vector(Cov %*% gr_curr)
+      propose <- mu_fwd + eps_mala * as.vector(L %*% z)
+
+      lp_prop <- -fn(propose)
+
+      if (is.infinite(lp_prop) || lp_prop < -1e20) {
+        accept[i] <- 0
+      } else {
+        gr_prop <- gr_fn(propose)
+
+        if (any(is.nan(gr_prop))) {
+          accept[i] <- 0
+        } else {
+          # 前進遷移確率: q(x_prop | x_curr)
+          # マハラノビス距離の平方部分はそのまま sum(z^2)
+          log_q_fwd <- -0.5 * sum(z^2)
+
+          # 後退遷移確率: q(x_curr | x_prop)
+          mu_bwd <- propose + 0.5 * (eps_mala^2) * as.vector(Cov %*% gr_prop)
+          z_bwd <- as.vector(invL %*% (current - mu_bwd)) / eps_mala
+          log_q_bwd <- -0.5 * sum(z_bwd^2)
+
+          # MH比の計算
+          log_ratio <- (lp_prop - lp_curr) + (log_q_bwd - log_q_fwd)
+
+          if (log(runif(1)) < log_ratio) {
+            current <- propose
+            lp_curr <- lp_prop
+            gr_curr <- gr_prop
+
+            # IMH用に現在位置の提案密度を更新
+            z_curr_raw <- as.vector(invL %*% (current - Map))
+            lq_curr_imh <- calc_log_q_t(sum(z_curr_raw^2), P, df)
+
+            accept[i] <- 1
+          } else {
+            accept[i] <- 0
+          }
+        }
       }
     }
 
     para_fixed[i, ] <- current
-    lp[i]     <- lp_curr
+    lp[i] <- lp_curr
 
     if (i %% 100 == 0) {
       if (!is.null(update_progress)) update_progress()
