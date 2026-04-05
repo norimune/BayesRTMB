@@ -153,6 +153,11 @@ RTMB_Model <- R6::R6Class(
           parameters = init_unc_list,
           random = use_random,
           silent = TRUE
+          inner.control = list(
+            smartsearch = FALSE, # 無駄な直線探索を省略
+            tol10 = 1e-4,        # 収束判定の許容誤差を緩和（デフォルトより緩く）
+            iter.max = 20        # 最大イテレーション数を制限
+          )
         )
       }, error = function(e) {
         stop("MakeADFun のセットアップに失敗しました。\n[エラー]: "
