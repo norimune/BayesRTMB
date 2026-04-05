@@ -46,7 +46,6 @@ RTMB_Model <- R6::R6Class(
     pl_full    = NULL,
 
     # 1. コンストラクタ
-    #' @description Create a new `RTMB_Model` object.
     initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL) {
       self$data <- data
       self$par_list <- lapply(par_list, function(x) {
@@ -109,8 +108,6 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 2. ADオブジェクト生成ファクトリ
-    #' @description Build the RTMB automatic differentiation object.
-    #' @return An RTMB objective object.
     build_ad_obj = function(init = NULL, laplace = FALSE, include_jacobian = TRUE) {
       random_effs <-
         names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
@@ -166,12 +163,9 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 3. 最尤法 / MAP推定 メソッド
-    #' @description Optimize the posterior or marginal posterior.
-    #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, control = list()) {
       cat("Starting optimization...\n")
 
-      # MAP推定ではヤコビアンは不要
       ad_setup <- self$build_ad_obj(init = init, laplace = laplace, include_jacobian = FALSE)
       ad_obj <- ad_setup$ad_obj
 
@@ -283,7 +277,6 @@ RTMB_Model <- R6::R6Class(
           p_info <- self$par_list[[name]]
           if (p_info$random == target_random) {
 
-            # --- Omega (相関行列) を計算して表に追加 ---
             if (p_info$type == "CF_corr") {
               L_est <- con_est_list[[name]]
               Omega_est <- L_est %*% t(L_est)
@@ -332,7 +325,6 @@ RTMB_Model <- R6::R6Class(
               }
             }
 
-            # --- 本来のパラメータ処理 ---
             len <- p_info$length
             f_names <- character(len)
 
@@ -405,9 +397,7 @@ RTMB_Model <- R6::R6Class(
       return(res_obj)
     },
 
-    # 4. MCMC サンプリング メソッド (MALA / NUTS 分岐を追加)
-    #' @description Draw posterior samples from the model.
-    #' @return A fitted `MCMC_Fit` object.
+    # 4. MCMC サンプリング メソッド
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
                       delta=0.8, max_treedepth = 10,
@@ -436,34 +426,22 @@ RTMB_Model <- R6::R6Class(
       P_fixed <- length(pl_fixed$names)
       P_random <- if(!is.null(pl_random)) length(pl_random$names) else 0
 
-      # --- Preconditioned MALA 用の事前計算 (laplace = TRUE の場合) ---
-      mu_mala <- NULL
-      Sigma_mala <- NULL
+      # --- Independent MH 用の事前計算 (laplace = TRUE の場合) ---
+      mu_map <- NULL
+      Sigma_map <- NULL
       if (laplace) {
-        cat("laplace=TRUE is specified. Running initial optimization for Preconditioned MALA...\n")
         opt_res <- self$optimize(laplace = TRUE, init = init)
 
         if (is.null(opt_res$sd_rep) || is.null(opt_res$sd_rep$cov.fixed)) {
-          stop("Preconditioned MALA requires a valid covariance matrix, but Laplace approximation (sdreport) failed.")
+          stop("Independent MH requires a valid covariance matrix, but Laplace approximation (sdreport) failed.")
         }
-        mu_mala <- opt_res$sd_rep$par.fixed
-        Sigma_mala <- opt_res$sd_rep$cov.fixed
+        mu_map <- opt_res$sd_rep$par.fixed
+        Sigma_map <- opt_res$sd_rep$cov.fixed
       }
 
       run_chain <- function(c, p_callback = NULL) {
 
-        # 初期値の生成 (MALAの場合はMAP推定値周辺から開始)
-        if (laplace && !is.null(mu_mala)) {
-          L_init <- tryCatch(t(chol(Sigma_mala)), error = function(e) NULL)
-          if (is.null(L_init)) {
-            unc_init_vec <- mu_mala + rnorm(length(mu_mala), 0, sd = sqrt(pmax(diag(Sigma_mala), 1e-8)) * 0.1)
-          } else {
-            unc_init_vec <- mu_mala + as.vector(L_init %*% rnorm(length(mu_mala))) * 0.1
-          }
-          unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
-          init_full_list <- to_constrained(unc_init_list_new, self$par_list)
-          init_full <- unlist(init_full_list, use.names = FALSE)
-        } else if (!is.null(init)) {
+        if (!is.null(init)) {
           init_list <- constrained_vector_to_list(init, self$par_list)
           unc_init_list <- to_unconstrained(init_list, self$par_list)
           unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
@@ -476,27 +454,20 @@ RTMB_Model <- R6::R6Class(
           init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
         }
 
-        # MCMCではヤコビアンが必須
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, include_jacobian = TRUE)
         ad_obj <- ad_setup$ad_obj
 
         # サンプラーの分岐
         if (laplace) {
-          # MALAに最適なアクセプタンスレートに調整 (NUTS用の0.8が指定されたままの場合は0.574にフォールバック)
-          delta_mala <- if (delta == 0.8) 0.574 else delta
-          res <- MALA_method(
+          res <- IMH_method(
             ad_obj = ad_obj,
-            mu = mu_mala,
-            Sigma = Sigma_mala,
+            mu = mu_map,
+            Sigma = Sigma_map,
             sampling = sampling,
             warmup = warmup,
-            delta = delta_mala,
-            chain = c
+            chain = c,
+            update_progress = p_callback # NUTSと同様にコールバックを渡す
           )
-          # NUTS_method と戻り値の形を合わせる
-          res$para_fixed <- res$fit
-          res$treedepth <- rep(NA, sampling + warmup)
-          res$eps <- res$epsilon
         } else {
           res <- NUTS_method(
             model = ad_obj,
@@ -554,7 +525,7 @@ RTMB_Model <- R6::R6Class(
             "generate_random_init",
             "NUTS_method",
             "create_NUTS_core",
-            "MALA_method",
+            "IMH_method",
             "lpdf",
             "math",
             "log_sum_exp",
@@ -654,8 +625,6 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 5. モデルコードの表示メソッド
-    #' @description Print model code or model structure.
-    #' @return The object itself, invisibly.
     print_code = function() {
       param_lines <- c("par_list <- list(")
       names_pl <- names(self$par_list)
