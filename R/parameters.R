@@ -505,6 +505,8 @@ calc_log_jacobian <- function(para_unc_list, par_list) {
     val_unc <- para_unc_list[[name]]
     b_type <- p$bounds
 
+    if (only_random && !isTRUE(p$random)) next
+
     if (b_type == "lower" || b_type == "upper") {
       lj <- lj + sum(val_unc)
     } else if (b_type == "interval") {
