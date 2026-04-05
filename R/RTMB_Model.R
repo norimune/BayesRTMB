@@ -109,6 +109,7 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 2. ADオブジェクト生成ファクトリ
+    # ヤコビアンを追加するかどうかを引数で制御
     #' @description Build the RTMB automatic differentiation object.
     #' @return An RTMB objective object.
     build_ad_obj = function(init = NULL, laplace = FALSE, include_jacobian = TRUE) {
@@ -392,7 +393,7 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      # --- MAP_Fit インスタンスを返す ---
+      # --- MAP_Fit インスタンスを返す (後で定義します) ---
       res_obj <- MAP_Fit$new(
         par_vec = con_est_vec,
         par = con_est_list,
@@ -408,7 +409,7 @@ RTMB_Model <- R6::R6Class(
     },
 
 
-    # 4. MCMC サンプリング メソッド
+    # 4. MCMC NUTS サンプリング メソッド
     #' @description Draw posterior samples from the model.
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling=1000, warmup=1000, chains=4,
@@ -439,19 +440,6 @@ RTMB_Model <- R6::R6Class(
       P_fixed <- length(pl_fixed$names)
       P_random <- if(!is.null(pl_random)) length(pl_random$names) else 0
 
-      # --- Independent MH 用の事前計算 (laplace = TRUE の場合) ---
-      mu_map <- NULL
-      Sigma_map <- NULL
-      if (laplace) {
-        opt_res <- self$optimize(laplace = TRUE, init = init)
-
-        if (is.null(opt_res$sd_rep) || is.null(opt_res$sd_rep$cov.fixed)) {
-          stop("Independent MH requires a valid covariance matrix, but Laplace approximation (sdreport) failed.")
-        }
-        mu_map <- opt_res$sd_rep$par.fixed
-        Sigma_map <- opt_res$sd_rep$cov.fixed
-      }
-
       run_chain <- function(c, p_callback = NULL) {
 
         if (!is.null(init)) {
@@ -471,29 +459,16 @@ RTMB_Model <- R6::R6Class(
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, include_jacobian = TRUE)
         ad_obj <- ad_setup$ad_obj
 
-        # サンプラーの分岐
-        if (laplace) {
-          res <- IMH_method(
-            ad_obj = ad_obj,
-            mu = mu_map,
-            Sigma = Sigma_map,
-            sampling = sampling,
-            warmup = warmup,
-            chain = c,
-            update_progress = p_callback # プログレスバーのコールバックを渡す
-          )
-        } else {
-          res <- NUTS_method(
-            model = ad_obj,
-            sampling = sampling,
-            warmup = warmup,
-            delta = delta,
-            max_treedepth = max_treedepth,
-            chain = c,
-            update_progress = p_callback,
-            laplace = laplace
-          )
-        }
+        res <- NUTS_method(
+          model = ad_obj,
+          sampling = sampling,
+          warmup = warmup,
+          delta = delta,
+          max_treedepth = max_treedepth,
+          chain = c,
+          update_progress = p_callback,
+          laplace = laplace
+        )
 
         P_all_true <- length(self$pl_full$names)
         iter <- sampling + warmup
@@ -539,7 +514,6 @@ RTMB_Model <- R6::R6Class(
             "generate_random_init",
             "NUTS_method",
             "create_NUTS_core",
-            "IMH_method",
             "lpdf",
             "math",
             "log_sum_exp",
