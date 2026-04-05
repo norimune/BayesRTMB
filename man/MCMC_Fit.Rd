@@ -391,7 +391,12 @@ Rotated draws or updated object.
 \subsection{Method \code{resolve_switching()}}{
 Resolve label switching in posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$resolve_switching(target, linked = NULL, overwrite = TRUE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$resolve_switching(
+  target,
+  linked = NULL,
+  overwrite = TRUE,
+  scalar_fns = list()
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
