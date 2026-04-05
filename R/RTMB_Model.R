@@ -459,17 +459,17 @@ RTMB_Model <- R6::R6Class(
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, include_jacobian = TRUE)
         ad_obj <- ad_setup$ad_obj
 
-        if (laplace) {
-          # Laplace近似が有効な場合は IMH 法を実行
-          res <- IMH_method(
-            model = ad_obj,
-            sampling = sampling,
-            warmup = warmup,
-            chain = c,
-            update_progress = p_callback,
-            df = 4
-          )
-        } else {
+        #if (laplace) {
+        #  # Laplace近似が有効な場合は IMH 法を実行
+        #  res <- IMH_method(
+        #    model = ad_obj,
+        #    sampling = sampling,
+        #    warmup = warmup,
+        #    chain = c,
+        #    update_progress = p_callback,
+        #    df = 4
+        #  )
+        #} else {
           # 通常は NUTS を実行
           res <- NUTS_method(
             model = ad_obj,
@@ -481,7 +481,7 @@ RTMB_Model <- R6::R6Class(
             update_progress = p_callback,
             laplace = laplace
           )
-        }
+        #}
 
         P_all_true <- length(self$pl_full$names)
         iter <- sampling + warmup
