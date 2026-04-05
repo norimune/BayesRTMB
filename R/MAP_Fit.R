@@ -73,7 +73,7 @@ MAP_Fit <- R6::R6Class(
 
       cat("---\nNegative Log-Posterior:", self$objective, "\n")
 
-      if (!is.na(self$log_ml)) {
+      if (!is.null(self$log_ml) && !is.na(self$log_ml)) {
         cat("Approx. Log Marginal Likelihood (Laplace):", self$log_ml, "\n")
       } else {
         cat("Approx. Log Marginal Likelihood (Laplace): NA (Calculation failed or not applicable)\n")

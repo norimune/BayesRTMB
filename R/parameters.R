@@ -87,6 +87,15 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
   )
 }
 
+stz_basis <- function(K) {
+  Q <- matrix(0, nrow = K, ncol = K - 1)
+  for (j in 1:(K - 1)) {
+    Q[1:j, j] <- 1 / sqrt(j * (j + 1))
+    Q[j + 1, j] <- -j / sqrt(j * (j + 1))
+  }
+  Q
+}
+
 # 制約空間(元の形)のフラットベクトルをリストに復元する関数
 constrained_vector_to_list <- function(vec, par_list) {
   res <- list()
@@ -137,15 +146,6 @@ to_unconstrained <- function(para_orig_list, par_list) {
     p <- par_list[[name]]
     val_orig <- para_orig_list[[name]]
     b_type <- p$bounds
-
-    stz_basis <- function(K) {
-      Q <- matrix(0, nrow = K, ncol = K - 1)
-      for (j in 1:(K - 1)) {
-        Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-        Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-      }
-      Q
-    }
 
     if (b_type == "lower") {
       para_unc[[name]] <- log(val_orig - p$lower)
@@ -300,15 +300,6 @@ to_constrained <- function(para_unc_list, par_list) {
     p <- par_list[[name]]
     val_unc <- para_unc_list[[name]]
     b_type <- p$bounds
-
-    stz_basis <- function(K) {
-      Q <- matrix(0, nrow = K, ncol = K - 1)
-      for (j in 1:(K - 1)) {
-        Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-        Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-      }
-      Q
-    }
 
     # RTMBのadvector属性を維持するためのゼロ (スカラー)
     ad_zero <- val_unc[1] * 0

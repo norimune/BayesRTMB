@@ -8,6 +8,7 @@
 #' @param data A list of observed data used in the model.
 #' @param par_list A list defining model parameters and their dimensions.
 #' @param log_prob A user-supplied function that returns the log-probability.
+#' @param transform An optional function for transformed parameters.
 #' @param generate An optional function for generated quantities.
 #' @param init Optional initial values for parameters.
 #' @param laplace Logical; whether to use Laplace approximation for
@@ -28,6 +29,7 @@
 #' @field data A list of observed data.
 #' @field par_list A list defining model parameters.
 #' @field log_prob A user-supplied log-probability function.
+#' @field transform An optional transformed parameters function.
 #' @field generate An optional generated quantities function.
 #' @field pl_full Full parameter information used internally.
 #' @import RTMB
@@ -39,12 +41,13 @@ RTMB_Model <- R6::R6Class(
     data       = NULL,
     par_list   = NULL,
     log_prob   = NULL,
+    transform  = NULL,
     generate   = NULL,
     pl_full    = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `RTMB_Model` object.
-    initialize = function(data, par_list, log_prob, generate = NULL) {
+    initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL) {
       self$data <- data
       self$par_list <- lapply(par_list, function(x) {
         if (typeof(x) %in% c("language", "symbol")) {
@@ -54,6 +57,7 @@ RTMB_Model <- R6::R6Class(
         }
       })
       self$log_prob   <- log_prob
+      self$transform  <- transform
       self$generate   <- generate
 
       self$pl_full <- parse_parameters(self$par_list)
@@ -71,6 +75,24 @@ RTMB_Model <- R6::R6Class(
 
       if (!is.numeric(test_val) || length(test_val) != 1) {
         stop("log_prob は長さ1の数値（スカラー）を返す必要があります。")
+      }
+
+      if (!is.null(self$transform)) {
+        test_tran <- tryCatch({
+          self$transform(self$data, test_para)
+        }, error = function(e) {
+          stop("R関数(transform)のテスト実行でエラーが発生しました。\n[エラー]: ",
+               e$message, call. = FALSE)
+        })
+
+        if (!is.null(test_tran)) {
+          if (!is.list(test_tran)) {
+            stop("transform は list を返す必要があります。", call. = FALSE)
+          }
+          if (is.null(names(test_tran)) || any(names(test_tran) == "")) {
+            stop("transform は名前付き list を返す必要があります。", call. = FALSE)
+          }
+        }
       }
 
       cat("Checking RTMB setup...\n")
@@ -566,11 +588,16 @@ RTMB_Model <- R6::R6Class(
         posterior_mean = posterior_mean
       )
 
-      has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
+      has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
+      has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
-      if (has_cf_corr || has_generate) {
-        res_obj$generated_quantities()
+      if (has_tran || has_cf_corr) {
+        res_obj$transformed_draws(self$transform)
+      }
+
+      if (has_generate) {
+        res_obj$generated_quantities(self$generate)
       }
 
       return(res_obj)
