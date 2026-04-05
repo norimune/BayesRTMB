@@ -152,7 +152,7 @@ RTMB_Model <- R6::R6Class(
           func = f_ad,
           parameters = init_unc_list,
           random = use_random,
-          silent = TRUE
+          silent = TRUE,
           inner.control = list(
             smartsearch = FALSE, # 無駄な直線探索を省略
             tol10 = 1e-4,        # 収束判定の許容誤差を緩和（デフォルトより緩く）
