@@ -18,7 +18,7 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
   if (type %in% c("ordered", "positive_ordered", "simplex", "corr_matrix",
                   "cov_matrix", "CF_corr", "CF_cov", "sum_to_zero",
                   "centered_matrix", "lower_tri", "lower_tri_stz",
-                  "centered_tri")) {
+                  "centered_tri",, "positive_centered_tri")) {
     bounds_type <- type
   } else if (!is.null(lower) && is.null(upper)) bounds_type <- "lower"
   else if (is.null(lower) && !is.null(upper)) bounds_type <- "upper"
