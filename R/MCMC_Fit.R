@@ -292,7 +292,7 @@ MCMC_Fit <- R6::R6Class(
     #' @description Evaluate log-probability values.
     #' @return Numeric vector of log-probability values.
     log_prob = function() {
-      ad_setup <- self$model$build_ad_obj(init = self$posterior_mean, laplace = self$laplace, include_jacobian = TRUE)
+      ad_setup <- self$model$build_ad_obj(init = self$posterior_mean, laplace = self$laplace, jacobian_target = "all")
       ad_obj <- ad_setup$ad_obj
 
       fn <- function(q) {
