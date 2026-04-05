@@ -1,105 +1,116 @@
-#' Independent Metropolis-Hastings Algorithm
+#' Independent Metropolis-Hastings (IMH) sampling using Laplace approximation
 #'
-#' @param ad_obj AD object from RTMB
-#' @param mu MAP estimates (mean vector)
-#' @param Sigma Covariance matrix from Laplace approximation
-#' @param sampling Number of sampling iterations
-#' @param warmup Number of warmup iterations
-#' @param chain Chain ID (for progress reporting)
-#' @param update_progress Callback function for progress reporting
-#' @return A list containing samples and diagnostic statistics
-IMH_method <- function(ad_obj, mu, Sigma, sampling, warmup, chain = 1, update_progress = NULL) {
+#' This function performs IMH sampling using a multivariate t-distribution
+#' as the proposal distribution. The proposal distribution is centered at the
+#' MAP estimate, and its scale matrix is derived from the inverse Hessian.
+#' This is particularly effective when the random effects are marginalized out
+#' via the Laplace approximation in RTMB.
+#'
+#' @param model An RTMB automatic differentiation objective object (`ad_obj`).
+#' @param sampling Integer. Number of sampling iterations.
+#' @param warmup Integer. Number of warmup iterations.
+#' @param chain Integer. The ID of the current MCMC chain.
+#' @param update_progress An optional callback function used to update the progress bar. Default is NULL.
+#' @param df Numeric. Degrees of freedom for the multivariate t-distribution proposal. Lower values result in heavier tails. Default is 4.
+#'
+#' @return A list containing:
+#'   \item{para_fixed}{A matrix of posterior samples for the fixed parameters.}
+#'   \item{lp}{A numeric vector of log-posterior values at each iteration.}
+#'   \item{accept}{A numeric vector indicating whether the proposal was accepted (1) or rejected (0).}
+#'   \item{treedepth}{A numeric vector of zeros, included for compatibility with `NUTS_method` outputs.}
+#'   \item{eps}{A scalar zero, included for compatibility with `NUTS_method` outputs.}
+#' @export
+IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, df = 4) {
   iter <- sampling + warmup
-  P <- length(mu)
+  P <- length(model$par)
 
-  # 提案分布のための事前計算
-  L <- tryCatch(t(chol(Sigma)), error = function(e) NULL)
-  if (is.null(L)) {
-    warning("Cholesky factorization failed. Falling back to eigenvalue decomposition.")
-    eig <- eigen(Sigma, symmetric = TRUE)
-    val <- pmax(eig$values, 1e-10) # ゼロ割を防ぐ
-    L <- eig$vectors %*% diag(sqrt(val))
-    Sigma_inv <- eig$vectors %*% diag(1 / val) %*% t(eig$vectors)
+  # ターゲット関数（負の対数事後確率）
+  fn <- function(x) {
+    val <- tryCatch(model$fn(x), error = function(e) Inf)
+    if (is.na(val) || is.nan(val)) return(Inf)
+    return(val)
+  }
+
+  # MAP推定とヘッシアンの計算
+  opt <- nlminb(start = model$par, objective = fn, gradient = model$gr)
+  sdr <- tryCatch(RTMB::sdreport(model), error = function(e) NULL)
+
+  Map <- opt$par
+  if (!is.null(sdr) && !is.null(sdr$cov.fixed)) {
+    Cov <- sdr$cov.fixed
   } else {
-    Sigma_inv <- chol2inv(t(L))
+    Hess <- optimHess(Map, fn, model$gr)
+    Cov <- solve(Hess)
   }
 
-  # 提案分布の対数密度計算関数 (定数項は相殺されるため二次形式のみ)
-  calc_log_q <- function(x) {
-    diff <- x - mu
-    -0.5 * as.numeric(t(diff) %*% Sigma_inv %*% diff)
-  }
+  # 正定値性の保証
+  Cov <- Cov + diag(1e-8, P)
+  L <- t(chol(Cov))
 
-  # 保存用配列
-  draws <- matrix(NA, nrow = iter, ncol = P)
-  accept_stat <- numeric(iter)
+  para_fixed <- array(NA, dim = c(iter, P))
+  para_fixed[1, ] <- Map # 初期値はMAP推定値
+
   lp <- numeric(iter)
+  lp[1] <- -fn(Map)
 
-  # 初期状態の設定 (MAP推定値からスタート)
-  theta <- mu
-  U <- tryCatch(ad_obj$fn(theta), error = function(e) Inf)
+  accept <- numeric(iter)
+  accept[1] <- 1
 
-  # MAP位置で目的関数が計算できない場合の退避処理
-  if (!is.finite(U)) {
-    for (try_idx in 1:50) {
-      theta <- mu + as.vector(L %*% rnorm(P)) * 0.05
-      U <- tryCatch(ad_obj$fn(theta), error = function(e) Inf)
-      if (is.finite(U)) break
-    }
+  calc_log_q <- function(d2, P, df) {
+    -0.5 * (df + P) * log(1 + d2 / df)
   }
 
-  log_q_theta <- calc_log_q(theta)
-
-  draws[1, ] <- theta
-  lp[1] <- if (is.finite(U)) -U else NA
-  accept_stat[1] <- 1
+  z_curr <- solve(L, para_fixed[1, ] - Map)
+  d2_curr <- sum(z_curr^2)
+  lq_curr <- calc_log_q(d2_curr, P, df)
 
   for (i in 2:iter) {
-    # --- 1. 提案候補の生成 ---
-    theta_star <- mu + as.vector(L %*% rnorm(P))
+    current <- para_fixed[i-1, ]
+    lp_curr <- lp[i-1]
 
-    # --- 2. 提案位置での評価 ---
-    U_star <- tryCatch(ad_obj$fn(theta_star), error = function(e) Inf)
+    # t分布からのサンプリング
+    z <- rnorm(P)
+    u <- rchisq(1, df = df)
+    scale_factor <- sqrt(df / u)
 
-    if (is.infinite(U_star) || is.na(U_star)) {
-      log_alpha <- -Inf
+    z_scaled <- z * scale_factor
+    propose <- Map + as.vector(L %*% z_scaled)
+
+    d2_prop <- sum(z_scaled^2)
+    lq_prop <- calc_log_q(d2_prop, P, df)
+
+    lp_prop <- -fn(propose)
+
+    if (is.infinite(lp_prop) || lp_prop < -1e20) {
+      accept[i] <- 0
     } else {
-      # --- 3. 提案確率の計算 ---
-      log_q_star <- calc_log_q(theta_star)
-      log_alpha <- -U_star + U + log_q_theta - log_q_star
-    }
+      log_ratio <- (lp_prop - lq_prop) - (lp_curr - lq_curr)
 
-    alpha <- min(1, exp(log_alpha))
-    if (is.na(alpha)) alpha <- 0
-
-    # --- 4. 採択判定 ---
-    if (runif(1) < alpha) {
-      theta <- theta_star
-      U <- U_star
-      log_q_theta <- log_q_star
-    }
-
-    # 結果の記録
-    draws[i, ] <- theta
-    lp[i] <- if (is.finite(U)) -U else NA
-    accept_stat[i] <- alpha
-
-    # NUTSと同様のプログレスレポート
-    if (i %% 100 == 0) {
-      if (!is.null(update_progress)) {
-        update_progress()
+      if (log(runif(1)) < log_ratio) {
+        current <- propose
+        lp_curr <- lp_prop
+        lq_curr <- lq_prop
+        accept[i] <- 1
       } else {
-        cat(paste0("chain ", chain, ": iter ", i,
-                   ifelse(i <= warmup, " warmup", " sampling"), "\n"))
+        accept[i] <- 0
       }
+    }
+
+    para_fixed[i, ] <- current
+    lp[i]     <- lp_curr
+
+    if (i %% 100 == 0) {
+      if (!is.null(update_progress)) update_progress()
+      else cat(paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"), "\n"))
     }
   }
 
+  # NUTS_methodと戻り値の構造を揃える
   return(list(
-    para_fixed = draws,
-    lp = lp,
-    accept = accept_stat,
-    treedepth = rep(NA, iter), # NUTS互換用ダミー
-    eps = NA # NUTS互換用ダミー
+    para_fixed = para_fixed,
+    lp         = lp,
+    accept     = accept,
+    treedepth  = rep(0, iter),
+    eps        = 0
   ))
 }
