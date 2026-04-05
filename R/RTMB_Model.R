@@ -211,6 +211,7 @@ RTMB_Model <- R6::R6Class(
 
       for (name in names(self$par_list)) {
         p_info <- self$par_list[[name]]
+
         u_val <- unc_est_list[[name]]
         u_se  <- unc_se_list[[name]]
         c_val <- con_est_list[[name]]
