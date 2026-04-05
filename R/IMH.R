@@ -87,7 +87,7 @@ IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, d
       u <- rchisq(1, df = df)
       scale_factor <- sqrt(df / u)
 
-      z_scaled <- z * scale_factor
+      z_scaled <- z * scale_factor*1.5
       propose <- Map + as.vector(L %*% z_scaled)
 
       d2_prop <- sum(z_scaled^2)
