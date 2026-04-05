@@ -16,7 +16,7 @@
 #'
 #' @return A list containing MCMC results.
 #' @export
-IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, df = 4, mix_ratio = 0.2, eps_mala = 0.2) {
+IMH_method <- function(model, sampling, warmup, chain, update_progress = NULL, df = 4, mix_ratio = 0.5, eps_mala = 0.1) {
   iter <- sampling + warmup
   P <- length(model$par)
 
