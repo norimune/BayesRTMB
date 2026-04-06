@@ -489,11 +489,11 @@ bws_lpmf <- function(x, U, lambda = 1) {
 #' @export
 wishart_lpdf <- function(X, n, V) {
   p <- nrow(X)
-
-  log_det_X <- determinant(X, logarithm = TRUE)$modulus
-  log_det_V <- determinant(V, logarithm = TRUE)$modulus
+  L_V <- chol(V)
+  log_det_V <- 2 * sum(log(diag(L_V)))
   trace_term <- sum(diag(solve(V, X)))
-  log_gamma_p <- (p * (p - 1) / 4) * log(pi) + sum(lgamma((n - 1:p + 1) / 2))
+  log_det_X <- determinant(X, logarithm = TRUE)$modulus
+  log_gamma_p <- (p * (p - 1) / 4) * log(pi) + sum(lgamma((n - (1:p) + 1) / 2))
   lp <- (n - p - 1) / 2 * log_det_X - 0.5 * trace_term -
     (n * p / 2) * log(2) - (n / 2) * log_det_V - log_gamma_p
 
