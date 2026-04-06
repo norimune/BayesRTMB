@@ -40,6 +40,8 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
 
 \item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
+
+\item{\code{mu_history}}{Matrix of the parameter trajectory from the final window.}
 }
 \if{html}{\out{</div>}}
 }

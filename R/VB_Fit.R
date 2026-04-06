@@ -16,6 +16,7 @@
 #' @field ELBO A numeric vector of final ELBO values for each chain.
 #' @field rel_obj_vals A numeric vector of final relative objective tolerance values for each chain.
 #' @field best_chain Integer; the index of the chain with the maximum ELBO.
+#' @field mu_history Matrix of the parameter trajectory from the final window.
 #'
 #' @export
 VB_Fit <- R6::R6Class(
@@ -36,6 +37,7 @@ VB_Fit <- R6::R6Class(
     ELBO           = NULL,
     rel_obj_vals   = NULL,
     best_chain     = NULL,
+    mu_history     = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `VB_Fit` object.
