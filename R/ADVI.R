@@ -15,10 +15,10 @@
 #' @param fullrank Logical; whether to use a full-rank multivariate normal distribution for the approximation. Default is FALSE.
 #' @return A list containing `fit`, `random_fit`, `elbo_history`, and `elbo_final`.
 ADVI_method <- function(model, par_list, pl_full,
-                        iter = 10000, tol_rel_obj = 0.01,
-                        window_size = 100, num_samples = 4000,
+                        iter = 10000, min_iter = 1000, tol_rel_obj = 0.001,
+                        window_size = 100, num_samples = 1000,
                         chains = 1, alpha = 0.01, laplace = FALSE,
-                        print_freq = 500, min_iter = 1000,
+                        print_freq = 500,
                         fullrank = FALSE) {
 
   # --- 1. 変数の初期化と紐付け ---
