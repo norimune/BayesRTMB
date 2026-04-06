@@ -681,7 +681,7 @@ RTMB_Model <- R6::R6Class(
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is TRUE.
     #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 100.
     #' @param fullrank Logical; whether to use a full-rank approximation to capture posterior correlations. Default is FALSE.
-    #' @param parallel Logical; whether to run estimations in parallel. Default is TRUE.
+    #' @param parallel Logical; whether to run estimations in parallel. Default is FALSE.
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
     #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
@@ -689,12 +689,16 @@ RTMB_Model <- R6::R6Class(
                            tol_rel_obj = 0.001, window_size = 100,
                            num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 100,
-                           fullrank = FALSE, parallel = TRUE,
+                           fullrank = FALSE, parallel = FALSE,
                            seed = sample.int(1e6, 1), init = NULL) {
 
       set.seed(seed)
 
       run_advi <- function(c) {
+        if (print_freq > 0) {
+          cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
+        }
+
         if (!is.null(init)) {
           init_list <- constrained_vector_to_list(init, self$par_list)
           unc_init_list <- to_unconstrained(init_list, self$par_list)
@@ -717,7 +721,7 @@ RTMB_Model <- R6::R6Class(
           num_samples = num_samples,
           alpha = alpha,
           laplace = laplace,
-          print_freq = if (c == 1) print_freq else 0, # 並列時の表示の乱れを防ぐ
+          print_freq = print_freq, # 全てのチェインで出力を有効化
           fullrank = fullrank
         )
         return(res)
@@ -727,13 +731,20 @@ RTMB_Model <- R6::R6Class(
       if (parallel && num_estimate > 1) {
         future::plan(future::multisession, workers = num_estimate)
         cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
+
+        # 並列処理の場合、出力はチャンクごとにまとめてコンソールに返されます
         results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
           run_advi(c)
         }, future.seed = TRUE,
-        future.globals = c(
-          "ADVI_method", "unconstrained_vector_to_list", "constrained_vector_to_list",
-          "stz_basis", "to_constrained", "to_unconstrained", "calc_log_jacobian",
-          "generate_random_init"
+        future.globals = list(
+          ADVI_method = ADVI_method,
+          unconstrained_vector_to_list = unconstrained_vector_to_list,
+          constrained_vector_to_list = constrained_vector_to_list,
+          stz_basis = stz_basis,
+          to_constrained = to_constrained,
+          to_unconstrained = to_unconstrained,
+          calc_log_jacobian = calc_log_jacobian,
+          generate_random_init = generate_random_init
         ),
         future.packages = c("RTMB", "BayesRTMB"))
         future::plan(future::sequential)

@@ -186,7 +186,6 @@ VB_Fit <- R6::R6Class(
       }
 
       res_list_sum <- vector("list", length(target_idx))
-      max_rel_obj_val <- self$rel_obj_vals[self$best_chain]
 
       for (i in seq_along(target_idx)) {
         p <- target_idx[i]
@@ -202,7 +201,7 @@ VB_Fit <- R6::R6Class(
         if (length(valid_vec) == 0) {
           res_list_sum[[i]] <- data.frame(
             variable = param_names[p], mean = NA, sd = NA, map = NA,
-            q2.5 = NA, q97.5 = NA, `Max rel_obj` = NA, rhat = NA,
+            q2.5 = NA, q97.5 = NA, rhat = NA,
             stringsAsFactors = FALSE, check.names = FALSE
           )
           next
@@ -225,7 +224,6 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          `Max rel_obj` = if(!is.na(max_rel_obj_val)) sprintf("%.5f", max_rel_obj_val) else NA,
           rhat     = if(is.na(rhat_val)) NA else sprintf("%.2f", rhat_val),
           row.names = NULL,
           stringsAsFactors = FALSE,
@@ -268,15 +266,18 @@ VB_Fit <- R6::R6Class(
         "ELBO History"
       }
 
+      best_c <- self$best_chain
+      max_rel_obj_val <- self$rel_obj_vals[best_c]
+      sub_title <- if(!is.na(max_rel_obj_val)) sprintf("Best (est%d) Final rel_obj: %.5f", best_c, max_rel_obj_val) else ""
+
       matplot(x_axis, plot_data, type = type, lty = 1, col = "gray",
               xlab = "Iteration", ylab = "ELBO",
-              main = main_title, ...)
+              main = main_title, sub = sub_title, ...)
 
-      best_c <- self$best_chain
-      lines(x_axis, plot_data[, best_c], col = "red", lwd = 2)
+      lines(x_axis, plot_data[, best_c], col = "dodgerblue", lwd = 2)
 
       legend("bottomright", legend = c(paste("Best (est", best_c, ")"), "Others"),
-             col = c("red", "gray"), lwd = c(2, 1), lty = 1)
+             col = c("dodgerblue", "gray"), lwd = c(2, 1), lty = 1)
 
       invisible(self)
     },
