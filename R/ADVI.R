@@ -34,18 +34,21 @@ ADVI_method <- function(model, par_list, pl_full,
   beta1 <- 0.9
   beta2 <- 0.999
   epsilon <- 1e-8
+  entropy_const <- (P / 2) * log(2 * pi * exp(1)) # エントロピーの定数項を追加
 
   cat("Starting ADVI optimization with Adam...\n")
 
   if (fullrank) {
-    L_diag <- rep(0, P)
+    # 修正: 初期分散を小さくする
+    L_diag <- rep(-2, P)
     L_off <- rep(0, P * (P - 1) / 2)
 
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_diag <- rep(0, P); v_diag <- rep(0, P)
     m_off <- rep(0, length(L_off)); v_off <- rep(0, length(L_off))
   } else {
-    omega <- rep(0, P)
+    # 修正: 初期分散を小さくする
+    omega <- rep(-2, P)
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_omega <- rep(0, P); v_omega <- rep(0, P)
   }
@@ -70,18 +73,25 @@ ADVI_method <- function(model, par_list, pl_full,
 
     # 3-2. 尤度と勾配の評価
     fn_val <- -model$fn(theta)
-    gr_val <- -model$gr(theta)
+    gr_val <- as.vector(-model$gr(theta)) # 修正: 確実にベクトル化する
+
+    # NA/NaNハンドリングの追加
+    if (!is.finite(fn_val) || any(!is.finite(gr_val))) {
+      # 崩壊を防ぐため、このイテレーションの更新をスキップ
+      elbo_history[t] <- if(t > 1) elbo_history[t-1] else 0
+      next
+    }
 
     # 3-3. ELBOと勾配の計算
     if (fullrank) {
-      elbo_history[t] <- fn_val + sum(L_diag)
+      elbo_history[t] <- fn_val + sum(L_diag) + entropy_const
       grad_mu <- gr_val
 
       grad_L_mat <- outer(gr_val, eps)
       grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
       grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
     } else {
-      elbo_history[t] <- fn_val + sum(omega)
+      elbo_history[t] <- fn_val + sum(omega) + entropy_const
       grad_mu <- gr_val
       grad_omega <- gr_val * (eps * sigma) + 1
     }
@@ -121,7 +131,8 @@ ADVI_method <- function(model, par_list, pl_full,
     if (t > check_start && t %% 10 == 0) {
       med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
       med_curr <- median(elbo_history[(t - window_size + 1):t])
-      if (abs(med_curr - med_prev) / abs(med_prev) < tol_rel_obj) {
+      # 修正: 分母に1e-8を足してゼロ除算を防ぐ
+      if (abs(med_curr - med_prev) / (abs(med_prev) + 1e-8) < tol_rel_obj) {
         cat(sprintf("Converged at iteration %d\n", t))
         converged <- TRUE
         break
