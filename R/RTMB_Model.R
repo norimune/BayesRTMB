@@ -648,10 +648,12 @@ RTMB_Model <- R6::R6Class(
     #' @param chains Number of chains (for compatibility with MCMC outputs).
     #' @param alpha Learning rate for Adam.
     #' @param laplace Logical; whether to use Laplace approximation.
-    #' @return A fitted `MCMC_Fit` object containing draws from the variational approximation.
+    #' @param print_freq Frequency of progress output.
+    #' @return A fitted `VB_Fit` object.
     variational = function(iter = 10000, tol_rel_obj = 0.01, window_size = 100,
-                           num_samples = 1000, chains = 1, alpha = 0.01,
-                           laplace = FALSE, seed = sample.int(1e6, 1), init = NULL) {
+                           num_samples = 4000, chains = 1, alpha = 0.01,
+                           laplace = TRUE, print_freq = 500,
+                           seed = sample.int(1e6, 1), init = NULL) {
 
       set.seed(seed)
       cat("Preparing ADVI...\n")

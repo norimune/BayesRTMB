@@ -12,8 +12,9 @@
 #' @param laplace Logical; whether Laplace approximation is used
 ADVI_method <- function(model, par_list, pl_full,
                         iter = 10000, tol_rel_obj = 0.01,
-                        window_size = 100, num_samples = 1000,
-                        chains = 1, alpha = 0.01, laplace = FALSE) {
+                        window_size = 100, num_samples = 4000,
+                        chains = 1, alpha = 0.01, laplace = FALSE,
+                        print_freq = 500) {
 
   P_fixed <- length(model$par)
 
@@ -69,7 +70,7 @@ ADVI_method <- function(model, par_list, pl_full,
     # ELBOの計算と記録 (エントロピーの定数項は省略)
     elbo_history[t] <- -fn_val + sum(omega)
 
-    if (t %% 500 == 0) {
+    if (print_freq > 0 && t %% print_freq == 0) {
       cat(sprintf("Iter %d: Approx ELBO = %.2f\n", t, elbo_history[t]))
     }
 
