@@ -714,7 +714,8 @@ RTMB_Model <- R6::R6Class(
         model          = self,
         fit            = res$fit,
         random_fit     = res$random_fit,
-        elbo_history   = res$elbo_history, # ADVI.Rの戻り値に追加が必要なら渡す
+        elbo_history   = res$elbo_history,
+        ELBO           = res$elbo_final,
         laplace        = laplace,
         posterior_mean = posterior_mean
       )
