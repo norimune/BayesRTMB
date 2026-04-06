@@ -203,7 +203,7 @@ VB_Fit <- R6::R6Class(
         # 軌跡データから変動幅を計算
         if (!is.null(self$mu_history) && var_name %in% colnames(self$mu_history)) {
           hist_vec <- self$mu_history[, var_name]
-          opt_diff_val <- max(hist_vec) - min(hist_vec)
+          opt_diff_val <- sd(hist_vec)
         } else {
           opt_diff_val <- NA # 変換量 (tran_fit) や生成量 (gq_fit) の場合は NA
         }
@@ -238,7 +238,7 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          opt_diff = if(is.na(diff_sd_ratio)) NA else round(unname(diff_sd_ratio), digits),
+          opt_sd_ratio = if(is.na(diff_sd_ratio)) NA else round(unname(diff_sd_ratio), digits),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
