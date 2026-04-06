@@ -700,7 +700,7 @@ RTMB_Model <- R6::R6Class(
 
       # MCMC_Fit オブジェクトとして結果を返す
       # MCMC_Fit ではなく ADVI_Fit をインスタンス化する
-      res_obj <- ADVI_Fit$new(
+      res_obj <- VB_Fit$new(
         model          = self,
         fit            = res$fit,
         random_fit     = res$random_fit,
