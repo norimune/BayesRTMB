@@ -657,7 +657,7 @@ RTMB_Model <- R6::R6Class(
     variational = function(iter = 10000, min_iter = 1000,
                            tol_rel_obj = 0.001, window_size = 100,
                            num_samples = 1000, chains = 1, alpha = 0.01,
-                           laplace = TRUE, print_freq = 100,
+                           laplace = FALSE, print_freq = 100,
                            fullrank = FALSE,
                            seed = sample.int(1e6, 1), init = NULL) {
 
