@@ -440,9 +440,16 @@ VB_Fit <- R6::R6Class(
 
       # MAP推定値 (最大lp) を取得して基準とする
       lp_mat <- f_arr[, , 1]
-      max_idx <- which(lp_mat == max(lp_mat, na.rm = TRUE), arr.ind = TRUE)
-      best_iter <- max_idx[1, 1]
-      best_chain <- max_idx[1, 2]
+      if (is.null(dim(lp_mat))) {
+        # チェイン数が1で次元がベクトルに落ちた場合
+        best_iter <- which.max(lp_mat)
+        best_chain <- 1
+      } else {
+        # 複数チェインの場合
+        max_idx <- which(lp_mat == max(lp_mat, na.rm = TRUE), arr.ind = TRUE)
+        best_iter <- max_idx[1, 1]
+        best_chain <- max_idx[1, 2]
+      }
 
       if (t_info$loc == "fixed")
         Y_vec <- f_arr[best_iter, best_chain, t_info$idx]
