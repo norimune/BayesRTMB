@@ -48,7 +48,8 @@ VB_Fit <- R6::R6Class(
     #' @param ELBO A numeric vector of final ELBO values for each chain.
     #' @param rel_obj_vals A numeric vector of final relative objective tolerance values for each chain.
     #' @param best_chain Integer; the index of the chain with the maximum ELBO.
-    initialize = function(model, fit, random_fit, elbo_history, laplace, posterior_mean, ELBO, rel_obj_vals, best_chain) {
+    #' @param mu_history Matrix of the parameter trajectory from the final window.
+    initialize = function(model, fit, random_fit, elbo_history, laplace, posterior_mean, ELBO, rel_obj_vals, best_chain, mu_history) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
