@@ -12,8 +12,8 @@
 #' @param laplace Logical; whether Laplace approximation is used
 ADVI_method <- function(model, par_list, pl_full,
                         iter = 10000, tol_rel_obj = 0.01,
-                        window_size = 100, num_samples = 4000,
-                        chains = 4, alpha = 0.01, laplace = FALSE) {
+                        window_size = 100, num_samples = 1000,
+                        chains = 1, alpha = 0.01, laplace = FALSE) {
 
   P_fixed <- length(model$par)
 

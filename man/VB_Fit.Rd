@@ -46,6 +46,8 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item \href{#method-advi_fit-summary}{\code{VB_Fit$summary()}}
 \item \href{#method-advi_fit-transformed_draws}{\code{VB_Fit$transformed_draws()}}
 \item \href{#method-advi_fit-generated_quantities}{\code{VB_Fit$generated_quantities()}}
+\item \href{#method-advi_fit-internal_rotate}{\code{VB_Fit$internal_rotate()}}
+\item \href{#method-advi_fit-fa_rotate}{\code{VB_Fit$fa_rotate()}}
 \item \href{#method-advi_fit-clone}{\code{VB_Fit$clone()}}
 }
 }
@@ -197,6 +199,107 @@ Compute generated quantities from posterior draws.
 }
 \subsection{Returns}{
 The `VB_Fit` object itself, invisibly.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-internal_rotate"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-internal_rotate}{}}}
+\subsection{Method \code{internal_rotate()}}{
+Apply internal rotation to sampled parameters.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$internal_rotate(
+  target,
+  method = "procrustes",
+  type = "orthogonal",
+  linked_straight = NULL,
+  linked_inverse = NULL,
+  overwrite = NULL,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
+
+\item{\code{method}}{Character string specifying the rotation method (e.g., "procrustes", "promax"). Default is "procrustes".}
+
+\item{\code{type}}{Character string specifying the rotation type ("orthogonal" or "oblique"). Default is "orthogonal".}
+
+\item{\code{linked_straight}}{Character vector of variable names to be rotated in the same direction. Default is NULL.}
+
+\item{\code{linked_inverse}}{Character vector of variable names to be rotated in the inverse direction. Default is NULL.}
+
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws in the current object. Default is NULL.}
+
+\item{\code{...}}{Additional arguments passed to the rotation function.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Rotated draws or updated object.
+#' @description Rotate sampled parameters using orthogonal Procrustes.
+#' @param target Character string specifying the target variable.
+#' @param linked Character vector of variable names to be rotated. Default is NULL.
+#' @param overwrite Logical; whether to overwrite the stored draws. Default is TRUE.
+#' @param ... Additional arguments.
+#' @return Rotated draws or updated object.
+rotate = function(target,
+                  linked = NULL,
+                  overwrite = TRUE,
+                  ...) {
+  cat("Applying orthogonal Procrustes rotation to VB samples...\n")
+  self$internal_rotate(
+    target = target,
+    method = "procrustes",
+    type = "orthogonal",
+    linked_straight = linked,
+    linked_inverse = NULL,
+    overwrite = overwrite,
+    ...
+  )
+},
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-fa_rotate"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-fa_rotate}{}}}
+\subsection{Method \code{fa_rotate()}}{
+Rotate factor loadings and optional factor scores.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$fa_rotate(
+  loadings,
+  scores = NULL,
+  method = "promax",
+  type = "oblique",
+  linked_loadings = NULL,
+  overwrite = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{loadings}}{Character string specifying the factor loadings variable.}
+
+\item{\code{scores}}{Character vector specifying the factor scores variable. Default is NULL.}
+
+\item{\code{method}}{Character string specifying the rotation method. Default is "promax".}
+
+\item{\code{type}}{Character string specifying the rotation type ("orthogonal" or "oblique"). Default is "oblique".}
+
+\item{\code{linked_loadings}}{Character vector of linked loading variables. Default is NULL.}
+
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. Default is TRUE.}
+
+\item{\code{...}}{Additional arguments.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Rotated draws or updated object.
 }
 }
 \if{html}{\out{<hr>}}
