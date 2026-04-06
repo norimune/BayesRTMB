@@ -146,7 +146,7 @@ ADVI_method <- function(model, par_list, pl_full,
 
   elbo_history <- elbo_history[1:t]
   calc_window <- min(t, window_size)
-  elbo_final <- median(elbo_history[(t - calc_window + 1):t])
+  #elbo_final <- median(elbo_history[(t - calc_window + 1):t])
 
   # --- 4. 事後サンプルの生成と整形 ---
   cat("Generating posterior samples from variational distribution...\n")
@@ -205,6 +205,14 @@ ADVI_method <- function(model, par_list, pl_full,
 
     con_list <- to_constrained(para_list_res, par_list)
     para_final[i, ] <- unlist(con_list, use.names = FALSE)
+  }
+
+  # 1000サンプルの対数事後確率の平均 ＋ 近似分布のエントロピー で高精度なELBOを計算
+  entropy_const <- (P / 2) * log(2 * pi * exp(1))
+  if (fullrank) {
+    elbo_final <- mean(lp_final) + sum(L_diag) + entropy_const
+  } else {
+    elbo_final <- mean(lp_final) + sum(omega) + entropy_const
   }
 
   # MCMC_Fit互換の配列に整形
