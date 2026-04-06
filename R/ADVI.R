@@ -4,28 +4,29 @@
 #' @param par_list A list defining the structure of parameters to be estimated.
 #' @param pl_full A list defining the full structure of parameters including random effects.
 #' @param max_iter Integer; maximum number of iterations for the optimization. Default is 10000.
-#' @param tol_rel_obj Numeric; relative tolerance for the ELBO to determine convergence. Default is 0.01.
+#' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
+#' @param tol_rel_obj Numeric; relative tolerance for the ELBO to determine convergence. Default is 0.001.
 #' @param window_size Integer; size of the moving window to calculate the median ELBO for the convergence check. Default is 100.
-#' @param num_samples Integer; number of posterior draws to generate after optimization. Default is 4000.
+#' @param num_samples Integer; number of posterior draws to generate after optimization. Default is 1000.
 #' @param alpha Numeric; learning rate (step size) for the Adam optimizer. Default is 0.01.
 #' @param laplace Logical; whether Laplace approximation is used. Default is FALSE.
 #' @param print_freq Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.
-#' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
 #' @param fullrank Logical; whether to use a full-rank multivariate normal distribution for the approximation. Default is FALSE.
+#' @param update_progress Optional function to update a progress bar.
+#' @param update_interval Integer; interval for updating the progress bar. Default is 100.
 #' @return A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, and `rel_obj_final`.
 ADVI_method <- function(model, par_list, pl_full,
                         max_iter = 10000, min_iter = 1000, tol_rel_obj = 0.001,
                         window_size = 100, num_samples = 1000,
                         alpha = 0.01, laplace = FALSE,
                         print_freq = 500,
-                        fullrank = FALSE) {
+                        fullrank = FALSE,
+                        update_progress = NULL, update_interval = 100) {
 
-  # --- 1. 変数の初期化 ---
   P <- length(model$par)
   mu <- model$par
   par_names <- names(model$par)
 
-  # --- 2. Adamと近似分布のハイパーパラメータ初期化 ---
   beta1 <- 0.9
   beta2 <- 0.999
   epsilon <- 1e-8
@@ -50,11 +51,15 @@ ADVI_method <- function(model, par_list, pl_full,
   converged <- FALSE
   rel_obj_final <- NA
 
-  # --- 3. 最適化ループ ---
   for (t in 1:max_iter) {
+
+    # --- 進捗バーの更新 ---
+    if (!is.null(update_progress) && t %% update_interval == 0) {
+      update_progress(1)
+    }
+
     eps <- rnorm(P)
 
-    # 3-1. パラメータのサンプリング
     if (fullrank) {
       L <- matrix(0, P, P)
       L[lower.tri(L)] <- L_off
@@ -65,7 +70,6 @@ ADVI_method <- function(model, par_list, pl_full,
       theta <- mu + sigma * eps
     }
 
-    # 3-2. 尤度と勾配の評価
     fn_val <- -model$fn(theta)
     gr_val <- as.vector(-model$gr(theta))
 
@@ -74,7 +78,6 @@ ADVI_method <- function(model, par_list, pl_full,
       next
     }
 
-    # 3-3. ELBOと勾配の計算
     if (fullrank) {
       elbo_history[t] <- fn_val + sum(L_diag) + entropy_const
       grad_mu <- gr_val
@@ -87,7 +90,6 @@ ADVI_method <- function(model, par_list, pl_full,
       grad_omega <- gr_val * (eps * sigma) + 1
     }
 
-    # 3-4. Adamによるパラメータ更新
     if (fullrank) {
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
@@ -116,7 +118,6 @@ ADVI_method <- function(model, par_list, pl_full,
       cat(sprintf("Iter %d: Approx ELBO = %.2f\n", t, elbo_history[t]))
     }
 
-    # 3-6. 収束判定
     check_start <- max(min_iter, 2 * window_size)
     if (t > check_start && t %% 10 == 0) {
       med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
@@ -127,6 +128,12 @@ ADVI_method <- function(model, par_list, pl_full,
         if (print_freq > 0) cat(sprintf("Converged at iteration %d\n", t))
         converged <- TRUE
         rel_obj_final <- rel_obj_val
+
+        # --- 途中で収束した場合、プログレスバーの残りを進める ---
+        if (!is.null(update_progress)) {
+          remaining_steps <- ceiling(max_iter / update_interval) - floor(t / update_interval)
+          if (remaining_steps > 0) update_progress(remaining_steps)
+        }
         break
       }
     }
@@ -141,7 +148,6 @@ ADVI_method <- function(model, par_list, pl_full,
 
   if (print_freq > 0) cat("Generating posterior samples from variational distribution...\n")
 
-  # 近似分布からのサンプリング
   fit_matrix <- matrix(NA, nrow = num_samples, ncol = P)
 
   if (fullrank) {
@@ -199,7 +205,6 @@ ADVI_method <- function(model, par_list, pl_full,
     elbo_final <- mean(lp_final) + sum(omega) + entropy_const
   }
 
-  # チェイン数は呼び出し側でまとめるため、ここでは次元を [num_samples, 1, params] で返す
   fit <- array(NA, dim = c(num_samples, 1, length(fixed_names) + 1))
   dimnames(fit) <- list(iteration = NULL, chain = "est1", variable = c("lp", fixed_names))
 

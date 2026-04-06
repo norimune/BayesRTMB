@@ -695,9 +695,7 @@ RTMB_Model <- R6::R6Class(
       set.seed(seed)
 
       run_advi <- function(c) {
-        if (print_freq > 0) {
-          cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
-        }
+        if (print_freq > 0) cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
 
         if (!is.null(init)) {
           init_list <- constrained_vector_to_list(init, self$par_list)
@@ -708,21 +706,12 @@ RTMB_Model <- R6::R6Class(
         }
 
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
-        ad_obj <- ad_setup$ad_obj
 
         res <- ADVI_method(
-          model = ad_obj,
-          par_list = self$par_list,
-          pl_full = self$pl_full,
-          max_iter = max_iter,
-          min_iter = min_iter,
-          tol_rel_obj = tol_rel_obj,
-          window_size = window_size,
-          num_samples = num_samples,
-          alpha = alpha,
-          laplace = laplace,
-          print_freq = print_freq, # 全てのチェインで出力を有効化
-          fullrank = fullrank
+          model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
+          max_iter = max_iter, min_iter = min_iter, tol_rel_obj = tol_rel_obj,
+          window_size = window_size, num_samples = num_samples, alpha = alpha,
+          laplace = laplace, print_freq = print_freq, fullrank = fullrank
         )
         return(res)
       }
@@ -732,12 +721,52 @@ RTMB_Model <- R6::R6Class(
         future::plan(future::multisession, workers = num_estimate)
         cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
 
-        # 並列処理の場合、出力はチャンクごとにまとめてコンソールに返されます
-        # 修正箇所: future.globals の指定を削除し、デフォルト(TRUE)の自動解析に任せます
-        results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
-          run_advi(c)
-        }, future.seed = TRUE,
-        future.packages = c("RTMB","BayesRTMB"))
+        if (requireNamespace("progressr", quietly = TRUE)) {
+          progressr::handlers(global = TRUE)
+
+          update_interval <- 100
+          steps_per_chain <- ceiling(max_iter / update_interval)
+          total_steps <- steps_per_chain * num_estimate
+
+          results_list <- progressr::with_progress({
+            p <- progressr::progressor(steps = total_steps)
+
+            run_advi_prog <- function(c) {
+              if (!is.null(init)) {
+                init_list <- constrained_vector_to_list(init, self$par_list)
+                unc_init_list <- to_unconstrained(init_list, self$par_list)
+                init_full <- unlist(unc_init_list, use.names = FALSE)
+              } else {
+                init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
+              }
+              ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
+
+              update_prog_fn <- function(amount = 1) {
+                p(amount = amount)
+              }
+
+              res <- ADVI_method(
+                model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
+                max_iter = max_iter, min_iter = min_iter, tol_rel_obj = tol_rel_obj,
+                window_size = window_size, num_samples = num_samples, alpha = alpha,
+                laplace = laplace, print_freq = 0, fullrank = fullrank,
+                update_progress = update_prog_fn, update_interval = update_interval
+              )
+              return(res)
+            }
+
+            future.apply::future_lapply(1:num_estimate, function(c) {
+              run_advi_prog(c)
+            }, future.seed = TRUE, future.packages = "RTMB")
+          })
+
+        } else {
+          cat("※プログレスバーを表示するには 'progressr' パッケージをインストールしてください。\n")
+          results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
+            run_advi(c)
+          }, future.seed = TRUE, future.packages = "RTMB")
+        }
+
         future::plan(future::sequential)
       } else {
         cat(paste0("直列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
@@ -805,7 +834,6 @@ RTMB_Model <- R6::R6Class(
         best_chain     = best_chain
       )
 
-      # 変換量等の計算は全チェインで行うことでRhat計算を可能にする
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
       has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
