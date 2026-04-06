@@ -75,7 +75,7 @@ ADVI_method <- function(model, par_list, pl_full,
     }
 
     # 6. 収束判定 (移動ウィンドウを用いたメディアンの変化量)
-    if (t > 2 * window_size && t %% 10 == 0) {
+    if (t > 10 * window_size && t %% 10 == 0) {
       med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
       med_curr <- median(elbo_history[(t - window_size + 1):t])
 
@@ -94,7 +94,6 @@ ADVI_method <- function(model, par_list, pl_full,
     warning("ADVI did not converge within the maximum number of iterations.")
   }
 
-  # --- ここから追加・修正 ---
   # 実行したイテレーションまでの履歴に切り詰める（以降の 0 を削除）
   elbo_history <- elbo_history[1:t]
 
