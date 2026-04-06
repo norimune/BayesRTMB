@@ -93,6 +93,15 @@ ADVI_method <- function(model, par_list, pl_full,
     warning("ADVI did not converge within the maximum number of iterations.")
   }
 
+  # --- ここから追加・修正 ---
+  # 実行したイテレーションまでの履歴に切り詰める（以降の 0 を削除）
+  elbo_history <- elbo_history[1:t]
+
+  # 最後のステップの平均値（直近 window_size 分）を計算
+  calc_window <- min(t, window_size)
+  elbo_final <- mean(elbo_history[(t - calc_window + 1):t])
+  # --- ここまで ---
+
   # --- 近似事後分布からのサンプリング ---
   cat("Generating posterior samples from variational distribution...\n")
   samples_per_chain <- ceiling(num_samples / chains)
@@ -154,5 +163,10 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
-  return(list(fit = fit, random_fit = random_fit, elbo_history = elbo_history))
+  return(list(
+    fit          = fit,
+    random_fit   = random_fit,
+    elbo_history = elbo_history,
+    elbo_final   = elbo_final
+  ))
 }
