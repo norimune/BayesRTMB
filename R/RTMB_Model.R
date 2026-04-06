@@ -434,7 +434,7 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      # --- MAP_Fit インスタンスを返す (後で定義します) ---
+      # --- MAP_Fit インスタンスを返す ---
       res_obj <- MAP_Fit$new(
         par_vec = con_est_vec,
         par = con_est_list,
@@ -443,7 +443,9 @@ RTMB_Model <- R6::R6Class(
         convergence = opt$convergence,
         sd_rep = sd_rep,
         df_fixed = df_fixed,
-        random_effects = df_random
+        random_effects = df_random,
+        tran_est = tran_est_list,
+        gq_est = gq_est_list
       )
 
       return(res_obj)
