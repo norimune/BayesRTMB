@@ -30,6 +30,10 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{df_fixed}}{Summary table for fixed-effect parameters.}
 
 \item{\code{random_effects}}{Random effect estimates.}
+
+\item{\code{tran_est}}{List of transformed parameter estimates.}
+
+\item{\code{gq_est}}{List of generated quantity estimates.}
 }
 \if{html}{\out{</div>}}
 }
@@ -56,7 +60,9 @@ Create a new `MAP_Fit` object.
   convergence,
   sd_rep,
   df_fixed,
-  random_effects
+  random_effects,
+  tran_est = NULL,
+  gq_est = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -69,8 +75,7 @@ Create a new `MAP_Fit` object.
 
 \item{\code{objective}}{RTMB objective function object.}
 
-\item{\code{log_ml}}{Log marginal likelihood or related model criterion,
-if available.}
+\item{\code{log_ml}}{Log marginal likelihood or related model criterion.}
 
 \item{\code{convergence}}{Optimizer convergence code.}
 
@@ -78,7 +83,11 @@ if available.}
 
 \item{\code{df_fixed}}{Summary table for fixed-effect parameters.}
 
-\item{\code{random_effects}}{Random effect estimates, if available.}
+\item{\code{random_effects}}{Random effect estimates.}
+
+\item{\code{tran_est}}{List of transformed parameter estimates.}
+
+\item{\code{gq_est}}{List of generated quantity estimates.}
 }
 \if{html}{\out{</div>}}
 }

@@ -12,6 +12,9 @@
 #' @param sd_rep Standard deviation report object.
 #' @param df_fixed Summary table for fixed-effect parameters.
 #' @param random_effects Random effect estimates, if available.
+#' @param tran_est List of transformed parameter estimates, if available.
+#' @param gq_est List of generated quantity estimates, if available.
+#' @param pars Character vector specifying the names of parameters to summarize.
 #' @param max_rows Maximum number of rows to print in summaries.
 #' @param digits Number of digits to print.
 #' @param ... Additional arguments passed to print methods.
@@ -24,6 +27,8 @@
 #' @field sd_rep Standard deviation report object.
 #' @field df_fixed Summary table for fixed-effect parameters.
 #' @field random_effects Random effect estimates.
+#' @field tran_est List of transformed parameter estimates.
+#' @field gq_est List of generated quantity estimates.
 #'
 #' @export
 MAP_Fit <- R6::R6Class(
@@ -43,6 +48,16 @@ MAP_Fit <- R6::R6Class(
     gq_est         = NULL, # 追加
 
     #' @description Create a new `MAP_Fit` object.
+    #' @param par_vec Parameter vector on the unconstrained scale.
+    #' @param par Parameter list on the constrained scale.
+    #' @param objective RTMB objective function object.
+    #' @param log_ml Log marginal likelihood or related model criterion.
+    #' @param convergence Optimizer convergence code.
+    #' @param sd_rep Standard deviation report object.
+    #' @param df_fixed Summary table for fixed-effect parameters.
+    #' @param random_effects Random effect estimates.
+    #' @param tran_est List of transformed parameter estimates.
+    #' @param gq_est List of generated quantity estimates.
     initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed, random_effects, tran_est = NULL, gq_est = NULL) {
       self$par_vec <- par_vec
       self$par <- par
