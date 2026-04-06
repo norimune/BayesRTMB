@@ -238,7 +238,7 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          opt_diff = if(is.na(diff_sd_ratio)) NA else diff_sd_ratio,
+          opt_diff = if(is.na(diff_sd_ratio)) NA else round(unname(diff_sd_ratio), digits),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
