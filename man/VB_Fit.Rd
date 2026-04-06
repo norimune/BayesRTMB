@@ -57,7 +57,7 @@ from Automatic Differentiation Variational Inference (ADVI).
 \subsection{Method \code{new()}}{
 Create a new `VB_Fit` object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$new(model, fit, random_fit, elbo_history, laplace, posterior_mean)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$new(model, fit, random_fit, elbo_history, laplace, posterior_mean, ELBO)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -74,6 +74,8 @@ Create a new `VB_Fit` object.
 \item{\code{laplace}}{Logical; indicates if Laplace approximation was used.}
 
 \item{\code{posterior_mean}}{A named numeric vector of posterior means.}
+
+\item{\code{ELBO}}{A value of final ELBO.}
 }
 \if{html}{\out{</div>}}
 }

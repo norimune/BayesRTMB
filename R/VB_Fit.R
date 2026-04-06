@@ -30,6 +30,7 @@ VB_Fit <- R6::R6Class(
     elbo_history   = NULL, # ELBOの推移を保存
     laplace        = NULL,
     posterior_mean = NULL,
+    ELBO           = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `VB_Fit` object.
@@ -39,13 +40,15 @@ VB_Fit <- R6::R6Class(
     #' @param elbo_history A numeric vector of ELBO values.
     #' @param laplace Logical; indicates if Laplace approximation was used.
     #' @param posterior_mean A named numeric vector of posterior means.
-    initialize = function(model, fit, random_fit, elbo_history, laplace, posterior_mean) {
+    #' @param ELBO A value of final ELBO.
+    initialize = function(model, fit, random_fit, elbo_history, laplace, posterior_mean,ELBO) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
       self$elbo_history <- elbo_history
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
+      self$ELBO <- ELBO
       self$tran_fit <- NULL
       self$tran_dims <- list()
       self$gq_fit <- NULL
