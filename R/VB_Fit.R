@@ -220,11 +220,15 @@ VB_Fit <- R6::R6Class(
         sd_val <- sd(valid_vec)
         if (is.na(sd_val) || sd_val < 1e-10) {
           map_val <- valid_vec[1]; q95 <- c(valid_vec[1], valid_vec[1])
-          #rhat_val <- NA
+          diff_sd_ratio <- NA
         } else {
           map_val   <- map_est(valid_vec)
           q95       <- quantile95(valid_vec)
-          #rhat_val  <- if(ncol(mat_all) > 1) r_hat(mat_all) else NA
+          if (!is.na(opt_diff_val)) {
+            diff_sd_ratio <- opt_diff_val / sd_val
+          } else {
+            diff_sd_ratio <- NA
+          }
         }
 
         res_list_sum[[i]] <- data.frame(
@@ -234,7 +238,7 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          opt_diff = if(is.na(opt_diff_val)) NA else sprintf("%.1e", opt_diff_val),
+          opt_diff = if(is.na(diff_sd_ratio)) NA else sprintf("%.3e", diff_sd_ratio),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
