@@ -685,7 +685,7 @@ RTMB_Model <- R6::R6Class(
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
     #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
     variational = function(iter = 3000,
-                           tol_rel_obj = 0.001, window_size = 100,
+                           tol_rel_obj = 0.005, window_size = 100,
                            num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 1000,
                            fullrank = FALSE, parallel = FALSE,
