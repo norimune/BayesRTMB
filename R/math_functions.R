@@ -220,7 +220,7 @@ to_centered_tri <- function(x, R, C) {
     if (pos + n_params - 1 <= length(x)) {
       z_d <- x[pos:(pos + n_params - 1)]
       Q_d <- stz_basis(n_d)
-      y[d:R, d] <- as.numeric(Q_d %*% z_d)
+      y[d:R, d] <- Q_d %*% z_d
       pos <- pos + n_params
     }
   }
