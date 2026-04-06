@@ -22,6 +22,7 @@ ADVI_method <- function(model, par_list, pl_full,
                         fullrank = FALSE) {
 
   # --- 初期化 ---
+  pl_fixed <- par_list
   P <- length(model$par)
   mu <- model$par
 
