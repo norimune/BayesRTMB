@@ -746,7 +746,7 @@ RTMB_Model <- R6::R6Class(
           calc_log_jacobian = calc_log_jacobian,
           generate_random_init = generate_random_init
         ),
-        future.packages = c("RTMB", "BayesRTMB"))
+        future.packages = c("RTMB"))
         future::plan(future::sequential)
       } else {
         cat(paste0("直列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
