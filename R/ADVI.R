@@ -170,10 +170,20 @@ ADVI_method <- function(model, par_list, pl_full,
 
   # パラメータ名から固定効果と変量効果の「フラットな名前」を確実に取り出す処理
   base_names_full <- sub("\\[.*\\]", "", pl_full$names)
-  base_names_fixed <- names(par_list)
+
+  # randomフラグを見て正しく分離する
+  random_flags <- sapply(par_list, function(x) isTRUE(x$random))
+
+  if (laplace && any(random_flags)) {
+    base_names_fixed <- names(par_list)[!random_flags]
+    base_names_random <- names(par_list)[random_flags]
+  } else {
+    base_names_fixed <- names(par_list)
+    base_names_random <- character(0)
+  }
 
   fixed_names <- pl_full$names[base_names_full %in% base_names_fixed]
-  random_names <- pl_full$names[!(base_names_full %in% base_names_fixed)]
+  random_names <- pl_full$names[base_names_full %in% base_names_random]
 
   fixed_idx  <- which(pl_full$names %in% fixed_names)
   random_idx <- if (length(random_names) > 0) which(pl_full$names %in% random_names) else integer(0)
