@@ -652,7 +652,7 @@ RTMB_Model <- R6::R6Class(
     #' @return A fitted `VB_Fit` object.
     variational = function(iter = 10000, tol_rel_obj = 0.01, window_size = 100,
                            num_samples = 4000, chains = 1, alpha = 0.01,
-                           laplace = TRUE, print_freq = 500,
+                           laplace = TRUE, print_freq = 100,
                            seed = sample.int(1e6, 1), init = NULL) {
 
       set.seed(seed)
@@ -680,7 +680,8 @@ RTMB_Model <- R6::R6Class(
         num_samples = num_samples,
         chains = chains,
         alpha = alpha,
-        laplace = laplace
+        laplace = laplace,
+        print_freq = print_freq
       )
 
       # MCMC_Fitインスタンス作成のためのダミー変数
