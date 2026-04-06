@@ -21,19 +21,23 @@ ADVI_method <- function(model, par_list, pl_full,
                         print_freq = 500, min_iter = 1000,
                         fullrank = FALSE) {
 
-  # --- 1. 後半の整形処理で必要になる変数の紐付け ---
+
+  P_fixed <- length(model$par)
   pl_fixed <- par_list
   pl_random <- pl_full[!(names(pl_full) %in% names(par_list))]
   actual_num_samples <- ceiling(num_samples / chains)
 
   P <- length(model$par)
   mu <- model$par
+  omega <- rep(-2, P_fixed)
   par_names <- names(model$par) # 念のため追加
 
   # --- 2. Adamと近似分布のハイパーパラメータ初期化 ---
   beta1 <- 0.9
   beta2 <- 0.999
   epsilon <- 1e-8
+
+  cat("Starting ADVI optimization with Adam...\n")
 
   if (fullrank) {
     L_diag <- rep(0, P)
