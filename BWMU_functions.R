@@ -1,6 +1,6 @@
 library(MASS)
-library(EFA.dimensions)
-library(CCA)
+#library(EFA.dimensions)
+#library(CCA)
 
 Principal_Axis <- function(A){
   temp <- eigen(A%*%t(A))

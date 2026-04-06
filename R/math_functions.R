@@ -184,3 +184,46 @@ to_lower_tri <- function(x, M, D) {
   }
   return(y)
 }
+#' Vector to centered matrix (RTMB compatible)
+#'
+#' @param x A numeric vector of length (R-1) * C.
+#' @param R Number of rows.
+#' @param C Number of columns.
+#' @return An R x C matrix where each column sums to zero.
+#' @export
+to_centered_matrix <- function(x, R, C) {
+  # 1. 無制約ベクトルを (R-1) x C の行列に整形
+  # RTMB::advector(0) で初期化して型を合わせる
+  mat_unc <- matrix(RTMB::advector(0), nrow = R - 1, ncol = C)
+  mat_unc[] <- x
+  Q <- stz_basis(R)
+
+  # 結果も advector 属性を持つ行列として返される
+  return(Q %*% mat_unc)
+}
+#' Vector to centered triangular matrix (RTMB compatible)
+#'
+#' @param x A numeric vector of appropriate length.
+#' @param R Number of rows.
+#' @param C Number of columns.
+#' @return An R x C matrix with column-wise sum-to-zero constraints on lower elements.
+#' @export
+to_centered_tri <- function(x, R, C) {
+  y <- matrix(RTMB::advector(0), nrow = R, ncol = C)
+  max_d <- min(C, R - 1)
+  pos <- 1
+
+  for (d in 1:max_d) {
+    n_d <- R - d + 1
+    n_params <- n_d - 1
+
+    if (pos + n_params - 1 <= length(x)) {
+      z_d <- x[pos:(pos + n_params - 1)]
+      Q_d <- stz_basis(n_d)
+      y[d:R, d] <- as.numeric(Q_d %*% z_d)
+      pos <- pos + n_params
+    }
+  }
+
+  return(y)
+}
