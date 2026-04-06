@@ -89,12 +89,14 @@ if available.}
 \subsection{Method \code{summary()}}{
 Summarize MAP estimates.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(max_rows = 20, digits = 2)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 20, digits = 2)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.}
+
 \item{\code{max_rows}}{Maximum number of rows to print in summaries.}
 
 \item{\code{digits}}{Number of digits to print.}
@@ -111,12 +113,14 @@ A summary object, typically a data frame or list.
 \subsection{Method \code{print()}}{
 Print a brief summary of the fitted object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$print(max_rows = 10, digits = 2, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$print(pars = NULL, max_rows = 10, digits = 2, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to summarize.}
+
 \item{\code{max_rows}}{Maximum number of rows to print in summaries.}
 
 \item{\code{digits}}{Number of digits to print.}

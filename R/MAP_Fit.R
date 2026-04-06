@@ -53,19 +53,36 @@ MAP_Fit <- R6::R6Class(
     },
 
     #' @description Summarize MAP estimates.
+    #' @param pars Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.
+    #' @param max_rows Maximum number of rows to print in summaries.
+    #' @param digits Number of digits to print.
     #' @return A summary object, typically a data frame or list.
-    summary = function(max_rows = 20, digits = 2) {
+    summary = function(pars = NULL, max_rows = 20, digits = 2) {
       cat("\nCall:\nMAP Estimation via RTMB\n\n")
 
       cat("Fixed Effects Coefficients (Constrained Scale):\n")
       if (!is.null(self$df_fixed)) {
         df <- self$df_fixed
-        # 行数の制限処理
-        if (!is.null(max_rows) && nrow(df) > max_rows) {
-          base::print(head(df, max_rows), digits = digits)
-          cat(sprintf("... (残り %d 行を省略。max_rows で表示数を変更できます)\n", nrow(df) - max_rows))
+
+        # --- 変数名のフィルタリング処理を追加 ---
+        if (!is.null(pars)) {
+          # "[1,1]" などのインデックス部分を削除してベース名を取得
+          base_names <- gsub("\\[.*\\]$", "", rownames(df))
+          # 完全一致、またはベース名での一致を判定
+          keep_idx <- rownames(df) %in% pars | base_names %in% pars
+          df <- df[keep_idx, , drop = FALSE]
+        }
+
+        if (nrow(df) == 0) {
+          cat("No matching fixed effects found.\n")
         } else {
-          base::print(df, digits = digits)
+          # 行数の制限処理
+          if (!is.null(max_rows) && nrow(df) > max_rows) {
+            base::print(head(df, max_rows), digits = digits)
+            cat(sprintf("... (残り %d 行を省略。max_rows で表示数を変更できます)\n", nrow(df) - max_rows))
+          } else {
+            base::print(df, digits = digits)
+          }
         }
       } else {
         cat("No fixed effects to display.\n")
@@ -84,13 +101,16 @@ MAP_Fit <- R6::R6Class(
       }
 
       cat("\n")
-      invisible(self$df_fixed)
+      invisible(self$df_fixed) # 戻り値は元のdf_fixed全体のままとするか、フィルタ済みのdfにするかは用途に応じて調整してください
     },
 
     #' @description Print a brief summary of the fitted object.
+    #' @param pars Character vector specifying the names of parameters to summarize.
+    #' @param max_rows Maximum number of rows to print in summaries.
+    #' @param digits Number of digits to print.
     #' @return The object itself, invisibly.
-    print = function(max_rows = 10, digits = 2, ...) {
-      self$summary(max_rows = max_rows, digits = digits, ...)
+    print = function(pars = NULL, max_rows = 10, digits = 2, ...) {
+      self$summary(pars = pars, max_rows = max_rows, digits = digits, ...)
       invisible(self)
     }
   )
