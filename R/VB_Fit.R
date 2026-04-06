@@ -68,15 +68,6 @@ VB_Fit <- R6::R6Class(
     #' @param ... Additional arguments passed to the `summary` method.
     #' @return The object itself, invisibly.
     print = function(...) {
-      cat("\nCall:\nVariational Bayes Estimation via ADVI\n\n")
-      cat("Convergence Diagnostics per estimate:\n")
-      for (c in seq_along(self$ELBO)) {
-        status <- if (!is.na(self$rel_obj_vals[c]) && self$rel_obj_vals[c] < 0.001) "Converged" else "Not Converged"
-        cat(sprintf("  est%d: ELBO = %10.2f, Final rel_obj = %.5f (%s)\n",
-                    c, self$ELBO[c], self$rel_obj_vals[c], status))
-      }
-      cat(sprintf("\nSelected Best Chain: est%d\n\n", self$best_chain))
-
       out <- self$summary(...)
       base::print(out)
       invisible(self)
