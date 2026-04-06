@@ -3,20 +3,19 @@
 #' @param model An RTMB objective function object (`ad_obj`).
 #' @param par_list A list defining the structure of parameters to be estimated.
 #' @param pl_full A list defining the full structure of parameters including random effects.
-#' @param max_iter Integer; maximum number of iterations for the optimization. Default is 10000.
-#' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
-#' @param tol_rel_obj Numeric; relative tolerance for the ELBO to determine convergence. Default is 0.001.
-#' @param window_size Integer; size of the moving window to calculate the median ELBO for the convergence check. Default is 100.
+#' @param iter Integer; fixed number of iterations for the optimization. Default is 10000.
+#' @param tol_rel_obj Numeric; relative tolerance for the ELBO to check convergence. Default is 0.001.
+#' @param window_size Integer; size of the moving window to calculate the median ELBO. Default is 100.
 #' @param num_samples Integer; number of posterior draws to generate after optimization. Default is 1000.
 #' @param alpha Numeric; learning rate (step size) for the Adam optimizer. Default is 0.01.
 #' @param laplace Logical; whether Laplace approximation is used. Default is FALSE.
 #' @param print_freq Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.
-#' @param fullrank Logical; whether to use a full-rank multivariate normal distribution for the approximation. Default is FALSE.
+#' @param fullrank Logical; whether to use a full-rank multivariate normal distribution. Default is FALSE.
 #' @param update_progress Optional function to update a progress bar.
 #' @param update_interval Integer; interval for updating the progress bar. Default is 100.
-#' @return A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, and `rel_obj_final`.
+#' @return A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, `rel_obj_final`, and `converged`.
 ADVI_method <- function(model, par_list, pl_full,
-                        max_iter = 10000, min_iter = 1000, tol_rel_obj = 0.001,
+                        iter = 3000, tol_rel_obj = 0.001,
                         window_size = 100, num_samples = 1000,
                         alpha = 0.01, laplace = FALSE,
                         print_freq = 500,
@@ -37,7 +36,6 @@ ADVI_method <- function(model, par_list, pl_full,
   if (fullrank) {
     L_diag <- rep(-2, P)
     L_off <- rep(0, P * (P - 1) / 2)
-
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_diag <- rep(0, P); v_diag <- rep(0, P)
     m_off <- rep(0, length(L_off)); v_off <- rep(0, length(L_off))
@@ -47,12 +45,11 @@ ADVI_method <- function(model, par_list, pl_full,
     m_omega <- rep(0, P); v_omega <- rep(0, P)
   }
 
-  elbo_history <- numeric(max_iter)
+  elbo_history <- numeric(iter)
   converged <- FALSE
   rel_obj_final <- NA
 
-  for (t in 1:max_iter) {
-
+  for (t in 1:iter) {
     # --- 進捗バーの更新 ---
     if (!is.null(update_progress) && t %% update_interval == 0) {
       update_progress(1)
@@ -84,13 +81,7 @@ ADVI_method <- function(model, par_list, pl_full,
       grad_L_mat <- outer(gr_val, eps)
       grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
       grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
-    } else {
-      elbo_history[t] <- fn_val + sum(omega) + entropy_const
-      grad_mu <- gr_val
-      grad_omega <- gr_val * (eps * sigma) + 1
-    }
 
-    if (fullrank) {
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
       mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
@@ -105,6 +96,10 @@ ADVI_method <- function(model, par_list, pl_full,
         L_off <- L_off + alpha * (m_off / (1 - beta1^t)) / (sqrt(v_off / (1 - beta2^t)) + epsilon)
       }
     } else {
+      elbo_history[t] <- fn_val + sum(omega) + entropy_const
+      grad_mu <- gr_val
+      grad_omega <- gr_val * (eps * sigma) + 1
+
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
       mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
@@ -117,34 +112,18 @@ ADVI_method <- function(model, par_list, pl_full,
     if (print_freq > 0 && t %% print_freq == 0) {
       cat(sprintf("Iter %d: Approx ELBO = %.2f\n", t, elbo_history[t]))
     }
+  }
 
-    check_start <- max(min_iter, 2 * window_size)
-    if (t > check_start && t %% 10 == 0) {
-      med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
-      med_curr <- median(elbo_history[(t - window_size + 1):t])
-
-      rel_obj_val <- abs(med_curr - med_prev) / (abs(med_prev) + 1e-8)
-      if (rel_obj_val < tol_rel_obj) {
-        if (print_freq > 0) cat(sprintf("Converged at iteration %d\n", t))
-        converged <- TRUE
-        rel_obj_final <- rel_obj_val
-
-        # --- 途中で収束した場合、プログレスバーの残りを進める ---
-        if (!is.null(update_progress)) {
-          remaining_steps <- ceiling(max_iter / update_interval) - floor(t / update_interval)
-          if (remaining_steps > 0) update_progress(remaining_steps)
-        }
-        break
-      }
+  # 最終的な収束評価を計算
+  check_start <- 2 * window_size
+  if (iter > check_start) {
+    med_prev <- median(elbo_history[(iter - 2 * window_size + 1):(iter - window_size)])
+    med_curr <- median(elbo_history[(iter - window_size + 1):iter])
+    rel_obj_final <- abs(med_curr - med_prev) / (abs(med_prev) + 1e-8)
+    if (rel_obj_final < tol_rel_obj) {
+      converged <- TRUE
     }
   }
-
-  if (!converged) {
-    warning("ADVI did not converge within the maximum number of iterations.")
-    if (exists("rel_obj_val")) rel_obj_final <- rel_obj_val
-  }
-
-  elbo_history <- elbo_history[1:t]
 
   if (print_freq > 0) cat("Generating posterior samples from variational distribution...\n")
 
@@ -227,6 +206,7 @@ ADVI_method <- function(model, par_list, pl_full,
     random_fit    = random_fit,
     elbo_history  = elbo_history,
     elbo_final    = elbo_final,
-    rel_obj_final = rel_obj_final
+    rel_obj_final = rel_obj_final,
+    converged     = converged
   ))
 }

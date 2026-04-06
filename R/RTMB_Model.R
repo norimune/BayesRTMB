@@ -671,8 +671,7 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).
-    #' @param max_iter Integer; maximum number of iterations for the SGD optimization. Default is 10000.
-    #' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
+    #' @param iter Integer; fixed number of iterations for the optimization. Default is 10000.
     #' @param tol_rel_obj Numeric; relative tolerance for the ELBO change to determine convergence. Default is 0.001.
     #' @param window_size Integer; window size for median smoothing in the convergence check. Default is 100.
     #' @param num_samples Integer; number of posterior samples to generate from the fitted variational distribution. Default is 1000.
@@ -685,7 +684,7 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
     #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
-    variational = function(max_iter = 10000, min_iter = 1000,
+    variational = function(iter = 3000,
                            tol_rel_obj = 0.001, window_size = 100,
                            num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 100,
@@ -709,7 +708,7 @@ RTMB_Model <- R6::R6Class(
 
         res <- ADVI_method(
           model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
-          max_iter = max_iter, min_iter = min_iter, tol_rel_obj = tol_rel_obj,
+          iter = iter, tol_rel_obj = tol_rel_obj,
           window_size = window_size, num_samples = num_samples, alpha = alpha,
           laplace = laplace, print_freq = print_freq, fullrank = fullrank
         )
@@ -725,7 +724,7 @@ RTMB_Model <- R6::R6Class(
           progressr::handlers(global = TRUE)
 
           update_interval <- 100
-          steps_per_chain <- ceiling(max_iter / update_interval)
+          steps_per_chain <- ceiling(iter / update_interval)
           total_steps <- steps_per_chain * num_estimate
 
           results_list <- progressr::with_progress({
@@ -747,7 +746,7 @@ RTMB_Model <- R6::R6Class(
 
               res <- ADVI_method(
                 model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
-                max_iter = max_iter, min_iter = min_iter, tol_rel_obj = tol_rel_obj,
+                iter = iter, tol_rel_obj = tol_rel_obj,
                 window_size = window_size, num_samples = num_samples, alpha = alpha,
                 laplace = laplace, print_freq = 0, fullrank = fullrank,
                 update_progress = update_prog_fn, update_interval = update_interval
