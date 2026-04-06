@@ -10,10 +10,12 @@
 #' @field gq_fit A 3D array of posterior draws for generated quantities, if available.
 #' @field tran_dims A list storing dimension information for transformed parameters.
 #' @field gq_dims A list storing dimension information for generated quantities.
-#' @field elbo_history A numeric vector storing the Evidence Lower Bound (ELBO) history during optimization.
+#' @field elbo_history A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.
 #' @field laplace Logical; whether Laplace approximation was used to marginalize random effects.
 #' @field posterior_mean A named numeric vector of posterior mean estimates.
-#' @field ELBO A value of final ELBO.
+#' @field ELBO A numeric vector of final ELBO values for each chain.
+#' @field rel_obj_vals A numeric vector of final relative objective tolerance values for each chain.
+#' @field best_chain Integer; the index of the chain with the maximum ELBO.
 #'
 #' @export
 VB_Fit <- R6::R6Class(
@@ -32,17 +34,21 @@ VB_Fit <- R6::R6Class(
     laplace        = NULL,
     posterior_mean = NULL,
     ELBO           = NULL,
+    rel_obj_vals   = NULL,
+    best_chain     = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `VB_Fit` object.
     #' @param model An `RTMB_Model` object.
     #' @param fit A 3D array of parameter draws.
     #' @param random_fit A 3D array of random effect draws.
-    #' @param elbo_history A numeric vector of ELBO values.
+    #' @param elbo_history A list of numeric vectors of ELBO values for each chain.
     #' @param laplace Logical; indicates if Laplace approximation was used.
     #' @param posterior_mean A named numeric vector of posterior means.
-    #' @param ELBO A value of final ELBO.
-    initialize = function(model, fit, random_fit, elbo_history, laplace, posterior_mean,ELBO) {
+    #' @param ELBO A numeric vector of final ELBO values for each chain.
+    #' @param rel_obj_vals A numeric vector of final relative objective tolerance values for each chain.
+    #' @param best_chain Integer; the index of the chain with the maximum ELBO.
+    initialize = function(model, fit, random_fit, elbo_history, laplace, posterior_mean, ELBO, rel_obj_vals, best_chain) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
@@ -50,6 +56,8 @@ VB_Fit <- R6::R6Class(
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
       self$ELBO <- ELBO
+      self$rel_obj_vals <- rel_obj_vals
+      self$best_chain <- best_chain
       self$tran_fit <- NULL
       self$tran_dims <- list()
       self$gq_fit <- NULL
@@ -70,15 +78,14 @@ VB_Fit <- R6::R6Class(
     #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
     #' @param inc_tran Logical; whether to include transformed parameters in the output. Default is TRUE.
     #' @param inc_gq Logical; whether to include generated quantities in the output. Default is TRUE.
+    #' @param best_only Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.
     #' @return A 3D array of posterior draws `[iterations, chains, parameters]`.
-    draws = function(pars = NULL, inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
+    draws = function(pars = NULL, inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE, best_only = TRUE) {
       out_array <- self$fit
 
       if (inc_random && !is.null(self$random_fit)) {
-        P1 <- dim(out_array)[3]
-        P2 <- dim(self$random_fit)[3]
-        I <- dim(out_array)[1]
-        C <- 1 # ADVIはチェイン1固定
+        P1 <- dim(out_array)[3]; P2 <- dim(self$random_fit)[3]
+        I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
         new_out[,,(P1+1):(P1+P2)] <- self$random_fit
@@ -91,10 +98,8 @@ VB_Fit <- R6::R6Class(
       }
 
       if (inc_tran && !is.null(self$tran_fit)) {
-        P1 <- dim(out_array)[3]
-        P2 <- dim(self$tran_fit)[3]
-        I <- dim(out_array)[1]
-        C <- 1
+        P1 <- dim(out_array)[3]; P2 <- dim(self$tran_fit)[3]
+        I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
         new_out[,,(P1+1):(P1+P2)] <- self$tran_fit
@@ -107,10 +112,8 @@ VB_Fit <- R6::R6Class(
       }
 
       if (inc_gq && !is.null(self$gq_fit)) {
-        P1 <- dim(out_array)[3]
-        P2 <- dim(self$gq_fit)[3]
-        I <- dim(out_array)[1]
-        C <- 1
+        P1 <- dim(out_array)[3]; P2 <- dim(self$gq_fit)[3]
+        I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
         new_out[,,(P1+1):(P1+P2)] <- self$gq_fit
@@ -125,7 +128,6 @@ VB_Fit <- R6::R6Class(
       P <- dim(out_array)[3]
       param_names <- dimnames(out_array)[[3]]
       if (is.null(param_names)) param_names <- paste0("V", 1:P)
-
       target_idx <- 1:P
 
       if (!is.null(pars)) {
@@ -149,7 +151,11 @@ VB_Fit <- R6::R6Class(
         }
       }
 
-      return(out_array[, 1, target_idx, drop = FALSE])
+      if (best_only) {
+        return(out_array[, self$best_chain, target_idx, drop = FALSE])
+      } else {
+        return(out_array[, , target_idx, drop = FALSE])
+      }
     },
 
     #' @description Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
@@ -161,11 +167,14 @@ VB_Fit <- R6::R6Class(
     #' @param inc_gq Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A data frame containing the summarized posterior statistics.
     summary = function(pars = NULL, max_rows = 10, digits = 2,
-                       inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE){
+                       inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
+
+      # Rhatを計算するため全チェインを取得
       draws_array <- self$draws(pars = pars,
                                 inc_random = inc_random,
                                 inc_tran = inc_tran,
-                                inc_gq = inc_gq)
+                                inc_gq = inc_gq,
+                                best_only = FALSE)
 
       P <- dim(draws_array)[3]
       param_names <- dimnames(draws_array)[[3]]
@@ -177,34 +186,36 @@ VB_Fit <- R6::R6Class(
       }
 
       res_list_sum <- vector("list", length(target_idx))
+      max_rel_obj_val <- self$rel_obj_vals[self$best_chain]
 
       for (i in seq_along(target_idx)) {
         p <- target_idx[i]
-        mat_p <- as.matrix(draws_array[, 1, p]) # チェインは1固定
-        vec_p <- as.vector(mat_p)
-        valid_vec <- vec_p[is.finite(vec_p)]
+
+        # 点推定などのサマリーは最大のELBOを出したチェインのものを代表値として使用
+        mat_best <- as.matrix(draws_array[, self$best_chain, p])
+        vec_best <- as.vector(mat_best)
+        valid_vec <- vec_best[is.finite(vec_best)]
+
+        # Rhatは全チェインで計算
+        mat_all <- as.matrix(draws_array[, , p])
 
         if (length(valid_vec) == 0) {
-          res_list_sum[[i]] <-
-            data.frame(
-              variable = param_names[p],
-              mean = NA,
-              sd = NA,
-              map = NA,
-              q2.5 = NA,
-              q97.5 = NA,
-              stringsAsFactors = FALSE
-            )
+          res_list_sum[[i]] <- data.frame(
+            variable = param_names[p], mean = NA, sd = NA, map = NA,
+            q2.5 = NA, q97.5 = NA, `Max rel_obj` = NA, rhat = NA,
+            stringsAsFactors = FALSE, check.names = FALSE
+          )
           next
         }
 
         sd_val <- sd(valid_vec)
         if (is.na(sd_val) || sd_val < 1e-10) {
           map_val <- valid_vec[1]; q95 <- c(valid_vec[1], valid_vec[1])
+          rhat_val <- NA
         } else {
-          # MCMC_Fit等で定義されているmap_est, quantile95関数を利用する前提
           map_val   <- map_est(valid_vec)
           q95       <- quantile95(valid_vec)
+          rhat_val  <- if(ncol(mat_all) > 1) r_hat(mat_all) else NA
         }
 
         res_list_sum[[i]] <- data.frame(
@@ -214,68 +225,58 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
+          `Max rel_obj` = if(!is.na(max_rel_obj_val)) sprintf("%.5f", max_rel_obj_val) else NA,
+          rhat     = if(is.na(rhat_val)) NA else sprintf("%.2f", rhat_val),
           row.names = NULL,
-          stringsAsFactors = FALSE
+          stringsAsFactors = FALSE,
+          check.names = FALSE
         )
       }
       return(do.call(rbind, res_list_sum))
     },
-    #' @description Plot the ELBO history to diagnose convergence.
-    #' @param tail_n Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.
-    #' @param type Character string; the type of plot. Default is "l" (lines).
-    #' @param ... Additional arguments passed to the `plot` function.
-    #' @return The object itself, invisibly.
+
     #' @description Plot the ELBO history to diagnose convergence.
     #' @param tail_n Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.
     #' @param type Character string; the type of plot. Default is "l" (lines).
     #' @param ... Additional arguments passed to the `plot` function.
     #' @return The object itself, invisibly.
     plot_elbo = function(tail_n = 2000, type = "l", ...) {
-      history <- self$elbo_history
-      if (is.null(history) || length(history) == 0) {
-        warning("No ELBO history available to plot.")
-        return(invisible(self))
+      history_list <- self$elbo_history
+      num_estimate <- length(history_list)
+      if (num_estimate == 0) return(invisible(self))
+
+      max_len <- max(sapply(history_list, length))
+      plot_data <- matrix(NA, nrow = max_len, ncol = num_estimate)
+
+      for (c in 1:num_estimate) {
+        h <- history_list[[c]]
+        plot_data[1:length(h), c] <- h
       }
 
-      n_total <- length(history)
-      plot_data <- history
+      n_total <- nrow(plot_data)
       start_iter <- 1
 
       if (!is.null(tail_n) && tail_n > 0 && tail_n < n_total) {
-        plot_data <- tail(history, tail_n)
+        plot_data <- plot_data[(n_total - tail_n + 1):n_total, , drop = FALSE]
         start_iter <- n_total - tail_n + 1
       }
 
       x_axis <- seq(start_iter, n_total)
-      n_plot <- length(plot_data)
-
-      # 診断指標の計算
-      # 1. トレンド (スピアマンの順位相関)
-      trend_rho <- cor(x_axis, plot_data, method = "spearman")
-
-      # 2. 前後半の変化率
-      half_n <- floor(n_plot / 2)
-      if (half_n > 0) {
-        med_first <- median(plot_data[1:half_n])
-        med_second <- median(plot_data[(half_n + 1):n_plot])
-        # ゼロ除算回避のため分母に微小値を足す
-        rel_change <- abs(med_second - med_first) / (abs(med_first) + 1e-8)
-      } else {
-        rel_change <- NA
-      }
-
-      sub_title <- sprintf("Trend (Spearman rho): %.3f | Half-to-half change: %.4f%%",
-                           trend_rho, rel_change * 100)
-
       main_title <- if (!is.null(tail_n) && tail_n < n_total) {
         sprintf("ELBO History (Last %d iterations)", tail_n)
       } else {
         "ELBO History"
       }
 
-      plot(x_axis, plot_data, type = type,
-           xlab = "Iteration", ylab = "ELBO",
-           main = main_title, sub = sub_title, ...)
+      matplot(x_axis, plot_data, type = type, lty = 1, col = "gray",
+              xlab = "Iteration", ylab = "ELBO",
+              main = main_title, ...)
+
+      best_c <- self$best_chain
+      lines(x_axis, plot_data[, best_c], col = "red", lwd = 2)
+
+      legend("bottomright", legend = c(paste("Best (est", best_c, ")"), "Others"),
+             col = c("red", "gray"), lwd = c(2, 1), lty = 1)
 
       invisible(self)
     },
@@ -287,11 +288,12 @@ VB_Fit <- R6::R6Class(
       all_draws <- self$draws(
         inc_random = TRUE,
         inc_tran = FALSE,
-        inc_gq = FALSE
+        inc_gq = FALSE,
+        best_only = FALSE
       )
 
       iter   <- dim(all_draws)[1]
-      chains <- dim(all_draws)[2] # 基本的に1
+      chains <- dim(all_draws)[2]
 
       wrapper_tran_fn <- function(dat, param) {
         res <- list()
@@ -340,25 +342,17 @@ VB_Fit <- R6::R6Class(
       tran_array <- array(NA, dim = c(iter, chains, length(tran_names)))
       dimnames(tran_array) <- list(
         iteration = NULL,
-        chain = paste0("chain", seq_len(chains)),
+        chain = paste0("est", seq_len(chains)),
         variable = tran_names
       )
-
-      cat("Calculating transformed parameters...\n")
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
-      counter <- 0
 
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
           res <- wrapper_tran_fn(self$model$data, p_list)
           tran_array[i, c, ] <- unlist(res, use.names = FALSE)
-
-          counter <- counter + 1
-          setTxtProgressBar(pb, counter)
         }
       }
-      close(pb)
 
       self$tran_fit <- tran_array
       return(invisible(self))
@@ -371,7 +365,8 @@ VB_Fit <- R6::R6Class(
       all_draws <- self$draws(
         inc_random = TRUE,
         inc_tran = FALSE,
-        inc_gq = FALSE
+        inc_gq = FALSE,
+        best_only = FALSE
       )
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]
@@ -409,29 +404,22 @@ VB_Fit <- R6::R6Class(
       gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
       dimnames(gq_array) <- list(
         iteration = NULL,
-        chain = paste0("chain", seq_len(chains)),
+        chain = paste0("est", seq_len(chains)),
         variable = gq_names
       )
-
-      cat("Calculating generated quantities...\n")
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
-      counter <- 0
 
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
           res <- gq_fn(self$model$data, p_list)
           gq_array[i, c, ] <- unlist(res, use.names = FALSE)
-
-          counter <- counter + 1
-          setTxtProgressBar(pb, counter)
         }
       }
-      close(pb)
 
       self$gq_fit <- gq_array
       return(invisible(self))
     },
+
     #' @description Apply internal rotation to sampled parameters.
     #' @param target Character string specifying the target variable to base the rotation on.
     #' @param method Character string specifying the rotation method (e.g., "procrustes", "promax"). Default is "procrustes".
@@ -632,28 +620,6 @@ VB_Fit <- R6::R6Class(
 
       if (isTRUE(overwrite)) return(invisible(self)) else return(obj)
     },
-
-    #' #' @description Rotate sampled parameters using orthogonal Procrustes.
-    #' #' @param target Character string specifying the target variable.
-    #' #' @param linked Character vector of variable names to be rotated. Default is NULL.
-    #' #' @param overwrite Logical; whether to overwrite the stored draws. Default is TRUE.
-    #' #' @param ... Additional arguments.
-    #' #' @return Rotated draws or updated object.
-    #' rotate = function(target,
-    #'                   linked = NULL,
-    #'                   overwrite = TRUE,
-    #'                   ...) {
-    #'   cat("Applying orthogonal Procrustes rotation to VB samples...\n")
-    #'   self$internal_rotate(
-    #'     target = target,
-    #'     method = "procrustes",
-    #'     type = "orthogonal",
-    #'     linked_straight = linked,
-    #'     linked_inverse = NULL,
-    #'     overwrite = overwrite,
-    #'     ...
-    #'   )
-    #' },
 
     #' @description Rotate factor loadings and optional factor scores.
     #' @param loadings Character string specifying the factor loadings variable.

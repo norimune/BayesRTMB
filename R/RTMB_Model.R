@@ -671,97 +671,145 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).
-    #' @param iter Integer; maximum number of iterations for the SGD optimization. Default is 10000.
+    #' @param max_iter Integer; maximum number of iterations for the SGD optimization. Default is 10000.
     #' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
     #' @param tol_rel_obj Numeric; relative tolerance for the ELBO change to determine convergence. Default is 0.001.
     #' @param window_size Integer; window size for median smoothing in the convergence check. Default is 100.
     #' @param num_samples Integer; number of posterior samples to generate from the fitted variational distribution. Default is 1000.
-    #' @param chains Integer; number of output chains (primarily for formatting compatibility with MCMC outputs). Default is 1.
+    #' @param num_estimate Integer; number of times to run the VB estimation (treated as chains). Default is 4.
     #' @param alpha Numeric; learning rate for the Adam optimizer. Default is 0.01.
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is TRUE.
     #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 100.
     #' @param fullrank Logical; whether to use a full-rank approximation to capture posterior correlations. Default is FALSE.
+    #' @param parallel Logical; whether to run estimations in parallel. Default is TRUE.
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
     #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
-    variational = function(iter = 10000, min_iter = 1000,
+    variational = function(max_iter = 10000, min_iter = 1000,
                            tol_rel_obj = 0.001, window_size = 100,
-                           num_samples = 1000, chains = 1, alpha = 0.01,
+                           num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 100,
-                           fullrank = FALSE,
+                           fullrank = FALSE, parallel = TRUE,
                            seed = sample.int(1e6, 1), init = NULL) {
 
       set.seed(seed)
-      cat("Preparing ADVI...\n")
 
-      if (!is.null(init)) {
-        init_list <- constrained_vector_to_list(init, self$par_list)
-        unc_init_list <- to_unconstrained(init_list, self$par_list)
-        init_full <- unlist(unc_init_list, use.names = FALSE)
-      } else {
-        init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
+      run_advi <- function(c) {
+        if (!is.null(init)) {
+          init_list <- constrained_vector_to_list(init, self$par_list)
+          unc_init_list <- to_unconstrained(init_list, self$par_list)
+          init_full <- unlist(unc_init_list, use.names = FALSE)
+        } else {
+          init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
+        }
+
+        ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
+        ad_obj <- ad_setup$ad_obj
+
+        res <- ADVI_method(
+          model = ad_obj,
+          par_list = self$par_list,
+          pl_full = self$pl_full,
+          max_iter = max_iter,
+          min_iter = min_iter,
+          tol_rel_obj = tol_rel_obj,
+          window_size = window_size,
+          num_samples = num_samples,
+          alpha = alpha,
+          laplace = laplace,
+          print_freq = if (c == 1) print_freq else 0, # 並列時の表示の乱れを防ぐ
+          fullrank = fullrank
+        )
+        return(res)
       }
 
-      # ADVIは無制約空間で分布を学習するためヤコビアンが必須
-      ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
-      ad_obj <- ad_setup$ad_obj
+      results_list <- list()
+      if (parallel && num_estimate > 1) {
+        future::plan(future::multisession, workers = num_estimate)
+        cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
+        results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
+          run_advi(c)
+        }, future.seed = TRUE,
+        future.globals = c(
+          "ADVI_method", "unconstrained_vector_to_list", "constrained_vector_to_list",
+          "stz_basis", "to_constrained", "to_unconstrained", "calc_log_jacobian",
+          "generate_random_init"
+        ),
+        future.packages = c("RTMB", "BayesRTMB"))
+        future::plan(future::sequential)
+      } else {
+        cat(paste0("直列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
+        results_list <- lapply(1:num_estimate, function(c) {
+          run_advi(c)
+        })
+      }
 
-      res <- ADVI_method(
-        model = ad_obj,
-        par_list = self$par_list,
-        pl_full = self$pl_full,
-        iter = iter,
-        min_iter = min_iter,
-        tol_rel_obj = tol_rel_obj,
-        window_size = window_size,
-        num_samples = num_samples,
-        chains = chains,
-        alpha = alpha,
-        laplace = laplace,
-        print_freq = print_freq
+      # 推定結果をまとめる
+      P_fixed <- dim(results_list[[1]]$fit)[3] - 1
+      P_random <- if (!is.null(results_list[[1]]$random_fit)) dim(results_list[[1]]$random_fit)[3] else 0
+
+      fit <- array(NA, dim = c(num_samples, num_estimate, P_fixed + 1))
+      dimnames(fit) <- list(
+        iteration = NULL,
+        chain = paste0("est", 1:num_estimate),
+        variable = dimnames(results_list[[1]]$fit)[[3]]
       )
 
-      # MCMC_Fitインスタンス作成のためのダミー変数
-      samples_per_chain <- dim(res$fit)[1]
-      eps_chains <- rep(NA, chains)
-      accept_chains <- rep(NA, chains)
-      treedepth_chains <- rep(NA, chains)
-      names(eps_chains) <- names(accept_chains) <- names(treedepth_chains) <- paste0("chain", 1:chains)
+      if (P_random > 0) {
+        random_fit <- array(NA, dim = c(num_samples, num_estimate, P_random))
+        dimnames(random_fit) <- list(
+          iteration = NULL,
+          chain = paste0("est", 1:num_estimate),
+          variable = dimnames(results_list[[1]]$random_fit)[[3]]
+        )
+      } else {
+        random_fit <- NULL
+      }
+
+      elbo_history_list <- list()
+      elbo_final_vec <- numeric(num_estimate)
+      rel_obj_vec <- numeric(num_estimate)
+
+      for (c in 1:num_estimate) {
+        res <- results_list[[c]]
+        fit[, c, ] <- res$fit[, 1, ]
+        if (P_random > 0) random_fit[, c, ] <- res$random_fit[, 1, ]
+        elbo_history_list[[c]] <- res$elbo_history
+        elbo_final_vec[c] <- res$elbo_final
+        rel_obj_vec[c] <- res$rel_obj_final
+      }
+
+      best_chain <- which.max(elbo_final_vec)
 
       posterior_mean <- numeric(length(self$pl_full$names))
       names(posterior_mean) <- self$pl_full$names
-      fixed_mean <- apply(res$fit[, , -1, drop = FALSE], 3, mean)
+      fixed_mean <- apply(fit[, best_chain, -1, drop = FALSE], 3, mean)
       posterior_mean[names(fixed_mean)] <- fixed_mean
 
-      if (!is.null(res$random_fit)) {
-        random_mean <- apply(res$random_fit, 3, mean)
+      if (!is.null(random_fit)) {
+        random_mean <- apply(random_fit[, best_chain, , drop=FALSE], 3, mean)
         posterior_mean[names(random_mean)] <- random_mean
       }
 
-      # MCMC_Fit オブジェクトとして結果を返す
-      # MCMC_Fit ではなく ADVI_Fit をインスタンス化する
       res_obj <- VB_Fit$new(
         model          = self,
-        fit            = res$fit,
-        random_fit     = res$random_fit,
-        elbo_history   = res$elbo_history,
-        ELBO           = res$elbo_final,
+        fit            = fit,
+        random_fit     = random_fit,
+        elbo_history   = elbo_history_list,
         laplace        = laplace,
-        posterior_mean = posterior_mean
+        posterior_mean = posterior_mean,
+        ELBO           = elbo_final_vec,
+        rel_obj_vals   = rel_obj_vec,
+        best_chain     = best_chain
       )
 
-      # 変換量・生成量関数の適用
+      # 変換量等の計算は全チェインで行うことでRhat計算を可能にする
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
       has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
-      if (has_tran || has_cf_corr) {
-        res_obj$transformed_draws(self$transform)
-      }
-
-      if (has_generate) {
-        res_obj$generated_quantities(self$generate)
-      }
+      if (has_tran || has_cf_corr) res_obj$transformed_draws(self$transform)
+      if (has_generate) res_obj$generated_quantities(self$generate)
 
       return(res_obj)
     },

@@ -29,13 +29,17 @@ from Automatic Differentiation Variational Inference (ADVI).
 
 \item{\code{gq_dims}}{A list storing dimension information for generated quantities.}
 
-\item{\code{elbo_history}}{A numeric vector storing the Evidence Lower Bound (ELBO) history during optimization.}
+\item{\code{elbo_history}}{A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.}
 
 \item{\code{laplace}}{Logical; whether Laplace approximation was used to marginalize random effects.}
 
 \item{\code{posterior_mean}}{A named numeric vector of posterior mean estimates.}
 
-\item{\code{ELBO}}{A value of final ELBO.}
+\item{\code{ELBO}}{A numeric vector of final ELBO values for each chain.}
+
+\item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
+
+\item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
 }
 \if{html}{\out{</div>}}
 }
@@ -46,6 +50,7 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item \href{#method-advi_fit-print}{\code{VB_Fit$print()}}
 \item \href{#method-advi_fit-draws}{\code{VB_Fit$draws()}}
 \item \href{#method-advi_fit-summary}{\code{VB_Fit$summary()}}
+\item \href{#method-advi_fit-plot_elbo}{\code{VB_Fit$plot_elbo()}}
 \item \href{#method-advi_fit-transformed_draws}{\code{VB_Fit$transformed_draws()}}
 \item \href{#method-advi_fit-generated_quantities}{\code{VB_Fit$generated_quantities()}}
 \item \href{#method-advi_fit-internal_rotate}{\code{VB_Fit$internal_rotate()}}
@@ -59,7 +64,17 @@ from Automatic Differentiation Variational Inference (ADVI).
 \subsection{Method \code{new()}}{
 Create a new `VB_Fit` object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$new(model, fit, random_fit, elbo_history, laplace, posterior_mean, ELBO)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$new(
+  model,
+  fit,
+  random_fit,
+  elbo_history,
+  laplace,
+  posterior_mean,
+  ELBO,
+  rel_obj_vals,
+  best_chain
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -71,13 +86,17 @@ Create a new `VB_Fit` object.
 
 \item{\code{random_fit}}{A 3D array of random effect draws.}
 
-\item{\code{elbo_history}}{A numeric vector of ELBO values.}
+\item{\code{elbo_history}}{A list of numeric vectors of ELBO values for each chain.}
 
 \item{\code{laplace}}{Logical; indicates if Laplace approximation was used.}
 
 \item{\code{posterior_mean}}{A named numeric vector of posterior means.}
 
-\item{\code{ELBO}}{A value of final ELBO.}
+\item{\code{ELBO}}{A numeric vector of final ELBO values for each chain.}
+
+\item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
+
+\item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
 }
 \if{html}{\out{</div>}}
 }
@@ -108,7 +127,13 @@ The object itself, invisibly.
 \subsection{Method \code{draws()}}{
 Extract posterior draws for selected parameters.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$draws(pars = NULL, inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$draws(
+  pars = NULL,
+  inc_random = FALSE,
+  inc_tran = TRUE,
+  inc_gq = TRUE,
+  best_only = TRUE
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -121,6 +146,8 @@ Extract posterior draws for selected parameters.
 \item{\code{inc_tran}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
 
 \item{\code{inc_gq}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
+
+\item{\code{best_only}}{Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }
@@ -163,6 +190,30 @@ Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
 }
 \subsection{Returns}{
 A data frame containing the summarized posterior statistics.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-plot_elbo"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-plot_elbo}{}}}
+\subsection{Method \code{plot_elbo()}}{
+Plot the ELBO history to diagnose convergence.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_elbo(tail_n = 2000, type = "l", ...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{tail_n}}{Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.}
+
+\item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
+
+\item{\code{...}}{Additional arguments passed to the `plot` function.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The object itself, invisibly.
 }
 }
 \if{html}{\out{<hr>}}
@@ -243,27 +294,6 @@ Apply internal rotation to sampled parameters.
 }
 \subsection{Returns}{
 Rotated draws or updated object.
-#' @description Rotate sampled parameters using orthogonal Procrustes.
-#' @param target Character string specifying the target variable.
-#' @param linked Character vector of variable names to be rotated. Default is NULL.
-#' @param overwrite Logical; whether to overwrite the stored draws. Default is TRUE.
-#' @param ... Additional arguments.
-#' @return Rotated draws or updated object.
-rotate = function(target,
-                  linked = NULL,
-                  overwrite = TRUE,
-                  ...) {
-  cat("Applying orthogonal Procrustes rotation to VB samples...\n")
-  self$internal_rotate(
-    target = target,
-    method = "procrustes",
-    type = "orthogonal",
-    linked_straight = linked,
-    linked_inverse = NULL,
-    overwrite = overwrite,
-    ...
-  )
-},
 }
 }
 \if{html}{\out{<hr>}}

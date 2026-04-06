@@ -8,12 +8,11 @@ ADVI_method(
   model,
   par_list,
   pl_full,
-  iter = 10000,
+  max_iter = 10000,
   min_iter = 1000,
   tol_rel_obj = 0.001,
   window_size = 100,
   num_samples = 1000,
-  chains = 1,
   alpha = 0.01,
   laplace = FALSE,
   print_freq = 500,
@@ -27,7 +26,7 @@ ADVI_method(
 
 \item{pl_full}{A list defining the full structure of parameters including random effects.}
 
-\item{iter}{Integer; maximum number of iterations for the optimization. Default is 10000.}
+\item{max_iter}{Integer; maximum number of iterations for the optimization. Default is 10000.}
 
 \item{min_iter}{Integer; minimum number of iterations to run before checking for convergence. Default is 1000.}
 
@@ -36,8 +35,6 @@ ADVI_method(
 \item{window_size}{Integer; size of the moving window to calculate the median ELBO for the convergence check. Default is 100.}
 
 \item{num_samples}{Integer; number of posterior draws to generate after optimization. Default is 4000.}
-
-\item{chains}{Integer; number of chains to structure the output array (for compatibility). Default is 1.}
 
 \item{alpha}{Numeric; learning rate (step size) for the Adam optimizer. Default is 0.01.}
 
@@ -48,7 +45,7 @@ ADVI_method(
 \item{fullrank}{Logical; whether to use a full-rank multivariate normal distribution for the approximation. Default is FALSE.}
 }
 \value{
-A list containing `fit`, `random_fit`, `elbo_history`, and `elbo_final`.
+A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, and `rel_obj_final`.
 }
 \description{
 Automatic Differentiation Variational Inference (ADVI)
