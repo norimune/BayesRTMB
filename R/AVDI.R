@@ -11,8 +11,8 @@
 #' @param alpha Learning rate for Adam
 #' @param laplace Logical; whether Laplace approximation is used
 ADVI_method <- function(model, par_list, pl_full,
-                        iter = 10000, tol_rel_obj = 0.01,
-                        window_size = 100, num_samples = 4000,
+                        iter = 10000, min_iter = 1000, tol_rel_obj = 0.001,
+                        window_size = 100, num_samples = 1000,
                         chains = 1, alpha = 0.01, laplace = FALSE,
                         print_freq = 500) {
 
@@ -74,8 +74,10 @@ ADVI_method <- function(model, par_list, pl_full,
       cat(sprintf("Iter %d: Approx ELBO = %.2f\n", t, elbo_history[t]))
     }
 
+    check_start <- max(min_iter, 2 * window_size)
+
     # 6. 収束判定 (移動ウィンドウを用いたメディアンの変化量)
-    if (t > 10 * window_size && t %% 10 == 0) {
+    if (check_start && t %% 10 == 0) {
       med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
       med_curr <- median(elbo_history[(t - window_size + 1):t])
 
