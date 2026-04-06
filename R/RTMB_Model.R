@@ -650,8 +650,9 @@ RTMB_Model <- R6::R6Class(
     #' @param laplace Logical; whether to use Laplace approximation.
     #' @param print_freq Frequency of progress output.
     #' @return A fitted `VB_Fit` object.
-    variational = function(iter = 10000, tol_rel_obj = 0.01, window_size = 100,
-                           num_samples = 4000, chains = 1, alpha = 0.01,
+    variational = function(iter = 10000, min_iter = 1000,
+                           tol_rel_obj = 0.001, window_size = 100,
+                           num_samples = 1000, chains = 1, alpha = 0.01,
                            laplace = TRUE, print_freq = 100,
                            seed = sample.int(1e6, 1), init = NULL) {
 
@@ -675,6 +676,7 @@ RTMB_Model <- R6::R6Class(
         par_list = self$par_list,
         pl_full = self$pl_full,
         iter = iter,
+        min_iter = min_iter,
         tol_rel_obj = tol_rel_obj,
         window_size = window_size,
         num_samples = num_samples,
