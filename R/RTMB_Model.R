@@ -641,19 +641,24 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).
-    #' @param iter Maximum iterations for SGD.
-    #' @param tol_rel_obj Relative tolerance for ELBO change.
-    #' @param window_size Window size for convergence check.
-    #' @param num_samples Number of posterior draws to generate.
-    #' @param chains Number of chains (for compatibility with MCMC outputs).
-    #' @param alpha Learning rate for Adam.
-    #' @param laplace Logical; whether to use Laplace approximation.
-    #' @param print_freq Frequency of progress output.
-    #' @return A fitted `VB_Fit` object.
+    #' @param iter Integer; maximum number of iterations for the SGD optimization. Default is 10000.
+    #' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
+    #' @param tol_rel_obj Numeric; relative tolerance for the ELBO change to determine convergence. Default is 0.001.
+    #' @param window_size Integer; window size for median smoothing in the convergence check. Default is 100.
+    #' @param num_samples Integer; number of posterior samples to generate from the fitted variational distribution. Default is 1000.
+    #' @param chains Integer; number of output chains (primarily for formatting compatibility with MCMC outputs). Default is 1.
+    #' @param alpha Numeric; learning rate for the Adam optimizer. Default is 0.01.
+    #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is TRUE.
+    #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 100.
+    #' @param fullrank Logical; whether to use a full-rank approximation to capture posterior correlations. Default is FALSE.
+    #' @param seed Integer; random seed for reproducibility.
+    #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
+    #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
     variational = function(iter = 10000, min_iter = 1000,
                            tol_rel_obj = 0.001, window_size = 100,
                            num_samples = 1000, chains = 1, alpha = 0.01,
                            laplace = TRUE, print_freq = 100,
+                           fullrank = FALSE,
                            seed = sample.int(1e6, 1), init = NULL) {
 
       set.seed(seed)
