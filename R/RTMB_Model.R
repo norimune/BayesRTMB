@@ -821,15 +821,17 @@ RTMB_Model <- R6::R6Class(
         posterior_mean[names(random_mean)] <- random_mean
       }
 
-      # --- ここに収束結果の出力を追加 ---
       cat("\nConvergence Diagnostics per estimate:\n")
       for (c in 1:num_estimate) {
         status <- if (!is.na(rel_obj_vec[c]) && rel_obj_vec[c] < tol_rel_obj) "Converged" else "Not Converged"
-        cat(sprintf("  est%d: ELBO = %10.2f, Final rel_obj = %.5f (%s)\n",
-                    c, elbo_final_vec[c], rel_obj_vec[c], status))
+        best_marker <- if (c == best_chain) "  <-- BEST" else ""
+
+        cat(sprintf("  est%d: ELBO = %10.2f, Final rel_obj = %.5f (%s)%s\n",
+                    c, elbo_final_vec[c], rel_obj_vec[c], status, best_marker))
       }
-      cat(sprintf("\nSelected Best Chain: est%d\n\n", best_chain))
-      # ----------------------------------
+      cat("\n")
+
+      best_mu_history <- results_list[[best_chain]]$mu_history
 
       res_obj <- VB_Fit$new(
         model          = self,
@@ -840,7 +842,8 @@ RTMB_Model <- R6::R6Class(
         posterior_mean = posterior_mean,
         ELBO           = elbo_final_vec,
         rel_obj_vals   = rel_obj_vec,
-        best_chain     = best_chain
+        best_chain     = best_chain,
+        mu_history     = best_mu_history
       )
 
       has_tran <- !is.null(self$transform)

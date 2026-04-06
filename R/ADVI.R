@@ -49,6 +49,8 @@ ADVI_method <- function(model, par_list, pl_full,
   converged <- FALSE
   rel_obj_final <- NA
 
+  mu_history <- matrix(NA, nrow = window_size, ncol = P)
+
   for (t in 1:iter) {
     # --- 進捗バーの更新 ---
     if (!is.null(update_progress) && t %% update_interval == 0) {
@@ -108,6 +110,10 @@ ADVI_method <- function(model, par_list, pl_full,
       v_omega <- beta2 * v_omega + (1 - beta2) * (grad_omega^2)
       omega <- omega + alpha * (m_omega / (1 - beta1^t)) / (sqrt(v_omega / (1 - beta2^t)) + epsilon)
     }
+
+    # 最後の window_size 回の mu を保存
+    idx <- (t - 1) %% window_size + 1
+    mu_history[idx, ] <- mu
 
     if (print_freq > 0 && t %% print_freq == 0) {
       cat(sprintf("Iter %d: Approx ELBO = %.2f\n", t, elbo_history[t]))
@@ -201,12 +207,37 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
+  mu_hist_constrained <- matrix(NA, nrow = window_size, ncol = length(fixed_idx) + length(random_idx))
+  colnames(mu_hist_constrained) <- c(fixed_names, random_names)
+
+  for (i in 1:window_size) {
+    zeta_hist <- mu_history[i, ]
+
+    # Laplace近似などのために環境を評価
+    model$fn(zeta_hist)
+    if (laplace && length(model$env$random) > 0) {
+      para_list_res <- model$env$parList()
+    } else {
+      para_list_res <- model$env$parList(x = zeta_hist)
+    }
+
+    con_list <- to_constrained(para_list_res, par_list)
+    para_hist_all <- unlist(con_list, use.names = FALSE)
+
+    # fixedとrandomの列に格納
+    mu_hist_constrained[i, 1:length(fixed_idx)] <- para_hist_all[fixed_idx]
+    if (length(random_idx) > 0) {
+      mu_hist_constrained[i, (length(fixed_idx) + 1):ncol(mu_hist_constrained)] <- para_hist_all[random_idx]
+    }
+  }
+
   return(list(
     fit           = fit,
     random_fit    = random_fit,
     elbo_history  = elbo_history,
     elbo_final    = elbo_final,
     rel_obj_final = rel_obj_final,
-    converged     = converged
+    converged     = converged,
+    mu_history    = mu_hist_constrained
   ))
 }

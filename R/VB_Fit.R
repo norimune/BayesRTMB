@@ -58,6 +58,7 @@ VB_Fit <- R6::R6Class(
       self$ELBO <- ELBO
       self$rel_obj_vals <- rel_obj_vals
       self$best_chain <- best_chain
+      self$mu_history <- mu_history
       self$tran_fit <- NULL
       self$tran_dims <- list()
       self$gq_fit <- NULL
@@ -174,7 +175,7 @@ VB_Fit <- R6::R6Class(
                                 inc_random = inc_random,
                                 inc_tran = inc_tran,
                                 inc_gq = inc_gq,
-                                best_only = FALSE)
+                                best_only = TRUE)
 
       P <- dim(draws_array)[3]
       param_names <- dimnames(draws_array)[[3]]
@@ -190,18 +191,24 @@ VB_Fit <- R6::R6Class(
       for (i in seq_along(target_idx)) {
         p <- target_idx[i]
 
-        # 点推定などのサマリーは最大のELBOを出したチェインのものを代表値として使用
-        mat_best <- as.matrix(draws_array[, self$best_chain, p])
+        mat_best <- as.matrix(draws_array[, 1, p])
         vec_best <- as.vector(mat_best)
         valid_vec <- vec_best[is.finite(vec_best)]
 
-        # Rhatは全チェインで計算
-        mat_all <- as.matrix(draws_array[, , p])
+        var_name <- param_names[p]
+
+        # 軌跡データから変動幅を計算
+        if (!is.null(self$mu_history) && var_name %in% colnames(self$mu_history)) {
+          hist_vec <- self$mu_history[, var_name]
+          opt_diff_val <- max(hist_vec) - min(hist_vec)
+        } else {
+          opt_diff_val <- NA # 変換量 (tran_fit) や生成量 (gq_fit) の場合は NA
+        }
 
         if (length(valid_vec) == 0) {
           res_list_sum[[i]] <- data.frame(
-            variable = param_names[p], mean = NA, sd = NA, map = NA,
-            q2.5 = NA, q97.5 = NA, rhat = NA,
+            variable = var_name, mean = NA, sd = NA, map = NA,
+            q2.5 = NA, q97.5 = NA, opt_diff = NA,
             stringsAsFactors = FALSE, check.names = FALSE
           )
           next
@@ -224,7 +231,7 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          rhat     = if(is.na(rhat_val)) NA else sprintf("%.2f", rhat_val),
+          opt_diff = if(is.na(opt_diff_val)) NA else sprintf("%.1e", opt_diff_val),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
