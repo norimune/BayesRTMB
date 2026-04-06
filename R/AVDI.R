@@ -77,7 +77,7 @@ ADVI_method <- function(model, par_list, pl_full,
     check_start <- max(min_iter, 2 * window_size)
 
     # 6. 収束判定 (移動ウィンドウを用いたメディアンの変化量)
-    if (check_start && t %% 10 == 0) {
+    if (t > check_start && t %% 10 == 0) {
       med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
       med_curr <- median(elbo_history[(t - window_size + 1):t])
 
