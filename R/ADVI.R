@@ -21,13 +21,10 @@ ADVI_method <- function(model, par_list, pl_full,
                         print_freq = 500,
                         fullrank = FALSE) {
 
-  # --- 1. 変数の初期化と紐付け ---
+  # --- 1. 変数の初期化 ---
   P <- length(model$par)
   mu <- model$par
   par_names <- names(model$par)
-
-  pl_fixed <- par_list
-  pl_random <- pl_full[!(names(pl_full) %in% names(par_list))]
 
   # サンプル数の計算
   samples_per_chain <- ceiling(num_samples / chains)
@@ -80,7 +77,6 @@ ADVI_method <- function(model, par_list, pl_full,
       elbo_history[t] <- fn_val + sum(L_diag)
       grad_mu <- gr_val
 
-      # tcrossprodの代わりにouterを使用して次元落ちエラーを完全に防ぐ
       grad_L_mat <- outer(gr_val, eps)
       grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
       grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
@@ -144,7 +140,7 @@ ADVI_method <- function(model, par_list, pl_full,
   # --- 4. 事後サンプルの生成と整形 ---
   cat("Generating posterior samples from variational distribution...\n")
 
-  # 近似分布からのサンプリング (fit_matrix)
+  # 近似分布からのサンプリング
   fit_matrix <- matrix(NA, nrow = actual_num_samples, ncol = P)
 
   if (fullrank) {
@@ -161,8 +157,15 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
-  fixed_idx  <- which(pl_full$names %in% pl_fixed$names)
-  random_idx <- if (!is.null(pl_random)) which(pl_full$names %in% pl_random$names) else integer(0)
+  # パラメータ名から固定効果と変量効果の「フラットな名前」を確実に取り出す処理
+  base_names_full <- sub("\\[.*\\]", "", pl_full$names)
+  base_names_fixed <- names(par_list)
+
+  fixed_names <- pl_full$names[base_names_full %in% base_names_fixed]
+  random_names <- pl_full$names[!(base_names_full %in% base_names_fixed)]
+
+  fixed_idx  <- which(pl_full$names %in% fixed_names)
+  random_idx <- if (length(random_names) > 0) which(pl_full$names %in% random_names) else integer(0)
 
   P_all_true <- length(pl_full$names)
   para_final <- array(NA, dim = c(actual_num_samples, P_all_true))
@@ -170,10 +173,9 @@ ADVI_method <- function(model, par_list, pl_full,
 
   # fit_matrixのサンプルを使って対数尤度計算と変量効果の周辺化を行う
   for (i in 1:actual_num_samples) {
-    zeta_sample <- fit_matrix[i, ] # 古い乱数生成処理を削除し、正しく生成されたfit_matrixを使用
+    zeta_sample <- fit_matrix[i, ]
     lp_final[i] <- -model$fn(zeta_sample)
 
-    # 空間の復元と周辺化された変量効果の取得
     if (laplace && length(model$env$random) > 0) {
       para_list_res <- model$env$parList()
     } else {
@@ -185,13 +187,13 @@ ADVI_method <- function(model, par_list, pl_full,
   }
 
   # MCMC_Fit互換の配列に整形
-  fit <- array(NA, dim = c(samples_per_chain, chains, length(pl_fixed$names) + 1))
-  dimnames(fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = c("lp", pl_fixed$names))
+  fit <- array(NA, dim = c(samples_per_chain, chains, length(fixed_names) + 1))
+  dimnames(fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = c("lp", fixed_names))
 
   random_fit <- NULL
-  if (!is.null(pl_random) && length(pl_random$names) > 0) {
-    random_fit <- array(NA, dim = c(samples_per_chain, chains, length(pl_random$names)))
-    dimnames(random_fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = pl_random$names)
+  if (length(random_names) > 0) {
+    random_fit <- array(NA, dim = c(samples_per_chain, chains, length(random_names)))
+    dimnames(random_fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = random_names)
   }
 
   idx <- 1
