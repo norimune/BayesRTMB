@@ -21,16 +21,17 @@ ADVI_method <- function(model, par_list, pl_full,
                         print_freq = 500, min_iter = 1000,
                         fullrank = FALSE) {
 
-
-  P_fixed <- length(model$par)
-  pl_fixed <- par_list
-  pl_random <- pl_full[!(names(pl_full) %in% names(par_list))]
-  samples_per_chain <- ceiling(num_samples / chains)
-
+  # --- 1. 変数の初期化と紐付け ---
   P <- length(model$par)
   mu <- model$par
-  omega <- rep(-2, P_fixed)
-  par_names <- names(model$par) # 念のため追加
+  par_names <- names(model$par)
+
+  pl_fixed <- par_list
+  pl_random <- pl_full[!(names(pl_full) %in% names(par_list))]
+
+  # サンプル数の計算
+  samples_per_chain <- ceiling(num_samples / chains)
+  actual_num_samples <- samples_per_chain * chains
 
   # --- 2. Adamと近似分布のハイパーパラメータ初期化 ---
   beta1 <- 0.9
@@ -140,20 +141,22 @@ ADVI_method <- function(model, par_list, pl_full,
   calc_window <- min(t, window_size)
   elbo_final <- median(elbo_history[(t - calc_window + 1):t])
 
-  # --- 事後サンプルの生成 ---
+  # --- 4. 事後サンプルの生成と整形 ---
   cat("Generating posterior samples from variational distribution...\n")
-  fit_matrix <- matrix(NA, nrow = num_samples, ncol = P)
+
+  # 近似分布からのサンプリング (fit_matrix)
+  fit_matrix <- matrix(NA, nrow = actual_num_samples, ncol = P)
 
   if (fullrank) {
     L <- matrix(0, P, P)
     L[lower.tri(L)] <- L_off
     diag(L) <- exp(L_diag)
-    for (i in 1:num_samples) {
+    for (i in 1:actual_num_samples) {
       fit_matrix[i, ] <- mu + as.vector(L %*% rnorm(P))
     }
   } else {
     sigma <- exp(omega)
-    for (i in 1:num_samples) {
+    for (i in 1:actual_num_samples) {
       fit_matrix[i, ] <- mu + sigma * rnorm(P)
     }
   }
@@ -165,11 +168,9 @@ ADVI_method <- function(model, par_list, pl_full,
   para_final <- array(NA, dim = c(actual_num_samples, P_all_true))
   lp_final <- numeric(actual_num_samples)
 
-  sd_vec <- exp(omega)
+  # fit_matrixのサンプルを使って対数尤度計算と変量効果の周辺化を行う
   for (i in 1:actual_num_samples) {
-    # 独立正規分布からのサンプル
-    z <- rnorm(P_fixed)
-    zeta_sample <- mu + sd_vec * z
+    zeta_sample <- fit_matrix[i, ] # 古い乱数生成処理を削除し、正しく生成されたfit_matrixを使用
     lp_final[i] <- -model$fn(zeta_sample)
 
     # 空間の復元と周辺化された変量効果の取得
