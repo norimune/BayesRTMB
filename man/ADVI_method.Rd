@@ -8,15 +8,16 @@ ADVI_method(
   model,
   par_list,
   pl_full,
-  max_iter = 10000,
-  min_iter = 1000,
+  iter = 3000,
   tol_rel_obj = 0.001,
   window_size = 100,
   num_samples = 1000,
   alpha = 0.01,
   laplace = FALSE,
   print_freq = 500,
-  fullrank = FALSE
+  fullrank = FALSE,
+  update_progress = NULL,
+  update_interval = 100
 )
 }
 \arguments{
@@ -26,15 +27,13 @@ ADVI_method(
 
 \item{pl_full}{A list defining the full structure of parameters including random effects.}
 
-\item{max_iter}{Integer; maximum number of iterations for the optimization. Default is 10000.}
+\item{iter}{Integer; fixed number of iterations for the optimization. Default is 10000.}
 
-\item{min_iter}{Integer; minimum number of iterations to run before checking for convergence. Default is 1000.}
+\item{tol_rel_obj}{Numeric; relative tolerance for the ELBO to check convergence. Default is 0.001.}
 
-\item{tol_rel_obj}{Numeric; relative tolerance for the ELBO to determine convergence. Default is 0.01.}
+\item{window_size}{Integer; size of the moving window to calculate the median ELBO. Default is 100.}
 
-\item{window_size}{Integer; size of the moving window to calculate the median ELBO for the convergence check. Default is 100.}
-
-\item{num_samples}{Integer; number of posterior draws to generate after optimization. Default is 4000.}
+\item{num_samples}{Integer; number of posterior draws to generate after optimization. Default is 1000.}
 
 \item{alpha}{Numeric; learning rate (step size) for the Adam optimizer. Default is 0.01.}
 
@@ -42,10 +41,14 @@ ADVI_method(
 
 \item{print_freq}{Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.}
 
-\item{fullrank}{Logical; whether to use a full-rank multivariate normal distribution for the approximation. Default is FALSE.}
+\item{fullrank}{Logical; whether to use a full-rank multivariate normal distribution. Default is FALSE.}
+
+\item{update_progress}{Optional function to update a progress bar.}
+
+\item{update_interval}{Integer; interval for updating the progress bar. Default is 100.}
 }
 \value{
-A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, and `rel_obj_final`.
+A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, `rel_obj_final`, and `converged`.
 }
 \description{
 Automatic Differentiation Variational Inference (ADVI)
