@@ -194,7 +194,7 @@ to_lower_tri <- function(x, M, D) {
 to_centered_matrix <- function(x, R, C) {
   # 1. 無制約ベクトルを (R-1) x C の行列に整形
   # RTMB::advector(0) で初期化して型を合わせる
-  mat_unc <- matrix(RTMB::advector(0), nrow = R - 1, ncol = C)
+  mat_unc <- matrix(x[1] * 0, nrow = R - 1, ncol = C)
   mat_unc[] <- x
   Q <- stz_basis(R)
 
@@ -209,7 +209,7 @@ to_centered_matrix <- function(x, R, C) {
 #' @return An R x C matrix with column-wise sum-to-zero constraints on lower elements.
 #' @export
 to_centered_tri <- function(x, R, C) {
-  y <- matrix(RTMB::advector(0), nrow = R, ncol = C)
+  y <- matrix(x[1] * 0, nrow = R, ncol = C)
   max_d <- min(C, R - 1)
   pos <- 1
 
