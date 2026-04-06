@@ -13,6 +13,7 @@
 #' @field elbo_history A numeric vector storing the Evidence Lower Bound (ELBO) history during optimization.
 #' @field laplace Logical; whether Laplace approximation was used to marginalize random effects.
 #' @field posterior_mean A named numeric vector of posterior mean estimates.
+#' @field ELBO A value of final ELBO.
 #'
 #' @export
 VB_Fit <- R6::R6Class(

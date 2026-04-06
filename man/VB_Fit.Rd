@@ -34,6 +34,8 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item{\code{laplace}}{Logical; whether Laplace approximation was used to marginalize random effects.}
 
 \item{\code{posterior_mean}}{A named numeric vector of posterior mean estimates.}
+
+\item{\code{ELBO}}{A value of final ELBO.}
 }
 \if{html}{\out{</div>}}
 }
