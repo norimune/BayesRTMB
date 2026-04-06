@@ -389,6 +389,34 @@ RTMB_Model <- R6::R6Class(
 
       con_est_vec <- unlist(con_est_list, use.names = FALSE)
 
+      # --- ここから追加 ---
+      # 変換量 (transform) と相関行列の計算
+      tran_est_list <- list()
+      for (name in names(self$par_list)) {
+        if (self$par_list[[name]]$type == "CF_corr") {
+          mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
+          tran_est_list[[mat_name]] <- con_est_list[[name]] %*% t(con_est_list[[name]])
+        }
+      }
+
+      if (!is.null(self$transform)) {
+        user_tran <- tryCatch({
+          self$transform(self$data, con_est_list)
+        }, error = function(e) NULL)
+        if (!is.null(user_tran)) {
+          tran_est_list <- c(tran_est_list, user_tran)
+        }
+      }
+      if (length(tran_est_list) == 0) tran_est_list <- NULL
+
+      # 生成量 (generated quantities) の計算
+      gq_est_list <- NULL
+      if (!is.null(self$generate)) {
+        gq_est_list <- tryCatch({
+          self$generate(self$data, con_est_list)
+        }, error = function(e) NULL)
+      }
+
       log_ml <- NA
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
         D <- length(opt$par)

@@ -39,9 +39,11 @@ MAP_Fit <- R6::R6Class(
     sd_rep         = NULL,
     df_fixed       = NULL,
     random_effects = NULL,
+    tran_est       = NULL, # 追加
+    gq_est         = NULL, # 追加
 
     #' @description Create a new `MAP_Fit` object.
-    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed, random_effects) {
+    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed, random_effects, tran_est = NULL, gq_est = NULL) {
       self$par_vec <- par_vec
       self$par <- par
       self$objective <- objective
@@ -50,6 +52,8 @@ MAP_Fit <- R6::R6Class(
       self$sd_rep <- sd_rep
       self$df_fixed <- df_fixed
       self$random_effects <- random_effects
+      self$tran_est <- tran_est
+      self$gq_est <- gq_est
     },
 
     #' @description Summarize MAP estimates.
@@ -98,6 +102,30 @@ MAP_Fit <- R6::R6Class(
 
       if (!is.null(self$random_effects)) {
         cat("Note: Random effects are stored in $random_effects\n")
+      }
+
+      print_list_items <- function(est_list, category_name) {
+        # 表示対象の変数を絞り込む
+        target_names <- names(est_list)
+        if (!is.null(pars)) {
+          target_names <- intersect(target_names, pars)
+        }
+
+        if (length(target_names) > 0) {
+          cat(sprintf("\n%s (Point Estimates):\n", category_name))
+          for (name in target_names) {
+            cat(sprintf("$%s\n", name))
+            base::print(est_list[[name]], digits = digits)
+          }
+        }
+      }
+
+      if (!is.null(self$tran_est)) {
+        print_list_items(self$tran_est, "Transformed Parameters")
+      }
+
+      if (!is.null(self$gq_est)) {
+        print_list_items(self$gq_est, "Generated Quantities")
       }
 
       cat("\n")
