@@ -733,20 +733,11 @@ RTMB_Model <- R6::R6Class(
         cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
 
         # 並列処理の場合、出力はチャンクごとにまとめてコンソールに返されます
+        # 修正箇所: future.globals の指定を削除し、デフォルト(TRUE)の自動解析に任せます
         results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
           run_advi(c)
         }, future.seed = TRUE,
-        future.globals = list(
-          ADVI_method = ADVI_method,
-          unconstrained_vector_to_list = unconstrained_vector_to_list,
-          constrained_vector_to_list = constrained_vector_to_list,
-          stz_basis = stz_basis,
-          to_constrained = to_constrained,
-          to_unconstrained = to_unconstrained,
-          calc_log_jacobian = calc_log_jacobian,
-          generate_random_init = generate_random_init
-        ),
-        future.packages = c("RTMB"))
+        future.packages = c("RTMB","BayesRTMB"))
         future::plan(future::sequential)
       } else {
         cat(paste0("直列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
