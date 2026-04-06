@@ -220,6 +220,65 @@ VB_Fit <- R6::R6Class(
       }
       return(do.call(rbind, res_list_sum))
     },
+    #' @description Plot the ELBO history to diagnose convergence.
+    #' @param tail_n Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.
+    #' @param type Character string; the type of plot. Default is "l" (lines).
+    #' @param ... Additional arguments passed to the `plot` function.
+    #' @return The object itself, invisibly.
+    #' @description Plot the ELBO history to diagnose convergence.
+    #' @param tail_n Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.
+    #' @param type Character string; the type of plot. Default is "l" (lines).
+    #' @param ... Additional arguments passed to the `plot` function.
+    #' @return The object itself, invisibly.
+    plot_elbo = function(tail_n = 2000, type = "l", ...) {
+      history <- self$elbo_history
+      if (is.null(history) || length(history) == 0) {
+        warning("No ELBO history available to plot.")
+        return(invisible(self))
+      }
+
+      n_total <- length(history)
+      plot_data <- history
+      start_iter <- 1
+
+      if (!is.null(tail_n) && tail_n > 0 && tail_n < n_total) {
+        plot_data <- tail(history, tail_n)
+        start_iter <- n_total - tail_n + 1
+      }
+
+      x_axis <- seq(start_iter, n_total)
+      n_plot <- length(plot_data)
+
+      # 診断指標の計算
+      # 1. トレンド (スピアマンの順位相関)
+      trend_rho <- cor(x_axis, plot_data, method = "spearman")
+
+      # 2. 前後半の変化率
+      half_n <- floor(n_plot / 2)
+      if (half_n > 0) {
+        med_first <- median(plot_data[1:half_n])
+        med_second <- median(plot_data[(half_n + 1):n_plot])
+        # ゼロ除算回避のため分母に微小値を足す
+        rel_change <- abs(med_second - med_first) / (abs(med_first) + 1e-8)
+      } else {
+        rel_change <- NA
+      }
+
+      sub_title <- sprintf("Trend (Spearman rho): %.3f | Half-to-half change: %.4f%%",
+                           trend_rho, rel_change * 100)
+
+      main_title <- if (!is.null(tail_n) && tail_n < n_total) {
+        sprintf("ELBO History (Last %d iterations)", tail_n)
+      } else {
+        "ELBO History"
+      }
+
+      plot(x_axis, plot_data, type = type,
+           xlab = "Iteration", ylab = "ELBO",
+           main = main_title, sub = sub_title, ...)
+
+      invisible(self)
+    },
 
     #' @description Compute transformed parameters from posterior draws.
     #' @param tran_fn An optional user-supplied function that takes data and parameter lists to return transformed quantities.
