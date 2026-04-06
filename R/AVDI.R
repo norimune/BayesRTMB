@@ -100,7 +100,7 @@ ADVI_method <- function(model, par_list, pl_full,
 
   # 最後のステップの平均値（直近 window_size 分）を計算
   calc_window <- min(t, window_size)
-  elbo_final <- mean(elbo_history[(t - calc_window + 1):t])
+  elbo_final <- median(elbo_history[(t - calc_window + 1):t])
   # --- ここまで ---
 
   # --- 近似事後分布からのサンプリング ---
