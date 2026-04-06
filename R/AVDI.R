@@ -23,6 +23,7 @@ ADVI_method <- function(model, par_list, pl_full,
 
   # --- 初期化 ---
   pl_fixed <- par_list
+  pl_random <- pl_full[!(names(pl_full) %in% names(par_list))]
   P <- length(model$par)
   mu <- model$par
 
