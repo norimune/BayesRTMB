@@ -220,11 +220,11 @@ VB_Fit <- R6::R6Class(
         sd_val <- sd(valid_vec)
         if (is.na(sd_val) || sd_val < 1e-10) {
           map_val <- valid_vec[1]; q95 <- c(valid_vec[1], valid_vec[1])
-          rhat_val <- NA
+          #rhat_val <- NA
         } else {
           map_val   <- map_est(valid_vec)
           q95       <- quantile95(valid_vec)
-          rhat_val  <- if(ncol(mat_all) > 1) r_hat(mat_all) else NA
+          #rhat_val  <- if(ncol(mat_all) > 1) r_hat(mat_all) else NA
         }
 
         res_list_sum[[i]] <- data.frame(
