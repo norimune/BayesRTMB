@@ -79,7 +79,7 @@ MAP_Fit <- R6::R6Class(
           # 行数の制限処理
           if (!is.null(max_rows) && nrow(df) > max_rows) {
             base::print(head(df, max_rows), digits = digits)
-            cat(sprintf("... (残り %d 行を省略。max_rows で表示数を変更できます)\n", nrow(df) - max_rows))
+            #cat(sprintf("... (残り %d 行を省略。max_rows で表示数を変更できます)\n", nrow(df) - max_rows))
           } else {
             base::print(df, digits = digits)
           }
