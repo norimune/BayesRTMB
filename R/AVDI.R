@@ -154,5 +154,5 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
-  return(list(fit = fit, random_fit = random_fit))
+  return(list(fit = fit, random_fit = random_fit, elbo_history = elbo_history))
 }
