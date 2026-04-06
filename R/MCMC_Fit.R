@@ -823,6 +823,10 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Resolve label switching in posterior draws.
+    #' @param target Character string specifying the target variable to base the relabeling on.
+    #' @param linked Character vector of variable names to be relabeled in the same order as the target. Default is NULL.
+    #' @param overwrite Logical; whether to overwrite the stored draws in the current object. Default is TRUE.
+    #' @param scalar_fns A named list of functions to apply to scalar variables for relabeling. Default is an empty list.
     #' @return Relabeled draws or updated object.
     resolve_switching = function(target, linked = NULL, overwrite = TRUE, scalar_fns = list()) {
       cat(sprintf("Resolving label switching based on '%s'...\n", target))

@@ -402,11 +402,13 @@ Resolve label switching in posterior draws.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{target}}{Target variable(s) for rotation or relabeling.}
+\item{\code{target}}{Character string specifying the target variable to base the relabeling on.}
 
-\item{\code{linked}}{Linked variables.}
+\item{\code{linked}}{Character vector of variable names to be relabeled in the same order as the target. Default is NULL.}
 
-\item{\code{overwrite}}{Logical; whether to overwrite stored draws.}
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws in the current object. Default is TRUE.}
+
+\item{\code{scalar_fns}}{A named list of functions to apply to scalar variables for relabeling. Default is an empty list.}
 }
 \if{html}{\out{</div>}}
 }

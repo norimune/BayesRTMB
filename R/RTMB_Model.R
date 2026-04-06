@@ -111,7 +111,10 @@ RTMB_Model <- R6::R6Class(
     # 2. ADオブジェクト生成ファクトリ
     # ヤコビアンを追加するかどうかを引数で制御
     #' @description Build the RTMB automatic differentiation object.
-    #' @return An RTMB objective object.
+    #' @param init Optional numeric vector or list of initial values for the parameters. Default is NULL.
+    #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is FALSE.
+    #' @param jacobian_target Character string specifying which parameters to apply Jacobian adjustments to (e.g., "all", "random", or "none"). Default is "all".
+    #' @return An RTMB objective object..
     build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all") {
       random_effs <-
         names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
@@ -622,6 +625,91 @@ RTMB_Model <- R6::R6Class(
         posterior_mean = posterior_mean
       )
 
+      has_tran <- !is.null(self$transform)
+      has_generate <- !is.null(self$generate)
+      has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
+
+      if (has_tran || has_cf_corr) {
+        res_obj$transformed_draws(self$transform)
+      }
+
+      if (has_generate) {
+        res_obj$generated_quantities(self$generate)
+      }
+
+      return(res_obj)
+    },
+
+    #' @description Run Automatic Differentiation Variational Inference (ADVI).
+    #' @param iter Maximum iterations for SGD.
+    #' @param tol_rel_obj Relative tolerance for ELBO change.
+    #' @param window_size Window size for convergence check.
+    #' @param num_samples Number of posterior draws to generate.
+    #' @param chains Number of chains (for compatibility with MCMC outputs).
+    #' @param alpha Learning rate for Adam.
+    #' @param laplace Logical; whether to use Laplace approximation.
+    #' @return A fitted `MCMC_Fit` object containing draws from the variational approximation.
+    variational = function(iter = 10000, tol_rel_obj = 0.01, window_size = 100,
+                           num_samples = 1000, chains = 1, alpha = 0.01,
+                           laplace = FALSE, seed = sample.int(1e6, 1), init = NULL) {
+
+      set.seed(seed)
+      cat("Preparing ADVI...\n")
+
+      if (!is.null(init)) {
+        init_list <- constrained_vector_to_list(init, self$par_list)
+        unc_init_list <- to_unconstrained(init_list, self$par_list)
+        init_full <- unlist(unc_init_list, use.names = FALSE)
+      } else {
+        init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
+      }
+
+      # ADVIは無制約空間で分布を学習するためヤコビアンが必須
+      ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
+      ad_obj <- ad_setup$ad_obj
+
+      res <- ADVI_method(
+        model = ad_obj,
+        par_list = self$par_list,
+        pl_full = self$pl_full,
+        iter = iter,
+        tol_rel_obj = tol_rel_obj,
+        window_size = window_size,
+        num_samples = num_samples,
+        chains = chains,
+        alpha = alpha,
+        laplace = laplace
+      )
+
+      # MCMC_Fitインスタンス作成のためのダミー変数
+      samples_per_chain <- dim(res$fit)[1]
+      eps_chains <- rep(NA, chains)
+      accept_chains <- rep(NA, chains)
+      treedepth_chains <- rep(NA, chains)
+      names(eps_chains) <- names(accept_chains) <- names(treedepth_chains) <- paste0("chain", 1:chains)
+
+      posterior_mean <- numeric(length(self$pl_full$names))
+      names(posterior_mean) <- self$pl_full$names
+      fixed_mean <- apply(res$fit[, , -1, drop = FALSE], 3, mean)
+      posterior_mean[names(fixed_mean)] <- fixed_mean
+
+      if (!is.null(res$random_fit)) {
+        random_mean <- apply(res$random_fit, 3, mean)
+        posterior_mean[names(random_mean)] <- random_mean
+      }
+
+      # MCMC_Fit オブジェクトとして結果を返す
+      # MCMC_Fit ではなく ADVI_Fit をインスタンス化する
+      res_obj <- ADVI_Fit$new(
+        model          = self,
+        fit            = res$fit,
+        random_fit     = res$random_fit,
+        elbo_history   = res$elbo_history, # ADVI.Rの戻り値に追加が必要なら渡す
+        laplace        = laplace,
+        posterior_mean = posterior_mean
+      )
+
+      # 変換量・生成量関数の適用
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
       has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
