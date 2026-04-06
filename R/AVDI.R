@@ -3,45 +3,46 @@
 #' @param model An RTMB objective function object (`ad_obj`).
 #' @param par_list A list defining the structure of parameters to be estimated.
 #' @param pl_full A list defining the full structure of parameters including random effects.
-#' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
 #' @param iter Integer; maximum number of iterations for the optimization. Default is 10000.
 #' @param tol_rel_obj Numeric; relative tolerance for the ELBO to determine convergence. Default is 0.01.
 #' @param window_size Integer; size of the moving window to calculate the median ELBO for the convergence check. Default is 100.
-#' @param num_samples Integer; number of posterior draws to generate after optimization. Default is 1000.
+#' @param num_samples Integer; number of posterior draws to generate after optimization. Default is 4000.
 #' @param chains Integer; number of chains to structure the output array (for compatibility). Default is 1.
 #' @param alpha Numeric; learning rate (step size) for the Adam optimizer. Default is 0.01.
 #' @param laplace Logical; whether Laplace approximation is used. Default is FALSE.
 #' @param print_freq Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.
+#' @param min_iter Integer; minimum number of iterations to run before checking for convergence. Default is 1000.
 #' @param fullrank Logical; whether to use a full-rank multivariate normal distribution for the approximation. Default is FALSE.
 #' @return A list containing `fit`, `random_fit`, `elbo_history`, and `elbo_final`.
 ADVI_method <- function(model, par_list, pl_full,
-                        iter = 10000, min_iter = 1000, tol_rel_obj = 0.01,
-                        window_size = 100, num_samples = 1000,
+                        iter = 10000, tol_rel_obj = 0.01,
+                        window_size = 100, num_samples = 4000,
                         chains = 1, alpha = 0.01, laplace = FALSE,
-                        print_freq = 500,
+                        print_freq = 500, min_iter = 1000,
                         fullrank = FALSE) {
 
-  # --- 初期化 ---
+  # --- 1. 後半の整形処理で必要になる変数の紐付け ---
   pl_fixed <- par_list
   pl_random <- pl_full[!(names(pl_full) %in% names(par_list))]
+  actual_num_samples <- ceiling(num_samples / chains)
+
   P <- length(model$par)
   mu <- model$par
+  par_names <- names(model$par) # 念のため追加
 
-  # Adamのハイパーパラメータ
+  # --- 2. Adamと近似分布のハイパーパラメータ初期化 ---
   beta1 <- 0.9
   beta2 <- 0.999
   epsilon <- 1e-8
 
   if (fullrank) {
-    # Full-rank用のパラメータ: コレスキー分解の下三角行列 L
-    L_diag <- rep(0, P) # 対角成分 (正の値を保証するため対数スケール)
-    L_off <- rep(0, P * (P - 1) / 2) # 非対角成分
+    L_diag <- rep(0, P)
+    L_off <- rep(0, P * (P - 1) / 2)
 
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_diag <- rep(0, P); v_diag <- rep(0, P)
     m_off <- rep(0, length(L_off)); v_off <- rep(0, length(L_off))
   } else {
-    # Mean-field用のパラメータ
     omega <- rep(0, P)
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_omega <- rep(0, P); v_omega <- rep(0, P)
@@ -50,11 +51,11 @@ ADVI_method <- function(model, par_list, pl_full,
   elbo_history <- numeric(iter)
   converged <- FALSE
 
-  # --- 最適化ループ ---
+  # --- 3. 最適化ループ ---
   for (t in 1:iter) {
     eps <- rnorm(P)
 
-    # 1. パラメータのサンプリング
+    # 3-1. パラメータのサンプリング
     if (fullrank) {
       L <- matrix(0, P, P)
       L[lower.tri(L)] <- L_off
@@ -65,68 +66,56 @@ ADVI_method <- function(model, par_list, pl_full,
       theta <- mu + sigma * eps
     }
 
-    # 2. 尤度と勾配の評価 (RTMBは負の対数尤度を返す前提)
+    # 3-2. 尤度と勾配の評価
     fn_val <- -model$fn(theta)
-    gr_val <- -model$gr(theta) # 勾配 (d log_p / d theta)
+    gr_val <- -model$gr(theta)
 
-    # 3. ELBOと勾配の計算
+    # 3-3. ELBOと勾配の計算
     if (fullrank) {
       elbo_history[t] <- fn_val + sum(L_diag)
       grad_mu <- gr_val
-      grad_L_mat <- tcrossprod(gr_val, eps)
+
+      # tcrossprodの代わりにouterを使用して次元落ちエラーを完全に防ぐ
+      grad_L_mat <- outer(gr_val, eps)
       grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
       grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
-
     } else {
       elbo_history[t] <- fn_val + sum(omega)
       grad_mu <- gr_val
       grad_omega <- gr_val * (eps * sigma) + 1
     }
 
-    # 4. Adamによるパラメータ更新
+    # 3-4. Adamによるパラメータ更新
     if (fullrank) {
-      # muの更新
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
-      m_hat_mu <- m_mu / (1 - beta1^t)
-      v_hat_mu <- v_mu / (1 - beta2^t)
-      mu <- mu + alpha * m_hat_mu / (sqrt(v_hat_mu) + epsilon)
+      mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
 
-      # L_diagの更新
       m_diag <- beta1 * m_diag + (1 - beta1) * grad_diag
       v_diag <- beta2 * v_diag + (1 - beta2) * (grad_diag^2)
-      m_hat_diag <- m_diag / (1 - beta1^t)
-      v_hat_diag <- v_diag / (1 - beta2^t)
-      L_diag <- L_diag + alpha * m_hat_diag / (sqrt(v_hat_diag) + epsilon)
+      L_diag <- L_diag + alpha * (m_diag / (1 - beta1^t)) / (sqrt(v_diag / (1 - beta2^t)) + epsilon)
 
-      # L_offの更新
       if (length(L_off) > 0) {
         m_off <- beta1 * m_off + (1 - beta1) * grad_off
         v_off <- beta2 * v_off + (1 - beta2) * (grad_off^2)
-        m_hat_off <- m_off / (1 - beta1^t)
-        v_hat_off <- v_off / (1 - beta2^t)
-        L_off <- L_off + alpha * m_hat_off / (sqrt(v_hat_off) + epsilon)
+        L_off <- L_off + alpha * (m_off / (1 - beta1^t)) / (sqrt(v_off / (1 - beta2^t)) + epsilon)
       }
     } else {
-      # 既存のMean-fieldの更新処理
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
-      m_hat_mu <- m_mu / (1 - beta1^t)
-      v_hat_mu <- v_mu / (1 - beta2^t)
-      mu <- mu + alpha * m_hat_mu / (sqrt(v_hat_mu) + epsilon)
+      mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
 
       m_omega <- beta1 * m_omega + (1 - beta1) * grad_omega
       v_omega <- beta2 * v_omega + (1 - beta2) * (grad_omega^2)
-      m_hat_omega <- m_omega / (1 - beta1^t)
-      v_hat_omega <- v_omega / (1 - beta2^t)
-      omega <- omega + alpha * m_hat_omega / (sqrt(v_hat_omega) + epsilon)
+      omega <- omega + alpha * (m_omega / (1 - beta1^t)) / (sqrt(v_omega / (1 - beta2^t)) + epsilon)
     }
 
-    # --- 収束判定とprint_freqの処理 (既存のコードそのまま) ---
+    # 3-5. 進行状況の出力
     if (print_freq > 0 && t %% print_freq == 0) {
       cat(sprintf("Iter %d: Approx ELBO = %.2f\n", t, elbo_history[t]))
     }
 
+    # 3-6. 収束判定
     check_start <- max(min_iter, 2 * window_size)
     if (t > check_start && t %% 10 == 0) {
       med_prev <- median(elbo_history[(t - 2 * window_size + 1):(t - window_size)])
@@ -137,6 +126,10 @@ ADVI_method <- function(model, par_list, pl_full,
         break
       }
     }
+  }
+
+  if (!converged) {
+    warning("ADVI did not converge within the maximum number of iterations.")
   }
 
   elbo_history <- elbo_history[1:t]
