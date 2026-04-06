@@ -311,7 +311,23 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints) {
 dirichlet_lpdf <- function(x, alpha) {
   sum((alpha - 1) * log(x)) + lgamma(sum(alpha)) - sum(lgamma(alpha))
 }
-
+#' Lower-triangular normal log-probability density function
+#'
+#' @param x A matrix of lower-triangular parameters.
+#' @param mean Mean of the normal distribution.
+#' @param sd Standard deviation of the normal distribution.
+#' @return The log-density calculated only for the non-zero lower triangular elements.
+#' @export
+lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
+  R <- nrow(x)
+  C <- ncol(x)
+  lp <- 0
+  for (j in 1:min(R, C)) {
+    val <- x[j:R, j]
+    lp <- lp + sum(dnorm(val, mean, sd, log = TRUE))
+  }
+  return(lp)
+}
 #' Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix
 #'
 #' @param x Vector or matrix of quantiles.

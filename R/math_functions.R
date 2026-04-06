@@ -151,3 +151,36 @@ quad_form_diag <- function(m, v) {
   v_col <- matrix(as.vector(v), ncol = 1)
   return(m * (v_col %*% t(v_col)))
 }
+#' Sum-to-zero transformation
+#'
+#' Transforms a vector of length K-1 to a vector of length K that sums to zero
+#' using an orthogonal basis matrix.
+#'
+#' @param x A numeric vector of length K-1.
+#' @return A numeric vector of length K whose elements sum to zero.
+#' @export
+sum_to_zero <- function(x) {
+  # パラメータ数 K を特定 (入力は K-1 次元)
+  K <- length(x) + 1
+  Q <- stz_basis(K)
+  return(as.vector(Q %*% x))
+}
+
+#' Vector to lower triangular matrix (RTMB compatible)
+#'
+#' @param x A numeric or advector.
+#' @param M Number of rows.
+#' @param D Number of columns.
+#' @return An M x D lower triangular matrix.
+to_lower_tri <- function(x, M, D) {
+  y <- matrix(x[1] * 0, nrow = M, ncol = D)
+  pos <- 1
+  for (i in 1:M) {
+    max_j <- min(i, D)
+    for (j in 1:max_j) {
+      y[i, j] <- x[pos]
+      pos <- pos + 1
+    }
+  }
+  return(y)
+}
