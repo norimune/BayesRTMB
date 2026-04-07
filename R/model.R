@@ -104,9 +104,6 @@ model_code <- function(expr, env = parent.frame()) {
   )
   body_expr <- as.call(body_list)
 
-  # ---------------------------------------------------------
-  # ここが最重要ポイント：純粋な R の function オブジェクトを構築する
-  # ---------------------------------------------------------
   # 引数リスト `(dat, par)` を作成
   args <- as.pairlist(alist(dat = , par = ))
 
@@ -144,5 +141,56 @@ transformed_code <- function(expr_list, env = parent.frame()) {
   fn_expr <- call("function", args, body_expr)
 
   fn <- eval(fn_expr, envir = env)
+  return(fn)
+}
+#' Transformed Code Wrapper for RTMB
+#'
+#' @param expr A block of code containing calculations for transformed parameters.
+#' @param env Environment to assign to the generated function.
+#' @return A function taking (dat, par) that returns a named list.
+#' @export
+transformed_code <- function(expr, env = parent.frame()) {
+  raw_expr <- substitute(expr)
+
+  # 1. コードブロックから「定義されている変数名」を抽出するヘルパー
+  find_assignments <- function(x) {
+    if (is.call(x)) {
+      if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {
+        # 左辺がシンボル（単一変数）の場合のみ抽出
+        if (is.name(x[[2]])) return(as.character(x[[2]]))
+      }
+      return(unique(unlist(lapply(as.list(x), find_assignments))))
+    }
+    return(NULL)
+  }
+
+  defined_vars <- find_assignments(raw_expr)
+
+  # 2. 中括弧 {} の中身をフラットにする
+  if (is.call(raw_expr) && identical(raw_expr[[1]], as.name("{"))) {
+    expr_elements <- as.list(raw_expr)[-1]
+  } else {
+    expr_elements <- list(raw_expr)
+  }
+
+  # 3. return(list(var1 = var1, ...)) の形を作成
+  ret_list_args <- lapply(defined_vars, as.name)
+  names(ret_list_args) <- defined_vars
+  ret_call <- as.call(c(list(as.name("list")), ret_list_args))
+
+  # 4. 関数ボディの構築
+  body_list <- c(
+    list(as.name("{")),
+    quote(getAll(dat, par)),
+    expr_elements,
+    list(as.call(list(as.name("return"), ret_call)))
+  )
+  body_expr <- as.call(body_list)
+
+  # 5. 関数オブジェクトの生成
+  args <- as.pairlist(alist(dat = , par = ))
+  fn_expr <- call("function", args, body_expr)
+  fn <- eval(fn_expr, envir = env)
+
   return(fn)
 }
