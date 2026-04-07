@@ -298,6 +298,49 @@ VB_Fit <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Plot the parameter trajectory from the final optimization window.
+    #' @param pars Character vector specifying the names of parameters to plot. If NULL, plots all available parameters.
+    #' @param type Character string; the type of plot. Default is "l" (lines).
+    #' @param ... Additional arguments passed to the `matplot` function.
+    #' @return The object itself, invisibly.
+    plot_trajectory = function(pars = NULL, type = "l", ...) {
+      if (is.null(self$mu_history)) {
+        cat("No trajectory data available (mu_history is NULL).\n")
+        return(invisible(self))
+      }
+
+      plot_data <- self$mu_history
+
+      # 特定のパラメータのみを描画する場合
+      if (!is.null(pars)) {
+        valid_pars <- intersect(pars, colnames(plot_data))
+        if (length(valid_pars) == 0) {
+          cat("None of the specified parameters were found in the trajectory data.\n")
+          return(invisible(self))
+        }
+        plot_data <- plot_data[, valid_pars, drop = FALSE]
+      }
+
+      n_steps <- nrow(plot_data)
+      x_axis <- seq_len(n_steps)
+
+      # 全パラメータ数が多いと見づらくなるため、デフォルトのタイトル等を設定
+      main_title <- sprintf("Parameter Trajectory (Last %d steps)", n_steps)
+
+      matplot(x_axis, plot_data, type = type, lty = 1,
+              xlab = "Iterations (in final window)", ylab = "Parameter Value",
+              main = main_title, ...)
+
+      # 描画対象のパラメータ数が10個以下なら凡例を表示
+      if (ncol(plot_data) <= 10) {
+        legend("topright", legend = colnames(plot_data),
+               col = seq_len(ncol(plot_data)), lty = 1, cex = 0.8,
+               bty = "n")
+      }
+
+      invisible(self)
+    },
+
     #' @description Compute transformed parameters from posterior draws.
     #' @param tran_fn An optional user-supplied function that takes data and parameter lists to return transformed quantities.
     #' @return The `VB_Fit` object itself, invisibly.
