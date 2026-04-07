@@ -259,7 +259,7 @@ VB_Fit <- R6::R6Class(
     #' @param type Character string; the type of plot. Default is "l" (lines).
     #' @param ... Additional arguments passed to the `plot` function.
     #' @return The object itself, invisibly.
-    plot_elbo = function(tail_n = 2000, ests = NULL, type = "l", ...) {
+    plot_elbo = function(tail_n = 1000, ests = NULL, type = "l", ...) {
       history_list <- self$elbo_history
       num_estimate <- length(history_list)
       if (num_estimate == 0) {
