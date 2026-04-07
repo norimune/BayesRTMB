@@ -629,6 +629,24 @@ RTMB_Model <- R6::R6Class(
         posterior_mean[names(random_mean)] <- random_mean
       }
 
+      if (!is.null(save_info)) {
+        for (c in 1:chains) {
+          backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
+
+          # mcmc_index (thinning後のイテレーション番号) を使用
+          if (!is.null(random_fit)) {
+            df_out <- cbind(iteration = mcmc_index,
+                            as.data.frame(fit[, c, ]),
+                            as.data.frame(random_fit[, c, ]))
+          } else {
+            df_out <- cbind(iteration = mcmc_index,
+                            as.data.frame(fit[, c, ]))
+          }
+
+          write.csv(df_out, file = backup_file, row.names = FALSE)
+        }
+      }
+
       res_obj <- MCMC_Fit$new(
         model          = self,
         fit            = fit,
@@ -663,15 +681,27 @@ RTMB_Model <- R6::R6Class(
     #' @param parallel Logical; whether to run estimations in parallel. Default is FALSE.
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
+    #' @param save_csv Optional list for saving VB results. e.g., list(name = "model", dir = "BayesRTMB_vb").
     #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
     variational = function(iter = 3000,
                            tol_rel_obj = 0.005, window_size = 100,
                            num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 1000,
                            fullrank = FALSE, parallel = FALSE,
-                           seed = sample.int(1e6, 1), init = NULL) {
+                           seed = sample.int(1e6, 1), init = NULL, save_csv = NULL) {
 
       set.seed(seed)
+
+      # --- CSV保存用の情報整理とディレクトリ作成 ---
+      if (!is.null(save_csv)) {
+        if (!is.list(save_csv)) stop("save_csv は list(name='...', dir='...') の形式で指定してください。")
+        save_name <- if (!is.null(save_csv$name)) save_csv$name else "model_vb"
+        save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_vb"
+        if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
+        save_info <- list(name = save_name, dir = save_dir)
+      } else {
+        save_info <- NULL
+      }
 
       run_advi <- function(c) {
         if (print_freq > 0) cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
@@ -787,6 +817,21 @@ RTMB_Model <- R6::R6Class(
         elbo_history_list[[c]] <- res$elbo_history
         elbo_final_vec[c] <- res$elbo_final
         rel_obj_vec[c] <- res$rel_obj_final
+      }
+
+      # --- 追加: 推定完了後に各estimateの事後サンプルをCSVへ一括保存 ---
+      if (!is.null(save_info)) {
+        for (c in 1:num_estimate) {
+          backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
+
+          if (!is.null(random_fit)) {
+            df_out <- cbind(iteration = 1:num_samples, as.data.frame(fit[, c, ]), as.data.frame(random_fit[, c, ]))
+          } else {
+            df_out <- cbind(iteration = 1:num_samples, as.data.frame(fit[, c, ]))
+          }
+
+          write.csv(df_out, file = backup_file, row.names = FALSE)
+        }
       }
 
       best_chain <- which.max(elbo_final_vec)

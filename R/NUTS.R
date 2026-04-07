@@ -151,65 +151,7 @@ NUTS_method <- function(model,
       msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
       if (!is.null(update_progress)) update_progress(msg)
       else cat(msg, "\n")
-
-      if (!is.null(save_info)) {
-        #writeLines(as.character(i), con = prog_file)
-
-        # --- 追加: freqが0より大きい場合のみ、途中でCSVに追記 ---
-        freq <- save_info$freq
-        if (freq > 0 && i %% freq == 0) {
-          start_idx <- i - freq + 1
-          if (start_idx < 2) start_idx <- 2
-          len_idx <- length(start_idx:i)
-
-          backup_data <- matrix(NA, nrow = len_idx, ncol = 5 + P_fixed)
-          backup_data[, 1] <- start_idx:i
-          backup_data[, 2] <- lp[start_idx:i]
-          backup_data[, 3] <- accept[start_idx:i]
-          backup_data[, 4] <- treedepth_record[start_idx:i]
-          backup_data[, 5] <- eps
-          backup_data[, 6:(5 + P_fixed)] <- para_fixed[start_idx:i, ]
-
-          write.table(backup_data, file = backup_file, append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
-        }
-      }
     }
-  }
-
-  # --- ループ終了後の端数の保存処理 ---
-  if (!is.null(save_info)) {
-    freq <- save_info$freq
-    if (freq > 0) {
-      # 途中保存していた場合の、最後の端数の書き出し
-      remainder <- iter %% freq
-      if (remainder > 0) {
-        start_idx <- iter - remainder + 1
-        len_idx <- length(start_idx:iter)
-        backup_data <- matrix(NA, nrow = len_idx, ncol = 5 + P_fixed)
-        backup_data[, 1] <- start_idx:iter
-        backup_data[, 2] <- lp[start_idx:iter]
-        backup_data[, 3] <- accept[start_idx:iter]
-        backup_data[, 4] <- treedepth_record[start_idx:iter]
-        backup_data[, 5] <- eps
-        backup_data[, 6:(5 + P_fixed)] <- para_fixed[start_idx:iter, , drop = FALSE]
-
-        write.table(backup_data, file = backup_file, append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
-      }
-    } else {
-      # 追加: freq = 0 の場合、最後に全データを一気にまとめて保存する（最速）
-      backup_data <- matrix(NA, nrow = iter, ncol = 5 + P_fixed)
-      backup_data[, 1] <- 1:iter
-      backup_data[, 2] <- lp
-      backup_data[, 3] <- accept
-      backup_data[, 4] <- treedepth_record
-      backup_data[, 5] <- eps
-      backup_data[, 6:(5 + P_fixed)] <- para_fixed
-
-      write.table(backup_data, file = backup_file, append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
-    }
-
-    # 最終的なイテレーション数を進捗ファイルに書き込む
-    writeLines(as.character(iter), con = prog_file)
   }
 
   return(list(
