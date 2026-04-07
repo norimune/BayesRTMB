@@ -9,3 +9,4 @@ inst/doc
 modeling.rmd
 /data/
 BWMU_functions.R
+/BayesRTMB_mcmc/
