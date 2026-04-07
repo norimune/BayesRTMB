@@ -170,7 +170,7 @@ VB_Fit <- R6::R6Class(
     #' @param inc_tran Logical; whether to include transformed parameters in the summary. Default is TRUE.
     #' @param inc_gq Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A data frame containing the summarized posterior statistics.
-    summary = function(pars = NULL, max_rows = 10, digits = 2,
+    summary = function(pars = NULL, max_rows = 10, digits = 3,
                        inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
 
       # Rhatを計算するため全チェインを取得
@@ -244,8 +244,8 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          drift    = if(is.na(drift_val)) NA else round(map_val, drift_val, digits),
-          rel_sd   = if(is.na(rel_sd_val)) NA else round(map_val, rel_sd_val, digits),
+          drift    = if(is.na(drift_val)) NA else round(drift_val, digits),
+          rel_sd   = if(is.na(rel_sd_val)) NA else round(rel_sd_val, digits),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
