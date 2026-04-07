@@ -56,9 +56,10 @@ rtmb_model <- function(data, parameters,
 #' Model Code Wrapper for RTMB
 #'
 #' @param expr A block of code containing model description.
-#' @return A log_prob function taking (dat, par).
+#' @param env Environment to assign to the generated function.
+#' @return A standard R function object taking (dat, par).
 #' @export
-model_code <- function(expr) {
+model_code <- function(expr, env = parent.frame()) {
   raw_expr <- substitute(expr)
 
   # 式を再帰的に走査し、`~` の記述を書き換える
@@ -73,20 +74,27 @@ model_code <- function(expr) {
         name_lpdf <- paste0(dist_name, "_lpdf")
         name_lpmf <- paste0(dist_name, "_lpmf")
 
-        # lpdf と lpmf のうち、環境に存在する方を採用
-        if (exists(name_lpdf, mode = "function")) {
+        # 環境に存在する方を優先的に採用
+        if (exists(name_lpdf, mode = "function", envir = env)) {
           actual_name <- name_lpdf
-        } else if (exists(name_lpmf, mode = "function")) {
+        } else if (exists(name_lpmf, mode = "function", envir = env)) {
           actual_name <- name_lpmf
         } else {
-          stop(sprintf("Distribution function not found: %s or %s", name_lpdf, name_lpmf))
+          actual_name <- name_lpdf # デフォルト
         }
 
-        # lp <- lp + actual_name(target, args...) に書き換え
-        new_call <- bquote(lp <- lp + .(as.call(c(as.name(actual_name), target, dist_args))))
+        # lp <- lp + actual_name(target, args...) の純粋な構文木を作成
+        new_call <- as.call(c(
+          as.name("<-"),
+          as.name("lp"),
+          as.call(c(
+            as.name("+"),
+            as.name("lp"),
+            as.call(c(as.name(actual_name), target, dist_args))
+          ))
+        ))
         return(new_call)
       }
-      # それ以外は再帰的に探索
       x[] <- lapply(x, rewrite_formula)
     }
     return(x)
@@ -94,14 +102,14 @@ model_code <- function(expr) {
 
   processed_expr <- rewrite_formula(raw_expr)
 
-  # 中括弧のネストを防ぐため、ブロック {} の場合は中身を展開する
+  # ブロック {} の場合は中身を展開してフラットにする
   if (is.call(processed_expr) && identical(processed_expr[[1]], as.name("{"))) {
     expr_elements <- as.list(processed_expr)[-1]
   } else {
     expr_elements <- list(processed_expr)
   }
 
-  # 最終的な関数の中身をフラットなリストとして結合し、関数ボディを構築
+  # 関数の中身（ボディ）を構築: { getAll(dat, par); lp <- 0; ... ; return(lp) }
   body_list <- c(
     list(as.name("{")),
     quote(getAll(dat, par)),
@@ -111,9 +119,15 @@ model_code <- function(expr) {
   )
   body_expr <- as.call(body_list)
 
-  # 関数オブジェクトとして生成
-  log_prob_fn <- function(dat, par) {}
-  body(log_prob_fn) <- body_expr
+  # ---------------------------------------------------------
+  # ここが最重要ポイント：純粋な R の function オブジェクトを構築する
+  # ---------------------------------------------------------
+  # 引数リスト `(dat, par)` を作成
+  args <- as.pairlist(alist(dat = , par = ))
+
+  # call("function", args, body) で関数定義の構文木を作り、evalで実体化
+  fn_expr <- call("function", args, body_expr)
+  log_prob_fn <- eval(fn_expr, envir = env)
 
   return(log_prob_fn)
 }
