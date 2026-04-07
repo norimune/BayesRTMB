@@ -462,7 +462,7 @@ positive_centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
 #' @param lambda A numeric scalar for the scale parameter (default is 1).
 #' @return The log-probability of the observed best-worst choice.
 #' @export
-bws_lpmf <- function(x, U, lambda = 1) {
+bw_categorical_logit_lpmf <- function(x, U, lambda = 1) {
   C <- length(U)
   ad_zero <- U[1] * 0
   U_dif <- rep(ad_zero, C * (C - 1))
