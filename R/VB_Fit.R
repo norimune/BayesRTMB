@@ -256,20 +256,23 @@ VB_Fit <- R6::R6Class(
 
     #' @description Plot the ELBO history to diagnose convergence.
     #' @param tail_n Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.
+    #' @param ests Character string `"best"`, numeric vector of estimate indices (e.g., `c(1, 3)`), or `NULL` to plot all. Default is `NULL`.
     #' @param type Character string; the type of plot. Default is "l" (lines).
     #' @param ... Additional arguments passed to the `plot` function.
     #' @return The object itself, invisibly.
-    plot_elbo = function(tail_n = 2000, type = "l", ...) {
+    plot_elbo = function(tail_n = 2000, ests = NULL, type = "l", ...) {
       history_list <- self$elbo_history
       num_estimate <- length(history_list)
-      if (num_estimate == 0) return(invisible(self))
+      if (num_estimate == 0) {
+        cat("No ELBO history available.\n")
+        return(invisible(self))
+      }
 
-      # すべての estimate で history の長さは iter に統一されている前提
       n_total <- length(history_list[[1]])
       plot_data <- do.call(cbind, history_list)
+      colnames(plot_data) <- paste0("est", seq_len(num_estimate))
 
       start_iter <- 1
-
       if (!is.null(tail_n) && tail_n > 0 && tail_n < n_total) {
         plot_data <- plot_data[(n_total - tail_n + 1):n_total, , drop = FALSE]
         start_iter <- n_total - tail_n + 1
@@ -286,14 +289,54 @@ VB_Fit <- R6::R6Class(
       max_rel_obj_val <- self$rel_obj_vals[best_c]
       sub_title <- if(!is.na(max_rel_obj_val)) sprintf("Best (est%d) Final rel_obj: %.5f", best_c, max_rel_obj_val) else ""
 
-      matplot(x_axis, plot_data, type = type, lty = 1, col = "gray",
+      # --- 描画するチェインの選択処理 ---
+      if (is.null(ests)) {
+        target_idx <- seq_len(num_estimate)
+      } else if (identical(ests, "best")) {
+        target_idx <- best_c
+      } else if (is.numeric(ests)) {
+        target_idx <- intersect(ests, seq_len(num_estimate))
+        if (length(target_idx) == 0) {
+          cat("Specified estimates are out of bounds.\n")
+          return(invisible(self))
+        }
+      } else {
+        cat("Invalid 'ests' argument. Use NULL, \"best\", or a numeric vector.\n")
+        return(invisible(self))
+      }
+
+      plot_data <- plot_data[, target_idx, drop = FALSE]
+
+      # --- 線の色と太さの調整 ---
+      # 基本はグレー（1本のみの場合は黒）で、ベストチェインが含まれる場合のみ青くハイライトする
+      cols <- rep("gray", length(target_idx))
+      lwds <- rep(1, length(target_idx))
+
+      best_in_plot <- which(target_idx == best_c)
+      if (length(best_in_plot) > 0) {
+        cols[best_in_plot] <- "dodgerblue"
+        lwds[best_in_plot] <- 2
+      } else if (length(target_idx) == 1) {
+        cols <- "black"
+      }
+
+      matplot(x_axis, plot_data, type = type, lty = 1, col = cols, lwd = lwds,
               xlab = "Iteration", ylab = "ELBO",
               main = main_title, sub = sub_title, ...)
 
-      lines(x_axis, plot_data[, best_c], col = "dodgerblue", lwd = 2)
-
-      legend("bottomright", legend = c(paste("Best (est", best_c, ")"), "Others"),
-             col = c("dodgerblue", "gray"), lwd = c(2, 1), lty = 1)
+      # --- 凡例の描画 ---
+      if (length(target_idx) > 1) {
+        if (length(best_in_plot) > 0) {
+          legend("bottomright", legend = c(paste("Best (est", best_c, ")"), "Others"),
+                 col = c("dodgerblue", "gray"), lwd = c(2, 1), lty = 1, bty = "n")
+        } else {
+          legend("bottomright", legend = colnames(plot_data),
+                 col = cols, lwd = lwds, lty = 1, bty = "n")
+        }
+      } else {
+        legend("bottomright", legend = colnames(plot_data),
+               col = cols, lwd = lwds, lty = 1, bty = "n")
+      }
 
       invisible(self)
     },
