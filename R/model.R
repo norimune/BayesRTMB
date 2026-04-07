@@ -2,33 +2,18 @@
 #'
 #' @param data A list of data used for modeling.
 #' @param parameters A list (or alist) of parameters defined by Dim().
-#' @param model An unquoted expression block defining the model. Optional if log_prob is provided.
+#' @param model A function to calculate the log-posterior probability.
 #' @param transformed An optional function to calculate transformed parameters.
 #' @param generate An optional function to calculate generated quantities.
-#' @param log_prob An optional function to calculate the log-posterior probability.
 #'
 #' @return An instance of the RTMB_Model class.
 #' @export
-rtmb_model <- function(data, parameters,
-                       model = NULL,
+rtmb_model <- function(data, parameters, model,
                        transformed = NULL,
-                       generate = NULL,
-                       log_prob = NULL) {
+                       generate = NULL) {
 
-  # 1. log_prob の決定 (独立した model_code 関数を再利用)
-  raw_model <- substitute(model)
-
-  if (!is.null(log_prob)) {
-    # ユーザーが直接 log_prob を指定した場合はそのまま採用
-    log_prob_fn <- log_prob
-  } else if (!is.null(raw_model)) {
-    # 取得したASTを model_code に渡し、log_prob 関数を動的生成
-    log_prob_fn <- eval(bquote(model_code(.(raw_model))))
-  } else {
-    stop("Either 'model' or 'log_prob' must be provided.")
-  }
-
-  # 2. parameters の内部評価 (P などの data 内変数を展開)
+  # 1. parameters 内の変数（Pなど）を data の中身を使って評価する
+  # これにより、ユーザーは alist(beta = Dim(dim = P)) と書けるようになります
   build_par_list <- function(dat) {
     eval_env <- list2env(dat, parent = parent.frame())
     lapply(parameters, function(x) {
@@ -42,11 +27,11 @@ rtmb_model <- function(data, parameters,
 
   evaluated_par_list <- build_par_list(data)
 
-  # 3. RTMB_Model クラスのインスタンス化
+  # 2. RTMB_Model クラスのインスタンス化
   model_instance <- RTMB_Model$new(
     data         = data,
     par_list     = evaluated_par_list,
-    log_prob     = log_prob_fn,
+    log_prob     = model,
     transform    = transformed,
     generate     = generate
   )
