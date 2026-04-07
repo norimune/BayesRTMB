@@ -11,7 +11,9 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
 
   test_file <- file.path(dir, paste0(name, "-1.csv"))
   if (!file.exists(test_file)) stop(paste("File not found:", test_file))
-  test_dat <- read.csv(test_file, header = TRUE)
+
+  # --- 修正: check.names = FALSE を追加 ---
+  test_dat <- read.csv(test_file, header = TRUE, check.names = FALSE)
   n_samples <- nrow(test_dat)
 
   orig_pl <- model$par_list
@@ -46,7 +48,9 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
     file_path <- file.path(dir, paste0(name, "-", c, ".csv"))
     if (!file.exists(file_path)) stop(paste("File not found:", file_path))
 
-    dat <- read.csv(file_path, header = TRUE)
+    # --- 修正: check.names = FALSE を追加 ---
+    dat <- read.csv(file_path, header = TRUE, check.names = FALSE)
+
     if (nrow(dat) != n_samples) {
       warning(sprintf("Chain %d has %d iterations, expected %d", c, nrow(dat), n_samples))
     }
