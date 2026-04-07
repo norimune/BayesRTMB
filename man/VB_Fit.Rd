@@ -204,7 +204,7 @@ A data frame containing the summarized posterior statistics.
 \subsection{Method \code{plot_elbo()}}{
 Plot the ELBO history to diagnose convergence.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_elbo(tail_n = 2000, ests = NULL, type = "l", ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_elbo(tail_n = 1000, ests = NULL, type = "l", ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
