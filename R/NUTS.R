@@ -153,8 +153,7 @@ NUTS_method <- function(model,
       else cat(msg, "\n")
 
       if (!is.null(save_info)) {
-        # 進捗確認用のテキストファイルは数バイトなので、100回ごとに上書きしても高速
-        writeLines(as.character(i), con = prog_file)
+        #writeLines(as.character(i), con = prog_file)
 
         # --- 追加: freqが0より大きい場合のみ、途中でCSVに追記 ---
         freq <- save_info$freq
