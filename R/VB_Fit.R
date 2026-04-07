@@ -244,8 +244,8 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          drift         = if(is.na(drift_val)) NA else sprintf("%.1e", drift_val),
-          rel_sd        = if(is.na(rel_sd_val)) NA else sprintf("%.1e", rel_sd_val),
+          drift    = if(is.na(drift_val)) NA else round(map_val, drift_val, digits),
+          rel_sd   = if(is.na(rel_sd_val)) NA else round(map_val, rel_sd_val, digits),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
