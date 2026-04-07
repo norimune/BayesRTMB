@@ -203,9 +203,20 @@ VB_Fit <- R6::R6Class(
         # 軌跡データから変動幅を計算
         if (!is.null(self$mu_history) && var_name %in% colnames(self$mu_history)) {
           hist_vec <- self$mu_history[, var_name]
-          opt_diff_val <- sd(hist_vec)
+          n_hist <- length(hist_vec)
+          half_n <- floor(n_hist / 2)
+
+          mean_all   <- mean(hist_vec)
+          mean_first <- mean(hist_vec[1:half_n])
+          mean_last  <- mean(hist_vec[(half_n + 1):n_hist])
+
+          scale_factor <- abs(mean_all) + 1e-4
+          drift_val <- abs(mean_last - mean_first) / scale_factor
+          rel_sd_val <- sd(hist_vec) / scale_factor
+
         } else {
-          opt_diff_val <- NA # 変換量 (tran_fit) や生成量 (gq_fit) の場合は NA
+          drift_val <- NA
+          rel_sd_val <- NA
         }
 
         if (length(valid_vec) == 0) {
@@ -224,11 +235,6 @@ VB_Fit <- R6::R6Class(
         } else {
           map_val   <- map_est(valid_vec)
           q95       <- quantile95(valid_vec)
-          if (!is.na(opt_diff_val)) {
-            diff_sd_ratio <- opt_diff_val / sd_val
-          } else {
-            diff_sd_ratio <- NA
-          }
         }
 
         res_list_sum[[i]] <- data.frame(
@@ -238,7 +244,8 @@ VB_Fit <- R6::R6Class(
           map      = round(map_val, digits),
           q2.5     = round(unname(q95[1]), digits),
           q97.5    = round(unname(q95[2]), digits),
-          opt_sd_ratio = if(is.na(diff_sd_ratio)) NA else round(unname(diff_sd_ratio), digits),
+          drift         = if(is.na(drift_val)) NA else sprintf("%.1e", drift_val),
+          rel_sd        = if(is.na(rel_sd_val)) NA else sprintf("%.1e", rel_sd_val),
           row.names = NULL,
           stringsAsFactors = FALSE,
           check.names = FALSE
