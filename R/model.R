@@ -18,14 +18,14 @@ rtmb_model <- function(data, parameters, model,
   }
   evaluated_par_list <- build_par_list(data)
 
-  # 2. transformed がリスト形式なら自動で関数化
-  if (!is.null(transformed) && !is.function(transformed)) {
-    transformed <- transformed_code(transformed, env = parent.frame())
+  raw_transformed <- substitute(transformed)
+  if (!is.null(raw_transformed) && !is.function(transformed)) {
+    transformed <- eval(bquote(transformed_code(.(raw_transformed), env = parent.frame())))
   }
 
-  # 3. generate も同様の仕組みにする場合 (オプション)
-  if (!is.null(generate) && !is.function(generate)) {
-    generate <- transformed_code(generate, env = parent.frame())
+  raw_generate <- substitute(generate)
+  if (!is.null(raw_generate) && !is.function(generate)) {
+    generate <- eval(bquote(transformed_code(.(raw_generate), env = parent.frame())))
   }
 
   model_instance <- RTMB_Model$new(
@@ -112,36 +112,6 @@ model_code <- function(expr, env = parent.frame()) {
   log_prob_fn <- eval(fn_expr, envir = env)
 
   return(log_prob_fn)
-}
-#' Transformed Code Wrapper for RTMB
-#'
-#' @param expr_list A list or alist of expressions for transformed parameters.
-#' @param env Environment to assign to the generated function.
-#' @return A function taking (dat, par).
-#' @export
-transformed_code <- function(expr_list, env = parent.frame()) {
-  # リスト内の各要素を代入文 (name <- expr) の形にする
-  nms <- names(expr_list)
-  lines <- lapply(nms, function(n) {
-    as.call(list(as.name("<-"), as.name(n), expr_list[[n]]))
-  })
-
-  # 関数ボディの構築: { getAll(dat, par); name1 <- expr1; ...; return(list(name1, ...)) }
-  ret_call <- as.call(c(list(as.name("list")), lapply(nms, as.name)))
-
-  body_list <- c(
-    list(as.name("{")),
-    quote(getAll(dat, par)),
-    lines,
-    list(as.call(list(as.name("return"), ret_call)))
-  )
-
-  body_expr <- as.call(body_list)
-  args <- as.pairlist(alist(dat = , par = ))
-  fn_expr <- call("function", args, body_expr)
-
-  fn <- eval(fn_expr, envir = env)
-  return(fn)
 }
 #' Transformed Code Wrapper for RTMB
 #'
