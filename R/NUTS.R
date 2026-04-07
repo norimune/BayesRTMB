@@ -2,7 +2,7 @@ NUTS_method <- function(model,
                         sampling, warmup, delta = 0.8,
                         max_treedepth = 10, chain,
                         update_progress = NULL,
-                        laplace) {
+                        laplace, save_info = NULL) {
 
   iter <- sampling + warmup
   P_all <- length(model$env$last.par)
@@ -17,6 +17,16 @@ NUTS_method <- function(model,
 
   q_fixed_init <- model$par
   P_fixed <- length(q_fixed_init)
+
+  if (!is.null(save_info)) {
+    backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", chain, ".csv"))
+    prog_file <- file.path(save_info$dir, paste0(save_info$name, "_progress_", chain, ".txt"))
+
+    param_names <- names(q_fixed_init)
+    if (is.null(param_names)) param_names <- paste0("V", 1:P_fixed)
+    header <- c("iteration", "lp", "accept", "treedepth", "eps", param_names)
+    write.table(t(header), file = backup_file, append = FALSE, sep = ",", col.names = FALSE, row.names = FALSE)
+  }
 
   para_fixed <- array(NA, dim=c(iter, P_fixed))
   para_full  <- array(NA, dim=c(iter, P_all))
@@ -158,9 +168,29 @@ NUTS_method <- function(model,
     }
 
     if (i %% 100 == 0) {
+      msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
       if (!is.null(update_progress)) update_progress()
-      else cat(paste0("chain ", chain, ": iter ", i,
-                      ifelse(i <= warmup, " warmup", " sampling"), "\n"))
+      else cat(msg, "\n")
+
+      if (!is.null(save_info)) {
+        writeLines(as.character(i), con = prog_file) # 進捗を上書き
+
+        start_idx <- i - 99
+        if (start_idx == 1) start_idx <- 2
+        len_idx <- length(start_idx:i)
+
+        # MCMC_Fitの復元に必要な全情報をまとめる
+        backup_data <- matrix(NA, nrow = len_idx, ncol = 5 + P_fixed)
+        backup_data[, 1] <- start_idx:i
+        backup_data[, 2] <- lp[start_idx:i]
+        backup_data[, 3] <- accept[start_idx:i]
+        backup_data[, 4] <- treedepth_record[start_idx:i]
+        backup_data[, 5] <- eps
+        backup_data[, 6:(5 + P_fixed)] <- para_fixed[start_idx:i, ]
+
+        write.table(backup_data, file = backup_file, append = TRUE, sep = ",", col.names = FALSE, row.names = FALSE)
+      }
+
     }
   }
 

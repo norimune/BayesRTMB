@@ -10,21 +10,6 @@
 #' @param log_prob A user-supplied function that returns the log-probability.
 #' @param transform An optional function for transformed parameters.
 #' @param generate An optional function for generated quantities.
-#' @param init Optional initial values for parameters.
-#' @param laplace Logical; whether to use Laplace approximation for
-#'   random effects.
-#' @param include_jacobian Logical; whether to include Jacobian
-#'   adjustments in the objective function.
-#' @param control A list of control settings passed to the optimizer.
-#' @param sampling A character string specifying the sampler to use.
-#' @param warmup Number of warmup iterations.
-#' @param chains Number of MCMC chains.
-#' @param thin Thinning interval.
-#' @param seed Random seed.
-#' @param delta Target acceptance rate for HMC/NUTS.
-#' @param max_treedepth Maximum tree depth for HMC/NUTS.
-#' @param parallel Logical; whether to run chains in parallel.
-#' @param ... Additional arguments.
 #'
 #' @field data A list of observed data.
 #' @field par_list A list defining model parameters.
@@ -179,7 +164,9 @@ RTMB_Model <- R6::R6Class(
 
 
     # 3. 最尤法 / MAP推定 メソッド
-    #' @description Optimize the posterior or marginal posterior.
+    #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
+    #' @param init Optional initial values for parameters.
+    #' @param control A list of control settings passed to the optimizer.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, control = list()) {
       cat("Starting optimization...\n")
@@ -453,16 +440,37 @@ RTMB_Model <- R6::R6Class(
 
     # 4. MCMC NUTS サンプリング メソッド
     #' @description Draw posterior samples from the model.
+    #' @param sampling Number of sampling iterations. Default is 1000.
+    #' @param warmup Number of warmup iterations. Default is 1000.
+    #' @param chains Number of MCMC chains. Default is 4.
+    #' @param thin Thinning interval. Default is 1.
+    #' @param seed Random seed.
+    #' @param delta Target acceptance rate for HMC/NUTS. Default is 0.8.
+    #' @param max_treedepth Maximum tree depth for HMC/NUTS. Default is 10.
+    #' @param parallel Logical; whether to run chains in parallel. Default is TRUE.
+    #' @param laplace Logical; whether to use Laplace approximation. Default is FALSE.
+    #' @param init Optional initial values for parameters.
+    #' @param save_csv Optional list for saving MCMC results to CSV files. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
                       delta=0.8, max_treedepth = 10,
                       parallel = TRUE, laplace = FALSE,
-                      init = NULL) {
+                      init = NULL, save_csv = NULL) {
 
       if (!is.null(init)) init <- as.numeric(init)
       set.seed(seed)
       orig_pl <- self$par_list
+
+      if (!is.null(save_csv)) {
+        if (!is.list(save_csv)) stop("save_csv は list(name='...', dir='...') の形式で指定してください。")
+        save_name <- if (!is.null(save_csv$name)) save_csv$name else "model"
+        save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_mcmc"
+        if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
+        save_info <- list(name = save_name, dir = save_dir)
+      } else {
+        save_info <- NULL
+      }
 
       random_flags <- sapply(orig_pl, function(x) isTRUE(x$random))
 
