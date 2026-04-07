@@ -633,13 +633,20 @@ RTMB_Model <- R6::R6Class(
         for (c in 1:chains) {
           backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
 
-          # mcmc_index (thinning後のイテレーション番号) を使用
+          # サンプラーの指標をまとめたデータフレームを作成
+          df_metrics <- data.frame(
+            iteration = mcmc_index,
+            accept    = accept_mat[, c],
+            treedepth = td_mat[, c],
+            eps       = eps_vec[c]
+          )
+
           if (!is.null(random_fit)) {
-            df_out <- cbind(iteration = mcmc_index,
+            df_out <- cbind(df_metrics,
                             as.data.frame(fit[, c, ]),
                             as.data.frame(random_fit[, c, ]))
           } else {
-            df_out <- cbind(iteration = mcmc_index,
+            df_out <- cbind(df_metrics,
                             as.data.frame(fit[, c, ]))
           }
 

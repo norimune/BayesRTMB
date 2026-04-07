@@ -4,16 +4,7 @@
 \alias{read_mcmc_csv}
 \title{Restore MCMC Fit from CSV}
 \usage{
-read_mcmc_csv(
-  model,
-  name,
-  dir = "BayesRTMB_mcmc",
-  chains = 4,
-  sampling = 1000,
-  warmup = 1000,
-  thin = 1,
-  laplace = FALSE
-)
+read_mcmc_csv(model, name, dir = "BayesRTMB_mcmc", chains = 4, laplace = FALSE)
 }
 \arguments{
 \item{model}{An RTMB_Model object.}
@@ -23,12 +14,6 @@ read_mcmc_csv(
 \item{dir}{Directory where CSVs are saved. Default is "BayesRTMB_mcmc".}
 
 \item{chains}{Number of chains. Default is 4.}
-
-\item{sampling}{Number of sampling iterations. Default is 1000.}
-
-\item{warmup}{Number of warmup iterations. Default is 1000.}
-
-\item{thin}{Thinning interval. Default is 1.}
 
 \item{laplace}{Logical; whether Laplace approximation was used. Default is FALSE.}
 }
