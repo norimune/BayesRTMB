@@ -450,7 +450,7 @@ RTMB_Model <- R6::R6Class(
     #' @param parallel Logical; whether to run chains in parallel. Default is TRUE.
     #' @param laplace Logical; whether to use Laplace approximation. Default is FALSE.
     #' @param init Optional initial values for parameters.
-    #' @param save_csv Optional list for saving MCMC results to CSV files. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
+    #' @param save_csv Optional list for saving MCMC results. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
@@ -462,6 +462,7 @@ RTMB_Model <- R6::R6Class(
       set.seed(seed)
       orig_pl <- self$par_list
 
+      # --- CSV保存用の情報整理とディレクトリ作成 ---
       if (!is.null(save_csv)) {
         if (!is.list(save_csv)) stop("save_csv は list(name='...', dir='...') の形式で指定してください。")
         save_name <- if (!is.null(save_csv$name)) save_csv$name else "model"
@@ -505,33 +506,21 @@ RTMB_Model <- R6::R6Class(
           init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
         }
 
-        # MCMCではヤコビアンが必須
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
         ad_obj <- ad_setup$ad_obj
 
-        #if (laplace) {
-        #  # Laplace近似が有効な場合は IMH 法を実行
-        #  res <- IMH_method(
-        #    model = ad_obj,
-        #    sampling = sampling,
-        #    warmup = warmup,
-        #    chain = c,
-        #    update_progress = p_callback,
-        #    df = 4
-        #  )
-        #} else {
-          # 通常は NUTS を実行
-          res <- NUTS_method(
-            model = ad_obj,
-            sampling = sampling,
-            warmup = warmup,
-            delta = delta,
-            max_treedepth = max_treedepth,
-            chain = c,
-            update_progress = p_callback,
-            laplace = laplace
-          )
-        #}
+        # NUTS を実行 (save_info を渡す)
+        res <- NUTS_method(
+          model = ad_obj,
+          sampling = sampling,
+          warmup = warmup,
+          delta = delta,
+          max_treedepth = max_treedepth,
+          chain = c,
+          update_progress = p_callback,
+          laplace = laplace,
+          save_info = save_info
+        )
 
         P_all_true <- length(self$pl_full$names)
         iter <- sampling + warmup
@@ -565,27 +554,15 @@ RTMB_Model <- R6::R6Class(
         progressr::with_progress({
           p <- progressr::progressor(steps = total_updates)
           results_list <- future.apply::future_lapply(1:chains, function(c) {
-            run_chain(c, p_callback = function() p())
+            run_chain(c, p_callback = function(msg = "") p(message = msg))
           }, future.seed = TRUE,
           future.globals = c(
-            "unconstrained_vector_to_list",
-            "constrained_vector_to_list",
-            "stz_basis",
-            "to_constrained",
-            "to_unconstrained",
-            "calc_log_jacobian",
-            "generate_random_init",
-            "NUTS_method",
-            "IMH_method",
-            "create_NUTS_core",
-            "lpdf",
-            "math",
-            "log_sum_exp",
-            "inv_logit",
-            "logit",
-            "distance",
-            "squared_distance",
-            "softmax"
+            "unconstrained_vector_to_list", "constrained_vector_to_list",
+            "stz_basis", "to_constrained", "to_unconstrained",
+            "calc_log_jacobian", "generate_random_init", "NUTS_method",
+            "IMH_method", "create_NUTS_core", "lpdf", "math",
+            "log_sum_exp", "inv_logit", "logit", "distance",
+            "squared_distance", "softmax"
           ),
           future.packages = c("RTMB","BayesRTMB")
           )
@@ -637,9 +614,7 @@ RTMB_Model <- R6::R6Class(
       eps_chains <- eps_vec
       accept_chains <- apply(accept_mat, 2, mean)
       treedepth_chains <- apply(td_mat, 2, max)
-      names(eps_chains) <-
-        names(accept_chains) <-
-        names(treedepth_chains) <- paste0("chain", 1:chains)
+      names(eps_chains) <- names(accept_chains) <- names(treedepth_chains) <- paste0("chain", 1:chains)
 
       posterior_mean <- numeric(length(self$pl_full$names))
       names(posterior_mean) <- self$pl_full$names
@@ -650,7 +625,6 @@ RTMB_Model <- R6::R6Class(
         posterior_mean[names(random_mean)] <- random_mean
       }
 
-      # --- MCMC_Fit インスタンスを返す ---
       res_obj <- MCMC_Fit$new(
         model          = self,
         fit            = fit,
@@ -666,13 +640,8 @@ RTMB_Model <- R6::R6Class(
       has_generate <- !is.null(self$generate)
       has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
-      if (has_tran || has_cf_corr) {
-        res_obj$transformed_draws(self$transform)
-      }
-
-      if (has_generate) {
-        res_obj$generated_quantities(self$generate)
-      }
+      if (has_tran || has_cf_corr) res_obj$transformed_draws(self$transform)
+      if (has_generate) res_obj$generated_quantities(self$generate)
 
       return(res_obj)
     },
