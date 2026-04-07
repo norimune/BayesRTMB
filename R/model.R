@@ -94,13 +94,22 @@ model_code <- function(expr) {
 
   processed_expr <- rewrite_formula(raw_expr)
 
-  # 最終的な関数の中身を構築
-  body_expr <- bquote({
-    getAll(dat, par)
-    lp <- 0
-    .(processed_expr)
-    return(lp)
-  })
+  # 中括弧のネストを防ぐため、ブロック {} の場合は中身を展開する
+  if (is.call(processed_expr) && identical(processed_expr[[1]], as.name("{"))) {
+    expr_elements <- as.list(processed_expr)[-1]
+  } else {
+    expr_elements <- list(processed_expr)
+  }
+
+  # 最終的な関数の中身をフラットなリストとして結合し、関数ボディを構築
+  body_list <- c(
+    list(as.name("{")),
+    quote(getAll(dat, par)),
+    quote(lp <- 0),
+    expr_elements,
+    quote(return(lp))
+  )
+  body_expr <- as.call(body_list)
 
   # 関数オブジェクトとして生成
   log_prob_fn <- function(dat, par) {}
