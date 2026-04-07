@@ -204,13 +204,15 @@ A data frame containing the summarized posterior statistics.
 \subsection{Method \code{plot_elbo()}}{
 Plot the ELBO history to diagnose convergence.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_elbo(tail_n = 2000, type = "l", ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_elbo(tail_n = 2000, ests = NULL, type = "l", ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{tail_n}}{Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.}
+
+\item{\code{ests}}{Character string `"best"`, numeric vector of estimate indices (e.g., `c(1, 3)`), or `NULL` to plot all. Default is `NULL`.}
 
 \item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
 
