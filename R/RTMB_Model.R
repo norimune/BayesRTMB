@@ -467,8 +467,12 @@ RTMB_Model <- R6::R6Class(
         if (!is.list(save_csv)) stop("save_csv は list(name='...', dir='...') の形式で指定してください。")
         save_name <- if (!is.null(save_csv$name)) save_csv$name else "model"
         save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_mcmc"
+
+        # 追加: 保存頻度（0ならチェイン終了時にまとめて1回で保存）
+        save_freq <- if (!is.null(save_csv$freq)) save_csv$freq else 0
+
         if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
-        save_info <- list(name = save_name, dir = save_dir)
+        save_info <- list(name = save_name, dir = save_dir, freq = save_freq)
       } else {
         save_info <- NULL
       }
