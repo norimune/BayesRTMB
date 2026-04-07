@@ -311,9 +311,21 @@ VB_Fit <- R6::R6Class(
 
       plot_data <- self$mu_history
 
-      # 特定のパラメータのみを描画する場合
       if (!is.null(pars)) {
-        valid_pars <- intersect(pars, colnames(plot_data))
+        valid_pars <- character(0)
+        for (p in pars) {
+          # 1. 完全一致による検索 (例: "delta[1]" や "mat[1,2]")
+          if (p %in% colnames(plot_data)) {
+            valid_pars <- c(valid_pars, p)
+          } else {
+            # 2. ベース名による一括検索 (例: "delta" -> "delta[1]", "mat" -> "mat[1,1]")
+            pattern <- paste0("^", p, "\\[.*\\]$")
+            matched <- grep(pattern, colnames(plot_data), value = TRUE)
+            valid_pars <- c(valid_pars, matched)
+          }
+        }
+        valid_pars <- unique(valid_pars)
+
         if (length(valid_pars) == 0) {
           cat("None of the specified parameters were found in the trajectory data.\n")
           return(invisible(self))
@@ -324,18 +336,48 @@ VB_Fit <- R6::R6Class(
       n_steps <- nrow(plot_data)
       x_axis <- seq_len(n_steps)
 
-      # 全パラメータ数が多いと見づらくなるため、デフォルトのタイトル等を設定
+      # --- 縦軸(ylim)の自動調整アルゴリズム ---
+      y_min <- min(plot_data, na.rm = TRUE)
+      y_max <- max(plot_data, na.rm = TRUE)
+      y_mean <- mean(plot_data, na.rm = TRUE)
+      y_range <- y_max - y_min
+
+      args_list <- list(...)
+
+      # ユーザーが明示的に ylim を指定していない場合のみ自動調整
+      if (!"ylim" %in% names(args_list)) {
+        # 最小限確保する縦軸の幅 (絶対値0.1 または 平均値の5% のどちらか大きい方)
+        min_range <- max(0.1, abs(y_mean) * 0.05)
+
+        if (y_range < min_range) {
+          # 変動が小さすぎる場合は、最小幅を適用して「平坦」に見せる
+          y_min <- y_mean - min_range / 2
+          y_max <- y_mean + min_range / 2
+        } else {
+          # 変動が十分ある場合は、上下に5%の余白を持たせる
+          y_min <- y_min - y_range * 0.05
+          y_max <- y_max + y_range * 0.05
+        }
+        args_list$ylim <- c(y_min, y_max)
+      }
+
       main_title <- sprintf("Parameter Trajectory (Last %d steps)", n_steps)
 
-      matplot(x_axis, plot_data, type = type, lty = 1,
-              xlab = "Iterations (in final window)", ylab = "Parameter Value",
-              main = main_title, ...)
+      # --- matplotの引数を動的に構築して呼び出し ---
+      args_list$x <- x_axis
+      args_list$y <- plot_data
+      args_list$type <- type
+      args_list$lty <- 1
+      args_list$xlab <- "Iterations (in final window)"
+      if (!"ylab" %in% names(args_list)) args_list$ylab <- "Parameter Value"
+      if (!"main" %in% names(args_list)) args_list$main <- main_title
 
-      # 描画対象のパラメータ数が10個以下なら凡例を表示
+      do.call(matplot, args_list)
+
       if (ncol(plot_data) <= 10) {
         legend("topright", legend = colnames(plot_data),
                col = seq_len(ncol(plot_data)), lty = 1, cex = 0.8,
-               bty = "n")
+               bty = "n", inset = c(0.02, 0.02))
       }
 
       invisible(self)
