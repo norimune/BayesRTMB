@@ -49,7 +49,6 @@
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field posterior_mean Posterior mean estimates.
 #'
-#' @export
 MCMC_Fit <- R6::R6Class(
   classname = "mcmc_fit",
 

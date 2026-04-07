@@ -30,7 +30,6 @@
 #' @field tran_est List of transformed parameter estimates.
 #' @field gq_est List of generated quantity estimates.
 #'
-#' @export
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
 

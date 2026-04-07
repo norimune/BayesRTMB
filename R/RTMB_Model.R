@@ -33,7 +33,6 @@
 #' @field generate An optional generated quantities function.
 #' @field pl_full Full parameter information used internally.
 #' @import RTMB
-#' @export
 RTMB_Model <- R6::R6Class(
   classname = "RTMB_Model",
 
