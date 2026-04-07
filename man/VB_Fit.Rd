@@ -53,6 +53,7 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item \href{#method-advi_fit-draws}{\code{VB_Fit$draws()}}
 \item \href{#method-advi_fit-summary}{\code{VB_Fit$summary()}}
 \item \href{#method-advi_fit-plot_elbo}{\code{VB_Fit$plot_elbo()}}
+\item \href{#method-advi_fit-plot_trajectory}{\code{VB_Fit$plot_trajectory()}}
 \item \href{#method-advi_fit-transformed_draws}{\code{VB_Fit$transformed_draws()}}
 \item \href{#method-advi_fit-generated_quantities}{\code{VB_Fit$generated_quantities()}}
 \item \href{#method-advi_fit-internal_rotate}{\code{VB_Fit$internal_rotate()}}
@@ -169,7 +170,7 @@ Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
 \if{html}{\out{<div class="r">}}\preformatted{VB_Fit$summary(
   pars = NULL,
   max_rows = 10,
-  digits = 2,
+  digits = 3,
   inc_random = FALSE,
   inc_tran = TRUE,
   inc_gq = TRUE
@@ -214,6 +215,30 @@ Plot the ELBO history to diagnose convergence.
 \item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
 
 \item{\code{...}}{Additional arguments passed to the `plot` function.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The object itself, invisibly.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-plot_trajectory"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-plot_trajectory}{}}}
+\subsection{Method \code{plot_trajectory()}}{
+Plot the parameter trajectory from the final optimization window.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_trajectory(pars = NULL, type = "l", ...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to plot. If NULL, plots all available parameters.}
+
+\item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
+
+\item{\code{...}}{Additional arguments passed to the `matplot` function.}
 }
 \if{html}{\out{</div>}}
 }
