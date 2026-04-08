@@ -409,6 +409,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # 固定効果と変量効果の名前を取得
   fixed_names <- colnames(X)
+  fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
   ranef_names <- parsed$reTrms$cnms[[1]]
 
   # 変量効果の情報の抽出
@@ -603,6 +604,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 
   N <- length(Y)
   fixed_names <- colnames(X)
+  fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
 
   # 2. dataの準備
   dat <- list(
@@ -716,6 +718,9 @@ rtmb_fa <- function(data, n_factors = 1,
   P <- ncol(Y)
   K <- n_factors
 
+  var_names <- colnames(data)
+  if (is.null(var_names)) var_names <- paste0("V", 1:P)
+
   if (K >= P) {
     stop("因子の数(K)は観測変数の数(P)より小さくする必要があります。")
   }
@@ -733,9 +738,9 @@ rtmb_fa <- function(data, n_factors = 1,
 
   # 2. パラメータの定義
   params <- list(
-    mu     = Dim(P),
+    mu     = Dim(P, names = var_names),
     Lambda = Dim(c(P, K), type = "lower_tri"), # 回転の自由度をなくすための下三角行列制約
-    psi    = Dim(P, lower = 0)
+    psi    = Dim(P, lower = 0, names = var_names)
   )
 
   # 3. モデルの構築 (Woodbury公式による尤度計算の超高速化)
@@ -827,6 +832,9 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   N <- nrow(Y)
   P <- ncol(Y)
 
+  var_names <- colnames(data)
+  if (is.null(var_names)) var_names <- paste0("V", 1:P)
+
   dat <- list(
     N = N,
     P = P,
@@ -837,8 +845,8 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   )
 
   params <- list(
-    mu       = Dim(P),
-    sigma    = Dim(P, lower = 0),
+    mu       = Dim(P, names = var_names),
+    sigma    = Dim(P, lower = 0, names = var_names),
     CF_Omega = Dim(c(P, P), type = "CF_corr")
   )
 
