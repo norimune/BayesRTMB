@@ -15,7 +15,8 @@ rtmb_fa(
 
 \item{n_factors}{因子の数 (K)}
 
-\item{prior}{事前分布のハイパーパラメータのリスト}
+\item{prior}{事前分布のハイパーパラメータのリスト
+探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー}
 }
 \description{
 探索的因子分析 (Bayesian EFA) 超高速版ラッパー

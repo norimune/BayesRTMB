@@ -4,7 +4,7 @@
 \alias{bernoulli_logit_lpmf}
 \title{Bernoulli log-probability mass function with logit parameterization}
 \usage{
-bernoulli_logit_lpmf(x, mu)
+bernoulli_logit_lpmf(x, eta)
 }
 \arguments{
 \item{x}{Vector of binary outcomes (0 or 1).}

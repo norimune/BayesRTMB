@@ -10,12 +10,14 @@
 #' @param log_prob A user-supplied function that returns the log-probability.
 #' @param transform An optional function for transformed parameters.
 #' @param generate An optional function for generated quantities.
+#' @param par_names A list of parameter names
 #'
 #' @field data A list of observed data.
 #' @field par_list A list defining model parameters.
 #' @field log_prob A user-supplied log-probability function.
 #' @field transform An optional transformed parameters function.
 #' @field generate An optional generated quantities function.
+#' @field par_names A list of parameter names
 #' @field pl_full Full parameter information used internally.
 #' @field formula The formula used to generate the model, if applicable.
 #' @field raw_data The original data frame used to generate the model, if applicable.
@@ -30,6 +32,7 @@ RTMB_Model <- R6::R6Class(
     log_prob   = NULL,
     transform  = NULL,
     generate   = NULL,
+    par_names  = NULL,
     pl_full    = NULL,
     formula    = NULL,
     raw_data   = NULL,
@@ -37,8 +40,9 @@ RTMB_Model <- R6::R6Class(
 
     # 1. コンストラクタ
     #' @description Create a new `RTMB_Model` object.
-    initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL) {
+    initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL, par_names = NULL) {
       self$data <- data
+      self$par_names <- par_names
       self$par_list <- lapply(par_list, function(x) {
         if (typeof(x) %in% c("language", "symbol")) {
           eval(x, envir = self$data, enclos = parent.frame())
@@ -49,6 +53,9 @@ RTMB_Model <- R6::R6Class(
       self$log_prob   <- log_prob
       self$transform  <- transform
       self$generate   <- generate
+
+      self$pl_full <- parse_parameters(self$par_list, self$par_names)
+      names(self$pl_full$init) <- self$pl_full$names
 
       self$pl_full <- parse_parameters(self$par_list)
       names(self$pl_full$init) <- self$pl_full$names

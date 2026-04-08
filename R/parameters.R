@@ -5,10 +5,9 @@
 #' @param lower Lower bound.
 #' @param upper Upper bound.
 #' @param random Logical; whether it is a random effect.
-#' @param names vector of parameters names
 #'
 #' @export
-Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE, names = NULL) {
+Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE) {
   if (is.null(type)) {
     if (length(dim) == 1) type <- "vector"
     else if (length(dim) == 2) type <- "matrix"
@@ -84,9 +83,52 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
     lower      = lower,
     upper      = upper,
     random     = random,
-    bounds     = bounds_type,
-    names      = names
+    bounds     = bounds_type
   )
+}
+
+
+generate_flat_names <- function(base_name, dims, names_def = NULL) {
+  len <- prod(dims)
+  if (is.null(dims)) dims <- len
+
+  if (len == 1) {
+    if (!is.null(names_def) && length(names_def) == 1) {
+      return(paste0(base_name, "[", names_def, "]"))
+    }
+    return(base_name)
+  }
+
+  if (length(dims) > 1) {
+    if (!is.null(names_def)) {
+      if (is.list(names_def) && length(names_def) == length(dims)) {
+        # 次元ごとにリストで名前が指定された場合
+        grid <- do.call(expand.grid, names_def)
+        return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
+      } else if (is.atomic(names_def) && length(names_def) == dims[1]) {
+        # ベクトルで名前が指定された場合
+        if (length(dims) == 2 && dims[1] == dims[2]) {
+          # 正方行列（CF_corr など）: 行と列の両方に適用
+          grid <- expand.grid(names_def, names_def)
+        } else {
+          # 非正方行列: 行のみに適用
+          dim_list <- lapply(dims, seq_len)
+          dim_list[[1]] <- names_def
+          grid <- do.call(expand.grid, dim_list)
+        }
+        return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
+      }
+    }
+    # 名前指定がない場合、またはサイズが合わない場合
+    grid <- do.call(expand.grid, lapply(dims, seq_len))
+    return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
+  } else {
+    # 1次元ベクトルの場合
+    if (!is.null(names_def) && length(names_def) == len) {
+      return(paste0(base_name, "[", names_def, "]"))
+    }
+    return(paste0(base_name, "[", seq_len(len), "]"))
+  }
 }
 
 stz_basis <- function(K) {
@@ -95,7 +137,7 @@ stz_basis <- function(K) {
     Q[1:j, j] <- 1 / sqrt(j * (j + 1))
     Q[j + 1, j] <- -j / sqrt(j * (j + 1))
   }
-  Q
+  return(Q)
 }
 
 # 制約空間(元の形)のフラットベクトルをリストに復元する関数
@@ -595,7 +637,7 @@ generate_random_init <- function(pl_full, par_list, range = 2) {
   return(init_final)
 }
 
-parse_parameters <- function(par_list) {
+parse_parameters <- function(par_list, par_names = NULL) {
   P <- sum(sapply(par_list, function(x) x$length))
 
   init_vec    <- numeric(P)
@@ -609,54 +651,8 @@ parse_parameters <- function(par_list) {
     p <- par_list[[name]]
     len <- p$length
     end_idx <- idx + len - 1
-
-    if (len == 1) {
-      # スカラーの場合
-      if (!is.null(p$names) && length(p$names) == 1) {
-        flat_names[idx] <- paste0(name, "[", p$names, "]")
-      } else {
-        flat_names[idx] <- name
-      }
-    } else {
-      # parameters.R 内 parse_parameters の一部を置換
-
-      if (length(p$dim) > 1) {
-        if (!is.null(p$names)) {
-          if (is.list(p$names) && length(p$names) == length(p$dim)) {
-            # names がリスト形式で各次元の名前が指定されている場合 (例: 行名と列名のリスト)
-            grid <- do.call(expand.grid, p$names)
-            flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
-          } else if (is.atomic(p$names) && length(p$names) == p$dim[1]) {
-            # names がベクトルで渡された場合
-            if (length(p$dim) == 2 && p$dim[1] == p$dim[2]) {
-              # 正方行列 (相関行列など) なら行と列の両方に同じ名前を適用
-              grid <- expand.grid(p$names, p$names)
-            } else {
-              # 非正方行列 (Lambdaなど) なら行のみ名前、列は数字インデックス
-              dim_list <- lapply(p$dim, seq_len)
-              dim_list[[1]] <- p$names
-              grid <- do.call(expand.grid, dim_list)
-            }
-            flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
-          } else {
-            # サイズが合わない場合のフォールバック
-            grid <- do.call(expand.grid, lapply(p$dim, seq_len))
-            flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
-          }
-        } else {
-          # namesが未指定の場合
-          grid <- do.call(expand.grid, lapply(p$dim, seq_len))
-          flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
-        }
-      } else {
-        # ベクトルの場合 (変更なし)
-        if (!is.null(p$names) && length(p$names) == len) {
-          flat_names[idx:end_idx] <- paste0(name, "[", p$names, "]")
-        } else {
-          flat_names[idx:end_idx] <- paste0(name, "[", 1:len, "]")
-        }
-      }
-    }
+    names_def <- if (!is.null(par_names)) par_names[[name]] else NULL
+    flat_names[idx:end_idx] <- generate_flat_names(name, p$dim, names_def)
 
     if (!is.null(p$lower)) lower_vec[idx:end_idx] <- p$lower
     if (!is.null(p$upper)) upper_vec[idx:end_idx] <- p$upper

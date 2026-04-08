@@ -4,14 +4,7 @@
 \alias{Dim}
 \title{Define parameter dimensions and types}
 \usage{
-Dim(
-  dim = 1,
-  type = NULL,
-  lower = NULL,
-  upper = NULL,
-  random = FALSE,
-  names = NULL
-)
+Dim(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE)
 }
 \arguments{
 \item{dim}{Dimensions of the parameter.}
@@ -23,8 +16,6 @@ Dim(
 \item{upper}{Upper bound.}
 
 \item{random}{Logical; whether it is a random effect.}
-
-\item{names}{vector of parameters names}
 }
 \description{
 Define parameter dimensions and types

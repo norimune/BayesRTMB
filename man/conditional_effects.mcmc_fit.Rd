@@ -5,7 +5,11 @@
 \title{MCMC_Fitクラス用のメソッド}
 \usage{
 \method{conditional_effects}{mcmc_fit}(fit, effect, resolution = 100, prob = 0.95, ...)
+
+\method{conditional_effects}{mcmc_fit}(fit, effect, resolution = 100, prob = 0.95, ...)
 }
 \description{
 MCMC_Fitクラス用のメソッド
+
+ce_rtmb クラス専用のプロットメソッド (Base R)
 }
