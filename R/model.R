@@ -375,13 +375,28 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   # 1. フォーミュラのパース
   parsed <- lme4::lFormula(formula, data = data)
 
-  # 【修正2】応答変数Yの型変換（factor型への対応）
-  Y <- parsed$fr[, 1]
-  if (is.factor(Y)) {
-    if (family %in% c("bernoulli", "binomial")) {
-      Y <- as.numeric(Y) - 1  # 0, 1 に変換
+  # --- 応答変数Yの型変換（factor型・行列型への対応） ---
+  Y <- model.response(parsed$fr)
+  if (is.matrix(Y)) {
+    if (ncol(Y) == 2 && family == "binomial") {
+      trials <- as.numeric(Y[, 1] + Y[, 2])
+      Y <- as.numeric(Y[, 1])
+    } else if (ncol(Y) == 1) {
+      Y <- as.numeric(Y[, 1])
+      trials <- rep(1, length(Y))
     } else {
-      Y <- as.numeric(Y)      # 1, 2, 3... に変換 (orderedなどで有効)
+      stop("応答変数の行列形式が不正です。binomialの場合は cbind(成功数, 失敗数) を指定してください。")
+    }
+  } else {
+    trials <- rep(1, length(Y))
+    if (is.factor(Y)) {
+      if (family %in% c("bernoulli", "binomial")) {
+        Y <- as.numeric(Y) - 1
+      } else {
+        Y <- as.numeric(Y)
+      }
+    } else {
+      Y <- as.numeric(Y)
     }
   }
 
@@ -563,11 +578,26 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   X <- model.matrix(formula, mf)
 
   # 応答変数Yの型変換（factor型への対応）
-  if (is.factor(Y)) {
-    if (family %in% c("bernoulli", "binomial")) {
-      Y <- as.numeric(Y) - 1  # 0, 1 に変換
+  if (is.matrix(Y)) {
+    if (ncol(Y) == 2 && family == "binomial") {
+      trials <- as.numeric(Y[, 1] + Y[, 2]) # 試行回数 (成功 + 失敗)
+      Y <- as.numeric(Y[, 1])               # 成功数
+    } else if (ncol(Y) == 1) {
+      Y <- as.numeric(Y[, 1])
+      trials <- rep(1, length(Y))
     } else {
-      Y <- as.numeric(Y)      # 1, 2, 3... に変換 (orderedなどで有効)
+      stop("応答変数の行列形式が不正です。binomialの場合は cbind(成功数, 失敗数) を指定してください。")
+    }
+  } else {
+    trials <- rep(1, length(Y))
+    if (is.factor(Y)) {
+      if (family %in% c("bernoulli", "binomial")) {
+        Y <- as.numeric(Y) - 1  # 0, 1 に変換
+      } else {
+        Y <- as.numeric(Y)      # 1, 2, 3... に変換
+      }
+    } else {
+      Y <- as.numeric(Y)
     }
   }
 
