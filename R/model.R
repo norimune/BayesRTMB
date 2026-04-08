@@ -24,7 +24,7 @@ rtmb_model <- function(data, parameters, model,
       }
     }) |> setNames(names(params))
   }
-  evaluated_par_list <- build_par_list(data, parameters, par_names)
+  evaluated_par_list <- build_par_list(data, parameters)
 
   # 2. 実行前のデータ・型チェック
   validate_data(data, evaluated_par_list)
