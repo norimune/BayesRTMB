@@ -540,8 +540,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param data 観測データフレームまたは行列 (N x P)
 #' @param n_factors 因子の数 (K)
 #' @param prior 事前分布のハイパーパラメータのリスト
-rtmb_fa_fast <- function(data, n_factors = 1,
-                         prior = list(mu_sd = 10, lambda_sd = 3, psi_rate = 1)) {
+rtmb_fa <- function(data, n_factors = 1,
+                    prior = list(mu_sd = 10, lambda_sd = 3, psi_rate = 1)) {
 
   Y <- as.matrix(data)
   N <- nrow(Y)
@@ -639,6 +639,56 @@ rtmb_fa_fast <- function(data, n_factors = 1,
   })
 
   # 5. モデルオブジェクトの生成
+  obj <- rtmb_model(
+    data       = dat,
+    parameters = params,
+    model      = model_expr,
+    generate   = gq_expr
+  )
+
+  return(obj)
+}
+#' 相関行列 (多変量正規分布) 推定ラッパー
+#'
+#' @param data 観測データフレームまたは行列 (N x P)
+#' @param prior 事前分布のハイパーパラメータのリスト
+#' @export
+rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)) {
+
+  Y <- as.matrix(data)
+  N <- nrow(Y)
+  P <- ncol(Y)
+
+  dat <- list(
+    N = N,
+    P = P,
+    Y = Y,
+    prior_lkj_eta    = prior$lkj_eta,
+    prior_sigma_rate = prior$sigma_rate,
+    prior_mu_sd      = prior$mu_sd
+  )
+
+  params <- list(
+    mu       = Dim(P),
+    sigma    = Dim(P, lower = 0),
+    CF_Omega = Dim(c(P, P), type = "CF_corr")
+  )
+
+  model_expr <- model_code({
+    # 事前分布
+    mu ~ normal(0, prior_mu_sd)
+    sigma ~ exponential(prior_sigma_rate)
+    CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
+
+    for(i in 1:N) {
+      Y[i, ] ~ multi_normal_CF(mu, sigma, CF_Omega)
+    }
+  })
+
+  gq_expr <- transformed_code({
+    Omega <- CF_Omega %*% t(CF_Omega)
+  })
+
   obj <- rtmb_model(
     data       = dat,
     parameters = params,
