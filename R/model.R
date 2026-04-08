@@ -48,12 +48,29 @@ rtmb_model <- function(data, parameters, model,
 model_code <- function(expr, env = parent.frame()) {
   raw_expr <- substitute(expr)
 
+  # 修正点1: ユーザーが変数として quote() を渡した場合への対応
+  # 例: my_ast <- quote({ Y ~ normal(0,1) }); model_code(my_ast)
+  if (is.name(raw_expr)) {
+    evaluated <- eval(raw_expr, envir = env)
+    if (is.language(evaluated)) {
+      raw_expr <- evaluated
+    }
+  }
+
   # 式を再帰的に走査し、`~` の記述を書き換える
   rewrite_formula <- function(x) {
     if (is.call(x)) {
       if (identical(x[[1]], as.name("~"))) {
         target <- x[[2]]
         dist_call <- x[[3]]
+
+        # 修正点2: 右辺が関数呼び出しでない場合のエラーハンドリング
+        # 例: Y ~ normal （カッコがない）と書かれた場合を防ぐ
+        if (!is.call(dist_call)) {
+          stop(sprintf("The right side of '~' must be a distribution function call. (e.g., %s( ... ))",
+                       as.character(dist_call)), call. = FALSE)
+        }
+
         dist_name <- as.character(dist_call[[1]])
         dist_args <- as.list(dist_call[-1])
 
@@ -81,6 +98,7 @@ model_code <- function(expr, env = parent.frame()) {
         ))
         return(new_call)
       }
+      # 再帰的に要素を書き換え
       x[] <- lapply(x, rewrite_formula)
     }
     return(x)
@@ -95,22 +113,26 @@ model_code <- function(expr, env = parent.frame()) {
     expr_elements <- list(processed_expr)
   }
 
+  # 修正点3: body_list の要素に意図しない名前が付かないよう unname で安全化
   # 関数の中身（ボディ）を構築: { getAll(dat, par); lp <- 0; ... ; return(lp) }
   body_list <- c(
     list(as.name("{")),
     quote(getAll(dat, par)),
     quote(lp <- 0),
-    expr_elements,
+    unname(expr_elements),
     quote(return(lp))
   )
   body_expr <- as.call(body_list)
 
   # 引数リスト `(dat, par)` を作成
   args <- as.pairlist(alist(dat = , par = ))
-
-  # call("function", args, body) で関数定義の構文木を作り、evalで実体化
   fn_expr <- call("function", args, body_expr)
+
+  # 関数の評価（作成）
   log_prob_fn <- eval(fn_expr, envir = env)
+
+  # print_code メソッドなどのために元の構文木を保存
+  attr(log_prob_fn, "raw_expr") <- raw_expr
 
   return(log_prob_fn)
 }
@@ -162,6 +184,196 @@ transformed_code <- function(expr, env = parent.frame()) {
   args <- as.pairlist(alist(dat = , par = ))
   fn_expr <- call("function", args, body_expr)
   fn <- eval(fn_expr, envir = env)
+  attr(fn, "raw_expr") <- raw_expr
 
   return(fn)
+}
+#' RTMBベースのGLMMラッパー関数
+#'
+#' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))
+#' @param data データフレーム
+#' @param family 分布族の文字列 ("gaussian", "poisson", "binomial", "bernoulli", "lognormal", "gamma", "student_t", "neg_binomial", "ordered")
+#' @param laplace 変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)
+#' @param prior 事前分布のハイパーパラメータのリスト
+#' RTMBベースのGLMMラッパー関数
+#'
+#' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))
+#' @param data データフレーム
+#' @param family 分布族の文字列
+#' @param laplace 変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)
+#' @param prior 事前分布のハイパーパラメータのリスト
+rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
+                       prior = list(
+                         beta_sd = 10,
+                         tau_rate = 1,
+                         sigma_rate = 1,
+                         lkj_eta = 1.0,
+                         shape_rate = 1,
+                         phi_rate = 1
+                       )) {
+
+  if (!requireNamespace("lme4", quietly = TRUE)) {
+    stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
+  }
+
+  # 1. フォーミュラのパース
+  parsed <- lme4::lFormula(formula, data = data)
+
+  # 【修正2】応答変数Yの型変換（factor型への対応）
+  Y <- parsed$fr[, 1]
+  if (is.factor(Y)) {
+    if (family %in% c("bernoulli", "binomial")) {
+      Y <- as.numeric(Y) - 1  # 0, 1 に変換
+    } else {
+      Y <- as.numeric(Y)      # 1, 2, 3... に変換 (orderedなどで有効)
+    }
+  }
+
+  X <- parsed$X          # 固定効果のデザイン行列
+  reTrms <- parsed$reTrms
+
+  if (length(reTrms$Ztlist) > 1) {
+    stop("現在、ラッパー関数は単一のグループ化変数のみに対応しています。")
+  }
+
+  # 変量効果の情報の抽出
+  Zt <- as.matrix(reTrms$Ztlist[[1]])
+  group_idx <- as.integer(reTrms$flist[[1]])
+  num_groups <- length(levels(reTrms$flist[[1]]))
+  num_ranef <- nrow(Zt) / num_groups
+
+  # 観測ごとの変量効果デザイン行列(N x num_ranef)を作成
+  N <- length(Y)
+  Z_mat <- matrix(0, nrow = N, ncol = num_ranef)
+  for (i in 1:N) {
+    g <- group_idx[i]
+    rows <- ((g - 1) * num_ranef + 1):(g * num_ranef)
+    Z_mat[i, ] <- Zt[rows, i]
+  }
+
+  # 2. dataの準備
+  dat <- list(
+    N = N,
+    Y = Y,
+    X = X,
+    Z_mat = Z_mat,
+    group_idx = group_idx,
+    num_groups = num_groups,
+    num_ranef = num_ranef,
+    K = ncol(X),
+    fam_name = family,
+    prior_beta_sd    = prior$beta_sd,
+    prior_tau_rate   = prior$tau_rate,
+    prior_sigma_rate = prior$sigma_rate,
+    prior_lkj_eta    = prior$lkj_eta,
+    prior_shape_rate = prior$shape_rate,
+    prior_phi_rate   = prior$phi_rate
+  )
+
+  # parameterの準備
+  params <- list(
+    beta     = Dim(ncol(X)),
+    tau      = Dim(num_ranef, lower = 0),
+    CF_Omega = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
+    # 【修正1】laplace引数を反映するように修正 (TRUE -> laplace)
+    r        = Dim(c(num_groups, num_ranef), random = laplace)
+  )
+
+  # 分布族に応じた追加パラメータの設定
+  if (family %in% c("gaussian", "lognormal", "student_t")) {
+    params$sigma <- Dim(1, lower = 0)
+  }
+  if (family == "student_t") {
+    params$nu <- Dim(1, lower = 2) # 自由度は2以上を推奨
+  }
+  if (family == "gamma") {
+    params$shape <- Dim(1, lower = 0)
+  }
+  if (family == "neg_binomial") {
+    params$phi <- Dim(1, lower = 0) # dispersion parameter (size)
+  }
+  if (family == "ordered") {
+    num_categories <- length(unique(Y))
+    # カテゴリ数 - 1 のorderedパラメータが必要
+    params$cutpoints <- Dim(num_categories - 1, type = "ordered")
+  }
+
+  # 3. モデルコードの動的構築
+  # 選択された分布に応じた尤度（と固有の事前分布）のコードブロックを作成
+  ll_expr <- switch(family,
+                    "gaussian" = quote({
+                      sigma ~ exponential(prior_sigma_rate)
+                      for(i in 1:N) { Y[i] ~ normal(eta[i], sigma) }
+                    }),
+                    "lognormal" = quote({
+                      sigma ~ exponential(prior_sigma_rate)
+                      for(i in 1:N) { Y[i] ~ lognormal(eta[i], sigma) }
+                    }),
+                    "student_t" = quote({
+                      sigma ~ exponential(prior_sigma_rate)
+                      nu ~ exponential(0.1)
+                      for(i in 1:N) { Y[i] ~ student_t(nu, eta[i], sigma) }
+                    }),
+                    "gamma" = quote({
+                      shape ~ exponential(prior_shape_rate)
+                      for(i in 1:N) { Y[i] ~ gamma(shape, shape / exp(eta[i])) }
+                    }),
+                    "bernoulli" = quote({
+                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                    }),
+                    "binomial" = quote({
+                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                    }),
+                    "poisson" = quote({
+                      for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
+                    }),
+                    "neg_binomial" = quote({
+                      phi ~ exponential(prior_phi_rate)
+                      for(i in 1:N) { Y[i] ~ neg_binomial_2(exp(eta[i]), phi) }
+                    }),
+                    "ordered" = quote({
+                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
+                    })
+  )
+
+  # bquoteを使って、共通部分の最後に ll_expr を展開
+  model_ast <- bquote({
+    # 事前分布
+    beta ~ normal(0, prior_beta_sd)
+    tau ~ exponential(prior_tau_rate)
+    CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
+
+    # 変量効果の事前分布
+    for (j in 1:num_groups) {
+      r[j, ] ~ multi_normal_CF(rep(0, num_ranef), tau, CF_Omega)
+    }
+
+    # 線形予測子の計算
+    eta <- as.vector(X %*% beta)
+    for (i in 1:N) {
+      eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ])
+    }
+
+    # 尤度の計算
+    .(ll_expr)
+  })
+
+  # 完成した構文木を model_code で関数化する
+  model_expr <- eval(bquote(model_code(.(model_ast))))
+
+  # 4. 生成量の構築
+  generate_expr <- transformed_code({
+    Omega <- CF_Omega %*% t(CF_Omega)
+    Sigma_ranef <- diag(tau) %*% Omega %*% diag(tau)
+  })
+
+  # 5. rtmb_model を呼び出してオブジェクトを返す
+  obj <- rtmb_model(
+    data = dat,
+    parameters = params,
+    model = model_expr,
+    generate = generate_expr
+  )
+
+  return(obj)
 }

@@ -875,8 +875,59 @@ RTMB_Model <- R6::R6Class(
       }
       param_lines <- c(param_lines, ")", "")
 
-      lp_code <- deparse(self$log_prob, control = "useSource")
-      lp_code[1] <- paste("log_prob <-", lp_code[1])
+      raw_expr <- attr(self$log_prob, "raw_expr")
+
+      # --- model の処理 ---
+      if (!is.null(raw_expr)) {
+        # model_code で保存された元の式(DSL)を出力
+        expr_lines <- deparse(raw_expr, control = "useSource")
+        # ブロック {} の表記を整形
+        if (expr_lines[1] == "{") {
+          lp_code <- c("model <- model_code({", expr_lines[-1])
+        } else {
+          lp_code <- c("model <- model_code({", paste0("  ", expr_lines), "})")
+        }
+      } else {
+        # 生の関数が直接渡された場合などのフォールバック
+        lp_code <- deparse(self$log_prob, control = "useSource")
+        lp_code[1] <- paste("log_prob <-", lp_code[1])
+      }
+
+      # --- transform の処理 ---
+      tran_code <- character(0)
+      if (!is.null(self$transform)) {
+        raw_tran <- attr(self$transform, "raw_expr")
+        if (!is.null(raw_tran)) {
+          tran_lines <- deparse(raw_tran, control = "useSource")
+          if (tran_lines[1] == "{") {
+            tran_code <- c("", "transformed <- transformed_code({", tran_lines[-1])
+          } else {
+            tran_code <- c("", "transformed <- transformed_code({", paste0("  ", tran_lines), "})")
+          }
+        } else {
+          t_code <- deparse(self$transform, control = "useSource")
+          t_code[1] <- paste("transformed <-", t_code[1])
+          tran_code <- c("", t_code)
+        }
+      }
+
+      # --- generate の処理 ---
+      gq_code <- character(0)
+      if (!is.null(self$generate)) {
+        raw_gq <- attr(self$generate, "raw_expr")
+        if (!is.null(raw_gq)) {
+          gq_lines <- deparse(raw_gq, control = "useSource")
+          if (gq_lines[1] == "{") {
+            gq_code <- c("", "generate <- transformed_code({", gq_lines[-1])
+          } else {
+            gq_code <- c("", "generate <- transformed_code({", paste0("  ", gq_lines), "})")
+          }
+        } else {
+          g_code <- deparse(self$generate, control = "useSource")
+          g_code[1] <- paste("generate <-", g_code[1])
+          gq_code <- c("", g_code)
+        }
+      }
 
       full_code <- c(param_lines, lp_code)
       cat(paste(full_code, collapse = "\n"), "\n")
