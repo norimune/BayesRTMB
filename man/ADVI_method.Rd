@@ -15,7 +15,7 @@ ADVI_method(
   alpha = 0.01,
   laplace = FALSE,
   print_freq = 500,
-  fullrank = FALSE,
+  method = c("meanfield", "fullrank", "hybrid"),
   update_progress = NULL,
   update_interval = 100
 )
@@ -27,7 +27,7 @@ ADVI_method(
 
 \item{pl_full}{A list defining the full structure of parameters including random effects.}
 
-\item{iter}{Integer; fixed number of iterations for the optimization. Default is 10000.}
+\item{iter}{Integer; fixed number of iterations for the optimization. Default is 3000.}
 
 \item{tol_rel_obj}{Numeric; relative tolerance for the ELBO to check convergence. Default is 0.001.}
 
@@ -41,7 +41,7 @@ ADVI_method(
 
 \item{print_freq}{Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.}
 
-\item{fullrank}{Logical; whether to use a full-rank multivariate normal distribution. Default is FALSE.}
+\item{method}{Character; type of variational distribution. One of "meanfield", "fullrank", or "hybrid". Default is "meanfield".}
 
 \item{update_progress}{Optional function to update a progress bar.}
 

@@ -623,7 +623,7 @@ RTMB_Model <- R6::R6Class(
     #' @param alpha Numeric; learning rate for the Adam optimizer. Default is 0.01.
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is TRUE.
     #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 100.
-    #' @param fullrank Logical; whether to use a full-rank approximation to capture posterior correlations. Default is FALSE.
+    #' @param method Vector; method of Variational Inference Default is meanfield.
     #' @param parallel Logical; whether to run estimations in parallel. Default is FALSE.
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
