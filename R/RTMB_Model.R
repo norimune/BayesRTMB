@@ -883,7 +883,7 @@ RTMB_Model <- R6::R6Class(
         expr_lines <- deparse(raw_expr, control = "useSource")
         # ブロック {} の表記を整形
         if (expr_lines[1] == "{") {
-          lp_lines[length(lp_lines)] <- paste0(lp_lines[length(lp_lines)], ")")
+          expr_lines[length(expr_lines)] <- paste0(expr_lines[length(expr_lines)], ")")
           lp_code <- c("model <- model_code({", expr_lines[-1], ")")
         } else {
           lp_code <- c("model <- model_code({", paste0("  ", expr_lines), "})")
