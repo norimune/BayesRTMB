@@ -512,36 +512,34 @@ wishart_lpdf <- function(X, n, V) {
 fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
-
   inv_psi <- 1 / psi
 
   Lambda_scaled <- Lambda * inv_psi
   M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)
   L_M <- chol(M)
-  inv_M <- solve(M)
-  log_det_M <- 2 * sum(log(diag(L_M)))
-  log_det_Sigma <- sum(log(psi)) + log_det_M
+  log_det_Sigma <- sum(log(psi)) + 2 * sum(log(diag(L_M)))
 
   if (is.matrix(x)) {
     N <- nrow(x)
     y_c <- t(t(x) - mu)
     z_scaled <- t(t(y_c) * inv_psi)
-
     term1 <- sum(y_c * z_scaled)
     z_lambda <- z_scaled %*% Lambda
-    term2 <- sum(z_lambda * (z_lambda %*% inv_M))
+    theta_T <- solve(M, t(z_lambda))
+    term2 <- sum(z_lambda * t(theta_T))
 
     lp <- -0.5 * (N * P * 1.83787706640935 + N * log_det_Sigma + term1 - term2)
     return(lp)
 
   } else {
-    # 1サンプルの場合 (ベクトル)
+    # ベクトル(1サンプル)の場合
     y_c <- x - mu
     term1 <- sum((y_c^2) * inv_psi)
 
     z_scaled <- y_c * inv_psi
     z_lambda <- as.vector(t(Lambda) %*% z_scaled)
-    term2 <- sum(z_lambda * as.vector(inv_M %*% z_lambda))
+    theta <- solve(M, z_lambda)
+    term2 <- sum(z_lambda * theta)
 
     lp <- -0.5 * (P * 1.83787706640935 + log_det_Sigma + term1 - term2)
     return(lp)
