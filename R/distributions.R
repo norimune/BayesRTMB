@@ -186,7 +186,11 @@ bernoulli_logit_lpmf <- function(x, mu) {
 #' @return The sum of the log-probability.
 #' @export
 binomial_logit_lpmf <- function(x, size, mu) {
-  dbinom(x, size, plogis(mu), log = TRUE)
+  log1p_exp <- function(x) {
+    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
+    return(max_val + log(exp(x - max_val) + exp(-max_val)))
+  }
+  sum(lchoose(size, x) + x * (-log1p_exp(-mu)) + (size - x) * (-log1p_exp(mu)))
 }
 
 #' Poisson log-probability mass function
