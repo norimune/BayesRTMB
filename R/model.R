@@ -379,3 +379,116 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   return(obj)
 }
+#' 探索的因子分析 (Bayesian EFA) 超高速版ラッパー
+#'
+#' @param data 観測データフレームまたは行列 (N x P)
+#' @param n_factors 因子の数 (K)
+#' @param prior 事前分布のハイパーパラメータのリスト
+rtmb_fa_fast <- function(data, n_factors = 1,
+                         prior = list(mu_sd = 10, lambda_sd = 3, psi_rate = 1)) {
+
+  Y <- as.matrix(data)
+  N <- nrow(Y)
+  P <- ncol(Y)
+  K <- n_factors
+
+  if (K >= P) {
+    stop("因子の数(K)は観測変数の数(P)より小さくする必要があります。")
+  }
+
+  # 1. データの準備
+  dat <- list(
+    N = N,
+    P = P,
+    K = K,
+    Y = Y,
+    prior_mu_sd     = prior$mu_sd,
+    prior_lambda_sd = prior$lambda_sd,
+    prior_psi_rate  = prior$psi_rate
+  )
+
+  # 2. パラメータの定義
+  params <- list(
+    mu     = Dim(P),
+    Lambda = Dim(c(P, K), type = "lower_tri"), # 回転の自由度をなくすための下三角行列制約
+    psi    = Dim(P, lower = 0)
+  )
+
+  # 3. モデルの構築 (Woodbury公式による尤度計算の超高速化)
+  model_expr <- model_code({
+    # 事前分布
+    mu ~ normal(0, prior_mu_sd)
+    Lambda ~ normal(0, prior_lambda_sd)
+    psi ~ exponential(prior_psi_rate)
+
+    # --- Woodbury公式の準備 ---
+    # 独自分散の逆数 (長さPのベクトル)
+    inv_psi <- 1 / psi
+
+    # Lambda_scaled = diag(inv_psi) %*% Lambda の高速な計算
+    Lambda_scaled <- sweep(Lambda, 1, inv_psi, "*")
+
+    # 中間行列 M = I_K + Lambda^T * diag(inv_psi) * Lambda (K x Kの小さな行列)
+    M <- diag(1, K) + crossprod(Lambda, Lambda_scaled)
+
+    # M のコレスキー分解から逆行列と対数行列式を計算
+    L_M <- chol(M)
+    inv_M <- chol2inv(L_M)
+    log_det_M <- 2 * sum(log(diag(L_M)))
+
+    # 全体の対数行列式: log|Sigma|
+    log_det_Sigma <- sum(log(psi)) + log_det_M
+
+    # 対数尤度の初期化
+    lp <- lp - 0.5 * N * P * 1.83787706640935 # N * P * log(2 * pi)
+    lp <- lp - 0.5 * N * log_det_Sigma
+
+    # --- 観測値ごとの尤度計算 ---
+    for (i in 1:N) {
+      # 中心化データ (長さPのベクトル)
+      y_c <- Y[i, ] - mu
+
+      # 第1項: y_c^T * Psi^-1 * y_c
+      term1 <- sum((y_c^2) * inv_psi)
+
+      # 第2項: y_c^T * Psi^-1 * Lambda * M^-1 * Lambda^T * Psi^-1 * y_c
+      # まず (y_c^T * Psi^-1 * Lambda) を計算 (長さKのベクトル)
+      z_scaled <- y_c * inv_psi
+      z_lambda <- as.vector(z_scaled %*% Lambda)
+
+      # 次に z_lambda * M^-1 * z_lambda^T を計算
+      term2 <- sum(z_lambda * as.vector(inv_M %*% z_lambda))
+
+      # 尤度の加算
+      lp <- lp - 0.5 * (term1 - term2)
+    }
+  })
+
+  # 4. 生成量 (共通性と因子スコアの事後計算)
+  gq_expr <- transformed_code({
+    Sigma <- Lambda %*% t(Lambda) + diag(psi)
+
+    # 共通性 (Communality) の計算
+    var_total <- diag(Sigma)
+    var_common <- rowSums(Lambda^2)
+    communality <- var_common / var_total
+
+    # 因子スコアの算出 (Thomson の回帰法)
+    # 尤度計算とは異なり、事後分布の生成時(数千回)にのみ逆行列計算が走るので P x P でも軽い
+    Y_c <- matrix(0, nrow = N, ncol = P)
+    for(i in 1:N) {
+      Y_c[i, ] <- Y[i, ] - mu
+    }
+    F_score <- Y_c %*% solve(Sigma, Lambda)
+  })
+
+  # 5. モデルオブジェクトの生成
+  obj <- rtmb_model(
+    data       = dat,
+    parameters = params,
+    model      = model_expr,
+    generate   = gq_expr
+  )
+
+  return(obj)
+}

@@ -170,7 +170,7 @@ Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
 \if{html}{\out{<div class="r">}}\preformatted{VB_Fit$summary(
   pars = NULL,
   max_rows = 10,
-  digits = 3,
+  digits = 2,
   inc_random = FALSE,
   inc_tran = TRUE,
   inc_gq = TRUE
