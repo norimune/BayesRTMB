@@ -237,19 +237,19 @@ VB_Fit <- R6::R6Class(
 
         res_list_sum[[i]] <- data.frame(
           variable = param_names[p],
-          mean     = round(mean(valid_vec), digits),
-          sd       = round(sd_val, digits),
-          map      = round(map_val, digits),
-          q2.5     = round(unname(q95[1]), digits),
-          q97.5    = round(unname(q95[2]), digits),
-          drift    = if(is.na(drift_val)) NA else round(drift_val, digits),
-          rel_sd   = if(is.na(rel_sd_val)) NA else round(rel_sd_val, digits),
-          row.names = NULL,
-          stringsAsFactors = FALSE,
-          check.names = FALSE
+          mean     = mean(valid_vec),
+          sd       = sd_val,
+          map      = map_val,
+          q2.5     = unname(q95[1]),
+          q97.5    = unname(q95[2]),
+          drift    = drift_val,   # NAの場合はそのままNAになるためif文は不要です
+          rel_sd   = rel_sd_val,
+          stringsAsFactors = FALSE
         )
       }
-      return(do.call(rbind, res_list_sum))
+      res_df <- do.call(rbind, res_list_sum)
+      class(res_df) <- c("summary_BayesRTMB", "data.frame")
+      return(res_df)
     },
 
     #' @description Plot the ELBO history to diagnose convergence.
