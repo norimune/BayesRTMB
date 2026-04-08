@@ -336,8 +336,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                     })
   )
 
-  # bquoteを使って、共通部分の最後に ll_expr を展開
-  model_ast <- bquote({
+  # 共通部分を独立したブロックとして定義
+  common_expr <- quote({
     # 事前分布
     beta ~ normal(0, prior_beta_sd)
     tau ~ exponential(prior_tau_rate)
@@ -353,12 +353,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     for (i in 1:N) {
       eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ])
     }
-
-    # 尤度の計算
-    .(ll_expr)
   })
 
-  # 完成した構文木を model_code で関数化する
+  # 両方のブロックから外側の "{ }" を取り除き、中身の式（要素）をリストとして抽出
+  common_list <- as.list(common_expr)[-1]
+  ll_list <- as.list(ll_expr)[-1]
+
+  model_ast <- as.call(c(list(as.name("{")), common_list, ll_list))
+
   model_expr <- eval(bquote(model_code(.(model_ast))))
 
   # 4. 生成量の構築
