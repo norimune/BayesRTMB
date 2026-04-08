@@ -883,7 +883,8 @@ RTMB_Model <- R6::R6Class(
         expr_lines <- deparse(raw_expr, control = "useSource")
         # ブロック {} の表記を整形
         if (expr_lines[1] == "{") {
-          lp_code <- c("model <- model_code({", paste0(expr_lines[-1], ")"))
+          lp_lines[length(lp_lines)] <- paste0(lp_lines[length(lp_lines)], ")")
+          lp_code <- c("model <- model_code({", expr_lines[-1], ")")
         } else {
           lp_code <- c("model <- model_code({", paste0("  ", expr_lines), "})")
         }
@@ -900,7 +901,8 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(raw_tran)) {
           tran_lines <- deparse(raw_tran, control = "useSource")
           if (tran_lines[1] == "{") {
-            tran_code <- c("", "transformed <- transformed_code({", paste0(tran_lines[-1], ")"))
+            tran_lines[length(tran_lines)] <- paste0(tran_lines[length(tran_lines)], ")")
+            tran_code <- c("", "transformed <- transformed_code({", tran_lines[-1])
           } else {
             tran_code <- c("", "transformed <- transformed_code({", paste0("  ", tran_lines), "})")
           }
@@ -918,7 +920,8 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(raw_gq)) {
           gq_lines <- deparse(raw_gq, control = "useSource")
           if (gq_lines[1] == "{") {
-            gq_code <- c("", "generate <- transformed_code({", paste0(gq_lines[-1], ")"))
+            gq_lines[length(gq_lines)] <- paste0(gq_lines[length(gq_lines)], ")")
+            gq_code <- c("", "generate <- transformed_code({", gq_lines[-1])
           } else {
             gq_code <- c("", "generate <- transformed_code({", paste0("  ", gq_lines), "})")
           }
