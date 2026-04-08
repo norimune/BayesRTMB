@@ -170,12 +170,8 @@ binomial_lpmf <- function(x, size, prob) {
 #' @param mu Linear predictor (logit probability).
 #' @return The sum of the log-probability.
 #' @export
-bernoulli_logit_lpmf <- function(x, mu) {
-  log1p_exp <- function(x) {
-    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
-    return(max_val + log(exp(x - max_val) + exp(-max_val)))
-  }
-  sum(x * (-log1p_exp(-mu)) + (1 - x) * (-log1p_exp(mu)))
+bernoulli_logit_lpmf <- function(x, eta) {
+  x * eta - log1p_exp(eta)
 }
 
 #' Binomial log-probability mass function with logit parameterization
@@ -185,12 +181,8 @@ bernoulli_logit_lpmf <- function(x, mu) {
 #' @param mu Linear predictor (logit probability).
 #' @return The sum of the log-probability.
 #' @export
-binomial_logit_lpmf <- function(x, size, mu) {
-  log1p_exp <- function(x) {
-    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
-    return(max_val + log(exp(x - max_val) + exp(-max_val)))
-  }
-  sum(lchoose(size, x) + x * (-log1p_exp(-mu)) + (size - x) * (-log1p_exp(mu)))
+binomial_logit_lpmf <- function(x, size, eta) {
+  lgamma(size + 1) - lgamma(x + 1) - lgamma(size - x + 1) + x * eta - size * log1p_exp(eta)
 }
 
 #' Poisson log-probability mass function
