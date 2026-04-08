@@ -533,7 +533,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     data = dat,
     parameters = params,
     model = model_expr,
-    generate = generate_expr
+    generate = generate_expr,
+    formula = formula,
+    raw_data = data,
+    family = family
   )
 
   return(obj)
@@ -659,7 +662,10 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     data = dat,
     parameters = params,
     model = model_expr,
-    generate = NULL # GLMでは必須の生成量がないためNULL
+    generate = NULL,
+    formula = formula,
+    raw_data = data,
+    family = family
   )
 
   return(obj)

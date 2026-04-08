@@ -17,6 +17,9 @@
 #' @field transform An optional transformed parameters function.
 #' @field generate An optional generated quantities function.
 #' @field pl_full Full parameter information used internally.
+#' @field formula The formula used to generate the model, if applicable.
+#' @field raw_data The original data frame used to generate the model, if applicable.
+#' @field family A character string specifying the distribution family, if applicable.
 #' @import RTMB
 RTMB_Model <- R6::R6Class(
   classname = "RTMB_Model",
@@ -28,6 +31,9 @@ RTMB_Model <- R6::R6Class(
     transform  = NULL,
     generate   = NULL,
     pl_full    = NULL,
+    formula    = NULL,
+    raw_data   = NULL,
+    family     = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `RTMB_Model` object.

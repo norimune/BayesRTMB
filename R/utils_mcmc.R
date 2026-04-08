@@ -160,3 +160,152 @@ print.summary_BayesRTMB <- function(x, ...) {
 
   return(invisible(x))
 }
+
+#' 周辺効果 (Conditional Effects) を計算する
+#' @export
+conditional_effects <- function(fit, effect, ...) {
+  UseMethod("conditional_effects")
+}
+
+#' MCMC_Fitクラス用のメソッド
+#' @export
+conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, ...) {
+  model_obj <- fit$model
+  if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
+    stop("このモデルオブジェクトには formula または元のデータが含まれていません。")
+  }
+
+  form <- model_obj$formula
+  raw_data <- model_obj$raw_data
+  fam <- model_obj$family
+
+  # 1. ベースとなるデータフレームの作成 (他の変数を平均/最頻値に固定)
+  base_data <- lapply(raw_data, function(x) {
+    if (is.numeric(x)) {
+      mean(x, na.rm = TRUE)
+    } else if (is.factor(x) || is.character(x)) {
+      tbl <- table(x)
+      factor(names(tbl)[which.max(tbl)], levels = levels(as.factor(x)))
+    } else {
+      x[1]
+    }
+  })
+  base_data <- as.data.frame(base_data)
+
+  # 2. effect変数のみを動かした newdata を作成
+  eff_val <- raw_data[[effect]]
+  if (is.null(eff_val)) stop(sprintf("データの中に変数 '%s' が見つかりません。", effect))
+
+  is_numeric_effect <- is.numeric(eff_val)
+  if (is_numeric_effect) {
+    eff_seq <- seq(min(eff_val, na.rm = TRUE), max(eff_val, na.rm = TRUE), length.out = resolution)
+  } else {
+    eff_seq <- unique(eff_val)
+  }
+
+  newdata <- base_data[rep(1, length(eff_seq)), , drop = FALSE]
+  newdata[[effect]] <- eff_seq
+
+  # 3. デザイン行列の作成
+  rhs <- delete.response(terms(form))
+  X_new <- model.matrix(rhs, data = newdata)
+
+  # 4. 事後サンプルの取得 (固定効果のみ)
+  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_tran = FALSE, inc_gq = FALSE)
+  I <- dim(beta_samples)[1]
+  C <- dim(beta_samples)[2]
+  P <- dim(beta_samples)[3]
+  beta_flat <- matrix(beta_samples, nrow = I * C, ncol = P)
+
+  # 5. 線形予測子の計算
+  eta <- X_new %*% t(beta_flat)
+
+  # 6. 逆リンク関数で期待値に変換
+  if (is.null(fam)) fam <- "gaussian"
+  inv_link <- switch(fam,
+                     "gaussian" = , "lognormal" = , "student_t" = function(x) x,
+                     "poisson" = , "neg_binomial" = , "gamma" = exp,
+                     "bernoulli" = , "binomial" = plogis,
+                     function(x) x
+  )
+  mu <- inv_link(eta)
+
+  # 7. 事後分布の要約
+  alpha <- 1 - prob
+  lower_q <- alpha / 2
+  upper_q <- 1 - alpha / 2
+
+  res_df <- data.frame(
+    effect_val = eff_seq,
+    estimate   = apply(mu, 1, mean),
+    lower      = apply(mu, 1, quantile, probs = lower_q),
+    upper      = apply(mu, 1, quantile, probs = upper_q)
+  )
+  names(res_df)[1] <- effect
+
+  # 8. 結果をリストにまとめてクラスを付与
+  res <- list(data = res_df, effect_name = effect, is_numeric = is_numeric_effect)
+  class(res) <- "ce_rtmb"
+  return(res)
+}
+
+#' ce_rtmb クラス専用のプロットメソッド (Base R)
+#' @export
+plot.ce_rtmb <- function(x, ...) {
+  df <- x$data
+  eff <- x$effect_name
+
+  x_val <- df[[eff]]
+  y_est <- df$estimate
+  y_low <- df$lower
+  y_up  <- df$upper
+
+  # デフォルトの色設定 (少し透過させた青)
+  col_line <- rgb(0, 0.45, 0.7)
+  col_ribbon <- rgb(0, 0.45, 0.7, 0.2)
+
+  if (x$is_numeric) {
+    # 連続値の場合はリボン(polygon)と実線(lines)
+    plot(x_val, y_est, type = "n",
+         ylim = range(c(y_low, y_up)),
+         xlab = eff, ylab = "Predicted value",
+         main = paste("Conditional effect of", eff), ...)
+
+    # 95%信用区間を描画
+    polygon(c(x_val, rev(x_val)), c(y_low, rev(y_up)),
+            col = col_ribbon, border = NA)
+
+    # 事後平均を描画
+    lines(x_val, y_est, col = col_line, lwd = 2)
+
+  } else {
+    # カテゴリ変数の場合はエラーバー(segments)と点(points)
+    x_num <- as.numeric(as.factor(x_val))
+
+    plot(x_num, y_est, type = "n",
+         ylim = range(c(y_low, y_up)),
+         xlim = c(min(x_num) - 0.5, max(x_num) + 0.5),
+         xaxt = "n",
+         xlab = eff, ylab = "Predicted value",
+         main = paste("Conditional effect of", eff), ...)
+
+    # X軸のラベルをカテゴリ名に変更
+    axis(1, at = x_num, labels = as.character(x_val))
+
+    # 95%信用区間を描画
+    segments(x0 = x_num, y0 = y_low, x1 = x_num, y1 = y_up,
+             col = col_line, lwd = 2)
+
+    # 事後平均を描画
+    points(x_num, y_est, col = col_line, pch = 16, cex = 1.5)
+  }
+
+  invisible(x)
+}
+
+#' ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
+#' @export
+print.ce_rtmb <- function(x, ...) {
+  plot(x, ...)
+  invisible(x)
+}
