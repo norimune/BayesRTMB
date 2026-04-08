@@ -608,6 +608,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   dat <- list(
     N = N,
     Y = Y,
+    trials = trials,
     X = X,
     K = ncol(X),
     prior_beta_sd    = prior$beta_sd,
@@ -662,7 +663,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                       for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
                     }),
                     "binomial" = quote({
-                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                      for(i in 1:N) { Y[i] ~ binomial_logit(trials[i], eta[i]) }
                     }),
                     "poisson" = quote({
                       for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
