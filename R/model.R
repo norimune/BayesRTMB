@@ -762,8 +762,8 @@ rtmb_fa <- function(data, n_factors = 1,
 
     # M のコレスキー分解から逆行列と対数行列式を計算
     L_M <- chol(M)
-    inv_M <- chol2inv(L_M)
     log_det_M <- 2 * sum(log(diag(L_M)))
+    inv_M <- solve(M)
 
     # 全体の対数行列式: log|Sigma|
     log_det_Sigma <- sum(log(psi)) + log_det_M
