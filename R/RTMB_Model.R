@@ -633,10 +633,11 @@ RTMB_Model <- R6::R6Class(
                            tol_rel_obj = 0.005, window_size = 100,
                            num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 1000,
-                           fullrank = FALSE, parallel = FALSE,
+                           method = c("meanfield", "fullrank", "hybrid"), parallel = FALSE,
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL) {
 
       set.seed(seed)
+      method <- match.arg(method)
 
       # --- CSV保存用の情報整理とディレクトリ作成 ---
       if (!is.null(save_csv)) {
@@ -666,7 +667,7 @@ RTMB_Model <- R6::R6Class(
           model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
           iter = iter, tol_rel_obj = tol_rel_obj,
           window_size = window_size, num_samples = num_samples, alpha = alpha,
-          laplace = laplace, print_freq = print_freq, fullrank = fullrank
+          laplace = laplace, print_freq = print_freq, method = method
         )
         return(res)
       }

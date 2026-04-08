@@ -3,14 +3,14 @@
 #' @param model An RTMB objective function object (`ad_obj`).
 #' @param par_list A list defining the structure of parameters to be estimated.
 #' @param pl_full A list defining the full structure of parameters including random effects.
-#' @param iter Integer; fixed number of iterations for the optimization. Default is 10000.
+#' @param iter Integer; fixed number of iterations for the optimization. Default is 3000.
 #' @param tol_rel_obj Numeric; relative tolerance for the ELBO to check convergence. Default is 0.001.
 #' @param window_size Integer; size of the moving window to calculate the median ELBO. Default is 100.
 #' @param num_samples Integer; number of posterior draws to generate after optimization. Default is 1000.
 #' @param alpha Numeric; learning rate (step size) for the Adam optimizer. Default is 0.01.
 #' @param laplace Logical; whether Laplace approximation is used. Default is FALSE.
 #' @param print_freq Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.
-#' @param fullrank Logical; whether to use a full-rank multivariate normal distribution. Default is FALSE.
+#' @param method Character; type of variational distribution. One of "meanfield", "fullrank", or "hybrid". Default is "meanfield".
 #' @param update_progress Optional function to update a progress bar.
 #' @param update_interval Integer; interval for updating the progress bar. Default is 100.
 #' @return A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, `rel_obj_final`, and `converged`.
@@ -19,12 +19,33 @@ ADVI_method <- function(model, par_list, pl_full,
                         window_size = 100, num_samples = 1000,
                         alpha = 0.01, laplace = FALSE,
                         print_freq = 500,
-                        fullrank = FALSE,
+                        method = c("meanfield", "fullrank", "hybrid"),
                         update_progress = NULL, update_interval = 100) {
+
+  method <- match.arg(method)
 
   P <- length(model$par)
   mu <- model$par
-  par_names <- names(model$par)
+  par_names_rtmb <- names(model$par)
+
+  # 固定効果と変量効果のインデックスを特定
+  random_flags <- sapply(par_list, function(x) isTRUE(x$random))
+  random_bases <- names(par_list)[random_flags]
+
+  idx_random <- which(par_names_rtmb %in% random_bases)
+  idx_fixed  <- which(!(par_names_rtmb %in% random_bases))
+
+  P_fixed <- length(idx_fixed)
+  P_random <- length(idx_random)
+
+  # Laplace近似等で変量効果がない場合のフォールバック処理
+  if (method == "hybrid") {
+    if (P_random == 0) {
+      method <- "fullrank"
+    } else if (P_fixed == 0) {
+      method <- "meanfield"
+    }
+  }
 
   beta1 <- 0.9
   beta2 <- 0.999
@@ -33,13 +54,22 @@ ADVI_method <- function(model, par_list, pl_full,
 
   if (print_freq > 0) cat("Starting ADVI optimization with Adam...\n")
 
-  if (fullrank) {
+  if (method == "hybrid") {
+    L_diag <- rep(-2, P_fixed)
+    L_off <- rep(0, P_fixed * (P_fixed - 1) / 2)
+    omega <- rep(-2, P_random)
+
+    m_mu <- rep(0, P); v_mu <- rep(0, P)
+    m_diag <- rep(0, P_fixed); v_diag <- rep(0, P_fixed)
+    m_off <- rep(0, length(L_off)); v_off <- rep(0, length(L_off))
+    m_omega <- rep(0, P_random); v_omega <- rep(0, P_random)
+  } else if (method == "fullrank") {
     L_diag <- rep(-2, P)
     L_off <- rep(0, P * (P - 1) / 2)
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_diag <- rep(0, P); v_diag <- rep(0, P)
     m_off <- rep(0, length(L_off)); v_off <- rep(0, length(L_off))
-  } else {
+  } else { # meanfield
     omega <- rep(-2, P)
     m_mu <- rep(0, P); v_mu <- rep(0, P)
     m_omega <- rep(0, P); v_omega <- rep(0, P)
@@ -59,9 +89,24 @@ ADVI_method <- function(model, par_list, pl_full,
 
     eps <- rnorm(P)
 
-    if (fullrank) {
+    if (method == "hybrid") {
+      eps_fixed <- eps[idx_fixed]
+      eps_random <- eps[idx_random]
+
+      L <- matrix(0, P_fixed, P_fixed)
+      if (length(L_off) > 0) L[lower.tri(L)] <- L_off
+      diag(L) <- exp(L_diag)
+      theta_fixed <- mu[idx_fixed] + as.vector(L %*% eps_fixed)
+
+      sigma_random <- exp(omega)
+      theta_random <- mu[idx_random] + sigma_random * eps_random
+
+      theta <- numeric(P)
+      theta[idx_fixed] <- theta_fixed
+      theta[idx_random] <- theta_random
+    } else if (method == "fullrank") {
       L <- matrix(0, P, P)
-      L[lower.tri(L)] <- L_off
+      if (length(L_off) > 0) L[lower.tri(L)] <- L_off
       diag(L) <- exp(L_diag)
       theta <- mu + as.vector(L %*% eps)
     } else {
@@ -77,7 +122,41 @@ ADVI_method <- function(model, par_list, pl_full,
       next
     }
 
-    if (fullrank) {
+    if (method == "hybrid") {
+      elbo_history[t] <- fn_val + sum(L_diag) + sum(omega) + entropy_const
+
+      grad_mu <- gr_val
+
+      # 固定効果 (Full-rank)
+      gr_fixed <- gr_val[idx_fixed]
+      grad_L_mat <- outer(gr_fixed, eps_fixed)
+      grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
+      grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
+
+      # 変量効果 (Mean-field)
+      gr_random <- gr_val[idx_random]
+      grad_omega <- gr_random * (eps_random * sigma_random) + 1
+
+      m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
+      v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
+      mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
+
+      m_diag <- beta1 * m_diag + (1 - beta1) * grad_diag
+      v_diag <- beta2 * v_diag + (1 - beta2) * (grad_diag^2)
+      L_diag <- L_diag + alpha * (m_diag / (1 - beta1^t)) / (sqrt(v_diag / (1 - beta2^t)) + epsilon)
+
+      if (length(L_off) > 0) {
+        m_off <- beta1 * m_off + (1 - beta1) * grad_off
+        v_off <- beta2 * v_off + (1 - beta2) * (grad_off^2)
+        L_off <- L_off + alpha * (m_off / (1 - beta1^t)) / (sqrt(v_off / (1 - beta2^t)) + epsilon)
+      }
+
+      if (length(omega) > 0) {
+        m_omega <- beta1 * m_omega + (1 - beta1) * grad_omega
+        v_omega <- beta2 * v_omega + (1 - beta2) * (grad_omega^2)
+        omega <- omega + alpha * (m_omega / (1 - beta1^t)) / (sqrt(v_omega / (1 - beta2^t)) + epsilon)
+      }
+    } else if (method == "fullrank") {
       elbo_history[t] <- fn_val + sum(L_diag) + entropy_const
       grad_mu <- gr_val
       grad_L_mat <- outer(gr_val, eps)
@@ -135,9 +214,28 @@ ADVI_method <- function(model, par_list, pl_full,
 
   fit_matrix <- matrix(NA, nrow = num_samples, ncol = P)
 
-  if (fullrank) {
+  if (method == "hybrid") {
+    L <- matrix(0, P_fixed, P_fixed)
+    if (length(L_off) > 0) L[lower.tri(L)] <- L_off
+    diag(L) <- exp(L_diag)
+    sigma_random <- exp(omega)
+
+    for (i in 1:num_samples) {
+      eps_samp <- rnorm(P)
+      eps_fixed <- eps_samp[idx_fixed]
+      eps_random <- eps_samp[idx_random]
+
+      theta_fixed <- mu[idx_fixed] + as.vector(L %*% eps_fixed)
+      theta_random <- mu[idx_random] + sigma_random * eps_random
+
+      theta_samp <- numeric(P)
+      theta_samp[idx_fixed] <- theta_fixed
+      theta_samp[idx_random] <- theta_random
+      fit_matrix[i, ] <- theta_samp
+    }
+  } else if (method == "fullrank") {
     L <- matrix(0, P, P)
-    L[lower.tri(L)] <- L_off
+    if (length(L_off) > 0) L[lower.tri(L)] <- L_off
     diag(L) <- exp(L_diag)
     for (i in 1:num_samples) {
       fit_matrix[i, ] <- mu + as.vector(L %*% rnorm(P))
@@ -184,7 +282,9 @@ ADVI_method <- function(model, par_list, pl_full,
     para_final[i, ] <- unlist(con_list, use.names = FALSE)
   }
 
-  if (fullrank) {
+  if (method == "hybrid") {
+    elbo_final <- mean(lp_final) + sum(L_diag) + sum(omega) + entropy_const
+  } else if (method == "fullrank") {
     elbo_final <- mean(lp_final) + sum(L_diag) + entropy_const
   } else {
     elbo_final <- mean(lp_final) + sum(omega) + entropy_const
