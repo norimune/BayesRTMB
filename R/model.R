@@ -47,18 +47,22 @@ rtmb_model <- function(data, parameters, model,
   }, error = function(e) {
     err_msg <- conditionMessage(e)
 
-    # ADクラス消失エラーの翻訳
-    if (grepl("lost class attribute", err_msg) || grepl("Invalid argument to 'advector'", err_msg)) {
+    # ADクラス消失・非数値エラーの翻訳 (日本語・英語両対応)
+    if (grepl("lost class attribute", err_msg) ||
+        grepl("Invalid argument to 'advector'", err_msg) ||
+        grepl("数学関数に非数値引数", err_msg) ||
+        grepl("non-numeric argument to mathematical function", err_msg)) {
       stop(
-        "【モデル構築エラー】自動微分(AD)の型が途中で消失しました。\n",
-        "・原因: model_code 内で rep() や空の array() に対して for ループで逐次代入を行っている可能性があります。\n",
-        "・対策: 行列のベクトル化計算を使用するか、初期化には numeric(...) などを利用してください。\n",
+        "【モデル構築エラー】自動微分(AD)の型が途中で消失したか、非数値が渡されました。\n",
+        "・原因: model_code 内で AD対応していない関数（自作の関数や一部のbase関数など）を通したか、\n",
+        "        空の array() に対して for ループで逐次代入を行って型が壊れた可能性があります。\n",
+        "・対策: 計算を model_code 内で直接記述するか、行列のベクトル化計算を使用してください。\n",
         "[元のエラー]: ", err_msg,
         call. = FALSE
       )
     }
 
-    # 不正な演算エラーの翻訳
+    # 不正な演算エラーの翻訳 (C++由来のエラーは基本的に英語のまま出ます)
     if (grepl("illegal operation", err_msg) || grepl("not a valid 'advector'", err_msg)) {
       stop(
         "【モデル構築エラー】実行不可能な演算、または型の不整合が発生しました。\n",
@@ -68,8 +72,9 @@ rtmb_model <- function(data, parameters, model,
       )
     }
 
-    # 数値/行列型エラーの翻訳
-    if (grepl("requires numeric/complex matrix/vector", err_msg)) {
+    # 数値/行列型エラーの翻訳 (これも日本語化されることがあるため追加)
+    if (grepl("requires numeric/complex matrix/vector", err_msg) ||
+        grepl("数値/複素数行列/ベクトル引数が必要です", err_msg)) {
       stop(
         "【データ型エラー】数値ベクトルまたは行列が必要な箇所に、別の型が渡されています。\n",
         "・原因: 観測データやインデックスが data.frame や list になっていませんか？\n",
