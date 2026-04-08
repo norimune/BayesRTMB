@@ -482,6 +482,7 @@ MCMC_Fit <- R6::R6Class(
         dim_val <- dim(val)
         if (is.null(dim_val)) dim_val <- len
         self$tran_dims[[name]] <- dim_val
+
         names_def <- self$model$par_names[[name]]
         flat_nms <- generate_flat_names(name, dim_val, names_def)
         tran_names <- c(tran_names, flat_nms)

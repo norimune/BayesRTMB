@@ -57,9 +57,6 @@ RTMB_Model <- R6::R6Class(
       self$pl_full <- parse_parameters(self$par_list, self$par_names)
       names(self$pl_full$init) <- self$pl_full$names
 
-      self$pl_full <- parse_parameters(self$par_list)
-      names(self$pl_full$init) <- self$pl_full$names
-
       init_vec <- generate_random_init(self$pl_full, self$par_list, range = 2)
       test_para <- constrained_vector_to_list(init_vec, self$par_list)
 
