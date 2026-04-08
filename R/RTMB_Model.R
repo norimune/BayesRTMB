@@ -283,57 +283,6 @@ RTMB_Model <- R6::R6Class(
         for (name in names(self$par_list)) {
           p_info <- self$par_list[[name]]
           if (p_info$random == target_random) {
-
-            # --- Omega (相関行列) を計算して表に追加 ---
-            if (p_info$type == "CF_corr") {
-              L_est <- con_est_list[[name]]
-              Omega_est <- L_est %*% t(L_est)
-              R <- nrow(Omega_est)
-              display_name <- sub("^CF_", "", name)
-              if (display_name == name) display_name <- paste0(name, "_corr")
-
-              u_val <- unc_est_list[[name]]
-              u_se  <- unc_se_list[[name]]
-
-              get_omega_elem <- function(u_vec_name, row, col) {
-                tmp_unc_list <- unc_est_list
-                tmp_unc_list[[name]] <- u_vec_name
-                tmp_con <- to_constrained(tmp_unc_list, self$par_list)
-                Om_tmp <- tmp_con[[name]] %*% t(tmp_con[[name]])
-                return(as.numeric(Om_tmp[row, col]))
-              }
-
-              for (r in 1:R) {
-                for (c in 1:R) {
-                  est_val <- Omega_est[r, c]
-                  grad <- numeric(length(u_val))
-                  for (k in seq_along(u_val)) {
-                    u_step <- u_val; u_step[k] <- u_step[k] + 1e-5
-                    grad[k] <- (get_omega_elem(u_step, r, c) - est_val) / 1e-5
-                  }
-                  omega_se <- sqrt(sum((grad * u_se)^2))
-
-                  names_vec <- c(names_vec, paste0(display_name, "[", r, ",", c, "]"))
-                  est_vec   <- c(est_vec, est_val)
-                  se_vec    <- c(se_vec,  omega_se)
-
-                  low_val <- est_val - 1.96 * omega_se
-                  up_val  <- est_val + 1.96 * omega_se
-
-                  if (r != c) {
-                    low_val <- max(-1, min(1, low_val))
-                    up_val  <- max(-1, min(1, up_val))
-                  } else {
-                    omega_se <- 0; low_val <- 1; up_val <- 1
-                  }
-
-                  low_vec   <- c(low_vec, low_val)
-                  up_vec    <- c(up_vec,  up_val)
-                }
-              }
-            }
-
-            # --- 本来のパラメータ処理 ---
             len <- p_info$length
             f_names <- character(len)
 
@@ -378,12 +327,12 @@ RTMB_Model <- R6::R6Class(
       # --- ここから追加 ---
       # 変換量 (transform) と相関行列の計算
       tran_est_list <- list()
-      for (name in names(self$par_list)) {
-        if (self$par_list[[name]]$type == "CF_corr") {
-          mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
-          tran_est_list[[mat_name]] <- con_est_list[[name]] %*% t(con_est_list[[name]])
-        }
-      }
+      # for (name in names(self$par_list)) {
+      #   if (self$par_list[[name]]$type == "CF_corr") {
+      #     mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
+      #     tran_est_list[[mat_name]] <- con_est_list[[name]] %*% t(con_est_list[[name]])
+      #   }
+      # }
 
       if (!is.null(self$transform)) {
         user_tran <- tryCatch({
@@ -667,9 +616,9 @@ RTMB_Model <- R6::R6Class(
 
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
-      has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
+      #has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
-      if (has_tran || has_cf_corr) res_obj$transformed_draws(self$transform)
+      if (has_tran) res_obj$transformed_draws(self$transform)
       if (has_generate) res_obj$generated_quantities(self$generate)
 
       return(res_obj)
@@ -880,9 +829,9 @@ RTMB_Model <- R6::R6Class(
 
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
-      has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
+      #has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
-      if (has_tran || has_cf_corr) res_obj$transformed_draws(self$transform)
+      if (has_tran) res_obj$transformed_draws(self$transform)
       if (has_generate) res_obj$generated_quantities(self$generate)
 
       return(res_obj)

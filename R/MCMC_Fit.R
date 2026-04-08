@@ -581,6 +581,14 @@ MCMC_Fit <- R6::R6Class(
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
+
+          if (!is.null(self$model$transform)) {
+            tran_res <- self$model$transform(self$model$data, p_list)
+            if (is.list(tran_res)) {
+              p_list <- c(p_list, tran_res)
+            }
+          }
+
           res <- gq_fn(self$model$data, p_list)
           gq_array[i, c, ] <- unlist(res, use.names = FALSE)
 

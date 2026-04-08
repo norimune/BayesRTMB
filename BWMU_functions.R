@@ -13,18 +13,18 @@ Principal_Axis <- function(A){
   return(list(rotatedA=rotA,rotmat=rotmat))
 }
 
-plot_MDU<- function(delta,theta,phi,i=1,j=2,R=3){
+plot_MDU<- function(delta,theta,phi,i=1,j=2,R=3,minus=c(1,1), alpha = 0.2){
   M <- length(phi)
   plot.circle <- function(x, y, r){
     theta <- seq(-pi, pi, length=100)
-    points(x+r*cos(theta), y+r*sin(theta),type="l",col=rgb(0,0,1,alpha=0.5))
+    points(x+r*cos(theta), y+r*sin(theta),type="l",col=rgb(0,0,1,alpha=alpha))
   }
   plot(c(-R,R), c(-R,R),type="n")
   text(delta[,i],delta[,j])
   for(m in 1:M){
-    plot.circle(delta[m,i], delta[m,j], (phi[m]-min(phi)))
+    plot.circle(minus[i]*delta[m,i], minus[j]*delta[m,j], (phi[m]-min(phi)))
   }
-  knl <- kde2d(theta[,i],theta[,j],n=50,lims=c(c(-R,R),c(-R,R)))
+  knl <- kde2d(minus[i]*theta[,i],minus[j]*theta[,j],n=50,lims=c(c(-R,R),c(-R,R)))
   contour(knl,add=T,drawlabels=T)
 }
 
