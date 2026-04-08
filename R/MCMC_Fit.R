@@ -432,13 +432,13 @@ MCMC_Fit <- R6::R6Class(
       wrapper_tran_fn <- function(dat, param) {
         res <- list()
 
-        # CF_corr から相関行列を自動生成
-        for (name in names(self$model$par_list)) {
-          if (self$model$par_list[[name]]$type == "CF_corr") {
-            mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
-            res[[mat_name]] <- param[[name]] %*% t(param[[name]])
-          }
-        }
+        # # CF_corr から相関行列を自動生成
+        # for (name in names(self$model$par_list)) {
+        #   if (self$model$par_list[[name]]$type == "CF_corr") {
+        #     mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
+        #     res[[mat_name]] <- param[[name]] %*% t(param[[name]])
+        #   }
+        # }
 
         # ユーザー定義 transformed_parameters を追加
         if (!is.null(tran_fn)) {
