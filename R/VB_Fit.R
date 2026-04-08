@@ -71,8 +71,7 @@ VB_Fit <- R6::R6Class(
     #' @param ... Additional arguments passed to the `summary` method.
     #' @return The object itself, invisibly.
     print = function(...) {
-      out <- self$summary(...)
-      base::print(out)
+      print(self$summary(...))
       invisible(self)
     },
 

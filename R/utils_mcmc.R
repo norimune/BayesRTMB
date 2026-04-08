@@ -106,3 +106,58 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
 
   return(res_obj)
 }
+# summaryの結果にクラスを付与するヘルパー
+as_summary_df <- function(df) {
+  class(df) <- c("summary_BayesRTMB", "data.frame")
+  return(df)
+}
+
+#' summary_BayesRTMB クラス専用の print メソッド
+#' @export
+print.summary_BayesRTMB <- function(x, ...) {
+  df <- x
+
+  # 1. 各列を文字列に変換 (表示形式の指定)
+  out_char <- as.data.frame(lapply(names(df), function(cn) {
+    val <- df[[cn]]
+    if (is.numeric(val)) {
+      if (grepl("ess|iter|count", cn, ignore.case = TRUE)) {
+        # ESSなどは整数 (小数点なし)
+        format(val, nsmall = 0, digits = 0, scientific = FALSE)
+      } else {
+        # それ以外は小数点2桁で揃える
+        format(val, nsmall = 2, digits = 2, scientific = FALSE)
+      }
+    } else {
+      as.character(val)
+    }
+  }), stringsAsFactors = FALSE)
+  colnames(out_char) <- names(df)
+
+  # 2. 列幅の計算
+  col_widths <- sapply(seq_along(names(out_char)), function(i) {
+    max(nchar(names(out_char)[i]), nchar(out_char[, i]))
+  })
+
+  # 3. ヘッダーの表示 (タイトルはすべて右揃え)
+  header_parts <- sapply(seq_along(col_widths), function(i) {
+    sprintf(paste0("%", col_widths[i], "s"), names(out_char)[i])
+  })
+  cat(paste(header_parts, collapse = "  "), "\n")
+
+  # 4. データの表示 (1列目のデータのみ左揃え)
+  for (r in seq_len(nrow(out_char))) {
+    row_parts <- sapply(seq_along(col_widths), function(c) {
+      if (c == 1) {
+        # 変数名データのみ左揃え
+        sprintf(paste0("%-", col_widths[c], "s"), out_char[r, c])
+      } else {
+        # 数値データは右揃え
+        sprintf(paste0("%", col_widths[c], "s"), out_char[r, c])
+      }
+    })
+    cat(paste(row_parts, collapse = "  "), "\n")
+  }
+
+  return(invisible(x))
+}

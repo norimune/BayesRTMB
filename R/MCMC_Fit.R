@@ -87,48 +87,7 @@ MCMC_Fit <- R6::R6Class(
     #' @description Print a brief summary of the fitted object.
     #' @return The object itself, invisibly.
     print = function(...) {
-      # 1. summaryの結果を取得
-      out <- self$summary(...)
-
-      # 2. 列名に基づいてフォーマットを分岐させて文字列変換
-      out_char <- as.data.frame(lapply(names(out), function(cn) {
-        x <- out[[cn]]
-        if (is.numeric(x)) {
-          if (grepl("ess", cn)) {
-            # ESS (ess_bulk, ess_tail) は整数表示
-            format(x, nsmall = 0, scientific = FALSE)
-          } else {
-            # それ以外の数値（mean, sd, rhat等）は小数点2桁
-            format(x, nsmall = 2, digits = 2, scientific = FALSE)
-          }
-        } else {
-          as.character(x)
-        }
-      }), stringsAsFactors = FALSE)
-      colnames(out_char) <- names(out)
-
-      # 3. 各列の最大幅を計算（ヘッダー名も含める）
-      col_names <- names(out_char)
-      col_widths <- sapply(seq_along(col_names), function(i) {
-        max(nchar(col_names[i]), nchar(out_char[, i]))
-      })
-
-      # 4. ヘッダー行の作成（変数名のみ左揃え、他は右揃え）
-      header_parts <- sapply(seq_along(col_names), function(i) {
-        fmt <- if(i == 1) paste0("%-", col_widths[i], "s") else paste0("%", col_widths[i], "s")
-        sprintf(fmt, col_names[i])
-      })
-      cat(paste(header_parts, collapse = "  "), "\n")
-
-      # 5. データ行の作成
-      for (r in seq_len(nrow(out_char))) {
-        row_parts <- sapply(seq_along(col_names), function(c) {
-          fmt <- if(c == 1) paste0("%-", col_widths[c], "s") else paste0("%", col_widths[c], "s")
-          sprintf(fmt, out_char[r, c])
-        })
-        cat(paste(row_parts, collapse = "  "), "\n")
-      }
-
+      print(self$summary(...))
       invisible(self)
     },
     #' @description Extract posterior draws for selected parameters.
@@ -288,19 +247,20 @@ MCMC_Fit <- R6::R6Class(
 
         res_list_sum[[i]] <- data.frame(
           variable = param_names[p],
-          mean     = round(mean(valid_vec), digits),
-          sd       = round(sd_val, digits),
-          map      = round(map_val, digits),
-          q2.5     = round(unname(q95[1]), digits),
-          q97.5    = round(unname(q95[2]), digits),
-          ess_bulk = if(is.na(ebulk_val)) NA else round(ebulk_val, 0),
-          ess_tail = if(is.na(etail_val)) NA else round(etail_val, 0),
-          rhat     = if(is.na(rhat_val)) NA else sprintf("%.2f", rhat_val),
-          row.names = NULL,
+          mean     = mean(valid_vec),
+          sd       = sd_val,
+          map      = map_val,
+          q2.5     = unname(q95[1]),
+          q97.5    = unname(q95[2]),
+          ess_bulk = ebulk_val,
+          ess_tail = etail_val,
+          rhat     = rhat_val,
           stringsAsFactors = FALSE
         )
       }
-      return(do.call(rbind, res_list_sum))
+      res_df <- do.call(rbind, res_list_sum)
+      class(res_df) <- c("summary_BayesRTMB", "data.frame")
+      return(res_df)
     },
 
     #' @description Transform posterior draws to the unconstrained scale.
