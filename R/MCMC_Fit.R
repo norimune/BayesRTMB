@@ -90,12 +90,22 @@ MCMC_Fit <- R6::R6Class(
       # 1. summaryの結果を取得
       out <- self$summary(...)
 
-      # 2. すべての列を文字列に変換（数値の桁数を揃える）
-      # nsmall = 2 は小数点以下を必ず2桁表示する設定
-      out_char <- as.data.frame(lapply(out, function(x) {
-        if(is.numeric(x)) format(x, nsmall = 2, digits = 2, scientific = FALSE)
-        else as.character(x)
+      # 2. 列名に基づいてフォーマットを分岐させて文字列変換
+      out_char <- as.data.frame(lapply(names(out), function(cn) {
+        x <- out[[cn]]
+        if (is.numeric(x)) {
+          if (grepl("ess", cn)) {
+            # ESS (ess_bulk, ess_tail) は整数表示
+            format(x, nsmall = 0, scientific = FALSE)
+          } else {
+            # それ以外の数値（mean, sd, rhat等）は小数点2桁
+            format(x, nsmall = 2, digits = 2, scientific = FALSE)
+          }
+        } else {
+          as.character(x)
+        }
       }), stringsAsFactors = FALSE)
+      colnames(out_char) <- names(out)
 
       # 3. 各列の最大幅を計算（ヘッダー名も含める）
       col_names <- names(out_char)
@@ -103,8 +113,7 @@ MCMC_Fit <- R6::R6Class(
         max(nchar(col_names[i]), nchar(out_char[, i]))
       })
 
-      # 4. ヘッダー行の作成
-      # 最初の列は左揃え(%-s)、それ以外は右揃え(%s)
+      # 4. ヘッダー行の作成（変数名のみ左揃え、他は右揃え）
       header_parts <- sapply(seq_along(col_names), function(i) {
         fmt <- if(i == 1) paste0("%-", col_widths[i], "s") else paste0("%", col_widths[i], "s")
         sprintf(fmt, col_names[i])
