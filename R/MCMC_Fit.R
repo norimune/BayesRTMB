@@ -87,10 +87,41 @@ MCMC_Fit <- R6::R6Class(
     #' @description Print a brief summary of the fitted object.
     #' @return The object itself, invisibly.
     print = function(...) {
+      # 1. summaryの結果を取得
       out <- self$summary(...)
-      base::print(out, right = FALSE, row.names = FALSE)
+
+      # 2. すべての列を文字列に変換（数値の桁数を揃える）
+      # nsmall = 2 は小数点以下を必ず2桁表示する設定
+      out_char <- as.data.frame(lapply(out, function(x) {
+        if(is.numeric(x)) format(x, nsmall = 2, digits = 2, scientific = FALSE)
+        else as.character(x)
+      }), stringsAsFactors = FALSE)
+
+      # 3. 各列の最大幅を計算（ヘッダー名も含める）
+      col_names <- names(out_char)
+      col_widths <- sapply(seq_along(col_names), function(i) {
+        max(nchar(col_names[i]), nchar(out_char[, i]))
+      })
+
+      # 4. ヘッダー行の作成
+      # 最初の列は左揃え(%-s)、それ以外は右揃え(%s)
+      header_parts <- sapply(seq_along(col_names), function(i) {
+        fmt <- if(i == 1) paste0("%-", col_widths[i], "s") else paste0("%", col_widths[i], "s")
+        sprintf(fmt, col_names[i])
+      })
+      cat(paste(header_parts, collapse = "  "), "\n")
+
+      # 5. データ行の作成
+      for (r in seq_len(nrow(out_char))) {
+        row_parts <- sapply(seq_along(col_names), function(c) {
+          fmt <- if(c == 1) paste0("%-", col_widths[c], "s") else paste0("%", col_widths[c], "s")
+          sprintf(fmt, out_char[r, c])
+        })
+        cat(paste(row_parts, collapse = "  "), "\n")
+      }
+
       invisible(self)
-    },
+    }
     #' @description Extract posterior draws for selected parameters.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
     #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
