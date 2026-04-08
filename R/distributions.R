@@ -499,3 +499,51 @@ wishart_lpdf <- function(X, n, V) {
 
   return(as.numeric(lp))
 }
+#' Factor analysis multivariate normal log-probability density function
+#'
+#' Woodbury matrix identity is used for efficient computation.
+#'
+#' @param x Vector or matrix of quantiles.
+#' @param mu Vector of means.
+#' @param Lambda Factor loading matrix (P x K).
+#' @param psi Vector of unique variances (P).
+#' @return The sum of the log-density.
+#' @export
+fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
+  P <- nrow(Lambda)
+  K <- ncol(Lambda)
+
+  inv_psi <- 1 / psi
+
+  Lambda_scaled <- Lambda * inv_psi
+  M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)
+  L_M <- chol(M)
+  inv_M <- solve(M)
+  log_det_M <- 2 * sum(log(diag(L_M)))
+  log_det_Sigma <- sum(log(psi)) + log_det_M
+
+  if (is.matrix(x)) {
+    N <- nrow(x)
+    y_c <- t(t(x) - mu)
+    z_scaled <- t(t(y_c) * inv_psi)
+
+    term1 <- sum(y_c * z_scaled)
+    z_lambda <- z_scaled %*% Lambda
+    term2 <- sum(z_lambda * (z_lambda %*% inv_M))
+
+    lp <- -0.5 * (N * P * 1.83787706640935 + N * log_det_Sigma + term1 - term2)
+    return(lp)
+
+  } else {
+    # 1サンプルの場合 (ベクトル)
+    y_c <- x - mu
+    term1 <- sum((y_c^2) * inv_psi)
+
+    z_scaled <- y_c * inv_psi
+    z_lambda <- as.vector(t(Lambda) %*% z_scaled)
+    term2 <- sum(z_lambda * as.vector(inv_M %*% z_lambda))
+
+    lp <- -0.5 * (P * 1.83787706640935 + log_det_Sigma + term1 - term2)
+    return(lp)
+  }
+}
