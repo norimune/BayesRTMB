@@ -705,7 +705,7 @@ RTMB_Model <- R6::R6Class(
                 model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
                 iter = iter, tol_rel_obj = tol_rel_obj,
                 window_size = window_size, num_samples = num_samples, alpha = alpha,
-                laplace = laplace, print_freq = 0, fullrank = fullrank,
+                laplace = laplace, print_freq = 0, method = method,
                 update_progress = update_prog_fn, update_interval = update_interval
               )
               return(res)
@@ -766,7 +766,7 @@ RTMB_Model <- R6::R6Class(
         rel_obj_vec[c] <- res$rel_obj_final
       }
 
-      # --- 追加: 推定完了後に各estimateの事後サンプルをCSVへ一括保存 ---
+      # --- 推定完了後に各estimateの事後サンプルをCSVへ一括保存 ---
       if (!is.null(save_info)) {
         for (c in 1:num_estimate) {
           backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
