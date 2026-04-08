@@ -442,8 +442,8 @@ RTMB_Model <- R6::R6Class(
       random_flags <- sapply(orig_pl, function(x) isTRUE(x$random))
 
       if (laplace && any(random_flags)) {
-        pl_fixed  <- parse_parameters(orig_pl[!random_flags])
-        pl_random <- parse_parameters(orig_pl[random_flags])
+        pl_fixed  <- parse_parameters(orig_pl[!random_flags], self$par_names)
+        pl_random <- parse_parameters(orig_pl[random_flags], self$par_names)
 
         fixed_idx  <- which(self$pl_full$names %in% pl_fixed$names)
         random_idx <- which(self$pl_full$names %in% pl_random$names)
