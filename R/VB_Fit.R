@@ -169,7 +169,7 @@ VB_Fit <- R6::R6Class(
     #' @param inc_tran Logical; whether to include transformed parameters in the summary. Default is TRUE.
     #' @param inc_gq Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A data frame containing the summarized posterior statistics.
-    summary = function(pars = NULL, max_rows = 10, digits = 3,
+    summary = function(pars = NULL, max_rows = 10, digits = 2,
                        inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
 
       # Rhatを計算するため全チェインを取得
