@@ -404,7 +404,7 @@ RTMB_Model <- R6::R6Class(
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
                       delta=0.8, max_treedepth = 10,
-                      parallel = TRUE, laplace = FALSE,
+                      parallel = FALSE, laplace = FALSE,
                       init = NULL, save_csv = NULL) {
 
       if (!is.null(init)) init <- as.numeric(init)
