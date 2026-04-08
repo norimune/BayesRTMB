@@ -618,13 +618,38 @@ parse_parameters <- function(par_list) {
         flat_names[idx] <- name
       }
     } else {
+      # parameters.R 内 parse_parameters の一部を置換
+
       if (length(p$dim) > 1) {
-        # 行列・配列の場合
-        grid <- expand.grid(lapply(p$dim, seq_len))
-        indices <- apply(grid, 1, paste, collapse = ",")
-        flat_names[idx:end_idx] <- paste0(name, "[", indices, "]")
+        if (!is.null(p$names)) {
+          if (is.list(p$names) && length(p$names) == length(p$dim)) {
+            # names がリスト形式で各次元の名前が指定されている場合 (例: 行名と列名のリスト)
+            grid <- do.call(expand.grid, p$names)
+            flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
+          } else if (is.atomic(p$names) && length(p$names) == p$dim[1]) {
+            # names がベクトルで渡された場合
+            if (length(p$dim) == 2 && p$dim[1] == p$dim[2]) {
+              # 正方行列 (相関行列など) なら行と列の両方に同じ名前を適用
+              grid <- expand.grid(p$names, p$names)
+            } else {
+              # 非正方行列 (Lambdaなど) なら行のみ名前、列は数字インデックス
+              dim_list <- lapply(p$dim, seq_len)
+              dim_list[[1]] <- p$names
+              grid <- do.call(expand.grid, dim_list)
+            }
+            flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
+          } else {
+            # サイズが合わない場合のフォールバック
+            grid <- do.call(expand.grid, lapply(p$dim, seq_len))
+            flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
+          }
+        } else {
+          # namesが未指定の場合
+          grid <- do.call(expand.grid, lapply(p$dim, seq_len))
+          flat_names[idx:end_idx] <- paste0(name, "[", apply(grid, 1, paste, collapse = ","), "]")
+        }
       } else {
-        # ベクトルの場合 (ここで指定されたnamesを活用)
+        # ベクトルの場合 (変更なし)
         if (!is.null(p$names) && length(p$names) == len) {
           flat_names[idx:end_idx] <- paste0(name, "[", p$names, "]")
         } else {

@@ -741,7 +741,7 @@ rtmb_fa <- function(data, n_factors = 1,
   # 2. パラメータの定義 (thetaをランダム効果として追加)
   params <- list(
     mu     = Dim(P, names = var_names),
-    Lambda = Dim(c(P, K), type = "lower_tri"),
+    Lambda = Dim(c(P, K), type = "lower_tri", names = var_names),
     psi    = Dim(P, lower = 0, names = var_names),
     theta  = Dim(c(N, K), random = TRUE)
   )
@@ -806,7 +806,7 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   params <- list(
     mu       = Dim(P, names = var_names),
     sigma    = Dim(P, lower = 0, names = var_names),
-    CF_Omega = Dim(c(P, P), type = "CF_corr")
+    CF_Omega = Dim(c(P, P), type = "CF_corr", names = var_names)
   )
 
   model_expr <- model_code({
