@@ -112,7 +112,6 @@ as_summary_df <- function(df) {
   return(df)
 }
 
-#' summary_BayesRTMB クラス専用の print メソッド
 #' @export
 print.summary_BayesRTMB <- function(x, ...) {
   df <- x
@@ -122,11 +121,11 @@ print.summary_BayesRTMB <- function(x, ...) {
     val <- df[[cn]]
     if (is.numeric(val)) {
       if (grepl("ess|iter|count", cn, ignore.case = TRUE)) {
-        # ESSなどは整数 (小数点なし)
-        format(val, nsmall = 0, digits = 0, scientific = FALSE)
+        # ESSなどは整数 (NA対策込み)
+        ifelse(is.na(val), "NA", sprintf("%.0f", val))
       } else {
-        # それ以外は小数点2桁で揃える
-        format(val, nsmall = 2, digits = 2, scientific = FALSE)
+        # それ以外は小数点2桁で揃える (NA対策込み)
+        ifelse(is.na(val), "NA", sprintf("%.2f", val))
       }
     } else {
       as.character(val)
