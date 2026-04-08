@@ -251,55 +251,199 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
 
 #' ce_rtmb クラス専用のプロットメソッド (Base R)
 #' @export
+#' @export
+conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, ...) {
+  model_obj <- fit$model
+  if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
+    stop("このモデルオブジェクトには formula または元のデータが含まれていません。")
+  }
+
+  form <- model_obj$formula
+  raw_data <- model_obj$raw_data
+  fam <- model_obj$family
+
+  # 交互作用かどうかの判定と分割
+  eff_vars <- strsplit(effect, ":")[[1]]
+  if (length(eff_vars) > 2) {
+    stop("3つ以上の変数の交互作用プロットには現在対応していません。")
+  }
+  eff1 <- eff_vars[1]
+  eff2 <- if (length(eff_vars) == 2) eff_vars[2] else NULL
+
+  # 1. ベースとなるデータフレームの作成 (他の変数を平均/最頻値に固定)
+  base_data <- lapply(raw_data, function(x) {
+    if (is.numeric(x)) {
+      mean(x, na.rm = TRUE)
+    } else if (is.factor(x) || is.character(x)) {
+      tbl <- table(x)
+      factor(names(tbl)[which.max(tbl)], levels = levels(as.factor(x)))
+    } else {
+      x[1]
+    }
+  })
+  base_data <- as.data.frame(base_data)
+
+  # 2. effect変数のみを動かした newdata を作成
+  val1 <- raw_data[[eff1]]
+  if (is.null(val1)) stop(sprintf("データの中に変数 '%s' が見つかりません。", eff1))
+
+  is_numeric1 <- is.numeric(val1)
+  if (is_numeric1) {
+    seq1 <- seq(min(val1, na.rm = TRUE), max(val1, na.rm = TRUE), length.out = resolution)
+  } else {
+    seq1 <- sort(unique(val1))
+  }
+
+  if (!is.null(eff2)) {
+    val2 <- raw_data[[eff2]]
+    if (is.null(val2)) stop(sprintf("データの中に変数 '%s' が見つかりません。", eff2))
+
+    # 第2変数が連続値で種類が多い場合は、代表的な3点(Mean-1SD, Mean, Mean+1SD)に絞る
+    if (is.numeric(val2) && length(unique(val2)) > 5) {
+      seq2 <- c(mean(val2, na.rm=TRUE) - sd(val2, na.rm=TRUE),
+                mean(val2, na.rm=TRUE),
+                mean(val2, na.rm=TRUE) + sd(val2, na.rm=TRUE))
+      seq2 <- round(seq2, 2) # 表示が見やすいように丸める
+    } else {
+      seq2 <- sort(unique(val2))
+    }
+
+    grid_data <- expand.grid(eff1 = seq1, eff2 = seq2)
+    names(grid_data) <- c(eff1, eff2)
+
+    newdata <- base_data[rep(1, nrow(grid_data)), , drop = FALSE]
+    newdata[[eff1]] <- grid_data[[eff1]]
+    newdata[[eff2]] <- grid_data[[eff2]]
+  } else {
+    newdata <- base_data[rep(1, length(seq1)), , drop = FALSE]
+    newdata[[eff1]] <- seq1
+  }
+
+  # 3. デザイン行列の作成
+  rhs <- delete.response(terms(form))
+  X_new <- model.matrix(rhs, data = newdata)
+
+  # 4. 事後サンプルの取得 (固定効果のみ)
+  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_tran = FALSE, inc_gq = FALSE)
+  I <- dim(beta_samples)[1]
+  C <- dim(beta_samples)[2]
+  P <- dim(beta_samples)[3]
+  beta_flat <- matrix(beta_samples, nrow = I * C, ncol = P)
+
+  # 5. 線形予測子の計算
+  eta <- X_new %*% t(beta_flat)
+
+  # 6. 逆リンク関数で期待値に変換
+  if (is.null(fam)) fam <- "gaussian"
+  inv_link <- switch(fam,
+                     "gaussian" = , "lognormal" = , "student_t" = function(x) x,
+                     "poisson" = , "neg_binomial" = , "gamma" = exp,
+                     "bernoulli" = , "binomial" = plogis,
+                     function(x) x
+  )
+  mu <- inv_link(eta)
+
+  # 7. 事後分布の要約
+  alpha <- 1 - prob
+  lower_q <- alpha / 2
+  upper_q <- 1 - alpha / 2
+
+  res_df <- data.frame(
+    estimate   = apply(mu, 1, mean),
+    lower      = apply(mu, 1, quantile, probs = lower_q),
+    upper      = apply(mu, 1, quantile, probs = upper_q)
+  )
+  res_df <- cbind(newdata[, eff_vars, drop = FALSE], res_df)
+
+  # 8. 結果をリストにまとめてクラスを付与
+  res <- list(data = res_df, effect_vars = eff_vars, is_numeric = is_numeric1)
+  class(res) <- "ce_rtmb"
+  return(res)
+}
+
+#' ce_rtmb クラス専用のプロットメソッド (Base R)
+#' @export
 plot.ce_rtmb <- function(x, ...) {
   df <- x$data
-  eff <- x$effect_name
+  eff_vars <- x$effect_vars
+  eff1 <- eff_vars[1]
+  has_interaction <- length(eff_vars) > 1
 
-  x_val <- df[[eff]]
+  x_val <- df[[eff1]]
   y_est <- df$estimate
   y_low <- df$lower
   y_up  <- df$upper
 
-  # デフォルトの色設定 (少し透過させた青)
-  col_line <- rgb(0, 0.45, 0.7)
-  col_ribbon <- rgb(0, 0.45, 0.7, 0.2)
+  if (!has_interaction) {
+    # --- 交互作用なしの場合 ---
+    col_line <- rgb(0, 0.45, 0.7)
+    col_ribbon <- rgb(0, 0.45, 0.7, 0.2)
 
-  if (x$is_numeric) {
-    # 連続値の場合はリボン(polygon)と実線(lines)
-    plot(x_val, y_est, type = "n",
-         ylim = range(c(y_low, y_up)),
-         xlab = eff, ylab = "Predicted value",
-         main = paste("Conditional effect of", eff), ...)
-
-    # 95%信用区間を描画
-    polygon(c(x_val, rev(x_val)), c(y_low, rev(y_up)),
-            col = col_ribbon, border = NA)
-
-    # 事後平均を描画
-    lines(x_val, y_est, col = col_line, lwd = 2)
+    if (x$is_numeric) {
+      plot(x_val, y_est, type = "n", ylim = range(c(y_low, y_up)),
+           xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1), ...)
+      polygon(c(x_val, rev(x_val)), c(y_low, rev(y_up)), col = col_ribbon, border = NA)
+      lines(x_val, y_est, col = col_line, lwd = 2)
+    } else {
+      x_num <- as.numeric(as.factor(x_val))
+      plot(x_num, y_est, type = "n", ylim = range(c(y_low, y_up)),
+           xlim = c(min(x_num) - 0.5, max(x_num) + 0.5), xaxt = "n",
+           xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1), ...)
+      axis(1, at = x_num, labels = as.character(x_val))
+      segments(x0 = x_num, y0 = y_low, x1 = x_num, y1 = y_up, col = col_line, lwd = 2)
+      points(x_num, y_est, col = col_line, pch = 16, cex = 1.5)
+    }
 
   } else {
-    # カテゴリ変数の場合はエラーバー(segments)と点(points)
-    x_num <- as.numeric(as.factor(x_val))
+    # --- 交互作用ありの場合 ---
+    eff2 <- eff_vars[2]
+    groups <- unique(df[[eff2]])
+    n_groups <- length(groups)
 
-    plot(x_num, y_est, type = "n",
-         ylim = range(c(y_low, y_up)),
-         xlim = c(min(x_num) - 0.5, max(x_num) + 0.5),
-         xaxt = "n",
-         xlab = eff, ylab = "Predicted value",
-         main = paste("Conditional effect of", eff), ...)
+    # グループ数に応じたカラーパレットの作成
+    cols_line <- hcl.colors(n_groups, palette = "Dark 2")
+    cols_ribbon <- sapply(cols_line, function(col) {
+      rgb_val <- col2rgb(col) / 255
+      rgb(rgb_val[1], rgb_val[2], rgb_val[3], 0.2) # 透過度0.2
+    })
 
-    # X軸のラベルをカテゴリ名に変更
-    axis(1, at = x_num, labels = as.character(x_val))
+    if (x$is_numeric) {
+      plot(x_val, y_est, type = "n", ylim = range(c(y_low, y_up)),
+           xlab = eff1, ylab = "Predicted value",
+           main = paste("Conditional effect of", eff1, "by", eff2), ...)
 
-    # 95%信用区間を描画
-    segments(x0 = x_num, y0 = y_low, x1 = x_num, y1 = y_up,
-             col = col_line, lwd = 2)
+      for (i in seq_along(groups)) {
+        idx <- df[[eff2]] == groups[i]
+        xv <- df[[eff1]][idx]
+        polygon(c(xv, rev(xv)), c(df$lower[idx], rev(df$upper[idx])), col = cols_ribbon[i], border = NA)
+        lines(xv, df$estimate[idx], col = cols_line[i], lwd = 2)
+      }
+    } else {
+      x_fct <- as.factor(x_val)
+      x_num <- as.numeric(x_fct)
 
-    # 事後平均を描画
-    points(x_num, y_est, col = col_line, pch = 16, cex = 1.5)
+      plot(x_num, y_est, type = "n", ylim = range(c(y_low, y_up)),
+           xlim = c(min(x_num) - 0.5, max(x_num) + 0.5), xaxt = "n",
+           xlab = eff1, ylab = "Predicted value",
+           main = paste("Conditional effect of", eff1, "by", eff2), ...)
+      axis(1, at = unique(x_num), labels = levels(x_fct))
+
+      # エラーバーが重ならないようにX軸を少しずらす
+      offset_step <- 0.1
+      offsets <- seq(-offset_step * (n_groups-1)/2, offset_step * (n_groups-1)/2, length.out = n_groups)
+
+      for (i in seq_along(groups)) {
+        idx <- df[[eff2]] == groups[i]
+        xv <- x_num[idx] + offsets[i]
+        segments(x0 = xv, y0 = df$lower[idx], x1 = xv, y1 = df$upper[idx], col = cols_line[i], lwd = 2)
+        points(xv, df$estimate[idx], col = cols_line[i], pch = 16, cex = 1.5)
+      }
+    }
+
+    # 凡例の追加
+    legend("topright", title = eff2, legend = format(groups, digits = 3),
+           col = cols_line, lty = 1, pch = ifelse(x$is_numeric, NA, 16), lwd = 2, bty = "n")
   }
-
   invisible(x)
 }
 
