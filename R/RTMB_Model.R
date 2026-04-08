@@ -509,14 +509,6 @@ RTMB_Model <- R6::R6Class(
           results_list <- future.apply::future_lapply(1:chains, function(c) {
             run_chain(c, p_callback = function(msg = "") p(message = msg))
           }, future.seed = TRUE,
-          future.globals = c(
-            "unconstrained_vector_to_list", "constrained_vector_to_list",
-            "stz_basis", "to_constrained", "to_unconstrained",
-            "calc_log_jacobian", "generate_random_init", "NUTS_method",
-            "IMH_method", "create_NUTS_core", "lpdf", "math",
-            "log_sum_exp", "inv_logit", "logit", "distance",
-            "squared_distance", "softmax"
-          ),
           future.packages = c("RTMB","BayesRTMB")
           )
         })
@@ -729,7 +721,7 @@ RTMB_Model <- R6::R6Class(
           cat("※プログレスバーを表示するには 'progressr' パッケージをインストールしてください。\n")
           results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
             run_advi(c)
-          }, future.seed = TRUE, future.packages = "RTMB")
+          }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
         }
 
         future::plan(future::sequential)
@@ -831,8 +823,15 @@ RTMB_Model <- R6::R6Class(
       has_generate <- !is.null(self$generate)
       #has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
-      if (has_tran) res_obj$transformed_draws(self$transform)
-      if (has_generate) res_obj$generated_quantities(self$generate)
+      if (has_tran){
+        cat("Calculating transformed parameters...\n")
+        res_obj$transformed_draws(self$transform)
+      }
+      if (has_generate) {
+        cat("Calculating generated quantities...\n")
+        res_obj$generated_quantities(self$generate)
+      }
+
 
       return(res_obj)
     },

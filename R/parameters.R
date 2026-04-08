@@ -331,7 +331,7 @@ to_constrained <- function(para_unc_list, par_list) {
     } else if (b_type == "upper") {
       para[[name]] <- p$upper - exp(val_unc)
     } else if (b_type == "interval") {
-      prob <- 1 / (1 + exp(-val_unc))
+      prob <- plogis(val_unc)
       para[[name]] <- p$lower + (p$upper - p$lower) * prob
     } else if (b_type == "ordered") {
       if (p$length > 1) {
@@ -426,7 +426,7 @@ to_constrained <- function(para_unc_list, par_list) {
           if (max_j > 0) {
             for (j in 1:max_j) {
               L[i, j] <- z[idx] * sqrt(prod_term)
-              prod_term <- prod_term / (cosh(val_unc[idx])^2)
+              prod_term <- prod_term * (1 - z[idx]^2)
               idx <- idx + 1
             }
           }

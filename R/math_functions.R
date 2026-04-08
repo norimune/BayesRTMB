@@ -87,7 +87,7 @@ log1m_exp <- function(x) {
 #' @export
 log_mix <- function(theta, lp1, lp2) {
   l1 <- log(theta) + lp1
-  l2 <- log(1 - theta) + lp2
+  l2 <- log1p(-theta) + lp2
   return(log_sum_exp(l1, l2))
 }
 
@@ -174,14 +174,7 @@ sum_to_zero <- function(x) {
 #' @return An M x D lower triangular matrix.
 to_lower_tri <- function(x, M, D) {
   y <- matrix(x[1] * 0, nrow = M, ncol = D)
-  pos <- 1
-  for (i in 1:M) {
-    max_j <- min(i, D)
-    for (j in 1:max_j) {
-      y[i, j] <- x[pos]
-      pos <- pos + 1
-    }
-  }
+  y[lower.tri(y, diag = TRUE)] <- x
   return(y)
 }
 #' Vector to centered matrix (RTMB compatible)
