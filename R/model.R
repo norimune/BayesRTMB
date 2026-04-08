@@ -538,6 +538,132 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   return(obj)
 }
+#' RTMBベースのGLMラッパー関数 (変量効果なし)
+#'
+#' @param formula フォーミュラ (例: Y ~ X1 + X2)
+#' @param data データフレーム
+#' @param family 分布族の文字列
+#' @param prior 事前分布のハイパーパラメータのリスト
+#' @export
+rtmb_glm <- function(formula, data, family = "gaussian",
+                     prior = list(
+                       beta_sd = 10,
+                       sigma_rate = 1,
+                       shape_rate = 1,
+                       phi_rate = 1
+                     )) {
+
+  # 1. フォーミュラのパース
+  mf <- model.frame(formula, data)
+  Y <- model.response(mf)
+  X <- model.matrix(formula, mf)
+
+  # 応答変数Yの型変換（factor型への対応）
+  if (is.factor(Y)) {
+    if (family %in% c("bernoulli", "binomial")) {
+      Y <- as.numeric(Y) - 1  # 0, 1 に変換
+    } else {
+      Y <- as.numeric(Y)      # 1, 2, 3... に変換 (orderedなどで有効)
+    }
+  }
+
+  N <- length(Y)
+  fixed_names <- colnames(X)
+
+  # 2. dataの準備
+  dat <- list(
+    N = N,
+    Y = Y,
+    X = X,
+    K = ncol(X),
+    prior_beta_sd    = prior$beta_sd,
+    prior_sigma_rate = prior$sigma_rate,
+    prior_shape_rate = prior$shape_rate,
+    prior_phi_rate   = prior$phi_rate
+  )
+
+  # 3. parameterの準備 (固定効果のみ)
+  params <- list(
+    beta = Dim(ncol(X), names = fixed_names)
+  )
+
+  # 分布族に応じた追加パラメータの設定
+  if (family %in% c("gaussian", "lognormal", "student_t")) {
+    params$sigma <- Dim(1, lower = 0)
+  }
+  if (family == "student_t") {
+    params$nu <- Dim(1, lower = 2) # 自由度は2以上を推奨
+  }
+  if (family == "gamma") {
+    params$shape <- Dim(1, lower = 0)
+  }
+  if (family == "neg_binomial") {
+    params$phi <- Dim(1, lower = 0) # dispersion parameter
+  }
+  if (family == "ordered") {
+    num_categories <- length(unique(Y))
+    params$cutpoints <- Dim(num_categories - 1, type = "ordered")
+  }
+
+  # 4. モデルコードの動的構築
+  ll_expr <- switch(family,
+                    "gaussian" = quote({
+                      sigma ~ exponential(prior_sigma_rate)
+                      for(i in 1:N) { Y[i] ~ normal(eta[i], sigma) }
+                    }),
+                    "lognormal" = quote({
+                      sigma ~ exponential(prior_sigma_rate)
+                      for(i in 1:N) { Y[i] ~ lognormal(eta[i], sigma) }
+                    }),
+                    "student_t" = quote({
+                      sigma ~ exponential(prior_sigma_rate)
+                      nu ~ exponential(0.1)
+                      for(i in 1:N) { Y[i] ~ student_t(nu, eta[i], sigma) }
+                    }),
+                    "gamma" = quote({
+                      shape ~ exponential(prior_shape_rate)
+                      for(i in 1:N) { Y[i] ~ gamma(shape, shape / exp(eta[i])) }
+                    }),
+                    "bernoulli" = quote({
+                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                    }),
+                    "binomial" = quote({
+                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                    }),
+                    "poisson" = quote({
+                      for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
+                    }),
+                    "neg_binomial" = quote({
+                      phi ~ exponential(prior_phi_rate)
+                      for(i in 1:N) { Y[i] ~ neg_binomial_2(exp(eta[i]), phi) }
+                    }),
+                    "ordered" = quote({
+                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
+                    })
+  )
+
+  # 変量効果を除外した線形予測子
+  common_expr <- quote({
+    beta ~ normal(0, prior_beta_sd)
+    eta <- as.vector(X %*% beta)
+  })
+
+  common_list <- as.list(common_expr)[-1]
+  ll_list <- as.list(ll_expr)[-1]
+
+  model_ast <- as.call(c(list(as.name("{")), common_list, ll_list))
+  model_expr <- eval(bquote(model_code(.(model_ast))))
+
+  # 5. rtmb_model を呼び出してオブジェクトを返す
+  obj <- rtmb_model(
+    data = dat,
+    parameters = params,
+    model = model_expr,
+    generate = NULL # GLMでは必須の生成量がないためNULL
+  )
+
+  return(obj)
+}
 #' 探索的因子分析 (Bayesian EFA) 超高速版ラッパー
 #'
 #' @param data 観測データフレームまたは行列 (N x P)
