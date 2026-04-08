@@ -293,20 +293,8 @@ RTMB_Model <- R6::R6Class(
         for (name in names(self$par_list)) {
           p_info <- self$par_list[[name]]
           if (p_info$random == target_random) {
-            len <- p_info$length
-            f_names <- character(len)
-
-            if (len == 1) {
-              f_names <- name
-            } else {
-              if (length(p_info$dim) > 1) {
-                grid <- expand.grid(lapply(p_info$dim, seq_len))
-                indices <- apply(grid, 1, paste, collapse = ",")
-                f_names <- paste0(name, "[", indices, "]")
-              } else {
-                f_names <- paste0(name, "[", 1:len, "]")
-              }
-            }
+            names_def <- self$par_names[[name]]
+            f_names <- generate_flat_names(name, p_info$dim, names_def)
 
             names_vec <- c(names_vec, f_names)
             est_vec <- c(est_vec, as.numeric(con_est_list[[name]]))
