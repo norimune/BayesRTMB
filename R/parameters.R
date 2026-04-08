@@ -5,9 +5,10 @@
 #' @param lower Lower bound.
 #' @param upper Upper bound.
 #' @param random Logical; whether it is a random effect.
+#' @param names vector of parameters names
 #'
 #' @export
-Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE) {
+Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE, names = NULL) {
   if (is.null(type)) {
     if (length(dim) == 1) type <- "vector"
     else if (length(dim) == 2) type <- "matrix"
@@ -83,7 +84,8 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
     lower      = lower,
     upper      = upper,
     random     = random,
-    bounds     = bounds_type
+    bounds     = bounds_type,
+    names      = names
   )
 }
 
@@ -609,14 +611,25 @@ parse_parameters <- function(par_list) {
     end_idx <- idx + len - 1
 
     if (len == 1) {
-      flat_names[idx] <- name
+      # スカラーの場合
+      if (!is.null(p$names) && length(p$names) == 1) {
+        flat_names[idx] <- paste0(name, "[", p$names, "]")
+      } else {
+        flat_names[idx] <- name
+      }
     } else {
       if (length(p$dim) > 1) {
+        # 行列・配列の場合
         grid <- expand.grid(lapply(p$dim, seq_len))
         indices <- apply(grid, 1, paste, collapse = ",")
         flat_names[idx:end_idx] <- paste0(name, "[", indices, "]")
       } else {
-        flat_names[idx:end_idx] <- paste0(name, "[", 1:len, "]")
+        # ベクトルの場合 (ここで指定されたnamesを活用)
+        if (!is.null(p$names) && length(p$names) == len) {
+          flat_names[idx:end_idx] <- paste0(name, "[", p$names, "]")
+        } else {
+          flat_names[idx:end_idx] <- paste0(name, "[", 1:len, "]")
+        }
       }
     }
 

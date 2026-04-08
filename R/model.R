@@ -392,6 +392,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     stop("現在、ラッパー関数は単一のグループ化変数のみに対応しています。")
   }
 
+  # 固定効果と変量効果の名前を取得
+  fixed_names <- colnames(X)
+  ranef_names <- parsed$reTrms$cnms[[1]]
+
   # 変量効果の情報の抽出
   Zt <- as.matrix(reTrms$Ztlist[[1]])
   group_idx <- as.integer(reTrms$flist[[1]])
@@ -428,10 +432,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # parameterの準備
   params <- list(
-    beta     = Dim(ncol(X)),
-    tau      = Dim(num_ranef, lower = 0),
+    beta     = Dim(ncol(X), names = fixed_names),
+    tau      = Dim(num_ranef, lower = 0, names = ranef_names),
     CF_Omega = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
-    # 【修正1】laplace引数を反映するように修正 (TRUE -> laplace)
     r        = Dim(c(num_groups, num_ranef), random = laplace)
   )
 
