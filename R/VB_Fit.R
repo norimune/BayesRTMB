@@ -518,6 +518,12 @@ VB_Fit <- R6::R6Class(
       if (is.null(gq_fn)) return(invisible(self))
 
       test_para <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
+      if (!is.null(self$model$transform)) {
+        tran_res <- self$model$transform(self$model$data, test_para)
+        if (is.list(tran_res)) {
+          test_para <- c(test_para, tran_res)
+        }
+      }
       test_gq <- gq_fn(self$model$data, test_para)
 
       if (is.null(test_gq) || length(test_gq) == 0) return(invisible(self))
