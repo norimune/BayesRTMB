@@ -19,6 +19,10 @@ rtmb_model <- function(data, parameters, model,
   }
   evaluated_par_list <- build_par_list(data)
 
+  # 2. 実行前のデータ・型チェック
+  validate_data(data, evaluated_par_list)
+
+  # 3. transformed と generate の評価
   raw_transformed <- substitute(transformed)
   if (!is.null(raw_transformed) && !is.function(transformed)) {
     transformed <- eval(bquote(transformed_code(.(raw_transformed), env = parent.frame())))
@@ -29,15 +33,54 @@ rtmb_model <- function(data, parameters, model,
     generate <- eval(bquote(transformed_code(.(raw_generate), env = parent.frame())))
   }
 
-  model_instance <- RTMB_Model$new(
-    data         = data,
-    par_list     = evaluated_par_list,
-    log_prob     = model,
-    transform    = transformed,
-    generate     = generate
-  )
+  # 4. モデルの構築とエラーハンドリング
+  tryCatch({
+    model_instance <- RTMB_Model$new(
+      data         = data,
+      par_list     = evaluated_par_list,
+      log_prob     = model,
+      transform    = transformed,
+      generate     = generate
+    )
+    return(model_instance)
 
-  return(model_instance)
+  }, error = function(e) {
+    err_msg <- conditionMessage(e)
+
+    # ADクラス消失エラーの翻訳
+    if (grepl("lost class attribute", err_msg) || grepl("Invalid argument to 'advector'", err_msg)) {
+      stop(
+        "【モデル構築エラー】自動微分(AD)の型が途中で消失しました。\n",
+        "・原因: model_code 内で rep() や空の array() に対して for ループで逐次代入を行っている可能性があります。\n",
+        "・対策: 行列のベクトル化計算を使用するか、初期化には numeric(...) などを利用してください。\n",
+        "[元のエラー]: ", err_msg,
+        call. = FALSE
+      )
+    }
+
+    # 不正な演算エラーの翻訳
+    if (grepl("illegal operation", err_msg) || grepl("not a valid 'advector'", err_msg)) {
+      stop(
+        "【モデル構築エラー】実行不可能な演算、または型の不整合が発生しました。\n",
+        "・原因: 行列の掛け算(%*%)の左右で次元が合っていない、または Dim() の型指定 (CF_cov, lower_tri など) が実際の行列サイズと矛盾している可能性があります。\n",
+        "[元のエラー]: ", err_msg,
+        call. = FALSE
+      )
+    }
+
+    # 数値/行列型エラーの翻訳
+    if (grepl("requires numeric/complex matrix/vector", err_msg)) {
+      stop(
+        "【データ型エラー】数値ベクトルまたは行列が必要な箇所に、別の型が渡されています。\n",
+        "・原因: 観測データやインデックスが data.frame や list になっていませんか？\n",
+        "[元のエラー]: ", err_msg,
+        call. = FALSE
+      )
+    }
+
+    # 未知のエラーはそのまま出力
+    stop("【予期せぬエラー】\n", err_msg, call. = FALSE)
+  })
 }
 #' Model Code Wrapper for RTMB
 #'
@@ -196,6 +239,106 @@ transformed_code <- function(expr, env = parent.frame()) {
 
   return(fn)
 }
+#' データとパラメータの事前検証
+#'
+#' @description
+#' `rtmb_model` にデータを渡す前に、R特有のデータ型（data.frameなど）が混入していないか、
+#' および欠損値の有無などをチェックし、エラーや警告を出力します。
+#'
+#' @param dat_list モデルに渡すデータのリスト（通常、行列や数値ベクトルを含む）。
+#' @param par_list `Dim()` で定義されたパラメータのリスト。
+#'
+#' @return 検証に成功した場合は不可視の `NULL` を返します。問題がある場合は `stop()` で処理を中断、または `warning()` を発出します。
+#'
+#' @details
+#' RTMBの自動微分エンジンは純粋な `matrix` や `numeric` を要求します。
+#' ユーザーが誤って `data.frame` を渡した場合、計算グラフの構築時に不可解なエラーが発生するため、
+#' この関数で事前に捕捉します。
+validate_data <- function(dat_list, par_list) {
+  # 1. データフレームのチェック
+  for (name in names(dat_list)) {
+    if (is.data.frame(dat_list[[name]])) {
+      stop(sprintf(
+        "【エラー】データ '%s' がデータフレーム(data.frame)のまま渡されています。\n行列演算が失敗するため、as.matrix() で行列に変換してから渡してください。",
+        name
+      ), call. = FALSE)
+    }
+  }
+
+  # 2. NAのチェック
+  for (name in names(dat_list)) {
+    if (any(is.na(dat_list[[name]]))) {
+      warning(sprintf("【警告】データ '%s' に欠損値(NA)が含まれています。予期せぬ動作を引き起こす可能性があります。", name), call. = FALSE)
+    }
+  }
+
+  invisible(NULL)
+}
+
+
+#' 安全なRTMBモデルの構築（エラーメッセージ翻訳付き）
+#'
+#' @description
+#' `rtmb_model` をラップし、内部の `MakeADFun` 実行時に発生する C++/RTMB 由来の
+#' 難解なエラーメッセージを、ユーザーが理解しやすい日本語のヒントに翻訳して出力します。
+#'
+#' @param data `validate_data` を通過したデータのリスト。
+#' @param parameters `Dim()` で定義されたパラメータのリスト。
+#' @param model `model_code({})` で定義された尤度や事前分布のコードブロック。
+#' @param generate `transformed_code({})` で定義された生成量のコードブロック（省略可能）。
+#'
+#' @return 正常にコンパイルが完了した場合は、`rtmb_model` オブジェクト（R6クラスのインスタンス）を返します。
+#'
+#' @export
+safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
+  # 事前検証を実行
+  validate_data(data, parameters)
+
+  tryCatch({
+    # 実際のモデル構築処理
+    obj <- rtmb_model(data, parameters, model, generate)
+    return(obj)
+
+  }, error = function(e) {
+    err_msg <- conditionMessage(e)
+
+    # ADクラス消失エラーの翻訳
+    if (grepl("lost class attribute", err_msg) || grepl("Invalid argument to 'advector'", err_msg)) {
+      stop(
+        "【モデル構築エラー】自動微分(AD)の型が途中で消失しました。\n",
+        "・原因: model_code 内で rep() や空の array() に対して for ループで逐次代入を行っている可能性があります。\n",
+        "・対策: 行列のベクトル化計算を使用するか、初期化には numeric(M) などを利用してください。\n",
+        "[元のエラー]: ", err_msg,
+        call. = FALSE
+      )
+    }
+
+    # 不正な演算エラーの翻訳
+    if (grepl("illegal operation", err_msg) || grepl("not a valid 'advector'", err_msg)) {
+      stop(
+        "【モデル構築エラー】実行不可能な演算、または型の不整合が発生しました。\n",
+        "・原因: 行列の掛け算(%*%)の左右で次元が合っていない、または Dim() の型指定 (CF_cov, lower_tri など) が実際の行列サイズと矛盾している可能性があります。\n",
+        "[元のエラー]: ", err_msg,
+        call. = FALSE
+      )
+    }
+
+    # 数値/行列型エラーの翻訳
+    if (grepl("requires numeric/complex matrix/vector", err_msg)) {
+      stop(
+        "【データ型エラー】数値ベクトルまたは行列が必要な箇所に、別の型が渡されています。\n",
+        "・原因: 観測データやインデックスが data.frame や list になっていませんか？\n",
+        "[元のエラー]: ", err_msg,
+        call. = FALSE
+      )
+    }
+
+    # 未知のエラーはそのまま出力
+    stop("【予期せぬエラー】\n", err_msg, call. = FALSE)
+  })
+}
+
+
 #' RTMBベースのGLMMラッパー関数
 #'
 #' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))
