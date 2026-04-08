@@ -88,7 +88,7 @@ MCMC_Fit <- R6::R6Class(
     #' @return The object itself, invisibly.
     print = function(...) {
       out <- self$summary(...)
-      base::print(out)
+      base::print(out, right = FALSE, row.names = FALSE)
       invisible(self)
     },
     #' @description Extract posterior draws for selected parameters.
