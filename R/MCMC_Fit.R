@@ -121,7 +121,7 @@ MCMC_Fit <- R6::R6Class(
       }
 
       invisible(self)
-    }
+    },
     #' @description Extract posterior draws for selected parameters.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
     #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
