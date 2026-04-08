@@ -128,10 +128,14 @@ print.summary_BayesRTMB <- function(x, ...) {
         ifelse(is.na(val), "NA", sprintf("%.2f", val))
       }
     } else {
-      as.character(val)
+      ifelse(is.na(val), "NA", as.character(val))
     }
   }), stringsAsFactors = FALSE)
   colnames(out_char) <- names(df)
+
+  col_widths <- sapply(seq_along(names(out_char)), function(i) {
+    max(nchar(names(out_char)[i]), nchar(out_char[, i]), na.rm = TRUE)
+  })
 
   # 2. 列幅の計算
   col_widths <- sapply(seq_along(names(out_char)), function(i) {

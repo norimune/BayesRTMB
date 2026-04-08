@@ -213,8 +213,8 @@ VB_Fit <- R6::R6Class(
           rel_sd_val <- sd(hist_vec) / scale_factor
 
         } else {
-          drift_val <- NA
-          rel_sd_val <- NA
+          drift_val <- NA_real_
+          rel_sd_val <- NA_real_
         }
 
         if (length(valid_vec) == 0) {
