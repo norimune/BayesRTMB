@@ -10,7 +10,7 @@
 rtmb_model <- function(data, parameters, model,
                        transformed = NULL,
                        generate = NULL,
-                       par_names = list()) { # ← par_names を追加
+                       par_names = list()) {
 
   # 1. parameters への名前の注入
   build_par_list <- function(dat, params) {

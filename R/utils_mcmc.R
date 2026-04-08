@@ -20,8 +20,8 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
   random_flags <- sapply(orig_pl, function(x) isTRUE(x$random))
 
   if (laplace && any(random_flags)) {
-    pl_fixed  <- BayesRTMB:::parse_parameters(orig_pl[!random_flags])
-    pl_random <- BayesRTMB:::parse_parameters(orig_pl[random_flags])
+    pl_fixed  <- BayesRTMB:::parse_parameters(orig_pl[!random_flags], model$par_names)
+    pl_random <- BayesRTMB:::parse_parameters(orig_pl[random_flags], model$par_names)
   } else {
     pl_fixed   <- model$pl_full
     pl_random  <- NULL
