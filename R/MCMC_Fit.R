@@ -482,18 +482,9 @@ MCMC_Fit <- R6::R6Class(
         dim_val <- dim(val)
         if (is.null(dim_val)) dim_val <- len
         self$tran_dims[[name]] <- dim_val
-
-        if (len == 1) {
-          tran_names <- c(tran_names, name)
-        } else {
-          if (length(dim_val) == 1) {
-            tran_names <- c(tran_names, paste0(name, "[", seq_len(len), "]"))
-          } else {
-            grid <- expand.grid(lapply(dim_val, seq_len))
-            indices <- apply(grid, 1, paste, collapse = ",")
-            tran_names <- c(tran_names, paste0(name, "[", indices, "]"))
-          }
-        }
+        names_def <- self$model$par_names[[name]]
+        flat_nms <- generate_flat_names(name, dim_val, names_def)
+        tran_names <- c(tran_names, flat_nms)
       }
 
       tran_array <- array(NA, dim = c(iter, chains, length(tran_names)))
@@ -562,17 +553,9 @@ MCMC_Fit <- R6::R6Class(
         if (is.null(dim_val)) dim_val <- len
         self$gq_dims[[name]] <- dim_val
 
-        if (len == 1) {
-          gq_names <- c(gq_names, name)
-        } else {
-          if (length(dim_val) == 1) {
-            gq_names <- c(gq_names, paste0(name, "[", seq_len(len), "]"))
-          } else {
-            grid <- expand.grid(lapply(dim_val, seq_len))
-            indices <- apply(grid, 1, paste, collapse = ",")
-            gq_names <- c(gq_names, paste0(name, "[", indices, "]"))
-          }
-        }
+        names_def <- self$model$par_names[[name]]
+        flat_nms <- generate_flat_names(name, dim_val, names_def)
+        gq_names <- c(gq_names, flat_nms)
       }
 
       gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
