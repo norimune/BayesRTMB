@@ -577,13 +577,22 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   # 5. rtmb_model を呼び出してオブジェクトを返す
-  obj <- rtmb_model(
-    data = dat,
-    parameters = params,
-    model = model_expr,
-    generate = generate_expr,
-    par_names = list(beta = fixed_names, tau = ranef_names, Omega = ranef_names)
-  )
+  if (num_ranef > 1) {
+    obj <- rtmb_model(
+      data = dat,
+      parameters = params,
+      model = model_expr,
+      generate = generate_expr,
+      par_names = list(beta = fixed_names, tau = ranef_names, Omega = ranef_names)
+    )
+  }else{
+    obj <- rtmb_model(
+      data = dat,
+      parameters = params,
+      model = model_expr,
+      par_names = list(beta = fixed_names, tau = ranef_names)
+    )
+  }
 
   obj$formula <- formula
   obj$raw_data <- data
