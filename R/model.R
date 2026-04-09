@@ -880,23 +880,23 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
   })
 
   if (!is.null(rotate)) {
-    rot_fn_name <- as.name(rotate)
     rot_loadings_name <- paste0("loadings_", rotate)
     rot_score_name <- paste0("score_", rotate)
 
-    # 出力リストを動的に構築し、最後に明示的に return(out) を呼ぶ
+    # 出力リストを動的に構築
     rot_expr <- bquote({
-      rot_obj <- GPArotation::.(rot_fn_name)(loadings)
+      # :: を使わず、GPArotationパッケージから関数オブジェクトを直接取得する
+      rot_fn <- getExportedValue("GPArotation", .(rotate))
+      rot_obj <- rot_fn(loadings)
 
       out <- list(communality = communality)
       out[[.(rot_loadings_name)]] <- rot_obj$loadings
       out[[.(rot_score_name)]] <- score %*% rot_obj$Th
 
-      # Phi(因子間相関)がある斜交回転のときだけ追加
       if (!is.null(rot_obj$Phi)) {
         out$fa_cor <- rot_obj$Phi
       }
-      return(out) # 最後に明示的に return を書く
+      return(out)
     })
 
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1]))
