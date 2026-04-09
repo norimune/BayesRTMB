@@ -568,16 +568,17 @@ VB_Fit <- R6::R6Class(
     #' @param linked_straight Character vector of variable names to be rotated in the same direction.
     #' @param linked_inverse Character vector of variable names to be rotated in the inverse direction.
     #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
+    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE.
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
     internal_rotate = function(target, method = "procrustes", type = "orthogonal",
                                linked_straight = NULL, linked_inverse = NULL,
-                               overwrite = FALSE, ...) {
+                               overwrite = FALSE, suffix = "rot", ...) {
 
       f_arr <- self$fit
       r_arr <- self$random_fit
-      t_arr <- self$tran_fit
-      g_arr <- self$gq_fit
+      t_arr <- self$transform_fit
+      g_arr <- self$generate_fit
 
       v_names_f <- dimnames(f_arr)[[3]]
       v_names_r <- if (!is.null(r_arr)) dimnames(r_arr)[[3]] else character(0)
@@ -591,14 +592,14 @@ VB_Fit <- R6::R6Class(
         idx_r <- grep(pattern, v_names_r)
         if (length(idx_r) > 0) return(list(loc = "random", idx = idx_r, dim = self$model$par_list[[vname]]$dim))
         idx_t <- grep(pattern, v_names_t)
-        if (length(idx_t) > 0) return(list(loc = "tran", idx = idx_t, dim = self$tran_dims[[vname]]))
+        if (length(idx_t) > 0) return(list(loc = "transform", idx = idx_t, dim = self$transform_dims[[vname]]))
         idx_g <- grep(pattern, v_names_g)
-        if (length(idx_g) > 0) return(list(loc = "gq", idx = idx_g, dim = self$gq_dims[[vname]]))
+        if (length(idx_g) > 0) return(list(loc = "generate", idx = idx_g, dim = self$generate_dims[[vname]]))
 
         if (vname %in% v_names_f) return(list(loc = "fixed", idx = which(v_names_f == vname), dim = 1))
         if (vname %in% v_names_r) return(list(loc = "random", idx = which(v_names_r == vname), dim = 1))
-        if (vname %in% v_names_t) return(list(loc = "tran", idx = which(v_names_t == vname), dim = 1))
-        if (vname %in% v_names_g) return(list(loc = "gq", idx = which(v_names_g == vname), dim = 1))
+        if (vname %in% v_names_t) return(list(loc = "transform", idx = which(v_names_t == vname), dim = 1))
+        if (vname %in% v_names_g) return(list(loc = "generate", idx = which(v_names_g == vname), dim = 1))
 
         stop(paste0("Rotation failed: Variable '", vname, "' not found."))
       }
@@ -609,7 +610,7 @@ VB_Fit <- R6::R6Class(
 
       # MAP推定値 (最大lp) を取得して基準とする
       lp_mat <- f_arr[, , 1]
-      if (is.null(dim(lp_mat))) {
+      if (is.null(dim(lp_mat))) { # VB_Fit用のフォールバック
         best_iter <- which.max(lp_mat)
         best_chain <- 1
       } else {
@@ -620,7 +621,7 @@ VB_Fit <- R6::R6Class(
 
       if (t_info$loc == "fixed") Y_vec <- f_arr[best_iter, best_chain, t_info$idx]
       else if (t_info$loc == "random") Y_vec <- r_arr[best_iter, best_chain, t_info$idx]
-      else if (t_info$loc == "tran") Y_vec <- t_arr[best_iter, best_chain, t_info$idx]
+      else if (t_info$loc == "transform") Y_vec <- t_arr[best_iter, best_chain, t_info$idx]
       else Y_vec <- g_arr[best_iter, best_chain, t_info$idx]
 
       X_map <- matrix(Y_vec, nrow = R_t, ncol = C_t)
@@ -660,12 +661,13 @@ VB_Fit <- R6::R6Class(
 
         for (v in all_vars) {
           info <- get_var_info(v)
-          v_rot <- paste0(v, "_rot")
+          # 変更点: "_rot" 固定ではなく "_suffix" を使う
+          v_rot <- paste0(v, "_", suffix)
           new_dims[[v_rot]] <- info$dim
 
           if (info$loc == "fixed") orig_names <- dimnames(f_arr)[[3]][info$idx]
           else if (info$loc == "random") orig_names <- dimnames(r_arr)[[3]][info$idx]
-          else if (info$loc == "tran") orig_names <- dimnames(t_arr)[[3]][info$idx]
+          else if (info$loc == "transform") orig_names <- dimnames(t_arr)[[3]][info$idx]
           else orig_names <- dimnames(g_arr)[[3]][info$idx]
 
           new_flat_nms <- gsub(paste0("^", v, "(?=\\[|$)"), v_rot, orig_names, perl = TRUE)
@@ -682,7 +684,7 @@ VB_Fit <- R6::R6Class(
 
           if (t_info$loc == "fixed") X_vec <- f_arr[i, c, t_info$idx]
           else if (t_info$loc == "random") X_vec <- r_arr[i, c, t_info$idx]
-          else if (t_info$loc == "tran") X_vec <- t_arr[i, c, t_info$idx]
+          else if (t_info$loc == "transform") X_vec <- t_arr[i, c, t_info$idx]
           else X_vec <- g_arr[i, c, t_info$idx]
 
           X <- matrix(X_vec, nrow = R_t, ncol = C_t)
@@ -693,7 +695,7 @@ VB_Fit <- R6::R6Class(
           if (isTRUE(overwrite)) {
             if (t_info$loc == "fixed") f_arr[i, c, t_info$idx] <- X_rot
             else if (t_info$loc == "random") r_arr[i, c, t_info$idx] <- X_rot
-            else if (t_info$loc == "tran") t_arr[i, c, t_info$idx] <- X_rot
+            else if (t_info$loc == "transform") t_arr[i, c, t_info$idx] <- X_rot
             else g_arr[i, c, t_info$idx] <- X_rot
           } else {
             rot_arr[i, c, new_idx_map[[target]]] <- X_rot
@@ -706,7 +708,7 @@ VB_Fit <- R6::R6Class(
 
               if (l_info$loc == "fixed") Z_vec <- f_arr[i, c, l_info$idx]
               else if (l_info$loc == "random") Z_vec <- r_arr[i, c, l_info$idx]
-              else if (l_info$loc == "tran") Z_vec <- t_arr[i, c, l_info$idx]
+              else if (l_info$loc == "transform") Z_vec <- t_arr[i, c, l_info$idx]
               else Z_vec <- g_arr[i, c, l_info$idx]
 
               Z <- matrix(Z_vec, nrow = l_info$dim[1], ncol = C_t)
@@ -715,7 +717,7 @@ VB_Fit <- R6::R6Class(
               if (isTRUE(overwrite)) {
                 if (l_info$loc == "fixed") f_arr[i, c, l_info$idx] <- Z_rot
                 else if (l_info$loc == "random") r_arr[i, c, l_info$idx] <- Z_rot
-                else if (l_info$loc == "tran") t_arr[i, c, l_info$idx] <- Z_rot
+                else if (l_info$loc == "transform") t_arr[i, c, l_info$idx] <- Z_rot
                 else g_arr[i, c, l_info$idx] <- Z_rot
               } else {
                 rot_arr[i, c, new_idx_map[[lvar]]] <- Z_rot
@@ -730,7 +732,7 @@ VB_Fit <- R6::R6Class(
 
               if (l_info$loc == "fixed") Z_vec <- f_arr[i, c, l_info$idx]
               else if (l_info$loc == "random") Z_vec <- r_arr[i, c, l_info$idx]
-              else if (l_info$loc == "tran") Z_vec <- t_arr[i, c, l_info$idx]
+              else if (l_info$loc == "transform") Z_vec <- t_arr[i, c, l_info$idx]
               else Z_vec <- g_arr[i, c, l_info$idx]
 
               Z <- matrix(Z_vec, nrow = l_info$dim[1], ncol = C_t)
@@ -739,7 +741,7 @@ VB_Fit <- R6::R6Class(
               if (isTRUE(overwrite)) {
                 if (l_info$loc == "fixed") f_arr[i, c, l_info$idx] <- Z_rot
                 else if (l_info$loc == "random") r_arr[i, c, l_info$idx] <- Z_rot
-                else if (l_info$loc == "tran") t_arr[i, c, l_info$idx] <- Z_rot
+                else if (l_info$loc == "transform") t_arr[i, c, l_info$idx] <- Z_rot
                 else g_arr[i, c, l_info$idx] <- Z_rot
               } else {
                 rot_arr[i, c, new_idx_map[[lvar]]] <- Z_rot
@@ -752,8 +754,8 @@ VB_Fit <- R6::R6Class(
       if (isTRUE(overwrite)) {
         self$fit <- f_arr
         self$random_fit <- r_arr
-        self$tran_fit <- t_arr
-        self$gq_fit <- g_arr
+        self$transform_fit <- t_arr
+        self$generate_fit <- g_arr
 
         fixed_mean_new <- apply(self$fit[, , -1, drop = FALSE], 3, mean)
         new_posterior_mean <- self$posterior_mean
@@ -764,20 +766,20 @@ VB_Fit <- R6::R6Class(
         }
         self$posterior_mean <- new_posterior_mean
       } else {
-        if (is.null(self$gq_fit)) {
-          self$gq_fit <- rot_arr
+        if (is.null(self$generate_fit)) {
+          self$generate_fit <- rot_arr
         } else {
-          old_gq <- self$gq_fit
+          old_gq <- self$generate_fit
           I <- dim(old_gq)[1]; C <- dim(old_gq)[2]
           P1 <- dim(old_gq)[3]; P2 <- dim(rot_arr)[3]
           new_gq <- array(NA, dim = c(I, C, P1 + P2))
           new_gq[,,1:P1] <- old_gq
           new_gq[,,(P1+1):(P1+P2)] <- rot_arr
           dimnames(new_gq) <- list(dimnames(old_gq)[[1]], dimnames(old_gq)[[2]], c(dimnames(old_gq)[[3]], dimnames(rot_arr)[[3]]))
-          self$gq_fit <- new_gq
+          self$generate_fit <- new_gq
         }
         for (v in names(new_dims)) {
-          self$gq_dims[[v]] <- new_dims[[v]]
+          self$generate_dims[[v]] <- new_dims[[v]]
         }
       }
 
@@ -788,13 +790,15 @@ VB_Fit <- R6::R6Class(
     #' @param target Character string specifying the target variable to base the rotation on.
     #' @param linked Character vector of variable names to be rotated in the same direction.
     #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
+    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
     rotate = function(target,
                       linked = NULL,
                       overwrite = FALSE,
+                      suffix = "rot",
                       ...) {
-      cat(if(isTRUE(overwrite)) "Applying orthogonal Procrustes rotation (Overwriting)...\n" else "Applying orthogonal Procrustes rotation (Saving to gq)...\n")
+      cat(if(isTRUE(overwrite)) "Applying orthogonal Procrustes rotation (Overwriting)...\n" else sprintf("Applying orthogonal Procrustes rotation (Saving to generate as _%s)...\n", suffix))
       self$internal_rotate(
         target = target,
         method = "procrustes",
@@ -802,6 +806,7 @@ VB_Fit <- R6::R6Class(
         linked_straight = linked,
         linked_inverse = NULL,
         overwrite = overwrite,
+        suffix = suffix,
         ...
       )
     },
@@ -813,6 +818,7 @@ VB_Fit <- R6::R6Class(
     #' @param type Character string specifying the rotation type.
     #' @param linked_loadings Character vector of linked loading variables.
     #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
+    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is the method name.
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
     fa_rotate = function(loadings,
@@ -821,8 +827,9 @@ VB_Fit <- R6::R6Class(
                          type = "oblique",
                          linked_loadings = NULL,
                          overwrite = FALSE,
+                         suffix = method,
                          ...) {
-      cat(if(isTRUE(overwrite)) sprintf("Applying %s rotation (Overwriting)...\n", method) else sprintf("Applying %s rotation (Saving to gq)...\n", method))
+      cat(if(isTRUE(overwrite)) sprintf("Applying %s rotation (Overwriting)...\n", method) else sprintf("Applying %s rotation (Saving to generate as _%s)...\n", method, suffix))
       self$internal_rotate(
         target = loadings,
         method = method,
@@ -830,6 +837,7 @@ VB_Fit <- R6::R6Class(
         linked_straight = linked_loadings,
         linked_inverse = scores,
         overwrite = overwrite,
+        suffix = suffix,
         ...
       )
     }

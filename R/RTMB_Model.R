@@ -578,13 +578,14 @@ RTMB_Model <- R6::R6Class(
     #' @param parallel Logical; whether to run chains in parallel. Default is TRUE.
     #' @param laplace Logical; whether to use Laplace approximation. Default is FALSE.
     #' @param init Optional initial values for parameters.
+    #' @param init_jitter sd of randomize initial values for parameters.
     #' @param save_csv Optional list for saving MCMC results. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
                       delta=0.8, max_treedepth = 10,
                       parallel = FALSE, laplace = FALSE,
-                      init = NULL, save_csv = NULL) {
+                      init = NULL, init_jitter = 0.1, save_csv = NULL) {
 
       if (!is.null(init)) init <- as.numeric(init)
       set.seed(seed)
@@ -630,8 +631,9 @@ RTMB_Model <- R6::R6Class(
         unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, self$par_list), self$par_list)
         unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
-        unc_init_vec <- unc_init_vec + rnorm(length(unc_init_vec), mean = 0, sd = 0.1)
-
+        if (init_jitter > 0) {
+          unc_init_vec <- unc_init_vec + rnorm(length(unc_init_vec), mean = 0, sd = init_jitter)
+        }
         unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
         init_full_list <- to_constrained(unc_init_list_new, self$par_list)
         init_full <- unlist(init_full_list, use.names = FALSE)
