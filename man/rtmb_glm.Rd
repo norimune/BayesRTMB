@@ -8,7 +8,8 @@ rtmb_glm(
   formula,
   data,
   family = "gaussian",
-  prior = list(beta_sd = 10, sigma_rate = 1, shape_rate = 1, phi_rate = 1)
+  prior = list(beta_sd = 10, sigma_rate = 1, shape_rate = 1, phi_rate = 1, cutpoint_sd =
+    2.5)
 )
 }
 \arguments{
