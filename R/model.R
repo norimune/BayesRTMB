@@ -381,7 +381,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   # 1. フォーミュラのパース
-  parsed <- lme4::lFormula(formula, data = data)
+  parsed <- lme4::lFormula(
+    formula,
+    data = data,
+    control = lme4::lmerControl(
+      check.nobs.vs.nlev = "ignore",
+      check.nobs.vs.nRE  = "ignore"
+    )
+  )
 
   # --- 応答変数Yの型変換（factor型・行列型への対応） ---
   Y <- model.response(parsed$fr)
