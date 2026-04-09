@@ -103,6 +103,15 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 初期値の整形と補完を行うヘルパーメソッド
+    #' @description Prepare and complete the initial parameter vector.
+    #' If `init` is a named list, it partially updates a randomly generated
+    #' initial vector. If it is a full numeric vector, it is used as is.
+    #' If `NULL`, all parameters are randomly initialized.
+    #' @param init Optional initial values. Can be `NULL`, a numeric vector
+    #'   of the full parameter length, or a named list of specific parameters
+    #'   to fix their initial values.
+    #' @return A numeric vector containing the full set of initial parameter
+    #'   values on the constrained scale.
     prepare_init = function(init) {
       if (is.null(init)) {
         return(generate_random_init(self$pl_full, self$par_list, range = 2))
