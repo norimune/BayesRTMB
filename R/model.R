@@ -439,7 +439,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   num_ranef <- nrow(Zt) / num_groups
 
   #オフセット項の抽出
-  offset <- parsed$offset
+  offset <- tmodel.offset(parsed$fr)
 
   # 観測ごとの変量効果デザイン行列(N x num_ranef)を作成
   N <- length(Y)
