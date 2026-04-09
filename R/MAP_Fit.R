@@ -57,7 +57,7 @@ MAP_Fit <- R6::R6Class(
     #' @param random_effects Random effect estimates.
     #' @param tran_est List of transformed parameter estimates.
     #' @param gq_est List of generated quantity estimates.
-    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed, random_effects, tran_est = NULL, gq_est = NULL) {
+    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed, random_effects, df_tran = NULL, df_gq = NULL) {
       self$par_vec <- par_vec
       self$par <- par
       self$objective <- objective
