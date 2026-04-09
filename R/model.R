@@ -727,7 +727,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                       phi ~ exponential(prior_phi_rate)
                     }),
                     "ordered" = quote({
-                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoint) }
+                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
                       cutpoints ~ normal(0, prior_cutpoint_sd)
                     })
   )
