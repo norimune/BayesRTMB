@@ -6,13 +6,11 @@
 #' @param transformed An optional function OR a list of expressions.
 #' @param generate An optional function for generated quantities.
 #' @param par_names A list of parameter names
-#' @param init initial value of parameters
 #' @export
 rtmb_model <- function(data, parameters, model,
                        transformed = NULL,
                        generate = NULL,
-                       par_names = list(),
-                       init = NULL) {
+                       par_names = list()) {
 
   # 1. parameters への名前の注入
   build_par_list <- function(dat, params) {
@@ -50,8 +48,7 @@ rtmb_model <- function(data, parameters, model,
       log_prob     = model,
       transform    = transformed,
       generate     = generate,
-      par_names    = par_names,
-      init         = init
+      par_names    = par_names
     )
     return(model_instance)
 
