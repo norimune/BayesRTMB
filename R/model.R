@@ -233,27 +233,28 @@ transformed_code <- function(expr, env = parent.frame()) {
 
   } else {
     # 記述がない場合は従来通り自動抽出する
-  if (is_explicit_return) {
-    # 明示的に list(...) が書かれている場合、それを出力として採用
-    ret_call <- last_elem
-    # 重複評価を防ぐため、通常の実行フローから最後の list(...) を削除
-    expr_elements <- expr_elements[-length(expr_elements)]
+    if (is_explicit_return) {
+      # 明示的に list(...) が書かれている場合、それを出力として採用
+      ret_call <- last_elem
+      # 重複評価を防ぐため、通常の実行フローから最後の list(...) を削除
+      expr_elements <- expr_elements[-length(expr_elements)]
 
-  } else {
-    # 記述がない場合は従来通り自動抽出する
-    find_assignments <- function(x) {
-      if (is.call(x)) {
-        if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {
-          if (is.name(x[[2]])) return(as.character(x[[2]]))
+    } else {
+      # 記述がない場合は従来通り自動抽出する
+      find_assignments <- function(x) {
+        if (is.call(x)) {
+          if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {
+            if (is.name(x[[2]])) return(as.character(x[[2]]))
+          }
+          return(unique(unlist(lapply(as.list(x), find_assignments))))
         }
-        return(unique(unlist(lapply(as.list(x), find_assignments))))
+        return(NULL)
       }
-      return(NULL)
+      defined_vars <- find_assignments(raw_expr)
+      ret_list_args <- lapply(defined_vars, as.name)
+      names(ret_list_args) <- defined_vars
+      ret_call <- as.call(c(list(as.name("list")), ret_list_args))
     }
-    defined_vars <- find_assignments(raw_expr)
-    ret_list_args <- lapply(defined_vars, as.name)
-    names(ret_list_args) <- defined_vars
-    ret_call <- as.call(c(list(as.name("list")), ret_list_args))
   }
 
   # 3. 関数ボディの構築
@@ -927,10 +928,11 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
   )
 
   if (!is.null(rotate)) {
+    # par_names にも動的に作成した名前を登録
     p_names[[paste0("loadings_", rotate)]] <- var_names
+    # fa_corが出力された場合のためのダミー登録
     p_names[["fa_cor"]] <- var_names
   }
-
 
   # 6. モデルオブジェクトの生成
   obj <- rtmb_model(
