@@ -269,7 +269,7 @@ RTMB_Model <- R6::R6Class(
       # 推定結果の診断表示
       if (num_estimate == 1) {
         # 1回だけのときは、結果がどうなったかだけを短く報告
-        status <- if (conv_codes[1] == 0) "converged" else "did NOT converge (check code)"
+        status <- if (conv_codes[1] == 0) "converged" else "Not Converged"
         cat(sprintf("Optimization %s. Final objective: %.2f\n", status, obj_vals[1]))
       } else {
         # 複数回のときは、診断テーブルを表示
@@ -278,7 +278,7 @@ RTMB_Model <- R6::R6Class(
           if (is.na(obj_vals[i])) {
             status_str <- "Failed"
           } else {
-            status_str <- if (conv_codes[i] == 0) "Converged" else "Check Code"
+            status_str <- if (conv_codes[i] == 0) "Converged" else "Not Converged"
           }
           best_marker <- if (i == best_idx) "  <-- BEST" else ""
           cat(sprintf("  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
