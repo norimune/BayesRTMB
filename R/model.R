@@ -353,19 +353,12 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 
 
 #' RTMBベースのGLMMラッパー関数
-#'
-#' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))
-#' @param data データフレーム
-#' @param family 分布族の文字列 ("gaussian", "poisson", "binomial", "bernoulli", "lognormal", "gamma", "student_t", "neg_binomial", "ordered")
-#' @param laplace 変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)
-#' @param prior 事前分布のハイパーパラメータのリスト
-#' RTMBベースのGLMMラッパー関数
-#'
 #' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))
 #' @param data データフレーム
 #' @param family 分布族の文字列
 #' @param laplace 変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)
 #' @param prior 事前分布のハイパーパラメータのリスト
+#' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        prior = list(
                          beta_sd = 10,
