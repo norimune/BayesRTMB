@@ -439,8 +439,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   num_ranef <- nrow(Zt) / num_groups
 
   #オフセット項の抽出
-  offset <- model.offset(mf)
-  if (is.null(offset)) offset <- rep(0, N)
+  offset <- parsed$offset
 
   # 観測ごとの変量効果デザイン行列(N x num_ranef)を作成
   N <- length(Y)
@@ -687,7 +686,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
 
   #オフセット項の抽出
-  offset <- parsed$offset
+  offset <- model.offset(mf)
 
   # 2. dataの準備
   dat <- list(
