@@ -427,6 +427,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   fixed_names <- colnames(X)
   fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
   ranef_names <- parsed$reTrms$cnms[[1]]
+  ranef_names[ranef_names == "(Intercept)"] <- "Intercept"
+  group_name <- names(parsed$reTrms$flist)[1]
+  ranef_names <- paste0(ranef_names, "|", group_name)
 
   # 変量効果の情報の抽出
   Zt <- as.matrix(reTrms$Ztlist[[1]])
