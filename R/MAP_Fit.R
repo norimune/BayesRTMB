@@ -129,14 +129,21 @@ MAP_Fit <- R6::R6Class(
 
         if (nrow(df) > 0) {
           cat(sprintf("\n%s:\n", category_name))
-          if (!is.null(max_rows) && nrow(df) > max_rows) {
-            base::print(head(df, max_rows), digits = digits)
-          } else {
-            base::print(df, digits = digits)
+          # summary_BayesRTMBクラスを適用するため、rownamesをvariable列に変換
+          out_df <- data.frame(variable = rownames(df), df, check.names = FALSE, stringsAsFactors = FALSE)
+          rownames(out_df) <- NULL
+
+          # head() で切り出す
+          if (!is.null(max_rows) && nrow(out_df) > max_rows) {
+            out_df <- head(out_df, max_rows)
           }
+
+          # クラスを付与して utils_mcmc.R の print.summary_BayesRTMB を経由させる
+          class(out_df) <- c("summary_BayesRTMB", "data.frame")
+          print(out_df) # ここで自動的に整形表示される
         }
       }
-
+      print_df(self$df_fixed, "Fixed Effects Coefficients")
       print_df(self$df_tran, "Transformed Parameters")
       print_df(self$df_gq, "Generated Quantities")
 
