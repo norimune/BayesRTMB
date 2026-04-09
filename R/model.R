@@ -917,8 +917,7 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
     parameters = params,
     model      = model_expr,
     generate   = gq_expr,
-    par_names  = p_names,
-    init       = init
+    par_names  = p_names
   )
 
   return(obj)
