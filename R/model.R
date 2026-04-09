@@ -521,7 +521,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                       for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
                     }),
                     "binomial" = quote({
-                      Y ~ binomial_logit(trials, eta)
+                      for(i in 1:N) { Y[i] ~ binomial_logit(trials[i], eta[i]) }
                     }),
                     "poisson" = quote({
                       for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
