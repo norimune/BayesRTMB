@@ -208,10 +208,31 @@ transformed_code <- function(expr, env = parent.frame()) {
     expr_elements <- list(raw_expr)
   }
 
-  # 2. 最後の要素が list(...) かどうかを判定
+  # 2. 最後の要素が出力として明示されているか判定
   last_elem <- expr_elements[[length(expr_elements)]]
-  is_explicit_return <- is.call(last_elem) && identical(last_elem[[1]], as.name("list"))
 
+  is_explicit_return <- FALSE
+  if (is.call(last_elem)) {
+    if (identical(last_elem[[1]], as.name("list"))) {
+      is_explicit_return <- TRUE
+      ret_call <- last_elem
+    } else if (identical(last_elem[[1]], as.name("return"))) {
+      is_explicit_return <- TRUE
+      ret_call <- last_elem[[2]] # returnの中身を取り出す
+    }
+  } else if (is.name(last_elem)) {
+    # 最後の行が単一の変数名 (例: `out`) の場合
+    is_explicit_return <- TRUE
+    ret_call <- last_elem
+  }
+
+  if (is_explicit_return) {
+    # 明示的に出力が指定されている場合、それを出力として採用
+    # 重複評価を防ぐため、通常の実行フローから最後の要素を削除
+    expr_elements <- expr_elements[-length(expr_elements)]
+
+  } else {
+    # 記述がない場合は従来通り自動抽出する
   if (is_explicit_return) {
     # 明示的に list(...) が書かれている場合、それを出力として採用
     ret_call <- last_elem
@@ -859,34 +880,43 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
     }
   })
 
-  # 4. 生成量の計算を直接関数として定義する
-  gq_expr <- function(dat, par) {
-    loadings <- par$loadings
-    sd <- par$sd
-    score <- par$score
-
+  # 4. 生成量のコードをAST(構文木)として動的に構築
+  base_gq <- quote({
     Sigma <- loadings %*% t(loadings) + diag(sd^2)
     var_total <- diag(Sigma)
     var_common <- rowSums(loadings^2)
     communality <- var_common / var_total
+  })
 
-    out <- list(communality = communality)
+  if (!is.null(rotate)) {
+    rot_fn_name <- as.name(rotate)
+    rot_loadings_name <- paste0("loadings_", rotate)
+    rot_score_name <- paste0("score_", rotate)
 
-    if (!is.null(rotate)) {
-      # GPArotationの関数を取得して実行
-      rot_fn <- getExportedValue("GPArotation", rotate)
-      rot_obj <- rot_fn(loadings)
+    # 出力リストを動的に構築し、最後に明示的に return(out) を呼ぶ
+    rot_expr <- bquote({
+      rot_obj <- GPArotation::.(rot_fn_name)(loadings)
 
-      out[[paste0("loadings_", rotate)]] <- rot_obj$loadings
-      out[[paste0("score_", rotate)]] <- score %*% rot_obj$Th
+      out <- list(communality = communality)
+      out[[.(rot_loadings_name)]] <- rot_obj$loadings
+      out[[.(rot_score_name)]] <- score %*% rot_obj$Th
 
       # Phi(因子間相関)がある斜交回転のときだけ追加
       if (!is.null(rot_obj$Phi)) {
         out$fa_cor <- rot_obj$Phi
       }
-    }
-    return(out)
+      return(out) # 最後に明示的に return を書く
+    })
+
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1]))
+  } else {
+    no_rot_expr <- quote({
+      return(list(communality = communality))
+    })
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(no_rot_expr)[-1]))
   }
+
+  gq_expr <- eval(bquote(transformed_code(.(gq_ast))))
 
   # 5. パラメータ名の設定
   p_names <- list(
