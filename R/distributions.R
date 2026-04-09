@@ -171,7 +171,7 @@ binomial_lpmf <- function(x, size, prob) {
 #' @return The sum of the log-probability.
 #' @export
 bernoulli_logit_lpmf <- function(x, eta) {
-  x * eta - log1p_exp(eta)
+  sum(x * eta - log1p_exp(eta))
 }
 
 #' Binomial log-probability mass function with logit parameterization
@@ -182,7 +182,7 @@ bernoulli_logit_lpmf <- function(x, eta) {
 #' @return The sum of the log-probability.
 #' @export
 binomial_logit_lpmf <- function(x, size, eta) {
-  lgamma(size + 1) - lgamma(x + 1) - lgamma(size - x + 1) + x * eta - size * log1p_exp(eta)
+  sum(lgamma(size + 1) - lgamma(x + 1) - lgamma(size - x + 1) + x * eta - size * log1p_exp(eta))
 }
 
 #' Poisson log-probability mass function
