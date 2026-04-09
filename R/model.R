@@ -373,7 +373,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                          sigma_rate = 1,
                          lkj_eta = 1.0,
                          shape_rate = 1,
-                         phi_rate = 1
+                         phi_rate = 1,
+                         cutpoint_sd = 2.5
                        )) {
 
   if (!requireNamespace("lme4", quietly = TRUE)) {
@@ -502,36 +503,37 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   ll_expr <- switch(family,
                     "gaussian" = quote({
                       sigma ~ exponential(prior_sigma_rate)
-                      for(i in 1:N) { Y[i] ~ normal(eta[i], sigma) }
+                      Y ~ normal(eta, sigma)
                     }),
                     "lognormal" = quote({
                       sigma ~ exponential(prior_sigma_rate)
-                      for(i in 1:N) { Y[i] ~ lognormal(eta[i], sigma) }
+                      Y ~ lognormal(eta, sigma)
                     }),
                     "student_t" = quote({
                       sigma ~ exponential(prior_sigma_rate)
                       nu ~ exponential(0.1)
-                      for(i in 1:N) { Y[i] ~ student_t(nu, eta[i], sigma) }
+                      Y ~ student_t(nu, eta, sigma)
                     }),
                     "gamma" = quote({
                       shape ~ exponential(prior_shape_rate)
-                      for(i in 1:N) { Y[i] ~ gamma(shape, shape / exp(eta[i])) }
+                      Y ~ gamma(shape, shape / exp(eta))
                     }),
                     "bernoulli" = quote({
-                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                      Y ~ bernoulli_logit(eta)
                     }),
                     "binomial" = quote({
-                      for(i in 1:N) { Y[i] ~ binomial_logit(trials[i], eta[i]) }
+                      Y ~ binomial_logit(trials, eta)
                     }),
                     "poisson" = quote({
-                      for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
+                      Y ~ poisson(exp(eta))
                     }),
                     "neg_binomial" = quote({
                       phi ~ exponential(prior_phi_rate)
-                      for(i in 1:N) { Y[i] ~ neg_binomial_2(exp(eta[i]), phi) }
+                      Y ~ neg_binomial_2(exp(eta), phi)
                     }),
                     "ordered" = quote({
                       for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
+                      cutpoints ~ normal(0, cutpoint_sd)
                     })
   )
 
@@ -549,7 +551,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       }
 
       # 線形予測子の計算
-      eta <- as.vector(X %*% beta)
+      eta <- X %*% beta
       for (i in 1:N) {
         eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ] * tau)
       }
@@ -564,7 +566,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       r ~ normal(0, 1)
 
       # 線形予測子の計算
-      eta <- as.vector(X %*% beta) + Z_mat[,1] * r[group_idx] * tau
+      eta <- X %*% beta + Z_mat[,1] * r[group_idx] * tau
     })
   }
 
@@ -696,37 +698,38 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   # 4. モデルコードの動的構築
   ll_expr <- switch(family,
                     "gaussian" = quote({
+                      Y ~ normal(eta, sigma)
                       sigma ~ exponential(prior_sigma_rate)
-                      for(i in 1:N) { Y[i] ~ normal(eta[i], sigma) }
                     }),
                     "lognormal" = quote({
+                      Y ~ lognormal(eta, sigma)
                       sigma ~ exponential(prior_sigma_rate)
-                      for(i in 1:N) { Y[i] ~ lognormal(eta[i], sigma) }
                     }),
                     "student_t" = quote({
+                      Y ~ student_t(nu, eta, sigma)
                       sigma ~ exponential(prior_sigma_rate)
                       nu ~ exponential(0.1)
-                      for(i in 1:N) { Y[i] ~ student_t(nu, eta[i], sigma) }
                     }),
                     "gamma" = quote({
+                      Y ~ gamma(shape, shape / exp(eta))
                       shape ~ exponential(prior_shape_rate)
-                      for(i in 1:N) { Y[i] ~ gamma(shape, shape / exp(eta[i])) }
                     }),
                     "bernoulli" = quote({
-                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                      Y ~ bernoulli_logit(eta)
                     }),
                     "binomial" = quote({
-                      for(i in 1:N) { Y[i] ~ binomial_logit(trials[i], eta[i]) }
+                      Y ~ binomial_logit(trials, eta)
                     }),
                     "poisson" = quote({
-                      for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
+                      Y ~ poisson(exp(eta))
                     }),
                     "neg_binomial" = quote({
+                      Y ~ neg_binomial_2(exp(eta), phi)
                       phi ~ exponential(prior_phi_rate)
-                      for(i in 1:N) { Y[i] ~ neg_binomial_2(exp(eta[i]), phi) }
                     }),
                     "ordered" = quote({
                       for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
+                      cutpoints ~ normal(0, cutpoint_sd)
                     })
   )
 
