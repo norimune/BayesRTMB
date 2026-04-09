@@ -792,9 +792,11 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param n_factors 因子の数 (K)
 #' @param rotate 回転方法の文字列 (例: "varimax", "promax")。NULLの場合は回転しない。
 #' @param prior 事前分布のハイパーパラメータのリスト
+#' @param init 初期値のリスト (指定しない場合はPCAに基づく初期値が自動生成されます)
 #' @export
 rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
-                    prior = list(mu_sd = 10, lambda_sd = 3, sd_rate = 1)) {
+                    prior = list(mu_sd = 10, lambda_sd = 3, sd_rate = 1),
+                    init = NULL) {
 
   Y <- as.matrix(data)
   N <- nrow(Y)
@@ -807,6 +809,20 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
 
   if (K >= P) {
     stop("因子の数(K)は観測変数の数(P)より小さくする必要があります。")
+  }
+
+  # --- スマート初期化 (PCA) ---
+  if (is.null(init)) {
+    tryCatch({
+      pca <- prcomp(Y, scale. = TRUE)
+      init_loadings <- t(t(pca$rotation[, 1:K, drop = FALSE]) * pca$sdev[1:K])
+      if (K > 1) {
+        init_loadings[upper.tri(init_loadings)] <- 0
+      }
+      init <- list(loadings = init_loadings)
+    }, error = function(e) {
+      init <- NULL
+    })
   }
 
   # 1. データの準備
@@ -852,34 +868,34 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
   })
 
   if (!is.null(rotate)) {
-    # 回転関数名をコードに埋め込む
     rot_fn_name <- as.name(rotate)
+
+    # 出力するリストを動的に構築し、名前に rotate の文字列を付与する
+    out_list <- list(
+      communality = quote(communality),
+      fa_cor      = quote(rot_obj$Phi)
+    )
+    # 動的な名前（例: loadings_promax, score_promax）で要素を追加
+    out_list[[paste0("loadings_", rotate)]] <- quote(rot_obj$loadings)
+    out_list[[paste0("score_", rotate)]]    <- quote(score %*% rot_obj$Th)
+
+    # 構築したリストを list() 関数の呼び出し形（AST）に変換
+    out_call <- as.call(c(list(as.name("list")), out_list))
 
     rot_expr <- bquote({
       rot_obj <- GPArotation::.(rot_fn_name)(loadings)
-      loadings_rot <- rot_obj$loadings
-      score_rot <- score %*% rot_obj$Th
-
-      # 最後に明示的に出力したい変数をリストにまとめる
-      list(
-        communality  = communality,
-        loadings_rot = loadings_rot,
-        score_rot    = score_rot,
-        fa_cor       = rot_obj$Phi
-      )
+      .(out_call)
     })
 
     # 共通部分と回転処理ブロックを結合
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1]))
   } else {
-    # 回転しない場合
     no_rot_expr <- quote({
       list(communality = communality)
     })
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(no_rot_expr)[-1]))
   }
 
-  # ASTを transformed_code に渡して関数化
   gq_expr <- eval(bquote(transformed_code(.(gq_ast))))
 
   # 5. パラメータ名の設定
@@ -889,9 +905,10 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
     sd           = var_names,
     communality  = var_names
   )
+
   if (!is.null(rotate)) {
-    p_names$loadings_rot <- var_names
-    # score_rot や fa_cor にも独自の名前をつける場合はここに追加可能
+    # par_names にも動的に作成した名前（例: loadings_promax）を登録
+    p_names[[paste0("loadings_", rotate)]] <- var_names
   }
 
   # 6. モデルオブジェクトの生成
@@ -900,7 +917,8 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
     parameters = params,
     model      = model_expr,
     generate   = gq_expr,
-    par_names  = p_names
+    par_names  = p_names,
+    init       = init
   )
 
   return(obj)
