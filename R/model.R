@@ -898,32 +898,34 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   )
 
   params <- list(
-    mu       = Dim(P),
-    sigma    = Dim(P, lower = 0),
-    CF_Omega = Dim(c(P, P), type = "CF_corr")
+    mean    = Dim(P),
+    sd      = Dim(P, lower = 0),
+    CF_corr = Dim(c(P, P), type = "CF_corr")
   )
 
   model_expr <- model_code({
     # 事前分布
-    mu ~ normal(0, prior_mu_sd)
-    sigma ~ exponential(prior_sigma_rate)
-    CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
+    mean ~ normal(0, prior_mu_sd)
+    sd ~ exponential(prior_sigma_rate)
+    CF_corr ~ lkj_CF_corr(prior_lkj_eta)
 
     for(i in 1:N) {
-      Y[i, ] ~ multi_normal_CF(mu, sigma, CF_Omega)
+      Y[i, ] ~ multi_normal_CF(mean, sd, CF_corr)
     }
   })
 
-  gq_expr <- transformed_code({
-    Omega <- CF_Omega %*% t(CF_Omega)
+  # 標準誤差計算のために transform で計算
+  tran_expr <- transformed_code({
+    corr <- CF_corr %*% t(CF_corr)
   })
 
   obj <- rtmb_model(
-    data       = dat,
-    parameters = params,
-    model      = model_expr,
-    generate   = gq_expr,
-    par_names  = list(mu = var_names, sigma = var_names, Omega = var_names)
+    data        = dat,
+    parameters  = params,
+    model       = model_expr,
+    transformed = tran_expr, # generate から transformed に変更
+    generate    = NULL,
+    par_names   = list(mean = var_names, sd = var_names, corr = var_names)
   )
 
   return(obj)

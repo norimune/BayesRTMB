@@ -291,7 +291,7 @@ Apply internal rotation to sampled parameters.
   type = "orthogonal",
   linked_straight = NULL,
   linked_inverse = NULL,
-  overwrite = NULL,
+  overwrite = FALSE,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -299,24 +299,24 @@ Apply internal rotation to sampled parameters.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{target}}{Target variable(s) for rotation or relabeling.}
+\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
 
-\item{\code{method}}{Method name.}
+\item{\code{method}}{Character string specifying the rotation method.}
 
-\item{\code{type}}{Rotation type.}
+\item{\code{type}}{Character string specifying the rotation type.}
 
-\item{\code{linked_straight}}{Linked variables transformed in the same direction.}
+\item{\code{linked_straight}}{Character vector of variable names to be rotated in the same direction.}
 
-\item{\code{linked_inverse}}{Linked variables transformed in the opposite direction.}
+\item{\code{linked_inverse}}{Character vector of variable names to be rotated in the inverse direction.}
 
-\item{\code{overwrite}}{Logical; whether to overwrite stored draws.}
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds rotated parameters to generated quantities. Default is FALSE.}
 
 \item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Rotated draws or updated object.
+The updated object invisibly.
 }
 }
 \if{html}{\out{<hr>}}
@@ -325,24 +325,24 @@ Rotated draws or updated object.
 \subsection{Method \code{rotate()}}{
 Rotate sampled parameters.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$rotate(target, linked = NULL, overwrite = TRUE, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$rotate(target, linked = NULL, overwrite = FALSE, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{target}}{Target variable(s) for rotation or relabeling.}
+\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
 
-\item{\code{linked}}{Linked variables.}
+\item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
 
-\item{\code{overwrite}}{Logical; whether to overwrite stored draws.}
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
 
 \item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Rotated draws or updated object.
+The updated object invisibly.
 }
 }
 \if{html}{\out{<hr>}}
@@ -357,7 +357,7 @@ Rotate factor loadings and optional factor scores.
   method = "promax",
   type = "oblique",
   linked_loadings = NULL,
-  overwrite = TRUE,
+  overwrite = FALSE,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -365,24 +365,24 @@ Rotate factor loadings and optional factor scores.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{loadings}}{Factor loading variables.}
+\item{\code{loadings}}{Character string specifying the factor loadings variable.}
 
-\item{\code{scores}}{Factor score variables.}
+\item{\code{scores}}{Character vector specifying the factor scores variable.}
 
-\item{\code{method}}{Method name.}
+\item{\code{method}}{Character string specifying the rotation method.}
 
-\item{\code{type}}{Rotation type.}
+\item{\code{type}}{Character string specifying the rotation type ("orthogonal" or "oblique").}
 
-\item{\code{linked_loadings}}{Linked loading variables.}
+\item{\code{linked_loadings}}{Character vector of linked loading variables.}
 
-\item{\code{overwrite}}{Logical; whether to overwrite stored draws.}
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
 
 \item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Rotated draws or updated object.
+The updated object invisibly.
 }
 }
 \if{html}{\out{<hr>}}

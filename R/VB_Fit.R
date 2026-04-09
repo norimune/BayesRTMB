@@ -563,94 +563,65 @@ VB_Fit <- R6::R6Class(
 
     #' @description Apply internal rotation to sampled parameters.
     #' @param target Character string specifying the target variable to base the rotation on.
-    #' @param method Character string specifying the rotation method (e.g., "procrustes", "promax"). Default is "procrustes".
-    #' @param type Character string specifying the rotation type ("orthogonal" or "oblique"). Default is "orthogonal".
-    #' @param linked_straight Character vector of variable names to be rotated in the same direction. Default is NULL.
-    #' @param linked_inverse Character vector of variable names to be rotated in the inverse direction. Default is NULL.
-    #' @param overwrite Logical; whether to overwrite the stored draws in the current object. Default is NULL.
+    #' @param method Character string specifying the rotation method.
+    #' @param type Character string specifying the rotation type.
+    #' @param linked_straight Character vector of variable names to be rotated in the same direction.
+    #' @param linked_inverse Character vector of variable names to be rotated in the inverse direction.
+    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
     #' @param ... Additional arguments passed to the rotation function.
-    #' @return Rotated draws or updated object.
+    #' @return The updated object invisibly.
     internal_rotate = function(target, method = "procrustes", type = "orthogonal",
                                linked_straight = NULL, linked_inverse = NULL,
-                               overwrite = NULL, ...) {
+                               overwrite = FALSE, ...) {
 
-      # 上書きしない場合はクローンを作成
-      obj <- if (isTRUE(overwrite)) self else self$clone(deep = TRUE)
-
-      f_arr <- obj$fit
-      r_arr <- obj$random_fit
-      t_arr <- obj$tran_fit
-      g_arr <- obj$gq_fit
+      f_arr <- self$fit
+      r_arr <- self$random_fit
+      t_arr <- self$tran_fit
+      g_arr <- self$gq_fit
 
       v_names_f <- dimnames(f_arr)[[3]]
       v_names_r <- if (!is.null(r_arr)) dimnames(r_arr)[[3]] else character(0)
       v_names_t <- if (!is.null(t_arr)) dimnames(t_arr)[[3]] else character(0)
       v_names_g <- if (!is.null(g_arr)) dimnames(g_arr)[[3]] else character(0)
 
-      # 配列統合の恩恵: fit, random_fit, tran_fit, gq_fit のどこにある変数か自動判定
       get_var_info <- function(vname) {
         pattern <- paste0("^", vname, "\\[")
         idx_f <- grep(pattern, v_names_f)
-        if (length(idx_f) > 0)
-          return(list(
-            loc = "fixed",
-            idx = idx_f,
-            dim = obj$model$par_list[[vname]]$dim
-          ))
-
+        if (length(idx_f) > 0) return(list(loc = "fixed", idx = idx_f, dim = self$model$par_list[[vname]]$dim))
         idx_r <- grep(pattern, v_names_r)
-        if (length(idx_r) > 0)
-          return(list(
-            loc = "random",
-            idx = idx_r,
-            dim = obj$model$par_list[[vname]]$dim
-          ))
-
+        if (length(idx_r) > 0) return(list(loc = "random", idx = idx_r, dim = self$model$par_list[[vname]]$dim))
         idx_t <- grep(pattern, v_names_t)
-        if (length(idx_t) > 0)
-          return(list(
-            loc = "tran",
-            idx = idx_t,
-            dim = obj$tran_dims[[vname]]
-          ))
-
+        if (length(idx_t) > 0) return(list(loc = "tran", idx = idx_t, dim = self$tran_dims[[vname]]))
         idx_g <- grep(pattern, v_names_g)
-        if (length(idx_g) > 0)
-          return(list(
-            loc = "gq",
-            idx = idx_g,
-            dim = obj$gq_dims[[vname]]
-          ))
+        if (length(idx_g) > 0) return(list(loc = "gq", idx = idx_g, dim = self$gq_dims[[vname]]))
+
+        if (vname %in% v_names_f) return(list(loc = "fixed", idx = which(v_names_f == vname), dim = 1))
+        if (vname %in% v_names_r) return(list(loc = "random", idx = which(v_names_r == vname), dim = 1))
+        if (vname %in% v_names_t) return(list(loc = "tran", idx = which(v_names_t == vname), dim = 1))
+        if (vname %in% v_names_g) return(list(loc = "gq", idx = which(v_names_g == vname), dim = 1))
 
         stop(paste0("Rotation failed: Variable '", vname, "' not found."))
       }
 
       t_info <- get_var_info(target)
-      if (length(t_info$dim) != 2)
-        stop(paste0("Target variable '", target, "' must be a matrix."))
+      if (length(t_info$dim) != 2) stop(paste0("Target variable '", target, "' must be a matrix."))
       R_t <- t_info$dim[1]; C_t <- t_info$dim[2]
 
       # MAP推定値 (最大lp) を取得して基準とする
       lp_mat <- f_arr[, , 1]
       if (is.null(dim(lp_mat))) {
-        # チェイン数が1で次元がベクトルに落ちた場合
         best_iter <- which.max(lp_mat)
         best_chain <- 1
       } else {
-        # 複数チェインの場合
         max_idx <- which(lp_mat == max(lp_mat, na.rm = TRUE), arr.ind = TRUE)
         best_iter <- max_idx[1, 1]
         best_chain <- max_idx[1, 2]
       }
 
-      if (t_info$loc == "fixed")
-        Y_vec <- f_arr[best_iter, best_chain, t_info$idx]
-      else if (t_info$loc == "random")
-        Y_vec <- r_arr[best_iter, best_chain, t_info$idx]
-      else if (t_info$loc == "tran")
-        Y_vec <- t_arr[best_iter, best_chain, t_info$idx]
-      else
-        Y_vec <- g_arr[best_iter, best_chain, t_info$idx]
+      if (t_info$loc == "fixed") Y_vec <- f_arr[best_iter, best_chain, t_info$idx]
+      else if (t_info$loc == "random") Y_vec <- r_arr[best_iter, best_chain, t_info$idx]
+      else if (t_info$loc == "tran") Y_vec <- t_arr[best_iter, best_chain, t_info$idx]
+      else Y_vec <- g_arr[best_iter, best_chain, t_info$idx]
 
       X_map <- matrix(Y_vec, nrow = R_t, ncol = C_t)
 
@@ -659,13 +630,11 @@ VB_Fit <- R6::R6Class(
         Th_straight <- diag(1, C_t)
         Th_inverse <- diag(1, C_t)
       } else {
-        if (!requireNamespace("GPArotation", quietly = TRUE))
-          stop("GPArotation is required.")
+        if (!requireNamespace("GPArotation", quietly = TRUE)) stop("GPArotation is required.")
         rot_fn <- tryCatch(
           match.fun(method),
           error = function(e) {
-            if (exists(method, where = asNamespace("GPArotation"), mode = "function"))
-              return(getFromNamespace(method, "GPArotation"))
+            if (exists(method, where = asNamespace("GPArotation"), mode = "function")) return(getFromNamespace(method, "GPArotation"))
             stop("Rotation method not found.")
           }
         )
@@ -682,6 +651,32 @@ VB_Fit <- R6::R6Class(
       iter_total <- dim(f_arr)[1]
       chains <- dim(f_arr)[2]
 
+      if (!isTRUE(overwrite)) {
+        all_vars <- c(target, linked_straight, linked_inverse)
+        new_names <- character(0)
+        new_dims <- list()
+        new_idx_map <- list()
+        current_p <- 1
+
+        for (v in all_vars) {
+          info <- get_var_info(v)
+          v_rot <- paste0(v, "_rot")
+          new_dims[[v_rot]] <- info$dim
+
+          if (info$loc == "fixed") orig_names <- dimnames(f_arr)[[3]][info$idx]
+          else if (info$loc == "random") orig_names <- dimnames(r_arr)[[3]][info$idx]
+          else if (info$loc == "tran") orig_names <- dimnames(t_arr)[[3]][info$idx]
+          else orig_names <- dimnames(g_arr)[[3]][info$idx]
+
+          new_flat_nms <- gsub(paste0("^", v, "(?=\\[|$)"), v_rot, orig_names, perl = TRUE)
+          new_names <- c(new_names, new_flat_nms)
+          new_idx_map[[v]] <- current_p:(current_p + length(new_flat_nms) - 1)
+          current_p <- current_p + length(new_flat_nms)
+        }
+        rot_arr <- array(NA, dim = c(iter_total, chains, length(new_names)))
+        dimnames(rot_arr) <- list(iteration = NULL, chain = dimnames(f_arr)[[2]], variable = new_names)
+      }
+
       for (c in 1:chains) {
         for (i in 1:iter_total) {
 
@@ -693,92 +688,141 @@ VB_Fit <- R6::R6Class(
           X <- matrix(X_vec, nrow = R_t, ncol = C_t)
           svd_out <- svd(t(X) %*% X_map)
           R_proc <- svd_out$u %*% t(svd_out$v)
-          X_rot <- (X %*% R_proc) %*% Th_straight
+          X_rot <- as.numeric((X %*% R_proc) %*% Th_straight)
 
-          if (t_info$loc == "fixed") f_arr[i, c, t_info$idx] <- as.numeric(X_rot)
-          else if (t_info$loc == "random") r_arr[i, c, t_info$idx] <- as.numeric(X_rot)
-          else if (t_info$loc == "tran") t_arr[i, c, t_info$idx] <- as.numeric(X_rot)
-          else g_arr[i, c, t_info$idx] <- as.numeric(X_rot)
+          if (isTRUE(overwrite)) {
+            if (t_info$loc == "fixed") f_arr[i, c, t_info$idx] <- X_rot
+            else if (t_info$loc == "random") r_arr[i, c, t_info$idx] <- X_rot
+            else if (t_info$loc == "tran") t_arr[i, c, t_info$idx] <- X_rot
+            else g_arr[i, c, t_info$idx] <- X_rot
+          } else {
+            rot_arr[i, c, new_idx_map[[target]]] <- X_rot
+          }
 
-          # Linked straight
           if (!is.null(linked_straight)) {
             for (lvar in linked_straight) {
               l_info <- get_var_info(lvar)
               if (length(l_info$dim) != 2 || l_info$dim[2] != C_t) next
-              if (l_info$loc == "fixed") {
-                Z <- matrix(f_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                f_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_straight)
-              } else if (l_info$loc == "random") {
-                Z <- matrix(r_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                r_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_straight)
-              } else if (l_info$loc == "tran") {
-                Z <- matrix(t_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                t_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_straight)
+
+              if (l_info$loc == "fixed") Z_vec <- f_arr[i, c, l_info$idx]
+              else if (l_info$loc == "random") Z_vec <- r_arr[i, c, l_info$idx]
+              else if (l_info$loc == "tran") Z_vec <- t_arr[i, c, l_info$idx]
+              else Z_vec <- g_arr[i, c, l_info$idx]
+
+              Z <- matrix(Z_vec, nrow = l_info$dim[1], ncol = C_t)
+              Z_rot <- as.numeric((Z %*% R_proc) %*% Th_straight)
+
+              if (isTRUE(overwrite)) {
+                if (l_info$loc == "fixed") f_arr[i, c, l_info$idx] <- Z_rot
+                else if (l_info$loc == "random") r_arr[i, c, l_info$idx] <- Z_rot
+                else if (l_info$loc == "tran") t_arr[i, c, l_info$idx] <- Z_rot
+                else g_arr[i, c, l_info$idx] <- Z_rot
               } else {
-                Z <- matrix(g_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                g_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_straight)
+                rot_arr[i, c, new_idx_map[[lvar]]] <- Z_rot
               }
             }
           }
 
-          # Linked inverse
           if (!is.null(linked_inverse)) {
             for (lvar in linked_inverse) {
               l_info <- get_var_info(lvar)
               if (length(l_info$dim) != 2 || l_info$dim[2] != C_t) next
-              if (l_info$loc == "fixed") {
-                Z <- matrix(f_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                f_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_inverse)
-              } else if (l_info$loc == "random") {
-                Z <- matrix(r_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                r_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_inverse)
-              } else if (l_info$loc == "tran") {
-                Z <- matrix(t_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                t_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_inverse)
+
+              if (l_info$loc == "fixed") Z_vec <- f_arr[i, c, l_info$idx]
+              else if (l_info$loc == "random") Z_vec <- r_arr[i, c, l_info$idx]
+              else if (l_info$loc == "tran") Z_vec <- t_arr[i, c, l_info$idx]
+              else Z_vec <- g_arr[i, c, l_info$idx]
+
+              Z <- matrix(Z_vec, nrow = l_info$dim[1], ncol = C_t)
+              Z_rot <- as.numeric((Z %*% R_proc) %*% Th_inverse)
+
+              if (isTRUE(overwrite)) {
+                if (l_info$loc == "fixed") f_arr[i, c, l_info$idx] <- Z_rot
+                else if (l_info$loc == "random") r_arr[i, c, l_info$idx] <- Z_rot
+                else if (l_info$loc == "tran") t_arr[i, c, l_info$idx] <- Z_rot
+                else g_arr[i, c, l_info$idx] <- Z_rot
               } else {
-                Z <- matrix(g_arr[i, c, l_info$idx], nrow = l_info$dim[1], ncol = C_t)
-                g_arr[i, c, l_info$idx] <- as.numeric((Z %*% R_proc) %*% Th_inverse)
+                rot_arr[i, c, new_idx_map[[lvar]]] <- Z_rot
               }
             }
           }
         }
       }
 
-      obj$fit <- f_arr
-      obj$random_fit <- r_arr
-      obj$tran_fit <- t_arr
-      obj$gq_fit <- g_arr
+      if (isTRUE(overwrite)) {
+        self$fit <- f_arr
+        self$random_fit <- r_arr
+        self$tran_fit <- t_arr
+        self$gq_fit <- g_arr
 
-      # posterior_meanの再計算
-      fixed_mean_new <- apply(obj$fit[, , -1, drop = FALSE], 3, mean)
-      new_posterior_mean <- obj$posterior_mean
-      new_posterior_mean[names(fixed_mean_new)] <- fixed_mean_new
-      if (!is.null(obj$random_fit)) {
-        random_mean_new <- apply(obj$random_fit, 3, mean)
-        new_posterior_mean[names(random_mean_new)] <- random_mean_new
+        fixed_mean_new <- apply(self$fit[, , -1, drop = FALSE], 3, mean)
+        new_posterior_mean <- self$posterior_mean
+        new_posterior_mean[names(fixed_mean_new)] <- fixed_mean_new
+        if (!is.null(self$random_fit)) {
+          random_mean_new <- apply(self$random_fit, 3, mean)
+          new_posterior_mean[names(random_mean_new)] <- random_mean_new
+        }
+        self$posterior_mean <- new_posterior_mean
+      } else {
+        if (is.null(self$gq_fit)) {
+          self$gq_fit <- rot_arr
+        } else {
+          old_gq <- self$gq_fit
+          I <- dim(old_gq)[1]; C <- dim(old_gq)[2]
+          P1 <- dim(old_gq)[3]; P2 <- dim(rot_arr)[3]
+          new_gq <- array(NA, dim = c(I, C, P1 + P2))
+          new_gq[,,1:P1] <- old_gq
+          new_gq[,,(P1+1):(P1+P2)] <- rot_arr
+          dimnames(new_gq) <- list(dimnames(old_gq)[[1]], dimnames(old_gq)[[2]], c(dimnames(old_gq)[[3]], dimnames(rot_arr)[[3]]))
+          self$gq_fit <- new_gq
+        }
+        for (v in names(new_dims)) {
+          self$gq_dims[[v]] <- new_dims[[v]]
+        }
       }
-      obj$posterior_mean <- new_posterior_mean
 
-      if (isTRUE(overwrite)) return(invisible(self)) else return(obj)
+      return(invisible(self))
+    },
+
+    #' @description Rotate sampled parameters.
+    #' @param target Character string specifying the target variable to base the rotation on.
+    #' @param linked Character vector of variable names to be rotated in the same direction.
+    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
+    #' @param ... Additional arguments passed to the rotation function.
+    #' @return The updated object invisibly.
+    rotate = function(target,
+                      linked = NULL,
+                      overwrite = FALSE,
+                      ...) {
+      cat(if(isTRUE(overwrite)) "Applying orthogonal Procrustes rotation (Overwriting)...\n" else "Applying orthogonal Procrustes rotation (Saving to gq)...\n")
+      self$internal_rotate(
+        target = target,
+        method = "procrustes",
+        type = "orthogonal",
+        linked_straight = linked,
+        linked_inverse = NULL,
+        overwrite = overwrite,
+        ...
+      )
     },
 
     #' @description Rotate factor loadings and optional factor scores.
     #' @param loadings Character string specifying the factor loadings variable.
-    #' @param scores Character vector specifying the factor scores variable. Default is NULL.
-    #' @param method Character string specifying the rotation method. Default is "promax".
-    #' @param type Character string specifying the rotation type ("orthogonal" or "oblique"). Default is "oblique".
-    #' @param linked_loadings Character vector of linked loading variables. Default is NULL.
-    #' @param overwrite Logical; whether to overwrite the stored draws. Default is TRUE.
-    #' @param ... Additional arguments.
-    #' @return Rotated draws or updated object.
+    #' @param scores Character vector specifying the factor scores variable.
+    #' @param method Character string specifying the rotation method.
+    #' @param type Character string specifying the rotation type.
+    #' @param linked_loadings Character vector of linked loading variables.
+    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
+    #' @param ... Additional arguments passed to the rotation function.
+    #' @return The updated object invisibly.
     fa_rotate = function(loadings,
                          scores = NULL,
                          method = "promax",
                          type = "oblique",
                          linked_loadings = NULL,
-                         overwrite = TRUE,
+                         overwrite = FALSE,
                          ...) {
-      cat(sprintf("Applying %s rotation to VB samples...\n", method))
+      cat(if(isTRUE(overwrite)) sprintf("Applying %s rotation (Overwriting)...\n", method) else sprintf("Applying %s rotation (Saving to gq)...\n", method))
       self$internal_rotate(
         target = loadings,
         method = method,
