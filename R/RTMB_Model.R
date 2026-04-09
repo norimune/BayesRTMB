@@ -102,7 +102,38 @@ RTMB_Model <- R6::R6Class(
       }
     },
 
-    # 2. ADオブジェクト生成ファクトリ
+    # 初期値の整形と補完を行うヘルパーメソッド
+    prepare_init = function(init) {
+      if (is.null(init)) {
+        return(generate_random_init(self$pl_full, self$par_list, range = 2))
+      }
+
+      # 名前付きリストが渡された場合（部分的な初期値指定）
+      if (is.list(init)) {
+        # 1. まず全体をランダムな値で初期化し、リスト形式に変換
+        base_vec <- generate_random_init(self$pl_full, self$par_list, range = 2)
+        base_list <- constrained_vector_to_list(base_vec, self$par_list)
+
+        # 2. ユーザーが指定したパラメータだけを上書き
+        for (name in names(init)) {
+          if (name %in% names(base_list)) {
+            base_list[[name]] <- as.numeric(init[[name]])
+          } else {
+            warning(sprintf("初期値として指定された '%s' はモデルに存在しません。", name), call. = FALSE)
+          }
+        }
+        # 3. 再び完全なフラットベクトルに戻して返す
+        return(unlist(base_list, use.names = FALSE))
+      }
+
+      # ベクトルが渡された場合（全体指定）
+      if (is.numeric(init)) {
+        return(init)
+      }
+
+      stop("init は名前付きリスト、または数値ベクトルで指定してください。")
+    },
+
     # ヤコビアンを追加するかどうかを引数で制御
     #' @description Build the RTMB automatic differentiation object.
     #' @param init Optional numeric vector or list of initial values for the parameters. Default is NULL.
@@ -114,10 +145,7 @@ RTMB_Model <- R6::R6Class(
         names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
-      current_init <- if (is.null(init))
-        generate_random_init(self$pl_full, self$par_list, range = 2)
-      else
-        init
+      current_init <- self$prepare_init(init)
 
       current_init_list <- constrained_vector_to_list(current_init, self$par_list)
       init_unc_list <- to_unconstrained(current_init_list, self$par_list)
@@ -557,18 +585,12 @@ RTMB_Model <- R6::R6Class(
 
       run_chain <- function(c, p_callback = NULL) {
 
-        if (!is.null(init)) {
-          init_list <- constrained_vector_to_list(init, self$par_list)
-          unc_init_list <- to_unconstrained(init_list, self$par_list)
-          unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
+        unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, self$par_list), self$par_list)
+        unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
-          unc_init_vec <- unc_init_vec + rnorm(length(unc_init_vec), mean = 0, sd = 0.1)
-          unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
-          init_full_list <- to_constrained(unc_init_list_new, self$par_list)
-          init_full <- unlist(init_full_list, use.names = FALSE)
-        } else {
-          init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
-        }
+        unc_init_vec <- unc_init_vec + rnorm(length(unc_init_vec), mean = 0, sd = 0.1)
+        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
+        init_full <- unlist(to_constrained(unc_init_list_new, self$par_list), use.names = FALSE)
 
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
         ad_obj <- ad_setup$ad_obj
@@ -766,15 +788,7 @@ RTMB_Model <- R6::R6Class(
       run_advi <- function(c) {
         if (print_freq > 0) cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
 
-        if (!is.null(init)) {
-          init_list <- constrained_vector_to_list(init, self$par_list)
-          unc_init_list <- to_unconstrained(init_list, self$par_list)
-          init_full <- unlist(unc_init_list, use.names = FALSE)
-        } else {
-          init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
-        }
-
-        ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
+        ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
 
         res <- ADVI_method(
           model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
@@ -801,14 +815,8 @@ RTMB_Model <- R6::R6Class(
             p <- progressr::progressor(steps = total_steps)
 
             run_advi_prog <- function(c) {
-              if (!is.null(init)) {
-                init_list <- constrained_vector_to_list(init, self$par_list)
-                unc_init_list <- to_unconstrained(init_list, self$par_list)
-                init_full <- unlist(unc_init_list, use.names = FALSE)
-              } else {
-                init_full <- generate_random_init(self$pl_full, self$par_list, range = 2)
-              }
-              ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
+
+              ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
 
               update_prog_fn <- function(amount = 1) {
                 p(amount = amount)
