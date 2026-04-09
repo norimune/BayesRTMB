@@ -467,14 +467,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     params <- list(
       beta = Dim(ncol(X)),
       tau  = Dim(num_ranef, lower = 0),
-      r    = Dim(c(num_groups, num_ranef), random = laplace)
+      r    = Dim(num_groups, random = TRUE)
     )
   } else {
     params <- list(
       beta     = Dim(ncol(X)),
       tau      = Dim(num_ranef, lower = 0),
       CF_Omega = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
-      r        = Dim(c(num_groups, num_ranef), random = laplace)
+      r        = Dim(c(num_groups, num_ranef), random = TRUE)
     )
   }
 
@@ -536,29 +536,38 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   )
 
   # 共通部分を独立したブロックとして定義
-  common_expr <- quote({
-    # 事前分布
-    beta ~ normal(0, prior_beta_sd)
-    tau ~ exponential(prior_tau_rate)
-    if (num_ranef > 1) {
+  if (num_ranef > 1) {
+    common_expr <- quote({
+      # 事前分布
+      beta ~ normal(0, prior_beta_sd)
+      tau ~ exponential(prior_tau_rate)
       CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
-    }
 
-    # 変量効果の事前分布
-    if (num_ranef > 1) {
+      # 変量効果の事前分布
       for (j in 1:num_groups) {
-        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), tau, CF_Omega)
+        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), 1, CF_Omega)
       }
-    }else{
-      r ~ normal(0, tau)
-    }
 
-    # 線形予測子の計算
-    eta <- as.vector(X %*% beta)
-    for (i in 1:N) {
-      eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ])
-    }
-  })
+      # 線形予測子の計算
+      eta <- as.vector(X %*% beta)
+      for (i in 1:N) {
+        eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ] * tau)
+      }
+    })
+  }else{
+    common_expr <- quote({
+      # 事前分布
+      beta ~ normal(0, prior_beta_sd)
+      tau ~ exponential(prior_tau_rate)
+
+      # 変量効果の事前分布
+      r ~ normal(0, 1)
+
+      # 線形予測子の計算
+      eta <- as.vector(X %*% beta) + Z_mat[i,1] * r[group_idx[i]] * tau
+    })
+  }
+
 
   # 両方のブロックから外側の "{ }" を取り除き、中身の式（要素）をリストとして抽出
   common_list <- as.list(common_expr)[-1]
