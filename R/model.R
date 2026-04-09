@@ -218,10 +218,9 @@ transformed_code <- function(expr, env = parent.frame()) {
       ret_call <- last_elem
     } else if (identical(last_elem[[1]], as.name("return"))) {
       is_explicit_return <- TRUE
-      ret_call <- last_elem[[2]] # returnの中身を取り出す
+      ret_call <- last_elem[[2]]
     }
   } else if (is.name(last_elem)) {
-    # 最後の行が単一の変数名 (例: `out`) の場合
     is_explicit_return <- TRUE
     ret_call <- last_elem
   }
@@ -233,28 +232,19 @@ transformed_code <- function(expr, env = parent.frame()) {
 
   } else {
     # 記述がない場合は従来通り自動抽出する
-    if (is_explicit_return) {
-      # 明示的に list(...) が書かれている場合、それを出力として採用
-      ret_call <- last_elem
-      # 重複評価を防ぐため、通常の実行フローから最後の list(...) を削除
-      expr_elements <- expr_elements[-length(expr_elements)]
-
-    } else {
-      # 記述がない場合は従来通り自動抽出する
-      find_assignments <- function(x) {
-        if (is.call(x)) {
-          if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {
-            if (is.name(x[[2]])) return(as.character(x[[2]]))
-          }
-          return(unique(unlist(lapply(as.list(x), find_assignments))))
+    find_assignments <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {
+          if (is.name(x[[2]])) return(as.character(x[[2]]))
         }
-        return(NULL)
+        return(unique(unlist(lapply(as.list(x), find_assignments))))
       }
-      defined_vars <- find_assignments(raw_expr)
-      ret_list_args <- lapply(defined_vars, as.name)
-      names(ret_list_args) <- defined_vars
-      ret_call <- as.call(c(list(as.name("list")), ret_list_args))
+      return(NULL)
     }
+    defined_vars <- find_assignments(raw_expr)
+    ret_list_args <- lapply(defined_vars, as.name)
+    names(ret_list_args) <- defined_vars
+    ret_call <- as.call(c(list(as.name("list")), ret_list_args))
   }
 
   # 3. 関数ボディの構築
