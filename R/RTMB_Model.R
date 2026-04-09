@@ -599,12 +599,16 @@ RTMB_Model <- R6::R6Class(
 
       run_chain <- function(c, p_callback = NULL) {
 
+        base_init <- self$prepare_init(init)
+
         unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, self$par_list), self$par_list)
         unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
         unc_init_vec <- unc_init_vec + rnorm(length(unc_init_vec), mean = 0, sd = 0.1)
+
         unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
-        init_full <- unlist(to_constrained(unc_init_list_new, self$par_list), use.names = FALSE)
+        init_full_list <- to_constrained(unc_init_list_new, self$par_list)
+        init_full <- unlist(init_full_list, use.names = FALSE)
 
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
         ad_obj <- ad_setup$ad_obj
