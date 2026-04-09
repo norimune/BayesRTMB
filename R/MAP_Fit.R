@@ -6,18 +6,16 @@
 #' @param par_vec Parameter vector on the unconstrained scale.
 #' @param par Parameter list on the constrained scale.
 #' @param objective RTMB objective function object.
-#' @param log_ml Log marginal likelihood or related model criterion,
-#'   if available.
+#' @param log_ml Log marginal likelihood or related model criterion, if available.
 #' @param convergence Optimizer convergence code.
 #' @param sd_rep Standard deviation report object.
 #' @param df_fixed Summary table for fixed-effect parameters.
 #' @param random_effects Random effect estimates, if available.
-#' @param tran_est List of transformed parameter estimates, if available.
-#' @param gq_est List of generated quantity estimates, if available.
-#' @param pars Character vector specifying the names of parameters to summarize.
-#' @param max_rows Maximum number of rows to print in summaries.
-#' @param digits Number of digits to print.
-#' @param ... Additional arguments passed to print methods.
+#' @param df_tran Summary table for transformed parameter estimates, if available.
+#' @param df_gq Summary table for generated quantity estimates, if available.
+#' @param opt_history A vector of optimize objective history.
+#' @param tran List of transformed parameters maintaining their original dimensions.
+#' @param gq List of generated quantities maintaining their original dimensions.
 #'
 #' @field par_vec Parameter vector on the unconstrained scale.
 #' @field par Parameter list on the constrained scale.
@@ -27,10 +25,11 @@
 #' @field sd_rep Standard deviation report object.
 #' @field df_fixed Summary table for fixed-effect parameters.
 #' @field random_effects Random effect estimates.
-#' @field df_tran List of transformed parameter estimates.
-#' @field df_gq List of generated quantity estimates.
-#' @field opt_history A vector of optimize objective history
-#'
+#' @field df_tran Summary table for transformed parameter estimates.
+#' @field df_gq Summary table for generated quantity estimates.
+#' @field opt_history A vector of optimize objective history.
+#' @field tran List of transformed parameters maintaining their original dimensions.
+#' @field gq List of generated quantities maintaining their original dimensions.
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
 
@@ -47,6 +46,8 @@ MAP_Fit <- R6::R6Class(
     df_tran        = NULL,
     df_gq          = NULL,
     opt_history    = NULL,
+    tran           = NULL,
+    gq             = NULL,
 
     #' @description Create a new `MAP_Fit` object.
     #' @param par_vec Parameter vector on the unconstrained scale.
@@ -57,11 +58,14 @@ MAP_Fit <- R6::R6Class(
     #' @param sd_rep Standard deviation report object.
     #' @param df_fixed Summary table for fixed-effect parameters.
     #' @param random_effects Random effect estimates.
-    #' @param df_tran List of transformed parameter estimates.
-    #' @param df_gq List of generated quantity estimates.
-    #' @param opt_history A vector of optimize objective history
+    #' @param df_tran Summary table for transformed parameter estimates.
+    #' @param df_gq Summary table for generated quantity estimates.
+    #' @param opt_history A vector of optimize objective history.
+    #' @param tran List of transformed parameters maintaining their original dimensions.
+    #' @param gq List of generated quantities maintaining their original dimensions.
     initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
-                          random_effects, df_tran = NULL, df_gq = NULL, opt_history = NULL) {
+                          random_effects, df_tran = NULL, df_gq = NULL, opt_history = NULL,
+                          tran = NULL, gq = NULL) {
       self$par_vec <- par_vec
       self$par <- par
       self$objective <- objective
@@ -72,6 +76,8 @@ MAP_Fit <- R6::R6Class(
       self$random_effects <- random_effects
       self$df_tran <- df_tran
       self$df_gq <- df_gq
+      self$tran <- tran
+      self$gq <- gq
     },
 
     #' @description Summarize MAP estimates.
@@ -137,10 +143,12 @@ MAP_Fit <- R6::R6Class(
       invisible(df_combined)
     },
 
+    #' print MAP fit object
     #' @description Print a brief summary of the fitted object.
     #' @param pars Character vector specifying the names of parameters to summarize.
     #' @param max_rows Maximum number of rows to print in summaries.
     #' @param digits Number of digits to print.
+    #' @param ... Additional arguments passed to the `summary` method.
     #' @return The object itself, invisibly.
     print = function(pars = NULL, max_rows = 10, digits = 5, ...) {
       self$summary(pars = pars, max_rows = max_rows, digits = digits, ...)

@@ -31,11 +31,15 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{random_effects}}{Random effect estimates.}
 
-\item{\code{df_tran}}{List of transformed parameter estimates.}
+\item{\code{df_tran}}{Summary table for transformed parameter estimates.}
 
-\item{\code{df_gq}}{List of generated quantity estimates.}
+\item{\code{df_gq}}{Summary table for generated quantity estimates.}
 
-\item{\code{opt_history}}{A vector of optimize objective history}
+\item{\code{opt_history}}{A vector of optimize objective history.}
+
+\item{\code{tran}}{List of transformed parameters maintaining their original dimensions.}
+
+\item{\code{gq}}{List of generated quantities maintaining their original dimensions.}
 }
 \if{html}{\out{</div>}}
 }
@@ -65,7 +69,9 @@ Create a new `MAP_Fit` object.
   random_effects,
   df_tran = NULL,
   df_gq = NULL,
-  opt_history = NULL
+  opt_history = NULL,
+  tran = NULL,
+  gq = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -88,11 +94,15 @@ Create a new `MAP_Fit` object.
 
 \item{\code{random_effects}}{Random effect estimates.}
 
-\item{\code{df_tran}}{List of transformed parameter estimates.}
+\item{\code{df_tran}}{Summary table for transformed parameter estimates.}
 
-\item{\code{df_gq}}{List of generated quantity estimates.}
+\item{\code{df_gq}}{Summary table for generated quantity estimates.}
 
-\item{\code{opt_history}}{A vector of optimize objective history}
+\item{\code{opt_history}}{A vector of optimize objective history.}
+
+\item{\code{tran}}{List of transformed parameters maintaining their original dimensions.}
+
+\item{\code{gq}}{List of generated quantities maintaining their original dimensions.}
 }
 \if{html}{\out{</div>}}
 }
@@ -119,6 +129,7 @@ Summarize MAP estimates.
 }
 \subsection{Returns}{
 A summary object, typically a data frame or list.
+print MAP fit object
 }
 }
 \if{html}{\out{<hr>}}
@@ -127,7 +138,7 @@ A summary object, typically a data frame or list.
 \subsection{Method \code{print()}}{
 Print a brief summary of the fitted object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$print(pars = NULL, max_rows = 10, digits = 2, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$print(pars = NULL, max_rows = 10, digits = 5, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -139,7 +150,7 @@ Print a brief summary of the fitted object.
 
 \item{\code{digits}}{Number of digits to print.}
 
-\item{\code{...}}{Additional arguments passed to print methods.}
+\item{\code{...}}{Additional arguments passed to the `summary` method.}
 }
 \if{html}{\out{</div>}}
 }

@@ -418,8 +418,21 @@ RTMB_Model <- R6::R6Class(
 
       con_est_vec <- unlist(con_est_list, use.names = FALSE)
 
-      build_derived_df <- function(func, is_generate = FALSE) {
-        if (is.null(func)) return(NULL)
+      tran_list <- NULL
+      if (!is.null(self$transform)) {
+        tran_list <- tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL)
+      }
+
+      gq_list <- NULL
+      if (!is.null(self$generate)) {
+        tmp_con_list <- con_est_list
+        if (!is.null(tran_list)) tmp_con_list <- c(tmp_con_list, tran_list)
+        gq_list <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
+      }
+
+      # build_derived_df を少し変更し、事前に計算したリスト(base_out)を受け取るようにします
+      build_derived_df <- function(func, base_out, is_generate = FALSE) {
+        if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
 
         u_base <- unc_est_vec
         L_u <- length(u_base)
@@ -437,9 +450,6 @@ RTMB_Model <- R6::R6Class(
           res <- tryCatch(func(self$data, tmp_con_list), error = function(e) NULL)
           return(res)
         }
-
-        base_out <- calc_derived(u_base)
-        if (is.null(base_out) || length(base_out) == 0) return(NULL)
 
         flat_base <- unlist(base_out, use.names = FALSE)
         L_out <- length(flat_base)
@@ -566,7 +576,9 @@ RTMB_Model <- R6::R6Class(
         random_effects = df_random,
         df_tran = df_tran,
         df_gq = df_gq,
-        opt_history = opt_history
+        opt_history = opt_history,
+        tran = tran_list,
+        gq = gq_list
       )
 
       return(res_obj)
