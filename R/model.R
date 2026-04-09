@@ -549,7 +549,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       for (j in 1:num_groups) {
         r[j, ] ~ multi_normal_CF(rep(0, num_ranef), tau, CF_Omega)
       }
-    else{
+    }else{
       r ~ normal(0, tau)
     }
 
