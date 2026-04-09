@@ -103,7 +103,7 @@ Create a new `MAP_Fit` object.
 \subsection{Method \code{summary()}}{
 Summarize MAP estimates.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 2)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{

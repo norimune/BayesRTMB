@@ -174,7 +174,7 @@ RTMB_Model <- R6::R6Class(
 
 
     # 3. 最尤法 / MAP推定 メソッド
-    #' @param num_esitmate Integer; Number of estimate
+    #' @param num_estimate Integer; Number of estimate
     #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
     #' @param init Optional initial values for parameters.
     #' @param control A list of control settings passed to the optimizer.
