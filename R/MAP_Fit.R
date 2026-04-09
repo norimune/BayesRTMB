@@ -14,8 +14,8 @@
 #' @param df_tran Summary table for transformed parameter estimates, if available.
 #' @param df_gq Summary table for generated quantity estimates, if available.
 #' @param opt_history A vector of optimize objective history.
-#' @param tran List of transformed parameters maintaining their original dimensions.
-#' @param gq List of generated quantities maintaining their original dimensions.
+#' @param transform List of transformed parameters maintaining their original dimensions.
+#' @param generate List of generated quantities maintaining their original dimensions.
 #'
 #' @field par_vec Parameter vector on the unconstrained scale.
 #' @field par Parameter list on the constrained scale.
@@ -28,8 +28,8 @@
 #' @field df_tran Summary table for transformed parameter estimates.
 #' @field df_gq Summary table for generated quantity estimates.
 #' @field opt_history A vector of optimize objective history.
-#' @field tran List of transformed parameters maintaining their original dimensions.
-#' @field gq List of generated quantities maintaining their original dimensions.
+#' @field transform List of transformed parameters maintaining their original dimensions.
+#' @field generate List of generated quantities maintaining their original dimensions.
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
 
@@ -46,8 +46,8 @@ MAP_Fit <- R6::R6Class(
     df_tran        = NULL,
     df_gq          = NULL,
     opt_history    = NULL,
-    tran           = NULL,
-    gq             = NULL,
+    transform      = NULL,
+    generate       = NULL,
 
     #' @description Create a new `MAP_Fit` object.
     #' @param par_vec Parameter vector on the unconstrained scale.
@@ -61,11 +61,11 @@ MAP_Fit <- R6::R6Class(
     #' @param df_tran Summary table for transformed parameter estimates.
     #' @param df_gq Summary table for generated quantity estimates.
     #' @param opt_history A vector of optimize objective history.
-    #' @param tran List of transformed parameters maintaining their original dimensions.
-    #' @param gq List of generated quantities maintaining their original dimensions.
+    #' @param transform List of transformed parameters maintaining their original dimensions.
+    #' @param generate List of generated quantities maintaining their original dimensions.
     initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_tran = NULL, df_gq = NULL, opt_history = NULL,
-                          tran = NULL, gq = NULL) {
+                          transform = NULL, generate = NULL) {
       self$par_vec <- par_vec
       self$par <- par
       self$objective <- objective
@@ -76,8 +76,8 @@ MAP_Fit <- R6::R6Class(
       self$random_effects <- random_effects
       self$df_tran <- df_tran
       self$df_gq <- df_gq
-      self$tran <- tran
-      self$gq <- gq
+      self$transform <- transform
+      self$generate <- generate
     },
 
     #' @description Summarize MAP estimates.

@@ -39,10 +39,10 @@
 #' @field model An `RTMB_Model` object used for estimation.
 #' @field fit Posterior draws for model parameters.
 #' @field random_fit Posterior draws for random effects.
-#' @field tran_fit Posterior draws for transformed parameters.
-#' @field tran_dims Dimension information for transformed parameters.
-#' @field gq_fit Posterior draws for generated quantities.
-#' @field gq_dims Dimension information for generated quantities.
+#' @field transform_fit Posterior draws for transformed parameters.
+#' @field transform_dims Dimension information for transformed parameters.
+#' @field generate_fit Posterior draws for generated quantities.
+#' @field generate_dims Dimension information for generated quantities.
 #' @field eps Step size used by the sampler.
 #' @field accept Acceptance statistics from sampling.
 #' @field treedepth Tree depth used in HMC/NUTS sampling.
@@ -57,10 +57,10 @@ MCMC_Fit <- R6::R6Class(
     model          = NULL, # RTMB_Model のインスタンスへの参照
     fit            = NULL,
     random_fit     = NULL,
-    tran_fit       = NULL, # 変換量を保存
-    gq_fit         = NULL, # 生成量を保存
-    tran_dims      = NULL, # 変換量の次元情報を保存
-    gq_dims        = NULL, # GQ変数の次元情報を保存
+    transform_fit  = NULL, # 変換量を保存
+    generate_fit   = NULL, # 生成量を保存
+    transform_dims = NULL, # 変換量の次元情報を保存
+    generate_dims  = NULL, # GQ変数の次元情報を保存
     eps            = NULL,
     accept         = NULL,
     treedepth      = NULL,
@@ -78,10 +78,10 @@ MCMC_Fit <- R6::R6Class(
       self$treedepth <- treedepth
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
-      self$tran_fit <- NULL
-      self$tran_dims <- list()
-      self$gq_fit <- NULL
-      self$gq_dims <- list()
+      self$transform_fit <- NULL
+      self$transform_dims <- list()
+      self$generate_fit <- NULL
+      self$generate_dims <- list()
     },
 
     #' @description Print a brief summary of the fitted object.
@@ -94,11 +94,11 @@ MCMC_Fit <- R6::R6Class(
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
     #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
     #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
-    #' @param inc_tran Logical; whether to include transformed parameters in the output. Default is TRUE.
-    #' @param inc_gq Logical; whether to include generated quantities in the output. Default is TRUE.
+    #' @param inc_tranform Logical; whether to include transformed parameters in the output. Default is TRUE.
+    #' @param inc_generate Logical; whether to include generated quantities in the output. Default is TRUE.
     #' @return Posterior draws.
     draws = function(pars = NULL, chains = NULL,
-                     inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
+                     inc_random = FALSE, inc_tranform = TRUE, inc_generate = TRUE) {
       out_array <- self$fit
 
       if (inc_random && !is.null(self$random_fit)) {
@@ -117,34 +117,30 @@ MCMC_Fit <- R6::R6Class(
         out_array <- new_out
       }
 
-      if (inc_tran && !is.null(self$tran_fit)) {
-        P1 <- dim(out_array)[3]
-        P2 <- dim(self$tran_fit)[3]
-        I <- dim(out_array)[1]
-        C <- dim(out_array)[2]
+      if (inc_transform && !is.null(self$transform_fit)) {
+        P1 <- dim(out_array)[3]; P2 <- dim(self$transform_fit)[3]
+        I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$tran_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$transform_fit
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
-          variable = c(dimnames(out_array)[[3]], dimnames(self$tran_fit)[[3]])
+          variable = c(dimnames(out_array)[[3]], dimnames(self$transform_fit)[[3]])
         )
         out_array <- new_out
       }
 
-      if (inc_gq && !is.null(self$gq_fit)) {
-        P1 <- dim(out_array)[3]
-        P2 <- dim(self$gq_fit)[3]
-        I <- dim(out_array)[1]
-        C <- dim(out_array)[2]
+      if (inc_generate && !is.null(self$generate_fit)) {
+        P1 <- dim(out_array)[3];P2 <- dim(self$generate_fit)[3]
+        I <- dim(out_array)[1];C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$gq_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$generate_fit
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
-          variable = c(dimnames(out_array)[[3]], dimnames(self$gq_fit)[[3]])
+          variable = c(dimnames(out_array)[[3]], dimnames(self$generate_fit)[[3]])
         )
         out_array <- new_out
       }
@@ -608,8 +604,8 @@ MCMC_Fit <- R6::R6Class(
 
       f_arr <- self$fit
       r_arr <- self$random_fit
-      t_arr <- self$tran_fit
-      g_arr <- self$gq_fit
+      t_arr <- self$tranform_fit
+      g_arr <- self$generate_fit
 
       v_names_f <- dimnames(f_arr)[[3]]
       v_names_r <- if (!is.null(r_arr)) dimnames(r_arr)[[3]] else character(0)

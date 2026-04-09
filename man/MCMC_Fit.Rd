@@ -21,13 +21,13 @@ from MCMC estimation.
 
 \item{\code{random_fit}}{Posterior draws for random effects.}
 
-\item{\code{tran_fit}}{Posterior draws for transformed parameters.}
+\item{\code{transform_fit}}{Posterior draws for transformed parameters.}
 
-\item{\code{tran_dims}}{Dimension information for transformed parameters.}
+\item{\code{transform_dims}}{Dimension information for transformed parameters.}
 
-\item{\code{gq_fit}}{Posterior draws for generated quantities.}
+\item{\code{generate_fit}}{Posterior draws for generated quantities.}
 
-\item{\code{gq_dims}}{Dimension information for generated quantities.}
+\item{\code{generate_dims}}{Dimension information for generated quantities.}
 
 \item{\code{eps}}{Step size used by the sampler.}
 
@@ -130,8 +130,8 @@ Extract posterior draws for selected parameters.
   pars = NULL,
   chains = NULL,
   inc_random = FALSE,
-  inc_tran = TRUE,
-  inc_gq = TRUE
+  inc_tranform = TRUE,
+  inc_generate = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -144,9 +144,9 @@ Extract posterior draws for selected parameters.
 
 \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
 
-\item{\code{inc_tran}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
+\item{\code{inc_tranform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
 
-\item{\code{inc_gq}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }

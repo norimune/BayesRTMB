@@ -37,9 +37,9 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{opt_history}}{A vector of optimize objective history.}
 
-\item{\code{tran}}{List of transformed parameters maintaining their original dimensions.}
+\item{\code{transform}}{List of transformed parameters maintaining their original dimensions.}
 
-\item{\code{gq}}{List of generated quantities maintaining their original dimensions.}
+\item{\code{generate}}{List of generated quantities maintaining their original dimensions.}
 }
 \if{html}{\out{</div>}}
 }
@@ -70,8 +70,8 @@ Create a new `MAP_Fit` object.
   df_tran = NULL,
   df_gq = NULL,
   opt_history = NULL,
-  tran = NULL,
-  gq = NULL
+  transform = NULL,
+  generate = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -100,9 +100,9 @@ Create a new `MAP_Fit` object.
 
 \item{\code{opt_history}}{A vector of optimize objective history.}
 
-\item{\code{tran}}{List of transformed parameters maintaining their original dimensions.}
+\item{\code{transform}}{List of transformed parameters maintaining their original dimensions.}
 
-\item{\code{gq}}{List of generated quantities maintaining their original dimensions.}
+\item{\code{generate}}{List of generated quantities maintaining their original dimensions.}
 }
 \if{html}{\out{</div>}}
 }

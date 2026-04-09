@@ -577,8 +577,8 @@ RTMB_Model <- R6::R6Class(
         df_tran = df_tran,
         df_gq = df_gq,
         opt_history = opt_history,
-        tran = tran_list,
-        gq = gq_list
+        transform = tran_list,
+        generate = gq_list
       )
 
       return(res_obj)
