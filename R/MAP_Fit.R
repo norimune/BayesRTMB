@@ -142,7 +142,7 @@ MAP_Fit <- R6::R6Class(
     #' @param max_rows Maximum number of rows to print in summaries.
     #' @param digits Number of digits to print.
     #' @return The object itself, invisibly.
-    print = function(pars = NULL, max_rows = 10, digits = 2, ...) {
+    print = function(pars = NULL, max_rows = 10, digits = 5, ...) {
       self$summary(pars = pars, max_rows = max_rows, digits = digits, ...)
       invisible(self)
     }
