@@ -556,7 +556,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
       # 変量効果の事前分布
       for (j in 1:num_groups) {
-        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), 1, CF_Omega)
+        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_Omega)
       }
 
       # 線形予測子の計算
