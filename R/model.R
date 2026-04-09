@@ -859,43 +859,34 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
     }
   })
 
-  # 4. 生成量のコードをAST(構文木)として動的に構築
-  base_gq <- quote({
+  # 4. 生成量の計算を直接関数として定義する
+  gq_expr <- function(dat, par) {
+    loadings <- par$loadings
+    sd <- par$sd
+    score <- par$score
+
     Sigma <- loadings %*% t(loadings) + diag(sd^2)
     var_total <- diag(Sigma)
     var_common <- rowSums(loadings^2)
     communality <- var_common / var_total
-  })
 
-  if (!is.null(rotate)) {
-    rot_fn_name <- as.name(rotate)
-    rot_loadings_name <- paste0("loadings_", rotate)
-    rot_score_name <- paste0("score_", rotate)
+    out <- list(communality = communality)
 
-    # 改善版：出力リストを関数内で動的に構築する
-    rot_expr <- bquote({
-      rot_obj <- GPArotation::.(rot_fn_name)(loadings)
+    if (!is.null(rotate)) {
+      # GPArotationの関数を取得して実行
+      rot_fn <- getExportedValue("GPArotation", rotate)
+      rot_obj <- rot_fn(loadings)
 
-      out <- list(communality = communality)
-      out[[.(rot_loadings_name)]] <- rot_obj$loadings
-      out[[.(rot_score_name)]] <- score %*% rot_obj$Th
+      out[[paste0("loadings_", rotate)]] <- rot_obj$loadings
+      out[[paste0("score_", rotate)]] <- score %*% rot_obj$Th
 
       # Phi(因子間相関)がある斜交回転のときだけ追加
       if (!is.null(rot_obj$Phi)) {
         out$fa_cor <- rot_obj$Phi
       }
-      out # 最後に評価して返す
-    })
-
-    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1]))
-  } else {
-    no_rot_expr <- quote({
-      list(communality = communality)
-    })
-    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(no_rot_expr)[-1]))
+    }
+    return(out)
   }
-
-  gq_expr <- eval(bquote(transformed_code(.(gq_ast))))
 
   # 5. パラメータ名の設定
   p_names <- list(
@@ -906,9 +897,10 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
   )
 
   if (!is.null(rotate)) {
-    # par_names にも動的に作成した名前（例: loadings_promax）を登録
     p_names[[paste0("loadings_", rotate)]] <- var_names
+    p_names[["fa_cor"]] <- var_names
   }
+
 
   # 6. モデルオブジェクトの生成
   obj <- rtmb_model(
