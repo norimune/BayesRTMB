@@ -564,7 +564,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       r ~ normal(0, 1)
 
       # 線形予測子の計算
-      eta <- as.vector(X %*% beta) + Z_mat[i,1] * r[group_idx[i]] * tau
+      eta <- as.vector(X %*% beta) + Z_mat[,1] * r[group_idx] * tau
     })
   }
 
