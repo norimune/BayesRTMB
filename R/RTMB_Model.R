@@ -418,6 +418,7 @@ RTMB_Model <- R6::R6Class(
 
       con_est_vec <- unlist(con_est_list, use.names = FALSE)
 
+      # 1. 事前に transform と generate の結果をリストとして計算
       tran_list <- NULL
       if (!is.null(self$transform)) {
         tran_list <- tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL)
@@ -430,14 +431,13 @@ RTMB_Model <- R6::R6Class(
         gq_list <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
       }
 
-      # build_derived_df を少し変更し、事前に計算したリスト(base_out)を受け取るようにします
+      # 2. base_out を受け取るように変更した関数
       build_derived_df <- function(func, base_out, is_generate = FALSE) {
         if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
 
         u_base <- unc_est_vec
         L_u <- length(u_base)
 
-        # 出力計算用のラッパー関数
         calc_derived <- function(u) {
           tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
           tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
@@ -454,7 +454,6 @@ RTMB_Model <- R6::R6Class(
         flat_base <- unlist(base_out, use.names = FALSE)
         L_out <- length(flat_base)
 
-        # 数値微分でヤコビアン行列(J)を計算
         eps_diff <- 1e-5
         J <- matrix(0, nrow = L_out, ncol = L_u)
         for (i in 1:L_u) {
@@ -465,29 +464,24 @@ RTMB_Model <- R6::R6Class(
           J[, i] <- (flat_tmp - flat_base) / eps_diff
         }
 
-        # 共分散行列の取得 (sd_rep から)
         Cov_u <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
-        Cov_u[is.na(Cov_u)] <- 0 # 安全のためNAを0に
+        Cov_u[is.na(Cov_u)] <- 0
 
         if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
           idx_ran <- ad_obj$env$random
           idx_fix <- if (length(idx_ran) > 0) (1:L_u)[-idx_ran] else 1:L_u
-          # 固定効果の部分だけ正確な共分散行列で上書きする
           Cov_u[idx_fix, idx_fix] <- sd_rep$cov.fixed
         }
 
-        # デルタ法によるSE (J %*% Cov_u %*% t(J) の対角成分)
         se_out <- numeric(L_out)
         for (j in 1:L_out) {
           se_out[j] <- sqrt(sum((J[j, ] %*% Cov_u) * J[j, ]))
         }
 
-        # 95%信頼区間 (Wald型近似)
         z_95 <- qnorm(0.975)
         low_out <- flat_base - z_95 * se_out
         up_out <- flat_base + z_95 * se_out
 
-        # 名前ベクトルの生成
         names_vec <- c()
         for (name in names(base_out)) {
           val <- base_out[[name]]
@@ -508,31 +502,19 @@ RTMB_Model <- R6::R6Class(
         return(df)
       }
 
-      df_tran <- build_derived_df(self$transform, is_generate=FALSE)
-      #df_gq   <- build_derived_df(self$generate, is_generate=TRUE)
+      # 3. 呼び出し時に第2引数として tran_list を渡す
+      df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE)
 
-      # SEの数値微分をスキップし、点推定値(Estimate)のみを取得する
-      base_out <- NULL
-      if (!is.null(self$generate)) {
-        tmp_con_list <- to_constrained(unconstrained_vector_to_list(unc_est_vec, self$par_list), self$par_list)
-        if (!is.null(self$transform)) {
-          user_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
-          if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
-        }
-        base_out <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
-      }
-
-      if (!is.null(base_out) && length(base_out) > 0) {
-        flat_base <- unlist(base_out, use.names = FALSE)
+      if (!is.null(gq_list) && length(gq_list) > 0) {
+        flat_base <- unlist(gq_list, use.names = FALSE)
         names_vec <- c()
-        for (name in names(base_out)) {
-          val <- base_out[[name]]
+        for (name in names(gq_list)) {
+          val <- gq_list[[name]]
           dim_val <- dim(val)
           if (is.null(dim_val)) dim_val <- length(val)
           names_vec <- c(names_vec, generate_flat_names(name, dim_val, self$par_names[[name]]))
         }
-        # Std. Errorや信頼区間はNAにして点推定値だけ返す
-        df_gq <- data.frame(
+        df_generate <- data.frame(
           Estimate     = flat_base,
           `Std. Error` = NA,
           `Lower 95%`  = NA,
@@ -541,7 +523,7 @@ RTMB_Model <- R6::R6Class(
           check.names  = FALSE
         )
       } else {
-        df_gq <- NULL
+        df_generate <- NULL
       }
 
       log_ml <- NA
@@ -561,10 +543,9 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      # opt history
       opt_history <- data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes)
 
-      # --- MAP_Fit インスタンスを返す ---
+      # 4. 最後にMAP_Fitへ渡す
       res_obj <- MAP_Fit$new(
         par_vec = con_est_vec,
         par = con_est_list,
@@ -574,8 +555,8 @@ RTMB_Model <- R6::R6Class(
         sd_rep = sd_rep,
         df_fixed = df_fixed,
         random_effects = df_random,
-        df_tran = df_tran,
-        df_gq = df_gq,
+        df_transform = df_transform,
+        df_generate = df_generate,
         opt_history = opt_history,
         transform = tran_list,
         generate = gq_list
