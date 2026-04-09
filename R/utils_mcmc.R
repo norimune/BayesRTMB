@@ -114,7 +114,7 @@ as_summary_df <- function(df) {
 
 #' @param digits integer
 #' @export
-print.summary_BayesRTMB <- function(x, digits = 2...) {
+print.summary_BayesRTMB <- function(x, digits = 2,...) {
   df <- x
 
   # 1. 各列を文字列に変換 (表示形式の指定)
