@@ -21,9 +21,9 @@ from Automatic Differentiation Variational Inference (ADVI).
 
 \item{\code{random_fit}}{A 3D array of posterior draws for random effects, if available.}
 
-\item{\code{tran_fit}}{A 3D array of posterior draws for transformed parameters, if available.}
+\item{\code{transform_fit}}{A 3D array of posterior draws for transformed parameters, if available.}
 
-\item{\code{gq_fit}}{A 3D array of posterior draws for generated quantities, if available.}
+\item{\code{generate_fit}}{A 3D array of posterior draws for generated quantities, if available.}
 
 \item{\code{transform_dims}}{A list storing dimension information for transformed parameters.}
 

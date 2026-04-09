@@ -6,8 +6,8 @@
 #' @field model An `RTMB_Model` object used for estimation.
 #' @field fit A 3D array of posterior draws for fixed model parameters.
 #' @field random_fit A 3D array of posterior draws for random effects, if available.
-#' @field tran_fit A 3D array of posterior draws for transformed parameters, if available.
-#' @field gq_fit A 3D array of posterior draws for generated quantities, if available.
+#' @field transform_fit A 3D array of posterior draws for transformed parameters, if available.
+#' @field generate_fit A 3D array of posterior draws for generated quantities, if available.
 #' @field transform_dims A list storing dimension information for transformed parameters.
 #' @field generate_dims A list storing dimension information for generated quantities.
 #' @field elbo_history A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.
@@ -26,8 +26,8 @@ VB_Fit <- R6::R6Class(
     model          = NULL, # RTMB_Model のインスタンスへの参照
     fit            = NULL,
     random_fit     = NULL,
-    tran_fit       = NULL, # 変換量を保存
-    gq_fit         = NULL, # 生成量を保存
+    transform_fit       = NULL, # 変換量を保存
+    generate_fit         = NULL, # 生成量を保存
     transform_dims      = NULL, # 変換量の次元情報を保存
     generate_dims        = NULL, # GQ変数の次元情報を保存
     elbo_history   = NULL, # ELBOの推移を保存
@@ -61,9 +61,9 @@ VB_Fit <- R6::R6Class(
       self$rel_obj_vals <- rel_obj_vals
       self$best_chain <- best_chain
       self$mu_history <- mu_history
-      self$tran_fit <- NULL
+      self$transform_fit <- NULL
       self$transform_dims <- list()
-      self$gq_fit <- NULL
+      self$generate_fit <- NULL
       self$generate_dims <- list()
     },
 
@@ -99,30 +99,30 @@ VB_Fit <- R6::R6Class(
         out_array <- new_out
       }
 
-      if (inc_tran && !is.null(self$tran_fit)) {
-        P1 <- dim(out_array)[3]; P2 <- dim(self$tran_fit)[3]
+      if (inc_tran && !is.null(self$transform_fit)) {
+        P1 <- dim(out_array)[3]; P2 <- dim(self$transform_fit)[3]
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$tran_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$transform_fit
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
-          variable = c(dimnames(out_array)[[3]], dimnames(self$tran_fit)[[3]])
+          variable = c(dimnames(out_array)[[3]], dimnames(self$transform_fit)[[3]])
         )
         out_array <- new_out
       }
 
-      if (inc_generate && !is.null(self$gq_fit)) {
-        P1 <- dim(out_array)[3]; P2 <- dim(self$gq_fit)[3]
+      if (inc_generate && !is.null(self$generate_fit)) {
+        P1 <- dim(out_array)[3]; P2 <- dim(self$generate_fit)[3]
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$gq_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$generate_fit
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
-          variable = c(dimnames(out_array)[[3]], dimnames(self$gq_fit)[[3]])
+          variable = c(dimnames(out_array)[[3]], dimnames(self$generate_fit)[[3]])
         )
         out_array <- new_out
       }
@@ -489,7 +489,7 @@ VB_Fit <- R6::R6Class(
         }
       }
 
-      self$tran_fit <- tran_array
+      self$transform_fit <- tran_array
       return(invisible(self))
     },
 
@@ -557,7 +557,7 @@ VB_Fit <- R6::R6Class(
         }
       }
 
-      self$gq_fit <- gq_array
+      self$generate_fit <- gq_array
       return(invisible(self))
     },
 

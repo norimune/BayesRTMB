@@ -6,9 +6,9 @@
 #' @param model An `RTMB_Model` object used for estimation.
 #' @param fit Posterior draws for model parameters.
 #' @param random_fit Posterior draws for random effects, if available.
-#' @param tran_fit Posterior draws for transformed parameters, if available.
+#' @param transform_fit Posterior draws for transformed parameters, if available.
 #' @param transform_dims Dimension information for transformed parameters.
-#' @param gq_fit Posterior draws for generated quantities, if available.
+#' @param generate_fit Posterior draws for generated quantities, if available.
 #' @param generate_dims Dimension information for generated quantities.
 #' @param eps Step size used by the sampler.
 #' @param accept Acceptance statistics from sampling.
@@ -508,7 +508,7 @@ MCMC_Fit <- R6::R6Class(
       }
       close(pb)
 
-      self$tran_fit <- tran_array
+      self$transform_fit <- tran_array
       return(invisible(self))
     },
 
@@ -587,7 +587,7 @@ MCMC_Fit <- R6::R6Class(
       }
       close(pb)
 
-      self$gq_fit <- gq_array
+      self$generate_fit <- gq_array
       return(invisible(self))
     },
 
@@ -886,8 +886,8 @@ MCMC_Fit <- R6::R6Class(
 
       f_arr <- obj$fit
       r_arr <- obj$random_fit
-      t_arr <- obj$tran_fit
-      g_arr <- obj$gq_fit
+      t_arr <- obj$transform_fit
+      g_arr <- obj$generate_fit
 
       v_names_f <- dimnames(f_arr)[[3]]
       v_names_r <- if (!is.null(r_arr)) dimnames(r_arr)[[3]] else character(0)
@@ -1083,8 +1083,8 @@ MCMC_Fit <- R6::R6Class(
 
       obj$fit <- f_arr
       obj$random_fit <- r_arr
-      obj$tran_fit <- t_arr
-      obj$gq_fit <- g_arr
+      obj$transform_fit <- t_arr
+      obj$generate_fit <- g_arr
 
       # posterior_mean の再計算
       fixed_mean_new <- apply(obj$fit[, , -1, drop = FALSE], 3, mean)
