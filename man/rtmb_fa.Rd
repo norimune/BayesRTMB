@@ -8,7 +8,8 @@ rtmb_fa(
   data,
   n_factors = 1,
   rotate = NULL,
-  prior = list(mu_sd = 10, lambda_sd = 3, sd_rate = 1)
+  prior = list(mu_sd = 10, lambda_sd = 3, sd_rate = 1),
+  init = NULL
 )
 }
 \arguments{
@@ -19,6 +20,8 @@ rtmb_fa(
 \item{rotate}{回転方法の文字列 (例: "varimax", "promax")。NULLの場合は回転しない。}
 
 \item{prior}{事前分布のハイパーパラメータのリスト}
+
+\item{init}{初期値のリスト (指定しない場合はPCAに基づく初期値が自動生成されます)}
 }
 \description{
 探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー

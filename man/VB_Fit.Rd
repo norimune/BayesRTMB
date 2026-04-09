@@ -302,6 +302,7 @@ Apply internal rotation to sampled parameters.
   linked_straight = NULL,
   linked_inverse = NULL,
   overwrite = FALSE,
+  suffix = "rot",
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -321,6 +322,8 @@ Apply internal rotation to sampled parameters.
 
 \item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
 
+\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE.}
+
 \item{\code{...}}{Additional arguments passed to the rotation function.}
 }
 \if{html}{\out{</div>}}
@@ -335,7 +338,7 @@ The updated object invisibly.
 \subsection{Method \code{rotate()}}{
 Rotate sampled parameters.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$rotate(target, linked = NULL, overwrite = FALSE, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$rotate(target, linked = NULL, overwrite = FALSE, suffix = "rot", ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -346,6 +349,8 @@ Rotate sampled parameters.
 \item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
 
 \item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
+
+\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".}
 
 \item{\code{...}}{Additional arguments passed to the rotation function.}
 }
@@ -368,6 +373,7 @@ Rotate factor loadings and optional factor scores.
   type = "oblique",
   linked_loadings = NULL,
   overwrite = FALSE,
+  suffix = method,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -386,6 +392,8 @@ Rotate factor loadings and optional factor scores.
 \item{\code{linked_loadings}}{Character vector of linked loading variables.}
 
 \item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
+
+\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE. Default is the method name.}
 
 \item{\code{...}}{Additional arguments passed to the rotation function.}
 }
