@@ -112,8 +112,9 @@ as_summary_df <- function(df) {
   return(df)
 }
 
+#' @param digits integer
 #' @export
-print.summary_BayesRTMB <- function(x, ...) {
+print.summary_BayesRTMB <- function(x, digits = 2...) {
   df <- x
 
   # 1. 各列を文字列に変換 (表示形式の指定)
@@ -124,8 +125,8 @@ print.summary_BayesRTMB <- function(x, ...) {
         # ESSなどは整数 (NA対策込み)
         ifelse(is.na(val), "NA", sprintf("%.0f", val))
       } else {
-        # それ以外は小数点2桁で揃える (NA対策込み)
-        ifelse(is.na(val), "NA", sprintf("%.2f", val))
+        fmt <- paste0("%.", digits, "f")
+        ifelse(is.na(val), "NA", sprintf(fmt, val))
       }
     } else {
       ifelse(is.na(val), "NA", as.character(val))

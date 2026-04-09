@@ -127,7 +127,7 @@ MAP_Fit <- R6::R6Class(
 
       # 5. MCMC/VB用のprint関数に回して表を整形
       class(out_df) <- c("summary_BayesRTMB", "data.frame")
-      print(out_df)
+      print(out_df, digits = digits)
 
       cat("\n")
       invisible(df_combined)
