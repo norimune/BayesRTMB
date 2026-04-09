@@ -72,83 +72,65 @@ MAP_Fit <- R6::R6Class(
 
     #' @description Summarize MAP estimates.
     #' @param pars Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.
-    #' @param max_rows Maximum number of rows to print in summaries.
+    #' @param max_rows Maximum number of rows to print in summaries. Default is 10.
     #' @param digits Number of digits to print.
     #' @return A summary object, typically a data frame or list.
-    summary = function(pars = NULL, max_rows = 20, digits = 2) {
-      cat("\nCall:\nMAP Estimation via RTMB\n\n")
-
-      cat("Fixed Effects Coefficients (Constrained Scale):\n")
-      if (!is.null(self$df_fixed)) {
-        df <- self$df_fixed
-
-        # --- 変数名のフィルタリング処理を追加 ---
-        if (!is.null(pars)) {
-          # "[1,1]" などのインデックス部分を削除してベース名を取得
-          base_names <- gsub("\\[.*\\]$", "", rownames(df))
-          # 完全一致、またはベース名での一致を判定
-          keep_idx <- rownames(df) %in% pars | base_names %in% pars
-          df <- df[keep_idx, , drop = FALSE]
-        }
-
-        if (nrow(df) == 0) {
-          cat("No matching fixed effects found.\n")
-        } else {
-          # 行数の制限処理
-          if (!is.null(max_rows) && nrow(df) > max_rows) {
-            base::print(head(df, max_rows), digits = digits)
-            #cat(sprintf("... (残り %d 行を省略。max_rows で表示数を変更できます)\n", nrow(df) - max_rows))
-          } else {
-            base::print(df, digits = digits)
-          }
-        }
-      } else {
-        cat("No fixed effects to display.\n")
-      }
-
-      cat("---\nNegative Log-Posterior:", self$objective, "\n")
+    summary = function(pars = NULL, max_rows = 10, digits = 2) {
+      cat("\nCall:\nMAP Estimation via RTMB\n")
+      cat(sprintf("\nNegative Log-Posterior: %.2f\n", self$objective))
 
       if (!is.null(self$log_ml) && !is.na(self$log_ml)) {
-        cat("Approx. Log Marginal Likelihood (Laplace):", self$log_ml, "\n")
+        cat(sprintf("Approx. Log Marginal Likelihood (Laplace): %.2f\n", self$log_ml))
       } else {
-        cat("Approx. Log Marginal Likelihood (Laplace): NA (Calculation failed or not applicable)\n")
+        cat("Approx. Log Marginal Likelihood (Laplace): NA\n")
       }
 
       if (!is.null(self$random_effects)) {
         cat("Note: Random effects are stored in $random_effects\n")
       }
 
-      print_df <- function(df, category_name) {
-        if (is.null(df) || nrow(df) == 0) return(NULL)
+      # 1. すべてのデータフレームを縦に結合する
+      all_dfs <- list()
+      if (!is.null(self$df_fixed) && nrow(self$df_fixed) > 0) all_dfs$fixed <- self$df_fixed
+      if (!is.null(self$df_tran) && nrow(self$df_tran) > 0) all_dfs$tran <- self$df_tran
+      if (!is.null(self$df_gq) && nrow(self$df_gq) > 0) all_dfs$gq <- self$df_gq
 
-        if (!is.null(pars)) {
-          base_names <- gsub("\\[.*\\]$", "", rownames(df))
-          keep_idx <- rownames(df) %in% pars | base_names %in% pars
-          df <- df[keep_idx, , drop = FALSE]
-        }
-
-        if (nrow(df) > 0) {
-          cat(sprintf("\n%s:\n", category_name))
-          # summary_BayesRTMBクラスを適用するため、rownamesをvariable列に変換
-          out_df <- data.frame(variable = rownames(df), df, check.names = FALSE, stringsAsFactors = FALSE)
-          rownames(out_df) <- NULL
-
-          # head() で切り出す
-          if (!is.null(max_rows) && nrow(out_df) > max_rows) {
-            out_df <- head(out_df, max_rows)
-          }
-
-          # クラスを付与して utils_mcmc.R の print.summary_BayesRTMB を経由させる
-          class(out_df) <- c("summary_BayesRTMB", "data.frame")
-          print(out_df) # ここで自動的に整形表示される
-        }
+      if (length(all_dfs) == 0) {
+        cat("\nNo parameters to display.\n")
+        return(invisible(NULL))
       }
-      print_df(self$df_fixed, "Fixed Effects Coefficients")
-      print_df(self$df_tran, "Transformed Parameters")
-      print_df(self$df_gq, "Generated Quantities")
+
+      df_combined <- do.call(rbind, all_dfs)
+
+      # 2. 変数名での絞り込み
+      if (!is.null(pars)) {
+        base_names <- gsub("\\[.*\\]$", "", rownames(df_combined))
+        keep_idx <- rownames(df_combined) %in% pars | base_names %in% pars
+        df_combined <- df_combined[keep_idx, , drop = FALSE]
+      }
+
+      if (nrow(df_combined) == 0) {
+        cat("\nNo matching parameters found.\n")
+        return(invisible(df_combined))
+      }
+
+      cat("\nPoint Estimates and 95% Wald CI:\n")
+
+      # 3. 表示用のデータフレーム作成
+      out_df <- data.frame(variable = rownames(df_combined), df_combined, check.names = FALSE, stringsAsFactors = FALSE)
+      rownames(out_df) <- NULL
+
+      # 4. ここで全体に対して max_rows を適用する
+      if (!is.null(max_rows) && nrow(out_df) > max_rows) {
+        out_df <- head(out_df, max_rows)
+      }
+
+      # 5. MCMC/VB用のprint関数に回して表を整形
+      class(out_df) <- c("summary_BayesRTMB", "data.frame")
+      print(out_df)
 
       cat("\n")
-      invisible(self$df_fixed) # 戻り値は元のdf_fixed全体のままとするか、フィルタ済みのdfにするかは用途に応じて調整してください
+      invisible(df_combined)
     },
 
     #' @description Print a brief summary of the fitted object.
