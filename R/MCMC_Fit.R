@@ -18,6 +18,7 @@
 #' @param pars Names of parameters to extract or summarize.
 #' @param chains Chains to include.
 #' @param inc_random Logical; whether to include random effects.
+#' @param inc_transfomr Logical; whether to include transformed parameters.
 #' @param inc_generate Logical; whether to include generated quantities.
 #' @param max_rows Maximum number of rows to print in summaries.
 #' @param digits Number of digits to print.
@@ -94,7 +95,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
     #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
     #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
-    #' @param inc_tranform Logical; whether to include transformed parameters in the output. Default is TRUE.
+    #' @param inc_transform Logical; whether to include transformed parameters in the output. Default is TRUE.
     #' @param inc_generate Logical; whether to include generated quantities in the output. Default is TRUE.
     #' @return Posterior draws.
     draws = function(pars = NULL, chains = NULL,

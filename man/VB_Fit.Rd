@@ -25,9 +25,9 @@ from Automatic Differentiation Variational Inference (ADVI).
 
 \item{\code{gq_fit}}{A 3D array of posterior draws for generated quantities, if available.}
 
-\item{\code{tran_dims}}{A list storing dimension information for transformed parameters.}
+\item{\code{transform_dims}}{A list storing dimension information for transformed parameters.}
 
-\item{\code{gq_dims}}{A list storing dimension information for generated quantities.}
+\item{\code{generate_dims}}{A list storing dimension information for generated quantities.}
 
 \item{\code{elbo_history}}{A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.}
 
@@ -137,8 +137,8 @@ Extract posterior draws for selected parameters.
 \if{html}{\out{<div class="r">}}\preformatted{VB_Fit$draws(
   pars = NULL,
   inc_random = FALSE,
-  inc_tran = TRUE,
-  inc_gq = TRUE,
+  inc_transform = TRUE,
+  inc_generate = TRUE,
   best_only = TRUE
 )}\if{html}{\out{</div>}}
 }
@@ -150,9 +150,9 @@ Extract posterior draws for selected parameters.
 
 \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
 
-\item{\code{inc_tran}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
 
-\item{\code{inc_gq}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
 
 \item{\code{best_only}}{Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.}
 }
@@ -173,8 +173,8 @@ Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
   max_rows = 10,
   digits = 2,
   inc_random = FALSE,
-  inc_tran = TRUE,
-  inc_gq = TRUE
+  inc_transform = TRUE,
+  inc_generate = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -189,9 +189,9 @@ Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
 
 \item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
 
-\item{\code{inc_tran}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
 
-\item{\code{inc_gq}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }

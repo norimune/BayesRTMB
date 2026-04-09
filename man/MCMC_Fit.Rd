@@ -130,7 +130,7 @@ Extract posterior draws for selected parameters.
   pars = NULL,
   chains = NULL,
   inc_random = FALSE,
-  inc_tranform = TRUE,
+  inc_transform = TRUE,
   inc_generate = TRUE
 )}\if{html}{\out{</div>}}
 }
@@ -144,7 +144,7 @@ Extract posterior draws for selected parameters.
 
 \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
 
-\item{\code{inc_tranform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
 
 \item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
 }
