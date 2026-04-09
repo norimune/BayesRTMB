@@ -501,6 +501,37 @@ wishart_lpdf <- function(X, n, V) {
 
   return(as.numeric(lp))
 }
+#' Wishart log-probability density function parameterized by Cholesky factor of correlation matrix
+#'
+#' @param X Symmetric positive-definite matrix (scatter matrix).
+#' @param n Degrees of freedom (sample size N).
+#' @param sd Vector of standard deviations.
+#' @param CF_Omega Cholesky factor of the correlation matrix.
+#' @return The log-density with all constant terms.
+#' @export
+wishart_CF_lpdf <- function(X, n, sd, CF_Omega) {
+  p <- nrow(X)
+
+  if (length(sd) == 1) {
+    L_Sigma <- matrix(sd, 1, 1) %*% CF_Omega
+  } else {
+    L_Sigma <- diag(sd) %*% CF_Omega
+  }
+
+  log_det_Sigma <- 2 * sum(log(diag(L_Sigma)))
+  L_inv <- solve(L_Sigma)
+  Sigma_inv <- t(L_inv) %*% L_inv
+  trace_term <- sum(Sigma_inv * X)
+
+  log_det_X <- determinant(X, logarithm = TRUE)$modulus
+  log_gamma_p <- (p * (p - 1) / 4) * log(pi) + sum(lgamma((n - (1:p) + 1) / 2))
+
+  lp <- (n - p - 1) / 2 * log_det_X - 0.5 * trace_term -
+    (n * p / 2) * log(2) - (n / 2) * log_det_Sigma - log_gamma_p
+
+  return(as.numeric(lp))
+}
+
 #' Factor analysis multivariate normal log-probability density function
 #'
 #' Woodbury matrix identity is used for efficient computation.
