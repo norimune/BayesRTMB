@@ -2,12 +2,13 @@
 % Please edit documentation in R/model.R
 \name{rtmb_fa}
 \alias{rtmb_fa}
-\title{探索的因子分析 (Bayesian EFA) 超高速版ラッパー}
+\title{探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー}
 \usage{
 rtmb_fa(
   data,
   n_factors = 1,
-  prior = list(mu_sd = 10, lambda_sd = 3, psi_rate = 1)
+  rotate = NULL,
+  prior = list(mu_sd = 10, lambda_sd = 3, sd_rate = 1)
 )
 }
 \arguments{
@@ -15,9 +16,10 @@ rtmb_fa(
 
 \item{n_factors}{因子の数 (K)}
 
-\item{prior}{事前分布のハイパーパラメータのリスト
-探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー}
+\item{rotate}{回転方法の文字列 (例: "varimax", "promax")。NULLの場合は回転しない。}
+
+\item{prior}{事前分布のハイパーパラメータのリスト}
 }
 \description{
-探索的因子分析 (Bayesian EFA) 超高速版ラッパー
+探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー
 }

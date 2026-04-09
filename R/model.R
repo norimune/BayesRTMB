@@ -416,7 +416,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     stop("現在、ラッパー関数は単一のグループ化変数のみに対応しています。")
   }
 
-  # 順序ロジスティックの場合は、識別性のためにデザイン行列から全体切片を強制除外する
   if (family == "ordered" && "(Intercept)" %in% colnames(X)) {
     X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
     if (ncol(X) == 0) {
@@ -429,8 +428,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
   ranef_names <- parsed$reTrms$cnms[[1]]
   ranef_names[ranef_names == "(Intercept)"] <- "Intercept"
-  #group_name <- names(parsed$reTrms$flist)[1]
-  #ranef_names <- paste0(ranef_names, "|", group_name)
 
   # 変量効果の情報の抽出
   Zt <- as.matrix(reTrms$Ztlist[[1]])
@@ -438,7 +435,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   num_groups <- length(levels(reTrms$flist[[1]]))
   num_ranef <- nrow(Zt) / num_groups
 
-  #オフセット項の抽出
+  # オフセット項の抽出
   offset <- model.offset(parsed$fr)
 
   # 観測ごとの変量効果デザイン行列(N x num_ranef)を作成
@@ -472,19 +469,19 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     prior_cutpoint_sd = prior$cutpoint_sd
   )
 
-  # parameterの準備
+  # parameterの準備 (b, sd, CF_cor に変更)
   if (num_ranef == 1) {
     params <- list(
-      beta = Dim(ncol(X)),
-      tau  = Dim(num_ranef, lower = 0),
-      r    = Dim(num_groups, random = TRUE)
+      b  = Dim(ncol(X)),
+      sd = Dim(num_ranef, lower = 0),
+      r  = Dim(num_groups, random = TRUE)
     )
   } else {
     params <- list(
-      beta     = Dim(ncol(X)),
-      tau      = Dim(num_ranef, lower = 0),
-      CF_Omega = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
-      r        = Dim(c(num_groups, num_ranef), random = TRUE)
+      b      = Dim(ncol(X)),
+      sd     = Dim(num_ranef, lower = 0),
+      CF_cor = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
+      r      = Dim(c(num_groups, num_ranef), random = TRUE)
     )
   }
 
@@ -493,22 +490,20 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     params$sigma <- Dim(1, lower = 0)
   }
   if (family == "student_t") {
-    params$nu <- Dim(1, lower = 2) # 自由度は2以上を推奨
+    params$nu <- Dim(1, lower = 2)
   }
   if (family == "gamma") {
     params$shape <- Dim(1, lower = 0)
   }
   if (family == "neg_binomial") {
-    params$phi <- Dim(1, lower = 0) # dispersion parameter (size)
+    params$phi <- Dim(1, lower = 0)
   }
   if (family == "ordered") {
     num_categories <- length(unique(Y))
-    # カテゴリ数 - 1 のorderedパラメータが必要
     params$cutpoints <- Dim(num_categories - 1, type = "ordered")
   }
 
   # 3. モデルコードの動的構築
-  # 選択された分布に応じた尤度（と固有の事前分布）のコードブロックを作成
   ll_expr <- switch(family,
                     "gaussian" = quote({
                       sigma ~ exponential(prior_sigma_rate)
@@ -546,62 +541,58 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                     })
   )
 
-  # 共通部分を独立したブロックとして定義
   if (num_ranef > 1) {
     common_expr <- quote({
       # 事前分布
-      beta ~ normal(0, prior_beta_sd)
-      tau ~ exponential(prior_tau_rate)
-      CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
+      b ~ normal(0, prior_beta_sd)
+      sd ~ exponential(prior_tau_rate)
+      CF_cor ~ lkj_CF_corr(prior_lkj_eta)
 
       # 変量効果の事前分布
       for (j in 1:num_groups) {
-        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_Omega)
+        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor)
       }
 
       # 線形予測子の計算
-      eta <- X %*% beta
+      eta <- X %*% b
       for (i in 1:N) {
-        eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ] * tau)
+        eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ] * sd)
       }
     })
-  }else{
+  } else {
     common_expr <- quote({
       # 事前分布
-      beta ~ normal(0, prior_beta_sd)
-      tau ~ exponential(prior_tau_rate)
+      b ~ normal(0, prior_beta_sd)
+      sd ~ exponential(prior_tau_rate)
 
       # 変量効果の事前分布
       r ~ normal(0, 1)
 
       # 線形予測子の計算
-      eta <- X %*% beta + Z_mat[,1] * r[group_idx] * tau
+      eta <- X %*% b + Z_mat[,1] * r[group_idx] * sd
     })
   }
 
-
-  if(is.null(offset)==FALSE){
+  if (!is.null(offset)) {
     offset_expr <- quote({eta <- eta + offset})
-  }else{
+  } else {
     offset_expr <- quote({})
   }
 
-
-  # 両方のブロックから外側の "{ }" を取り除き、中身の式（要素）をリストとして抽出
   common_list <- as.list(common_expr)[-1]
   ll_list <- as.list(ll_expr)[-1]
   offset_list <- as.list(offset_expr)[-1]
 
   model_ast <- as.call(c(list(as.name("{")), common_list, offset_list, ll_list))
-
   model_expr <- eval(bquote(model_code(.(model_ast))))
 
-  # 4. 生成量の構築
+  # 4. 相関行列を transform で構築
   if (num_ranef > 1) {
-    generate_expr <- transformed_code({
-      Omega <- CF_Omega %*% t(CF_Omega)
-      Sigma <- diag(tau) %*% Omega %*% diag(tau)
+    tran_expr <- transformed_code({
+      cor <- CF_cor %*% t(CF_cor)
     })
+  } else {
+    tran_expr <- NULL
   }
 
   # 5. rtmb_model を呼び出してオブジェクトを返す
@@ -610,15 +601,16 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       data = dat,
       parameters = params,
       model = model_expr,
-      generate = generate_expr,
-      par_names = list(beta = fixed_names, tau = ranef_names, Omega = ranef_names)
+      transformed = tran_expr,
+      generate = NULL,
+      par_names = list(b = fixed_names, sd = ranef_names, cor = ranef_names)
     )
-  }else{
+  } else {
     obj <- rtmb_model(
       data = dat,
       parameters = params,
       model = model_expr,
-      par_names = list(beta = fixed_names, tau = ranef_names)
+      par_names = list(b = fixed_names, sd = ranef_names)
     )
   }
 
@@ -649,7 +641,6 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   Y <- model.response(mf)
   X <- model.matrix(formula, mf)
 
-  # 順序ロジスティックの場合は、識別性のためにデザイン行列から全体切片を強制除外する
   if (family == "ordered" && "(Intercept)" %in% colnames(X)) {
     X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
     if (ncol(X) == 0) {
@@ -657,11 +648,10 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     }
   }
 
-  # 応答変数Yの型変換（factor型への対応）
   if (is.matrix(Y)) {
     if (ncol(Y) == 2 && family == "binomial") {
-      trials <- as.numeric(Y[, 1] + Y[, 2]) # 試行回数 (成功 + 失敗)
-      Y <- as.numeric(Y[, 1])               # 成功数
+      trials <- as.numeric(Y[, 1] + Y[, 2])
+      Y <- as.numeric(Y[, 1])
     } else if (ncol(Y) == 1) {
       Y <- as.numeric(Y[, 1])
       trials <- rep(1, length(Y))
@@ -672,9 +662,9 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     trials <- rep(1, length(Y))
     if (is.factor(Y)) {
       if (family %in% c("bernoulli", "binomial")) {
-        Y <- as.numeric(Y) - 1  # 0, 1 に変換
+        Y <- as.numeric(Y) - 1
       } else {
-        Y <- as.numeric(Y)      # 1, 2, 3... に変換
+        Y <- as.numeric(Y)
       }
     } else {
       Y <- as.numeric(Y)
@@ -685,7 +675,6 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   fixed_names <- colnames(X)
   fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
 
-  #オフセット項の抽出
   offset <- model.offset(mf)
 
   # 2. dataの準備
@@ -703,23 +692,22 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     prior_cutpoint_sd = prior$cutpoint_sd
   )
 
-  # 3. parameterの準備 (固定効果のみ)
+  # 3. parameterの準備 (固定効果 b に変更)
   params <- list(
-    beta = Dim(ncol(X))
+    b = Dim(ncol(X))
   )
 
-  # 分布族に応じた追加パラメータの設定
   if (family %in% c("gaussian", "lognormal", "student_t")) {
     params$sigma <- Dim(1, lower = 0)
   }
   if (family == "student_t") {
-    params$nu <- Dim(1, lower = 2) # 自由度は2以上を推奨
+    params$nu <- Dim(1, lower = 2)
   }
   if (family == "gamma") {
     params$shape <- Dim(1, lower = 0)
   }
   if (family == "neg_binomial") {
-    params$phi <- Dim(1, lower = 0) # dispersion parameter
+    params$phi <- Dim(1, lower = 0)
   }
   if (family == "ordered") {
     num_categories <- length(unique(Y))
@@ -764,15 +752,15 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                     })
   )
 
-  # 変量効果を除外した線形予測子
+  # b を用いて計算
   common_expr <- quote({
-    beta ~ normal(0, prior_beta_sd)
-    eta <- as.vector(X %*% beta)
+    b ~ normal(0, prior_beta_sd)
+    eta <- as.vector(X %*% b)
   })
 
-  if(is.null(offset)==FALSE){
+  if (!is.null(offset)) {
     offset_expr <- quote({eta <- eta + offset})
-  }else{
+  } else {
     offset_expr <- quote({})
   }
 
@@ -789,7 +777,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     parameters = params,
     model = model_expr,
     generate = NULL,
-    par_names = list(beta = fixed_names)
+    par_names = list(b = fixed_names)
   )
 
   obj$formula <- formula
@@ -798,14 +786,15 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 
   return(obj)
 }
-#' 探索的因子分析 (Bayesian EFA) 超高速版ラッパー
+#' 探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー
 #'
 #' @param data 観測データフレームまたは行列 (N x P)
 #' @param n_factors 因子の数 (K)
+#' @param rotate 回転方法の文字列 (例: "varimax", "promax")。NULLの場合は回転しない。
 #' @param prior 事前分布のハイパーパラメータのリスト
-#' 探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー
-rtmb_fa <- function(data, n_factors = 1,
-                    prior = list(mu_sd = 10, lambda_sd = 3, psi_rate = 1)) {
+#' @export
+rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
+                    prior = list(mu_sd = 10, lambda_sd = 3, sd_rate = 1)) {
 
   Y <- as.matrix(data)
   N <- nrow(Y)
@@ -828,48 +817,90 @@ rtmb_fa <- function(data, n_factors = 1,
     Y = Y,
     prior_mu_sd     = prior$mu_sd,
     prior_lambda_sd = prior$lambda_sd,
-    prior_psi_rate  = prior$psi_rate
+    prior_sd_rate   = prior$sd_rate
   )
 
-  # 2. パラメータの定義 (thetaをランダム効果として追加)
+  # 2. パラメータの定義
   params <- list(
-    mu     = Dim(P),
-    Lambda = Dim(c(P, K), type = "lower_tri"),
-    psi    = Dim(P, lower = 0),
-    theta  = Dim(c(N, K), random = TRUE)
+    mu       = Dim(P),
+    loadings = Dim(c(P, K), type = "lower_tri"),
+    sd       = Dim(P, lower = 0),
+    score    = Dim(c(N, K), random = TRUE)
   )
 
   # 3. モデルの構築 (潜在変数アプローチ)
   model_expr <- model_code({
     # 事前分布
     mu ~ normal(0, prior_mu_sd)
-    Lambda ~ normal(0, prior_lambda_sd)
-    psi ~ exponential(prior_psi_rate)
-    theta ~ normal(0, 1)
+    loadings ~ normal(0, prior_lambda_sd)
+    sd ~ exponential(prior_sd_rate)
+    score ~ normal(0, 1)
 
     # 尤度計算
     for (n in 1:N) {
-      Y_bar <- mu + Lambda %*% theta[n, ]
-      Y[n, ] ~ normal(Y_bar, sqrt(psi))
+      Y_bar <- mu + loadings %*% score[n, ]
+      Y[n, ] ~ normal(Y_bar, sd)
     }
   })
 
-  # 4. 生成量 (共通性と因子スコアの抽出)
-  gq_expr <- transformed_code({
-    Sigma <- Lambda %*% t(Lambda) + diag(psi)
+  # 4. 生成量のコードをAST(構文木)として動的に構築
+  base_gq <- quote({
+    Sigma <- loadings %*% t(loadings) + diag(sd^2)
     var_total <- diag(Sigma)
-    var_common <- rowSums(Lambda^2)
+    var_common <- rowSums(loadings^2)
     communality <- var_common / var_total
-    list(communality=communality)
   })
 
-  # 5. モデルオブジェクトの生成
+  if (!is.null(rotate)) {
+    # 回転関数名をコードに埋め込む
+    rot_fn_name <- as.name(rotate)
+
+    rot_expr <- bquote({
+      rot_obj <- GPArotation::.(rot_fn_name)(loadings)
+      loadings_rot <- rot_obj$loadings
+      score_rot <- score %*% rot_obj$Th
+
+      # 最後に明示的に出力したい変数をリストにまとめる
+      list(
+        communality  = communality,
+        loadings_rot = loadings_rot,
+        score_rot    = score_rot,
+        fa_cor       = rot_obj$Phi
+      )
+    })
+
+    # 共通部分と回転処理ブロックを結合
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1]))
+  } else {
+    # 回転しない場合
+    no_rot_expr <- quote({
+      list(communality = communality)
+    })
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(no_rot_expr)[-1]))
+  }
+
+  # ASTを transformed_code に渡して関数化
+  gq_expr <- eval(bquote(transformed_code(.(gq_ast))))
+
+  # 5. パラメータ名の設定
+  p_names <- list(
+    mu           = var_names,
+    loadings     = var_names,
+    sd           = var_names,
+    communality  = var_names
+  )
+  if (!is.null(rotate)) {
+    p_names$loadings_rot <- var_names
+    # score_rot や fa_cor にも独自の名前をつける場合はここに追加可能
+  }
+
+  # 6. モデルオブジェクトの生成
   obj <- rtmb_model(
     data       = dat,
     parameters = params,
     model      = model_expr,
     generate   = gq_expr,
-    par_names  = list(mu = var_names, Lambda = var_names, psi = var_names)
+    par_names  = p_names
   )
 
   return(obj)
@@ -898,34 +929,34 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   )
 
   params <- list(
-    mean    = Dim(P),
-    sd      = Dim(P, lower = 0),
-    CF_corr = Dim(c(P, P), type = "CF_corr")
+    mean   = Dim(P),
+    sd     = Dim(P, lower = 0),
+    CF_cor = Dim(c(P, P), type = "CF_corr") # corに統一
   )
 
   model_expr <- model_code({
     # 事前分布
     mean ~ normal(0, prior_mu_sd)
     sd ~ exponential(prior_sigma_rate)
-    CF_corr ~ lkj_CF_corr(prior_lkj_eta)
+    CF_cor ~ lkj_CF_corr(prior_lkj_eta)
 
     for(i in 1:N) {
-      Y[i, ] ~ multi_normal_CF(mean, sd, CF_corr)
+      Y[i, ] ~ multi_normal_CF(mean, sd, CF_cor)
     }
   })
 
-  # 標準誤差計算のために transform で計算
+  # transformでcorを計算
   tran_expr <- transformed_code({
-    corr <- CF_corr %*% t(CF_corr)
+    cor <- CF_cor %*% t(CF_cor)
   })
 
   obj <- rtmb_model(
     data        = dat,
     parameters  = params,
     model       = model_expr,
-    transformed = tran_expr, # generate から transformed に変更
+    transformed = tran_expr,
     generate    = NULL,
-    par_names   = list(mean = var_names, sd = var_names, corr = var_names)
+    par_names   = list(mean = var_names, sd = var_names, cor = var_names)
   )
 
   return(obj)
