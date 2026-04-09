@@ -869,25 +869,24 @@ rtmb_fa <- function(data, n_factors = 1, rotate = NULL,
 
   if (!is.null(rotate)) {
     rot_fn_name <- as.name(rotate)
+    rot_loadings_name <- paste0("loadings_", rotate)
+    rot_score_name <- paste0("score_", rotate)
 
-    # 出力するリストを動的に構築し、名前に rotate の文字列を付与する
-    out_list <- list(
-      communality = quote(communality),
-      fa_cor      = quote(rot_obj$Phi)
-    )
-    # 動的な名前（例: loadings_promax, score_promax）で要素を追加
-    out_list[[paste0("loadings_", rotate)]] <- quote(rot_obj$loadings)
-    out_list[[paste0("score_", rotate)]]    <- quote(score %*% rot_obj$Th)
-
-    # 構築したリストを list() 関数の呼び出し形（AST）に変換
-    out_call <- as.call(c(list(as.name("list")), out_list))
-
+    # 改善版：出力リストを関数内で動的に構築する
     rot_expr <- bquote({
       rot_obj <- GPArotation::.(rot_fn_name)(loadings)
-      .(out_call)
+
+      out <- list(communality = communality)
+      out[[.(rot_loadings_name)]] <- rot_obj$loadings
+      out[[.(rot_score_name)]] <- score %*% rot_obj$Th
+
+      # Phi(因子間相関)がある斜交回転のときだけ追加
+      if (!is.null(rot_obj$Phi)) {
+        out$fa_cor <- rot_obj$Phi
+      }
+      out # 最後に評価して返す
     })
 
-    # 共通部分と回転処理ブロックを結合
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1]))
   } else {
     no_rot_expr <- quote({
