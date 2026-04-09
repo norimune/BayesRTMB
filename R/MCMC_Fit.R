@@ -7,9 +7,9 @@
 #' @param fit Posterior draws for model parameters.
 #' @param random_fit Posterior draws for random effects, if available.
 #' @param tran_fit Posterior draws for transformed parameters, if available.
-#' @param tran_dims Dimension information for transformed parameters.
+#' @param transform_dims Dimension information for transformed parameters.
 #' @param gq_fit Posterior draws for generated quantities, if available.
-#' @param gq_dims Dimension information for generated quantities.
+#' @param generate_dims Dimension information for generated quantities.
 #' @param eps Step size used by the sampler.
 #' @param accept Acceptance statistics from sampling.
 #' @param treedepth Tree depth used in HMC/NUTS sampling.
@@ -470,14 +470,14 @@ MCMC_Fit <- R6::R6Class(
       if (length(test_tran) == 0) return(invisible(self))
 
       tran_names <- character(0)
-      self$tran_dims <- list()
+      self$transform_dims <- list()
 
       for (name in names(test_tran)) {
         val <- test_tran[[name]]
         len <- length(val)
         dim_val <- dim(val)
         if (is.null(dim_val)) dim_val <- len
-        self$tran_dims[[name]] <- dim_val
+        self$transform_dims[[name]] <- dim_val
 
         names_def <- self$model$par_names[[name]]
         flat_nms <- generate_flat_names(name, dim_val, names_def)
@@ -541,14 +541,14 @@ MCMC_Fit <- R6::R6Class(
       }
 
       gq_names <- character(0)
-      self$gq_dims <- list()
+      self$generate_dims <- list()
 
       for (name in names(test_gq)) {
         val <- test_gq[[name]]
         len <- length(val)
         dim_val <- dim(val)
         if (is.null(dim_val)) dim_val <- len
-        self$gq_dims[[name]] <- dim_val
+        self$generate_dims[[name]] <- dim_val
 
         names_def <- self$model$par_names[[name]]
         flat_nms <- generate_flat_names(name, dim_val, names_def)
@@ -920,7 +920,7 @@ MCMC_Fit <- R6::R6Class(
           return(list(
             loc = "tran",
             idx = idx_t,
-            dim = obj$tran_dims[[vname]]
+            dim = obj$transform_dims[[vname]]
           ))
         }
 
@@ -929,7 +929,7 @@ MCMC_Fit <- R6::R6Class(
           return(list(
             loc = "gq",
             idx = idx_g,
-            dim = obj$gq_dims[[vname]]
+            dim = obj$generate_dims[[vname]]
           ))
         }
 

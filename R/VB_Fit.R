@@ -8,8 +8,8 @@
 #' @field random_fit A 3D array of posterior draws for random effects, if available.
 #' @field tran_fit A 3D array of posterior draws for transformed parameters, if available.
 #' @field gq_fit A 3D array of posterior draws for generated quantities, if available.
-#' @field tran_dims A list storing dimension information for transformed parameters.
-#' @field gq_dims A list storing dimension information for generated quantities.
+#' @field transform_dims A list storing dimension information for transformed parameters.
+#' @field generate_dims A list storing dimension information for generated quantities.
 #' @field elbo_history A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.
 #' @field laplace Logical; whether Laplace approximation was used to marginalize random effects.
 #' @field posterior_mean A named numeric vector of posterior mean estimates.
@@ -28,8 +28,8 @@ VB_Fit <- R6::R6Class(
     random_fit     = NULL,
     tran_fit       = NULL, # 変換量を保存
     gq_fit         = NULL, # 生成量を保存
-    tran_dims      = NULL, # 変換量の次元情報を保存
-    gq_dims        = NULL, # GQ変数の次元情報を保存
+    transform_dims      = NULL, # 変換量の次元情報を保存
+    generate_dims        = NULL, # GQ変数の次元情報を保存
     elbo_history   = NULL, # ELBOの推移を保存
     laplace        = NULL,
     posterior_mean = NULL,
@@ -62,9 +62,9 @@ VB_Fit <- R6::R6Class(
       self$best_chain <- best_chain
       self$mu_history <- mu_history
       self$tran_fit <- NULL
-      self$tran_dims <- list()
+      self$transform_dims <- list()
       self$gq_fit <- NULL
-      self$gq_dims <- list()
+      self$generate_dims <- list()
     },
 
     #' @description Print a brief summary of the fitted object.
@@ -460,14 +460,14 @@ VB_Fit <- R6::R6Class(
       if (length(test_tran) == 0) return(invisible(self))
 
       tran_names <- character(0)
-      self$tran_dims <- list()
+      self$transform_dims <- list()
 
       for (name in names(test_tran)) {
         val <- test_tran[[name]]
         len <- length(val)
         dim_val <- dim(val)
         if (is.null(dim_val)) dim_val <- len
-        self$tran_dims[[name]] <- dim_val
+        self$transform_dims[[name]] <- dim_val
 
         names_def <- self$model$par_names[[name]]
         flat_nms <- generate_flat_names(name, dim_val, names_def)
@@ -520,14 +520,14 @@ VB_Fit <- R6::R6Class(
       if (is.null(test_gq) || length(test_gq) == 0) return(invisible(self))
 
       gq_names <- character(0)
-      self$gq_dims <- list()
+      self$generate_dims <- list()
 
       for (name in names(test_gq)) {
         val <- test_gq[[name]]
         len <- length(val)
         dim_val <- dim(val)
         if (is.null(dim_val)) dim_val <- len
-        self$gq_dims[[name]] <- dim_val
+        self$generate_dims[[name]] <- dim_val
 
         names_def <- self$model$par_names[[name]]
         flat_nms <- generate_flat_names(name, dim_val, names_def)
