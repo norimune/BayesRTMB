@@ -27,8 +27,8 @@
 #' @field sd_rep Standard deviation report object.
 #' @field df_fixed Summary table for fixed-effect parameters.
 #' @field random_effects Random effect estimates.
-#' @field tran_est List of transformed parameter estimates.
-#' @field gq_est List of generated quantity estimates.
+#' @field df_tran List of transformed parameter estimates.
+#' @field df_gq List of generated quantity estimates.
 #'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
@@ -43,8 +43,8 @@ MAP_Fit <- R6::R6Class(
     sd_rep         = NULL,
     df_fixed       = NULL,
     random_effects = NULL,
-    tran_est       = NULL, # 追加
-    gq_est         = NULL, # 追加
+    df_tran        = NULL,
+    df_gq          = NULL,
 
     #' @description Create a new `MAP_Fit` object.
     #' @param par_vec Parameter vector on the unconstrained scale.
@@ -66,8 +66,8 @@ MAP_Fit <- R6::R6Class(
       self$sd_rep <- sd_rep
       self$df_fixed <- df_fixed
       self$random_effects <- random_effects
-      self$tran_est <- tran_est
-      self$gq_est <- gq_est
+      self$df_tran <- df_tran
+      self$df_gq <- df_gq
     },
 
     #' @description Summarize MAP estimates.
@@ -118,29 +118,27 @@ MAP_Fit <- R6::R6Class(
         cat("Note: Random effects are stored in $random_effects\n")
       }
 
-      print_list_items <- function(est_list, category_name) {
-        # 表示対象の変数を絞り込む
-        target_names <- names(est_list)
+      print_df <- function(df, category_name) {
+        if (is.null(df) || nrow(df) == 0) return(NULL)
+
         if (!is.null(pars)) {
-          target_names <- intersect(target_names, pars)
+          base_names <- gsub("\\[.*\\]$", "", rownames(df))
+          keep_idx <- rownames(df) %in% pars | base_names %in% pars
+          df <- df[keep_idx, , drop = FALSE]
         }
 
-        if (length(target_names) > 0) {
-          cat(sprintf("\n%s (Point Estimates):\n", category_name))
-          for (name in target_names) {
-            cat(sprintf("$%s\n", name))
-            base::print(est_list[[name]], digits = digits)
+        if (nrow(df) > 0) {
+          cat(sprintf("\n%s:\n", category_name))
+          if (!is.null(max_rows) && nrow(df) > max_rows) {
+            base::print(head(df, max_rows), digits = digits)
+          } else {
+            base::print(df, digits = digits)
           }
         }
       }
 
-      if (!is.null(self$tran_est)) {
-        print_list_items(self$tran_est, "Transformed Parameters")
-      }
-
-      if (!is.null(self$gq_est)) {
-        print_list_items(self$gq_est, "Generated Quantities")
-      }
+      print_df(self$df_tran, "Transformed Parameters")
+      print_df(self$df_gq, "Generated Quantities")
 
       cat("\n")
       invisible(self$df_fixed) # 戻り値は元のdf_fixed全体のままとするか、フィルタ済みのdfにするかは用途に応じて調整してください

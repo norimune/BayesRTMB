@@ -31,9 +31,9 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{random_effects}}{Random effect estimates.}
 
-\item{\code{tran_est}}{List of transformed parameter estimates.}
+\item{\code{df_tran}}{List of transformed parameter estimates.}
 
-\item{\code{gq_est}}{List of generated quantity estimates.}
+\item{\code{df_gq}}{List of generated quantity estimates.}
 }
 \if{html}{\out{</div>}}
 }
