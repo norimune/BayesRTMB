@@ -174,6 +174,7 @@ RTMB_Model <- R6::R6Class(
 
 
     # 3. 最尤法 / MAP推定 メソッド
+    #' @param num_esitmate Integer; Number of estimate
     #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
     #' @param init Optional initial values for parameters.
     #' @param control A list of control settings passed to the optimizer.
@@ -183,16 +184,62 @@ RTMB_Model <- R6::R6Class(
 
       # MAP推定ではヤコビアンは不要
       jac_target <- if (laplace) "random" else "none"
-      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target)
-      ad_obj <- ad_setup$ad_obj
 
-      opt <- nlminb(
-        start = ad_obj$par,
-        objective = ad_obj$fn,
-        gradient = ad_obj$gr,
-        control = control
-      )
+      for (i in 1:num_estimate) {
+        if (num_estimate > 1) cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
 
+        # ループ内でのエラーで停止しないように tryCatch を使用
+        res <- tryCatch({
+          # 各試行で build_ad_obj を呼び出す (init=NULLなら内部でランダム初期化される)
+          ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target)
+          ad_obj <- ad_setup$ad_obj
+
+          opt <- nlminb(
+            start     = ad_obj$par,
+            objective = ad_obj$fn,
+            gradient  = ad_obj$gr,
+            control   = control
+          )
+          list(opt = opt, ad_obj = ad_obj)
+        }, error = function(e) NULL)
+
+        if (!is.null(res)) {
+          opt_results[[i]] <- res
+          obj_vals[i]      <- res$opt$objective
+          conv_codes[i]    <- res$opt$convergence
+        } else {
+          opt_results[[i]] <- NULL
+          obj_vals[i]      <- NA
+          conv_codes[i]    <- NA
+        }
+      }
+      cat("\n")
+
+      # 有効な結果の中から Objective が最小のものを選択
+      valid_idx <- which(!is.na(obj_vals))
+      if (length(valid_idx) == 0) {
+        stop("すべての最適化試行が失敗しました。初期値やモデルの定義を確認してください。")
+      }
+
+      best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
+      best_res <- opt_results[[best_idx]]
+
+      # 推定結果の診断表示
+      cat("\nOptimization Diagnostics per estimate:\n")
+      for (i in 1:num_estimate) {
+        if (is.na(obj_vals[i])) {
+          status <- "Failed"
+        } else {
+          status <- if (conv_codes[i] == 0) "Converged" else "Check Convergence"
+        }
+        best_marker <- if (i == best_idx) "  <-- BEST" else ""
+        cat(sprintf("  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
+                    i, obj_vals[i], as.character(conv_codes[i]), status, best_marker))
+      }
+      cat("\n")
+
+      ad_obj <- best_res$ad_obj
+      opt    <- best_res$opt
       ad_obj$fn(opt$par)
 
       sd_rep <- tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL)
@@ -417,6 +464,9 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
+      # opt history
+      opt_history <- data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes)
+
       # --- MAP_Fit インスタンスを返す ---
       res_obj <- MAP_Fit$new(
         par_vec = con_est_vec,
@@ -428,7 +478,8 @@ RTMB_Model <- R6::R6Class(
         df_fixed = df_fixed,
         random_effects = df_random,
         df_tran = df_tran,
-        df_gq = df_gq
+        df_gq = df_gq,
+        opt_history = opt_history
       )
 
       return(res_obj)

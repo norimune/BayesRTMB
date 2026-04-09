@@ -29,6 +29,7 @@
 #' @field random_effects Random effect estimates.
 #' @field df_tran List of transformed parameter estimates.
 #' @field df_gq List of generated quantity estimates.
+#' @field opt_history A vector of optimize objective history
 #'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
@@ -45,6 +46,7 @@ MAP_Fit <- R6::R6Class(
     random_effects = NULL,
     df_tran        = NULL,
     df_gq          = NULL,
+    opt_history    = NULL,
 
     #' @description Create a new `MAP_Fit` object.
     #' @param par_vec Parameter vector on the unconstrained scale.
@@ -57,7 +59,9 @@ MAP_Fit <- R6::R6Class(
     #' @param random_effects Random effect estimates.
     #' @param df_tran List of transformed parameter estimates.
     #' @param df_gq List of generated quantity estimates.
-    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed, random_effects, df_tran = NULL, df_gq = NULL) {
+    #' @param opt_history A vector of optimize objective history
+    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
+                          random_effects, df_tran = NULL, df_gq = NULL, opt_history = NULL) {
       self$par_vec <- par_vec
       self$par <- par
       self$objective <- objective
