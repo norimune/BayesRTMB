@@ -61,8 +61,8 @@ Create a new `MAP_Fit` object.
   sd_rep,
   df_fixed,
   random_effects,
-  tran_est = NULL,
-  gq_est = NULL
+  df_tran = NULL,
+  df_gq = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -85,9 +85,9 @@ Create a new `MAP_Fit` object.
 
 \item{\code{random_effects}}{Random effect estimates.}
 
-\item{\code{tran_est}}{List of transformed parameter estimates.}
+\item{\code{df_tran}}{List of transformed parameter estimates.}
 
-\item{\code{gq_est}}{List of generated quantity estimates.}
+\item{\code{df_gq}}{List of generated quantity estimates.}
 }
 \if{html}{\out{</div>}}
 }
@@ -98,7 +98,7 @@ Create a new `MAP_Fit` object.
 \subsection{Method \code{summary()}}{
 Summarize MAP estimates.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 20, digits = 2)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 2)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -106,7 +106,7 @@ Summarize MAP estimates.
 \describe{
 \item{\code{pars}}{Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.}
 
-\item{\code{max_rows}}{Maximum number of rows to print in summaries.}
+\item{\code{max_rows}}{Maximum number of rows to print in summaries. Default is 10.}
 
 \item{\code{digits}}{Number of digits to print.}
 }

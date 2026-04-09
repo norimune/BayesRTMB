@@ -10,7 +10,7 @@ rtmb_glmer(
   family = "gaussian",
   laplace = FALSE,
   prior = list(beta_sd = 10, tau_rate = 1, sigma_rate = 1, lkj_eta = 1, shape_rate = 1,
-    phi_rate = 1)
+    phi_rate = 1, cutpoint_sd = 2.5)
 )
 }
 \arguments{
