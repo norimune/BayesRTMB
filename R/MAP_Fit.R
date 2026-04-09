@@ -100,7 +100,7 @@ MAP_Fit <- R6::R6Class(
         return(invisible(NULL))
       }
 
-      df_combined <- do.call(rbind, all_dfs)
+      df_combined <- do.call(rbind, unname(all_dfs))
 
       # 2. 変数名での絞り込み
       if (!is.null(pars)) {
