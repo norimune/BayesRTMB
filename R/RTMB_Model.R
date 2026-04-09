@@ -499,7 +499,40 @@ RTMB_Model <- R6::R6Class(
       }
 
       df_tran <- build_derived_df(self$transform, is_generate=FALSE)
-      df_gq   <- build_derived_df(self$generate, is_generate=TRUE)
+      #df_gq   <- build_derived_df(self$generate, is_generate=TRUE)
+
+      # SEの数値微分をスキップし、点推定値(Estimate)のみを取得する
+      base_out <- NULL
+      if (!is.null(self$generate)) {
+        tmp_con_list <- to_constrained(unconstrained_vector_to_list(unc_est_vec, self$par_list), self$par_list)
+        if (!is.null(self$transform)) {
+          user_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
+          if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
+        }
+        base_out <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
+      }
+
+      if (!is.null(base_out) && length(base_out) > 0) {
+        flat_base <- unlist(base_out, use.names = FALSE)
+        names_vec <- c()
+        for (name in names(base_out)) {
+          val <- base_out[[name]]
+          dim_val <- dim(val)
+          if (is.null(dim_val)) dim_val <- length(val)
+          names_vec <- c(names_vec, generate_flat_names(name, dim_val, self$par_names[[name]]))
+        }
+        # Std. Errorや信頼区間はNAにして点推定値だけ返す
+        df_gq <- data.frame(
+          Estimate     = flat_base,
+          `Std. Error` = NA,
+          `Lower 95%`  = NA,
+          `Upper 95%`  = NA,
+          row.names    = names_vec,
+          check.names  = FALSE
+        )
+      } else {
+        df_gq <- NULL
+      }
 
       log_ml <- NA
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
