@@ -529,7 +529,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                       Y ~ neg_binomial_2(exp(eta), phi)
                     }),
                     "ordered" = quote({
-                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
+                      Y ~ ordered_logistic(eta, cutpoints)
                       cutpoints ~ normal(0, prior_cutpoint_sd)
                     })
   )
@@ -727,7 +727,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                       phi ~ exponential(prior_phi_rate)
                     }),
                     "ordered" = quote({
-                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
+                      Y ~ ordered_logistic(eta, cutpoints)
                       cutpoints ~ normal(0, prior_cutpoint_sd)
                     })
   )

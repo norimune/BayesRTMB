@@ -263,34 +263,40 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints) {
   N <- length(x)
   K <- length(cutpoints) + 1
 
-  log1p_exp <- function(x) {
-    max_val <- (x + sqrt(x^2 + 1e-10)) / 2
-    return(max_val + log(exp(x - max_val) + exp(-max_val)))
+  log1p_exp <- function(v) {
+    max_val <- (v + sqrt(v^2 + 1e-10)) / 2
+    return(max_val + log(exp(v - max_val) + exp(-max_val)))
   }
-  log1m_exp <- function(x) {
-    return(log(1 - exp(x) + 1e-10))
+  log1m_exp <- function(v) {
+    return(log(1 - exp(v) + 1e-10))
   }
 
   if (length(eta) == 1 && N > 1) {
-    eta_vec <- eta[1] * rep(1, N)
+    eta_vec <- rep(eta, N)
   } else {
     eta_vec <- eta
   }
 
+  # インデックスを利用してベクトル演算を行う
+  idx_1 <- which(x == 1)
+  idx_K <- which(x == K)
+  idx_mid <- which(x > 1 & x < K)
+
   lp <- 0
-  for (i in 1:N) {
-    y_i <- x[i]
-    eta_i <- eta_vec[i]
-    if (y_i == 1) {
-      lp <- lp - log1p_exp(-(cutpoints[1] - eta_i))
-    } else if (y_i == K) {
-      lp <- lp - log1p_exp(cutpoints[K - 1] - eta_i)
-    } else {
-      A <- -log1p_exp(-(cutpoints[y_i] - eta_i))
-      B <- -log1p_exp(-(cutpoints[y_i-1] - eta_i))
-      lp <- lp + A + log1m_exp(B - A)
-    }
+
+  if (length(idx_1) > 0) {
+    lp <- lp - sum(log1p_exp(-(cutpoints[1] - eta_vec[idx_1])))
   }
+  if (length(idx_K) > 0) {
+    lp <- lp - sum(log1p_exp(cutpoints[K - 1] - eta_vec[idx_K]))
+  }
+  if (length(idx_mid) > 0) {
+    y_mid <- x[idx_mid]
+    A <- -log1p_exp(-(cutpoints[y_mid] - eta_vec[idx_mid]))
+    B <- -log1p_exp(-(cutpoints[y_mid - 1] - eta_vec[idx_mid]))
+    lp <- lp + sum(A + log1m_exp(B - A))
+  }
+
   return(lp)
 }
 
