@@ -165,8 +165,8 @@ Summarize posterior draws.
   max_rows = 10,
   digits = 2,
   inc_random = FALSE,
-  inc_tran = TRUE,
-  inc_gq = TRUE
+  inc_transform = TRUE,
+  inc_generate = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -181,9 +181,9 @@ Summarize posterior draws.
 
 \item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
 
-\item{\code{inc_tran}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
 
-\item{\code{inc_gq}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }

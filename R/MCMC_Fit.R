@@ -18,7 +18,7 @@
 #' @param pars Names of parameters to extract or summarize.
 #' @param chains Chains to include.
 #' @param inc_random Logical; whether to include random effects.
-#' @param inc_gq Logical; whether to include generated quantities.
+#' @param inc_generate Logical; whether to include generated quantities.
 #' @param max_rows Maximum number of rows to print in summaries.
 #' @param digits Number of digits to print.
 #' @param method Method name.
@@ -184,16 +184,16 @@ MCMC_Fit <- R6::R6Class(
     #' @param max_rows Integer; maximum number of rows to print in the summary table. Default is 10.
     #' @param digits Integer; number of decimal places to print. Default is 2.
     #' @param inc_random Logical; whether to include random effects in the summary. Default is FALSE.
-    #' @param inc_tran Logical; whether to include transformed parameters in the summary. Default is TRUE.
-    #' @param inc_gq Logical; whether to include generated quantities in the summary. Default is TRUE.
+    #' @param inc_transform Logical; whether to include transformed parameters in the summary. Default is TRUE.
+    #' @param inc_generate Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A summary object.
     summary = function(pars = NULL, max_rows = 10, digits = 2,
-                       inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE){
+                       inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE){
       draws_array <- self$draws(pars = pars,
                                 chains = NULL,
                                 inc_random = inc_random,
-                                inc_tran = inc_tran,
-                                inc_gq = inc_gq)
+                                inc_tranform = inc_transform,
+                                inc_generate = inc_generate)
 
       P <- dim(draws_array)[3]
       param_names <- dimnames(draws_array)[[3]]
