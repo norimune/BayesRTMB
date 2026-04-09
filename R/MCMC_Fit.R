@@ -418,8 +418,8 @@ MCMC_Fit <- R6::R6Class(
     transformed_draws = function(tran_fn = NULL) {
       all_draws <- self$draws(
         inc_random = TRUE,
-        inc_tran = FALSE,
-        inc_gq = FALSE
+        inc_transform = FALSE,
+        inc_generate = FALSE
       )
 
       iter   <- dim(all_draws)[1]
@@ -516,8 +516,8 @@ MCMC_Fit <- R6::R6Class(
     generated_quantities = function(gq_fn = NULL) {
       all_draws <- self$draws(
         inc_random = TRUE,
-        inc_tran = FALSE,
-        inc_gq = FALSE
+        inc_transform = FALSE,
+        inc_generate = FALSE
       )
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]

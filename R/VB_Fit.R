@@ -78,11 +78,11 @@ VB_Fit <- R6::R6Class(
     #' @description Extract posterior draws for selected parameters.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
     #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
-    #' @param inc_tran Logical; whether to include transformed parameters in the output. Default is TRUE.
-    #' @param inc_gq Logical; whether to include generated quantities in the output. Default is TRUE.
+    #' @param inc_transform Logical; whether to include transformed parameters in the output. Default is TRUE.
+    #' @param inc_generate Logical; whether to include generated quantities in the output. Default is TRUE.
     #' @param best_only Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.
     #' @return A 3D array of posterior draws `[iterations, chains, parameters]`.
-    draws = function(pars = NULL, inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE, best_only = TRUE) {
+    draws = function(pars = NULL, inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE, best_only = TRUE) {
       out_array <- self$fit
 
       if (inc_random && !is.null(self$random_fit)) {
@@ -113,7 +113,7 @@ VB_Fit <- R6::R6Class(
         out_array <- new_out
       }
 
-      if (inc_gq && !is.null(self$gq_fit)) {
+      if (inc_generate && !is.null(self$gq_fit)) {
         P1 <- dim(out_array)[3]; P2 <- dim(self$gq_fit)[3]
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
@@ -165,17 +165,17 @@ VB_Fit <- R6::R6Class(
     #' @param max_rows Integer; maximum number of rows to print in the summary table. Default is 10.
     #' @param digits Integer; number of decimal places to print. Default is 2.
     #' @param inc_random Logical; whether to include random effects in the summary. Default is FALSE.
-    #' @param inc_tran Logical; whether to include transformed parameters in the summary. Default is TRUE.
-    #' @param inc_gq Logical; whether to include generated quantities in the summary. Default is TRUE.
+    #' @param inc_transform Logical; whether to include transformed parameters in the summary. Default is TRUE.
+    #' @param inc_generate Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A data frame containing the summarized posterior statistics.
     summary = function(pars = NULL, max_rows = 10, digits = 2,
-                       inc_random = FALSE, inc_tran = TRUE, inc_gq = TRUE) {
+                       inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE) {
 
       # Rhatを計算するため全チェインを取得
       draws_array <- self$draws(pars = pars,
                                 inc_random = inc_random,
-                                inc_tran = inc_tran,
-                                inc_gq = inc_gq,
+                                inc_transform = inc_transform,
+                                inc_generate = inc_generate,
                                 best_only = TRUE)
 
       P <- dim(draws_array)[3]
@@ -430,8 +430,8 @@ VB_Fit <- R6::R6Class(
     transformed_draws = function(tran_fn = NULL) {
       all_draws <- self$draws(
         inc_random = TRUE,
-        inc_tran = FALSE,
-        inc_gq = FALSE,
+        inc_transform = FALSE,
+        inc_generate = FALSE,
         best_only = FALSE
       )
 
@@ -499,8 +499,8 @@ VB_Fit <- R6::R6Class(
     generated_quantities = function(gq_fn = NULL) {
       all_draws <- self$draws(
         inc_random = TRUE,
-        inc_tran = FALSE,
-        inc_gq = FALSE,
+        inc_transform = FALSE,
+        inc_generate = FALSE,
         best_only = FALSE
       )
       iter   <- dim(all_draws)[1]
