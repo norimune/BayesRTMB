@@ -98,7 +98,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param inc_generate Logical; whether to include generated quantities in the output. Default is TRUE.
     #' @return Posterior draws.
     draws = function(pars = NULL, chains = NULL,
-                     inc_random = FALSE, inc_tranform = TRUE, inc_generate = TRUE) {
+                     inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE) {
       out_array <- self$fit
 
       if (inc_random && !is.null(self$random_fit)) {
