@@ -619,7 +619,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                        beta_sd = 10,
                        sigma_rate = 1,
                        shape_rate = 1,
-                       phi_rate = 1
+                       phi_rate = 1,
+                       cutpoint_sd = 2.5
                      )) {
 
   # 1. フォーミュラのパース
