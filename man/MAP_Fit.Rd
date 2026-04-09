@@ -34,6 +34,8 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{df_tran}}{List of transformed parameter estimates.}
 
 \item{\code{df_gq}}{List of generated quantity estimates.}
+
+\item{\code{opt_history}}{A vector of optimize objective history}
 }
 \if{html}{\out{</div>}}
 }
@@ -62,7 +64,8 @@ Create a new `MAP_Fit` object.
   df_fixed,
   random_effects,
   df_tran = NULL,
-  df_gq = NULL
+  df_gq = NULL,
+  opt_history = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -88,6 +91,8 @@ Create a new `MAP_Fit` object.
 \item{\code{df_tran}}{List of transformed parameter estimates.}
 
 \item{\code{df_gq}}{List of generated quantity estimates.}
+
+\item{\code{opt_history}}{A vector of optimize objective history}
 }
 \if{html}{\out{</div>}}
 }
