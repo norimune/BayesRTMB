@@ -456,7 +456,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     prior_sigma_rate = prior$sigma_rate,
     prior_lkj_eta    = prior$lkj_eta,
     prior_shape_rate = prior$shape_rate,
-    prior_phi_rate   = prior$phi_rate
+    prior_phi_rate   = prior$phi_rate,
+    prior_cutpoint_sd = prior$cutpoint_sd
   )
 
   # parameterの準備
@@ -529,7 +530,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                     }),
                     "ordered" = quote({
                       for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
-                      cutpoints ~ normal(0, cutpoint_sd)
+                      cutpoints ~ normal(0, prior_cutpoint_sd)
                     })
   )
 
@@ -663,10 +664,11 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     trials = trials,
     X = X,
     K = ncol(X),
-    prior_beta_sd    = prior$beta_sd,
-    prior_sigma_rate = prior$sigma_rate,
-    prior_shape_rate = prior$shape_rate,
-    prior_phi_rate   = prior$phi_rate
+    prior_beta_sd     = prior$beta_sd,
+    prior_sigma_rate  = prior$sigma_rate,
+    prior_shape_rate  = prior$shape_rate,
+    prior_phi_rate    = prior$phi_rate,
+    prior_cutpoint_sd = prior$cutpoint_sd
   )
 
   # 3. parameterの準備 (固定効果のみ)
@@ -725,8 +727,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                       phi ~ exponential(prior_phi_rate)
                     }),
                     "ordered" = quote({
-                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], cutpoints) }
-                      cutpoints ~ normal(0, cutpoint_sd)
+                      for(i in 1:N) { Y[i] ~ ordered_logistic(eta[i], prior_cut_sd) }
+                      cutpoints ~ normal(0, prior_cutpoint_sd)
                     })
   )
 
