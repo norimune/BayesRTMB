@@ -456,9 +456,14 @@ RTMB_Model <- R6::R6Class(
         }
 
         # 共分散行列の取得 (sd_rep から)
-        Cov_u <- sd_rep$cov.fixed
-        if (is.null(Cov_u)) {
-          Cov_u <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
+        Cov_u <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
+        Cov_u[is.na(Cov_u)] <- 0 # 安全のためNAを0に
+
+        if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
+          idx_ran <- ad_obj$env$random
+          idx_fix <- if (length(idx_ran) > 0) (1:L_u)[-idx_ran] else 1:L_u
+          # 固定効果の部分だけ正確な共分散行列で上書きする
+          Cov_u[idx_fix, idx_fix] <- sd_rep$cov.fixed
         }
 
         # デルタ法によるSE (J %*% Cov_u %*% t(J) の対角成分)
