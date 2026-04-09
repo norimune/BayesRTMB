@@ -179,8 +179,12 @@ RTMB_Model <- R6::R6Class(
     #' @param init Optional initial values for parameters.
     #' @param control A list of control settings passed to the optimizer.
     #' @return A fitted `MAP_Fit` object.
-    optimize = function(laplace = TRUE, init = NULL, control = list()) {
+    optimize = function(laplace = TRUE, init = NULL, num_estimate = 1,control = list()) {
       cat("Starting optimization...\n")
+
+      opt_results <- list()
+      obj_vals <- numeric(num_estimate)
+      conv_codes <- numeric(num_estimate)
 
       # MAP推定ではヤコビアンは不要
       jac_target <- if (laplace) "random" else "none"
