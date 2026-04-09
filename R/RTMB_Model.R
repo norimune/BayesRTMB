@@ -190,7 +190,8 @@ RTMB_Model <- R6::R6Class(
       jac_target <- if (laplace) "random" else "none"
 
       for (i in 1:num_estimate) {
-        if (num_estimate > 1) cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
+        if (num_estimate > 1)
+          cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
 
         # ループ内でのエラーで停止しないように tryCatch を使用
         res <- tryCatch({
@@ -229,18 +230,25 @@ RTMB_Model <- R6::R6Class(
       best_res <- opt_results[[best_idx]]
 
       # 推定結果の診断表示
-      cat("\nOptimization Diagnostics per estimate:\n")
-      for (i in 1:num_estimate) {
-        if (is.na(obj_vals[i])) {
-          status <- "Failed"
-        } else {
-          status <- if (conv_codes[i] == 0) "Converged" else "Check Convergence"
+      if (num_estimate == 1) {
+        # 1回だけのときは、結果がどうなったかだけを短く報告
+        status <- if (conv_codes[1] == 0) "converged" else "did NOT converge (check code)"
+        cat(sprintf("Optimization %s. Final objective: %.2f\n", status, obj_vals[1]))
+      } else {
+        # 複数回のときは、診断テーブルを表示
+        cat("\nOptimization Diagnostics per estimate:\n")
+        for (i in 1:num_estimate) {
+          if (is.na(obj_vals[i])) {
+            status_str <- "Failed"
+          } else {
+            status_str <- if (conv_codes[i] == 0) "Converged" else "Check Code"
+          }
+          best_marker <- if (i == best_idx) "  <-- BEST" else ""
+          cat(sprintf("  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
+                      i, obj_vals[i], as.character(conv_codes[i]), status_str, best_marker))
         }
-        best_marker <- if (i == best_idx) "  <-- BEST" else ""
-        cat(sprintf("  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
-                    i, obj_vals[i], as.character(conv_codes[i]), status, best_marker))
+        cat("\n")
       }
-      cat("\n")
 
       ad_obj <- best_res$ad_obj
       opt    <- best_res$opt
