@@ -11,8 +11,8 @@
 #' @param sd_rep Standard deviation report object.
 #' @param df_fixed Summary table for fixed-effect parameters.
 #' @param random_effects Random effect estimates, if available.
-#' @param df_tran Summary table for transformed parameter estimates, if available.
-#' @param df_gq Summary table for generated quantity estimates, if available.
+#' @param df_transform Summary table for transformed parameter estimates, if available.
+#' @param df_generate Summary table for generated quantity estimates, if available.
 #' @param opt_history A vector of optimize objective history.
 #' @param transform List of transformed parameters maintaining their original dimensions.
 #' @param generate List of generated quantities maintaining their original dimensions.
@@ -25,11 +25,12 @@
 #' @field sd_rep Standard deviation report object.
 #' @field df_fixed Summary table for fixed-effect parameters.
 #' @field random_effects Random effect estimates.
-#' @field df_tran Summary table for transformed parameter estimates.
-#' @field df_gq Summary table for generated quantity estimates.
+#' @field df_transform Summary table for transformed parameter estimates.
+#' @field df_generate Summary table for generated quantity estimates.
 #' @field opt_history A vector of optimize objective history.
 #' @field transform List of transformed parameters maintaining their original dimensions.
 #' @field generate List of generated quantities maintaining their original dimensions.
+#'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
 
@@ -43,11 +44,11 @@ MAP_Fit <- R6::R6Class(
     sd_rep         = NULL,
     df_fixed       = NULL,
     random_effects = NULL,
-    df_tran        = NULL,
-    df_gq          = NULL,
+    df_transform   = NULL, # 変更
+    df_generate    = NULL, # 変更
     opt_history    = NULL,
-    transform      = NULL,
-    generate       = NULL,
+    transform      = NULL, # 追加
+    generate       = NULL, # 追加
 
     #' @description Create a new `MAP_Fit` object.
     #' @param par_vec Parameter vector on the unconstrained scale.
@@ -58,13 +59,13 @@ MAP_Fit <- R6::R6Class(
     #' @param sd_rep Standard deviation report object.
     #' @param df_fixed Summary table for fixed-effect parameters.
     #' @param random_effects Random effect estimates.
-    #' @param df_tran Summary table for transformed parameter estimates.
-    #' @param df_gq Summary table for generated quantity estimates.
+    #' @param df_transform Summary table for transformed parameter estimates.
+    #' @param df_generate Summary table for generated quantity estimates.
     #' @param opt_history A vector of optimize objective history.
     #' @param transform List of transformed parameters maintaining their original dimensions.
     #' @param generate List of generated quantities maintaining their original dimensions.
     initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
-                          random_effects, df_tran = NULL, df_gq = NULL, opt_history = NULL,
+                          random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL) {
       self$par_vec <- par_vec
       self$par <- par
@@ -74,8 +75,9 @@ MAP_Fit <- R6::R6Class(
       self$sd_rep <- sd_rep
       self$df_fixed <- df_fixed
       self$random_effects <- random_effects
-      self$df_tran <- df_tran
-      self$df_gq <- df_gq
+      self$df_transform <- df_transform
+      self$df_generate <- df_generate
+      self$opt_history <- opt_history
       self$transform <- transform
       self$generate <- generate
     },
@@ -102,8 +104,8 @@ MAP_Fit <- R6::R6Class(
       # 1. すべてのデータフレームを縦に結合する
       all_dfs <- list()
       if (!is.null(self$df_fixed) && nrow(self$df_fixed) > 0) all_dfs$fixed <- self$df_fixed
-      if (!is.null(self$df_tran) && nrow(self$df_tran) > 0) all_dfs$tran <- self$df_tran
-      if (!is.null(self$df_gq) && nrow(self$df_gq) > 0) all_dfs$gq <- self$df_gq
+      if (!is.null(self$df_transform) && nrow(self$df_transform) > 0) all_dfs$transform <- self$df_transform
+      if (!is.null(self$df_generate) && nrow(self$df_generate) > 0) all_dfs$generate <- self$df_generate
 
       if (length(all_dfs) == 0) {
         cat("\nNo parameters to display.\n")
@@ -143,7 +145,6 @@ MAP_Fit <- R6::R6Class(
       invisible(df_combined)
     },
 
-    #' print MAP fit object
     #' @description Print a brief summary of the fitted object.
     #' @param pars Character vector specifying the names of parameters to summarize.
     #' @param max_rows Maximum number of rows to print in summaries.

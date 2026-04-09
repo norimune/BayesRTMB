@@ -31,9 +31,9 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{random_effects}}{Random effect estimates.}
 
-\item{\code{df_tran}}{Summary table for transformed parameter estimates.}
+\item{\code{df_transform}}{Summary table for transformed parameter estimates.}
 
-\item{\code{df_gq}}{Summary table for generated quantity estimates.}
+\item{\code{df_generate}}{Summary table for generated quantity estimates.}
 
 \item{\code{opt_history}}{A vector of optimize objective history.}
 
@@ -67,8 +67,8 @@ Create a new `MAP_Fit` object.
   sd_rep,
   df_fixed,
   random_effects,
-  df_tran = NULL,
-  df_gq = NULL,
+  df_transform = NULL,
+  df_generate = NULL,
   opt_history = NULL,
   transform = NULL,
   generate = NULL
@@ -94,9 +94,9 @@ Create a new `MAP_Fit` object.
 
 \item{\code{random_effects}}{Random effect estimates.}
 
-\item{\code{df_tran}}{Summary table for transformed parameter estimates.}
+\item{\code{df_transform}}{Summary table for transformed parameter estimates.}
 
-\item{\code{df_gq}}{Summary table for generated quantity estimates.}
+\item{\code{df_generate}}{Summary table for generated quantity estimates.}
 
 \item{\code{opt_history}}{A vector of optimize objective history.}
 
@@ -129,7 +129,6 @@ Summarize MAP estimates.
 }
 \subsection{Returns}{
 A summary object, typically a data frame or list.
-print MAP fit object
 }
 }
 \if{html}{\out{<hr>}}
