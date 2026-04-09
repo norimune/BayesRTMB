@@ -416,6 +416,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     stop("現在、ラッパー関数は単一のグループ化変数のみに対応しています。")
   }
 
+  # 順序ロジスティックの場合は、識別性のためにデザイン行列から全体切片を強制除外する
+  if (family == "ordered" && "(Intercept)" %in% colnames(X)) {
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+    if (ncol(X) == 0) {
+      stop("順序ロジスティックモデル(family='ordered')では切片のみのモデルは現在サポートされていません。少なくとも1つの説明変数を指定してください。")
+    }
+  }
+
   # 固定効果と変量効果の名前を取得
   fixed_names <- colnames(X)
   fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
@@ -628,6 +636,14 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   mf <- model.frame(formula, data)
   Y <- model.response(mf)
   X <- model.matrix(formula, mf)
+
+  # 順序ロジスティックの場合は、識別性のためにデザイン行列から全体切片を強制除外する
+  if (family == "ordered" && "(Intercept)" %in% colnames(X)) {
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+    if (ncol(X) == 0) {
+      stop("順序ロジスティックモデル(family='ordered')では切片のみのモデルは現在サポートされていません。少なくとも1つの説明変数を指定してください。")
+    }
+  }
 
   # 応答変数Yの型変換（factor型への対応）
   if (is.matrix(Y)) {
