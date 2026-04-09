@@ -446,6 +446,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   dat <- list(
     N = N,
     Y = Y,
+    trials = trials,
     X = X,
     Z_mat = Z_mat,
     group_idx = group_idx,
@@ -462,12 +463,20 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   )
 
   # parameterの準備
-  params <- list(
-    beta     = Dim(ncol(X)),
-    tau      = Dim(num_ranef, lower = 0),
-    CF_Omega = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
-    r        = Dim(c(num_groups, num_ranef), random = laplace)
-  )
+  if (num_ranef == 1) {
+    params <- list(
+      beta = Dim(ncol(X)),
+      tau  = Dim(num_ranef, lower = 0),
+      r    = Dim(c(num_groups, num_ranef), random = laplace)
+    )
+  } else {
+    params <- list(
+      beta     = Dim(ncol(X)),
+      tau      = Dim(num_ranef, lower = 0),
+      CF_Omega = Dim(c(num_ranef, num_ranef), type = "CF_corr"),
+      r        = Dim(c(num_groups, num_ranef), random = laplace)
+    )
+  }
 
   # 分布族に応じた追加パラメータの設定
   if (family %in% c("gaussian", "lognormal", "student_t")) {
@@ -512,7 +521,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                       for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
                     }),
                     "binomial" = quote({
-                      for(i in 1:N) { Y[i] ~ bernoulli_logit(eta[i]) }
+                      for(i in 1:N) { Y[i] ~ binomial_logit(trials[i], eta[i]) }
                     }),
                     "poisson" = quote({
                       for(i in 1:N) { Y[i] ~ poisson(exp(eta[i])) }
@@ -531,11 +540,17 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     # 事前分布
     beta ~ normal(0, prior_beta_sd)
     tau ~ exponential(prior_tau_rate)
-    CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
+    if (num_ranef > 1) {
+      CF_Omega ~ lkj_CF_corr(prior_lkj_eta)
+    }
 
     # 変量効果の事前分布
-    for (j in 1:num_groups) {
-      r[j, ] ~ multi_normal_CF(rep(0, num_ranef), tau, CF_Omega)
+    if (num_ranef > 1) {
+      for (j in 1:num_groups) {
+        r[j, ] ~ multi_normal_CF(rep(0, num_ranef), tau, CF_Omega)
+      }
+    else{
+      r ~ normal(0, tau)
     }
 
     # 線形予測子の計算
@@ -554,10 +569,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   model_expr <- eval(bquote(model_code(.(model_ast))))
 
   # 4. 生成量の構築
-  generate_expr <- transformed_code({
-    Omega <- CF_Omega %*% t(CF_Omega)
-    Sigma_ranef <- diag(tau) %*% Omega %*% diag(tau)
-  })
+  if (num_ranef > 1) {
+    generate_expr <- transformed_code({
+      Omega <- CF_Omega %*% t(CF_Omega)
+      Sigma <- diag(tau) %*% Omega %*% diag(tau)
+    })
+  }
 
   # 5. rtmb_model を呼び出してオブジェクトを返す
   obj <- rtmb_model(

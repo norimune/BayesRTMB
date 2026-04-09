@@ -329,7 +329,11 @@ lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
 #' @return The sum of the log-density.
 #' @export
 multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega) {
-  L_Sigma <- diag(sd) %*% CF_Omega
+  if (length(sd) == 1) {
+    L_Sigma <- matrix(sd, 1, 1) %*% CF_Omega
+  } else {
+    L_Sigma <- diag(sd) %*% CF_Omega
+  }
 
   N <- if (is.matrix(x)) nrow(x) else 1
   K <- ncol(L_Sigma)
