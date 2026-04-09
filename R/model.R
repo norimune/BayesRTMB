@@ -438,6 +438,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   num_groups <- length(levels(reTrms$flist[[1]]))
   num_ranef <- nrow(Zt) / num_groups
 
+  #オフセット項の抽出
+  offset <- model.offset(mf)
+  if (is.null(offset)) offset <- rep(0, N)
+
   # 観測ごとの変量効果デザイン行列(N x num_ranef)を作成
   N <- length(Y)
   Z_mat <- matrix(0, nrow = N, ncol = num_ranef)
@@ -453,6 +457,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     Y = Y,
     trials = trials,
     X = X,
+    offset = offset,
     Z_mat = Z_mat,
     group_idx = group_idx,
     num_groups = num_groups,
@@ -576,11 +581,19 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
 
+  if(is.null(offset)==FALSE){
+    offset_expr <- quote({eta <- eta + offset})
+  }else{
+    offset_expr <- quote({})
+  }
+
+
   # 両方のブロックから外側の "{ }" を取り除き、中身の式（要素）をリストとして抽出
   common_list <- as.list(common_expr)[-1]
   ll_list <- as.list(ll_expr)[-1]
+  offset_list <- as.list(offset_expr)[-1]
 
-  model_ast <- as.call(c(list(as.name("{")), common_list, ll_list))
+  model_ast <- as.call(c(list(as.name("{")), common_list, offset_list, ll_list))
 
   model_expr <- eval(bquote(model_code(.(model_ast))))
 
@@ -673,12 +686,16 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   fixed_names <- colnames(X)
   fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
 
+  #オフセット項の抽出
+  offset <- parsed$offset
+
   # 2. dataの準備
   dat <- list(
     N = N,
     Y = Y,
     trials = trials,
     X = X,
+    offset = offset,
     K = ncol(X),
     prior_beta_sd     = prior$beta_sd,
     prior_sigma_rate  = prior$sigma_rate,
@@ -754,10 +771,17 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     eta <- as.vector(X %*% beta)
   })
 
+  if(is.null(offset)==FALSE){
+    offset_expr <- quote({eta <- eta + offset})
+  }else{
+    offset_expr <- quote({})
+  }
+
   common_list <- as.list(common_expr)[-1]
   ll_list <- as.list(ll_expr)[-1]
+  offset_list <- as.list(offset_expr)[-1]
 
-  model_ast <- as.call(c(list(as.name("{")), common_list, ll_list))
+  model_ast <- as.call(c(list(as.name("{")), common_list, offset_list, ll_list))
   model_expr <- eval(bquote(model_code(.(model_ast))))
 
   # 5. rtmb_model を呼び出してオブジェクトを返す
