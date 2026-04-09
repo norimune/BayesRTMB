@@ -79,7 +79,7 @@ MAP_Fit <- R6::R6Class(
     #' @param max_rows Maximum number of rows to print in summaries. Default is 10.
     #' @param digits Number of digits to print.
     #' @return A summary object, typically a data frame or list.
-    summary = function(pars = NULL, max_rows = 10, digits = 2) {
+    summary = function(pars = NULL, max_rows = 10, digits = 5) {
       cat("\nCall:\nMAP Estimation via RTMB\n")
       cat(sprintf("\nNegative Log-Posterior: %.2f\n", self$objective))
 
