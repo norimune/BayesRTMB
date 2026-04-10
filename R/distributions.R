@@ -588,7 +588,7 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
 #' @param CF_Omega Cholesky factor of correlation matrix.
 #' @return The exact log-likelihood of the N raw observations.
 #' @export
-sufficient_mvnorm_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega) {
+sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega) {
   p <- length(y_bar)
 
   # 1. L_Sigmaとlog|Sigma|の計算
@@ -613,6 +613,54 @@ sufficient_mvnorm_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega) {
     0.5 * N * log_det_Sigma -
     0.5 * trace_term -
     0.5 * N * quad_mean
+
+  return(as.numeric(lp))
+}
+#' Sufficient statistics factor analysis multivariate normal log-probability density function
+#'
+#' Woodbury matrix identity is used for efficient computation.
+#'
+#' @param S_mat Deviation sum of squares matrix.
+#' @param N Sample size.
+#' @param y_bar Sample mean vector.
+#' @param mu Mean parameter vector.
+#' @param Lambda Factor loading matrix (P x K).
+#' @param psi Vector of unique variances (P).
+#' @return The exact log-likelihood of the N raw observations.
+#' @export
+sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, Lambda, psi) {
+  P <- nrow(Lambda)
+  K <- ncol(Lambda)
+
+  # psi は標準偏差ベクトルとして扱う
+  inv_psi <- 1 / (psi^2 + 1e-8)
+  Lambda_scaled <- Lambda * inv_psi
+
+  M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)
+  L_M <- chol(M)
+
+  log_det_Sigma <- sum(log(psi)) + 2 * sum(log(diag(L_M)))
+
+  term1_trace <- sum(diag(S_mat) * inv_psi)
+
+  Q <- t(Lambda_scaled) %*% S_mat %*% Lambda_scaled
+  term2_trace <- sum(diag(solve(M, Q)))
+
+  trace_term <- term1_trace - term2_trace
+
+  d <- y_bar - mu
+  term1_mean <- sum((d^2) * inv_psi)
+
+  z_lambda <- as.vector(t(Lambda_scaled) %*% d)
+  theta <- solve(M, z_lambda)
+  term2_mean <- sum(z_lambda * theta)
+
+  quad_mean <- term1_mean - term2_mean
+
+  lp <- -0.5 * (N * P * 1.83787706640935 +
+                  N * log_det_Sigma +
+                  trace_term +
+                  N * quad_mean)
 
   return(as.numeric(lp))
 }
