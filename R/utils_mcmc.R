@@ -217,7 +217,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   X_new <- model.matrix(rhs, data = newdata)
 
   # 4. 事後サンプルの取得 (固定効果のみ)
-  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_tran = FALSE, inc_gq = FALSE)
+  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
   I <- dim(beta_samples)[1]
   C <- dim(beta_samples)[2]
   P <- dim(beta_samples)[3]
@@ -330,7 +330,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   X_new <- model.matrix(rhs, data = newdata)
 
   # 4. 事後サンプルの取得 (固定効果のみ)
-  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_tran = FALSE, inc_gq = FALSE)
+  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
   I <- dim(beta_samples)[1]
   C <- dim(beta_samples)[2]
   P <- dim(beta_samples)[3]

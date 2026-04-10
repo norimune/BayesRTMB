@@ -193,7 +193,7 @@ MCMC_Fit <- R6::R6Class(
       draws_array <- self$draws(pars = pars,
                                 chains = NULL,
                                 inc_random = inc_random,
-                                inc_tranform = inc_transform,
+                                inc_transform = inc_transform,
                                 inc_generate = inc_generate)
 
       P <- dim(draws_array)[3]

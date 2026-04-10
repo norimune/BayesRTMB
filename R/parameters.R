@@ -18,7 +18,8 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
   if (type %in% c("ordered", "positive_ordered", "simplex", "corr_matrix",
                   "cov_matrix", "CF_corr", "CF_cov", "sum_to_zero",
                   "centered_matrix", "lower_tri", "lower_tri_stz",
-                  "centered_tri", "positive_centered_tri")) {
+                  "centered_tri", "positive_centered_tri",
+                  "positive_lower_tri")) {
     bounds_type <- type
   } else if (!is.null(lower) && is.null(upper)) bounds_type <- "lower"
   else if (is.null(lower) && !is.null(upper)) bounds_type <- "upper"
@@ -64,7 +65,7 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
     for (d in 1:C) {
       if (d <= R - 1) calc_unc_length <- calc_unc_length + (R - d)
     }
-  } else if (bounds_type %in% c("lower_tri", "lower_tri_stz")) {
+  } else if (bounds_type %in% c("lower_tri", "lower_tri_stz", "positive_lower_tri")) {
     R <- dim[1]
     C <- if (length(dim) > 1) dim[2] else dim[1]
     if (R >= C) {
@@ -153,7 +154,7 @@ constrained_vector_to_list <- function(vec, par_list) {
       dim(val) <- p$dim
     } else if (p$bounds %in% c("corr_matrix", "cov_matrix")) {
       dim(val) <- c(p$dim[1], p$dim[1])
-    } else if (p$bounds %in% c("CF_corr", "CF_cov", "lower_tri", "lower_tri_stz")) {
+    } else if (p$bounds %in% c("CF_corr", "CF_cov", "lower_tri", "lower_tri_stz", "positive_lower_tri")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
       dim(val) <- c(R, C)
@@ -324,7 +325,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
         }
       }
       para_unc[[name]] <- y
-    } else if (b_type == "lower_tri") {
+    } else if (b_type %in% c("lower_tri", "positive_lower_tri")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
       y <- numeric(p$unc_length)
@@ -499,7 +500,7 @@ to_constrained <- function(para_unc_list, par_list) {
       if (b_type == "cov_matrix") para[[name]] <- L %*% t(L)
       else para[[name]] <- L
 
-    } else if (b_type == "lower_tri") {
+    } else if (b_type %in% c("lower_tri", "positive_lower_tri")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
       L <- matrix(ad_zero, nrow = R, ncol = C)
@@ -534,7 +535,7 @@ to_constrained <- function(para_unc_list, par_list) {
       para[[name]] <- L
     }
 
-    if (!(b_type %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov", "lower_tri", "lower_tri_stz")) && length(p$dim) > 1) {
+    if (!(b_type %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov", "lower_tri", "lower_tri_stz", "positive_lower_tri")) && length(p$dim) > 1) {
       dim(para[[name]]) <- p$dim
     }
   }
@@ -612,6 +613,17 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
       for (i in 1:K) {
         for (j in 1:i) {
           if (i == j) lj <- lj + val_unc[idx]
+          idx <- idx + 1
+        }
+      }
+    } else if (b_type == "positive_lower_tri") {
+      R <- p$dim[1]
+      C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
+      idx <- 1
+      for (i in 1:R) {
+        max_j <- min(i, C)
+        for (j in 1:max_j) {
+          if (i == j) lj <- lj + val_unc[idx] # 対角成分だけを足す
           idx <- idx + 1
         }
       }
