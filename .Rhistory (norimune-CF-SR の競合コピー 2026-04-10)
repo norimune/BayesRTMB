@@ -1,0 +1,512 @@
+# 2. 定数の定義（Dim() で使うために変数として切り出す）
+N <- nrow(Y)
+J <- ncol(Y)
+K <- 5
+dat_fa <- list(
+N = N,
+J = J,
+K = K,
+Y = Y
+)
+## VB
+mdl.fa <- rtmb_model(dat_fa, par_fa, model_fa, generate = generate_fa)
+t<-proc.time()
+vb.fa <- mdl.fa$variational(iter=7000,parallel=TRUE)
+proc.time() - t
+mdl.fa <- rtmb_model(dat_fa_raw, par_fa_raw, model_fa_raw)
+mdl.fa <- rtmb_model(dat_fa, par_fa_raw, model_fa_raw)
+par_fa_raw <- list(
+mu     = Dim(J),
+Lambda = Dim(c(J, K), type = "lower_tri"),
+psi  = Dim(J, lower = 0),
+theta  = Dim(c(N, K), random = TRUE)
+)
+model_fa_raw <- model_code({
+for(n in 1:N){
+Y_bar <- mu + Lambda%*%theta[n,]
+Y[n,] ~ normal(Y_bar,psi)
+}
+Lambda ~ lower_tri_normal(0, 1)
+theta ~ normal(0, 1)
+psi ~ exponential(1)
+})
+mdl.fa <- rtmb_model(dat_fa, par_fa_raw, model_fa_raw)
+t<-proc.time()
+vb.fa <- mdl.fa$variational(iter=7000,parallel=TRUE)
+proc.time() - t
+####
+library(psych)
+Y_raw <- bfi[1:300,1:25] |> na.omit()
+Y <- as.matrix(Y_raw)  # ここが重要！ matrix型にする
+# 2. 定数の定義（Dim() で使うために変数として切り出す）
+N <- nrow(Y)
+J <- ncol(Y)
+K <- 5
+dat_fa <- list(
+N = N,
+J = J,
+K = K,
+Y = Y
+)
+par_fa <- list(
+mu     = Dim(J),
+Lambda = Dim(c(J, K), type = "lower_tri"),
+psi  = Dim(J, lower = 0)
+#theta  = Dim(c(N, K), random = TRUE)
+)
+model_fa <- model_code({
+mu ~ normal(0, 10)
+Lambda ~ lower_tri_normal(0, 1)
+psi ~ exponential(1)
+Y ~ fa_multi_normal(mu, Lambda, psi)
+})
+generate_fa <- transformed_code({
+Sigma <- Lambda %*% t(Lambda) + diag(psi)
+item_sd <- sqrt(diag(Sigma))
+Lambda_std <- Lambda / item_sd
+communality <- rowSums(Lambda^2) / diag(Sigma)
+Y_c <- t(t(Y) - mu)
+theta <- Y_c %*% solve(Sigma, Lambda)
+list(
+Lambda_std = Lambda_std,
+communality = communality,
+theta = theta
+)
+})
+##############
+par_fa_raw <- list(
+mu     = Dim(J),
+Lambda = Dim(c(J, K), type = "lower_tri"),
+psi  = Dim(J, lower = 0),
+theta  = Dim(c(N, K), random = TRUE)
+)
+model_fa_raw <- model_code({
+for(n in 1:N){
+Y_bar <- mu + Lambda%*%theta[n,]
+Y[n,] ~ normal(Y_bar,psi)
+}
+Lambda ~ lower_tri_normal(0, 1)
+theta ~ normal(0, 1)
+psi ~ exponential(1)
+})
+## VB
+mdl.fa <- rtmb_model(dat_fa, par_fa, model_fa, generate = generate_fa)
+t<-proc.time()
+vb.fa <- mdl.fa$variational(iter=7000,parallel=TRUE)
+proc.time() - t
+vb.fa$print("communality")
+vb.fa$plot_elbo()
+mdl.fa <- rtmb_model(dat_fa, par_fa_raw, model_fa_raw)
+t<-proc.time()
+vb.fa <- mdl.fa$variational(iter=7000,parallel=TRUE)
+proc.time() - t
+# loading
+devtools::load_all()
+head(mtcars)
+fit <- lm(mpg ~ wt * am, data = mtcars)
+summary(fit)
+mdl_car <- rtmb_glmer(mpg ~ wt * am, data = mtcars)
+#file.remove("NAMESPACE")
+# document create
+devtools::document()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample()
+fit_car$print()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample()
+fit_car$print()
+# loading
+devtools::load_all()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample()
+fit_car$print()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+fit_car$print()
+vb_car <- mdl_car$variational()
+vb_car$print()
+fit_car$summary()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+fit_car$print()
+fit_car$summary()
+#file.remove("NAMESPACE")
+# document create
+devtools::document()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+fit_car$print()
+fit_car$summary()
+vb_car <- mdl_car$variational()
+vb_car$print()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+fit_car$print()
+fit_car$summary()
+vb_car <- mdl_car$variational()
+vb_car$print()
+# loading
+devtools::load_all()
+vb_car <- mdl_car$variational()
+vb_car$print()
+# loading
+devtools::load_all()
+#file.remove("NAMESPACE")
+# document create
+devtools::document()
+# loading
+devtools::load_all()
+vb_car <- mdl_car$variational()
+vb_car$print()
+#file.remove("NAMESPACE")
+# document create
+devtools::document()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+vb_car <- mdl_car$variational()
+vb_car$print()
+#file.remove("NAMESPACE")
+# document create
+devtools::document()
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+conditional_effects(fit_car, effect = "wt")
+fit_car$print()
+conditional_effects(fit_car, effect = "wt:am")
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+conditional_effects(fit_car, effect = "wt:am")
+conditional_effects(fit_car, effect = "am:wt")
+mtcars$am <- as.factor(mtcars$am)
+fit <- lm(mpg ~ wt * am, data = mtcars)
+summary(fit)
+mdl_car <- rtmb_glm(mpg ~ wt * am, data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+conditional_effects(fit_car, effect = "am:wt")
+conditional_effects(fit_car, effect = "wt:am")
+ce
+ce <- conditional_effects(fit_mcmc, effect = "hp")
+ce
+ce <- conditional_effects(fit_car, effect = "wt:am")
+ce
+head(mtcars)
+data(mtcars)
+mdl_car <- rtmb_glm(cbind(am, 1 - am) ~ mpg + wt,
+family = "binomial",
+data = mtcars)
+mdl_car <- rtmb_glm(cbind(am, 1 - am) ~ mpg + wt, family = "binomial",
+data = mtcars)
+mdl_car <- rtmb_glm(am ~ mpg + wt, family = "bernoulli",
+data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+fit_car$print()
+ce <- conditional_effects(fit_car, effect = "mpg")
+ce
+ce <- conditional_effects(fit_car, effect = "wt")
+ce
+conditional_effects(fit_car, effect = "mpg")
+# loading
+devtools::load_all()
+mdl_car <- rtmb_glm(cbind(am, 1 - am) ~ mpg + wt,
+family = "binomial",
+data = mtcar)
+data(mtcars)
+mdl_car <- rtmb_glm(cbind(am, 1 - am) ~ mpg + wt,
+family = "binomial",
+data = mtcar)
+mdl_car <- rtmb_glm(cbind(am, 1 - am) ~ mpg + wt,
+family = "binomial",
+data = mtcars)
+fit_car <- mdl_car$sample(parallel=TRUE)
+fit_car$print()
+conditional_effects(fit_car, effect = "mpg")
+library(dplyr)
+agg_data <- mtcars %>%
+group_by(cyl) %>%
+summarise(
+trials = n(),             # 試行回数 (各シリンダー数の総台数)
+manual = sum(am),         # 成功数 (マニュアル車の数)
+auto   = trials - manual, # 失敗数 (オートマ車の数)
+mean_wt = mean(wt)        # 説明変数用に重量の平均を計算
+)
+# 構築したパッケージでの実行テスト
+# (※ cbind(成功数, 失敗数) を指定)
+fit_agg <- rtmb_glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data))
+fit_agg$print()
+# 構築したパッケージでの実行テスト
+# (※ cbind(成功数, 失敗数) を指定)
+mdl_agg <- rtmb_glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data))
+fit_agg <- mdl_agg$sample(parallel=TRUE)
+fit_agg$print()
+glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data)) |> summary()
+manual
+agg_data
+# loading
+devtools::load_all()
+mdl_agg <- rtmb_glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data))
+fit_agg <- mdl_agg$sample(parallel=TRUE)
+fit_agg$print()
+glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data)) |> summary()
+mdl_agg$data
+vb_agg <- mdl_agg$variational()
+vb_agg$print()
+glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data)) |> summary()
+vb_agg <- mdl_agg$optimize()
+vb_agg$print()
+#' Binomial log-probability mass function with logit parameterization
+#'
+#' @param x Vector of quantiles (number of successes).
+#' @param size Number of trials.
+#' @param mu Linear predictor (logit probability).
+#' @return The sum of the log-probability.
+#' @export
+binomial_logit_lpmf <- function(x, size, eta) {
+lgamma(size + 1) - lgamma(x + 1) - lgamma(size - x + 1) + x * eta - size * log1p_exp(eta)
+}
+# loading
+devtools::load_all()
+View(binomial_logit_lpmf)
+remove(binomial_logit_lpmf)
+# loading
+devtools::load_all()
+# シードを固定して再現性を確保
+set.seed(123)
+# サンプルサイズ（データ数）
+N <- 100
+# 説明変数 x (標準正規分布)
+x <- rnorm(N)
+# 真のパラメータ
+true_intercept <- 0.5
+true_slope <- 1.5
+# 線形予測子(eta)と成功確率(p)の計算
+eta <- true_intercept + true_slope * x
+p <- plogis(eta)
+# 試行回数（各行ごとに10〜50回でランダムに設定）
+trials <- sample(10:50, N, replace = TRUE)
+# 二項分布に従って成功数を生成
+successes <- rbinom(N, size = trials, prob = p)
+failures <- trials - successes
+# データフレームの作成
+sim_data <- data.frame(
+successes = successes,
+failures = failures,
+x = x
+)
+# --- パッケージでの動作テスト ---
+fit_sim <- rtmb_glm(cbind(successes, failures) ~ x,
+family = "binomial",
+data = sim_data)
+fit_sim_mcmc <- fit_sim$sample(parallel=TRUE)
+# 結果の表示
+fit_sim_mcmc$print()
+# conditional_effects もテストできます
+# conditional_effects(fit_sim_mcmc, effect = "x")
+# loading
+devtools::load_all()
+# シードを固定して再現性を確保
+set.seed(123)
+# サンプルサイズ（データ数）
+N <- 100
+# 説明変数 x (標準正規分布)
+x <- rnorm(N)
+# 真のパラメータ
+true_intercept <- 0.5
+true_slope <- 1.5
+# 線形予測子(eta)と成功確率(p)の計算
+eta <- true_intercept + true_slope * x
+p <- plogis(eta)
+# 試行回数（各行ごとに10〜50回でランダムに設定）
+trials <- sample(10:50, N, replace = TRUE)
+# 二項分布に従って成功数を生成
+successes <- rbinom(N, size = trials, prob = p)
+failures <- trials - successes
+# データフレームの作成
+sim_data <- data.frame(
+successes = successes,
+failures = failures,
+x = x
+)
+# --- パッケージでの動作テスト ---
+fit_sim <- rtmb_glm(cbind(successes, failures) ~ x,
+family = "binomial",
+data = sim_data)
+fit_sim_mcmc <- fit_sim$sample(parallel=TRUE)
+# 結果の表示
+fit_sim_mcmc$print()
+# conditional_effects もテストできます
+# conditional_effects(fit_sim_mcmc, effect = "x")
+mdl_agg <- rtmb_glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data))
+fit_agg <- mdl_agg$sample(parallel=TRUE)
+fit_agg$print()
+glm(cbind(manual, auto) ~ mean_wt,
+family = "binomial",
+data = as.data.frame(agg_data)) |> summary()
+vb_agg <- mdl_agg$optimize()
+vb_agg$print()
+fit_agg$draws("beta")
+fit_agg$draws("beta") |> plot_dens()
+# loading
+devtools::load_all()
+Y_raw <- bfi[1:300,1:25] |> na.omit()
+mdl_fa <- rtmb_fa(Y_raw, n_factors=5)
+# loading
+devtools::load_all()
+Y_raw <- bfi[1:300,1:25] |> na.omit()
+mdl_fa <- rtmb_fa(Y_raw, n_factors=5)
+fit_fa <- mdl_fa$sample(parallel=TRUE)
+fit_fa <- mdl_fa$sample(parallel=TRUE)
+mdl.fa <- rtmb_model(dat_fa, par_fa_raw, model_fa_raw)
+fit.fa <- mdl.fa$sample(sampling=1000,parallel=TRUE)
+fit.fa$summary()
+# loading
+devtools::load_all()
+Y_raw <- bfi[1:300,1:25] |> na.omit()
+mdl_fa <- rtmb_fa(Y_raw, n_factors=5)
+fit_fa <- mdl_fa$sample(parallel=TRUE)
+fit_fa$print()
+fit_fa$print("lambda")
+fit_fa$print("Lambda")
+fit_fa$print("psi")
+# loading
+devtools::load_all()
+mdl_fa <- rtmb_fa(Y_raw, n_factors=5)
+fit_fa <- mdl_fa$sample(parallel=TRUE)
+fit_fa$print("Lambda")
+X_raw <- bfi[1:300,1:5] |> na.omit()
+mdl_cor <- rtmb_cor(X_raw)
+fit_cor <- mdl_cor$sample(parallel = TRUE)
+fit_cor$print("Omega")
+fit_cor$print()
+fit_fa$print("Lambda")
+fit_fa$print("Lambda[A")
+fit_fa$print("Lambda",max_rows=30)
+fit_cor$print("CF_Omega")
+library(BayesRTMB)
+# loading
+devtools::load_all()
+Trial <- 10
+Y <- 6
+dat <- list(Trial = Trial, Y = Y)
+par <- list(
+theta = Dim(lower=0,upper=1)
+)
+model <- model_code({
+Y ~ binomial(Trial, theta)
+theta ~ beta(2,2)
+})
+mdl <- rtmb_model(dat, par, model)
+fit.mcmc <- mdl$sample(parallel=FALSE)
+fit.mcmc
+fit.mcmc <- mdl$sample(parallel=TRUE)
+fit.mcmc
+fit.mcmc$bridgesampling()
+N <- 200
+G <- 20
+set.seed(1234)
+alpha <- 0
+beta <- c(1,1)
+sigma <- 4
+tau <- 2
+r <- rnorm(G,0,1)
+P <- length(beta)
+GID <- rep(1,N/G)
+for(i in 2:G){
+GID <- c(GID,rep(i,N/G))
+}
+x1 <- rnorm(N,0,2)
+x2 <- rnorm(N,0,2)
+X <- cbind(x1,x2)
+mu <- alpha + X%*%beta + r[GID]*tau
+Y <- rnorm(N,mu,sigma)
+tau_prior <- 10
+dat.HLM <- list(P = P,
+GID = GID,
+Y = Y,
+X = X)
+par.HLM <- list(
+alpha = Dim(),
+beta = Dim(dim = P),
+tau = Dim(lower = 0),
+sigma = Dim(lower = 0),
+r = Dim(dim = G, random = TRUE)
+)
+model.HLM <- model_code({
+mu <- alpha + X %*% beta + r[GID] * tau
+Y ~ normal(mu, sigma)
+r ~ normal(0, 1)
+alpha ~ normal(0, 10)
+beta ~ normal(0, 10)
+sigma ~ exponential(1 / 10)
+tau ~ exponential(1 / 10)
+})
+log_prob.HLM <- function(dat,par){
+getAll(dat, par)
+mu <- alpha + X %*% beta + r[GID] * tau
+lp <- 0
+lp <- lp + normal_lpdf(Y, mu, sigma)
+lp <- lp + normal_lpdf(r, 0, 1)
+lp <- lp + normal_lpdf(alpha, 0, 10)
+lp <- lp + normal_lpdf(beta, 0, 10)
+lp <- lp + exponential_lpdf(sigma, 1/10)
+lp <- lp + exponential_lpdf(tau, 1/tau_prior)
+return(lp)
+}
+# HLM
+mdl.HLM <- rtmb_model(dat.HLM,par.HLM,model.HLM)
+# ラプラス近似によるMAP推定
+opt.HLM <- mdl.HLM$optimize(laplace = TRUE)
+opt.HLM$summary(digits = 2)
+## VB
+mdl.HLM <- rtmb_model(dat.HLM,par.HLM,log_prob.HLM)
+vb.HLM <- mdl.HLM$variational(iter = 5000,parallel=FALSE,method="meanfield")
+vb.HLM$print()
+fit.HLM <- mdl.HLM$sample(sampling=1000,parallel=FALSE,laplace=FALSE)
+fit.HLM$print()
+fit.HLM$drwas("alpha") |> plot_dens()
+fit.HLM$draws("alpha") |> plot_dens()
+fit.HLM$draws("alpha") |> plot_trace()
+job::job({
+fit.HLM <- mdl.HLM$sample(sampling=1000,parallel=FALSE,laplace=FALSE)
+})
+fit.HLM$print()
+remove.packages("BayesRTMB")
+.rs.restartR()
+devtools::install_github("norimune/BayesRTMB",upgrade = "never")
+# glmer
+mdl.glmer <- rtmb_glmer(Y ~ X + (1|GID), data = dat.HLM)

@@ -578,3 +578,41 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
     return(lp)
   }
 }
+#' Sufficient statistics multivariate normal log-probability density function
+#'
+#' @param S_mat Deviation sum of squares matrix.
+#' @param N Sample size.
+#' @param y_bar Sample mean vector.
+#' @param mean Mean parameter vector.
+#' @param sd Standard deviation parameter vector.
+#' @param CF_Omega Cholesky factor of correlation matrix.
+#' @return The exact log-likelihood of the N raw observations.
+#' @export
+sufficient_mvnorm_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega) {
+  p <- length(y_bar)
+
+  # 1. L_Sigmaとlog|Sigma|の計算
+  if (length(sd) == 1) {
+    L_Sigma <- matrix(sd, 1, 1) %*% CF_Omega
+  } else {
+    L_Sigma <- diag(sd) %*% CF_Omega
+  }
+  log_det_Sigma <- 2 * sum(log(diag(L_Sigma)))
+
+  # 2. 平均ベクトルのマハラノビス距離 (N * (y_bar - mu)^T Sigma^-1 (y_bar - mu))
+  z <- solve(L_Sigma, y_bar - mean)
+  quad_mean <- sum(z^2)
+
+  # 3. 偏差積和行列のトレース項 (tr(Sigma^-1 S_mat))
+  L_inv <- solve(L_Sigma)
+  Sigma_inv <- t(L_inv) %*% L_inv
+  trace_term <- sum(Sigma_inv * S_mat)
+
+  # 4. 元の多変量正規分布の完全な対数尤度
+  lp <- -0.5 * N * p * log(2 * pi) -
+    0.5 * N * log_det_Sigma -
+    0.5 * trace_term -
+    0.5 * N * quad_mean
+
+  return(as.numeric(lp))
+}
