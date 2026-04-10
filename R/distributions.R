@@ -127,7 +127,7 @@ uniform_lpdf <- function(x, a, b) {
 #' @export
 lkj_corr_lpdf <- function(Omega, eta = 1) {
   if (eta == 1) return(0)
-  safe_Omega <- Omega + diag(1e-8, nrow(Omega))
+  safe_Omega <- Omega + diag(1e-11, nrow(Omega))
   U <- chol(safe_Omega)
   return((eta - 1) * 2 * sum(log(diag(U))))
 }
@@ -264,11 +264,11 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints) {
   K <- length(cutpoints) + 1
 
   log1p_exp <- function(v) {
-    max_val <- (v + sqrt(v^2 + 1e-10)) / 2
+    max_val <- (v + sqrt(v^2 + 1e-11)) / 2
     return(max_val + log(exp(v - max_val) + exp(-max_val)))
   }
   log1m_exp <- function(v) {
-    return(log(1 - exp(v) + 1e-10))
+    return(log(1 - exp(v) + 1e-11))
   }
 
   if (length(eta) == 1 && N > 1) {
@@ -376,7 +376,7 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
   }
 
   K <- nrow(Sigma)
-  eps_mat <- diag(diag(Sigma) * 1e-6 + 1e-8, K)
+  eps_mat <- diag(diag(Sigma) * 1e-6 + 1e-11, K)
   safe_Sigma <- Sigma + eps_mat
 
   U <- chol(safe_Sigma)
@@ -653,7 +653,7 @@ sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
 
-  psi_safe <- psi^2 + 1e-8
+  psi_safe <- psi^2 + 1e-11
   inv_psi <- 1 / psi_safe
 
   # 修正点1: ベクトルでのリサイクル掛け算を避け、明示的な行列積にする
