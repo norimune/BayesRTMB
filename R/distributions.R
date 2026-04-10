@@ -443,6 +443,28 @@ centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
 #' @export
+#' #' Positive lower-triangular normal log-probability density function
+#'
+#' @param x A matrix of lower-triangular parameters (Cholesky factor with positive diagonals).
+#' @param mean Mean of the normal distribution (assumed to be 0 for the half-normal correction).
+#' @param sd Standard deviation of the normal distribution.
+#' @return The log-density calculated for the non-zero lower triangular elements.
+#' @export
+positive_lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
+  R <- nrow(x)
+  C <- ncol(x)
+  lp <- 0
+
+  for (j in 1:min(R, C)) {
+    val <- x[j:R, j]
+    lp <- lp + sum(dnorm(val, mean, sd, log = TRUE))
+  }
+
+  num_diag <- min(R, C)
+  lp <- lp + num_diag * log(2)
+
+  return(lp)
+}
 positive_centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
