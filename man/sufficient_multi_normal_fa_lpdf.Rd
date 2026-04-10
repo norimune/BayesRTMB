@@ -4,7 +4,7 @@
 \alias{sufficient_multi_normal_fa_lpdf}
 \title{Sufficient statistics factor analysis multivariate normal log-probability density function}
 \usage{
-sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, psi, Lambda)
+sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, Lambda, psi)
 }
 \arguments{
 \item{S_mat}{Deviation sum of squares matrix.}
@@ -15,13 +15,13 @@ sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, psi, Lambda)
 
 \item{mu}{Mean parameter vector.}
 
-\item{psi}{Vector of unique variances (P).}
-
 \item{Lambda}{Factor loading matrix (P x K).}
+
+\item{psi}{Vector of unique variances (P).}
 }
 \value{
 The exact log-likelihood of the N raw observations.
 }
 \description{
-Woodbury matrix identity is used for efficient computation.
+Sufficient statistics factor analysis multivariate normal log-probability density function
 }
