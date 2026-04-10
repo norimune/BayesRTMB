@@ -640,8 +640,6 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
 }
 #' Sufficient statistics factor analysis multivariate normal log-probability density function
 #'
-#' Woodbury matrix identity is used for efficient computation.
-#'
 #' @param S_mat Deviation sum of squares matrix.
 #' @param N Sample size.
 #' @param y_bar Sample mean vector.
@@ -650,39 +648,47 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
 #' @param psi Vector of unique variances (P).
 #' @return The exact log-likelihood of the N raw observations.
 #' @export
-sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi, Lambda) {
+sufficient_mvnorm_fa_lpdf <- function(S_mat, N, y_bar, mu, Lambda, psi) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
 
-  # psi は標準偏差ベクトルとして扱う
-  inv_psi <- 1 / (psi^2 + 1e-8)
-  Lambda_scaled <- Lambda * inv_psi
+  psi_safe <- psi^2 + 1e-8
+  inv_psi <- 1 / psi_safe
+
+  # 修正点1: ベクトルでのリサイクル掛け算を避け、明示的な行列積にする
+  Lambda_scaled <- diag(inv_psi) %*% Lambda
 
   M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)
   L_M <- chol(M)
 
-  log_det_Sigma <- sum(log(psi)) + 2 * sum(log(diag(L_M)))
+  log_det_Sigma <- sum(log(psi_safe)) + 2 * sum(log(diag(L_M)))
 
+  # --- 1. トレース項の計算 ---
   term1_trace <- sum(diag(S_mat) * inv_psi)
 
   Q <- t(Lambda_scaled) %*% S_mat %*% Lambda_scaled
   term2_trace <- sum(diag(solve(M, Q)))
-
   trace_term <- term1_trace - term2_trace
 
+  # --- 2. 平均項の計算 ---
   d <- y_bar - mu
   term1_mean <- sum((d^2) * inv_psi)
 
-  z_lambda <- as.vector(t(Lambda_scaled) %*% d)
+  # 修正点2: as.vector()を避け、厳密な列ベクトル(matrix)として扱う
+  d_mat <- matrix(d, ncol = 1)
+  z_lambda <- t(Lambda_scaled) %*% d_mat
   theta <- solve(M, z_lambda)
-  term2_mean <- sum(z_lambda * theta)
+
+  # 修正点3: 行列同士の内積からスカラーを抽出
+  term2_mean <- sum(t(z_lambda) %*% theta)
 
   quad_mean <- term1_mean - term2_mean
 
+  # --- 3. 完全な対数尤度の計算 ---
   lp <- -0.5 * (N * P * 1.83787706640935 +
                   N * log_det_Sigma +
                   trace_term +
                   N * quad_mean)
 
-  return(as.numeric(lp))
+  return(sum(lp))
 }
