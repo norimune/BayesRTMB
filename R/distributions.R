@@ -628,7 +628,7 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
 #' @param psi Vector of unique variances (P).
 #' @return The exact log-likelihood of the N raw observations.
 #' @export
-sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, Lambda, psi) {
+sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi, Lambda) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
 

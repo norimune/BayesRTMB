@@ -4,7 +4,7 @@
 \alias{sufficient_multi_normal_fa_lpdf}
 \title{Sufficient statistics factor analysis multivariate normal log-probability density function}
 \usage{
-sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, Lambda, psi)
+sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, psi, Lambda)
 }
 \arguments{
 \item{S_mat}{Deviation sum of squares matrix.}
@@ -15,9 +15,9 @@ sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, Lambda, psi)
 
 \item{mu}{Mean parameter vector.}
 
-\item{Lambda}{Factor loading matrix (P x K).}
-
 \item{psi}{Vector of unique variances (P).}
+
+\item{Lambda}{Factor loading matrix (P x K).}
 }
 \value{
 The exact log-likelihood of the N raw observations.
