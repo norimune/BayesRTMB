@@ -437,12 +437,6 @@ centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
   }
   return(lp)
 }
-#' Positive centered triangular multivariate normal log-probability density function
-#'
-#' @param x Matrix of quantiles.
-#' @param sigma Standard deviation parameter(s).
-#' @return The log-density.
-#' @export
 #' #' Positive lower-triangular normal log-probability density function
 #'
 #' @param x A matrix of lower-triangular parameters (Cholesky factor with positive diagonals).
