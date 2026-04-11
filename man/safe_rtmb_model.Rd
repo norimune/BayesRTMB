@@ -13,7 +13,7 @@ safe_rtmb_model(data, parameters, model, generate = NULL)
 
 \item{model}{`model_code({})` で定義された尤度や事前分布のコードブロック。}
 
-\item{generate}{`transformed_code({})` で定義された生成量のコードブロック（省略可能）。}
+\item{generate}{`transform_code({})` で定義された生成量のコードブロック（省略可能）。}
 }
 \value{
 正常にコンパイルが完了した場合は、`rtmb_model` オブジェクト（R6クラスのインスタンス）を返します。

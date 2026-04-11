@@ -99,7 +99,7 @@ VB_Fit <- R6::R6Class(
         out_array <- new_out
       }
 
-      if (inc_tran && !is.null(self$transform_fit)) {
+      if (inc_transform && !is.null(self$transform_fit)) {
         P1 <- dim(out_array)[3]; P2 <- dim(self$transform_fit)[3]
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
@@ -263,8 +263,8 @@ VB_Fit <- R6::R6Class(
           map      = map_val,
           q2.5     = unname(q95[1]),
           q97.5    = unname(q95[2]),
-          drift    = drift_val,   # NAの場合はそのままNAになるためif文は不要です
-          rel_sd   = rel_sd_val,
+          #drift    = drift_val,   # NAの場合はそのままNAになるためif文は不要です
+          #rel_sd   = rel_sd_val,
           stringsAsFactors = FALSE
         )
       }

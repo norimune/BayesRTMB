@@ -9,7 +9,7 @@ rtmb_fa(
   nfactors = 1,
   rotate = NULL,
   score = FALSE,
-  prior = list(mu_sd = 10, lambda_sd = 1, psi_rate = 10),
+  prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10),
   init = NULL
 )
 }

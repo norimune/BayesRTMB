@@ -1112,9 +1112,9 @@ RTMB_Model <- R6::R6Class(
           tran_lines <- deparse(raw_tran, control = "useSource")
           if (tran_lines[1] == "{") {
             tran_lines[length(tran_lines)] <- paste0(tran_lines[length(tran_lines)], ")")
-            tran_code <- c("", "transformed <- transformed_code({", tran_lines[-1])
+            tran_code <- c("", "transformed <- transform_code({", tran_lines[-1])
           } else {
-            tran_code <- c("", "transformed <- transformed_code({", paste0("  ", tran_lines), "})")
+            tran_code <- c("", "transformed <- transform_code({", paste0("  ", tran_lines), "})")
           }
         } else {
           t_code <- deparse(self$transform, control = "useSource")
@@ -1131,9 +1131,9 @@ RTMB_Model <- R6::R6Class(
           gq_lines <- deparse(raw_gq, control = "useSource")
           if (gq_lines[1] == "{") {
             gq_lines[length(gq_lines)] <- paste0(gq_lines[length(gq_lines)], ")")
-            gq_code <- c("", "generate <- transformed_code({", gq_lines[-1])
+            gq_code <- c("", "generate <- transform_code({", gq_lines[-1])
           } else {
-            gq_code <- c("", "generate <- transformed_code({", paste0("  ", gq_lines), "})")
+            gq_code <- c("", "generate <- transform_code({", paste0("  ", gq_lines), "})")
           }
         } else {
           g_code <- deparse(self$generate, control = "useSource")
