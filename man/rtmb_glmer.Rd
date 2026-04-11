@@ -10,7 +10,8 @@ rtmb_glmer(
   family = "gaussian",
   laplace = FALSE,
   prior = list(beta_sd = 10, tau_rate = 1, sigma_rate = 1, lkj_eta = 1, shape_rate = 1,
-    phi_rate = 1, cutpoint_sd = 2.5)
+    phi_rate = 1, cutpoint_sd = 2.5),
+  init = NULL
 )
 }
 \arguments{
@@ -23,6 +24,8 @@ rtmb_glmer(
 \item{laplace}{変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)}
 
 \item{prior}{事前分布のハイパーパラメータのリスト}
+
+\item{init}{初期値のリスト (指定しない場合はglmに基づく初期値が自動生成されます)}
 }
 \description{
 RTMBベースのGLMMラッパー関数

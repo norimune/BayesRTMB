@@ -15,6 +15,8 @@ An R6 class storing optimization results from maximum a posteriori
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
+\item{\code{model}}{The `RTMB_Model` object used for estimation.}
+
 \item{\code{par_vec}}{Parameter vector on the unconstrained scale.}
 
 \item{\code{par}}{Parameter list on the constrained scale.}
@@ -59,6 +61,7 @@ An R6 class storing optimization results from maximum a posteriori
 Create a new `MAP_Fit` object.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$new(
+  model,
   par_vec,
   par,
   objective,
@@ -78,6 +81,8 @@ Create a new `MAP_Fit` object.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
+\item{\code{model}}{The `RTMB_Model` object used for estimation.}
+
 \item{\code{par_vec}}{Parameter vector on the unconstrained scale.}
 
 \item{\code{par}}{Parameter list on the constrained scale.}

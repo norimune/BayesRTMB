@@ -11,6 +11,8 @@
 #' @param transform An optional function for transformed parameters.
 #' @param generate An optional function for generated quantities.
 #' @param par_names A list of parameter names
+#' @param init A list or vector of initial value for parameters.
+#' @param view Character vector specifying the names of parameters to prioritize in the summary.
 #'
 #' @field data A list of observed data.
 #' @field par_list A list defining model parameters.
@@ -22,6 +24,8 @@
 #' @field formula The formula used to generate the model, if applicable.
 #' @field raw_data The original data frame used to generate the model, if applicable.
 #' @field family A character string specifying the distribution family, if applicable.
+#' @field init A list or vector of initial value for parameters.
+#' @field view Character vector specifying the names of parameters to prioritize in the summary.
 #' @import RTMB
 RTMB_Model <- R6::R6Class(
   classname = "RTMB_Model",
@@ -37,12 +41,16 @@ RTMB_Model <- R6::R6Class(
     formula    = NULL,
     raw_data   = NULL,
     family     = NULL,
+    init       = NULL,
+    view       = NULL, # <--- 追加
 
     # 1. コンストラクタ
     #' @description Create a new `RTMB_Model` object.
-    initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL, par_names = NULL) {
+    initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL, par_names = NULL, init = NULL, view = NULL) {
       self$data <- data
       self$par_names <- par_names
+      self$init <- init
+      self$view <- view
       self$par_list <- lapply(par_list, function(x) {
         if (typeof(x) %in% c("language", "symbol")) {
           eval(x, envir = self$data, enclos = parent.frame())
@@ -57,7 +65,8 @@ RTMB_Model <- R6::R6Class(
       self$pl_full <- parse_parameters(self$par_list, self$par_names)
       names(self$pl_full$init) <- self$pl_full$names
 
-      init_vec <- generate_random_init(self$pl_full, self$par_list, range = 2)
+      # ここを prepare_init を経由するように変更
+      init_vec <- self$prepare_init(self$init)
       test_para <- constrained_vector_to_list(init_vec, self$par_list)
 
       test_val <- tryCatch({
@@ -102,31 +111,27 @@ RTMB_Model <- R6::R6Class(
       }
     },
 
-    # 初期値の整形と補完を行うヘルパーメソッド
-    #' @description Prepare and complete the initial parameter vector.
-    #' If `init` is a named list, it partially updates a randomly generated
-    #' initial vector. If it is a full numeric vector, it is used as is.
-    #' If `NULL`, all parameters are randomly initialized.
-    #' @param init Optional initial values. Can be `NULL`, a numeric vector
-    #'   of the full parameter length, or a named list of specific parameters
-    #'   to fix their initial values.
-    #' @return A numeric vector containing the full set of initial parameter
-    #'   values on the constrained scale.
-    prepare_init = function(init) {
-      if (is.null(init)) {
+    # 初期値の整形と補完を行うヘルパーメソッド (引数がない場合はself$initを使うように変更)
+    #' @description Prepare and format initial values for the model parameters.
+    #' @param init_arg Optional list or numeric vector of initial values. If NULL, defaults to `self$init` or random generation.
+    #' @return A flat numeric vector of constrained initial values.
+    prepare_init = function(init_arg) {
+      target_init <- if (!is.null(init_arg)) init_arg else self$init
+
+      if (is.null(target_init)) {
         return(generate_random_init(self$pl_full, self$par_list, range = 2))
       }
 
       # 名前付きリストが渡された場合（部分的な初期値指定）
-      if (is.list(init)) {
+      if (is.list(target_init)) {
         # 1. まず全体をランダムな値で初期化し、リスト形式に変換
         base_vec <- generate_random_init(self$pl_full, self$par_list, range = 2)
         base_list <- constrained_vector_to_list(base_vec, self$par_list)
 
         # 2. ユーザーが指定したパラメータだけを上書き
-        for (name in names(init)) {
+        for (name in names(target_init)) {
           if (name %in% names(base_list)) {
-            base_list[[name]] <- as.numeric(init[[name]])
+            base_list[[name]] <- as.numeric(target_init[[name]])
           } else {
             warning(sprintf("初期値として指定された '%s' はモデルに存在しません。", name), call. = FALSE)
           }
@@ -136,8 +141,8 @@ RTMB_Model <- R6::R6Class(
       }
 
       # ベクトルが渡された場合（全体指定）
-      if (is.numeric(init)) {
-        return(init)
+      if (is.numeric(target_init)) {
+        return(target_init)
       }
 
       stop("init は名前付きリスト、または数値ベクトルで指定してください。")
@@ -215,8 +220,11 @@ RTMB_Model <- R6::R6Class(
     #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
     #' @param init Optional initial values for parameters.
     #' @param control A list of control settings passed to the optimizer.
+    #' @param optimizer Character; The optimizer to use, either "optim" or "nlminb". Default is "optim".
+    #' @param method Character; The method for "optim" (e.g. "BFGS", "L-BFGS-B"). Default is "BFGS".
     #' @return A fitted `MAP_Fit` object.
-    optimize = function(laplace = TRUE, init = NULL, num_estimate = 1,control = list()) {
+    optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
+                        optimizer = "nlminb", method = "BFGS") {
       cat("Starting optimization...\n")
 
       opt_results <- list()
@@ -226,24 +234,53 @@ RTMB_Model <- R6::R6Class(
       # MAP推定ではヤコビアンは不要
       jac_target <- if (laplace) "random" else "none"
 
+      # --- 修正: ループ外でADオブジェクトを1度だけ構築 ---
+      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target)
+      base_ad_obj <- ad_setup$ad_obj
+
       for (i in 1:num_estimate) {
         if (num_estimate > 1)
           cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
 
-        # ループ内でのエラーで停止しないように tryCatch を使用
         res <- tryCatch({
-          # 各試行で build_ad_obj を呼び出す (init=NULLなら内部でランダム初期化される)
-          ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target)
-          ad_obj <- ad_setup$ad_obj
+          # --- 修正: 2回目以降、かつユーザー指定の初期値がない場合はランダムに更新 ---
+          if (i > 1 && is.null(init)) {
+            current_init <- self$prepare_init(NULL) # ランダム生成
+            init_unc_list <- to_unconstrained(constrained_vector_to_list(current_init, self$par_list), self$par_list)
+            base_ad_obj$par <- unlist(init_unc_list, use.names = FALSE)
+          }
 
-          opt <- nlminb(
-            start     = ad_obj$par,
-            objective = ad_obj$fn,
-            gradient  = ad_obj$gr,
-            control   = control
-          )
-          list(opt = opt, ad_obj = ad_obj)
-        }, error = function(e) NULL)
+          if (optimizer == "nlminb") {
+            if (is.null(control$iter.max)) control$iter.max <- 5000
+            if (is.null(control$eval.max)) control$eval.max <- 5000
+            if (is.null(control$rel.tol)) control$rel.tol <- 1e-8
+
+            opt <- nlminb(
+              start     = base_ad_obj$par,
+              objective = base_ad_obj$fn,
+              gradient  = base_ad_obj$gr,
+              control   = control
+            )
+          } else if (optimizer == "optim") {
+            if (is.null(control$maxit)) control$maxit <- 5000
+
+            opt <- optim(
+              par     = base_ad_obj$par,
+              fn      = base_ad_obj$fn,
+              gr      = base_ad_obj$gr,
+              method  = method,
+              control = control
+            )
+            opt$objective <- opt$value
+          } else {
+            stop("optimizerは 'optim' または 'nlminb' を指定してください。")
+          }
+
+          list(opt = opt, ad_obj = base_ad_obj)
+        }, error = function(e) {
+          warning("Optimization error: ", e$message, call. = FALSE)
+          NULL
+        })
 
         if (!is.null(res)) {
           opt_results[[i]] <- res
@@ -286,6 +323,13 @@ RTMB_Model <- R6::R6Class(
         }
         cat("\n")
       }
+
+      ad_obj <- best_res$ad_obj
+      opt    <- best_res$opt
+      ad_obj$fn(opt$par)
+
+      # --- 以降のコード（sdreportの計算など）は元のまま変更不要です ---
+      sd_rep <- tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL)
 
       ad_obj <- best_res$ad_obj
       opt    <- best_res$opt
@@ -547,9 +591,10 @@ RTMB_Model <- R6::R6Class(
 
       # 4. 最後にMAP_Fitへ渡す
       res_obj <- MAP_Fit$new(
-        par_vec = con_est_vec,
-        par = con_est_list,
-        objective = opt$objective,
+        model          = self,
+        par_vec        = con_est_vec,
+        par            = con_est_list,
+        objective      = opt$objective,
         log_ml = log_ml,
         convergence = opt$convergence,
         sd_rep = sd_rep,

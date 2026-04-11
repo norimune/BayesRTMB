@@ -18,7 +18,7 @@
 #' @param pars Names of parameters to extract or summarize.
 #' @param chains Chains to include.
 #' @param inc_random Logical; whether to include random effects.
-#' @param inc_transfomr Logical; whether to include transformed parameters.
+#' @param inc_transform Logical; whether to include transformed parameters.
 #' @param inc_generate Logical; whether to include generated quantities.
 #' @param max_rows Maximum number of rows to print in summaries.
 #' @param digits Number of digits to print.
@@ -200,6 +200,28 @@ MCMC_Fit <- R6::R6Class(
       param_names <- dimnames(draws_array)[[3]]
 
       target_idx <- 1:P
+
+      # --- lp と model$view による優先並び替え ---
+      if (length(target_idx) > 0) {
+        current_names <- param_names[target_idx]
+        base_names <- gsub("\\[.*\\]$", "", current_names)
+
+        # lp を常に最優先にする
+        target_views <- c("lp")
+        if (!is.null(self$model$view)) {
+          target_views <- c(target_views, self$model$view)
+        }
+
+        priority_sub_idx <- integer(0)
+        for (v in target_views) {
+          match_idx <- which(current_names == v | base_names == v)
+          priority_sub_idx <- c(priority_sub_idx, match_idx)
+        }
+        priority_sub_idx <- unique(priority_sub_idx)
+        other_sub_idx <- setdiff(seq_along(current_names), priority_sub_idx)
+        target_idx <- target_idx[c(priority_sub_idx, other_sub_idx)]
+      }
+
       if (!is.null(max_rows)) {
         limit <- min(length(target_idx), as.integer(max_rows))
         target_idx <- target_idx[1:limit]
@@ -711,48 +733,71 @@ MCMC_Fit <- R6::R6Class(
 
       for (c in 1:chains) {
         for (i in 1:iter_total) {
+          N_draws <- iter_total * chains
 
-          if (t_info$loc == "fixed") X_vec <- f_arr[i, c, t_info$idx]
-          else if (t_info$loc == "random") X_vec <- r_arr[i, c, t_info$idx]
-          else if (t_info$loc == "transform") X_vec <- t_arr[i, c, t_info$idx]
-          else X_vec <- g_arr[i, c, t_info$idx]
+          # ターゲット変数の抽出 (N_draws x (R_t * C_t) の行列にする)
+          if (t_info$loc == "fixed") X_all <- matrix(f_arr[,,t_info$idx], nrow = N_draws)
+          else if (t_info$loc == "random") X_all <- matrix(r_arr[,,t_info$idx], nrow = N_draws)
+          else if (t_info$loc == "transform") X_all <- matrix(t_arr[,,t_info$idx], nrow = N_draws)
+          else X_all <- matrix(g_arr[,,t_info$idx], nrow = N_draws)
 
-          X <- matrix(X_vec, nrow = R_t, ncol = C_t)
-          svd_out <- svd(t(X) %*% X_map)
-          R_proc <- svd_out$u %*% t(svd_out$v)
-          X_rot <- as.numeric((X %*% R_proc) %*% Th_straight)
+          # 行ごとに回転処理を適用
+          rotated_list <- lapply(1:N_draws, function(idx) {
+            X <- matrix(X_all[idx, ], nrow = R_t, ncol = C_t)
+            svd_out <- svd(t(X) %*% X_map)
+            R_proc <- svd_out$u %*% t(svd_out$v)
+            X_rot <- as.numeric((X %*% R_proc) %*% Th_straight)
 
-          if (isTRUE(overwrite)) {
-            if (t_info$loc == "fixed") f_arr[i, c, t_info$idx] <- X_rot
-            else if (t_info$loc == "random") r_arr[i, c, t_info$idx] <- X_rot
-            else if (t_info$loc == "transform") t_arr[i, c, t_info$idx] <- X_rot
-            else g_arr[i, c, t_info$idx] <- X_rot
-          } else {
-            rot_arr[i, c, new_idx_map[[target]]] <- X_rot
-          }
+            # 戻り値として、回転済みターゲット変数と R_proc を返す
+            list(X_rot = X_rot, R_proc = R_proc)
+          })
 
-          if (!is.null(linked_straight)) {
-            for (lvar in linked_straight) {
-              l_info <- get_var_info(lvar)
-              if (length(l_info$dim) != 2 || l_info$dim[2] != C_t) next
+          # 結果を元の配列に戻す
+          for (idx in 1:N_draws) {
+            # 1次元インデックスから i(iter) と c(chain) を逆算
+            i <- (idx - 1) %% iter_total + 1
+            c <- (idx - 1) %/% iter_total + 1
 
-              if (l_info$loc == "fixed") Z_vec <- f_arr[i, c, l_info$idx]
-              else if (l_info$loc == "random") Z_vec <- r_arr[i, c, l_info$idx]
-              else if (l_info$loc == "transform") Z_vec <- t_arr[i, c, l_info$idx]
-              else Z_vec <- g_arr[i, c, l_info$idx]
+            res_rot <- rotated_list[[idx]]
+            R_proc <- res_rot$R_proc
 
-              Z <- matrix(Z_vec, nrow = l_info$dim[1], ncol = C_t)
-              Z_rot <- as.numeric((Z %*% R_proc) %*% Th_straight)
+            if (isTRUE(overwrite)) {
+              if (t_info$loc == "fixed") f_arr[i, c, t_info$idx] <- res_rot$X_rot
+              else if (t_info$loc == "random") r_arr[i, c, t_info$idx] <- res_rot$X_rot
+              else if (t_info$loc == "transform") t_arr[i, c, t_info$idx] <- res_rot$X_rot
+              else g_arr[i, c, t_info$idx] <- res_rot$X_rot
+            } else {
+              rot_arr[i, c, new_idx_map[[target]]] <- res_rot$X_rot
+            }
 
-              if (isTRUE(overwrite)) {
-                if (l_info$loc == "fixed") f_arr[i, c, l_info$idx] <- Z_rot
-                else if (l_info$loc == "random") r_arr[i, c, l_info$idx] <- Z_rot
-                else if (l_info$loc == "transform") t_arr[i, c, l_info$idx] <- Z_rot
-                else g_arr[i, c, l_info$idx] <- Z_rot
-              } else {
-                rot_arr[i, c, new_idx_map[[lvar]]] <- Z_rot
+            # リンクされた変数の処理 (R_proc を再利用)
+            process_linked <- function(linked_vars, Th_mat) {
+              if (is.null(linked_vars)) return()
+              for (lvar in linked_vars) {
+                l_info <- get_var_info(lvar)
+                if (length(l_info$dim) != 2 || l_info$dim[2] != C_t) next
+
+                if (l_info$loc == "fixed") Z_vec <- f_arr[i, c, l_info$idx]
+                else if (l_info$loc == "random") Z_vec <- r_arr[i, c, l_info$idx]
+                else if (l_info$loc == "transform") Z_vec <- t_arr[i, c, l_info$idx]
+                else Z_vec <- g_arr[i, c, l_info$idx]
+
+                Z <- matrix(Z_vec, nrow = l_info$dim[1], ncol = C_t)
+                Z_rot <- as.numeric((Z %*% R_proc) %*% Th_mat)
+
+                if (isTRUE(overwrite)) {
+                  if (l_info$loc == "fixed") f_arr[i, c, l_info$idx] <- Z_rot
+                  else if (l_info$loc == "random") r_arr[i, c, l_info$idx] <- Z_rot
+                  else if (l_info$loc == "transform") t_arr[i, c, l_info$idx] <- Z_rot
+                  else g_arr[i, c, l_info$idx] <- Z_rot
+                } else {
+                  rot_arr[i, c, new_idx_map[[lvar]]] <- Z_rot
+                }
               }
             }
+
+            process_linked(linked_straight, Th_straight)
+            process_linked(linked_inverse, Th_inverse)
           }
 
           if (!is.null(linked_inverse)) {

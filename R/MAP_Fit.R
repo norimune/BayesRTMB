@@ -2,7 +2,8 @@
 #'
 #' An R6 class storing optimization results from maximum a posteriori
 #' (MAP) estimation.
-#'
+#
+#' @param model The `RTMB_Model` object used for estimation.
 #' @param par_vec Parameter vector on the unconstrained scale.
 #' @param par Parameter list on the constrained scale.
 #' @param objective RTMB objective function object.
@@ -17,6 +18,7 @@
 #' @param transform List of transformed parameters maintaining their original dimensions.
 #' @param generate List of generated quantities maintaining their original dimensions.
 #'
+#' @field model The `RTMB_Model` object used for estimation.
 #' @field par_vec Parameter vector on the unconstrained scale.
 #' @field par Parameter list on the constrained scale.
 #' @field objective RTMB objective function object.
@@ -36,6 +38,7 @@ MAP_Fit <- R6::R6Class(
 
   public = list(
     # --- フィールド ---
+    model          = NULL,
     par_vec        = NULL,
     par            = NULL,
     objective      = NULL,
@@ -51,6 +54,7 @@ MAP_Fit <- R6::R6Class(
     generate       = NULL, # 追加
 
     #' @description Create a new `MAP_Fit` object.
+    #' @param model The `RTMB_Model` object used for estimation.
     #' @param par_vec Parameter vector on the unconstrained scale.
     #' @param par Parameter list on the constrained scale.
     #' @param objective RTMB objective function object.
@@ -64,9 +68,10 @@ MAP_Fit <- R6::R6Class(
     #' @param opt_history A vector of optimize objective history.
     #' @param transform List of transformed parameters maintaining their original dimensions.
     #' @param generate List of generated quantities maintaining their original dimensions.
-    initialize = function(par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
+    initialize = function(model,par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL) {
+      self$model <- model
       self$par_vec <- par_vec
       self$par <- par
       self$objective <- objective
@@ -101,7 +106,6 @@ MAP_Fit <- R6::R6Class(
         cat("Note: Random effects are stored in $random_effects\n")
       }
 
-      # 1. すべてのデータフレームを縦に結合する
       all_dfs <- list()
       if (!is.null(self$df_fixed) && nrow(self$df_fixed) > 0) all_dfs$fixed <- self$df_fixed
       if (!is.null(self$df_transform) && nrow(self$df_transform) > 0) all_dfs$transform <- self$df_transform
@@ -114,7 +118,6 @@ MAP_Fit <- R6::R6Class(
 
       df_combined <- do.call(rbind, unname(all_dfs))
 
-      # 2. 変数名での絞り込み
       if (!is.null(pars)) {
         base_names <- gsub("\\[.*\\]$", "", rownames(df_combined))
         keep_idx <- rownames(df_combined) %in% pars | base_names %in% pars
@@ -126,18 +129,36 @@ MAP_Fit <- R6::R6Class(
         return(invisible(df_combined))
       }
 
+      # --- lp と model$view による優先並び替え ---
+      if (nrow(df_combined) > 0) {
+        var_names <- rownames(df_combined)
+        base_names <- gsub("\\[.*\\]$", "", var_names)
+
+        # lp を常に最優先にする
+        target_views <- c()
+        if (!is.null(self$model$view)) {
+          target_views <- c(target_views, self$model$view)
+        }
+
+        priority_idx <- integer(0)
+        for (v in target_views) {
+          match_idx <- which(var_names == v | base_names == v)
+          priority_idx <- c(priority_idx, match_idx)
+        }
+        priority_idx <- unique(priority_idx)
+        other_idx <- setdiff(seq_along(var_names), priority_idx)
+        df_combined <- df_combined[c(priority_idx, other_idx), , drop = FALSE]
+      }
+
       cat("\nPoint Estimates and 95% Wald CI:\n")
 
-      # 3. 表示用のデータフレーム作成
       out_df <- data.frame(variable = rownames(df_combined), df_combined, check.names = FALSE, stringsAsFactors = FALSE)
       rownames(out_df) <- NULL
 
-      # 4. ここで全体に対して max_rows を適用する
       if (!is.null(max_rows) && nrow(out_df) > max_rows) {
         out_df <- head(out_df, max_rows)
       }
 
-      # 5. MCMC/VB用のprint関数に回して表を整形
       class(out_df) <- c("summary_BayesRTMB", "data.frame")
       print(out_df, digits = digits)
 

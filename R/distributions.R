@@ -653,7 +653,7 @@ sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
 
-  psi_safe <- psi^2 + 1e-11
+  psi_safe <- psi^2 + 1e-8
   inv_psi <- 1 / psi_safe
 
   # 修正点1: ベクトルでのリサイクル掛け算を避け、明示的な行列積にする
