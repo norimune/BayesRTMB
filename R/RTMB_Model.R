@@ -1,31 +1,35 @@
 #' RTMB model object
 #'
+#' @description
 #' An R6 class representing a Bayesian model built with RTMB.
 #' This class stores model components and provides methods for
 #' building the automatic differentiation object, optimizing the
 #' posterior, and drawing posterior samples.
 #'
-#' @param data A list of observed data used in the model.
-#' @param par_list A list defining model parameters and their dimensions.
-#' @param log_prob A user-supplied function that returns the log-probability.
-#' @param transform An optional function for transformed parameters.
-#' @param generate An optional function for generated quantities.
-#' @param par_names A list of parameter names
-#' @param init A list or vector of initial value for parameters.
-#' @param view Character vector specifying the names of parameters to prioritize in the summary.
+#' @param data 観測データを含む名前付きリスト。
+#' @param par_list 評価済みのパラメータ定義リスト。
+#' @param log_prob 実行可能な尤度・事前分布の計算関数（エラーハンドリング済み）。
+#' @param transform 変換パラメータの計算関数（省略可能）。
+#' @param generate 生成量の計算関数（省略可能）。
+#' @param par_names パラメータの次元に対応する変数名のリスト。
+#' @param init 初期値のリストまたは数値ベクトル。
+#' @param view summaryで優先表示する変数名の文字ベクトル。
+#' @param code `rtmb_code()` で生成された、ユーザー記述の元のモデル構文木 (AST)。
 #'
-#' @field data A list of observed data.
-#' @field par_list A list defining model parameters.
-#' @field log_prob A user-supplied log-probability function.
-#' @field transform An optional transformed parameters function.
-#' @field generate An optional generated quantities function.
-#' @field par_names A list of parameter names
-#' @field pl_full Full parameter information used internally.
-#' @field formula The formula used to generate the model, if applicable.
-#' @field raw_data The original data frame used to generate the model, if applicable.
-#' @field family A character string specifying the distribution family, if applicable.
-#' @field init A list or vector of initial value for parameters.
-#' @field view Character vector specifying the names of parameters to prioritize in the summary.
+#' @field data 観測データを含む名前付きリスト。
+#' @field par_list 評価済みのパラメータ定義リスト。
+#' @field log_prob 実行可能な尤度・事前分布の計算関数。
+#' @field transform 変換パラメータの計算関数。
+#' @field generate 生成量の計算関数。
+#' @field par_names パラメータの次元に対応する変数名のリスト。
+#' @field pl_full 内部で使用される、制約や次元情報を展開した完全なパラメータリスト。
+#' @field formula モデル生成に使用されたフォーミュラ（ラッパー関数経由の場合）。
+#' @field raw_data モデル生成に使用された元のデータフレーム（ラッパー関数経由の場合）。
+#' @field family 分布族の文字列（ラッパー関数経由の場合）。
+#' @field init 初期値のリストまたは数値ベクトル。
+#' @field view summaryで優先表示する変数名の文字ベクトル。
+#' @field code `rtmb_code()` で生成された、ユーザー記述の元のモデル構文木 (AST)。
+#'
 #' @import RTMB
 RTMB_Model <- R6::R6Class(
   classname = "RTMB_Model",
@@ -42,15 +46,19 @@ RTMB_Model <- R6::R6Class(
     raw_data   = NULL,
     family     = NULL,
     init       = NULL,
-    view       = NULL, # <--- 追加
+    view       = NULL,
+    code       = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `RTMB_Model` object.
-    initialize = function(data, par_list, log_prob, transform = NULL, generate = NULL, par_names = NULL, init = NULL, view = NULL) {
+    initialize = function(data, par_list, log_prob,
+                          transform = NULL, generate = NULL, par_names = NULL,
+                          init = NULL, view = NULL, code = NULL) {
       self$data <- data
       self$par_names <- par_names
       self$init <- init
       self$view <- view
+      self$code <- code
       self$par_list <- lapply(par_list, function(x) {
         if (typeof(x) %in% c("language", "symbol")) {
           eval(x, envir = self$data, enclos = parent.frame())
@@ -1052,99 +1060,45 @@ RTMB_Model <- R6::R6Class(
     #' @description Print model code or model structure.
     #' @return The object itself, invisibly.
     print_code = function() {
-      param_lines <- c("par_list <- list(")
-      names_pl <- names(self$par_list)
-
-      for (i in seq_along(names_pl)) {
-        name <- names_pl[i]
-        p <- self$par_list[[name]]
-        args <- c()
-        if (length(p$dim) > 1) {
-          args <- c(args, paste0("dim = c(", paste(p$dim, collapse = ", "), ")"))
-        } else {
-          args <- c(args, paste0("dim = ", p$dim))
-        }
-
-        default_type <-
-          if (length(p$dim) == 1)
-            "vector"
-        else if (length(p$dim) == 2)
-          "matrix"
-        else
-          "array"
-        if (!is.null(p$type) &&
-            p$type != default_type)
-          args <- c(args, paste0("type = \"", p$type, "\""))
-        if (!is.null(p$lower)) args <- c(args, paste0("lower = ", p$lower))
-        if (!is.null(p$upper)) args <- c(args, paste0("upper = ", p$upper))
-        if (isTRUE(p$random)) args <- c(args, "random = TRUE")
-
-        line <- paste0("  ", name, " = Dim(", paste(args, collapse = ", "), ")")
-        if (i < length(names_pl)) line <- paste0(line, ",")
-        param_lines <- c(param_lines, line)
-      }
-      param_lines <- c(param_lines, ")", "")
-
-      raw_expr <- attr(self$log_prob, "raw_expr")
-
-      # --- model の処理 ---
-      if (!is.null(raw_expr)) {
-        # model_code で保存された元の式(DSL)を出力
-        expr_lines <- deparse(raw_expr, control = "useSource")
-        # ブロック {} の表記を整形
-        if (expr_lines[1] == "{") {
-          expr_lines[length(expr_lines)] <- paste0(expr_lines[length(expr_lines)], ")")
-          lp_code <- c("model <- model_code({", expr_lines[-1])
-        } else {
-          lp_code <- c("model <- model_code({", paste0("  ", expr_lines), "})")
-        }
-      } else {
-        # 生の関数が直接渡された場合などのフォールバック
-        lp_code <- deparse(self$log_prob, control = "useSource")
-        lp_code[1] <- paste("log_prob <-", lp_code[1])
+      if (is.null(self$code)) {
+        cat("Model code is not available (Not built with rtmb_code).\n")
+        return(invisible(self))
       }
 
-      # --- transform の処理 ---
-      tran_code <- character(0)
-      if (!is.null(self$transform)) {
-        raw_tran <- attr(self$transform, "raw_expr")
-        if (!is.null(raw_tran)) {
-          tran_lines <- deparse(raw_tran, control = "useSource")
-          if (tran_lines[1] == "{") {
-            tran_lines[length(tran_lines)] <- paste0(tran_lines[length(tran_lines)], ")")
-            tran_code <- c("", "transformed <- transform_code({", tran_lines[-1])
-          } else {
-            tran_code <- c("", "transformed <- transform_code({", paste0("  ", tran_lines), "})")
-          }
+      cat("=== RTMB Model Code ===\n\n")
+      cat("rtmb_code(\n")
+
+      blocks <- names(self$code)
+      n_blocks <- length(blocks)
+
+      for (i in seq_along(blocks)) {
+        block <- blocks[i]
+        expr <- self$code[[block]]
+
+        # 修正箇所: width.cutoff = 500L を追加して勝手な改行を防ぐ
+        lines <- deparse(expr, width.cutoff = 500L, control = "useSource")
+
+        # インデントの調整
+        lines <- paste0("  ", lines)
+
+        # 最初の "{" を "ブロック名 = {" に書き換える
+        if (trimws(lines[1]) == "{") {
+          lines[1] <- paste0("  ", block, " = {")
         } else {
-          t_code <- deparse(self$transform, control = "useSource")
-          t_code[1] <- paste("transformed <-", t_code[1])
-          tran_code <- c("", t_code)
+          # 中身が1行だけで {} で囲まれていなかった場合の安全対策
+          lines <- c(paste0("  ", block, " = {"), paste0("  ", lines), "  }")
         }
+
+        # 最後のブロック以外は、閉じカッコ "}" の後にカンマを追加する
+        if (i < n_blocks) {
+          lines[length(lines)] <- paste0(lines[length(lines)], ",")
+        }
+
+        cat(paste(lines, collapse = "\n"), "\n")
       }
 
-      # --- generate の処理 ---
-      gq_code <- character(0)
-      if (!is.null(self$generate)) {
-        raw_gq <- attr(self$generate, "raw_expr")
-        if (!is.null(raw_gq)) {
-          gq_lines <- deparse(raw_gq, control = "useSource")
-          if (gq_lines[1] == "{") {
-            gq_lines[length(gq_lines)] <- paste0(gq_lines[length(gq_lines)], ")")
-            gq_code <- c("", "generate <- transform_code({", gq_lines[-1])
-          } else {
-            gq_code <- c("", "generate <- transform_code({", paste0("  ", gq_lines), "})")
-          }
-        } else {
-          g_code <- deparse(self$generate, control = "useSource")
-          g_code[1] <- paste("generate <-", g_code[1])
-          gq_code <- c("", g_code)
-        }
-      }
-
-      full_code <- c(param_lines, lp_code, tran_code, gq_code)
-      cat(paste(full_code, collapse = "\n"), "\n")
-      invisible(full_code)
+      cat(")\n\n")
+      invisible(self)
     }
   )
 )

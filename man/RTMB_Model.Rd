@@ -7,16 +7,20 @@
 rtmb_model(data, code, par_names = list(), init = NULL, view = NULL)
 }
 \arguments{
-\item{data}{観測データを含む名前付きリスト}
+\item{data}{モデルで使用する観測データや定数（サンプルサイズなど）を含む名前付きリスト。}
 
-\item{code}{`rtmb_code(...)` で記述されたモデル定義}
+\item{code}{`rtmb_code(...)` で記述されたモデル定義ブロック（data, parameters, model, transform, generate を含む）。}
 
-\item{par_names}{パラメータの変数名リスト}
+\item{par_names}{各パラメータの次元に対応する具体的な変数名のリスト（省略可能）。}
 
-\item{init}{初期値のリスト}
+\item{init}{パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。}
 
-\item{view}{summaryで優先表示する変数名のベクトル}
+\item{view}{`summary()` などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。}
+}
+\value{
+モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。
 }
 \description{
-RTMB_Model インスタンスを生成するラッパー関数
+ユーザーが定義したデータ、およびモデルコード（尤度や事前分布）を結合し、
+ベイズ推論（MCMC, VB, MAP推定）を実行するための `RTMB_Model` (R6クラス) インスタンスを生成します。
 }

@@ -2,16 +2,16 @@
 % Please edit documentation in R/model.R
 \name{rtmb_code}
 \alias{rtmb_code}
-\title{StanライクなRTMBモデル定義ブロック}
+\title{StanライクなRTMBモデル定義ブロック (ハイブリッド対応版)}
 \usage{
 rtmb_code(...)
 }
 \arguments{
-\item{...}{各ブロックのコード (例: parameters = { ... })}
+\item{...}{モデル定義ブロック}
 }
 \value{
 未評価のコードブロックのリスト
 }
 \description{
-data, parameters, transform, model, generate の各ブロックをひとまとめにして記述します。
+R標準のカンマ区切り記法と、Stan風のカンマなし記法({}の内側での記述)の両方に対応します。
 }
