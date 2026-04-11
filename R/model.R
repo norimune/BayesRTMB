@@ -53,155 +53,116 @@ with_rtmb_error_handling <- function(expr, block_name) {
 }
 #' RTMB_Model インスタンスを生成するラッパー関数
 #'
-#' @description
-#' ユーザーが定義したデータ、パラメータ、およびモデルコード（尤度や事前分布）を結合し、
-#' ベイズ推論（MCMC, VB, MAP推定）を実行するための `RTMB_Model` (R6クラス) インスタンスを生成します。
-#'
-#' @param data モデルで使用する観測データや定数（サンプルサイズなど）を含む名前付きリスト。
-#' @param parameters `Dim()` 関数で定義されたパラメータの次元と型（制約）の指定を含む名前付きリスト。
-#' @param model `model_code({})` で定義された、対数事後確率（または尤度と事前分布）を計算するコードブロック。
-#' @param transformed `transform_code({})` で定義された、変換パラメータを計算するコードブロック（省略可能）。
-#' @param generate `transform_code({})` で定義された、生成量を計算するコードブロック（省略可能）。
-#' @param par_names 各パラメータの次元に対応する具体的な変数名のリスト（省略可能）。
-#' @param init パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。
-#' @param view `summary()` などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。
-#'
-#' @return モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。
+#' @param data 観測データを含む名前付きリスト
+#' @param code `rtmb_code(...)` で記述されたモデル定義
+#' @param par_names パラメータの変数名リスト
+#' @param init 初期値のリスト
+#' @param view summaryで優先表示する変数名のベクトル
 #' @export
-rtmb_model <- function(data, parameters, model,
-                       transformed = NULL,
-                       generate = NULL,
-                       par_names = list(),
-                       init = NULL,
-                       view = NULL) {
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL) {
 
-  raw_params <- substitute(parameters)
+  if (!"parameters" %in% names(code)) stop("code の中に 'parameters = { ... }' ブロックが必要です。")
+  if (!"model" %in% names(code)) stop("code の中に 'model = { ... }' ブロックが必要です。")
 
-  if (is.call(raw_params) && (identical(raw_params[[1]], as.name("list")) || identical(raw_params[[1]], as.name("alist")))) {
-    param_exprs <- as.list(raw_params)[-1]
-  } else {
-    param_exprs <- parameters
-  }
-
-  param_names_provided <- names(param_exprs)
-  common_names <- intersect(names(data), param_names_provided)
-  if (length(common_names) > 0) {
-    stop(sprintf("【定義エラー】data と parameters で同じ変数名が使われています: %s\n  * 異なる名前に変更してください。",
-                 paste(common_names, collapse = ", ")), call. = FALSE)
-  }
-
-  for (name in names(data)) {
-    if (is.data.frame(data[[name]])) {
-      stop(sprintf("【data のエラー】'%s' がデータフレーム(data.frame)です。as.matrix() 等で変換してください。", name), call. = FALSE)
+  # --- 1. Data ブロックの静的検証 (オプション) ---
+  if ("data" %in% names(code)) {
+    data_vars <- all.vars(code$data)
+    missing_data <- setdiff(data_vars, names(data))
+    if (length(missing_data) > 0) {
+      stop(sprintf("【data ブロックの宣言エラー】\n宣言された変数 '%s' が、渡された data リスト(%s)の中に存在しません。",
+                   missing_data[1], paste(names(data), collapse = ", ")), call. = FALSE)
     }
   }
 
-  # --- 追加・修正: グローバル環境への依存を断ち切るためのサンドボックス環境 ---
-  # 関数の親環境を「検索パスの2番目 (通常はパッケージ空間)」に設定
-  strict_parent <- parent.env(globalenv())
+  # --- 2. Parameters ブロックの静的検証と評価 ---
+  param_exprs <- as.list(code$parameters)[-1]
+  evaluated_par_list <- list()
+  eval_env <- list2env(data, parent = parent.env(globalenv()))
 
-  build_par_list <- function(dat, params_expr) {
-    # 修正: eval_env の親を strict_parent に変更し、グローバル変数を完全に遮断
-    eval_env <- list2env(dat, parent = strict_parent)
-    evaluated <- list()
-    for (n in names(params_expr)) {
-      p <- params_expr[[n]]
-      evaluated[[n]] <- with_rtmb_error_handling({
-        if (typeof(p) %in% c("language", "symbol")) {
-          eval(p, envir = eval_env)
-        } else {
-          p
-        }
-      }, "parameters (Dim定義)")
+  for (e in param_exprs) {
+    if (is.null(e)) next
+    if (is.call(e) && (identical(e[[1]], as.name("=")) || identical(e[[1]], as.name("<-")))) {
+      v_name <- as.character(e[[2]])
+      d_expr <- e[[3]]
+
+      # ★ Rのスコープに頼らない最強のAST静的解析 ★
+      # all.vars は関数名(Dimなど)を除外し、使われている純粋な変数名だけを抽出します
+      used_vars <- all.vars(d_expr)
+      missing_vars <- setdiff(used_vars, names(data))
+
+      if (length(missing_vars) > 0) {
+        stop(sprintf("【parameters ブロックのエラー】\n存在しない変数 '%s' が使われています。\n  [発生箇所]: %s\n  * data リストに含まれているか確認してください。",
+                     missing_vars[1], paste(deparse(e), collapse = " ")), call. = FALSE)
+      }
+
+      # チェックを通過したものだけを安全に評価
+      evaluated_par_list[[v_name]] <- eval(d_expr, envir = eval_env)
+    } else {
+      stop("parametersブロックの書式エラー: ", paste(deparse(e), collapse = " "))
     }
-    return(evaluated)
-  }
-  evaluated_par_list <- build_par_list(data, param_exprs)
-
-  if (exists("validate_data", mode = "function")) {
-    validate_data(data, evaluated_par_list)
   }
 
-  # === C++に渡す前にR側で完全テストする (Sandbox化) ===
+  # --- 3. 動的コンパイル (model, transform, generate) ---
+  # ユーザーが手動で model_code({}) 等で囲む手間を省き、ここで自動でマクロを適用します
+  comp_model <- eval(bquote(model_code(.(code$model))))
+
+  comp_transform <- NULL
+  if ("transform" %in% names(code)) {
+    comp_transform <- eval(bquote(transform_code(.(code$transform))))
+  }
+
+  comp_generate <- NULL
+  if ("generate" %in% names(code)) {
+    comp_generate <- eval(bquote(transform_code(.(code$generate))))
+  }
+
+  # --- 4. 事前テスト (Sandbox実行) ---
   cat("Pre-checking model code...\n")
   test_para <- lapply(evaluated_par_list, function(p) {
-    if (!is.null(p$init)) {
-      return(array(rep(p$init, length.out = p$length), dim = p$dim))
-    }
+    if (!is.null(p$init)) return(array(rep(p$init, length.out = p$length), dim = p$dim))
     return(array(0, dim = p$dim))
   })
 
-  # 1. transform ブロックのテストと結果の保持
-  if (!is.null(transformed)) {
-    orig_env_trans <- environment(transformed)
-    environment(transformed) <- strict_parent
+  strict_parent <- parent.env(globalenv())
 
-    test_tran <- with_rtmb_error_handling({
-      transformed(data, test_para)
-    }, "transform")
-
-    environment(transformed) <- orig_env_trans
-
-    if (is.list(test_tran)) {
-      test_para <- c(test_para, test_tran)
-    }
+  if (!is.null(comp_transform)) {
+    environment(comp_transform) <- strict_parent
+    test_tran <- with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
+    if (is.list(test_tran)) test_para <- c(test_para, test_tran)
   }
 
-  # 2. model ブロックのテスト (transformの結果を含む)
-  orig_env_model <- environment(model)
-  environment(model) <- strict_parent
+  environment(comp_model) <- strict_parent
+  with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
 
-  with_rtmb_error_handling({
-    model(data, test_para)
-  }, "model")
-
-  environment(model) <- orig_env_model
-
-  # 3. generate ブロックのテスト (transformの結果を含む)
-  if (!is.null(generate)) {
-    orig_env_gen <- environment(generate)
-    environment(generate) <- strict_parent
-
-    with_rtmb_error_handling({
-      generate(data, test_para)
-    }, "generate")
-
-    environment(generate) <- orig_env_gen
+  if (!is.null(comp_generate)) {
+    environment(comp_generate) <- strict_parent
+    with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
   }
 
-  # --- 実行時用ラップ関数の作成 ---
-  orig_model <- model
-  safe_model <- function(dat, para) {
-    with_rtmb_error_handling({ orig_model(dat, para) }, "model")
-  }
+  # --- 5. 実行用安全ラッパーの作成 ---
+  safe_model <- function(dat, para) { with_rtmb_error_handling({ comp_model(dat, para) }, "model") }
 
   safe_transformed <- NULL
-  if (!is.null(transformed)) {
-    orig_transformed <- transformed
+  if (!is.null(comp_transform)) {
     safe_transformed <- function(dat, para) {
-      with_rtmb_error_handling({
-        res <- orig_transformed(dat, para)
-        if (!is.list(res)) stop("戻り値は「名前付きリスト (list)」である必要があります。")
-        res
-      }, "transform")
+      res <- with_rtmb_error_handling({ comp_transform(dat, para) }, "transform")
+      if (!is.list(res)) stop("戻り値は「名前付きリスト (list)」である必要があります。")
+      res
     }
-    attr(safe_transformed, "raw_expr") <- attr(orig_transformed, "raw_expr")
+    attr(safe_transformed, "raw_expr") <- code$transform
   }
 
   safe_generate <- NULL
-  if (!is.null(generate)) {
-    orig_generate <- generate
+  if (!is.null(comp_generate)) {
     safe_generate <- function(dat, para) {
-      with_rtmb_error_handling({
-        res <- orig_generate(dat, para)
-        if (!is.list(res)) stop("戻り値は「名前付きリスト (list)」である必要があります。")
-        res
-      }, "generate")
+      res <- with_rtmb_error_handling({ comp_generate(dat, para) }, "generate")
+      if (!is.list(res)) stop("戻り値は「名前付きリスト (list)」である必要があります。")
+      res
     }
-    attr(safe_generate, "raw_expr") <- attr(orig_generate, "raw_expr")
+    attr(safe_generate, "raw_expr") <- code$generate
   }
 
-  # --- R6クラスへ渡す ---
+  # --- 6. R6クラスへ渡す ---
   obj <- RTMB_Model$new(
     data       = data,
     par_list   = evaluated_par_list,
@@ -215,6 +176,22 @@ rtmb_model <- function(data, parameters, model,
 
   return(obj)
 }
+
+#' StanライクなRTMBモデル定義ブロック
+#'
+#' @description
+#' data, parameters, transform, model, generate の各ブロックをひとまとめにして記述します。
+#'
+#' @param ... 各ブロックのコード (例: parameters = { ... })
+#' @return 未評価のコードブロックのリスト
+#' @export
+rtmb_code <- function(...) {
+  # ユーザーが書いたブロックを評価せずにリストとしてキャプチャ
+  exprs <- as.list(match.call())[-1]
+  return(exprs)
+}
+
+
 #' Model Code Wrapper for RTMB
 #'
 #' @param expr A block of code containing model description.
@@ -317,13 +294,39 @@ model_code <- function(expr, env = parent.frame()) {
 #'
 #' @description
 #' `rtmb_model` に渡すパラメータのリストを定義します。
-#' 変数の評価をモデル構築時まで遅延させることで、次元指定（Dim）の厳密なエラーチェックを可能にします。
+#' `{}` で囲まれたブロック内で `変数名 = Dim(...)` の形式で記述することで、
+#' 評価を遅延させ、モデル構築時の厳密なエラーチェックを可能にします。
 #'
-#' @param ... `名前 = Dim(...)` の形式で指定されるパラメータ群
-#' @return 評価が遅延されたパラメータのリスト (alist)
+#' @param expr `{}` で囲まれたパラメータ定義の式
+#' @return 評価が遅延されたパラメータのリスト
 #' @export
-parameters_code <- function(...) {
-  eval(substitute(alist(...)))
+parameters_code <- function(expr) {
+  # ブロック内のコードを評価せず、式(AST)としてキャプチャ
+  ast <- substitute(expr)
+
+  # `{` で囲まれたブロックであるかをチェック
+  if (!is.call(ast) || !identical(ast[[1]], as.name("{"))) {
+    stop("parameters_code は {} で囲まれたブロックを受け取る必要があります。\n例: parameters_code({ beta = Dim(K) })", call. = FALSE)
+  }
+
+  exprs <- as.list(ast)[-1] # 先頭の `{` を除外
+  param_list <- list()
+
+  for (e in exprs) {
+    # 空行はスキップ
+    if (is.null(e)) next
+
+    # 代入演算子 (= または <-) を使っているかをチェック
+    if (is.call(e) && (identical(e[[1]], as.name("=")) || identical(e[[1]], as.name("<-")))) {
+      var_name <- as.character(e[[2]])
+      param_list[[var_name]] <- e[[3]] # 右辺の式 (Dim(...)など) をそのまま保存
+    } else {
+      stop(sprintf("parameters_code内の記述が不正です: '%s'\n「変数名 = Dim(...)」の形式で記述してください。",
+                   paste(deparse(e), collapse = " ")), call. = FALSE)
+    }
+  }
+
+  return(param_list)
 }
 
 #' Transformed Code Wrapper for RTMB

@@ -4,38 +4,19 @@
 \alias{rtmb_model}
 \title{RTMB_Model インスタンスを生成するラッパー関数}
 \usage{
-rtmb_model(
-  data,
-  parameters,
-  model,
-  transformed = NULL,
-  generate = NULL,
-  par_names = list(),
-  init = NULL,
-  view = NULL
-)
+rtmb_model(data, code, par_names = list(), init = NULL, view = NULL)
 }
 \arguments{
-\item{data}{モデルで使用する観測データや定数（サンプルサイズなど）を含む名前付きリスト。}
+\item{data}{観測データを含む名前付きリスト}
 
-\item{parameters}{`Dim()` 関数で定義されたパラメータの次元と型（制約）の指定を含む名前付きリスト。}
+\item{code}{`rtmb_code(...)` で記述されたモデル定義}
 
-\item{model}{`model_code({})` で定義された、対数事後確率（または尤度と事前分布）を計算するコードブロック。}
+\item{par_names}{パラメータの変数名リスト}
 
-\item{transformed}{`transform_code({})` で定義された、変換パラメータを計算するコードブロック（省略可能）。}
+\item{init}{初期値のリスト}
 
-\item{generate}{`transform_code({})` で定義された、生成量を計算するコードブロック（省略可能）。}
-
-\item{par_names}{各パラメータの次元に対応する具体的な変数名のリスト（省略可能）。}
-
-\item{init}{パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。}
-
-\item{view}{`summary()` などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。}
-}
-\value{
-モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。
+\item{view}{summaryで優先表示する変数名のベクトル}
 }
 \description{
-ユーザーが定義したデータ、パラメータ、およびモデルコード（尤度や事前分布）を結合し、
-ベイズ推論（MCMC, VB, MAP推定）を実行するための `RTMB_Model` (R6クラス) インスタンスを生成します。
+RTMB_Model インスタンスを生成するラッパー関数
 }
