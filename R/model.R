@@ -139,16 +139,16 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
   # --- 3. 動的コンパイル (model, transform, generate) ---
   user_env <- if (!is.null(code$env)) code$env else parent.frame()
 
-  comp_model <- model_code(code$model, env = user_env)
+  comp_model <- eval(bquote(model_code(.(code$model), env = user_env)))
 
   comp_transform <- NULL
   if ("transform" %in% names(code)) {
-    comp_transform <- transform_code(code$transform, env = user_env)
+    comp_transform <- eval(bquote(transform_code(.(code$transform), env = user_env)))
   }
 
   comp_generate <- NULL
   if ("generate" %in% names(code)) {
-    comp_generate <- transform_code(code$generate, env = user_env)
+    comp_generate <- eval(bquote(transform_code(.(code$generate), env = user_env)))
   }
 
   # --- 4. 事前テスト (Sandbox実行) ---
