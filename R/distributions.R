@@ -326,6 +326,28 @@ lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
   }
   return(lp)
 }
+#' #' Positive lower-triangular normal log-probability density function
+#'
+#' @param x A matrix of lower-triangular parameters (Cholesky factor with positive diagonals).
+#' @param mean Mean of the normal distribution (assumed to be 0 for the half-normal correction).
+#' @param sd Standard deviation of the normal distribution.
+#' @return The log-density calculated for the non-zero lower triangular elements.
+#' @export
+positive_lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
+  R <- nrow(x)
+  C <- ncol(x)
+  lp <- 0
+
+  for (j in 1:min(R, C)) {
+    val <- x[j:R, j]
+    lp <- lp + sum(dnorm(val, mean, sd, log = TRUE))
+  }
+
+  num_diag <- min(R, C)
+  lp <- lp + num_diag * log(2)
+
+  return(lp)
+}
 #' Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix
 #'
 #' @param x Vector or matrix of quantiles.
@@ -405,7 +427,7 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
 #' @param K Dimension. If NULL, inferred from the length of x.
 #' @return The log-density.
 #' @export
-sum_to_zero_norm_lpdf <- function(x, sigma = 1, K = NULL) {
+sum_to_zero_multi_norm_lpdf <- function(x, sigma = 1, K = NULL) {
   if (is.null(K)) K <- length(x)
   lp <- -0.5 * (K - 1) * log(2 * pi) - (K - 1) * log(sigma) - 0.5 * sum(x^2) / sigma^2
   return(lp)
@@ -417,7 +439,7 @@ sum_to_zero_norm_lpdf <- function(x, sigma = 1, K = NULL) {
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
 #' @export
-centered_tri_normal_lpdf <- function(x, sigma = 1) {
+centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
   max_d <- min(C, R - 1)
@@ -437,42 +459,19 @@ centered_tri_normal_lpdf <- function(x, sigma = 1) {
   }
   return(lp)
 }
-#' #' Positive lower-triangular normal log-probability density function
-#'
-#' @param x A matrix of lower-triangular parameters (Cholesky factor with positive diagonals).
-#' @param mean Mean of the normal distribution (assumed to be 0 for the half-normal correction).
-#' @param sd Standard deviation of the normal distribution.
-#' @return The log-density calculated for the non-zero lower triangular elements.
-#' @export
-positive_lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
-  R <- nrow(x)
-  C <- ncol(x)
-  lp <- 0
-
-  for (j in 1:min(R, C)) {
-    val <- x[j:R, j]
-    lp <- lp + sum(dnorm(val, mean, sd, log = TRUE))
-  }
-
-  num_diag <- min(R, C)
-  lp <- lp + num_diag * log(2)
-
-  return(lp)
-}
-
 #' Positive centered triangular multivariate normal log-probability density function
 #'
 #' @param x Matrix of quantiles (centered triangular matrix with positive diagonals).
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
 #' @export
-positive_centered_tri_normal_lpdf <- function(x, sigma = 1) {
+positive_centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
   max_d <- min(C, R - 1)
 
-  # 元の centered_tri_mvnormal_lpdf を計算
-  lp <- centered_tri_mvnormal_lpdf(x, sigma)
+  # 元の centered_tri_muilti_normal_lpdf を計算
+  lp <- centered_tri_nulti_normal_lpdf(x, sigma)
 
   # 切断正規分布としての正規化定数を補正（各列で1/2になるため、密度を 2^max_d 倍する）
   lp <- lp + max_d * log(2)
@@ -480,30 +479,39 @@ positive_centered_tri_normal_lpdf <- function(x, sigma = 1) {
   return(lp)
 }
 
-#' Best-Worst Scaling log-probability mass function
+#' Best-Worst Categorical Logit Log-PMF (RTMB optimized)
 #'
-#' @param x Integer. The index of the chosen best-worst pair (1 to C*(C-1)).
-#' @param U A numeric vector of utilities for the items in the current choice set.
-#' @param lambda A numeric scalar for the scale parameter (default is 1).
-#' @return The log-probability of the observed best-worst choice.
+#' @param x Vector of indices of the selected pairs.
+#' @param U Vector of utilities for each item.
+#' @param lambda Scaling parameter.
+#' @return Log-probability (scalar advector).
 #' @export
 bw_categorical_logit_lpmf <- function(x, U, lambda = 1) {
+  # 1. Handle missing values
+  if (any(is.na(as.numeric(x)))) return(0)
+
   C <- length(U)
-  ad_zero <- U[1] * 0
-  U_dif <- rep(ad_zero, C * (C - 1))
 
-  q_idx <- 1
-  for (i in 1:C) {
-    for (j in 1:C) {
-      if (i != j) {
-        U_dif[q_idx] <- U[i] - U[j]
-        q_idx <- q_idx + 1
-      }
-    }
-  }
+  # 2. Generate all pairs (i, j) where i != j using vectorized operations
+  # Instead of loops, we use rep() to create index vectors
+  idx_i <- rep(1:C, each = C)
+  idx_j <- rep(1:C, times = C)
+  mask <- idx_i != idx_j # Logical vector to exclude i == j
 
+  # 3. Compute utility differences for all pairs at once
+  # This avoids partial assignment and keeps the AD tape clean
+  U_dif <- U[idx_i[mask]] - U[idx_j[mask]]
+
+  # 4. Compute log-probabilities
+  # eta is a vector of length C*(C-1)
   eta <- lambda * U_dif
-  return(eta[x] - log_sum_exp(eta))
+
+  # Log-sum-exp is computed once per set
+  # sum(eta[x]) handles multiple observations if x is a vector
+  log_p_obs <- sum(eta[x])
+  log_p_denom <- length(x) * log_sum_exp(eta)
+
+  return(log_p_obs - log_p_denom)
 }
 #' Wishart log-probability density function
 #'

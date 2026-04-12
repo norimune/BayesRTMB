@@ -42,7 +42,7 @@ squared_distance <- function(x, y, eps = 1e-8) {
 #' @export
 log_sum_exp <- function(x, y = NULL) {
   if (is.null(y)) {
-    max_val <- max(as.numeric(x))
+    max_val <- max(x)
     return(max_val + log(sum(exp(x - max_val))))
   } else {
     max_val <- (x + y + abs(x - y)) / 2

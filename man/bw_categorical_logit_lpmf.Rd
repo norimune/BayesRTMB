@@ -2,20 +2,20 @@
 % Please edit documentation in R/distributions.R
 \name{bw_categorical_logit_lpmf}
 \alias{bw_categorical_logit_lpmf}
-\title{Best-Worst Scaling log-probability mass function}
+\title{Best-Worst Categorical Logit Log-PMF (RTMB optimized)}
 \usage{
 bw_categorical_logit_lpmf(x, U, lambda = 1)
 }
 \arguments{
-\item{x}{Integer. The index of the chosen best-worst pair (1 to C*(C-1)).}
+\item{x}{Vector of indices of the selected pairs.}
 
-\item{U}{A numeric vector of utilities for the items in the current choice set.}
+\item{U}{Vector of utilities for each item.}
 
-\item{lambda}{A numeric scalar for the scale parameter (default is 1).}
+\item{lambda}{Scaling parameter.}
 }
 \value{
-The log-probability of the observed best-worst choice.
+Log-probability (scalar advector).
 }
 \description{
-Best-Worst Scaling log-probability mass function
+Best-Worst Categorical Logit Log-PMF (RTMB optimized)
 }
