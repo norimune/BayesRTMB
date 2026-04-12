@@ -127,14 +127,14 @@ RTMB_Model <- R6::R6Class(
       target_init <- if (!is.null(init_arg)) init_arg else self$init
 
       if (is.null(target_init)) {
-        return(generate_random_init(self$pl_full, self$par_list, range = 2))
+        return(BayesRTMB:::generate_random_init(self$pl_full, self$par_list, range = 2))
       }
 
       # 名前付きリストが渡された場合（部分的な初期値指定）
       if (is.list(target_init)) {
         # 1. まず全体をランダムな値で初期化し、リスト形式に変換
-        base_vec <- generate_random_init(self$pl_full, self$par_list, range = 2)
-        base_list <- constrained_vector_to_list(base_vec, self$par_list)
+        base_vec <- BayesRTMB:::generate_random_init(self$pl_full, self$par_list, range = 2)
+        base_list <- BayesRTMB:::constrained_vector_to_list(base_vec, self$par_list)
 
         # 2. ユーザーが指定したパラメータだけを上書き
         for (name in names(target_init)) {
@@ -169,8 +169,8 @@ RTMB_Model <- R6::R6Class(
 
       current_init <- self$prepare_init(init)
 
-      current_init_list <- constrained_vector_to_list(current_init, self$par_list)
-      init_unc_list <- to_unconstrained(current_init_list, self$par_list)
+      current_init_list <- BayesRTMB:::constrained_vector_to_list(current_init, self$par_list)
+      init_unc_list <- BayesRTMB:::to_unconstrained(current_init_list, self$par_list)
 
       pl_full_local    <- self$pl_full
       par_list_local   <- self$par_list
@@ -179,7 +179,7 @@ RTMB_Model <- R6::R6Class(
       data_local       <- self$data
 
       f_ad <- function(y_unc_list) {
-        para <- to_constrained(y_unc_list, par_list_local)
+        para <- BayesRTMB:::to_constrained(y_unc_list, par_list_local)
         if (!is.null(self$transform)) {
           tran_res <- self$transform(data_local, para)
           para <- c(para, tran_res)
@@ -188,10 +188,10 @@ RTMB_Model <- R6::R6Class(
 
         # ヤコビアンの対象を条件分岐
         if (jacobian_target == "all") {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
+          lj <- BayesRTMB:::calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
           return(-(lp + lj))
         } else if (jacobian_target == "random") {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
+          lj <- BayesRTMB:::calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
           return(-(lp + lj))
         } else {
           return(-lp)
@@ -681,21 +681,24 @@ RTMB_Model <- R6::R6Class(
 
         base_init <- self$prepare_init(init)
 
-        unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, self$par_list), self$par_list)
+        unc_init_list <- BayesRTMB:::to_unconstrained(
+          BayesRTMB:::constrained_vector_to_list(base_init, self$par_list),
+          self$par_list
+        )
         unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
         if (init_jitter > 0) {
           unc_init_vec <- unc_init_vec + rnorm(length(unc_init_vec), mean = 0, sd = init_jitter)
         }
-        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
-        init_full_list <- to_constrained(unc_init_list_new, self$par_list)
+
+        unc_init_list_new <- BayesRTMB:::unconstrained_vector_to_list(unc_init_vec, self$par_list)
+        init_full_list <- BayesRTMB:::to_constrained(unc_init_list_new, self$par_list)
         init_full <- unlist(init_full_list, use.names = FALSE)
 
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
         ad_obj <- ad_setup$ad_obj
 
-        # NUTS を実行 (save_info を渡す)
-        res <- NUTS_method(
+        res <- BayesRTMB:::NUTS_method(
           model = ad_obj,
           sampling = sampling,
           warmup = warmup,
@@ -721,7 +724,8 @@ RTMB_Model <- R6::R6Class(
             para_list <- ad_obj$env$parList(x = x_in)
           }
 
-          con_list <- to_constrained(para_list, self$par_list)
+          # ここに BayesRTMB::: をつける
+          con_list <- BayesRTMB:::to_constrained(para_list, self$par_list)
           para_final[i, ] <- unlist(con_list, use.names = FALSE)
         }
         res$para <- para_final
@@ -889,7 +893,7 @@ RTMB_Model <- R6::R6Class(
 
         ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
 
-        res <- ADVI_method(
+        res <- BayesRTMB:::ADVI_method(
           model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
           iter = iter, tol_rel_obj = tol_rel_obj,
           window_size = window_size, num_samples = num_samples, alpha = alpha,
@@ -921,7 +925,7 @@ RTMB_Model <- R6::R6Class(
                 p(amount = amount)
               }
 
-              res <- ADVI_method(
+              res <- BayesRTMB:::ADVI_method(
                 model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
                 iter = iter, tol_rel_obj = tol_rel_obj,
                 window_size = window_size, num_samples = num_samples, alpha = alpha,
@@ -933,7 +937,7 @@ RTMB_Model <- R6::R6Class(
 
             future.apply::future_lapply(1:num_estimate, function(c) {
               run_advi_prog(c)
-            }, future.seed = TRUE, future.packages = "RTMB")
+            }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
           })
 
         } else {

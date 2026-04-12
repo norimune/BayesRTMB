@@ -640,7 +640,6 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
 #' @param par_list A list defining the structure and constraints of the parameters, including `unc_length`.
 #' @param range Numeric; the range for the uniform distribution `[-range, range]` used for generating unconstrained values. Default is 2.
 #' @return A numeric vector of initial values where `NA` elements are replaced with randomly generated constrained values.
-#' @export
 generate_random_init <- function(pl_full, par_list, range = 2) {
   unc_list <- list()
   for(name in names(par_list)) {
