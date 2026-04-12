@@ -151,6 +151,17 @@ quad_form_diag <- function(m, v) {
   v_col <- matrix(as.vector(v), ncol = 1)
   return(m * (v_col %*% t(v_col)))
 }
+#' @param K A numeric value
+#' @export
+stz_basis <- function(K) {
+  Q <- matrix(0, nrow = K, ncol = K - 1)
+  for (j in 1:(K - 1)) {
+    Q[1:j, j] <- 1 / sqrt(j * (j + 1))
+    Q[j + 1, j] <- -j / sqrt(j * (j + 1))
+  }
+  return(Q)
+}
+
 #' Sum-to-zero transformation
 #'
 #' Transforms a vector of length K-1 to a vector of length K that sums to zero
