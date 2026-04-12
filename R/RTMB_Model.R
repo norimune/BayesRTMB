@@ -678,7 +678,7 @@ RTMB_Model <- R6::R6Class(
       P_random <- if(!is.null(pl_random)) length(pl_random$names) else 0
 
       run_chain <- function(c, p_callback = NULL) {
-
+        library(BayesRTMB)
         base_init <- self$prepare_init(init)
 
         unc_init_list <- BayesRTMB:::to_unconstrained(
@@ -890,6 +890,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       run_advi <- function(c) {
+        library(BayesRTMB)
         if (print_freq > 0) cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
 
         ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
@@ -921,7 +922,7 @@ RTMB_Model <- R6::R6Class(
             p <- progressr::progressor(steps = total_steps)
 
             run_advi_prog <- function(c) {
-
+              library(BayesRTMB)
               ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
 
               update_prog_fn <- function(amount = 1) {
