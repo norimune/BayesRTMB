@@ -1,3 +1,6 @@
+#' @import RTMB
+NULL
+
 #' Inverse logit function
 #'
 #' @param x A numeric vector.

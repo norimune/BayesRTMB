@@ -1,3 +1,6 @@
+#' @import RTMB
+NULL
+
 #' Normal log-probability density function
 #'
 #' @param x Vector of quantiles.

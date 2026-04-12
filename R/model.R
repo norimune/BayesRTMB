@@ -137,34 +137,29 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
   }
 
   # --- 3. 動的コンパイル (model, transform, generate) ---
-  # ユーザーが手動で model_code({}) 等で囲む手間を省き、ここで自動でマクロを適用します
-  comp_model <- eval(bquote(model_code(.(code$model))))
+  user_env <- if (!is.null(code$env)) code$env else parent.frame()
+
+  comp_model <- model_code(code$model, env = user_env)
 
   comp_transform <- NULL
   if ("transform" %in% names(code)) {
-    comp_transform <- eval(bquote(transform_code(.(code$transform))))
+    comp_transform <- transform_code(code$transform, env = user_env)
   }
 
   comp_generate <- NULL
   if ("generate" %in% names(code)) {
-    comp_generate <- eval(bquote(transform_code(.(code$generate))))
+    comp_generate <- transform_code(code$generate, env = user_env)
   }
 
   # --- 4. 事前テスト (Sandbox実行) ---
   cat("Pre-checking model code...\n")
-
-  # テストの再現性を保つために一時的にシードを固定
   set.seed(12345)
 
-  # 無制約空間で微小な乱数を生成
   test_unc_list <- lapply(evaluated_par_list, function(p) {
     rnorm(p$unc_length, mean = 0, sd = 0.1)
   })
-
-  # to_constrained を使って制約(正値、相関行列など)を完全に満たしたテストデータを作る
   test_para <- to_constrained(test_unc_list, evaluated_par_list)
 
-  # ユーザー指定の init がある場合は上書き (NAの部分はテスト用の安全な乱数を維持)
   for (name in names(evaluated_par_list)) {
     p <- evaluated_par_list[[name]]
     if (!is.null(p$init)) {
@@ -176,19 +171,14 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
     }
   }
 
-  strict_parent <- parent.env(globalenv())
-
   if (!is.null(comp_transform)) {
-    environment(comp_transform) <- strict_parent
     test_tran <- with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
     if (is.list(test_tran)) test_para <- c(test_para, test_tran)
   }
 
-  environment(comp_model) <- strict_parent
   with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
 
   if (!is.null(comp_generate)) {
-    environment(comp_generate) <- strict_parent
     with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
   }
 
@@ -327,6 +317,7 @@ rtmb_code <- function(...) {
     stop("rtmb_code() の記述形式が不正です。カンマで区切るか、全体を {} で囲んで記述してください。", call. = FALSE)
   }
 
+  code_list$env <- parent.frame()
   # rtmb_code の段階では名前空間の注入を行わず、そのままASTを返す
   return(code_list)
 }
