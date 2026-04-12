@@ -263,7 +263,8 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
 
     # 関数の中身（引数や、for/if の中身）に対しても再帰的に適用する
     for (i in 2:length(expr)) {
-      if (!missing(expr[[i]])) { # missing 引数でのエラーを回避
+      # 修正箇所: ASTにおける「空の引数」を正しく判定する
+      if (!identical(expr[[i]], quote(expr=))) {
         expr[[i]] <- inject_namespace(expr[[i]], pkg)
       }
     }

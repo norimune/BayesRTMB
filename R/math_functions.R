@@ -151,7 +151,10 @@ quad_form_diag <- function(m, v) {
   v_col <- matrix(as.vector(v), ncol = 1)
   return(m * (v_col %*% t(v_col)))
 }
+#' stz basis function
+#'
 #' @param K A numeric value
+#' @return A transformation matrix
 #' @export
 stz_basis <- function(K) {
   Q <- matrix(0, nrow = K, ncol = K - 1)
