@@ -745,7 +745,9 @@ RTMB_Model <- R6::R6Class(
           results_list <- future.apply::future_lapply(1:chains, function(c) {
             run_chain(c, p_callback = function(msg = "") p(message = msg))
           }, future.seed = TRUE,
-          future.packages = c("RTMB","BayesRTMB")
+          global = TRUE,
+          future.packages = c("RTMB","BayesRTMB"),
+          future.globals =ls(envir = asNamespace("BayesRTMB"))
           )
         })
         future::plan(future::sequential)
@@ -908,7 +910,9 @@ RTMB_Model <- R6::R6Class(
         cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
 
         if (requireNamespace("progressr", quietly = TRUE)) {
-          progressr::handlers(global = TRUE)
+          progressr::handlers(global = TRUE,
+                              future.packages = c("RTMB","BayesRTMB"),
+                              future.globals =ls(envir = asNamespace("BayesRTMB")))
 
           update_interval <- 100
           steps_per_chain <- ceiling(iter / update_interval)
