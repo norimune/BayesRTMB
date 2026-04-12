@@ -310,7 +310,6 @@ rtmb_code <- function(...) {
         if (is.call(e)) {
           block_name <- as.character(e[[1]])
           if (block_name %in% valid_blocks) {
-            # () の中身が存在すればそれを取得、空なら空のブロック{}とする
             code_list[[block_name]] <- if (length(e) >= 2) e[[2]] else quote({})
           } else {
             stop(sprintf("未知のブロック '%s' が指定されています。有効なブロックは %s です。",
@@ -328,16 +327,10 @@ rtmb_code <- function(...) {
     stop("rtmb_code() の記述形式が不正です。カンマで区切るか、全体を {} で囲んで記述してください。", call. = FALSE)
   }
 
-  # --- BayesRTMB パッケージの関数に自動で名前空間(BayesRTMB::)を付与する処理 ---
-  target_blocks <- c("transform", "model", "generate")
-  for (tb in target_blocks) {
-    if (!is.null(code_list[[tb]])) {
-      code_list[[tb]] <- inject_namespace(code_list[[tb]], pkg = "BayesRTMB")
-    }
-  }
-
+  # rtmb_code の段階では名前空間の注入を行わず、そのままASTを返す
   return(code_list)
 }
+
 
 #' Model Code Wrapper for RTMB
 #'
@@ -354,6 +347,9 @@ model_code <- function(expr, env = parent.frame()) {
       raw_expr <- evaluated
     }
   }
+
+  # --- ここで通常の数学関数等に名前空間を注入 ---
+  raw_expr <- inject_namespace(raw_expr, pkg = "BayesRTMB")
 
   # 式を再帰的に走査し、`~` の記述を書き換える
   rewrite_formula <- function(x) {
@@ -373,37 +369,44 @@ model_code <- function(expr, env = parent.frame()) {
         name_lpdf <- paste0(dist_name, "_lpdf")
         name_lpmf <- paste0(dist_name, "_lpmf")
 
-        # --- 修正箇所: 現在の環境だけでなく、BayesRTMB の namespace 内も確実に探索する ---
-        exists_in_env <- function(fname) {
-          # 現在の環境にあるか
-          if (exists(fname, mode = "function", envir = env)) return(TRUE)
-          # BayesRTMB のパッケージ内部にあるか
-          if (requireNamespace("BayesRTMB", quietly = TRUE) &&
-              exists(fname, mode = "function", envir = asNamespace("BayesRTMB"), inherits = FALSE)) return(TRUE)
-          return(FALSE)
+        exists_in_pkg <- function(fname) {
+          requireNamespace("BayesRTMB", quietly = TRUE) &&
+            exists(fname, mode = "function", envir = asNamespace("BayesRTMB"), inherits = FALSE)
         }
 
-        if (exists_in_env(name_lpdf)) {
+        use_pkg_namespace <- FALSE
+
+        if (exists_in_pkg(name_lpdf)) {
           actual_name <- name_lpdf
-        } else if (exists_in_env(name_lpmf)) {
+          use_pkg_namespace <- TRUE
+        } else if (exists_in_pkg(name_lpmf)) {
+          actual_name <- name_lpmf
+          use_pkg_namespace <- TRUE
+        } else if (exists(name_lpdf, mode = "function", envir = env)) {
+          actual_name <- name_lpdf
+        } else if (exists(name_lpmf, mode = "function", envir = env)) {
           actual_name <- name_lpmf
         } else {
-          actual_name <- name_lpdf # どちらも見つからない場合のデフォルト
+          actual_name <- name_lpdf # デフォルト
         }
 
-        # lp <- lp + actual_name(target, args...) の純粋な構文木を作成
+        if (use_pkg_namespace) {
+          func_call <- call("::", as.name("BayesRTMB"), as.name(actual_name))
+        } else {
+          func_call <- as.name(actual_name)
+        }
+
         new_call <- as.call(c(
           as.name("<-"),
           as.name("lp"),
           as.call(c(
             as.name("+"),
             as.name("lp"),
-            as.call(c(as.name(actual_name), target, dist_args))
+            as.call(c(func_call, target, dist_args))
           ))
         ))
         return(new_call)
       }
-      # 再帰的に要素を書き換え
       x[] <- lapply(x, rewrite_formula)
     }
     return(x)
@@ -411,14 +414,12 @@ model_code <- function(expr, env = parent.frame()) {
 
   processed_expr <- rewrite_formula(raw_expr)
 
-  # ブロック {} の場合は中身を展開してフラットにする
   if (is.call(processed_expr) && identical(processed_expr[[1]], as.name("{"))) {
     expr_elements <- as.list(processed_expr)[-1]
   } else {
     expr_elements <- list(processed_expr)
   }
 
-  # 関数の中身（ボディ）を構築
   body_list <- c(
     list(as.name("{")),
     quote(RTMB::getAll(dat, par)),
@@ -428,17 +429,86 @@ model_code <- function(expr, env = parent.frame()) {
   )
   body_expr <- as.call(body_list)
 
-  # 引数リスト `(dat, par)` を作成
   args <- as.pairlist(alist(dat = , par = ))
   fn_expr <- call("function", args, body_expr)
 
-  # 関数の評価（作成）
   log_prob_fn <- eval(fn_expr, envir = env)
-
-  # print_code メソッドなどのために元の構文木を保存
   attr(log_prob_fn, "raw_expr") <- raw_expr
 
   return(log_prob_fn)
+}
+
+
+#' Transformed Code Wrapper for RTMB
+#'
+#' @param expr A block of code containing calculations for transformed parameters.
+#' @param env Environment to assign to the generated function.
+#' @return A function taking (dat, par) that returns a named list.
+#' @export
+transform_code <- function(expr, env = parent.frame()) {
+  raw_expr <- substitute(expr)
+
+  # --- ここで通常の数学関数等に名前空間を注入 ---
+  raw_expr <- inject_namespace(raw_expr, pkg = "BayesRTMB")
+
+  # 1. 中括弧 {} の中身をフラットにする
+  if (is.call(raw_expr) && identical(raw_expr[[1]], as.name("{"))) {
+    expr_elements <- as.list(raw_expr)[-1]
+  } else {
+    expr_elements <- list(raw_expr)
+  }
+
+  # 2. 最後の要素が出力として明示されているか判定
+  last_elem <- expr_elements[[length(expr_elements)]]
+
+  is_explicit_return <- FALSE
+  if (is.call(last_elem)) {
+    if (identical(last_elem[[1]], as.name("list"))) {
+      is_explicit_return <- TRUE
+      ret_call <- last_elem
+    } else if (identical(last_elem[[1]], as.name("return"))) {
+      is_explicit_return <- TRUE
+      ret_call <- last_elem[[2]]
+    }
+  } else if (is.name(last_elem)) {
+    is_explicit_return <- TRUE
+    ret_call <- last_elem
+  }
+
+  if (is_explicit_return) {
+    expr_elements <- expr_elements[-length(expr_elements)]
+  } else {
+    find_assignments <- function(x) {
+      if (is.call(x)) {
+        if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {
+          if (is.name(x[[2]])) return(as.character(x[[2]]))
+        }
+        return(unique(unlist(lapply(as.list(x), find_assignments))))
+      }
+      return(NULL)
+    }
+    defined_vars <- find_assignments(raw_expr)
+    ret_list_args <- lapply(defined_vars, as.name)
+    names(ret_list_args) <- defined_vars
+    ret_call <- as.call(c(list(as.name("list")), ret_list_args))
+  }
+
+  # 3. 関数ボディの構築
+  body_list <- c(
+    list(as.name("{")),
+    quote(RTMB::getAll(dat, par)),
+    unname(expr_elements),
+    list(as.call(list(as.name("return"), ret_call)))
+  )
+  body_expr <- as.call(body_list)
+
+  # 4. 関数オブジェクトの生成
+  args <- as.pairlist(alist(dat = , par = ))
+  fn_expr <- call("function", args, body_expr)
+  fn <- eval(fn_expr, envir = env)
+  attr(fn, "raw_expr") <- raw_expr
+
+  return(fn)
 }
 
 #' パラメータ定義用コードブロック
@@ -489,6 +559,9 @@ parameters_code <- function(expr) {
 transform_code <- function(expr, env = parent.frame()) {
   raw_expr <- substitute(expr)
 
+  # --- ここで通常の数学関数等に名前空間を注入 ---
+  raw_expr <- inject_namespace(raw_expr, pkg = "BayesRTMB")
+
   # 1. 中括弧 {} の中身をフラットにする
   if (is.call(raw_expr) && identical(raw_expr[[1]], as.name("{"))) {
     expr_elements <- as.list(raw_expr)[-1]
@@ -514,12 +587,8 @@ transform_code <- function(expr, env = parent.frame()) {
   }
 
   if (is_explicit_return) {
-    # 明示的に出力が指定されている場合、それを出力として採用
-    # 重複評価を防ぐため、通常の実行フローから最後の要素を削除
     expr_elements <- expr_elements[-length(expr_elements)]
-
   } else {
-    # 記述がない場合は従来通り自動抽出する
     find_assignments <- function(x) {
       if (is.call(x)) {
         if (identical(x[[1]], as.name("<-")) || identical(x[[1]], as.name("="))) {

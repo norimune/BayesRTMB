@@ -5,6 +5,8 @@
 \title{Transformed Code Wrapper for RTMB}
 \usage{
 transform_code(expr, env = parent.frame())
+
+transform_code(expr, env = parent.frame())
 }
 \arguments{
 \item{expr}{A block of code containing calculations for transformed parameters.}
@@ -13,7 +15,11 @@ transform_code(expr, env = parent.frame())
 }
 \value{
 A function taking (dat, par) that returns a named list.
+
+A function taking (dat, par) that returns a named list.
 }
 \description{
+Transformed Code Wrapper for RTMB
+
 Transformed Code Wrapper for RTMB
 }
