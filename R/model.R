@@ -216,10 +216,7 @@ rtmb_code <- function(...) {
   code_list <- list()
   valid_blocks <- c("data", "parameters", "transform", "model", "generate")
 
-  # ---------------------------------------------------------
   # パターン1: 前者の書き方 (名前付き引数・カンマ区切り)
-  # 例: rtmb_code(parameters = { ... }, model = { ... })
-  # ---------------------------------------------------------
   if (!is.null(names(args))) {
     for (name in names(args)) {
       if (name == "") next
@@ -234,10 +231,7 @@ rtmb_code <- function(...) {
     if (length(code_list) > 0) return(code_list)
   }
 
-  # ---------------------------------------------------------
   # パターン2: 後者の書き方 (Stan風・カンマなし・全体を{}で囲む)
-  # 例: rtmb_code({ parameters({}) model({}) })
-  # ---------------------------------------------------------
   if (length(args) == 1 && is.null(names(args))) {
     ast <- args[[1]]
     if (is.call(ast) && identical(ast[[1]], as.name("{"))) {
@@ -346,7 +340,7 @@ model_code <- function(expr, env = parent.frame()) {
   # 関数の中身（ボディ）を構築: { getAll(dat, par); lp <- 0; ... ; return(lp) }
   body_list <- c(
     list(as.name("{")),
-    quote(getAll(dat, par)),
+    quote(RTMB::getAll(dat, par)),
     quote(lp <- 0),
     unname(expr_elements),
     quote(return(lp))
@@ -463,7 +457,7 @@ transform_code <- function(expr, env = parent.frame()) {
   # 3. 関数ボディの構築
   body_list <- c(
     list(as.name("{")),
-    quote(getAll(dat, par)),
+    quote(RTMB::getAll(dat, par)),
     unname(expr_elements),
     list(as.call(list(as.name("return"), ret_call)))
   )
