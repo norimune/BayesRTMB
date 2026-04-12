@@ -631,7 +631,16 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
   }
   return(lj)
 }
-
+#' Generate Random Initial Values
+#'
+#' @description Generates random initial values for model parameters by drawing from a uniform distribution
+#' on the unconstrained scale and then transforming them to the constrained scale.
+#'
+#' @param pl_full A list containing the full parameter structure, including the `init` field which serves as a template.
+#' @param par_list A list defining the structure and constraints of the parameters, including `unc_length`.
+#' @param range Numeric; the range for the uniform distribution `[-range, range]` used for generating unconstrained values. Default is 2.
+#' @return A numeric vector of initial values where `NA` elements are replaced with randomly generated constrained values.
+#' @export
 generate_random_init <- function(pl_full, par_list, range = 2) {
   unc_list <- list()
   for(name in names(par_list)) {
