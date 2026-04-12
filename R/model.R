@@ -273,7 +273,6 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
   return(expr)
 }
 
-
 #' StanライクなRTMBモデル定義ブロック (ハイブリッド対応版)
 #'
 #' @description
@@ -349,8 +348,6 @@ rtmb_code <- function(...) {
 model_code <- function(expr, env = parent.frame()) {
   raw_expr <- substitute(expr)
 
-  # 修正点1: ユーザーが変数として quote() を渡した場合への対応
-  # 例: my_ast <- quote({ Y ~ normal(0,1) }); model_code(my_ast)
   if (is.name(raw_expr)) {
     evaluated <- eval(raw_expr, envir = env)
     if (is.language(evaluated)) {
@@ -365,8 +362,6 @@ model_code <- function(expr, env = parent.frame()) {
         target <- x[[2]]
         dist_call <- x[[3]]
 
-        # 修正点2: 右辺が関数呼び出しでない場合のエラーハンドリング
-        # 例: Y ~ normal （カッコがない）と書かれた場合を防ぐ
         if (!is.call(dist_call)) {
           stop(sprintf("The right side of '~' must be a distribution function call. (e.g., %s( ... ))",
                        as.character(dist_call)), call. = FALSE)
@@ -378,13 +373,22 @@ model_code <- function(expr, env = parent.frame()) {
         name_lpdf <- paste0(dist_name, "_lpdf")
         name_lpmf <- paste0(dist_name, "_lpmf")
 
-        # 環境に存在する方を優先的に採用
-        if (exists(name_lpdf, mode = "function", envir = env)) {
+        # --- 修正箇所: 現在の環境だけでなく、BayesRTMB の namespace 内も確実に探索する ---
+        exists_in_env <- function(fname) {
+          # 現在の環境にあるか
+          if (exists(fname, mode = "function", envir = env)) return(TRUE)
+          # BayesRTMB のパッケージ内部にあるか
+          if (requireNamespace("BayesRTMB", quietly = TRUE) &&
+              exists(fname, mode = "function", envir = asNamespace("BayesRTMB"), inherits = FALSE)) return(TRUE)
+          return(FALSE)
+        }
+
+        if (exists_in_env(name_lpdf)) {
           actual_name <- name_lpdf
-        } else if (exists(name_lpmf, mode = "function", envir = env)) {
+        } else if (exists_in_env(name_lpmf)) {
           actual_name <- name_lpmf
         } else {
-          actual_name <- name_lpdf # デフォルト
+          actual_name <- name_lpdf # どちらも見つからない場合のデフォルト
         }
 
         # lp <- lp + actual_name(target, args...) の純粋な構文木を作成
@@ -414,8 +418,7 @@ model_code <- function(expr, env = parent.frame()) {
     expr_elements <- list(processed_expr)
   }
 
-  # 修正点3: body_list の要素に意図しない名前が付かないよう unname で安全化
-  # 関数の中身（ボディ）を構築: { getAll(dat, par); lp <- 0; ... ; return(lp) }
+  # 関数の中身（ボディ）を構築
   body_list <- c(
     list(as.name("{")),
     quote(RTMB::getAll(dat, par)),
