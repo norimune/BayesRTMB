@@ -24,7 +24,7 @@ plot_MDU<- function(delta,theta,phi,i=1,j=2,R=3,minus=c(1,1), alpha = 0.2){
     points(x+r*cos(theta), y+r*sin(theta),type="l",col=rgb(0,0,1,alpha=alpha))
   }
   plot(c(-R,R), c(-R,R),type="n")
-  text(minus2[i]*delta[,i],minus2[i]*delta[,j])
+  text(minus2[i]*delta[,i],minus2[j]*delta[,j])
   for(m in 1:M){
     plot.circle(minus2[i]*delta[m,i], minus2[j]*delta[m,j], (phi[m]-min(phi)))
   }
