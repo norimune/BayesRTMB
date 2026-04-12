@@ -1,0 +1,512 @@
+devtools::document()
+devtools::check()
+# loading
+devtools::load_all()
+#file.remove("NAMESPACE")
+# document create
+devtools::document()
+# loading
+devtools::load_all()
+set.seed(123)
+N <- 200
+J <- 15
+K <- 3
+# 単純構造の負荷量行列: 15項目 × 3因子
+Lambda_true <- matrix(0, nrow = J, ncol = K)
+Lambda_true[1:5,   1] <- 0.8
+Lambda_true[6:10,  2] <- 0.8
+Lambda_true[11:15, 3] <- 0.8
+# 因子得点: N × 3
+eta_true <- matrix(rnorm(N * K), nrow = N, ncol = K)
+# 誤差標準偏差
+sigma_true <- rep(sqrt(1 - 0.8^2), J)   # = 0.6
+# 観測データ生成
+mean <- eta_true %*% t(Lambda_true)       # N × J
+Y <- mean + matrix(rnorm(N * J, 0, rep(sigma_true, each = N)),
+nrow = N, ncol = J)
+Y_bar <- apply(Y,2,mean)
+S_Y <- cov(Y)*(N-1)
+dat_fa <- list(
+N     = N,
+Y_bar = Y_bar,
+S_Y   = S_Y
+)
+par_fa <- list(
+mu = Dim(dim = J),
+Lambda = Dim(dim = c(J, K), type = "CF_cov"),
+psi = Dim(dim = J, lower = 0)
+)
+model_fa <- model_code({
+S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mu, psi, Lambda)
+mu ~ normal(0, 10)
+psi ~ exponential(1)
+Lambda ~ positive_lower_tri_normal(0, 1)
+})
+eig <- eigen(S_Y)
+L_pca <- eig$vectors[, 1:K] %*% diag(sqrt(eig$values[1:K]))
+L_top <- L_pca[1:K, ]
+qr_res <- qr(t(L_top))
+Q_mat <- qr.Q(qr_res)
+init_Lambda <- L_pca %*% Q_mat
+for (k in 1:K) {
+if (init_Lambda[k, k] < 0) {
+init_Lambda[, k] <- -init_Lambda[, k]
+}
+}
+init_psi <- diag(S_Y) - rowSums(init_Lambda^2)
+# リストにまとめる
+init_fa <- list(
+mu     = Y_bar,
+Lambda = init_Lambda,
+psi    = init_psi
+)
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+# loading
+devtools::load_all()
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+par_fa <- list(
+mu = Dim(dim = J),
+Lambda = Dim(dim = c(J, K), type = "positive_lower_tri"),
+psi = Dim(dim = J, lower = 0)
+)
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+fit_fa <- mdl_fa$sample()
+fit_fa$print()
+# loading
+devtools::load_all()
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+fit_fa <- mdl_fa$sample()
+fit_fa$print()
+# loading
+devtools::load_all()
+fit_fa <- mdl_fa$sample()
+fit_fa$print()
+# loading
+devtools::load_all()
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+fit_fa <- mdl_fa$sample()
+fit_fa$print()
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+# リストにまとめる
+init_fa <- list(
+mu     = Y_bar,
+Lambda = init_Lambda,
+psi    = init_psi
+)
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 2000,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 2000,
+eval.max = 200,
+rel.tol = 1e-6   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-6   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-6   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa$par$Lambda
+fit_fa$print("Lambda")
+fit_fa$rotate(target="Lambda")
+fit_fa$print("Lambda_rot")
+# loading
+devtools::load_all()
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+fit_fa <- mdl_fa$sample()
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-10   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-9   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 2000,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,#init=init_fa,
+control = list(
+iter.max = 2000,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 2000,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+fit_fa <- mdl_fa$sample()
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-7   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+# データ生成 (4x4 相関行列)
+set.seed(123)
+N <- 200 # サンプルサイズ
+D <- 4   # 次元数
+# 真の相関行列 (対角成分は1、非対角成分は-1~1)
+R_true <- matrix(c(
+1.0,  0.6,  0.3, -0.4,
+0.6,  1.0,  0.5, -0.2,
+0.3,  0.5,  1.0,  0.1,
+-0.4, -0.2,  0.1,  1.0
+), nrow = D, ncol = D)
+# 真の標準偏差
+sigma_true <- c(1.0, 1.5, 0.8, 2.0)
+# 真の分散共分散行列の構築: diag(sigma) %*% R %*% diag(sigma)
+D_mat_true <- diag(sigma_true)
+Sigma_true <- D_mat_true %*% R_true %*% D_mat_true
+# 多変量正規分布からデータをサンプリング
+Y_obs <- MASS::mvrnorm(N, mu = rep(0, D), Sigma = Sigma_true)
+Y_bar <- apply(Y_obs,2,mean)
+S_mat <- cov(Y_obs)*(N-1)
+dat_cor <- list(
+Y_bar = Y_bar,
+S_mat = S_mat
+)
+par_cor <- list(
+mean    = Dim(D),
+sd      = Dim(D, lower = 0),
+CF_corr = Dim(c(D, D), type = "CF_corr")
+)
+model_cor <- model_code({
+mean ~ normal(0, 10)
+sd ~ exponential(10)
+CF_corr ~ lkj_CF_corr(1)
+S_mat ~ sufficient_mvnorm_CF(N, Y_bar, mean, sd, CF_corr)
+})
+gene_cor <- transformed_code({
+corr <- CF_corr%*%t(CF_corr)
+})
+mdl_cor <-
+rtmb_model(dat_cor, par_cor, model_cor, generate = gene_cor)
+model_cor <- model_code({
+mean ~ normal(0, 10)
+sd ~ exponential(10)
+CF_corr ~ lkj_CF_corr(1)
+S_mat ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
+})
+gene_cor <- transformed_code({
+corr <- CF_corr%*%t(CF_corr)
+})
+mdl_cor <-
+rtmb_model(dat_cor, par_cor, model_cor, generate = gene_cor)
+t <- proc.time()
+fit_cor <- mdl_cor$sample()
+proc.time() - t
+fit_cor$bridgesampling()
+fit_cor$generate$corr
+library(psych)
+Y_raw <- bfi[1:500,1:25] |> na.omit()
+Y <- as.matrix(Y_raw)  # ここが重要！ matrix型にする
+# 2. 定数の定義（Dim() で使うために変数として切り出す）
+N <- nrow(Y)
+J <- ncol(Y)
+K <- 5
+Y_bar <- apply(Y_obs,2,mean)
+S_Y <- cov(Y)*(N-1)
+dat_fa <- list(
+N     = N,
+Y_bar = Y_bar,
+S_Y   = S_Y
+)
+par_fa <- list(
+mu = Dim(dim = J),
+Lambda = Dim(dim = c(J, K), type = "positive_lower_tri"),
+psi = Dim(dim = J, lower = 0)
+)
+model_fa <- model_code({
+S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mu, psi, Lambda)
+mu ~ normal(0, 10)
+psi ~ exponential(1)
+Lambda ~ positive_lower_tri_normal(0, 1)
+})
+eig <- eigen(S_Y)
+L_pca <- eig$vectors[, 1:K] %*% diag(sqrt(eig$values[1:K]))
+L_top <- L_pca[1:K, ]
+qr_res <- qr(t(L_top))
+Q_mat <- qr.Q(qr_res)
+init_Lambda <- L_pca %*% Q_mat
+for (k in 1:K) {
+if (init_Lambda[k, k] < 0) {
+init_Lambda[, k] <- -init_Lambda[, k]
+}
+}
+init_psi <- diag(S_Y) - rowSums(init_Lambda^2)
+# リストにまとめる
+init_fa <- list(
+mu     = Y_bar,
+Lambda = init_Lambda,
+psi    = init_psi
+)
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+Y_obs,
+Y_obs
+library(psych)
+Y_raw <- bfi[1:500,1:25] |> na.omit()
+Y <- as.matrix(Y_raw)  # ここが重要！ matrix型にする
+# 2. 定数の定義（Dim() で使うために変数として切り出す）
+N <- nrow(Y)
+J <- ncol(Y)
+K <- 5
+Y_bar <- apply(Y,2,mean)
+S_Y <- cov(Y)*(N-1)
+dat_fa <- list(
+N     = N,
+Y_bar = Y_bar,
+S_Y   = S_Y
+)
+par_fa <- list(
+mu = Dim(dim = J),
+Lambda = Dim(dim = c(J, K), type = "positive_lower_tri"),
+psi = Dim(dim = J, lower = 0)
+)
+model_fa <- model_code({
+S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mu, psi, Lambda)
+mu ~ normal(0, 10)
+psi ~ exponential(1)
+Lambda ~ positive_lower_tri_normal(0, 1)
+})
+eig <- eigen(S_Y)
+L_pca <- eig$vectors[, 1:K] %*% diag(sqrt(eig$values[1:K]))
+L_top <- L_pca[1:K, ]
+qr_res <- qr(t(L_top))
+Q_mat <- qr.Q(qr_res)
+init_Lambda <- L_pca %*% Q_mat
+for (k in 1:K) {
+if (init_Lambda[k, k] < 0) {
+init_Lambda[, k] <- -init_Lambda[, k]
+}
+}
+init_psi <- diag(S_Y) - rowSums(init_Lambda^2)
+# リストにまとめる
+init_fa <- list(
+mu     = Y_bar,
+Lambda = init_Lambda,
+psi    = init_psi
+)
+mdl_fa <- rtmb_model(dat_fa,
+par_fa,
+model_fa)
+fit_fa <- mdl_fa$sample()
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-8   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 200,
+eval.max = 200,
+rel.tol = 1e-6   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+opt_fa <- mdl_fa$optimize(num_estimate = 4,init=init_fa,
+control = list(
+iter.max = 2000,
+eval.max = 200,
+rel.tol = 1e-6   # 相対誤差の許容範囲を少し緩める
+#x.tol = 1e-6
+))
+fit_fa <- mdl_fa$variational()

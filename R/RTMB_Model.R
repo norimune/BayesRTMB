@@ -745,9 +745,8 @@ RTMB_Model <- R6::R6Class(
           results_list <- future.apply::future_lapply(1:chains, function(c) {
             run_chain(c, p_callback = function(msg = "") p(message = msg))
           }, future.seed = TRUE,
-          global = TRUE,
           future.packages = c("RTMB","BayesRTMB"),
-          future.globals =ls(envir = asNamespace("BayesRTMB"))
+          future.globals =TRUE
           )
         })
         future::plan(future::sequential)
