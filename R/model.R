@@ -231,6 +231,48 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
   return(obj)
 }
 
+#' ユーザーのコード(AST)を探索し、パッケージの関数に名前空間を自動付与する関数
+#' @param expr 評価前のコード(AST)
+#' @param pkg 対象のパッケージ名
+#' @keywords internal
+inject_namespace <- function(expr, pkg = "BayesRTMB") {
+  # 単一の変数名や定数なら何もしない
+  if (is.atomic(expr) || is.name(expr)) {
+    return(expr)
+  }
+
+  # 関数呼び出し、演算子、ブロック ({...}, for, if など) の場合
+  if (is.call(expr)) {
+    # すでに pkg::func() のように名前空間が指定されている場合はスキップ
+    if (identical(expr[[1]], quote(`::`)) || identical(expr[[1]], quote(`:::`))) {
+      return(expr)
+    }
+
+    # 呼び出されている関数名を取得
+    func_name <- as.character(expr[[1]])
+
+    # func_name が単一の文字列である場合のみ処理 (クロージャの直接呼び出し等を回避)
+    if (length(func_name) == 1) {
+      # その関数が BayesRTMB パッケージの namespace 内に存在するかチェック
+      # inherits = FALSE にすることで、base や stats の関数 (sum, log 等) を除外
+      if (exists(func_name, envir = asNamespace(pkg), inherits = FALSE)) {
+        # 存在すれば、 BayesRTMB::func_name にすり替える
+        expr[[1]] <- call("::", as.name(pkg), as.name(func_name))
+      }
+    }
+
+    # 関数の中身（引数や、for/if の中身）に対しても再帰的に適用する
+    for (i in 2:length(expr)) {
+      if (!missing(expr[[i]])) { # missing 引数でのエラーを回避
+        expr[[i]] <- inject_namespace(expr[[i]], pkg)
+      }
+    }
+  }
+
+  return(expr)
+}
+
+
 #' StanライクなRTMBモデル定義ブロック (ハイブリッド対応版)
 #'
 #' @description
@@ -256,11 +298,8 @@ rtmb_code <- function(...) {
       }
     }
 
-    if (length(code_list) > 0) return(code_list)
-  }
-
-  # パターン2: 後者の書き方 (Stan風・カンマなし・全体を{}で囲む)
-  if (length(args) == 1 && is.null(names(args))) {
+  } else if (length(args) == 1 && is.null(names(args))) {
+    # パターン2: 後者の書き方 (Stan風・カンマなし・全体を{}で囲む)
     ast <- args[[1]]
     if (is.call(ast) && identical(ast[[1]], as.name("{"))) {
       exprs <- as.list(ast)[-1]
@@ -282,13 +321,23 @@ rtmb_code <- function(...) {
                        paste(deparse(e), collapse = " ")), call. = FALSE)
         }
       }
-      return(code_list)
+    } else {
+      stop("rtmb_code() の記述形式が不正です。カンマで区切るか、全体を {} で囲んで記述してください。", call. = FALSE)
+    }
+  } else {
+    stop("rtmb_code() の記述形式が不正です。カンマで区切るか、全体を {} で囲んで記述してください。", call. = FALSE)
+  }
+
+  # --- BayesRTMB パッケージの関数に自動で名前空間(BayesRTMB::)を付与する処理 ---
+  target_blocks <- c("transform", "model", "generate")
+  for (tb in target_blocks) {
+    if (!is.null(code_list[[tb]])) {
+      code_list[[tb]] <- inject_namespace(code_list[[tb]], pkg = "BayesRTMB")
     }
   }
 
-  stop("rtmb_code() の記述形式が不正です。カンマで区切るか、全体を {} で囲んで記述してください。", call. = FALSE)
+  return(code_list)
 }
-
 
 #' Model Code Wrapper for RTMB
 #'
