@@ -175,6 +175,145 @@ MAP_Fit <- R6::R6Class(
     print = function(pars = NULL, max_rows = 10, digits = 5, ...) {
       self$summary(pars = pars, max_rows = max_rows, digits = digits, ...)
       invisible(self)
+    },
+    #' @description Compute generated quantities from the MAP estimate.
+    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+    #' to be calculated using the MAP estimate.
+    #' @return The `MAP_Fit` object itself (invisibly).
+    #' Results are added or updated in the `generate` list.
+    generated_quantities = function(code) {
+      # 1. Capture and extract AST
+      raw_code <- substitute(code)
+      if (is.name(raw_code)) {
+        evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
+        if (is.language(evaluated) || is.call(evaluated)) code <- evaluated
+      }
+
+      gen_ast <- if (is.call(code) && identical(code[[1]], as.name("rtmb_code"))) code$generate else code
+
+      # 2. Prepare function and environment
+      gen_fn <- eval(bquote(transform_code(.(gen_ast))))
+      environment(gen_fn) <- parent.env(globalenv())
+
+      # 3. Create context (par + transform + generate)
+      p_list <- self$par
+      if (!is.null(self$transform)) p_list <- c(p_list, self$transform)
+      if (!is.null(self$generate)) p_list <- c(p_list, self$generate)
+
+      # 4. Execute
+      res <- gen_fn(self$model$data, p_list)
+
+      # 5. Store results
+      if (is.null(self$generate)) self$generate <- list()
+      for (n in names(res)) {
+        self$generate[[n]] <- res[[n]]
+      }
+
+      cat("Generated quantities updated.\n")
+      invisible(self)
+    },
+    #' @description Performs orthogonal Procrustes rotation on the MAP estimate.
+    #' @param target Character string specifying the name of the matrix parameter
+    #' to be used as the rotation reference.
+    #' @param reference Matrix to rotate towards. If NULL, the target itself is
+    #' used (no-op unless linked is provided).
+    #' @param linked A character vector of other parameter names to be rotated
+    #' in the same direction as the target.
+    #' @return The `MAP_Fit` object itself (invisibly).
+    #' Rotated values are saved to `generate` with a `_rot` suffix.
+    rotate = function(target, reference = NULL, linked = NULL) {
+      if (is.null(reference)) {
+        warning("No reference provided for Procrustes rotation.")
+        return(invisible(self))
+      }
+
+      # build AST for rotation
+      exprs <- list()
+      exprs[[length(exprs) + 1]] <- bquote(svd_res <- svd(t(.(as.name(target))) %*% .(reference)))
+      exprs[[length(exprs) + 1]] <- quote(Q <- svd_res$u %*% t(svd_res$v))
+
+      target_rot <- paste0(target, "_rot")
+      exprs[[length(exprs) + 1]] <- bquote(.(as.name(target_rot)) <- .(as.name(target)) %*% Q)
+
+      ret_list <- list()
+      ret_list[[target_rot]] <- as.name(target_rot)
+
+      if (!is.null(linked)) {
+        for (l_var in linked) {
+          l_rot <- paste0(l_var, "_rot")
+          exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% Q)
+          ret_list[[l_rot]] <- as.name(l_rot)
+        }
+      }
+
+      exprs[[length(exprs) + 1]] <- bquote(return(.(as.call(c(list(as.name("list")), ret_list)))))
+      self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
+      invisible(self)
+    },
+    #' @description Rotates factor loadings and optionally rotates associated parameters.
+    #' @param target Character string specifying the factor loadings matrix to
+    #' base the rotation on. Defaults to "loadings".
+    #' @param linked Character vector of parameters to which the same rotation
+    #' matrix should be applied.
+    #' @param scores Character vector of parameters to which the inverse-transpose
+    #' of the rotation matrix should be applied.
+    #' @param rotate Character string specifying the rotation method (e.g., "promax").
+    #' @param ... Additional arguments passed to the rotation function.
+    #' @return The `MAP_Fit` object itself (invisibly).
+    #' Rotated values are saved to `generate` with a method-specific suffix.
+    fa_rotate = function(target = "loadings", linked = NULL, scores = NULL, rotate = "promax", ...) {
+      cat(sprintf("Applying %s rotation to %s...\n", rotate, target))
+
+      # Identify function
+      if (exists(rotate, mode = "function")) {
+        fn_call <- as.name(rotate)
+      } else {
+        fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
+      }
+
+      # Test rotation type to see if it's oblique (has Phi)
+      t_val <- if (!is.null(self$par[[target]])) self$par[[target]] else self$transform[[target]]
+      test_rot <- eval(as.call(list(fn_call, t_val)))
+      is_matrix_rot <- is.matrix(test_rot)
+
+      # Build AST
+      exprs <- list()
+      rot_name <- paste0(target, "_", rotate)
+      exprs[[length(exprs) + 1]] <- bquote(rot_obj <- .(fn_call)(.(as.name(target))))
+
+      ret_list <- list()
+      if (is_matrix_rot) {
+        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj))
+      } else {
+        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj$loadings))
+        if (!is.null(test_rot$Phi)) ret_list[["fa_cor"]] <- quote(rot_obj$Phi)
+      }
+      ret_list[[rot_name]] <- as.name("rot_mat")
+
+      # Handle linked and scores
+      if (!is_matrix_rot && (!is.null(linked) || !is.null(scores))) {
+        exprs[[length(exprs) + 1]] <- quote(rot_Th <- if (!is.null(rot_obj$Th)) rot_obj$Th else rot_obj$rotmat)
+
+        if (!is.null(linked)) {
+          for (l_var in linked) {
+            l_rot <- paste0(l_var, "_", rotate)
+            exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% rot_Th)
+            ret_list[[l_rot]] <- as.name(l_rot)
+          }
+        }
+        if (!is.null(scores)) {
+          exprs[[length(exprs) + 1]] <- quote(rot_Th_inv <- solve(t(rot_Th)))
+          for (s_var in scores) {
+            s_rot <- paste0(s_var, "_", rotate)
+            exprs[[length(exprs) + 1]] <- bquote(.(as.name(s_rot)) <- .(as.name(s_var)) %*% rot_Th_inv)
+            ret_list[[s_rot]] <- as.name(s_rot)
+          }
+        }
+      }
+
+      exprs[[length(exprs) + 1]] <- bquote(return(.(as.call(c(list(as.name("list")), ret_list)))))
+      self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
+      invisible(self)
     }
   )
 )

@@ -51,6 +51,9 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-new}{\code{MAP_Fit$new()}}
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
+\item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
+\item \href{#method-map_fit-rotate}{\code{MAP_Fit$rotate()}}
+\item \href{#method-map_fit-fa_rotate}{\code{MAP_Fit$fa_rotate()}}
 \item \href{#method-map_fit-clone}{\code{MAP_Fit$clone()}}
 }
 }
@@ -160,6 +163,94 @@ Print a brief summary of the fitted object.
 }
 \subsection{Returns}{
 The object itself, invisibly.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-generated_quantities"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-generated_quantities}{}}}
+\subsection{Method \code{generated_quantities()}}{
+Compute generated quantities from the MAP estimate.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+to be calculated using the MAP estimate.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The `MAP_Fit` object itself (invisibly).
+Results are added or updated in the `generate` list.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-rotate"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-rotate}{}}}
+\subsection{Method \code{rotate()}}{
+Performs orthogonal Procrustes rotation on the MAP estimate.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$rotate(target, reference = NULL, linked = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Character string specifying the name of the matrix parameter
+to be used as the rotation reference.}
+
+\item{\code{reference}}{Matrix to rotate towards. If NULL, the target itself is
+used (no-op unless linked is provided).}
+
+\item{\code{linked}}{A character vector of other parameter names to be rotated
+in the same direction as the target.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The `MAP_Fit` object itself (invisibly).
+Rotated values are saved to `generate` with a `_rot` suffix.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-fa_rotate"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-fa_rotate}{}}}
+\subsection{Method \code{fa_rotate()}}{
+Rotates factor loadings and optionally rotates associated parameters.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$fa_rotate(
+  target = "loadings",
+  linked = NULL,
+  scores = NULL,
+  rotate = "promax",
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Character string specifying the factor loadings matrix to
+base the rotation on. Defaults to "loadings".}
+
+\item{\code{linked}}{Character vector of parameters to which the same rotation
+matrix should be applied.}
+
+\item{\code{scores}}{Character vector of parameters to which the inverse-transpose
+of the rotation matrix should be applied.}
+
+\item{\code{rotate}}{Character string specifying the rotation method (e.g., "promax").}
+
+\item{\code{...}}{Additional arguments passed to the rotation function.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The `MAP_Fit` object itself (invisibly).
+Rotated values are saved to `generate` with a method-specific suffix.
 }
 }
 \if{html}{\out{<hr>}}

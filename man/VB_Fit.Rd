@@ -275,18 +275,20 @@ The `VB_Fit` object itself, invisibly.
 \subsection{Method \code{generated_quantities()}}{
 Compute generated quantities from posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$generated_quantities(gq_fn = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{gq_fn}}{An optional user-supplied function that takes data and parameter lists to return generated quantities.}
+\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+to be calculated using posterior samples.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-The `VB_Fit` object itself, invisibly.
+The `VB_Fit` object itself (invisibly).
+Results are appended to the `generate_fit` field.
 }
 }
 \if{html}{\out{<hr>}}
@@ -336,71 +338,61 @@ The updated object invisibly.
 \if{html}{\out{<a id="method-advi_fit-rotate"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-rotate}{}}}
 \subsection{Method \code{rotate()}}{
-Rotate sampled parameters.
+Performs orthogonal Procrustes rotation on posterior samples
+based on a specified reference (the MAP value at the point of maximum ELBO).
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$rotate(target, linked = NULL, overwrite = FALSE, suffix = "rot", ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$rotate(target, linked = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
+\item{\code{target}}{Character string specifying the name of the matrix parameter
+to be used as the rotation reference.}
 
-\item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
-
-\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
-
-\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
+\item{\code{linked}}{A character vector of other parameter names to be rotated
+in the same direction as the target.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-The updated object invisibly.
+The `VB_Fit` object itself (invisibly).
+Rotated values are saved to `generate_fit` with a `_rot` suffix added
+to the variable names.
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-fa_rotate"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-fa_rotate}{}}}
 \subsection{Method \code{fa_rotate()}}{
-Rotate factor loadings and optional factor scores.
+Rotates factor loadings and optionally rotates associated parameters.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$fa_rotate(
-  loadings,
-  scores = NULL,
-  method = "promax",
-  type = "oblique",
-  linked_loadings = NULL,
-  overwrite = FALSE,
-  suffix = method,
-  ...
-)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$fa_rotate(target, linked = NULL, scores = NULL, rotate = "promax")}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{loadings}}{Character string specifying the factor loadings variable.}
+\item{\code{target}}{Character string specifying the factor loadings matrix to
+base the rotation on. Defaults to "loadings".}
 
-\item{\code{scores}}{Character vector specifying the factor scores variable.}
+\item{\code{linked}}{Character vector of parameters (e.g., item parameters)
+to which the same rotation matrix should be applied.}
 
-\item{\code{method}}{Character string specifying the rotation method.}
+\item{\code{scores}}{Character vector of parameters (e.g., factor scores)
+to which the inverse-transpose of the rotation matrix should be applied.}
 
-\item{\code{type}}{Character string specifying the rotation type.}
-
-\item{\code{linked_loadings}}{Character vector of linked loading variables.}
-
-\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
-
-\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE. Default is the method name.}
+\item{\code{rotate}}{Character string specifying the rotation method (e.g., "promax",
+"varimax", "oblimin"). Supports `GPArotation` functions or "promax".}
 
 \item{\code{...}}{Additional arguments passed to the rotation function.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-The updated object invisibly.
+The `VB_Fit` object itself (invisibly).
+Rotated values are saved to `generate_fit` with a suffix indicating
+the rotation method.
 }
 }
 \if{html}{\out{<hr>}}

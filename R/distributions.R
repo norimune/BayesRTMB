@@ -405,7 +405,7 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
 #' @param K Dimension. If NULL, inferred from the length of x.
 #' @return The log-density.
 #' @export
-sum_to_zero_mvnorm_lpdf <- function(x, sigma = 1, K = NULL) {
+sum_to_zero_norm_lpdf <- function(x, sigma = 1, K = NULL) {
   if (is.null(K)) K <- length(x)
   lp <- -0.5 * (K - 1) * log(2 * pi) - (K - 1) * log(sigma) - 0.5 * sum(x^2) / sigma^2
   return(lp)
@@ -417,7 +417,7 @@ sum_to_zero_mvnorm_lpdf <- function(x, sigma = 1, K = NULL) {
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
 #' @export
-centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
+centered_tri_normal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
   max_d <- min(C, R - 1)
@@ -466,7 +466,7 @@ positive_lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
 #' @export
-positive_centered_tri_mvnormal_lpdf <- function(x, sigma = 1) {
+positive_centered_tri_normal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
   max_d <- min(C, R - 1)

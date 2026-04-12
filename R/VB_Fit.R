@@ -515,71 +515,82 @@ VB_Fit <- R6::R6Class(
     },
 
     #' @description Compute generated quantities from posterior draws.
-    #' @param gq_fn An optional user-supplied function that takes data and parameter lists to return generated quantities.
-    #' @return The `VB_Fit` object itself, invisibly.
-    generated_quantities = function(gq_fn = NULL) {
-      all_draws <- self$draws(
-        inc_random = TRUE,
-        inc_transform = FALSE,
-        inc_generate = FALSE,
-        best_only = FALSE
-      )
+    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+    #' to be calculated using posterior samples.
+    #' @return The `VB_Fit` object itself (invisibly).
+    #' Results are appended to the `generate_fit` field.
+    generated_quantities = function(code) {
+      # 1. 引数のキャプチャとASTの抽出 (MCMC_Fitと同様)
+      raw_code <- substitute(code)
+      if (is.name(raw_code)) {
+        evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
+        if (is.language(evaluated) || is.call(evaluated)) code <- evaluated
+      }
+
+      if (is.call(code) && identical(code[[1]], as.name("rtmb_code"))) {
+        gen_ast <- code$generate
+      } else {
+        gen_ast <- code
+      }
+
+      # 2. 関数化
+      gen_fn <- eval(bquote(transform_code(.(gen_ast))))
+      environment(gen_fn) <- parent.env(globalenv())
+
+      # 3. 全サンプルの取得
+      all_draws <- self$draws(inc_random = TRUE, inc_transform = TRUE, inc_generate = FALSE, best_only = FALSE)
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]
 
-      if (is.null(gq_fn)) return(invisible(self))
-
-      test_para <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
+      # 4. 次元情報の取得
+      test_p_list <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
       if (!is.null(self$model$transform)) {
-        tran_res <- self$model$transform(self$model$data, test_para)
-        if (is.list(tran_res)) {
-          test_para <- c(test_para, tran_res)
-        }
+        tran_res <- self$model$transform(self$model$data, test_p_list)
+        if (is.list(tran_res)) test_p_list <- c(test_p_list, tran_res)
       }
-      test_gq <- gq_fn(self$model$data, test_para)
+      test_gq <- gen_fn(self$model$data, test_p_list)
 
       if (is.null(test_gq) || length(test_gq) == 0) return(invisible(self))
 
       gq_names <- character(0)
-      self$generate_dims <- list()
-
       for (name in names(test_gq)) {
         val <- test_gq[[name]]
-        len <- length(val)
-        dim_val <- dim(val)
-        if (is.null(dim_val)) dim_val <- len
+        dim_val <- if (is.null(dim(val))) length(val) else dim(val)
         self$generate_dims[[name]] <- dim_val
-
-        names_def <- self$model$par_names[[name]]
-        flat_nms <- generate_flat_names(name, dim_val, names_def)
-        gq_names <- c(gq_names, flat_nms)
+        gq_names <- c(gq_names, generate_flat_names(name, dim_val, self$model$par_names[[name]]))
       }
 
-      gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
-      dimnames(gq_array) <- list(
-        iteration = NULL,
-        chain = paste0("est", seq_len(chains)),
-        variable = gq_names
-      )
+      # 5. 結果格納用の配列
+      new_gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
+      dimnames(new_gq_array) <- list(iteration = NULL, chain = paste0("est", seq_len(chains)), variable = gq_names)
 
+      # 6. 全エスティメイト・全サンプルに対して実行
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
-
           if (!is.null(self$model$transform)) {
             tran_res <- self$model$transform(self$model$data, p_list)
-            if (is.list(tran_res)) {
-              p_list <- c(p_list, tran_res)
-            }
+            if (is.list(tran_res)) p_list <- c(p_list, tran_res)
           }
-
-          res <- gq_fn(self$model$data, p_list)
-          gq_array[i, c, ] <- unlist(res, use.names = FALSE)
+          res <- gen_fn(self$model$data, p_list)
+          new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
         }
       }
 
-      self$generate_fit <- gq_array
-      return(invisible(self))
+      # 7. 既存の結果とマージ
+      if (is.null(self$generate_fit)) {
+        self$generate_fit <- new_gq_array
+      } else {
+        old_gq <- self$generate_fit
+        merged_gq <- array(NA, dim = c(iter, chains, dim(old_gq)[3] + dim(new_gq_array)[3]))
+        merged_gq[,,1:dim(old_gq)[3]] <- old_gq
+        merged_gq[,,(dim(old_gq)[3]+1):dim(merged_gq)[3]] <- new_gq_array
+        dimnames(merged_gq) <- list(NULL, dimnames(old_gq)[[2]], c(dimnames(old_gq)[[3]], gq_names))
+        self$generate_fit <- merged_gq
+      }
+
+      cat("Generated quantities added to samples.\n")
+      invisible(self)
     },
 
     #' @description Apply internal rotation to sampled parameters.
@@ -807,60 +818,131 @@ VB_Fit <- R6::R6Class(
       return(invisible(self))
     },
 
-    #' @description Rotate sampled parameters.
-    #' @param target Character string specifying the target variable to base the rotation on.
-    #' @param linked Character vector of variable names to be rotated in the same direction.
-    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
-    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".
-    #' @param ... Additional arguments passed to the rotation function.
-    #' @return The updated object invisibly.
-    rotate = function(target,
-                      linked = NULL,
-                      overwrite = FALSE,
-                      suffix = "rot",
-                      ...) {
-      cat(if(isTRUE(overwrite)) "Applying orthogonal Procrustes rotation (Overwriting)...\n" else sprintf("Applying orthogonal Procrustes rotation (Saving to generate as _%s)...\n", suffix))
-      self$internal_rotate(
-        target = target,
-        method = "procrustes",
-        type = "orthogonal",
-        linked_straight = linked,
-        linked_inverse = NULL,
-        overwrite = overwrite,
-        suffix = suffix,
-        ...
-      )
+    #' @description Performs orthogonal Procrustes rotation on posterior samples
+    #' based on a specified reference (the MAP value at the point of maximum ELBO).
+    #' @param target Character string specifying the name of the matrix parameter
+    #' to be used as the rotation reference.
+    #' @param linked A character vector of other parameter names to be rotated
+    #' in the same direction as the target.
+    #' @return The `VB_Fit` object itself (invisibly).
+    #' Rotated values are saved to `generate_fit` with a `_rot` suffix added
+    #' to the variable names.
+    rotate = function(target, linked = NULL) {
+      cat("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...\n")
+
+      t_info <- self$model$par_list[[target]]
+      t_dim <- if (is.null(t_info)) self$transform_dims[[target]] else t_info$dim
+
+      # 1. ターゲットとLPの事後サンプルを取得 (全エスティメイト)
+      target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE, best_only = FALSE)
+      lp_draws <- self$draws(pars = "lp", best_only = FALSE)
+
+      # 2. 全エスティメイトの中で最大ELBO/LPを持つ箇所を特定 (基準値の抽出)
+      max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
+      target_map <- target_draws[max_idx[1,1], max_idx[1,2], ]
+      dim(target_map) <- t_dim
+
+      # 3. 基準値をモデルのデータに一時保存
+      ref_name <- paste0(target, "_ref")
+      self$model$data[[ref_name]] <- target_map
+
+      # 4. ASTの構築
+      exprs <- list()
+      exprs[[length(exprs) + 1]] <- bquote(svd_res <- svd(t(.(as.name(target))) %*% .(as.name(ref_name))))
+      exprs[[length(exprs) + 1]] <- quote(Q <- svd_res$u %*% t(svd_res$v))
+
+      target_rot <- paste0(target, "_rot")
+      exprs[[length(exprs) + 1]] <- bquote(.(as.name(target_rot)) <- .(as.name(target)) %*% Q)
+
+      ret_list <- list()
+      ret_list[[target_rot]] <- as.name(target_rot)
+
+      if (!is.null(linked)) {
+        for (l_var in linked) {
+          l_rot <- paste0(l_var, "_rot")
+          exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% Q)
+          ret_list[[l_rot]] <- as.name(l_rot)
+        }
+      }
+
+      exprs[[length(exprs) + 1]] <- bquote(return(.(as.call(c(list(as.name("list")), ret_list)))))
+
+      # 5. 実行
+      self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
+      invisible(self)
     },
 
-    #' @description Rotate factor loadings and optional factor scores.
-    #' @param loadings Character string specifying the factor loadings variable.
-    #' @param scores Character vector specifying the factor scores variable.
-    #' @param method Character string specifying the rotation method.
-    #' @param type Character string specifying the rotation type.
-    #' @param linked_loadings Character vector of linked loading variables.
-    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
-    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is the method name.
+    #' @description Rotates factor loadings and optionally rotates associated parameters.
+    #' @param target Character string specifying the factor loadings matrix to
+    #' base the rotation on. Defaults to "loadings".
+    #' @param linked Character vector of parameters (e.g., item parameters)
+    #' to which the same rotation matrix should be applied.
+    #' @param scores Character vector of parameters (e.g., factor scores)
+    #' to which the inverse-transpose of the rotation matrix should be applied.
+    #' @param rotate Character string specifying the rotation method (e.g., "promax",
+    #' "varimax", "oblimin"). Supports `GPArotation` functions or "promax".
     #' @param ... Additional arguments passed to the rotation function.
-    #' @return The updated object invisibly.
-    fa_rotate = function(loadings,
-                         scores = NULL,
-                         method = "promax",
-                         type = "oblique",
-                         linked_loadings = NULL,
-                         overwrite = FALSE,
-                         suffix = method,
-                         ...) {
-      cat(if(isTRUE(overwrite)) sprintf("Applying %s rotation (Overwriting)...\n", method) else sprintf("Applying %s rotation (Saving to generate as _%s)...\n", method, suffix))
-      self$internal_rotate(
-        target = loadings,
-        method = method,
-        type = type,
-        linked_straight = linked_loadings,
-        linked_inverse = scores,
-        overwrite = overwrite,
-        suffix = suffix,
-        ...
-      )
+    #' @return The `VB_Fit` object itself (invisibly).
+    #' Rotated values are saved to `generate_fit` with a suffix indicating
+    #' the rotation method.
+    fa_rotate = function(target, linked = NULL, scores = NULL, rotate = "promax") {
+      cat(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...\n", rotate, target, rotate))
+
+      # 回転関数の特定
+      if (exists(rotate, mode = "function")) {
+        fn_call <- as.name(rotate)
+      } else {
+        fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
+      }
+
+      # 回転タイプとPhiの有無をテスト
+      all_draws <- self$draws(pars = target, inc_transform = TRUE, best_only = TRUE)
+      dummy_L <- all_draws[1, 1, ]
+      dim(dummy_L) <- if (is.null(self$model$par_list[[target]])) self$transform_dims[[target]] else self$model$par_list[[target]]$dim
+
+      test_rot <- eval(as.call(list(fn_call, dummy_L)))
+      is_matrix_rot <- is.matrix(test_rot)
+
+      # ASTの構築
+      exprs <- list()
+      rot_name <- paste0(target, "_", rotate)
+      exprs[[length(exprs) + 1]] <- bquote(rot_obj <- .(fn_call)(.(as.name(target))))
+
+      ret_list <- list()
+      if (is_matrix_rot) {
+        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj))
+      } else {
+        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj$loadings))
+        if (!is.null(test_rot$Phi)) ret_list[["fa_cor"]] <- quote(rot_obj$Phi)
+      }
+      ret_list[[rot_name]] <- as.name("rot_mat")
+
+      # 連動変数の処理 (linked=同方向, scores=逆転置)
+      if (!is_matrix_rot && (!is.null(linked) || !is.null(scores))) {
+        exprs[[length(exprs) + 1]] <- quote(rot_Th <- if (!is.null(rot_obj$Th)) rot_obj$Th else rot_obj$rotmat)
+
+        if (!is.null(linked)) {
+          for (l_var in linked) {
+            l_rot <- paste0(l_var, "_", rotate)
+            exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% rot_Th)
+            ret_list[[l_rot]] <- as.name(l_rot)
+          }
+        }
+        if (!is.null(scores)) {
+          exprs[[length(exprs) + 1]] <- quote(rot_Th_inv <- solve(t(rot_Th)))
+          for (s_var in scores) {
+            s_rot <- paste0(s_var, "_", rotate)
+            exprs[[length(exprs) + 1]] <- bquote(.(as.name(s_rot)) <- .(as.name(s_var)) %*% rot_Th_inv)
+            ret_list[[s_rot]] <- as.name(s_rot)
+          }
+        }
+      }
+
+      exprs[[length(exprs) + 1]] <- bquote(return(.(as.call(c(list(as.name("list")), ret_list)))))
+
+      # 実行
+      self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
+      invisible(self)
     }
   )
 )

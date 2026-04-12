@@ -265,18 +265,20 @@ Transformed parameter draws.
 \subsection{Method \code{generated_quantities()}}{
 Compute generated quantities from posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$generated_quantities(gq_fn = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{gq_fn}}{A function for generated quantities.}
+\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+to be calculated using posterior samples.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Generated quantities draws.
+The `MCMC_Fit` object itself (invisibly).
+Results are appended to the `generate_fit` field.
 }
 }
 \if{html}{\out{<hr>}}
@@ -328,7 +330,7 @@ The updated object invisibly.
 \subsection{Method \code{rotate()}}{
 Rotate sampled parameters.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$rotate(target, linked = NULL, overwrite = FALSE, suffix = "rot", ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$rotate(target, linked = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -357,33 +359,23 @@ The updated object invisibly.
 Rotate factor loadings and optional factor scores.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$fa_rotate(
-  loadings,
+  target = "loadings",
+  linked = NULL,
   scores = NULL,
-  method = "promax",
-  type = "oblique",
-  linked_loadings = NULL,
-  overwrite = FALSE,
-  suffix = method,
-  ...
+  rotate = "promax"
 )}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{loadings}}{Character string specifying the factor loadings variable.}
+\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
 
-\item{\code{scores}}{Character vector specifying the factor scores variable.}
+\item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
 
-\item{\code{method}}{Character string specifying the rotation method.}
+\item{\code{scores}}{Character vector of variable names to be rotated as factor scores (inverse direction).}
 
-\item{\code{type}}{Character string specifying the rotation type.}
-
-\item{\code{linked_loadings}}{Character vector of linked loading variables.}
-
-\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
-
-\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE. Default is the method name.}
+\item{\code{rotate}}{Character string specifying the rotation method.}
 
 \item{\code{...}}{Additional arguments passed to the rotation function.}
 }

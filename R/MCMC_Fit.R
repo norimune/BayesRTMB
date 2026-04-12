@@ -535,42 +535,76 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Compute generated quantities from posterior draws.
-    #' @return Generated quantities draws.
-    generated_quantities = function(gq_fn = NULL) {
-      all_draws <- self$draws(
-        inc_random = TRUE,
-        inc_transform = FALSE,
-        inc_generate = FALSE
-      )
-      iter   <- dim(all_draws)[1]
-      chains <- dim(all_draws)[2]
+    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+    #' to be calculated using posterior samples.
+    #' @return The `MCMC_Fit` object itself (invisibly).
+    #' Results are appended to the `generate_fit` field.
+    generated_quantities = function(code) {
+      # 1. 引数のキャプチャとASTの抽出
+      raw_code <- substitute(code)
 
-      if (is.null(gq_fn)) return(invisible(self))
-
-      test_para <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
-
-      if (!is.null(self$model$transform)) {
-        tran_res <- self$model$transform(self$model$data, test_para)
-        if (is.list(tran_res)) {
-          test_para <- c(test_para, tran_res)
+      # メソッド内から変数としてASTが渡された場合(rotate等)の対応
+      if (is.name(raw_code)) {
+        evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
+        if (is.language(evaluated) || is.call(evaluated)) {
+          code <- evaluated
+          raw_code <- evaluated
         }
       }
 
-      test_gq <- gq_fn(self$model$data, test_para)
+      if (is.call(raw_code) && identical(raw_code[[1]], as.name("rtmb_code"))) {
+        parsed_code <- eval(raw_code, envir = parent.frame())
+        if (!"generate" %in% names(parsed_code)) {
+          stop("rtmb_code() の中に generate ブロックがありません。")
+        }
+        gen_ast <- parsed_code$generate
+      } else if (is.call(raw_code) && identical(raw_code[[1]], as.name("{"))) {
+        gen_ast <- raw_code
+      } else if (is.call(code) && identical(code[[1]], as.name("{"))) {
+        gen_ast <- code
+      } else if (is.list(code) && "generate" %in% names(code)) {
+        gen_ast <- code$generate
+      } else {
+        stop("code は rtmb_code(generate = { ... }) または { ... } の形式で指定してください。")
+      }
 
-      if (is.null(test_gq) || length(test_gq) == 0) return(invisible(self))
-      if (!is.list(test_gq)) {
-        stop("`generate` は list を返す必要があります。", call. = FALSE)
+      cat("Running generated_quantities...\n")
+
+      # 2. transform_code で関数化
+      gen_fn <- eval(bquote(transform_code(.(gen_ast))))
+      environment(gen_fn) <- parent.env(globalenv())
+
+      # 3. 事後サンプルの取得 (3次元配列)
+      all_draws <- self$draws(
+        inc_random = TRUE,
+        inc_transform = TRUE,
+        inc_generate = FALSE
+      )
+
+      iter   <- dim(all_draws)[1]
+      chains <- dim(all_draws)[2]
+
+      # 4. 次元情報取得用のテスト実行
+      test_p_list <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
+      if (!is.null(self$model$transform)) {
+        test_tran <- self$model$transform(self$model$data, test_p_list)
+        if (is.list(test_tran)) test_p_list <- c(test_p_list, test_tran)
+      }
+
+      test_gq <- gen_fn(self$model$data, test_p_list)
+
+      if (is.null(test_gq) || length(test_gq) == 0) {
+        cat("No generated quantities returned.\n")
+        return(invisible(self))
       }
 
       gq_names <- character(0)
-      self$generate_dims <- list()
+      if (is.null(self$generate_dims)) self$generate_dims <- list()
 
       for (name in names(test_gq)) {
         val <- test_gq[[name]]
-        len <- length(val)
         dim_val <- dim(val)
-        if (is.null(dim_val)) dim_val <- len
+        if (is.null(dim_val)) dim_val <- length(val)
         self$generate_dims[[name]] <- dim_val
 
         names_def <- self$model$par_names[[name]]
@@ -578,39 +612,64 @@ MCMC_Fit <- R6::R6Class(
         gq_names <- c(gq_names, flat_nms)
       }
 
-      gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
-      dimnames(gq_array) <- list(
+      # 5. 結果を格納する配列の用意
+      new_gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
+      dimnames(new_gq_array) <- list(
         iteration = NULL,
         chain = paste0("chain", seq_len(chains)),
         variable = gq_names
       )
 
-      cat("Calculating generated quantities...\n")
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
-      counter <- 0
-
-      for (c in seq_len(chains)) {
-        for (i in seq_len(iter)) {
-          p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
-
-          if (!is.null(self$model$transform)) {
-            tran_res <- self$model$transform(self$model$data, p_list)
-            if (is.list(tran_res)) {
-              p_list <- c(p_list, tran_res)
+      # 6. ループ処理で各サンプルに対して適用
+      if (requireNamespace("progressr", quietly = TRUE)) {
+        p <- progressr::progressor(steps = iter * chains)
+        for (c in seq_len(chains)) {
+          for (i in seq_len(iter)) {
+            p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
+            if (!is.null(self$model$transform)) {
+              tran_res <- self$model$transform(self$model$data, p_list)
+              if (is.list(tran_res)) p_list <- c(p_list, tran_res)
             }
+            res <- gen_fn(self$model$data, p_list)
+            new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
+            p()
           }
-
-          res <- gq_fn(self$model$data, p_list)
-          gq_array[i, c, ] <- unlist(res, use.names = FALSE)
-
-          counter <- counter + 1
-          setTxtProgressBar(pb, counter)
         }
+      } else {
+        pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
+        counter <- 0
+        for (c in seq_len(chains)) {
+          for (i in seq_len(iter)) {
+            p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
+            if (!is.null(self$model$transform)) {
+              tran_res <- self$model$transform(self$model$data, p_list)
+              if (is.list(tran_res)) p_list <- c(p_list, tran_res)
+            }
+            res <- gen_fn(self$model$data, p_list)
+            new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
+            counter <- counter + 1
+            setTxtProgressBar(pb, counter)
+          }
+        }
+        close(pb)
       }
-      close(pb)
 
-      self$generate_fit <- gq_array
-      return(invisible(self))
+      # 7. 既存の generate_fit とマージする
+      if (is.null(self$generate_fit)) {
+        self$generate_fit <- new_gq_array
+      } else {
+        old_gq <- self$generate_fit
+        I <- dim(old_gq)[1]; C <- dim(old_gq)[2]
+        P1 <- dim(old_gq)[3]; P2 <- dim(new_gq_array)[3]
+        merged_gq <- array(NA, dim = c(I, C, P1 + P2))
+        merged_gq[,,1:P1] <- old_gq
+        merged_gq[,,(P1+1):(P1+P2)] <- new_gq_array
+        dimnames(merged_gq) <- list(dimnames(old_gq)[[1]], dimnames(old_gq)[[2]], c(dimnames(old_gq)[[3]], dimnames(new_gq_array)[[3]]))
+        self$generate_fit <- merged_gq
+      }
+
+      cat("Generated quantities added to samples.\n")
+      invisible(self)
     },
 
     #' @description Apply internal rotation to sampled parameters.
@@ -868,53 +927,174 @@ MCMC_Fit <- R6::R6Class(
     #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
-    rotate = function(target,
-                      linked = NULL,
-                      overwrite = FALSE,
-                      suffix = "rot",
-                      ...) {
-      cat(if(isTRUE(overwrite)) "Applying orthogonal Procrustes rotation (Overwriting)...\n" else sprintf("Applying orthogonal Procrustes rotation (Saving to generate as _%s)...\n", suffix))
-      self$internal_rotate(
-        target = target,
-        method = "procrustes",
-        type = "orthogonal",
-        linked_straight = linked,
-        linked_inverse = NULL,
-        overwrite = overwrite,
-        suffix = suffix,
-        ...
-      )
+    rotate = function(target, linked = NULL) {
+      cat("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...\n")
+
+      t_info <- self$model$par_list[[target]]
+      if (is.null(t_info)) {
+        if (!is.null(self$transform_dims[[target]])) {
+          t_dim <- self$transform_dims[[target]]
+        } else {
+          stop("指定された target パラメータが見つかりません。")
+        }
+      } else {
+        t_dim <- t_info$dim
+      }
+
+      # 1. ターゲットの事後サンプルを取得
+      target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
+      if (dim(target_draws)[3] == 0) stop("指定された target パラメータがサンプリング結果に見つかりません。")
+
+      # 2. lp (対数事後確率) が最大となるイテレーションとチェインを特定
+      lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
+      max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
+      best_iter <- max_idx[1, 1]
+      best_chain <- max_idx[1, 2]
+
+      # 3. 最大lpとなるサンプル（MAP）を抽出して元の行列の形にする
+      target_map_flat <- target_draws[best_iter, best_chain, ]
+      target_map <- target_map_flat
+      dim(target_map) <- t_dim
+
+      ref_name <- paste0(target, "_ref")
+      self$model$data[[ref_name]] <- target_map
+
+      exprs <- list()
+      exprs[[length(exprs) + 1]] <- bquote(svd_res <- svd(t(.(as.name(target))) %*% .(as.name(ref_name))))
+      exprs[[length(exprs) + 1]] <- quote(Q <- svd_res$u %*% t(svd_res$v))
+
+      target_rot <- paste0(target, "_rot")
+      exprs[[length(exprs) + 1]] <- bquote(.(as.name(target_rot)) <- .(as.name(target)) %*% Q)
+
+      if (!is.null(linked)) {
+        for (l_var in linked) {
+          l_rot <- paste0(l_var, "_rot")
+          exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% Q)
+        }
+      }
+
+      ret_list <- list()
+      ret_list[[target_rot]] <- as.name(target_rot)
+      for (l_var in linked) {
+        l_rot <- paste0(l_var, "_rot")
+        ret_list[[l_rot]] <- as.name(l_rot)
+      }
+      ret_list_call <- as.call(c(list(as.name("list")), ret_list))
+      exprs[[length(exprs) + 1]] <- bquote(return(.(ret_list_call)))
+
+      gen_ast <- as.call(c(list(as.name("{")), exprs))
+
+      self$generated_quantities(gen_ast)
+
+      invisible(self)
     },
 
     #' @description Rotate factor loadings and optional factor scores.
-    #' @param loadings Character string specifying the factor loadings variable.
-    #' @param scores Character vector specifying the factor scores variable.
-    #' @param method Character string specifying the rotation method.
-    #' @param type Character string specifying the rotation type.
-    #' @param linked_loadings Character vector of linked loading variables.
-    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
-    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is the method name.
+    #' @param target Character string specifying the target variable to base the rotation on.
+    #' @param linked Character vector of variable names to be rotated in the same direction.
+    #' @param scores Character vector of variable names to be rotated as factor scores (inverse direction).
+    #' @param rotate Character string specifying the rotation method.
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
-    fa_rotate = function(loadings,
-                         scores = NULL,
-                         method = "promax",
-                         type = "oblique",
-                         linked_loadings = NULL,
-                         overwrite = FALSE,
-                         suffix = method,
-                         ...) {
-      cat(if(isTRUE(overwrite)) sprintf("Applying %s rotation (Overwriting)...\n", method) else sprintf("Applying %s rotation (Saving to generate as _%s)...\n", method, suffix))
-      self$internal_rotate(
-        target = loadings,
-        method = method,
-        type = type,
-        linked_straight = linked_loadings,
-        linked_inverse = scores,
-        overwrite = overwrite,
-        suffix = suffix,
-        ...
-      )
+    fa_rotate = function(target = "loadings", linked = NULL, scores = NULL, rotate = "promax") {
+      cat(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...\n", rotate, target, rotate))
+
+      if (exists(rotate, mode = "function")) {
+        rot_fn <- match.fun(rotate)
+        fn_call <- as.name(rotate)
+      } else if (requireNamespace("GPArotation", quietly = TRUE) &&
+                 exists(rotate, where = asNamespace("GPArotation"), mode = "function")) {
+        rot_fn <- getFromNamespace(rotate, "GPArotation")
+        fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
+      } else {
+        stop("Rotation function not found: ", rotate)
+      }
+
+      t_info <- self$model$par_list[[target]]
+      if (is.null(t_info)) {
+        if (!is.null(self$transform_dims[[target]])) {
+          t_dim <- self$transform_dims[[target]]
+        } else {
+          stop("指定された target パラメータが見つかりません。")
+        }
+      } else {
+        t_dim <- t_info$dim
+      }
+
+      if (length(t_dim) != 2) stop("fa_rotate は行列(2次元)パラメータのサンプルに対してのみ適用可能です。")
+
+      # 1. ターゲットの事後サンプルを取得
+      target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
+      if (dim(target_draws)[3] == 0) stop(sprintf("パラメータ '%s' が見つかりません。", target))
+
+      # 2. lp (対数事後確率) が最大となるイテレーションとチェインを特定
+      lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
+      max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
+      best_iter <- max_idx[1, 1]
+      best_chain <- max_idx[1, 2]
+
+      # 3. 最大lpとなるサンプル（MAP）を抽出して元の行列の形にする
+      target_map_flat <- target_draws[best_iter, best_chain, ]
+      dummy_L <- target_map_flat
+      dim(dummy_L) <- t_dim
+
+      test_rot <- rot_fn(dummy_L)
+      is_matrix_rot <- is.matrix(test_rot)
+      has_phi <- !is_matrix_rot && !is.null(test_rot$Phi)
+
+      exprs <- list()
+      rot_name <- paste0(target, "_", rotate)
+
+      exprs[[length(exprs) + 1]] <- bquote(rot_obj <- .(fn_call)(.(as.name(target))))
+      ret_list <- list()
+
+      if (is_matrix_rot) {
+        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj))
+        ret_list[[rot_name]] <- as.name("rot_mat")
+      } else {
+        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj$loadings))
+        ret_list[[rot_name]] <- as.name("rot_mat")
+        if (has_phi) {
+          ret_list[["fa_cor"]] <- quote(rot_obj$Phi)
+        }
+      }
+
+      # --- ここから linked と scores の処理を追加 ---
+      if (!is.null(linked) || !is.null(scores)) {
+        if (is_matrix_rot) {
+          warning("指定された回転関数は行列のみを返すため、回転行列が取得できません。linked / scores は回転されません。")
+        } else {
+          # 回転行列の取得 (GPArotationはTh, statsのvarimax/promaxはrotmat)
+          exprs[[length(exprs) + 1]] <- quote(rot_Th <- if (!is.null(rot_obj$Th)) rot_obj$Th else rot_obj$rotmat)
+
+          if (!is.null(linked)) {
+            for (l_var in linked) {
+              l_rot <- paste0(l_var, "_", rotate)
+              exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% rot_Th)
+              ret_list[[l_rot]] <- as.name(l_rot)
+            }
+          }
+
+          if (!is.null(scores)) {
+            # スコアの回転は逆変換
+            exprs[[length(exprs) + 1]] <- quote(rot_Th_inv <- solve(t(rot_Th)))
+            for (s_var in scores) {
+              s_rot <- paste0(s_var, "_", rotate)
+              exprs[[length(exprs) + 1]] <- bquote(.(as.name(s_rot)) <- .(as.name(s_var)) %*% rot_Th_inv)
+              ret_list[[s_rot]] <- as.name(s_rot)
+            }
+          }
+        }
+      }
+      # --- 追加ここまで ---
+
+      ret_list_call <- as.call(c(list(as.name("list")), ret_list))
+      exprs[[length(exprs) + 1]] <- bquote(return(.(ret_list_call)))
+
+      gen_ast <- as.call(c(list(as.name("{")), exprs))
+      self$generated_quantities(gen_ast)
+
+      invisible(self)
     },
 
     #' @description Resolve label switching in posterior draws.
