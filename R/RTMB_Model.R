@@ -910,9 +910,7 @@ RTMB_Model <- R6::R6Class(
         cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
 
         if (requireNamespace("progressr", quietly = TRUE)) {
-          progressr::handlers(global = TRUE,
-                              future.packages = c("RTMB","BayesRTMB"),
-                              future.globals =ls(envir = asNamespace("BayesRTMB")))
+          progressr::handlers(global = TRUE)
 
           update_interval <- 100
           steps_per_chain <- ceiling(iter / update_interval)
