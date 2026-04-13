@@ -109,9 +109,9 @@ laplace_lpdf <- function(x, location = 0, scale = 1) {
 #' @return The sum of the log-density.
 #' @export
 logit_normal_lpdf <- function(x, mu, sd) {
-  x_safe <- pmax(pmin(x, 1 - 1e-10), 1e-10)
-  logit_x <- log(x_safe) - log1p(-x_safe)
-  log_jacobian <- -log(x_safe) - log1p(-x_safe)
+  #x_safe <- pmax(pmin(x, 1 - 1e-10), 1e-10)
+  logit_x <- log(x) - log1p(-x)
+  log_jacobian <- -log(x) - log1p(-x)
 
   sum(dnorm(logit_x, mean = mu, sd = sd, log = TRUE) + log_jacobian)
 }
