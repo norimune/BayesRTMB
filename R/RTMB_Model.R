@@ -738,12 +738,18 @@ RTMB_Model <- R6::R6Class(
         future::plan(future::multisession, workers = chains)
         cat(paste0("並列サンプリングを開始します (chains = ", chains, ")...\n"))
         iter <- sampling + warmup
-        total_updates <- chains * floor(iter / 100)
+        total_updates <- chains * (1+floor(iter / 100))
 
         progressr::with_progress({
           p <- progressr::progressor(steps = total_updates)
           results_list <- future.apply::future_lapply(1:chains, function(c) {
-            run_chain(c, p_callback = function(msg = "") p(message = msg))
+            run_chain(c, p_callback = function(msg = "", amt = 1, ...) {
+              if (is.numeric(msg)) {
+                amt <- msg
+                msg <- ""
+              }
+              p(amount = amt, message = as.character(msg))
+            })
           }, future.seed = TRUE,
           future.packages = c("RTMB","BayesRTMB"),
           future.globals =TRUE
@@ -848,7 +854,7 @@ RTMB_Model <- R6::R6Class(
       #has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
       if (has_tran) res_obj$transformed_draws(self$transform)
-      if (has_generate) res_obj$generated_quantities(self$generate)
+      if (has_generate) res_obj$generated_quantities(self$code$generate)
 
       return(res_obj)
     },
@@ -1054,7 +1060,7 @@ RTMB_Model <- R6::R6Class(
       }
       if (has_generate) {
         cat("Calculating generated quantities...\n")
-        res_obj$generated_quantities(self$generate)
+        res_obj$generated_quantities(self$code$generate)
       }
 
 

@@ -621,38 +621,22 @@ MCMC_Fit <- R6::R6Class(
       )
 
       # 6. ループ処理で各サンプルに対して適用
-      if (requireNamespace("progressr", quietly = TRUE)) {
-        p <- progressr::progressor(steps = iter * chains)
-        for (c in seq_len(chains)) {
-          for (i in seq_len(iter)) {
-            p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
-            if (!is.null(self$model$transform)) {
-              tran_res <- self$model$transform(self$model$data, p_list)
-              if (is.list(tran_res)) p_list <- c(p_list, tran_res)
-            }
-            res <- gen_fn(self$model$data, p_list)
-            new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
-            p()
+      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
+      counter <- 0
+      for (c in seq_len(chains)) {
+        for (i in seq_len(iter)) {
+          p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
+          if (!is.null(self$model$transform)) {
+            tran_res <- self$model$transform(self$model$data, p_list)
+            if (is.list(tran_res)) p_list <- c(p_list, tran_res)
           }
+          res <- gen_fn(self$model$data, p_list)
+          new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
+          counter <- counter + 1
+          setTxtProgressBar(pb, counter)
         }
-      } else {
-        pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
-        counter <- 0
-        for (c in seq_len(chains)) {
-          for (i in seq_len(iter)) {
-            p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
-            if (!is.null(self$model$transform)) {
-              tran_res <- self$model$transform(self$model$data, p_list)
-              if (is.list(tran_res)) p_list <- c(p_list, tran_res)
-            }
-            res <- gen_fn(self$model$data, p_list)
-            new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
-            counter <- counter + 1
-            setTxtProgressBar(pb, counter)
-          }
-        }
-        close(pb)
       }
+      close(pb)
 
       # 7. 既存の generate_fit とマージする
       if (is.null(self$generate_fit)) {

@@ -97,7 +97,23 @@ student_t_lpdf <- function(x, df, mu = 0, sigma = 1) {
 #' @return The sum of the log-density.
 #' @export
 laplace_lpdf <- function(x, location = 0, scale = 1) {
-  sum(-log(2 * scale) - abs(x - location) / scale)
+  #sum(-log(2 * scale) - abs(x - location) / scale)
+  sum(-log(2 * scale) - sqrt((x - location)^2 + 1e-8) / scale)
+}
+
+#' Logit-Normal log-probability density function
+#'
+#' @param x Vector of quantiles (must be strictly between 0 and 1).
+#' @param mu Vector of means on the logit scale.
+#' @param sd Vector of standard deviations on the logit scale.
+#' @return The sum of the log-density.
+#' @export
+logit_normal_lpdf <- function(x, mu, sd) {
+  x_safe <- pmax(pmin(x, 1 - 1e-10), 1e-10)
+  logit_x <- log(x_safe) - log1p(-x_safe)
+  log_jacobian <- -log(x_safe) - log1p(-x_safe)
+
+  sum(dnorm(logit_x, mean = mu, sd = sd, log = TRUE) + log_jacobian)
 }
 
 #' Weibull log-probability density function
@@ -107,6 +123,8 @@ laplace_lpdf <- function(x, location = 0, scale = 1) {
 #' @param scale Scale parameter.
 #' @return The sum of the log-density.
 #' @export
+#'
+#'
 weibull_lpdf <- function(x, shape, scale) {
   sum(suppressWarnings(dweibull(x, shape = shape, scale = scale, log = TRUE)))
 }

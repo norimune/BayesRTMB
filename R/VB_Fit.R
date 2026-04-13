@@ -461,12 +461,7 @@ VB_Fit <- R6::R6Class(
 
       wrapper_tran_fn <- function(dat, param) {
         res <- list()
-        # for (name in names(self$model$par_list)) {
-        #   if (self$model$par_list[[name]]$type == "CF_corr") {
-        #     mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
-        #     res[[mat_name]] <- param[[name]] %*% t(param[[name]])
-        #   }
-        # }
+
         if (!is.null(tran_fn)) {
           user_res <- tran_fn(dat, param)
           if (is.null(user_res)) user_res <- list()
@@ -502,13 +497,18 @@ VB_Fit <- R6::R6Class(
         variable = tran_names
       )
 
+      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
+      counter <- 0
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
           res <- wrapper_tran_fn(self$model$data, p_list)
           tran_array[i, c, ] <- unlist(res, use.names = FALSE)
+          counter <- counter + 1
+          setTxtProgressBar(pb, counter)
         }
       }
+      close(pb)
 
       self$transform_fit <- tran_array
       return(invisible(self))
@@ -565,6 +565,8 @@ VB_Fit <- R6::R6Class(
       dimnames(new_gq_array) <- list(iteration = NULL, chain = paste0("est", seq_len(chains)), variable = gq_names)
 
       # 6. 全エスティメイト・全サンプルに対して実行
+      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
+      counter <- 0
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
@@ -574,8 +576,11 @@ VB_Fit <- R6::R6Class(
           }
           res <- gen_fn(self$model$data, p_list)
           new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
+          counter <- counter + 1
+          setTxtProgressBar(pb, counter)
         }
       }
+      close(pb)
 
       # 7. 既存の結果とマージ
       if (is.null(self$generate_fit)) {

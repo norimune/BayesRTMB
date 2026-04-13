@@ -74,6 +74,13 @@ NUTS_method <- function(model,
   w_var  <- rep(0, P_fixed)
   w_n    <- 0
 
+  msg_start <- paste0("chain ", chain, " started...")
+  if (!is.null(update_progress)) {
+    update_progress(msg = msg_start, amt = 1)
+  } else {
+    cat(msg_start, "\n")
+  }
+
   for (i in 2:iter) {
     q_old <- para_fixed[i-1, ]
     p_old <- rnorm(P_fixed, mean = 0, sd = sqrt(1 / M_inv))
@@ -146,11 +153,13 @@ NUTS_method <- function(model,
     } else {
       eps <- eps_bar
     }
-
     if (i %% 100 == 0) {
       msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
-      if (!is.null(update_progress)) update_progress(msg)
-      else cat(msg, "\n")
+      if (!is.null(update_progress)) {
+        update_progress(amt = 1, msg = msg)
+      } else {
+        cat(msg, "\n")
+      }
     }
   }
 
