@@ -9,22 +9,22 @@ rtmb_fa(
   nfactors = 1,
   rotate = NULL,
   score = FALSE,
-  prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10),
+  prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, loading_ratio = 0.25),
   init = NULL
 )
 }
 \arguments{
 \item{data}{観測データフレームまたは行列 (N x P)}
 
-\item{rotate}{回転方法の文字列 (例: "varimax", "promax")。NULLの場合は回転しない。}
+\item{nfactors}{因子の数 (K)}
+
+\item{rotate}{回転方法の文字列 (例: "varimax", "promax", "ssp")。NULLの場合は回転しない。"ssp"を指定すると正則化因子分析を行う。}
 
 \item{score}{論理値; TRUEの場合、generateブロックで因子得点を計算する (デフォルトはFALSE)}
 
-\item{prior}{事前分布のハイパーパラメータのリスト}
+\item{prior}{事前分布のハイパーパラメータのリスト。loading_ratio は "ssp" の場合の1因子あたりの非ゼロ負荷の割合。}
 
-\item{init}{初期値のリスト (指定しない場合はPCAに基づく初期値が自動生成されます)}
-
-\item{n_factors}{因子の数 (K)}
+\item{init}{初期値のリスト (指定しない場合はPCAまたはpsychパッケージに基づく初期値が自動生成されます)}
 }
 \description{
 探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー
