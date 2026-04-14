@@ -1178,13 +1178,10 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
       mu_r <- log(ssp_ratio / (1 - ssp_ratio))
 
-      for (j in 1:J) {
-        for (k in 1:K_factors) {
-          r[j, k] ~ logit_normal(mu_r, 3)
-          tau[j, k] ~ exponential(1)
-          Lambda_star[j, k] ~ laplace(0, 1)
-        }
-      }
+      # ループを廃止し、行列全体に一括で事前分布を適用する
+      r ~ logit_normal(mu_r, 3)
+      tau ~ exponential(1)
+      Lambda_star ~ laplace(0, 1)
     })
 
     base_gq <- quote({
