@@ -1062,7 +1062,13 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   return(obj)
 }
 
-
+#' RTMB-based Factor Analysis Wrapper
+#'
+#' @description
+#' Performs exploratory factor analysis (EFA) using RTMB. It supports standard
+#' rotation methods (e.g., varimax, promax) as well as regularized factor analysis
+#' using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
+#'
 #' @param data Observation data frame or matrix (N x J).
 #' @param nfactors Number of factors (K).
 #' @param rotate String specifying the rotation method (e.g., "varimax", "promax", "ssp"). If NULL, no rotation is applied. Specifying "ssp" performs regularized factor analysis.

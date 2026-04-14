@@ -161,20 +161,19 @@ RTMB_Model <- R6::R6Class(
     #' @param init Optional numeric vector or list of initial values for the parameters. Default is NULL.
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is FALSE.
     #' @param jacobian_target Character string specifying which parameters to apply Jacobian adjustments to (e.g., "all", "random", or "none"). Default is "all".
+    #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
     #' @return An RTMB objective object..
-    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all") {
-      random_effs <-
-        names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
+    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL) { # 引数に map = NULL を追加
+
+      random_effs <- names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
       current_init <- self$prepare_init(init)
-
       current_init_list <- BayesRTMB:::constrained_vector_to_list(current_init, self$par_list)
       init_unc_list <- BayesRTMB:::to_unconstrained(current_init_list, self$par_list)
 
       pl_full_local    <- self$pl_full
       par_list_local   <- self$par_list
-
       log_prob_local   <- self$log_prob
       data_local       <- self$data
 
@@ -186,7 +185,6 @@ RTMB_Model <- R6::R6Class(
         }
         lp <- log_prob_local(data_local, para)
 
-        # ヤコビアンの対象を条件分岐
         if (jacobian_target == "all") {
           lj <- BayesRTMB:::calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
           return(-(lp + lj))
@@ -203,16 +201,11 @@ RTMB_Model <- R6::R6Class(
           func = f_ad,
           parameters = init_unc_list,
           random = use_random,
-          silent = TRUE,
-          #inner.control = list(
-          #  smartsearch = FALSE, # 無駄な直線探索を省略
-          #  tol10 = 1e-4,        # 収束判定の許容誤差を緩和（デフォルトより緩く）
-          #  iter.max = 20        # 最大イテレーション数を制限
-          #)
+          map = map,           # <--- ここに map を追加
+          silent = TRUE
         )
       }, error = function(e) {
-        stop("MakeADFun のセットアップに失敗しました。\n[エラー]: "
-             , e$message, call. = FALSE)
+        stop("MakeADFun のセットアップに失敗しました。\n[エラー]: ", e$message, call. = FALSE)
       })
 
       return(list(
@@ -222,7 +215,6 @@ RTMB_Model <- R6::R6Class(
       ))
     },
 
-
     # 3. 最尤法 / MAP推定 メソッド
     #' @param num_estimate Integer; Number of estimate
     #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
@@ -230,9 +222,10 @@ RTMB_Model <- R6::R6Class(
     #' @param control A list of control settings passed to the optimizer.
     #' @param optimizer Character; The optimizer to use, either "optim" or "nlminb". Default is "optim".
     #' @param method Character; The method for "optim" (e.g. "BFGS", "L-BFGS-B"). Default is "BFGS".
+    #' @param map Optional list specifying parameters to fix. Default is NULL.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
-                        optimizer = "nlminb", method = "BFGS") {
+                        optimizer = "nlminb", method = "BFGS", map = NULL) { # 引数に map = NULL を追加
       cat("Starting optimization...\n")
 
       opt_results <- list()
@@ -242,8 +235,8 @@ RTMB_Model <- R6::R6Class(
       # MAP推定ではヤコビアンは不要
       jac_target <- if (laplace) "random" else "none"
 
-      # --- 修正: ループ外でADオブジェクトを1度だけ構築 ---
-      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target)
+      # --- 修正: map引数を渡す ---
+      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target, map = map)
       base_ad_obj <- ad_setup$ad_obj
 
       for (i in 1:num_estimate) {
@@ -251,11 +244,10 @@ RTMB_Model <- R6::R6Class(
           cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
 
         res <- tryCatch({
-          # --- 修正: 2回目以降、かつユーザー指定の初期値がない場合はランダムに更新 ---
+          # --- 修正: map使用時はパラメータ長が変わるため、乱数付与の方法を変更 ---
           if (i > 1 && is.null(init)) {
-            current_init <- self$prepare_init(NULL) # ランダム生成
-            init_unc_list <- to_unconstrained(constrained_vector_to_list(current_init, self$par_list), self$par_list)
-            base_ad_obj$par <- unlist(init_unc_list, use.names = FALSE)
+            # MakeADFunが保持する「アクティブなパラメータ（固定されていないもの）」に直接乱数を加えて散らす
+            base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), mean = 0, sd = 0.5)
           }
 
           if (optimizer == "nlminb") {
@@ -336,14 +328,9 @@ RTMB_Model <- R6::R6Class(
       opt    <- best_res$opt
       ad_obj$fn(opt$par)
 
-      # --- 以降のコード（sdreportの計算など）は元のまま変更不要です ---
+      # 1. まず通常の sdreport を試みる
       sd_rep <- tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL)
 
-      ad_obj <- best_res$ad_obj
-      opt    <- best_res$opt
-      ad_obj$fn(opt$par)
-
-      sd_rep <- tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL)
       if (!is.null(ad_obj$env$last.par.best)) {
         unc_est_vec <- ad_obj$env$last.par.best
       } else {
@@ -351,16 +338,77 @@ RTMB_Model <- R6::R6Class(
       }
 
       unc_se_vec  <- rep(NA, length(unc_est_vec))
+      idx_ran <- ad_obj$env$random
 
+      fallback_needed <- FALSE
+
+      # sdreportがオブジェクトを返した場合でも、NAが含まれていないかチェックする
       if (!is.null(sd_rep)) {
-        idx_ran <- ad_obj$env$random
-        smry_fix <- summary(sd_rep, select = "fixed")
-        if (laplace && length(idx_ran) > 0) {
-          smry_ran <- summary(sd_rep, select = "random")
-          unc_se_vec[-idx_ran] <- smry_fix[, "Std. Error"]
-          unc_se_vec[idx_ran]  <- smry_ran[, "Std. Error"]
+        smry_fix <- tryCatch(summary(sd_rep, select = "fixed"), error = function(e) NULL)
+        if (!is.null(smry_fix)) {
+          se_fix <- smry_fix[, "Std. Error"]
+          # 標準誤差に NA や NaN が含まれていればフォールバックを発動
+          if (any(is.na(se_fix) | is.nan(se_fix))) {
+            fallback_needed <- TRUE
+          } else {
+            if (laplace && length(idx_ran) > 0) {
+              smry_ran <- summary(sd_rep, select = "random")
+              unc_se_vec[-idx_ran] <- se_fix
+              unc_se_vec[idx_ran]  <- smry_ran[, "Std. Error"]
+            } else {
+              unc_se_vec <- se_fix
+            }
+          }
         } else {
-          unc_se_vec <- smry_fix[, "Std. Error"]
+          fallback_needed <- TRUE
+        }
+      } else {
+        fallback_needed <- TRUE
+      }
+
+      # フォールバック処理（擬似逆行列による計算）
+      if (fallback_needed) {
+        cat("sdreport failed or produced NAs. Falling back to ginv()...\n")
+
+        # ぴったり0の点ではラプラス事前分布の微分が計算できずエラーになるため、
+        # パラメータに微小なジッター（ノイズ）を加えてヘッセ行列を計算します。
+        eps_jitter <- 1e-6
+        H <- tryCatch(ad_obj$he(opt$par + eps_jitter), error = function(e) NULL)
+
+        # それでも失敗した場合（NaNが含まれるなど）はマイナス方向のジッターを試す
+        if (is.null(H) || any(is.na(H) | is.nan(H))) {
+          H <- tryCatch(ad_obj$he(opt$par - eps_jitter), error = function(e) NULL)
+        }
+
+        if (!is.null(H)) {
+          # 計算上生じた NaN や Inf を 0 に置き換える
+          H[!is.finite(H)] <- 0
+          # 行列が完全にゼロになって特異になるのを防ぐためのリッジペナルティ
+          diag(H) <- diag(H) + 1e-6
+
+          if (!requireNamespace("MASS", quietly = TRUE)) {
+            warning("Package 'MASS' is required for ginv(). Standard errors will be NA.")
+          } else {
+            Cov_pseudo <- tryCatch(MASS::ginv(H), error = function(e) NULL)
+
+            if (!is.null(Cov_pseudo)) {
+              # 分散が計算誤差でごくわずかに負になるのを防ぐため、pmaxで0以上を保証
+              se_pseudo <- sqrt(pmax(diag(Cov_pseudo), 0))
+
+              if (length(idx_ran) > 0) {
+                unc_se_vec[-idx_ran] <- se_pseudo
+              } else {
+                unc_se_vec <- se_pseudo
+              }
+
+              # 後の派生パラメータの計算が動くようにダミーの sd_rep を作成
+              sd_rep <- list(cov.fixed = Cov_pseudo)
+            } else {
+              cat("ginv() の計算にも失敗しました。\n")
+            }
+          }
+        } else {
+          cat("ジッターを加えてもヘッセ行列の計算に失敗しました。\n")
         }
       }
 
@@ -402,7 +450,7 @@ RTMB_Model <- R6::R6Class(
 
         c_se <- numeric(L_c)
         for (j in 1:L_c) {
-          c_se[j] <- sqrt(sum((J[j, ] * u_se)^2))
+          c_se[j] <- sqrt(sum((J[j, ] * u_se)^2, na.rm = TRUE)) # na.rm = TRUE を追加
         }
 
         if (length(p_info$dim) > 1) dim(c_se) <- p_info$dim
