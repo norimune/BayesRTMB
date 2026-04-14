@@ -736,6 +736,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
   }
 
+  if (is.null(lme4::findbars(formula))) {
+    return(rtmb_glm(formula = formula, data = data, family = family, prior = prior))
+  }
+
   # 1. フォーミュラのパース
   parsed <- lme4::lFormula(
     formula,
@@ -1059,14 +1063,12 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 }
 
 
-#' 探索的因子分析 (Bayesian EFA) 安定・潜在変数モデル版ラッパー
-#'
-#' @param data 観測データフレームまたは行列 (N x P)
-#' @param nfactors 因子の数 (K)
-#' @param rotate 回転方法の文字列 (例: "varimax", "promax", "ssp")。NULLの場合は回転しない。"ssp"を指定すると正則化因子分析を行う。
-#' @param score 論理値; TRUEの場合、generateブロックで因子得点を計算する (デフォルトはFALSE)
-#' @param prior 事前分布のハイパーパラメータのリスト。loading_ratio は "ssp" の場合の1因子あたりの非ゼロ負荷の割合。
-#' @param init 初期値のリスト (指定しない場合はPCAまたはpsychパッケージに基づく初期値が自動生成されます)
+#' @param data Observation data frame or matrix (N x J).
+#' @param nfactors Number of factors (K).
+#' @param rotate String specifying the rotation method (e.g., "varimax", "promax", "ssp"). If NULL, no rotation is applied. Specifying "ssp" performs regularized factor analysis.
+#' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
+#' @param prior List of hyperparameters for prior distributions. `loading_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
+#' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, loading_ratio = 0.25),
@@ -1099,27 +1101,49 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     )
     if (score) dat_fa$Y <- Y
 
-    # SSP用の初期値自動生成 (psychパッケージを利用)
+    # SSP用の初期値自動生成 (Base RのPCAとpromaxを利用)
     if (is.null(init)) {
       tryCatch({
-        if (requireNamespace("psych", quietly = TRUE)) {
-          result <- psych::fa(Y, nfactors = K, rotate = "promax")
-          init_Lambda_std <- unclass(result$loadings)
-          init_CF_Omega <- t(chol(result$Phi))
-          init_sd <- sqrt(pmax(diag(S_Y / (N - 1)) * result$uniquenesses, 0.01))
-          init_Lambda <- init_Lambda_std * diag(S_Y / (N - 1))^0.5
-          init_r <- ifelse(abs(init_Lambda_std) > 0.2, 0.9, 0.1)
+        # 1. PCAによる初期負荷量の抽出
+        eig <- eigen(S_Y / (N - 1))
+        L_pca <- eig$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(eig$values[1:K]), nrow = K, ncol = K)
+        var_Y <- diag(S_Y / (N - 1))
 
-          init <- list(
-            mean = Y_bar,
-            Lambda_star = init_Lambda,
-            sd = init_sd,
-            CF_Omega = init_CF_Omega,
-            r = init_r,
-            tau = matrix(1.0, nrow = J, ncol = K)
-          )
+        if (K > 1) {
+          # 2. R標準の stats::promax による斜交回転
+          pm <- stats::promax(L_pca, m = 4)
+          init_Lambda <- unclass(pm$loadings)
+          T_mat <- pm$rotmat
+
+          # 因子間相関行列 Phi = (T^T T)^-1
+          # (数値誤差を防ぐため cov2cor で厳密な相関行列化)
+          Phi <- cov2cor(solve(t(T_mat) %*% T_mat))
+          init_CF_Omega <- t(chol(Phi))
+        } else {
+          init_Lambda <- L_pca
+          Phi <- matrix(1, nrow = 1, ncol = 1)
+          init_CF_Omega <- matrix(1, nrow = 1, ncol = 1)
         }
-      }, error = function(e) { init <- NULL })
+
+        # 3. 独自分散 (sd) の推定
+        h2_raw <- rowSums(init_Lambda * (init_Lambda %*% Phi))
+        init_sd <- sqrt(pmax(var_Y - h2_raw, 0.01 * var_Y))
+
+        # 4. 標準化負荷量から包含確率 (r) の初期値を設定
+        L_std <- init_Lambda / sqrt(var_Y)
+        init_r <- ifelse(abs(L_std) > 0.2, 0.9, 0.1)
+
+        init <- list(
+          mean = Y_bar,
+          Lambda_star = init_Lambda,
+          sd = init_sd,
+          CF_Omega = init_CF_Omega,
+          r = init_r,
+          tau = matrix(1.0, nrow = J, ncol = K)
+        )
+      }, error = function(e) {
+        stop("初期値の自動生成に失敗しました。init 引数で手動で初期値を与えてください。詳細: ", conditionMessage(e))
+      })
     }
 
     param_ast <- quote({
@@ -1132,16 +1156,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
 
     tran_ast <- quote({
-      loadings <- Lambda_star * r * tau
-      h2 <- rowSums(loadings * (loadings %*% CF_Omega))
+      loadings_raw <- Lambda_star * r * tau
+      h2 <- rowSums(loadings_raw * (loadings_raw %*% CF_Omega))
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      loadings_std <- loadings / sd_Y
+      loadings <- loadings_raw / sd_Y
       fa_cor <- CF_Omega %*% t(CF_Omega)
     })
 
     model_ast <- quote({
-      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, loadings %*% CF_Omega)
+      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, loadings_raw %*% CF_Omega)
       mean ~ normal(0, prior_mean_sd)
       sd ~ exponential(prior_sd_rate)
       CF_Omega ~ lkj_CF_corr(1)
@@ -1158,9 +1182,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
 
     base_gq <- quote({
-      Sigma <- loadings %*% fa_cor %*% t(loadings) + diag(sd^2)
+      Sigma <- loadings_raw %*% fa_cor %*% t(loadings_raw) + diag(sd^2)
       var_total <- diag(Sigma)
-      var_common <- rowSums(loadings * (loadings %*% CF_Omega))
+      var_common <- rowSums(loadings_raw * (loadings_raw %*% CF_Omega))
       communality <- var_common / var_total
       out <- list(communality = communality)
     })
@@ -1169,7 +1193,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       quote({
         Y_c <- matrix(0, nrow = N, ncol = J)
         for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-        out$score <- Y_c %*% solve(Sigma, loadings %*% fa_cor)
+        out$score <- Y_c %*% solve(Sigma, loadings_raw %*% fa_cor)
       })
     } else quote({})
 
@@ -1186,8 +1210,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       tau = var_names,
       sd = var_names,
       CF_Omega = paste0("Factor", 1:K),
+      loadings_raw = var_names,
       loadings = var_names,
-      loadings_std = var_names,
       fa_cor = paste0("Factor", 1:K),
       communality = var_names
     )
@@ -1197,7 +1221,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
 
-    target_view <- c("loadings_std", "loadings", "fa_cor", "sd")
+    target_view <- c("loadings", "sd", "fa_cor")
 
     obj <- rtmb_model(
       data = dat_fa,
@@ -1233,32 +1257,36 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
             if (j < k) init_loadings[j, k] <- 0
           }
         }
-        init <- list(mean = Y_bar, loadings = init_loadings, sd = init_sd)
+        init <- list(mean = Y_bar, loadings_raw = init_loadings, sd = init_sd)
       }, error = function(e) { init <- NULL })
     }
 
     param_ast <- quote({
       mean <- Dim(dim = J)
-      loadings <- Dim(dim = c(J, K_factors), type = "lower_tri")
+      loadings_raw <- Dim(dim = c(J, K_factors), type = "lower_tri")
       sd <- Dim(dim = J, lower = 0)
     })
 
-    model_ast <- quote({
-      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, loadings)
-      mean ~ normal(0, prior_mean_sd)
-      sd ~ exponential(prior_sd_rate)
-      loadings ~ lower_tri_normal(0, prior_loadings_sd)
+    tran_ast <- quote({
+      h2 <- rowSums(loadings_raw^2)
+      var_Y <- h2 + sd^2
+      sd_Y <- sqrt(var_Y)
+      loadings <- loadings_raw / sd_Y
     })
 
-    # loadings_std を追加計算
+    model_ast <- quote({
+      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, loadings_raw)
+      mean ~ normal(0, prior_mean_sd)
+      sd ~ exponential(prior_sd_rate)
+      loadings_raw ~ lower_tri_normal(0, prior_loadings_sd)
+    })
+
     base_gq <- quote({
-      Sigma <- loadings %*% t(loadings) + diag(sd^2)
+      Sigma <- loadings_raw %*% t(loadings_raw) + diag(sd^2)
       var_total <- diag(Sigma)
-      sd_Y <- sqrt(var_total)
-      loadings_std <- loadings / sd_Y
-      var_common <- rowSums(loadings^2)
+      var_common <- rowSums(loadings_raw^2)
       communality <- var_common / var_total
-      out <- list(communality = communality, loadings_std = loadings_std)
+      out <- list(communality = communality)
     })
 
     if (!is.null(rotate)) {
@@ -1334,11 +1362,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
 
-    code_args <- list(parameters = param_ast, model = model_ast, generate = gq_ast)
+    code_args <- list(parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
     code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
 
-    # loadings_std を変数リストに追加
-    p_names <- list(mean = var_names, loadings = var_names, sd = var_names, communality = var_names, loadings_std = var_names)
+    p_names <- list(
+      mean = var_names,
+      loadings_raw = var_names,
+      sd = var_names,
+      loadings = var_names,
+      communality = var_names
+    )
     if (!is.null(rotate)) {
       p_names[[paste0("loadings_", rotate)]] <- var_names
       if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K)
@@ -1349,8 +1382,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
 
-    # target_view に loadings_std を追加
-    target_view <- if (!is.null(rotate)) c(paste0("loadings_", rotate), "loadings_std", "sd") else c("loadings", "loadings_std", "sd")
+    target_view <- if (!is.null(rotate)) c(paste0("loadings_", rotate), "sd", "fa_cor") else c("loadings", "sd", "fa_cor")
 
     obj <- rtmb_model(
       data = dat_fa,
