@@ -548,6 +548,16 @@ VB_Fit <- R6::R6Class(
         tran_res <- self$model$transform(self$model$data, test_p_list)
         if (is.list(tran_res)) test_p_list <- c(test_p_list, tran_res)
       }
+
+      if (!is.null(self$generate_fit)) {
+        for (g_name in names(self$generate_dims)) {
+          g_dim <- self$generate_dims[[g_name]]
+          flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
+          val <- self$generate_fit[1, 1, flat_nms]
+          if (length(g_dim) > 1) dim(val) <- g_dim
+          test_p_list[[g_name]] <- val
+        }
+      }
       test_gq <- gen_fn(self$model$data, test_p_list)
 
       if (is.null(test_gq) || length(test_gq) == 0) return(invisible(self))
@@ -573,6 +583,15 @@ VB_Fit <- R6::R6Class(
           if (!is.null(self$model$transform)) {
             tran_res <- self$model$transform(self$model$data, p_list)
             if (is.list(tran_res)) p_list <- c(p_list, tran_res)
+          }
+          if (!is.null(self$generate_fit)) {
+            for (g_name in names(self$generate_dims)) {
+              g_dim <- self$generate_dims[[g_name]]
+              flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
+              val <- self$generate_fit[i, c, flat_nms]
+              if (length(g_dim) > 1) dim(val) <- g_dim
+              p_list[[g_name]] <- val
+            }
           }
           res <- gen_fn(self$model$data, p_list)
           new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
@@ -836,7 +855,15 @@ VB_Fit <- R6::R6Class(
       cat("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...\n")
 
       t_info <- self$model$par_list[[target]]
-      t_dim <- if (is.null(t_info)) self$transform_dims[[target]] else t_info$dim
+      if (!is.null(t_info)) {
+        t_dim <- t_info$dim
+      } else if (!is.null(self$transform_dims[[target]])) {
+        t_dim <- self$transform_dims[[target]]
+      } else if (!is.null(self$generate_dims[[target]])) {
+        t_dim <- self$generate_dims[[target]]
+      } else {
+        stop("指定された target パラメータが見つかりません。")
+      }
 
       # 1. ターゲットとLPの事後サンプルを取得 (全エスティメイト)
       target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE, best_only = FALSE)
@@ -901,9 +928,20 @@ VB_Fit <- R6::R6Class(
       }
 
       # 回転タイプとPhiの有無をテスト
-      all_draws <- self$draws(pars = target, inc_transform = TRUE, best_only = TRUE)
+      all_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE, best_only = TRUE)
       dummy_L <- all_draws[1, 1, ]
-      dim(dummy_L) <- if (is.null(self$model$par_list[[target]])) self$transform_dims[[target]] else self$model$par_list[[target]]$dim
+
+      t_info <- self$model$par_list[[target]]
+      if (!is.null(t_info)) {
+        t_dim <- t_info$dim
+      } else if (!is.null(self$transform_dims[[target]])) {
+        t_dim <- self$transform_dims[[target]]
+      } else if (!is.null(self$generate_dims[[target]])) {
+        t_dim <- self$generate_dims[[target]]
+      } else {
+        stop("指定された target パラメータが見つかりません。")
+      }
+      dim(dummy_L) <- t_dim
 
       test_rot <- eval(as.call(list(fn_call, dummy_L)))
       is_matrix_rot <- is.matrix(test_rot)

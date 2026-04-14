@@ -591,6 +591,16 @@ MCMC_Fit <- R6::R6Class(
         if (is.list(test_tran)) test_p_list <- c(test_p_list, test_tran)
       }
 
+      if (!is.null(self$generate_fit)) {
+        for (g_name in names(self$generate_dims)) {
+          g_dim <- self$generate_dims[[g_name]]
+          flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
+          val <- self$generate_fit[1, 1, flat_nms]
+          if (length(g_dim) > 1) dim(val) <- g_dim
+          test_p_list[[g_name]] <- val
+        }
+      }
+
       test_gq <- gen_fn(self$model$data, test_p_list)
 
       if (is.null(test_gq) || length(test_gq) == 0) {
@@ -629,6 +639,15 @@ MCMC_Fit <- R6::R6Class(
           if (!is.null(self$model$transform)) {
             tran_res <- self$model$transform(self$model$data, p_list)
             if (is.list(tran_res)) p_list <- c(p_list, tran_res)
+          }
+          if (!is.null(self$generate_fit)) {
+            for (g_name in names(self$generate_dims)) {
+              g_dim <- self$generate_dims[[g_name]]
+              flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
+              val <- self$generate_fit[i, c, flat_nms]
+              if (length(g_dim) > 1) dim(val) <- g_dim
+              p_list[[g_name]] <- val
+            }
           }
           res <- gen_fn(self$model$data, p_list)
           new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
@@ -915,14 +934,14 @@ MCMC_Fit <- R6::R6Class(
       cat("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...\n")
 
       t_info <- self$model$par_list[[target]]
-      if (is.null(t_info)) {
-        if (!is.null(self$transform_dims[[target]])) {
-          t_dim <- self$transform_dims[[target]]
-        } else {
-          stop("指定された target パラメータが見つかりません。")
-        }
-      } else {
+      if (!is.null(t_info)) {
         t_dim <- t_info$dim
+      } else if (!is.null(self$transform_dims[[target]])) {
+        t_dim <- self$transform_dims[[target]]
+      } else if (!is.null(self$generate_dims[[target]])) {
+        t_dim <- self$generate_dims[[target]]
+      } else {
+        stop("指定された target パラメータが見つかりません。")
       }
 
       # 1. ターゲットの事後サンプルを取得
@@ -995,14 +1014,14 @@ MCMC_Fit <- R6::R6Class(
       }
 
       t_info <- self$model$par_list[[target]]
-      if (is.null(t_info)) {
-        if (!is.null(self$transform_dims[[target]])) {
-          t_dim <- self$transform_dims[[target]]
-        } else {
-          stop("指定された target パラメータが見つかりません。")
-        }
-      } else {
+      if (!is.null(t_info)) {
         t_dim <- t_info$dim
+      } else if (!is.null(self$transform_dims[[target]])) {
+        t_dim <- self$transform_dims[[target]]
+      } else if (!is.null(self$generate_dims[[target]])) {
+        t_dim <- self$generate_dims[[target]]
+      } else {
+        stop("指定された target パラメータが見つかりません。")
       }
 
       if (length(t_dim) != 2) stop("fa_rotate は行列(2次元)パラメータのサンプルに対してのみ適用可能です。")
