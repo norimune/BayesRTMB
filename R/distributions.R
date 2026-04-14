@@ -33,6 +33,16 @@ exponential_lpdf <- function(x, rate) {
   sum(dexp(x, rate, log = TRUE))
 }
 
+#' Half-Normal log-probability density function
+#'
+#' @param x Vector of quantiles (must be non-negative).
+#' @param sd Vector of standard deviations (scale parameter).
+#' @return The sum of the log-density.
+#' @export
+half_normal_lpdf <- function(x, sd) {
+  sum(dnorm(x, mean = 0, sd = sd, log = TRUE) + log(2))
+}
+
 #' Beta log-probability density function
 #'
 #' @param x Vector of quantiles.
