@@ -1250,12 +1250,15 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       loadings ~ lower_tri_normal(0, prior_loadings_sd)
     })
 
+    # loadings_std を追加計算
     base_gq <- quote({
       Sigma <- loadings %*% t(loadings) + diag(sd^2)
       var_total <- diag(Sigma)
+      sd_Y <- sqrt(var_total)
+      loadings_std <- loadings / sd_Y
       var_common <- rowSums(loadings^2)
       communality <- var_common / var_total
-      out <- list(communality = communality)
+      out <- list(communality = communality, loadings_std = loadings_std)
     })
 
     if (!is.null(rotate)) {
@@ -1334,7 +1337,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     code_args <- list(parameters = param_ast, model = model_ast, generate = gq_ast)
     code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
 
-    p_names <- list(mean = var_names, loadings = var_names, sd = var_names, communality  = var_names)
+    # loadings_std を変数リストに追加
+    p_names <- list(mean = var_names, loadings = var_names, sd = var_names, communality = var_names, loadings_std = var_names)
     if (!is.null(rotate)) {
       p_names[[paste0("loadings_", rotate)]] <- var_names
       if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K)
@@ -1345,7 +1349,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
 
-    target_view <- if (!is.null(rotate)) c(paste0("loadings_", rotate), "sd") else c("loadings", "sd")
+    # target_view に loadings_std を追加
+    target_view <- if (!is.null(rotate)) c(paste0("loadings_", rotate), "loadings_std", "sd") else c("loadings", "loadings_std", "sd")
 
     obj <- rtmb_model(
       data = dat_fa,
