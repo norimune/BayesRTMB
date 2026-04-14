@@ -1073,11 +1073,11 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param nfactors Number of factors (K).
 #' @param rotate String specifying the rotation method (e.g., "varimax", "promax", "ssp"). If NULL, no rotation is applied. Specifying "ssp" performs regularized factor analysis.
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
-#' @param prior List of hyperparameters for prior distributions. `loading_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
+#' @param prior List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
 #' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
-                    prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, loading_ratio = 0.25),
+                    prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
                     init = NULL) {
 
   Y <- as.matrix(data)
@@ -1097,13 +1097,13 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   is_ssp <- !is.null(rotate) && rotate == "ssp"
 
   if (is_ssp) {
-    if (is.null(prior$loading_ratio)) prior$loading_ratio <- 0.25
+    if (is.null(prior$ssp_ratio)) prior$ssp_ratio <- 0.25
 
     dat_fa <- list(
       N = N, J = J, K_factors = K,
       Y_bar = Y_bar, S_Y = S_Y,
       prior_mean_sd = prior$mean_sd, prior_sd_rate = prior$sd_rate,
-      loading_ratio = prior$loading_ratio
+      ssp_ratio = prior$ssp_ratio
     )
     if (score) dat_fa$Y <- Y
 
@@ -1176,7 +1176,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       sd ~ exponential(prior_sd_rate)
       CF_Omega ~ lkj_CF_corr(1)
 
-      mu_r <- log(loading_ratio / (1 - loading_ratio))
+      mu_r <- log(ssp_ratio / (1 - ssp_ratio))
 
       for (j in 1:J) {
         for (k in 1:K_factors) {

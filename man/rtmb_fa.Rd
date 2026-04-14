@@ -9,7 +9,7 @@ rtmb_fa(
   nfactors = 1,
   rotate = NULL,
   score = FALSE,
-  prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, loading_ratio = 0.25),
+  prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
   init = NULL
 )
 }
@@ -22,7 +22,7 @@ rtmb_fa(
 
 \item{score}{Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).}
 
-\item{prior}{List of hyperparameters for prior distributions. `loading_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.}
+\item{prior}{List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.}
 
 \item{init}{List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.}
 }
