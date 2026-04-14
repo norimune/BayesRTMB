@@ -172,23 +172,23 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
   }
 
   if (!is.null(comp_transform)) {
-    test_tran <- BayesRTMB::with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
+    test_tran <- BayesRTMB:::with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
     if (is.list(test_tran)) test_para <- c(test_para, test_tran)
   }
 
-  BayesRTMB::with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
+  BayesRTMB:::with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
 
   if (!is.null(comp_generate)) {
-    BayesRTMB::with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
+    BayesRTMB:::with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
   }
 
   # --- 5. 実行用安全ラッパーの作成 ---
-  safe_model <- function(dat, para) { BayesRTMB::with_rtmb_error_handling({ comp_model(dat, para) }, "model") }
+  safe_model <- function(dat, para) { BayesRTMB:::with_rtmb_error_handling({ comp_model(dat, para) }, "model") }
 
   safe_transformed <- NULL
   if (!is.null(comp_transform)) {
     safe_transformed <- function(dat, para) {
-      res <- BayesRTMB::with_rtmb_error_handling({ comp_transform(dat, para) }, "transform")
+      res <- BayesRTMB:::with_rtmb_error_handling({ comp_transform(dat, para) }, "transform")
       if (!is.list(res)) stop("戻り値は「名前付きリスト (list)」である必要があります。")
       res
     }
@@ -198,7 +198,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
   safe_generate <- NULL
   if (!is.null(comp_generate)) {
     safe_generate <- function(dat, para) {
-      res <- BayesRTMB::with_rtmb_error_handling({ comp_generate(dat, para) }, "generate")
+      res <- BayesRTMB:::with_rtmb_error_handling({ comp_generate(dat, para) }, "generate")
       if (!is.list(res)) stop("戻り値は「名前付きリスト (list)」である必要があります。")
       res
     }
