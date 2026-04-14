@@ -592,12 +592,16 @@ MCMC_Fit <- R6::R6Class(
       }
 
       if (!is.null(self$generate_fit)) {
+        existing_gq <- dimnames(self$generate_fit)[[3]]
         for (g_name in names(self$generate_dims)) {
           g_dim <- self$generate_dims[[g_name]]
           flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
-          val <- self$generate_fit[1, 1, flat_nms]
-          if (length(g_dim) > 1) dim(val) <- g_dim
-          test_p_list[[g_name]] <- val
+          # 既存の generate_fit に存在するものだけを取り出す
+          if (all(flat_nms %in% existing_gq)) {
+            val <- self$generate_fit[1, 1, flat_nms]
+            if (length(g_dim) > 1) dim(val) <- g_dim
+            test_p_list[[g_name]] <- val
+          }
         }
       }
 
@@ -641,12 +645,16 @@ MCMC_Fit <- R6::R6Class(
             if (is.list(tran_res)) p_list <- c(p_list, tran_res)
           }
           if (!is.null(self$generate_fit)) {
+            existing_gq <- dimnames(self$generate_fit)[[3]]
             for (g_name in names(self$generate_dims)) {
               g_dim <- self$generate_dims[[g_name]]
               flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
-              val <- self$generate_fit[i, c, flat_nms]
-              if (length(g_dim) > 1) dim(val) <- g_dim
-              p_list[[g_name]] <- val
+              # 既存の generate_fit に存在するものだけを取り出す
+              if (all(flat_nms %in% existing_gq)) {
+                val <- self$generate_fit[i, c, flat_nms]
+                if (length(g_dim) > 1) dim(val) <- g_dim
+                p_list[[g_name]] <- val
+              }
             }
           }
           res <- gen_fn(self$model$data, p_list)
