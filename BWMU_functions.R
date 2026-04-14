@@ -2,6 +2,13 @@ library(MASS)
 #library(EFA.dimensions)
 #library(CCA)
 
+map <- function(z) {
+  if (abs(max(z) - min(z)) < 1e-10) return(z[1])
+  d <- density(z)
+  d$x[which.max(d$y)]
+}
+
+
 Principal_Axis <- function(A){
   temp <- eigen(A%*%t(A))
   rotA <- array(NA,dim=c(nrow(A),ncol(A)))
