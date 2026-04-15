@@ -9,21 +9,26 @@ rtmb_glmer(
   data,
   family = "gaussian",
   laplace = FALSE,
-  prior = list(beta_sd = 10, tau_rate = 1, sigma_rate = 1, lkj_eta = 1, shape_rate = 1,
-    phi_rate = 1, cutpoint_sd = 2.5),
+  min_y = NULL,
+  max_y = NULL,
+  prior = list(),
   init = NULL
 )
 }
 \arguments{
-\item{formula}{lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))}
+\item{formula}{lme4スタイルのフォーミュラ (例: Y ~ X + (1 | GID))}
 
 \item{data}{データフレーム}
 
-\item{family}{分布族の文字列}
+\item{family}{分布族の文字列 ("gaussian", "binomial", "poisson" など)}
 
-\item{laplace}{変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)}
+\item{laplace}{変量効果をラプラス近似で周辺化するかどうか}
 
-\item{prior}{事前分布のハイパーパラメータのリスト}
+\item{min_y}{目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)}
+
+\item{max_y}{目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)}
+
+\item{prior}{事前分布のハイパーパラメータリスト}
 
 \item{init}{初期値のリスト (指定しない場合はglmに基づく初期値が自動生成されます)}
 }

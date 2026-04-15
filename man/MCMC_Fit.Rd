@@ -223,7 +223,7 @@ Numeric vector of log-probability values.
 \subsection{Method \code{bridgesampling()}}{
 Estimate the marginal likelihood by bridge sampling.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bridgesampling(method = "warp3", seed = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bridgesampling(method = "warp3", seed = NULL, max_iter = 100)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{

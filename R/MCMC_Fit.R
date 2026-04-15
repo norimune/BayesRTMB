@@ -279,6 +279,7 @@ MCMC_Fit <- R6::R6Class(
       }
       res_df <- do.call(rbind, res_list_sum)
       class(res_df) <- c("summary_BayesRTMB", "data.frame")
+      attr(res_df, "digits") <- digits
       return(res_df)
     },
 
@@ -323,7 +324,7 @@ MCMC_Fit <- R6::R6Class(
 
     #' @description Estimate the marginal likelihood by bridge sampling.
     #' @return Bridge sampling result.
-    bridgesampling = function(method = "warp3", seed = NULL) {
+    bridgesampling = function(method = "warp3", seed = NULL, max_iter = 100) {
 
       if (!is.null(seed)) set.seed(seed)
 
@@ -412,7 +413,7 @@ MCMC_Fit <- R6::R6Class(
         stop("method引数は 'normal' または 'warp3' を指定してください。")
       }
 
-      Trial <- 100
+      Trial <- max_iter
       for(t in 1:Trial){
         ml_t_old <- ml_t
         bunbo <- 0

@@ -4,7 +4,7 @@
 \alias{print.summary_BayesRTMB}
 \title{print for summary_BayesRTMB class}
 \usage{
-\method{print}{summary_BayesRTMB}(x, digits = 2, ...)
+\method{print}{summary_BayesRTMB}(x, digits = NULL, ...)
 }
 \arguments{
 \item{digits}{integer}

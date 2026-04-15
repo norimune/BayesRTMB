@@ -115,8 +115,13 @@ as_summary_df <- function(df) {
 #' print for summary_BayesRTMB class
 #' @param digits integer
 #' @export
-print.summary_BayesRTMB <- function(x, digits = 2,...) {
+print.summary_BayesRTMB <- function(x, digits = NULL,...) {
   df <- x
+
+  if (is.null(digits)) {
+    digits <- attr(x, "digits")
+    if (is.null(digits)) digits <- 2
+  }
 
   # 1. 各列を文字列に変換 (表示形式の指定)
   out_char <- as.data.frame(lapply(names(df), function(cn) {

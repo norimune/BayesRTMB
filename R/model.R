@@ -108,6 +108,18 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
     }
   }
 
+  if ("setup" %in% names(code)) {
+    # data を R の環境に展開し、その中で setup のコードを評価する
+    dat_env <- list2env(data, parent = parent.frame())
+    tryCatch({
+      eval(code$setup, envir = dat_env)
+    }, error = function(e) {
+      stop(sprintf("【setup ブロックのエラー】データの前処理中にエラーが発生しました:\n  %s", conditionMessage(e)), call. = FALSE)
+    })
+    # 評価後に作成・変更された変数をすべて data リストに戻す
+    data <- as.list(dat_env)
+  }
+
   # --- 2. Parameters ブロックの静的検証と評価 ---
   param_exprs <- as.list(code$parameters)[-1]
   evaluated_par_list <- list()
@@ -274,7 +286,7 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
 rtmb_code <- function(...) {
   args <- as.list(match.call())[-1]
   code_list <- list()
-  valid_blocks <- c("data", "parameters", "transform", "model", "generate")
+  valid_blocks <- c("setup", "data", "parameters", "transform", "model", "generate")
 
   # パターン1: 前者の書き方 (名前付き引数・カンマ区切り)
   if (!is.null(names(args))) {
@@ -713,45 +725,51 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 
 
 #' RTMBベースのGLMMラッパー関数
-#' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 + X | GID))
+#'
+#' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 | GID))
 #' @param data データフレーム
-#' @param family 分布族の文字列
-#' @param laplace 変量効果をラプラス近似で周辺化するかどうか (デフォルト: FALSE)
-#' @param prior 事前分布のハイパーパラメータのリスト
+#' @param family 分布族の文字列 ("gaussian", "binomial", "poisson" など)
+#' @param laplace 変量効果をラプラス近似で周辺化するかどうか
+#' @param min_y 目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)
+#' @param max_y 目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)
+#' @param prior 事前分布のハイパーパラメータリスト
 #' @param init 初期値のリスト (指定しない場合はglmに基づく初期値が自動生成されます)
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
-                       prior = list(
-                         beta_sd = 10,
-                         tau_rate = 1,
-                         sigma_rate = 1,
-                         lkj_eta = 1.0,
-                         shape_rate = 1,
-                         phi_rate = 1,
-                         cutpoint_sd = 2.5
-                       ),
-                       init = NULL) {
+                       min_y = NULL, max_y = NULL, prior = list(), init = NULL) {
 
-  if (!requireNamespace("lme4", quietly = TRUE)) {
-    stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
-  }
+  if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
+  if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, min_y = min_y, max_y = max_y, prior = prior))
 
-  if (is.null(lme4::findbars(formula))) {
-    return(rtmb_glm(formula = formula, data = data, family = family, prior = prior))
-  }
-
-  # 1. フォーミュラのパース
-  parsed <- lme4::lFormula(
-    formula,
-    data = data,
-    control = lme4::lmerControl(
-      check.nobs.vs.nlev = "ignore",
-      check.nobs.vs.nRE  = "ignore"
-    )
+  default_prior <- list(
+    max_beta = 1.0, sd_scale = 2.0, logit_scale = 2.5, log_scale = 1.0,
+    shape_rate = 1.0, phi_rate = 1.0, nu_rate = 0.1, cutpoint_sd = 2.5, lkj_eta = 1.0
   )
+  prior <- modifyList(default_prior, prior)
 
-  # --- 応答変数Yの型変換 ---
+  parsed <- lme4::lFormula(formula, data = data, control = lme4::lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE  = "ignore"))
   Y <- model.response(parsed$fr)
+  X <- parsed$X
+  reTrms <- parsed$reTrms
+
+  if (length(reTrms$Ztlist) > 1) stop("現在、単一のグループ化変数のみに対応しています。")
+
+  # --- 切片の処理 ---
+  has_intercept <- "(Intercept)" %in% colnames(X)
+  if (family == "ordered") has_intercept <- FALSE
+  if ("(Intercept)" %in% colnames(X)) {
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+  }
+
+  fixed_names <- colnames(X)
+  K_tmp <- ncol(X)
+  ranef_names <- parsed$reTrms$cnms[[1]]
+  ranef_names[ranef_names == "(Intercept)"] <- "Int"
+
+  Zt <- as.matrix(reTrms$Ztlist[[1]])
+  group_idx <- as.integer(reTrms$flist[[1]])
+  offset <- model.offset(parsed$fr)
+
   if (is.matrix(Y)) {
     if (ncol(Y) == 2 && family == "binomial") {
       trials <- as.numeric(Y[, 1] + Y[, 2])
@@ -759,96 +777,98 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     } else if (ncol(Y) == 1) {
       Y <- as.numeric(Y[, 1])
       trials <- rep(1, length(Y))
-    } else {
-      stop("応答変数の行列形式が不正です。binomialの場合は cbind(成功数, 失敗数) を指定してください。")
-    }
+    } else stop("応答変数の行列形式が不正です。")
   } else {
     trials <- rep(1, length(Y))
     if (is.factor(Y)) {
-      if (family %in% c("bernoulli", "binomial")) {
-        Y <- as.numeric(Y) - 1
-      } else {
-        Y <- as.numeric(Y)
-      }
-    } else {
-      Y <- as.numeric(Y)
-    }
+      Y <- if (family %in% c("bernoulli", "binomial")) as.numeric(Y) - 1 else as.numeric(Y)
+    } else Y <- as.numeric(Y)
   }
 
-  X <- parsed$X
-  reTrms <- parsed$reTrms
-
-  if (length(reTrms$Ztlist) > 1) {
-    stop("現在、ラッパー関数は単一のグループ化変数のみに対応しています。")
-  }
-
-  if (family == "ordered" && "(Intercept)" %in% colnames(X)) {
-    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
-    if (ncol(X) == 0) {
-      stop("順序ロジスティックモデルでは切片のみのモデルは現在サポートされていません。")
-    }
-  }
-
-  fixed_names <- colnames(X)
-  fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
-  ranef_names <- parsed$reTrms$cnms[[1]]
-  ranef_names[ranef_names == "(Intercept)"] <- "Intercept"
-
-  Zt <- as.matrix(reTrms$Ztlist[[1]])
-  group_idx <- as.integer(reTrms$flist[[1]])
-  num_groups <- length(levels(reTrms$flist[[1]]))
-  num_ranef <- nrow(Zt) / num_groups
-  offset <- model.offset(parsed$fr)
-
-  # --- スマート初期化 (glmの利用) ---
   if (is.null(init)) {
     tryCatch({
-      if (requireNamespace("reformulas", quietly = TRUE)) {
-        fixed_formula <- reformulas::nobars(formula)
-      } else {
-        fixed_formula <- suppressWarnings(lme4::nobars(formula))
-      }
-      glm_fam <- switch(family,
-                        "gaussian" = gaussian(), "student_t" = gaussian(),
-                        "lognormal" = gaussian(link = "log"), "bernoulli" = binomial(),
-                        "binomial" = binomial(), "poisson" = poisson(),
-                        "neg_binomial" = poisson(), "gamma" = Gamma(link = "log"),
-                        gaussian()
-      )
-      fit_glm <- suppressWarnings(glm(fixed_formula, data = data, family = glm_fam))
-      init_b <- unname(coef(fit_glm))
-      init_b[is.na(init_b)] <- 0
-      init <- list(b = init_b)
-    }, error = function(e) {
-      init <- NULL
-    })
+      fixed_formula <- if (requireNamespace("reformulas", quietly = TRUE)) reformulas::nobars(formula) else suppressWarnings(lme4::nobars(formula))
+      glm_fam <- switch(family, "gaussian" = gaussian(), "student_t" = gaussian(), "lognormal" = gaussian(link="log"), "bernoulli" = binomial(), "binomial" = binomial(), "poisson" = poisson(), "neg_binomial" = poisson(), "gamma" = Gamma(link="log"), gaussian())
+      init_fit <- suppressWarnings(glm(fixed_formula, data = data, family = glm_fam))
+      init_coef <- unname(coef(init_fit))
+      init_coef[is.na(init_coef)] <- 0
+      if (has_intercept && K_tmp > 0) init <- list(Intercept_c = init_coef[1], b = init_coef[-1])
+      else if (has_intercept && K_tmp == 0) init <- list(Intercept_c = init_coef[1])
+      else if (!has_intercept && K_tmp > 0) init <- list(b = init_coef)
+    }, error = function(e) init <- NULL)
   }
 
-  N <- length(Y)
-  Z_mat <- matrix(0, nrow = N, ncol = num_ranef)
-  for (i in 1:N) {
-    g <- group_idx[i]
-    rows <- ((g - 1) * num_ranef + 1):(g * num_ranef)
-    Z_mat[i, ] <- Zt[rows, i]
+  # --- R側でのスケール決定 ---
+  if (family %in% c("bernoulli", "binomial", "ordered")) {
+    base_scale <- prior$logit_scale
+    alpha_prior_sd <- prior$logit_scale * 2
+    mid_y <- 0
+    sigma_rate <- 1.0
+  } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
+    base_scale <- prior$log_scale
+    alpha_prior_sd <- prior$log_scale * 2
+    mid_y <- 0
+    sigma_rate <- 1.0
+  } else {
+    if (is.null(min_y) || is.null(max_y)) {
+      min_y <- min(Y, na.rm = TRUE)
+      max_y <- max(Y, na.rm = TRUE)
+      message("注: min_y または max_y が省略されたため、データの最小・最大値を用いて事前分布を構成します。厳密な比較には理論的な境界値を指定してください。")
+    } else {
+      if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) warning("指定された min_y または max_y の範囲外のデータが存在します。")
+    }
+    d_y <- max_y - min_y
+    if (d_y == 0) d_y <- 1
+    base_scale <- d_y / prior$sd_scale
+    alpha_prior_sd <- d_y / 2
+    mid_y <- (max_y + min_y) / 2
+    sigma_rate <- prior$sd_scale / d_y
   }
+  tau_rate <- 1.0 / base_scale
 
-  # 2. dataの準備 (静的解析を通すために num_categories等も追加)
   dat <- list(
-    N = N, Y = Y, trials = trials, X = X, offset = offset,
-    Z_mat = Z_mat, group_idx = group_idx,
-    num_groups = num_groups, num_ranef = num_ranef, K = ncol(X),
-    prior_beta_sd = prior$beta_sd, prior_tau_rate = prior$tau_rate,
-    prior_sigma_rate = prior$sigma_rate, prior_lkj_eta = prior$lkj_eta,
+    Y = Y, trials = trials, X = X, Zt = Zt, group_idx = group_idx,
+    base_scale = base_scale, max_beta = prior$max_beta,
+    mid_y = mid_y, alpha_prior_sd = alpha_prior_sd, sigma_rate = sigma_rate, tau_rate = tau_rate,
     prior_shape_rate = prior$shape_rate, prior_phi_rate = prior$phi_rate,
-    prior_cutpoint_sd = prior$cutpoint_sd
+    prior_nu_rate = prior$nu_rate, prior_cutpoint_sd = prior$cutpoint_sd, prior_lkj_eta = prior$lkj_eta
   )
-  if (family == "ordered") {
-    dat$num_categories <- length(unique(Y))
-  }
+  if (!is.null(offset)) dat$offset <- offset
+  if (family == "ordered") dat$num_categories <- length(unique(Y))
 
-  # 3. parameters ブロックの動的構築 (AST)
+  # --- AST構築 ---
+  setup_exprs <- list()
+  setup_exprs[[1]] <- quote(N <- length(Y))
+  setup_exprs[[2]] <- quote(K <- ncol(X))
+  setup_exprs[[3]] <- quote(num_groups <- max(group_idx))
+  setup_exprs[[4]] <- quote(num_ranef <- nrow(Zt) / num_groups)
+  setup_exprs[[5]] <- quote(Z_mat <- matrix(0, nrow = N, ncol = num_ranef))
+  setup_exprs[[6]] <- quote(
+    for (i in 1:N) {
+      g <- group_idx[i]
+      Z_mat[i, ] <- Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i]
+    }
+  )
+  if (K_tmp > 0) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(beta_prior_sd <- max_beta * base_scale / X_sd)
+    if (has_intercept) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
+    }
+  }
+  setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
+
+  tmp_env <- list2env(dat)
+  eval(setup_ast, tmp_env)
+  N <- tmp_env$N
+  K <- tmp_env$K
+  num_groups <- tmp_env$num_groups
+  num_ranef <- tmp_env$num_ranef
+
   param_exprs <- list()
-  param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
+  if (has_intercept) param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
+  if (K > 0) param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
 
   if (num_ranef == 1) {
     param_exprs[[length(param_exprs) + 1]] <- quote(sd <- Dim(num_ranef, lower = 0))
@@ -859,177 +879,54 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     param_exprs[[length(param_exprs) + 1]] <- quote(r <- Dim(c(num_groups, num_ranef), random = TRUE))
   }
 
-  if (family %in% c("gaussian", "lognormal", "student_t")) {
-    param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
-  }
-  if (family == "student_t") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
-  }
-  if (family == "gamma") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
-  }
-  if (family == "neg_binomial") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
-  }
-  if (family == "ordered") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
-  }
+  if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
+  if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
+  if (family == "gamma") param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
+  if (family == "neg_binomial") param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
+  if (family == "ordered") param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
   param_ast <- as.call(c(list(as.name("{")), param_exprs))
 
+  tran_exprs <- list()
+  if (has_intercept) {
+    if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
+    else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
+  }
+  if (num_ranef > 1) tran_exprs[[length(tran_exprs) + 1]] <- quote(cor <- CF_cor %*% t(CF_cor))
+  tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
 
-  # 4. model ブロックの動的構築
-  ll_expr <- switch(family,
-                    "gaussian" = quote({ sigma ~ exponential(prior_sigma_rate); Y ~ normal(eta, sigma) }),
-                    "lognormal" = quote({ sigma ~ exponential(prior_sigma_rate); Y ~ lognormal(eta, sigma) }),
-                    "student_t" = quote({ sigma ~ exponential(prior_sigma_rate); nu ~ exponential(0.1); Y ~ student_t(nu, eta, sigma) }),
-                    "gamma" = quote({ shape ~ exponential(prior_shape_rate); Y ~ gamma(shape, shape / exp(eta)) }),
-                    "bernoulli" = quote({ Y ~ bernoulli_logit(eta) }),
-                    "binomial" = quote({ Y ~ binomial_logit(trials, eta) }),
-                    "poisson" = quote({ Y ~ poisson(exp(eta)) }),
-                    "neg_binomial" = quote({ phi ~ exponential(prior_phi_rate); Y ~ neg_binomial_2(exp(eta), phi) }),
-                    "ordered" = quote({ Y ~ ordered_logistic(eta, cutpoints); cutpoints ~ normal(0, prior_cutpoint_sd) })
-  )
+  prior_exprs <- list()
+  if (has_intercept) prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
+  if (K > 0) prior_exprs[[length(prior_exprs) + 1]] <- quote(b ~ normal(0, beta_prior_sd))
 
-  if (num_ranef > 1) {
-    common_expr <- quote({
-      b ~ normal(0, prior_beta_sd)
-      sd ~ exponential(prior_tau_rate)
+  if (has_intercept) {
+    if (K > 0) eta_expr <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
+    else eta_expr <- quote(eta <- rep(Intercept_c, N))
+  } else {
+    if (K > 0) eta_expr <- quote(eta <- as.vector(X %*% b))
+    else eta_expr <- quote(eta <- rep(0, N))
+  }
+
+  ranef_exprs <- if (num_ranef > 1) {
+    quote({
+      sd ~ exponential(tau_rate)
       CF_cor ~ lkj_CF_corr(prior_lkj_eta)
-      for (j in 1:num_groups) { r[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor) }
-      eta <- X %*% b
-      for (i in 1:N) { eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ] * sd) }
+      for (j in 1:num_groups) r[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor)
+      for (i in 1:N) eta[i] <- eta[i] + sum(Z_mat[i, ] * r[group_idx[i], ] * sd)
     })
   } else {
-    common_expr <- quote({
-      b ~ normal(0, prior_beta_sd)
-      sd ~ exponential(prior_tau_rate)
+    quote({
+      sd ~ exponential(tau_rate)
       r ~ normal(0, 1)
-      eta <- X %*% b + Z_mat[,1] * r[group_idx] * sd
+      eta <- eta + Z_mat[,1] * r[group_idx] * sd
     })
   }
 
-  offset_expr <- if (!is.null(offset)) quote({eta <- eta + offset}) else quote({})
+  offset_expr <- if (!is.null(offset)) quote(eta <- eta + offset) else NULL
 
-  model_ast <- as.call(c(list(as.name("{")), as.list(common_expr)[-1], as.list(offset_expr)[-1], as.list(ll_expr)[-1]))
-
-  # 5. transform ブロックの構築
-  tran_ast <- if (num_ranef > 1) quote({ cor <- CF_cor %*% t(CF_cor) }) else NULL
-
-  # --- 新しい rtmb_code への組み立て ---
-  code_obj <- list(parameters = param_ast, model = model_ast)
-  if (!is.null(tran_ast)) code_obj$transform <- tran_ast
-
-  par_names_list <- list(b = fixed_names, sd = ranef_names)
-  if (num_ranef > 1) par_names_list$cor <- ranef_names
-
-  obj <- rtmb_model(
-    data = dat,
-    code = code_obj,
-    par_names = par_names_list,
-    init = init,
-    view = c("b", "sd", "cor")
-  )
-
-  obj$formula <- formula
-  obj$raw_data <- data
-  obj$family <- family
-
-  return(obj)
-}
-
-
-#' RTMBベースのGLMラッパー関数 (変量効果なし)
-#'
-#' @param formula フォーミュラ (例: Y ~ X1 + X2)
-#' @param data データフレーム
-#' @param family 分布族の文字列
-#' @param prior 事前分布のハイパーパラメータのリスト
-#' @export
-rtmb_glm <- function(formula, data, family = "gaussian",
-                     prior = list(
-                       beta_sd = 10,
-                       sigma_rate = 1,
-                       shape_rate = 1,
-                       phi_rate = 1,
-                       cutpoint_sd = 2.5
-                     )) {
-
-  mf <- model.frame(formula, data)
-  Y <- model.response(mf)
-  X <- model.matrix(formula, mf)
-
-  if (family == "ordered" && "(Intercept)" %in% colnames(X)) {
-    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
-    if (ncol(X) == 0) {
-      stop("順序ロジスティックモデルでは切片のみのモデルは現在サポートされていません。")
-    }
-  }
-
-  if (is.matrix(Y)) {
-    if (ncol(Y) == 2 && family == "binomial") {
-      trials <- as.numeric(Y[, 1] + Y[, 2])
-      Y <- as.numeric(Y[, 1])
-    } else if (ncol(Y) == 1) {
-      Y <- as.numeric(Y[, 1])
-      trials <- rep(1, length(Y))
-    } else {
-      stop("応答変数の行列形式が不正です。binomialの場合は cbind(成功数, 失敗数) を指定してください。")
-    }
-  } else {
-    trials <- rep(1, length(Y))
-    if (is.factor(Y)) {
-      if (family %in% c("bernoulli", "binomial")) {
-        Y <- as.numeric(Y) - 1
-      } else {
-        Y <- as.numeric(Y)
-      }
-    } else {
-      Y <- as.numeric(Y)
-    }
-  }
-
-  N <- length(Y)
-  fixed_names <- colnames(X)
-  fixed_names[fixed_names == "(Intercept)"] <- "Intercept"
-  offset <- model.offset(mf)
-
-  # 1. dataの準備
-  dat <- list(
-    N = N, Y = Y, trials = trials, X = X, offset = offset, K = ncol(X),
-    prior_beta_sd = prior$beta_sd, prior_sigma_rate = prior$sigma_rate,
-    prior_shape_rate = prior$shape_rate, prior_phi_rate = prior$phi_rate,
-    prior_cutpoint_sd = prior$cutpoint_sd
-  )
-  if (family == "ordered") {
-    dat$num_categories <- length(unique(Y))
-  }
-
-  # 2. parameters ブロックの動的構築 (AST)
-  param_exprs <- list()
-  param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
-
-  if (family %in% c("gaussian", "lognormal", "student_t")) {
-    param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
-  }
-  if (family == "student_t") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
-  }
-  if (family == "gamma") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
-  }
-  if (family == "neg_binomial") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
-  }
-  if (family == "ordered") {
-    param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
-  }
-  param_ast <- as.call(c(list(as.name("{")), param_exprs))
-
-  # 3. model ブロックの動的構築
   ll_expr <- switch(family,
-                    "gaussian" = quote({ Y ~ normal(eta, sigma); sigma ~ exponential(prior_sigma_rate) }),
-                    "lognormal" = quote({ Y ~ lognormal(eta, sigma); sigma ~ exponential(prior_sigma_rate) }),
-                    "student_t" = quote({ Y ~ student_t(nu, eta, sigma); sigma ~ exponential(prior_sigma_rate); nu ~ exponential(0.1) }),
+                    "gaussian" = quote({ Y ~ normal(eta, sigma); sigma ~ exponential(sigma_rate) }),
+                    "lognormal" = quote({ Y ~ lognormal(eta, sigma); sigma ~ exponential(sigma_rate) }),
+                    "student_t" = quote({ Y ~ student_t(nu, eta, sigma); sigma ~ exponential(sigma_rate); nu ~ exponential(prior_nu_rate) }),
                     "gamma" = quote({ Y ~ gamma(shape, shape / exp(eta)); shape ~ exponential(prior_shape_rate) }),
                     "bernoulli" = quote({ Y ~ bernoulli_logit(eta) }),
                     "binomial" = quote({ Y ~ binomial_logit(trials, eta) }),
@@ -1038,23 +935,24 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                     "ordered" = quote({ Y ~ ordered_logistic(eta, cutpoints); cutpoints ~ normal(0, prior_cutpoint_sd) })
   )
 
-  common_expr <- quote({
-    b ~ normal(0, prior_beta_sd)
-    eta <- as.vector(X %*% b)
-  })
+  model_exprs <- c(prior_exprs, list(eta_expr), as.list(ranef_exprs)[-1], if (!is.null(offset_expr)) list(offset_expr) else NULL, as.list(ll_expr)[-1])
+  model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
-  offset_expr <- if (!is.null(offset)) quote({eta <- eta + offset}) else quote({})
-  model_ast <- as.call(c(list(as.name("{")), as.list(common_expr)[-1], as.list(offset_expr)[-1], as.list(ll_expr)[-1]))
+  code_obj <- list(setup = setup_ast, parameters = param_ast)
+  if (!is.null(tran_ast)) code_obj$transform <- tran_ast
+  code_obj$model <- model_ast
 
-  # --- 新しい rtmb_code への組み立て ---
-  code_obj <- list(parameters = param_ast, model = model_ast)
+  par_names_list <- list()
+  if (K > 0) par_names_list$b <- fixed_names
+  par_names_list$sd <- ranef_names
+  if (num_ranef > 1) par_names_list$cor <- ranef_names
 
-  obj <- rtmb_model(
-    data = dat,
-    code = code_obj,
-    par_names = list(b = fixed_names)
-  )
+  view_vars <- c()
+  if (has_intercept) view_vars <- c("Intercept")
+  if (K > 0) view_vars <- c(view_vars, "b")
+  view_vars <- c(view_vars, "sd", "cor")
 
+  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
@@ -1062,6 +960,176 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   return(obj)
 }
 
+#' RTMBベースのGLMラッパー関数 (変量効果なし)
+#'
+#' @param formula フォーミュラ
+#' @param data データフレーム
+#' @param family 分布族の文字列 ("gaussian", "binomial", "poisson" など)
+#' @param min_y 目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)
+#' @param max_y 目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)
+#' @param prior 事前分布のハイパーパラメータリスト
+#' @export
+rtmb_glm <- function(formula, data, family = "gaussian",
+                     min_y = NULL, max_y = NULL,
+                     prior = list()) {
+
+  mf <- model.frame(formula, data)
+  Y <- model.response(mf)
+  X <- model.matrix(formula, mf)
+
+  default_prior <- list(
+    max_beta    = 1.0, sd_scale    = 2.0, logit_scale = 2.5, log_scale   = 1.0,
+    shape_rate  = 1.0, phi_rate    = 1.0, nu_rate     = 0.1, cutpoint_sd = 2.5
+  )
+  prior <- modifyList(default_prior, prior)
+
+  # --- 切片の処理 ---
+  has_intercept <- "(Intercept)" %in% colnames(X)
+  if (family == "ordered") has_intercept <- FALSE
+  if ("(Intercept)" %in% colnames(X)) {
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+  }
+
+  fixed_names <- colnames(X)
+  K <- ncol(X)
+  offset <- model.offset(mf)
+
+  if (is.matrix(Y)) {
+    if (ncol(Y) == 2 && family == "binomial") {
+      trials <- as.numeric(Y[, 1] + Y[, 2])
+      Y <- as.numeric(Y[, 1])
+    } else if (ncol(Y) == 1) {
+      Y <- as.numeric(Y[, 1])
+      trials <- rep(1, length(Y))
+    } else stop("応答変数の行列形式が不正です。")
+  } else {
+    trials <- rep(1, length(Y))
+    if (is.factor(Y)) {
+      Y <- if (family %in% c("bernoulli", "binomial")) as.numeric(Y) - 1 else as.numeric(Y)
+    } else Y <- as.numeric(Y)
+  }
+
+  # --- R側でのスケール決定とバリデーション ---
+  if (family %in% c("bernoulli", "binomial", "ordered")) {
+    base_scale <- prior$logit_scale
+    alpha_prior_sd <- prior$logit_scale * 2
+    mid_y <- 0
+    sigma_rate <- 1.0
+  } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
+    base_scale <- prior$log_scale
+    alpha_prior_sd <- prior$log_scale * 2
+    mid_y <- 0
+    sigma_rate <- 1.0
+  } else {
+    if (is.null(min_y) || is.null(max_y)) {
+      min_y <- min(Y, na.rm = TRUE)
+      max_y <- max(Y, na.rm = TRUE)
+      message("注: min_y または max_y が省略されたため、データの最小・最大値を用いて事前分布を構成します。厳密な比較には理論的な境界値を指定してください。")
+    } else {
+      if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) {
+        warning("指定された min_y または max_y の範囲外のデータが存在します。")
+      }
+    }
+    d_y <- max_y - min_y
+    if (d_y == 0) d_y <- 1
+    base_scale <- d_y / prior$sd_scale
+    alpha_prior_sd <- d_y / 2
+    mid_y <- (max_y + min_y) / 2
+    sigma_rate <- prior$sd_scale / d_y
+  }
+
+  dat <- list(
+    Y = Y, trials = trials, X = X,
+    base_scale = base_scale, max_beta = prior$max_beta,
+    mid_y = mid_y, alpha_prior_sd = alpha_prior_sd, sigma_rate = sigma_rate,
+    prior_shape_rate = prior$shape_rate, prior_phi_rate = prior$phi_rate,
+    prior_nu_rate = prior$nu_rate, prior_cutpoint_sd = prior$cutpoint_sd
+  )
+  if (!is.null(offset)) dat$offset <- offset
+  if (family == "ordered") dat$num_categories <- length(unique(Y))
+
+  # --- AST構築 ---
+  setup_exprs <- list()
+  setup_exprs[[1]] <- quote(N <- length(Y))
+  setup_exprs[[2]] <- quote(K <- ncol(X))
+  if (K > 0) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(beta_prior_sd <- max_beta * base_scale / X_sd)
+    if (has_intercept) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
+    }
+  }
+  setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
+
+  param_exprs <- list()
+  if (has_intercept) param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
+  if (K > 0) param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
+
+  if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
+  if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
+  if (family == "gamma") param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
+  if (family == "neg_binomial") param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
+  if (family == "ordered") param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
+  param_ast <- as.call(c(list(as.name("{")), param_exprs))
+
+  tran_exprs <- list()
+  if (has_intercept) {
+    if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
+    else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
+  }
+  tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
+
+  prior_exprs <- list()
+  if (has_intercept) prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
+  if (K > 0) prior_exprs[[length(prior_exprs) + 1]] <- quote(b ~ normal(0, beta_prior_sd))
+
+  if (has_intercept) {
+    if (K > 0) eta_expr <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
+    else eta_expr <- quote(eta <- rep(Intercept_c, N))
+  } else {
+    if (K > 0) eta_expr <- quote(eta <- as.vector(X %*% b))
+    else eta_expr <- quote(eta <- rep(0, N))
+  }
+
+  offset_expr <- if (!is.null(offset)) quote(eta <- eta + offset) else NULL
+
+  ll_expr <- switch(family,
+                    "gaussian" = quote({ Y ~ normal(eta, sigma); sigma ~ exponential(sigma_rate) }),
+                    "lognormal" = quote({ Y ~ lognormal(eta, sigma); sigma ~ exponential(sigma_rate) }),
+                    "student_t" = quote({ Y ~ student_t(nu, eta, sigma); sigma ~ exponential(sigma_rate); nu ~ exponential(prior_nu_rate) }),
+                    "gamma" = quote({ Y ~ gamma(shape, shape / exp(eta)); shape ~ exponential(prior_shape_rate) }),
+                    "bernoulli" = quote({ Y ~ bernoulli_logit(eta) }),
+                    "binomial" = quote({ Y ~ binomial_logit(trials, eta) }),
+                    "poisson" = quote({ Y ~ poisson(exp(eta)) }),
+                    "neg_binomial" = quote({ Y ~ neg_binomial_2(exp(eta), phi); phi ~ exponential(prior_phi_rate) }),
+                    "ordered" = quote({ Y ~ ordered_logistic(eta, cutpoints); cutpoints ~ normal(0, prior_cutpoint_sd) })
+  )
+
+  model_exprs <- c(prior_exprs, if (!is.null(eta_expr)) list(eta_expr) else NULL, if (!is.null(offset_expr)) list(offset_expr) else NULL, as.list(ll_expr)[-1])
+  model_ast <- as.call(c(list(as.name("{")), model_exprs))
+
+  code_obj <- list(setup = setup_ast, parameters = param_ast)
+  if (!is.null(tran_ast)) code_obj$transform <- tran_ast
+  code_obj$model <- model_ast
+
+  tmp_env <- list2env(dat)
+  eval(setup_ast, tmp_env)
+
+  par_names_list <- list()
+  if (K > 0) par_names_list$b <- fixed_names
+
+  view_vars <- c()
+  if (has_intercept) view_vars <- c("Intercept")
+  if (K > 0) view_vars <- c(view_vars, "b")
+
+  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, view = view_vars)
+  obj$formula <- formula
+  obj$raw_data <- data
+  obj$family <- family
+
+  return(obj)
+}
 #' RTMB-based Factor Analysis Wrapper
 #'
 #' @description
@@ -1081,48 +1149,57 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     init = NULL) {
 
   Y <- as.matrix(data)
-  N <- nrow(Y)
-  J <- ncol(Y)
   K <- nfactors
 
+  default_prior <- list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25)
+  if (!is.null(prior)) {
+    prior <- modifyList(default_prior, prior)
+  } else {
+    prior <- default_prior
+  }
+
   var_names <- colnames(data)
-  if (is.null(var_names)) var_names <- paste0("V", 1:J)
+  if (is.null(var_names)) var_names <- paste0("V", 1:ncol(Y))
 
-  if (K >= J) stop("因子の数(K)は観測変数の数(J)より小さくする必要があります。")
-
-  Y_bar <- apply(Y, 2, mean)
-  S_Y <- cov(Y) * (N - 1)
+  if (K >= ncol(Y)) stop("因子の数(K)は観測変数の数(J)より小さくする必要があります。")
 
   # SSPモデルかどうかの判定
   is_ssp <- !is.null(rotate) && rotate == "ssp"
+
+  # 共通の setup ブロック
+  setup_ast <- quote({
+    N <- nrow(Y)
+    J <- ncol(Y)
+    Y_bar <- apply(Y, 2, mean)
+    S_Y <- cov(Y) * (N - 1)
+  })
 
   if (is_ssp) {
     if (is.null(prior$ssp_ratio)) prior$ssp_ratio <- 0.25
 
     dat_fa <- list(
-      N = N, J = J, K_factors = K,
-      Y_bar = Y_bar, S_Y = S_Y,
+      Y = Y, K_factors = K,
       prior_mean_sd = prior$mean_sd, prior_sd_rate = prior$sd_rate,
       ssp_ratio = prior$ssp_ratio
     )
+
+    tmp_env <- list2env(dat_fa)
+    eval(setup_ast, tmp_env)
+    N <- tmp_env$N; J <- tmp_env$J; Y_bar <- tmp_env$Y_bar; S_Y <- tmp_env$S_Y
+
     if (score) dat_fa$Y <- Y
 
     # SSP用の初期値自動生成 (Base RのPCAとpromaxを利用)
     if (is.null(init)) {
       tryCatch({
-        # 1. PCAによる初期負荷量の抽出
         eig <- eigen(S_Y / (N - 1))
         L_pca <- eig$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(eig$values[1:K]), nrow = K, ncol = K)
         var_Y <- diag(S_Y / (N - 1))
 
         if (K > 1) {
-          # 2. R標準の stats::promax による斜交回転
           pm <- stats::promax(L_pca, m = 4)
           init_Lambda <- unclass(pm$loadings)
           T_mat <- pm$rotmat
-
-          # 因子間相関行列 Phi = (T^T T)^-1
-          # (数値誤差を防ぐため cov2cor で厳密な相関行列化)
           Phi <- cov2cor(solve(t(T_mat) %*% T_mat))
           init_CF_Omega <- t(chol(Phi))
         } else {
@@ -1131,11 +1208,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
           init_CF_Omega <- matrix(1, nrow = 1, ncol = 1)
         }
 
-        # 3. 独自分散 (sd) の推定
         h2_raw <- rowSums(init_Lambda * (init_Lambda %*% Phi))
         init_sd <- sqrt(pmax(var_Y - h2_raw, 0.01 * var_Y))
 
-        # 4. 標準化負荷量から包含確率 (r) の初期値を設定
         L_std <- init_Lambda / sqrt(var_Y)
         init_r <- ifelse(abs(L_std) > 0.2, 0.9, 0.1)
 
@@ -1177,8 +1252,6 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       CF_Omega ~ lkj_CF_corr(1)
 
       mu_r <- log(ssp_ratio / (1 - ssp_ratio))
-
-      # ループを廃止し、行列全体に一括で事前分布を適用する
       r ~ logit_normal(mu_r, 3)
       tau ~ exponential(1)
       Lambda_star ~ laplace(0, 1)
@@ -1203,7 +1276,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     ret_expr <- quote({ return(out) })
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
 
-    code_args <- list(parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
+    code_args <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
     code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
 
     p_names <- list(
@@ -1239,10 +1312,14 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   } else {
     # --- 既存の回転ロジック (varimax, promax 等) ---
     dat_fa <- list(
-      N = N, J = J, K_factors = K,
-      Y_bar = Y_bar, S_Y = S_Y,
+      Y = Y, K_factors = K,
       prior_mean_sd = prior$mean_sd, prior_loadings_sd = prior$loadings_sd, prior_sd_rate = prior$sd_rate
     )
+
+    tmp_env <- list2env(dat_fa)
+    eval(setup_ast, tmp_env)
+    N <- tmp_env$N; J <- tmp_env$J; Y_bar <- tmp_env$Y_bar; S_Y <- tmp_env$S_Y
+
     if (score) dat_fa$Y <- Y
 
     if (is.null(init)) {
@@ -1365,7 +1442,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
 
-    code_args <- list(parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
+    code_args <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
     code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
 
     p_names <- list(
@@ -1410,6 +1487,17 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   Y <- as.matrix(data)
   N <- nrow(Y)
   P <- ncol(Y)
+
+  default_prior <- list(
+    lkj_eta = 1.0,
+    mu_sd = 10,
+    sigma_rate = 1.0
+  )
+  if (!is.null(prior)) {
+    prior <- modifyList(default_prior, prior)
+  } else {
+    prior <- default_prior
+  }
 
   var_names <- colnames(data)
   if (is.null(var_names)) var_names <- paste0("V", 1:P)

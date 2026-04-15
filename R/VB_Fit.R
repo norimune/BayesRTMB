@@ -270,6 +270,7 @@ VB_Fit <- R6::R6Class(
       }
       res_df <- do.call(rbind, res_list_sum)
       class(res_df) <- c("summary_BayesRTMB", "data.frame")
+      attr(res_df, "digits") <- digits
       return(res_df)
     },
 

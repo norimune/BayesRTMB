@@ -8,18 +8,23 @@ rtmb_glm(
   formula,
   data,
   family = "gaussian",
-  prior = list(beta_sd = 10, sigma_rate = 1, shape_rate = 1, phi_rate = 1, cutpoint_sd =
-    2.5)
+  min_y = NULL,
+  max_y = NULL,
+  prior = list()
 )
 }
 \arguments{
-\item{formula}{フォーミュラ (例: Y ~ X1 + X2)}
+\item{formula}{フォーミュラ}
 
 \item{data}{データフレーム}
 
-\item{family}{分布族の文字列}
+\item{family}{分布族の文字列 ("gaussian", "binomial", "poisson" など)}
 
-\item{prior}{事前分布のハイパーパラメータのリスト}
+\item{min_y}{目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)}
+
+\item{max_y}{目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)}
+
+\item{prior}{事前分布のハイパーパラメータリスト}
 }
 \description{
 RTMBベースのGLMラッパー関数 (変量効果なし)
