@@ -323,6 +323,9 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Estimate the marginal likelihood by bridge sampling.
+    #' @param method Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".
+    #' @param seed Integer; random seed for reproducibility. Default is NULL.
+    #' @param max_iter Integer; maximum number of iterations for the estimation algorithm. Default is 100.
     #' @return Bridge sampling result.
     bridgesampling = function(method = "warp3", seed = NULL, max_iter = 100) {
 

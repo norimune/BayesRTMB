@@ -1130,6 +1130,27 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 
   return(obj)
 }
+
+#' RTMBベースの線形回帰ラッパー関数
+#'
+#' @param formula フォーミュラ (例: Y ~ X1 + X2)
+#' @param data データフレーム
+#' @param min_y 目的変数の理論上の最小値 (省略時はデータから自動計算)
+#' @param max_y 目的変数の理論上の最大値 (省略時はデータから自動計算)
+#' @param prior 事前分布のハイパーパラメータリスト (max_beta, sd_scale)
+#' @export
+rtmb_lm <- function(formula, data, min_y = NULL, max_y = NULL,
+                    prior = list(max_beta = 1.0, sd_scale = 2.0)) {
+  rtmb_glm(
+    formula = formula,
+    data = data,
+    family = "gaussian",
+    min_y = min_y,
+    max_y = max_y,
+    prior = prior
+  )
+}
+
 #' RTMB-based Factor Analysis Wrapper
 #'
 #' @description
