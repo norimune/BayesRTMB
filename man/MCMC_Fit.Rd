@@ -229,9 +229,11 @@ Estimate the marginal likelihood by bridge sampling.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{method}}{Method name.}
+\item{\code{method}}{Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".}
 
-\item{\code{seed}}{Random seed.}
+\item{\code{seed}}{Integer; random seed for reproducibility. Default is NULL.}
+
+\item{\code{max_iter}}{Integer; maximum number of iterations for the estimation algorithm. Default is 100.}
 }
 \if{html}{\out{</div>}}
 }

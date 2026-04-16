@@ -85,6 +85,13 @@ MAP_Fit <- R6::R6Class(
       self$opt_history <- opt_history
       self$transform <- transform
       self$generate <- generate
+
+      # 複素数型（complex）の混入を防ぐための実数化処理
+      if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
+      if (!is.null(self$par)) self$par <- lapply(self$par, Re)
+      if (!is.null(self$random_effects)) self$random_effects <- lapply(self$random_effects, Re)
+      if (!is.null(self$transform)) self$transform <- lapply(self$transform, Re)
+      if (!is.null(self$generate)) self$generate <- lapply(self$generate, Re)
     },
 
     #' @description Summarize MAP estimates.

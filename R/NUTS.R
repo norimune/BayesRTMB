@@ -163,9 +163,12 @@ NUTS_method <- function(model,
     }
   }
 
+  if (exists("para_fixed")) para_fixed <- Re(para_fixed)
+  if (exists("para_full") && !is.null(para_full)) para_full <- Re(para_full)
+
   return(list(
     para_fixed = para_fixed, para_full = para_full,
-    lp = lp, accept = accept, treedepth = treedepth_record, eps = eps
+    lp = Re(lp), accept = accept, treedepth = treedepth_record, eps = eps
   ))
 }
 

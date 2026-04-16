@@ -331,6 +331,9 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
+  fit <- Re(fit)
+  if (!is.null(random_fit)) random_fit <- Re(random_fit)
+
   return(list(
     fit           = fit,
     random_fit    = random_fit,

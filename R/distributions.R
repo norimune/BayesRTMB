@@ -451,6 +451,30 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
   }
 }
 
+#' Normal Mixture log-probability density function
+#'
+#' @param x Vector of quantiles (observations).
+#' @param pi_w Vector of mixing proportions for each cluster.
+#' @param mean Vector of means for each cluster.
+#' @param sd Vector of standard deviations for each cluster.
+#' @return The sum of the log-density.
+#' @export
+normal_mixture_lpdf <- function(x, pi_w, mean, sd) {
+  N <- length(x)
+  log_pi <- log(pi_w)
+
+  lp <- 0
+  for (i in 1:N) {
+    # 各クラスタからの対数尤度
+    log_probs <- log_pi + dnorm(x[i], mean = mean, sd = sd, log = TRUE)
+
+    # Log-Sum-Exp トリックによる加算
+    max_lp <- max(log_probs)
+    lp <- lp + max_lp + log(sum(exp(log_probs - max_lp)))
+  }
+  return(lp)
+}
+
 #' Sum-to-zero multivariate normal log-probability density function
 #'
 #' @param x Vector of quantiles.
