@@ -2,7 +2,7 @@
 % Please edit documentation in R/model.R
 \name{rtmb_glmer}
 \alias{rtmb_glmer}
-\title{RTMBベースのGLMMラッパー関数}
+\title{RTMB-based GLMM wrapper function}
 \usage{
 rtmb_glmer(
   formula,
@@ -11,27 +11,28 @@ rtmb_glmer(
   laplace = FALSE,
   min_y = NULL,
   max_y = NULL,
-  prior = list(),
+  prior = list(prior_ratio = 1, max_beta = 1, logit_scale = 2.5, log_scale = 1,
+    shape_rate = 1, phi_rate = 1, nu_rate = 0.1, cutpoint_sd = 2.5, lkj_eta = 1),
   init = NULL
 )
 }
 \arguments{
-\item{formula}{lme4スタイルのフォーミュラ (例: Y ~ X + (1 | GID))}
+\item{formula}{lme4-style formula (e.g., Y ~ X + (1 | GID))}
 
-\item{data}{データフレーム}
+\item{data}{Data frame}
 
-\item{family}{分布族の文字列 ("gaussian", "binomial", "poisson" など)}
+\item{family}{Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")}
 
-\item{laplace}{変量効果をラプラス近似で周辺化するかどうか}
+\item{laplace}{Logical; whether to marginalize random effects using Laplace approximation}
 
-\item{min_y}{目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)}
+\item{min_y}{Theoretical minimum value of the response variable (recommended for continuous models; calculated from data if omitted)}
 
-\item{max_y}{目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)}
+\item{max_y}{Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)}
 
-\item{prior}{事前分布のハイパーパラメータリスト}
+\item{prior}{List of hyperparameters for prior distributions}
 
-\item{init}{初期値のリスト (指定しない場合はglmに基づく初期値が自動生成されます)}
+\item{init}{List of initial values (generated automatically based on glm if omitted)}
 }
 \description{
-RTMBベースのGLMMラッパー関数
+RTMB-based GLMM wrapper function
 }

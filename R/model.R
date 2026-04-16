@@ -724,27 +724,29 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 }
 
 
-#' RTMBベースのGLMMラッパー関数
+#' RTMB-based GLMM wrapper function
 #'
-#' @param formula lme4スタイルのフォーミュラ (例: Y ~ X + (1 | GID))
-#' @param data データフレーム
-#' @param family 分布族の文字列 ("gaussian", "binomial", "poisson" など)
-#' @param laplace 変量効果をラプラス近似で周辺化するかどうか
-#' @param min_y 目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)
-#' @param max_y 目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)
-#' @param prior 事前分布のハイパーパラメータリスト
-#' @param init 初期値のリスト (指定しない場合はglmに基づく初期値が自動生成されます)
+#' @param formula lme4-style formula (e.g., Y ~ X + (1 | GID))
+#' @param data Data frame
+#' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
+#' @param laplace Logical; whether to marginalize random effects using Laplace approximation
+#' @param min_y Theoretical minimum value of the response variable (recommended for continuous models; calculated from data if omitted)
+#' @param max_y Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)
+#' @param prior List of hyperparameters for prior distributions
+#' @param init List of initial values (generated automatically based on glm if omitted)
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
-                       min_y = NULL, max_y = NULL, prior = list(), init = NULL) {
+                       min_y = NULL, max_y = NULL,
+                       prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
+                                    log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
+                                    nu_rate = 0.1, cutpoint_sd = 2.5, lkj_eta = 1.0),
+                       init = NULL) {
 
   if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
   if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, min_y = min_y, max_y = max_y, prior = prior))
 
-  default_prior <- list(
-    max_beta = 1.0, sd_scale = 2.0, logit_scale = 2.5, log_scale = 1.0,
-    shape_rate = 1.0, phi_rate = 1.0, nu_rate = 0.1, cutpoint_sd = 2.5, lkj_eta = 1.0
-  )
+  # ユーザーが一部のパラメータのみを指定した場合の補完用
+  default_prior <- eval(formals(rtmb_glmer)$prior)
   prior <- modifyList(default_prior, prior)
 
   parsed <- lme4::lFormula(formula, data = data, control = lme4::lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE  = "ignore"))
@@ -798,18 +800,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }, error = function(e) init <- NULL)
   }
 
-  # --- R側でのスケール決定 ---
-  if (family %in% c("bernoulli", "binomial", "ordered")) {
-    base_scale <- prior$logit_scale
-    alpha_prior_sd <- prior$logit_scale * 2
-    mid_y <- 0
-    sigma_rate <- 1.0
-  } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
-    base_scale <- prior$log_scale
-    alpha_prior_sd <- prior$log_scale * 2
-    mid_y <- 0
-    sigma_rate <- 1.0
-  } else {
+  # --- R側でのデータバリデーションと境界設定 ---
+  if (!(family %in% c("bernoulli", "binomial", "ordered", "poisson", "neg_binomial", "gamma"))) {
     if (is.null(min_y) || is.null(max_y)) {
       min_y <- min(Y, na.rm = TRUE)
       max_y <- max(Y, na.rm = TRUE)
@@ -817,21 +809,18 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     } else {
       if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) warning("指定された min_y または max_y の範囲外のデータが存在します。")
     }
-    d_y <- max_y - min_y
-    if (d_y == 0) d_y <- 1
-    base_scale <- d_y / prior$sd_scale
-    alpha_prior_sd <- d_y / 2
-    mid_y <- (max_y + min_y) / 2
-    sigma_rate <- prior$sd_scale / d_y
+  } else {
+    min_y <- 0
+    max_y <- 0
   }
-  tau_rate <- 1.0 / base_scale
 
   dat <- list(
     Y = Y, trials = trials, X = X, Zt = Zt, group_idx = group_idx,
-    base_scale = base_scale, max_beta = prior$max_beta,
-    mid_y = mid_y, alpha_prior_sd = alpha_prior_sd, sigma_rate = sigma_rate, tau_rate = tau_rate,
+    max_beta = prior$max_beta, prior_ratio = prior$prior_ratio,
+    prior_logit_scale = prior$logit_scale, prior_log_scale = prior$log_scale,
     prior_shape_rate = prior$shape_rate, prior_phi_rate = prior$phi_rate,
-    prior_nu_rate = prior$nu_rate, prior_cutpoint_sd = prior$cutpoint_sd, prior_lkj_eta = prior$lkj_eta
+    prior_nu_rate = prior$nu_rate, prior_cutpoint_sd = prior$cutpoint_sd, prior_lkj_eta = prior$lkj_eta,
+    min_y = min_y, max_y = max_y
   )
   if (!is.null(offset)) dat$offset <- offset
   if (family == "ordered") dat$num_categories <- length(unique(Y))
@@ -849,6 +838,27 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       Z_mat[i, ] <- Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i]
     }
   )
+
+  if (family %in% c("bernoulli", "binomial", "ordered")) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- prior_logit_scale)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- prior_logit_scale * 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0)
+  } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- prior_log_scale)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- prior_log_scale * 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0)
+  } else {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- (max_y - min_y) / 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(if (half_d_y == 0) half_d_y <- 0.5)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- half_d_y * prior_ratio)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- (max_y + min_y) / 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
+  }
+  setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_rate <- 1.0 / base_scale)
+
   if (K_tmp > 0) {
     setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
@@ -960,27 +970,26 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   return(obj)
 }
 
-#' RTMBベースのGLMラッパー関数 (変量効果なし)
+#' RTMB-based GLM wrapper function (no random effects)
 #'
-#' @param formula フォーミュラ
-#' @param data データフレーム
-#' @param family 分布族の文字列 ("gaussian", "binomial", "poisson" など)
-#' @param min_y 目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)
-#' @param max_y 目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)
-#' @param prior 事前分布のハイパーパラメータリスト
+#' @param formula Formula
+#' @param data Data frame
+#' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
+#' @param min_y Theoretical minimum value of the response variable (recommended for continuous models; calculated from data if omitted)
+#' @param max_y Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)
+#' @param prior List of hyperparameters for prior distributions
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
                      min_y = NULL, max_y = NULL,
-                     prior = list()) {
+                     prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
+                                  log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
+                                  nu_rate = 0.1, cutpoint_sd = 2.5)) {
 
   mf <- model.frame(formula, data)
   Y <- model.response(mf)
   X <- model.matrix(formula, mf)
 
-  default_prior <- list(
-    max_beta    = 1.0, sd_scale    = 2.0, logit_scale = 2.5, log_scale   = 1.0,
-    shape_rate  = 1.0, phi_rate    = 1.0, nu_rate     = 0.1, cutpoint_sd = 2.5
-  )
+  default_prior <- eval(formals(rtmb_glm)$prior)
   prior <- modifyList(default_prior, prior)
 
   # --- 切片の処理 ---
@@ -1009,18 +1018,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     } else Y <- as.numeric(Y)
   }
 
-  # --- R側でのスケール決定とバリデーション ---
-  if (family %in% c("bernoulli", "binomial", "ordered")) {
-    base_scale <- prior$logit_scale
-    alpha_prior_sd <- prior$logit_scale * 2
-    mid_y <- 0
-    sigma_rate <- 1.0
-  } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
-    base_scale <- prior$log_scale
-    alpha_prior_sd <- prior$log_scale * 2
-    mid_y <- 0
-    sigma_rate <- 1.0
-  } else {
+  # --- R側でのデータバリデーションと境界設定 ---
+  if (!(family %in% c("bernoulli", "binomial", "ordered", "poisson", "neg_binomial", "gamma"))) {
     if (is.null(min_y) || is.null(max_y)) {
       min_y <- min(Y, na.rm = TRUE)
       max_y <- max(Y, na.rm = TRUE)
@@ -1030,20 +1029,18 @@ rtmb_glm <- function(formula, data, family = "gaussian",
         warning("指定された min_y または max_y の範囲外のデータが存在します。")
       }
     }
-    d_y <- max_y - min_y
-    if (d_y == 0) d_y <- 1
-    base_scale <- d_y / prior$sd_scale
-    alpha_prior_sd <- d_y / 2
-    mid_y <- (max_y + min_y) / 2
-    sigma_rate <- prior$sd_scale / d_y
+  } else {
+    min_y <- 0
+    max_y <- 0
   }
 
   dat <- list(
     Y = Y, trials = trials, X = X,
-    base_scale = base_scale, max_beta = prior$max_beta,
-    mid_y = mid_y, alpha_prior_sd = alpha_prior_sd, sigma_rate = sigma_rate,
+    max_beta = prior$max_beta, prior_ratio = prior$prior_ratio,
+    prior_logit_scale = prior$logit_scale, prior_log_scale = prior$log_scale,
     prior_shape_rate = prior$shape_rate, prior_phi_rate = prior$phi_rate,
-    prior_nu_rate = prior$nu_rate, prior_cutpoint_sd = prior$cutpoint_sd
+    prior_nu_rate = prior$nu_rate, prior_cutpoint_sd = prior$cutpoint_sd,
+    min_y = min_y, max_y = max_y
   )
   if (!is.null(offset)) dat$offset <- offset
   if (family == "ordered") dat$num_categories <- length(unique(Y))
@@ -1052,6 +1049,26 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   setup_exprs <- list()
   setup_exprs[[1]] <- quote(N <- length(Y))
   setup_exprs[[2]] <- quote(K <- ncol(X))
+
+  if (family %in% c("bernoulli", "binomial", "ordered")) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- prior_logit_scale)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- prior_logit_scale * 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0)
+  } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- prior_log_scale)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- prior_log_scale * 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0)
+  } else {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- (max_y - min_y) / 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(if (half_d_y == 0) half_d_y <- 0.5)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- half_d_y * prior_ratio)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- (max_y + min_y) / 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
+  }
+
   if (K > 0) {
     setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
@@ -1131,16 +1148,20 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   return(obj)
 }
 
-#' RTMBベースの線形回帰ラッパー関数
+#' RTMB-based Linear Regression wrapper function
 #'
-#' @param formula フォーミュラ (例: Y ~ X1 + X2)
-#' @param data データフレーム
-#' @param min_y 目的変数の理論上の最小値 (省略時はデータから自動計算)
-#' @param max_y 目的変数の理論上の最大値 (省略時はデータから自動計算)
-#' @param prior 事前分布のハイパーパラメータリスト (max_beta, sd_scale)
+#' @param formula Formula (e.g., Y ~ X1 + X2)
+#' @param data Data frame
+#' @param min_y Theoretical minimum value of the response variable (calculated from data if omitted)
+#' @param max_y Theoretical maximum value of the response variable (calculated from data if omitted)
+#' @param prior List of hyperparameters for prior distributions
 #' @export
 rtmb_lm <- function(formula, data, min_y = NULL, max_y = NULL,
-                    prior = list(max_beta = 1.0, sd_scale = 2.0)) {
+                    prior = list(prior_ratio = 1.0, max_beta = 1.0)) {
+
+  default_prior <- eval(formals(rtmb_lm)$prior)
+  prior <- modifyList(default_prior, prior)
+
   rtmb_glm(
     formula = formula,
     data = data,
@@ -1150,6 +1171,170 @@ rtmb_lm <- function(formula, data, min_y = NULL, max_y = NULL,
     prior = prior
   )
 }
+
+#' RTMB-based Regularized Horseshoe Linear Regression
+#'
+#' @param formula Formula (e.g., Y ~ X1 + X2)
+#' @param data Data frame
+#' @param expected_vars Prior expected number of truly effective variables
+#' @param slab_scale Scale of the slab (tails). Default is 2.0.
+#' @param slab_df Degrees of freedom of the slab. Default is 4.0.
+#' @param min_y Theoretical minimum value of the response variable (calculated from data if omitted)
+#' @param max_y Theoretical maximum value of the response variable (calculated from data if omitted)
+#' @param prior List of hyperparameters for prior distributions
+#' @export
+rtmb_hs_lm <- function(formula, data, expected_vars = 3,
+                       slab_scale = 2.0, slab_df = 4.0,
+                       min_y = NULL, max_y = NULL,
+                       prior = list(prior_ratio = 1.0)) {
+
+  mf <- model.frame(formula, data)
+  Y <- as.numeric(model.response(mf))
+  X <- model.matrix(formula, mf)
+
+  default_prior <- eval(formals(rtmb_hs_lm)$prior)
+  prior <- modifyList(default_prior, prior)
+
+  has_intercept <- "(Intercept)" %in% colnames(X)
+  if (has_intercept) {
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+  }
+
+  fixed_names <- colnames(X)
+  N <- length(Y)
+  K <- ncol(X)
+
+  # --- R側でのデータバリデーションと境界設定 ---
+  if (is.null(min_y) || is.null(max_y)) {
+    min_y <- min(Y, na.rm = TRUE)
+    max_y <- max(Y, na.rm = TRUE)
+    message("注: min_y または max_y が省略されたため、データの最小・最大値を用いて事前分布を構成します。厳密な比較には理論的な境界値を指定してください。")
+  } else {
+    if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) {
+      warning("指定された min_y または max_y の範囲外のデータが存在します。")
+    }
+  }
+
+  dat <- list(
+    Y = Y, X = X, N = N, K = K,
+    expected_vars = expected_vars,
+    half_slab_df = slab_df / 2.0,
+    half_slab_scale2 = (slab_df * slab_scale^2) / 2.0,
+    prior_ratio = prior$prior_ratio,
+    min_y = min_y, max_y = max_y
+  )
+
+  setup_ast <- quote({
+    half_d_y <- (max_y - min_y) / 2
+    if (half_d_y == 0) half_d_y <- 0.5
+    base_scale <- half_d_y * prior_ratio
+    alpha_prior_sd <- half_d_y
+    mid_y <- (max_y + min_y) / 2
+    sigma_rate <- 1.0 / base_scale
+
+    p0 <- min(expected_vars, K - 1)
+    if (p0 < 1) p0 <- 1
+    tau0 <- (p0 / (K - p0)) * (base_scale / sqrt(N))
+
+    if (K > 0) {
+      X_mean <- apply(X, 2, mean)
+      X_c <- X - rep(1, N) %*% t(X_mean)
+    }
+  })
+
+  param_ast <- quote({
+    Intercept_c <- Dim(1)
+    z <- Dim(K)
+
+    # 局所的縮小パラメータとその補助変数
+    lambda <- Dim(K, lower = 0)
+    w_lambda <- Dim(K, lower = 0)
+
+    # 大域的縮小パラメータとその補助変数
+    tau <- Dim(1, lower = 0)
+    w_tau <- Dim(1, lower = 0)
+
+    c2 <- Dim(1, lower = 0)
+    sigma <- Dim(1, lower = 0)
+  })
+
+  tran_ast <- quote({
+    lambda_sq <- lambda^2
+    tau_sq <- tau^2
+    lambda_tilde <- sqrt((c2 * lambda_sq) / (c2 + tau_sq * lambda_sq))
+
+    # 係数の復元
+    b <- z * lambda_tilde * tau
+
+    if (K > 0) {
+      Intercept <- Intercept_c - sum(X_mean * b)
+    } else {
+      Intercept <- Intercept_c
+    }
+  })
+
+  model_ast <- quote({
+    # rtmb_glm 準拠の切片と残差分散の事前分布
+    Intercept_c ~ normal(mid_y, alpha_prior_sd)
+    sigma ~ exponential(sigma_rate)
+
+    # 非中心化標準正規分布
+    z ~ normal(0, 1)
+
+    # Half-Cauchyのガンマ・半正規スケール混合表現
+    # w ~ Gamma(0.5, 0.5) を用いて sd = 1/sqrt(w) とすることで計算を安定化
+    w_lambda ~ gamma(0.5, 0.5)
+    lambda ~ half_normal(1 / sqrt(w_lambda))
+
+    w_tau ~ gamma(0.5, 0.5)
+    tau ~ half_normal(tau0 / sqrt(w_tau))
+
+    # スラブ分散の事前分布
+    c2 ~ inverse_gamma(half_slab_df, half_slab_scale2)
+
+    # 尤度
+    if (K > 0) {
+      eta <- as.vector(Intercept_c + X_c %*% b)
+    } else {
+      eta <- rep(Intercept_c, N)
+    }
+
+    Y ~ normal(eta, sigma)
+  })
+
+  code_obj <- list(
+    setup = setup_ast,
+    parameters = param_ast,
+    transform = tran_ast,
+    model = model_ast
+  )
+
+  tmp_env <- list2env(dat)
+  eval(setup_ast, tmp_env)
+
+  par_names_list <- list(
+    b = fixed_names,
+    z = fixed_names,
+    lambda = fixed_names,
+    w_lambda = fixed_names
+  )
+  view_vars <- c("Intercept", "b", "tau", "sigma")
+
+  obj <- rtmb_model(
+    data = as.list(tmp_env),
+    code = code_obj,
+    par_names = par_names_list,
+    view = view_vars
+  )
+
+  obj$formula <- formula
+  obj$raw_data <- data
+  obj$family <- "gaussian"
+
+  return(obj)
+}
+
+
 
 #' RTMB-based Factor Analysis Wrapper
 #'
@@ -1559,3 +1744,6 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
 
   return(obj)
 }
+
+
+

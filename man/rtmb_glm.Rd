@@ -2,7 +2,7 @@
 % Please edit documentation in R/model.R
 \name{rtmb_glm}
 \alias{rtmb_glm}
-\title{RTMBベースのGLMラッパー関数 (変量効果なし)}
+\title{RTMB-based GLM wrapper function (no random effects)}
 \usage{
 rtmb_glm(
   formula,
@@ -10,22 +10,23 @@ rtmb_glm(
   family = "gaussian",
   min_y = NULL,
   max_y = NULL,
-  prior = list()
+  prior = list(prior_ratio = 1, max_beta = 1, logit_scale = 2.5, log_scale = 1,
+    shape_rate = 1, phi_rate = 1, nu_rate = 0.1, cutpoint_sd = 2.5)
 )
 }
 \arguments{
-\item{formula}{フォーミュラ}
+\item{formula}{Formula}
 
-\item{data}{データフレーム}
+\item{data}{Data frame}
 
-\item{family}{分布族の文字列 ("gaussian", "binomial", "poisson" など)}
+\item{family}{Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")}
 
-\item{min_y}{目的変数の理論上の最小値 (連続値モデルで推奨。省略時はデータから自動計算)}
+\item{min_y}{Theoretical minimum value of the response variable (recommended for continuous models; calculated from data if omitted)}
 
-\item{max_y}{目的変数の理論上の最大値 (連続値モデルで推奨。省略時はデータから自動計算)}
+\item{max_y}{Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)}
 
-\item{prior}{事前分布のハイパーパラメータリスト}
+\item{prior}{List of hyperparameters for prior distributions}
 }
 \description{
-RTMBベースのGLMラッパー関数 (変量効果なし)
+RTMB-based GLM wrapper function (no random effects)
 }
