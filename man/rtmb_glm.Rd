@@ -10,8 +10,11 @@ rtmb_glm(
   family = "gaussian",
   min_y = NULL,
   max_y = NULL,
+  regularization = c("none", "rhs", "ssp"),
   prior = list(prior_ratio = 1, max_beta = 1, logit_scale = 2.5, log_scale = 1,
-    shape_rate = 1, phi_rate = 1, nu_rate = 0.1, cutpoint_sd = 2.5)
+    shape_rate = 1, phi_rate = 1, nu_rate = 0.1, cutpoint_sd = 2.5, expected_vars = 3,
+    slab_scale = 2, slab_df = 4, ssp_ratio = 0.25),
+  init = NULL
 )
 }
 \arguments{
@@ -25,7 +28,11 @@ rtmb_glm(
 
 \item{max_y}{Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)}
 
+\item{regularization}{Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".}
+
 \item{prior}{List of hyperparameters for prior distributions}
+
+\item{init}{List of initial values}
 }
 \description{
 RTMB-based GLM wrapper function (no random effects)
