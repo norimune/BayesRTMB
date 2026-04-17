@@ -819,7 +819,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       }
     }
 
-    # Laplace近似時はランダム効果も復元するため full par を取得
     ad_obj$fn(best_par)
     full_par <- if (!is.null(ad_obj$env$last.par.best)) ad_obj$env$last.par.best else ad_obj$env$last.par
 
@@ -848,9 +847,15 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       init_fit <- suppressWarnings(glm(fixed_formula, data = data, family = glm_fam))
       init_coef <- unname(coef(init_fit))
       init_coef[is.na(init_coef)] <- 0
-      if (has_intercept && K_tmp > 0) init <- list(Intercept_c = init_coef[1], b = init_coef[-1])
-      else if (has_intercept && K_tmp == 0) init <- list(Intercept_c = init_coef[1])
-      else if (!has_intercept && K_tmp > 0) init <- list(b = init_coef)
+
+      init <- list()
+      if (has_intercept) init$Intercept_c <- init_coef[1]
+
+      # regularizationがnoneのときのみ、bの初期値を設定する
+      if (regularization == "none" && K_tmp > 0) {
+        if (has_intercept) init$b <- init_coef[-1]
+        else init$b <- init_coef
+      }
     }, error = function(e) init <- NULL)
   }
 
@@ -1069,7 +1074,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   view_vars <- c()
   if (has_intercept) view_vars <- c("Intercept")
   if (K > 0) view_vars <- c(view_vars, "b")
-  view_vars <- c(view_vars, "sd", "cor")
+  view_vars <- c(view_vars, "sd", "sigma","cor")
 
   obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
   obj$formula <- formula
@@ -1181,6 +1186,22 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     if (has_intercept && !is.null(con_est_list$Intercept_c)) {
       init$Intercept_c <- as.numeric(con_est_list$Intercept_c)[1]
     }
+  } else if (is.null(init)) {
+    tryCatch({
+      glm_fam <- switch(family, "gaussian" = gaussian(), "student_t" = gaussian(), "lognormal" = gaussian(link="log"), "bernoulli" = binomial(), "binomial" = binomial(), "poisson" = poisson(), "neg_binomial" = poisson(), "gamma" = Gamma(link="log"), gaussian())
+      init_fit <- suppressWarnings(glm(formula, data = data, family = glm_fam))
+      init_coef <- unname(coef(init_fit))
+      init_coef[is.na(init_coef)] <- 0
+
+      init <- list()
+      if (has_intercept) init$Intercept_c <- init_coef[1]
+
+      # regularizationがnoneのときのみ、bの初期値を設定する
+      if (regularization == "none" && K > 0) {
+        if (has_intercept) init$b <- init_coef[-1]
+        else init$b <- init_coef
+      }
+    }, error = function(e) init <- NULL)
   }
 
   if (!(family %in% c("bernoulli", "binomial", "ordered", "poisson", "neg_binomial", "gamma"))) {
