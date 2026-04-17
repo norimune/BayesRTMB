@@ -91,25 +91,52 @@ MCMC_Fit <- R6::R6Class(
       print(self$summary(...))
       invisible(self)
     },
+
     #' @description Extract posterior draws for selected parameters.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
     #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
+    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp).
     #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
     #' @param inc_transform Logical; whether to include transformed parameters in the output. Default is TRUE.
     #' @param inc_generate Logical; whether to include generated quantities in the output. Default is TRUE.
     #' @return Posterior draws.
-    draws = function(pars = NULL, chains = NULL,
+    draws = function(pars = NULL, chains = NULL, best_chains = NULL,
                      inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE) {
-      out_array <- self$fit
+
+      # 1. 使用する chain の決定
+      total_chains <- dim(self$fit)[2]
+      available_chains <- 1:total_chains
+
+      if (!is.null(chains)) {
+        available_chains <- intersect(available_chains, chains)
+        if (length(available_chains) == 0) {
+          stop("指定された chains が見つかりません。", call. = FALSE)
+        }
+      }
+
+      if (!is.null(best_chains)) {
+        lp_idx <- which(dimnames(self$fit)[[3]] == "lp")
+        if (length(lp_idx) == 0) lp_idx <- 1
+
+        # available_chains に対する lp の平均値を計算
+        lp_means <- apply(self$fit[, available_chains, lp_idx, drop = FALSE], 2, mean, na.rm = TRUE)
+        n_best <- min(best_chains, length(available_chains))
+        ordered_idx <- order(lp_means, decreasing = TRUE)
+        selected_rel_idx <- ordered_idx[1:n_best]
+        available_chains <- available_chains[selected_rel_idx]
+      }
+
+      available_chains <- sort(available_chains)
+
+      # 2. 配列の抽出と結合
+      out_array <- self$fit[, available_chains, , drop = FALSE]
 
       if (inc_random && !is.null(self$random_fit)) {
-        P1 <- dim(out_array)[3]
-        P2 <- dim(self$random_fit)[3]
-        I <- dim(out_array)[1]
-        C <- dim(out_array)[2]
+        P1 <- dim(out_array)[3]; P2 <- dim(self$random_fit)[3]
+        I <- dim(out_array)[1]; C <- length(available_chains)
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$random_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$random_fit[, available_chains, , drop = FALSE]
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
@@ -120,10 +147,10 @@ MCMC_Fit <- R6::R6Class(
 
       if (inc_transform && !is.null(self$transform_fit)) {
         P1 <- dim(out_array)[3]; P2 <- dim(self$transform_fit)[3]
-        I <- dim(out_array)[1]; C <- dim(out_array)[2]
+        I <- dim(out_array)[1]; C <- length(available_chains)
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$transform_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$transform_fit[, available_chains, , drop = FALSE]
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
@@ -133,11 +160,11 @@ MCMC_Fit <- R6::R6Class(
       }
 
       if (inc_generate && !is.null(self$generate_fit)) {
-        P1 <- dim(out_array)[3];P2 <- dim(self$generate_fit)[3]
-        I <- dim(out_array)[1];C <- dim(out_array)[2]
+        P1 <- dim(out_array)[3]; P2 <- dim(self$generate_fit)[3]
+        I <- dim(out_array)[1]; C <- length(available_chains)
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$generate_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$generate_fit[, available_chains, , drop = FALSE]
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
@@ -173,25 +200,25 @@ MCMC_Fit <- R6::R6Class(
         }
       }
 
-      if (is.null(chains)) {
-        return(out_array[, , target_idx, drop = FALSE])
-      } else {
-        return(out_array[, chains, target_idx, drop = FALSE])
-      }
+      return(out_array[, , target_idx, drop = FALSE])
     },
 
     #' @description Summarize posterior draws.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.
+    #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are used.
+    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp).
     #' @param max_rows Integer; maximum number of rows to print in the summary table. Default is 10.
     #' @param digits Integer; number of decimal places to print. Default is 2.
     #' @param inc_random Logical; whether to include random effects in the summary. Default is FALSE.
     #' @param inc_transform Logical; whether to include transformed parameters in the summary. Default is TRUE.
     #' @param inc_generate Logical; whether to include generated quantities in the summary. Default is TRUE.
     #' @return A summary object.
-    summary = function(pars = NULL, max_rows = 10, digits = 2,
+    summary = function(pars = NULL, chains = NULL, best_chains = NULL,
+                       max_rows = 10, digits = 2,
                        inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE){
       draws_array <- self$draws(pars = pars,
-                                chains = NULL,
+                                chains = chains,
+                                best_chains = best_chains,
                                 inc_random = inc_random,
                                 inc_transform = inc_transform,
                                 inc_generate = inc_generate)
@@ -455,15 +482,6 @@ MCMC_Fit <- R6::R6Class(
       wrapper_tran_fn <- function(dat, param) {
         res <- list()
 
-        # # CF_corr から相関行列を自動生成
-        # for (name in names(self$model$par_list)) {
-        #   if (self$model$par_list[[name]]$type == "CF_corr") {
-        #     mat_name <- if (grepl("^CF_", name)) sub("^CF_", "", name) else paste0(name, "_corr")
-        #     res[[mat_name]] <- param[[name]] %*% t(param[[name]])
-        #   }
-        # }
-
-        # ユーザー定義 transformed_parameters を追加
         if (!is.null(tran_fn)) {
           user_res <- tran_fn(dat, param)
 
@@ -473,7 +491,6 @@ MCMC_Fit <- R6::R6Class(
             stop("`transformed_parameters` は list を返す必要があります。", call. = FALSE)
           }
 
-          # 名前の重複チェック
           dup_names <- intersect(names(res), names(user_res))
           if (length(dup_names) > 0) {
             stop(
@@ -544,10 +561,8 @@ MCMC_Fit <- R6::R6Class(
     #' @return The `MCMC_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.
     generated_quantities = function(code) {
-      # 1. 引数のキャプチャとASTの抽出
       raw_code <- substitute(code)
 
-      # メソッド内から変数としてASTが渡された場合(rotate等)の対応
       if (is.name(raw_code)) {
         evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
         if (is.language(evaluated) || is.call(evaluated)) {
@@ -574,11 +589,9 @@ MCMC_Fit <- R6::R6Class(
 
       cat("Running generated_quantities...\n")
 
-      # 2. transform_code で関数化
       gen_fn <- eval(bquote(transform_code(.(gen_ast))))
       environment(gen_fn) <- parent.env(globalenv())
 
-      # 3. 事後サンプルの取得 (3次元配列)
       all_draws <- self$draws(
         inc_random = TRUE,
         inc_transform = TRUE,
@@ -588,7 +601,6 @@ MCMC_Fit <- R6::R6Class(
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]
 
-      # 4. 次元情報取得用のテスト実行
       test_p_list <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
       if (!is.null(self$model$transform)) {
         test_tran <- self$model$transform(self$model$data, test_p_list)
@@ -600,7 +612,6 @@ MCMC_Fit <- R6::R6Class(
         for (g_name in names(self$generate_dims)) {
           g_dim <- self$generate_dims[[g_name]]
           flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
-          # 既存の generate_fit に存在するものだけを取り出す
           if (all(flat_nms %in% existing_gq)) {
             val <- self$generate_fit[1, 1, flat_nms]
             if (length(g_dim) > 1) dim(val) <- g_dim
@@ -630,7 +641,6 @@ MCMC_Fit <- R6::R6Class(
         gq_names <- c(gq_names, flat_nms)
       }
 
-      # 5. 結果を格納する配列の用意
       new_gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
       dimnames(new_gq_array) <- list(
         iteration = NULL,
@@ -638,7 +648,6 @@ MCMC_Fit <- R6::R6Class(
         variable = gq_names
       )
 
-      # 6. ループ処理で各サンプルに対して適用
       pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
       counter <- 0
       for (c in seq_len(chains)) {
@@ -653,7 +662,6 @@ MCMC_Fit <- R6::R6Class(
             for (g_name in names(self$generate_dims)) {
               g_dim <- self$generate_dims[[g_name]]
               flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
-              # 既存の generate_fit に存在するものだけを取り出す
               if (all(flat_nms %in% existing_gq)) {
                 val <- self$generate_fit[i, c, flat_nms]
                 if (length(g_dim) > 1) dim(val) <- g_dim
@@ -669,7 +677,6 @@ MCMC_Fit <- R6::R6Class(
       }
       close(pb)
 
-      # 7. 既存の generate_fit とマージする
       if (is.null(self$generate_fit)) {
         self$generate_fit <- new_gq_array
       } else {
@@ -734,9 +741,8 @@ MCMC_Fit <- R6::R6Class(
       if (length(t_info$dim) != 2) stop(paste0("Target variable '", target, "' must be a matrix."))
       R_t <- t_info$dim[1]; C_t <- t_info$dim[2]
 
-      # MAP推定値 (最大lp) を取得して基準とする
       lp_mat <- f_arr[, , 1]
-      if (is.null(dim(lp_mat))) { # VB_Fit用のフォールバック
+      if (is.null(dim(lp_mat))) {
         best_iter <- which.max(lp_mat)
         best_chain <- 1
       } else {
@@ -752,7 +758,6 @@ MCMC_Fit <- R6::R6Class(
 
       X_map <- matrix(Y_vec, nrow = R_t, ncol = C_t)
 
-      # --- 変換行列の決定 ---
       if (method == "procrustes") {
         Th_straight <- diag(1, C_t)
         Th_inverse <- diag(1, C_t)
@@ -787,7 +792,6 @@ MCMC_Fit <- R6::R6Class(
 
         for (v in all_vars) {
           info <- get_var_info(v)
-          # 変更点: "_rot" 固定ではなく "_suffix" を使う
           v_rot <- paste0(v, "_", suffix)
           new_dims[[v_rot]] <- info$dim
 
@@ -809,26 +813,20 @@ MCMC_Fit <- R6::R6Class(
         for (i in 1:iter_total) {
           N_draws <- iter_total * chains
 
-          # ターゲット変数の抽出 (N_draws x (R_t * C_t) の行列にする)
           if (t_info$loc == "fixed") X_all <- matrix(f_arr[,,t_info$idx], nrow = N_draws)
           else if (t_info$loc == "random") X_all <- matrix(r_arr[,,t_info$idx], nrow = N_draws)
           else if (t_info$loc == "transform") X_all <- matrix(t_arr[,,t_info$idx], nrow = N_draws)
           else X_all <- matrix(g_arr[,,t_info$idx], nrow = N_draws)
 
-          # 行ごとに回転処理を適用
           rotated_list <- lapply(1:N_draws, function(idx) {
             X <- matrix(X_all[idx, ], nrow = R_t, ncol = C_t)
             svd_out <- svd(t(X) %*% X_map)
             R_proc <- svd_out$u %*% t(svd_out$v)
             X_rot <- as.numeric((X %*% R_proc) %*% Th_straight)
-
-            # 戻り値として、回転済みターゲット変数と R_proc を返す
             list(X_rot = X_rot, R_proc = R_proc)
           })
 
-          # 結果を元の配列に戻す
           for (idx in 1:N_draws) {
-            # 1次元インデックスから i(iter) と c(chain) を逆算
             i <- (idx - 1) %% iter_total + 1
             c <- (idx - 1) %/% iter_total + 1
 
@@ -844,7 +842,6 @@ MCMC_Fit <- R6::R6Class(
               rot_arr[i, c, new_idx_map[[target]]] <- res_rot$X_rot
             }
 
-            # リンクされた変数の処理 (R_proc を再利用)
             process_linked <- function(linked_vars, Th_mat) {
               if (is.null(linked_vars)) return()
               for (lvar in linked_vars) {
@@ -956,17 +953,14 @@ MCMC_Fit <- R6::R6Class(
         stop("指定された target パラメータが見つかりません。")
       }
 
-      # 1. ターゲットの事後サンプルを取得
       target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("指定された target パラメータがサンプリング結果に見つかりません。")
 
-      # 2. lp (対数事後確率) が最大となるイテレーションとチェインを特定
       lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
       best_iter <- max_idx[1, 1]
       best_chain <- max_idx[1, 2]
 
-      # 3. 最大lpとなるサンプル（MAP）を抽出して元の行列の形にする
       target_map_flat <- target_draws[best_iter, best_chain, ]
       target_map <- target_map_flat
       dim(target_map) <- t_dim
@@ -1038,17 +1032,14 @@ MCMC_Fit <- R6::R6Class(
 
       if (length(t_dim) != 2) stop("fa_rotate は行列(2次元)パラメータのサンプルに対してのみ適用可能です。")
 
-      # 1. ターゲットの事後サンプルを取得
       target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop(sprintf("パラメータ '%s' が見つかりません。", target))
 
-      # 2. lp (対数事後確率) が最大となるイテレーションとチェインを特定
       lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
       best_iter <- max_idx[1, 1]
       best_chain <- max_idx[1, 2]
 
-      # 3. 最大lpとなるサンプル（MAP）を抽出して元の行列の形にする
       target_map_flat <- target_draws[best_iter, best_chain, ]
       dummy_L <- target_map_flat
       dim(dummy_L) <- t_dim
@@ -1074,12 +1065,10 @@ MCMC_Fit <- R6::R6Class(
         }
       }
 
-      # --- ここから linked と scores の処理を追加 ---
       if (!is.null(linked) || !is.null(scores)) {
         if (is_matrix_rot) {
           warning("指定された回転関数は行列のみを返すため、回転行列が取得できません。linked / scores は回転されません。")
         } else {
-          # 回転行列の取得 (GPArotationはTh, statsのvarimax/promaxはrotmat)
           exprs[[length(exprs) + 1]] <- quote(rot_Th <- if (!is.null(rot_obj$Th)) rot_obj$Th else rot_obj$rotmat)
 
           if (!is.null(linked)) {
@@ -1091,7 +1080,6 @@ MCMC_Fit <- R6::R6Class(
           }
 
           if (!is.null(scores)) {
-            # スコアの回転は逆変換
             exprs[[length(exprs) + 1]] <- quote(rot_Th_inv <- solve(t(rot_Th)))
             for (s_var in scores) {
               s_rot <- paste0(s_var, "_", rotate)
@@ -1101,7 +1089,6 @@ MCMC_Fit <- R6::R6Class(
           }
         }
       }
-      # --- 追加ここまで ---
 
       ret_list_call <- as.call(c(list(as.name("list")), ret_list))
       exprs[[length(exprs) + 1]] <- bquote(return(.(ret_list_call)))
@@ -1121,7 +1108,6 @@ MCMC_Fit <- R6::R6Class(
     resolve_switching = function(target, linked = NULL, overwrite = TRUE, scalar_fns = list()) {
       cat(sprintf("Resolving label switching based on '%s'...\n", target))
 
-      # 上書きしない場合はクローンを作成
       obj <- if (isTRUE(overwrite)) self else self$clone(deep = TRUE)
 
       f_arr <- obj$fit
@@ -1134,86 +1120,37 @@ MCMC_Fit <- R6::R6Class(
       v_names_t <- if (!is.null(t_arr)) dimnames(t_arr)[[3]] else character(0)
       v_names_g <- if (!is.null(g_arr)) dimnames(g_arr)[[3]] else character(0)
 
-      # 変数の場所と次元を特定するヘルパー
       get_var_info <- function(vname) {
         pattern <- paste0("^", vname, "\\[")
 
         idx_f <- grep(pattern, v_names_f)
-        if (length(idx_f) > 0) {
-          return(list(
-            loc = "fixed",
-            idx = idx_f,
-            dim = obj$model$par_list[[vname]]$dim
-          ))
-        }
-
+        if (length(idx_f) > 0) return(list(loc = "fixed", idx = idx_f, dim = obj$model$par_list[[vname]]$dim))
         idx_r <- grep(pattern, v_names_r)
-        if (length(idx_r) > 0) {
-          return(list(
-            loc = "random",
-            idx = idx_r,
-            dim = obj$model$par_list[[vname]]$dim
-          ))
-        }
-
+        if (length(idx_r) > 0) return(list(loc = "random", idx = idx_r, dim = obj$model$par_list[[vname]]$dim))
         idx_t <- grep(pattern, v_names_t)
-        if (length(idx_t) > 0) {
-          return(list(
-            loc = "tran",
-            idx = idx_t,
-            dim = obj$transform_dims[[vname]]
-          ))
-        }
-
+        if (length(idx_t) > 0) return(list(loc = "tran", idx = idx_t, dim = obj$transform_dims[[vname]]))
         idx_g <- grep(pattern, v_names_g)
-        if (length(idx_g) > 0) {
-          return(list(
-            loc = "gq",
-            idx = idx_g,
-            dim = obj$generate_dims[[vname]]
-          ))
-        }
+        if (length(idx_g) > 0) return(list(loc = "gq", idx = idx_g, dim = obj$generate_dims[[vname]]))
 
-        # スカラー変数も許す
         idx_f0 <- which(v_names_f == vname)
-        if (length(idx_f0) == 1) {
-          return(list(loc = "fixed_scalar", idx = idx_f0, dim = 1))
-        }
-
+        if (length(idx_f0) == 1) return(list(loc = "fixed_scalar", idx = idx_f0, dim = 1))
         idx_r0 <- which(v_names_r == vname)
-        if (length(idx_r0) == 1) {
-          return(list(loc = "random_scalar", idx = idx_r0, dim = 1))
-        }
-
+        if (length(idx_r0) == 1) return(list(loc = "random_scalar", idx = idx_r0, dim = 1))
         idx_t0 <- which(v_names_t == vname)
-        if (length(idx_t0) == 1) {
-          return(list(loc = "tran_scalar", idx = idx_t0, dim = 1))
-        }
-
+        if (length(idx_t0) == 1) return(list(loc = "tran_scalar", idx = idx_t0, dim = 1))
         idx_g0 <- which(v_names_g == vname)
-        if (length(idx_g0) == 1) {
-          return(list(loc = "gq_scalar", idx = idx_g0, dim = 1))
-        }
+        if (length(idx_g0) == 1) return(list(loc = "gq_scalar", idx = idx_g0, dim = 1))
 
         stop(paste0("Label switching failed: Variable '", vname, "' not found."))
       }
 
-      # ターゲット取得
       t_info <- get_var_info(target)
 
-      # 並べ替え対象はベクトルのみ許可
-      if (grepl("scalar", t_info$loc)) {
-        stop(paste0("Target variable '", target, "' must be a vector, not a scalar."))
-      }
-
-      if (length(t_info$dim) != 1) {
-        stop(paste0("Target variable '", target, "' must be a vector."))
-      }
+      if (grepl("scalar", t_info$loc)) stop(paste0("Target variable '", target, "' must be a vector, not a scalar."))
+      if (length(t_info$dim) != 1) stop(paste0("Target variable '", target, "' must be a vector."))
 
       K <- t_info$dim[1]
-      if (length(t_info$idx) != K) {
-        stop(paste0("Target variable '", target, "' has inconsistent dimension information."))
-      }
+      if (length(t_info$idx) != K) stop(paste0("Target variable '", target, "' has inconsistent dimension information."))
 
       linked_info_list <- list()
       if (!is.null(linked)) {
@@ -1223,17 +1160,10 @@ MCMC_Fit <- R6::R6Class(
           if (grepl("scalar", l_info$loc)) {
             linked_info_list[[lvar]] <- l_info
           } else {
-            # ベクトルのみ連動可
             if (length(l_info$dim) != 1) {
-              warning(sprintf(
-                "Variable '%s' is not a vector. Skipping.",
-                lvar
-              ))
+              warning(sprintf("Variable '%s' is not a vector. Skipping.", lvar))
             } else if (l_info$dim[1] != K) {
-              warning(sprintf(
-                "Length of '%s' (%d) != target '%s' (%d). Skipping.",
-                lvar, l_info$dim[1], target, K
-              ))
+              warning(sprintf("Length of '%s' (%d) != target '%s' (%d). Skipping.", lvar, l_info$dim[1], target, K))
             } else {
               linked_info_list[[lvar]] <- l_info
             }
@@ -1244,10 +1174,7 @@ MCMC_Fit <- R6::R6Class(
       iter_total   <- dim(f_arr)[1]
       chains_total <- dim(f_arr)[2]
 
-      get_values <- function(arr, i, c, idx) {
-        arr[i, c, idx]
-      }
-
+      get_values <- function(arr, i, c, idx) { arr[i, c, idx] }
       set_values <- function(arr, i, c, idx, value) {
         arr[i, c, idx] <- value
         arr
@@ -1256,65 +1183,37 @@ MCMC_Fit <- R6::R6Class(
       for (c in seq_len(chains_total)) {
         for (i in seq_len(iter_total)) {
 
-          # ターゲット値取得
-          if (t_info$loc == "fixed") {
-            t_vals <- get_values(f_arr, i, c, t_info$idx)
-          } else if (t_info$loc == "random") {
-            t_vals <- get_values(r_arr, i, c, t_info$idx)
-          } else if (t_info$loc == "tran") {
-            t_vals <- get_values(t_arr, i, c, t_info$idx)
-          } else if (t_info$loc == "gq") {
-            t_vals <- get_values(g_arr, i, c, t_info$idx)
-          } else {
-            stop("Target must be a vector variable.")
-          }
+          if (t_info$loc == "fixed") t_vals <- get_values(f_arr, i, c, t_info$idx)
+          else if (t_info$loc == "random") t_vals <- get_values(r_arr, i, c, t_info$idx)
+          else if (t_info$loc == "tran") t_vals <- get_values(t_arr, i, c, t_info$idx)
+          else if (t_info$loc == "gq") t_vals <- get_values(g_arr, i, c, t_info$idx)
+          else stop("Target must be a vector variable.")
 
           ord <- order(t_vals)
 
           if (any(ord != seq_len(K))) {
-            # target 自体を並べ替え
-            if (t_info$loc == "fixed") {
-              f_arr <- set_values(f_arr, i, c, t_info$idx, t_vals[ord])
-            } else if (t_info$loc == "random") {
-              r_arr <- set_values(r_arr, i, c, t_info$idx, t_vals[ord])
-            } else if (t_info$loc == "tran") {
-              t_arr <- set_values(t_arr, i, c, t_info$idx, t_vals[ord])
-            } else if (t_info$loc == "gq") {
-              g_arr <- set_values(g_arr, i, c, t_info$idx, t_vals[ord])
-            }
+            if (t_info$loc == "fixed") f_arr <- set_values(f_arr, i, c, t_info$idx, t_vals[ord])
+            else if (t_info$loc == "random") r_arr <- set_values(r_arr, i, c, t_info$idx, t_vals[ord])
+            else if (t_info$loc == "tran") t_arr <- set_values(t_arr, i, c, t_info$idx, t_vals[ord])
+            else if (t_info$loc == "gq") g_arr <- set_values(g_arr, i, c, t_info$idx, t_vals[ord])
 
-            # linked を同じ順序で並べ替え
             for (lvar in names(linked_info_list)) {
               l_info <- linked_info_list[[lvar]]
 
-              if (l_info$loc == "fixed") {
-                f_arr <- set_values(f_arr, i, c, l_info$idx, f_arr[i, c, l_info$idx][ord])
-
-              } else if (l_info$loc == "random") {
-                r_arr <- set_values(r_arr, i, c, l_info$idx, r_arr[i, c, l_info$idx][ord])
-
-              } else if (l_info$loc == "tran") {
-                t_arr <- set_values(t_arr, i, c, l_info$idx, t_arr[i, c, l_info$idx][ord])
-
-              } else if (l_info$loc == "gq") {
-                g_arr <- set_values(g_arr, i, c, l_info$idx, g_arr[i, c, l_info$idx][ord])
-
-              } else if (K == 2) {
-                # 2群ラベルスイッチ用にスカラー補助変数の処理を適用
+              if (l_info$loc == "fixed") f_arr <- set_values(f_arr, i, c, l_info$idx, f_arr[i, c, l_info$idx][ord])
+              else if (l_info$loc == "random") r_arr <- set_values(r_arr, i, c, l_info$idx, r_arr[i, c, l_info$idx][ord])
+              else if (l_info$loc == "tran") t_arr <- set_values(t_arr, i, c, l_info$idx, t_arr[i, c, l_info$idx][ord])
+              else if (l_info$loc == "gq") g_arr <- set_values(g_arr, i, c, l_info$idx, g_arr[i, c, l_info$idx][ord])
+              else if (K == 2) {
                 s_fn <- function(x) 1 - x
                 if (!is.null(scalar_fns) && lvar %in% names(scalar_fns)) {
                   s_fn <- scalar_fns[[lvar]]
                 }
 
-                if (l_info$loc == "fixed_scalar") {
-                  f_arr[i, c, l_info$idx] <- s_fn(f_arr[i, c, l_info$idx])
-                } else if (l_info$loc == "random_scalar") {
-                  r_arr[i, c, l_info$idx] <- s_fn(r_arr[i, c, l_info$idx])
-                } else if (l_info$loc == "tran_scalar") {
-                  t_arr[i, c, l_info$idx] <- s_fn(t_arr[i, c, l_info$idx])
-                } else if (l_info$loc == "gq_scalar") {
-                  g_arr[i, c, l_info$idx] <- s_fn(g_arr[i, c, l_info$idx])
-                }
+                if (l_info$loc == "fixed_scalar") f_arr[i, c, l_info$idx] <- s_fn(f_arr[i, c, l_info$idx])
+                else if (l_info$loc == "random_scalar") r_arr[i, c, l_info$idx] <- s_fn(r_arr[i, c, l_info$idx])
+                else if (l_info$loc == "tran_scalar") t_arr[i, c, l_info$idx] <- s_fn(t_arr[i, c, l_info$idx])
+                else if (l_info$loc == "gq_scalar") g_arr[i, c, l_info$idx] <- s_fn(g_arr[i, c, l_info$idx])
               }
             }
           }
@@ -1326,7 +1225,6 @@ MCMC_Fit <- R6::R6Class(
       obj$transform_fit <- t_arr
       obj$generate_fit <- g_arr
 
-      # posterior_mean の再計算
       fixed_mean_new <- apply(obj$fit[, , -1, drop = FALSE], 3, mean)
       new_posterior_mean <- obj$posterior_mean
       new_posterior_mean[names(fixed_mean_new)] <- fixed_mean_new

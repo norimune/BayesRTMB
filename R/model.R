@@ -791,7 +791,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # --- SSP時の初期値自動生成 (内部でRHSをサイレント実行) ---
   if (regularization == "ssp" && is.null(init) && K_tmp > 0) {
-    message("SSPの初期値を生成するため、内部でHorseshoe事前分布による推定を実行しています...")
+    #message("SSPの初期値を生成するため、内部でHorseshoe事前分布による推定を実行しています...")
 
     rhs_mod <- NULL
     suppressMessages(capture.output({
@@ -1134,7 +1134,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 
   # --- SSP時の初期値自動生成 (内部でRHSをサイレント実行) ---
   if (regularization == "ssp" && is.null(init) && K > 0) {
-    message("SSPの初期値を生成するため、内部でHorseshoe事前分布による推定を実行しています...")
+    #message("SSPの初期値を生成するため、内部でHorseshoe事前分布による推定を実行しています...")
 
     rhs_mod <- NULL
     suppressMessages(capture.output({

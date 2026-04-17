@@ -129,6 +129,7 @@ Extract posterior draws for selected parameters.
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$draws(
   pars = NULL,
   chains = NULL,
+  best_chains = NULL,
   inc_random = FALSE,
   inc_transform = TRUE,
   inc_generate = TRUE
@@ -141,6 +142,8 @@ Extract posterior draws for selected parameters.
 \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
 
 \item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp).}
 
 \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
 
@@ -162,6 +165,8 @@ Summarize posterior draws.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$summary(
   pars = NULL,
+  chains = NULL,
+  best_chains = NULL,
   max_rows = 10,
   digits = 2,
   inc_random = FALSE,
@@ -174,6 +179,10 @@ Summarize posterior draws.
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.}
+
+\item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are used.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp).}
 
 \item{\code{max_rows}}{Integer; maximum number of rows to print in the summary table. Default is 10.}
 
