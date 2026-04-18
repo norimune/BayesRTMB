@@ -679,16 +679,33 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
   # 4. 因子番号の昇順、その中で最大負荷量の降順でソート
   df_order <- df_order[order(df_order$factor, -df_order$loading), ]
 
-  # 5. 並び替えた行列を作成
+  # 5. 並び替えた行列（純粋な数値）を作成
   sorted_mat <- load_mat[df_order$var_name, , drop = FALSE]
 
   # 6. コンソール表示用に見やすくフォーマット
-  print_mat <- round(sorted_mat, round_digits)
-  # cutoff未満の値を空白に置換（文字列表現になる）
-  print_mat[abs(sorted_mat) < cutoff] <- ""
+  print_mat <- matrix("", nrow = nrow(sorted_mat), ncol = ncol(sorted_mat))
+  rownames(print_mat) <- rownames(sorted_mat)
+  colnames(print_mat) <- colnames(sorted_mat)
 
-  # クォーテーションなしで出力
-  print(print_mat, quote = FALSE)
+  for (i in 1:nrow(sorted_mat)) {
+    for (j in 1:ncol(sorted_mat)) {
+      val <- sorted_mat[i, j]
+      if (abs(val) >= cutoff) {
+        # 指定桁数でフォーマット (例: " 0.800", "-0.750")
+        s <- sprintf(paste0("%.", round_digits, "f"), val)
+        # 先頭の "0." を "." に置換
+        s <- sub("^0\\.", ".", s)
+        # 先頭の "-0." を "-." に置換
+        s <- sub("^-0\\.", "-.", s)
+
+        print_mat[i, j] <- s
+      }
+    }
+  }
+
+  # 列幅や小数点の位置を綺麗に揃えるためにdata.frame化して出力
+  print_df <- as.data.frame(print_mat, stringsAsFactors = FALSE)
+  print(print_df, quote = FALSE, right = TRUE)
 
   # 計算や保存に使えるよう、数値行列そのものを不可視で返す
   return(invisible(sorted_mat))
