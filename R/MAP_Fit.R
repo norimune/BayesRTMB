@@ -159,6 +159,12 @@ MAP_Fit <- R6::R6Class(
 
       cat("\nPoint Estimates and 95% Wald CI:\n")
 
+      num_cols <- sapply(df_combined, is.numeric)
+      df_combined[num_cols] <- lapply(df_combined[num_cols], function(x) {
+        x[abs(x) < 1e-12 & !is.na(x)] <- 0
+        return(x)
+      })
+
       out_df <- data.frame(variable = rownames(df_combined), df_combined, check.names = FALSE, stringsAsFactors = FALSE)
       rownames(out_df) <- NULL
 
