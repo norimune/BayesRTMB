@@ -179,6 +179,7 @@ conditional_effects <- function(fit, effect, ...) {
 }
 
 #' ce_rtmb クラス専用のプロットメソッド (Base R)
+#' @method conditional_effects mcmc_fit
 #' @export
 conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, ...) {
   model_obj <- fit$model
@@ -290,6 +291,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
 }
 
 #' ce_rtmb クラス専用のプロットメソッド (Base R)
+#' @method plot ce_rtmb
 #' @export
 plot.ce_rtmb <- function(x, ...) {
   df <- x$data
@@ -376,6 +378,7 @@ plot.ce_rtmb <- function(x, ...) {
 }
 
 #' ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
+#' @method print ce_rtmb
 #' @export
 print.ce_rtmb <- function(x, ...) {
   plot(x, ...)
