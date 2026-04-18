@@ -730,14 +730,13 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
-#' @param min_y Theoretical minimum value of the response variable (recommended for continuous models; calculated from data if omitted)
-#' @param max_y Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)
+#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Recommended for continuous models; calculated from data if omitted.
 #' @param regularization Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
 #' @param prior List of hyperparameters for prior distributions
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
-                       min_y = NULL, max_y = NULL,
+                       y_range = NULL,
                        regularization = c("none", "rhs", "ssp"),
                        prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
                                     log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
@@ -747,7 +746,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   regularization <- match.arg(regularization)
   if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
-  if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, min_y = min_y, max_y = max_y, regularization = regularization, prior = prior))
+  if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, y_range = y_range, regularization = regularization, prior = prior))
 
   default_prior <- eval(formals(rtmb_glmer)$prior)
   prior <- modifyList(default_prior, prior)
@@ -791,11 +790,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # --- SSP時の初期値自動生成 (内部でRHSをサイレント実行) ---
   if (regularization == "ssp" && is.null(init) && K_tmp > 0) {
-    #message("SSPの初期値を生成するため、内部でHorseshoe事前分布による推定を実行しています...")
-
     rhs_mod <- NULL
     suppressMessages(capture.output({
-      rhs_mod <- rtmb_glmer(formula, data, family, laplace, min_y, max_y, regularization = "rhs", prior, init = NULL)
+      rhs_mod <- rtmb_glmer(formula, data, family, laplace, y_range = y_range, regularization = "rhs", prior, init = NULL)
     }))
 
     jac_target <- if (laplace) "random" else "none"
@@ -851,7 +848,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       init <- list()
       if (has_intercept) init$Intercept_c <- init_coef[1]
 
-      # regularizationがnoneのときのみ、bの初期値を設定する
       if (regularization == "none" && K_tmp > 0) {
         if (has_intercept) init$b <- init_coef[-1]
         else init$b <- init_coef
@@ -860,12 +856,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   if (!(family %in% c("bernoulli", "binomial", "ordered", "poisson", "neg_binomial", "gamma"))) {
-    if (is.null(min_y) || is.null(max_y)) {
+    if (is.null(y_range) || length(y_range) != 2) {
       min_y <- min(Y, na.rm = TRUE)
       max_y <- max(Y, na.rm = TRUE)
-      message("注: min_y または max_y が省略されたため、データの最小・最大値を用いて事前分布を構成します。")
+      message("注: y_range が省略されたか不完全なため、データの最小・最大値を用いて事前分布を構成します。")
     } else {
-      if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) warning("指定された min_y または max_y の範囲外のデータが存在します。")
+      min_y <- y_range[1]
+      max_y <- y_range[2]
+      if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) warning("指定された y_range の範囲外のデータが存在します。")
     }
   } else {
     min_y <- 0; max_y <- 0
@@ -1089,14 +1087,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param formula Formula
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
-#' @param min_y Theoretical minimum value of the response variable (recommended for continuous models; calculated from data if omitted)
-#' @param max_y Theoretical maximum value of the response variable (recommended for continuous models; calculated from data if omitted)
+#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max).
 #' @param regularization Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
 #' @param prior List of hyperparameters for prior distributions
 #' @param init List of initial values
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
-                     min_y = NULL, max_y = NULL,
+                     y_range = NULL,
                      regularization = c("none", "rhs", "ssp"),
                      prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
                                   log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
@@ -1139,11 +1136,9 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 
   # --- SSP時の初期値自動生成 (内部でRHSをサイレント実行) ---
   if (regularization == "ssp" && is.null(init) && K > 0) {
-    #message("SSPの初期値を生成するため、内部でHorseshoe事前分布による推定を実行しています...")
-
     rhs_mod <- NULL
     suppressMessages(capture.output({
-      rhs_mod <- rtmb_glm(formula, data, family, min_y, max_y, regularization = "rhs", prior, init = NULL)
+      rhs_mod <- rtmb_glm(formula, data, family, y_range = y_range, regularization = "rhs", prior, init = NULL)
     }))
 
     ad_setup <- NULL
@@ -1196,7 +1191,6 @@ rtmb_glm <- function(formula, data, family = "gaussian",
       init <- list()
       if (has_intercept) init$Intercept_c <- init_coef[1]
 
-      # regularizationがnoneのときのみ、bの初期値を設定する
       if (regularization == "none" && K > 0) {
         if (has_intercept) init$b <- init_coef[-1]
         else init$b <- init_coef
@@ -1205,13 +1199,15 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   }
 
   if (!(family %in% c("bernoulli", "binomial", "ordered", "poisson", "neg_binomial", "gamma"))) {
-    if (is.null(min_y) || is.null(max_y)) {
+    if (is.null(y_range) || length(y_range) != 2) {
       min_y <- min(Y, na.rm = TRUE)
       max_y <- max(Y, na.rm = TRUE)
-      message("注: min_y または max_y が省略されたため、データの最小・最大値を用いて事前分布を構成します。")
+      message("注: y_range が省略されたか不完全なため、データの最小・最大値を用いて事前分布を構成します。")
     } else {
+      min_y <- y_range[1]
+      max_y <- y_range[2]
       if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) {
-        warning("指定された min_y または max_y の範囲外のデータが存在します。")
+        warning("指定された y_range の範囲外のデータが存在します。")
       }
     }
   } else {
@@ -1395,13 +1391,12 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #'
 #' @param formula Formula (e.g., Y ~ X1 + X2)
 #' @param data Data frame
-#' @param min_y Theoretical minimum value of the response variable (calculated from data if omitted)
-#' @param max_y Theoretical maximum value of the response variable (calculated from data if omitted)
+#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max).
 #' @param regularization Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
 #' @param prior List of hyperparameters for prior distributions
 #' @param init List of initial values
 #' @export
-rtmb_lm <- function(formula, data, min_y = NULL, max_y = NULL,
+rtmb_lm <- function(formula, data, y_range = NULL,
                     regularization = c("none", "rhs", "ssp"),
                     prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
                                  log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
@@ -1417,8 +1412,7 @@ rtmb_lm <- function(formula, data, min_y = NULL, max_y = NULL,
     formula = formula,
     data = data,
     family = "gaussian",
-    min_y = min_y,
-    max_y = max_y,
+    y_range = y_range,
     regularization = regularization,
     prior = prior,
     init = init
