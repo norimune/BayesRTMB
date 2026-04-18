@@ -641,11 +641,18 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
 }
 #' 因子負荷量をソートして見やすく表示する関数
 #'
-#' @param loadings 因子負荷量の行列またはデータフレーム
+#' @param loadings 因子負荷量の行列、データフレーム、またはそれらを含むリスト（リストの場合は最初の要素を使用）
 #' @param cutoff 負荷量の絶対値がこの値未満の場合は表示を空白にする（デフォルトは0.3）
 #' @param round_digits 小数点以下の表示桁数（デフォルトは3）
 #' @return 並び替えられた負荷量行列（不可視で返すため、変数への代入も可能）
-sort_loadings <- function(loadings, cutoff = 0.3, round_digits = 3) {
+sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
+
+  # 入力がリスト（かつデータフレームではない）場合、最初の要素を取り出す
+  if (is.list(loadings) && !is.data.frame(loadings)) {
+    if (length(loadings) == 0) stop("入力されたリストが空です。")
+    loadings <- loadings[[1]]
+  }
+
   # 行列クラスに変換
   load_mat <- as.matrix(loadings)
 

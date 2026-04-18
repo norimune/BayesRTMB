@@ -1373,9 +1373,18 @@ MCMC_Fit <- R6::R6Class(
 
       if (dim(samps)[3] == 0) stop("No matching parameters found.")
 
+      # ==== 重複変数の排除 (複数回rotateを実行した際の対策) ====
+      flat_names <- dimnames(samps)[[3]]
+      if (any(duplicated(flat_names))) {
+        # 同じ名前が複数ある場合は最後（最新）のインデックスを残す
+        keep_idx <- !rev(duplicated(rev(flat_names)))
+        samps <- samps[, , keep_idx, drop = FALSE]
+        flat_names <- dimnames(samps)[[3]]
+      }
+      # ==========================================================
+
       # Calculate mean over iterations and chains
       eap_flat <- apply(samps, 3, mean, na.rm = TRUE)
-      flat_names <- dimnames(samps)[[3]]
 
       res <- list()
       for (v in target_vars) {
@@ -1413,8 +1422,6 @@ MCMC_Fit <- R6::R6Class(
     #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
     #' @return A named list of MAP estimates structured for use as `init`.
     MAP = function(pars = "parameters", chains = NULL, best_chains = NULL) {
-      # Extract lp (or ELBO proxy) to find the iteration with the highest value
-      # best_chains を draws() に渡す
       lp_samps <- self$draws(pars = "lp", chains = chains, best_chains = best_chains,
                              inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
       if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine MAP.")
@@ -1445,9 +1452,17 @@ MCMC_Fit <- R6::R6Class(
 
       if (dim(samps)[3] == 0) stop("No matching parameters found.")
 
+      # ==== 重複変数の排除 (複数回rotateを実行した際の対策) ====
+      flat_names <- dimnames(samps)[[3]]
+      if (any(duplicated(flat_names))) {
+        keep_idx <- !rev(duplicated(rev(flat_names)))
+        samps <- samps[, , keep_idx, drop = FALSE]
+        flat_names <- dimnames(samps)[[3]]
+      }
+      # ==========================================================
+
       # Extract the slice at the best iteration and chain
       map_flat <- samps[best_i, best_c, ]
-      flat_names <- dimnames(samps)[[3]]
 
       res <- list()
       for (v in target_vars) {
