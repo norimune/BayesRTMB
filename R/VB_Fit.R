@@ -269,6 +269,12 @@ VB_Fit <- R6::R6Class(
         )
       }
       res_df <- do.call(rbind, res_list_sum)
+      # データフレーム内の数値列のうち、ゼロに極めて近い微小な値を厳密な0に置換する
+      num_cols <- sapply(res_df, is.numeric)
+      res_df[num_cols] <- lapply(res_df[num_cols], function(x) {
+        x[abs(x) < 1e-12 & !is.na(x)] <- 0
+        return(x)
+      })
       class(res_df) <- c("summary_BayesRTMB", "data.frame")
       attr(res_df, "digits") <- digits
       return(res_df)
