@@ -427,9 +427,13 @@ A named list of EAP estimates structured for use as `init`.
 \if{latex}{\out{\hypertarget{method-advi_fit-MAP}{}}}
 \subsection{Method \code{MAP()}}{
 Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
-       This returns the parameter values from the iteration that has the highest log-posterior / ELBO.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$MAP(pars = "parameters", chains = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$MAP(
+  pars = "parameters",
+  chains = NULL,
+  best_chains = NULL,
+  type = c("marginal", "joint")
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -441,6 +445,12 @@ including transformed and generated quantities, or a character vector
 of specific variable names. Default is "parameters".}
 
 \item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
+
+\item{\code{type}}{Character string specifying the type of MAP estimate.
+"marginal" (default) calculates the peak of the marginal posterior density for each parameter.
+"joint" returns the parameter values from the iteration with the highest log-posterior.}
 }
 \if{html}{\out{</div>}}
 }
