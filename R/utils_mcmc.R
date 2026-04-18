@@ -385,3 +385,257 @@ print.ce_rtmb <- function(x, ...) {
   plot(x, ...)
   invisible(x)
 }
+
+#' 項目情報関数の計算
+#' @export
+item_info <- function(x, ...) UseMethod("item_info")
+
+#' テスト情報関数の計算
+#' @export
+test_info <- function(x, ...) UseMethod("test_info")
+
+#' @method item_info map_fit
+#' @export
+item_info.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
+  est <- x$par
+  b <- est$b
+
+  # 修正箇所: names(b) ではなく、モデル構築時に保存した正しい項目名(par_names)を参照する
+  par_names_b <- x$model$par_names$b
+
+  # データ型と項目名の取得
+  if (is.matrix(b)) {
+    type <- "ordered"
+    J <- nrow(b)
+    K_cat <- ncol(b) + 1
+    item_names <- if (is.list(par_names_b)) par_names_b[[1]] else paste0("Item", 1:J)
+  } else {
+    type <- "binary"
+    J <- length(b)
+    item_names <- if (!is.null(par_names_b)) par_names_b else paste0("Item", 1:J)
+  }
+
+  # 選択対象のインデックスを特定
+  if (!is.null(items)) {
+    if (is.character(items)) {
+      target_idx <- match(items, item_names)
+      if (any(is.na(target_idx))) {
+        warning("指定された項目名が見つかりません: ", paste(items[is.na(target_idx)], collapse = ", "))
+        target_idx <- target_idx[!is.na(target_idx)]
+      }
+    } else {
+      target_idx <- items[items >= 1 & items <= J]
+    }
+    if (length(target_idx) == 0) stop("有効な項目が選択されていません。")
+  } else {
+    target_idx <- 1:J
+  }
+
+  a <- if (!is.null(est$a)) est$a else rep(1.0, J)
+  c_param <- if (!is.null(est$c)) est$c else rep(0.0, J)
+
+  info_mat <- matrix(0, nrow = length(theta_seq), ncol = length(target_idx))
+  colnames(info_mat) <- item_names[target_idx]
+
+  for (idx in seq_along(target_idx)) {
+    j <- target_idx[idx]
+    if (type == "binary") {
+      eta <- a[j] * (theta_seq - b[j])
+      P <- c_param[j] + (1 - c_param[j]) * plogis(eta)
+      Q <- 1 - P
+
+      info_mat[, idx] <- (a[j]^2 * Q / P) * ((P - c_param[j]) / (1 - c_param[j]))^2
+
+    } else if (type == "ordered") {
+      P_star <- matrix(0, nrow = length(theta_seq), ncol = K_cat + 1)
+      P_star[, 1] <- 1.0
+      P_star[, K_cat + 1] <- 0.0
+
+      for (k in 1:(K_cat - 1)) {
+        P_star[, k + 1] <- plogis(b[j, k] - a[j] * theta_seq)
+      }
+
+      item_info_j <- rep(0, length(theta_seq))
+      for (k in 1:K_cat) {
+        Pk <- P_star[, k] - P_star[, k + 1]
+
+        dP_star_k   <- -a[j] * P_star[, k] * (1 - P_star[, k])
+        dP_star_kp1 <- -a[j] * P_star[, k + 1] * (1 - P_star[, k + 1])
+
+        if (k == 1) dP_star_k <- rep(0, length(theta_seq))
+        if (k == K_cat) dP_star_kp1 <- rep(0, length(theta_seq))
+
+        dPk <- dP_star_k - dP_star_kp1
+
+        Pk_safe <- pmax(Pk, 1e-10)
+        item_info_j <- item_info_j + (dPk^2) / Pk_safe
+      }
+      info_mat[, idx] <- item_info_j
+    }
+  }
+
+  res <- list(theta = theta_seq, info = info_mat)
+  class(res) <- "rtmb_item_info"
+  return(res)
+}
+
+#' @method test_info map_fit
+#' @export
+test_info.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), ...) {
+  ii <- item_info(x, theta_seq, ...)
+  test_info_vec <- rowSums(ii$info)
+
+  res <- list(theta = theta_seq, info = test_info_vec)
+  class(res) <- "rtmb_test_info"
+  return(res)
+}
+
+# --- プロット用メソッド ---
+
+#' @method plot rtmb_item_info
+#' @export
+plot.rtmb_item_info <- function(x, legend = TRUE, ...) {
+  matplot(x$theta, x$info, type = "l", lty = 1,
+          xlab = expression(theta ~ "(Ability)"), ylab = "Information",
+          main = "Item Information Functions", ...)
+
+  # 凡例の追加 (legend = TRUE の場合)
+  if (legend && ncol(x$info) > 0) {
+    legend("topright", legend = colnames(x$info), col = 1:ncol(x$info), lty = 1, cex = 0.8)
+  }
+}
+
+#' @method plot rtmb_test_info
+#' @export
+plot.rtmb_test_info <- function(x, ...) {
+  plot(x$theta, x$info, type = "l", lwd = 2, col = "blue",
+       xlab = expression(theta ~ "(Ability)"), ylab = "Information",
+       main = "Test Information Function", ...)
+}
+
+
+#' 項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
+#' @export
+item_curve <- function(x, ...) UseMethod("item_curve")
+
+#' @method item_curve map_fit
+#' @export
+item_curve.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
+  est <- x$par
+  b <- est$b
+
+  par_names_b <- x$model$par_names$b
+
+  # データ型と項目名の取得
+  if (is.matrix(b)) {
+    type <- "ordered"
+    J <- nrow(b)
+    K_cat <- ncol(b) + 1
+    item_names <- if (is.list(par_names_b)) par_names_b[[1]] else paste0("Item", 1:J)
+  } else {
+    type <- "binary"
+    J <- length(b)
+    item_names <- if (!is.null(par_names_b)) par_names_b else paste0("Item", 1:J)
+  }
+
+  # 選択対象のインデックスを特定
+  if (!is.null(items)) {
+    if (is.character(items)) {
+      target_idx <- match(items, item_names)
+      if (any(is.na(target_idx))) {
+        warning("指定された項目名が見つかりません: ", paste(items[is.na(target_idx)], collapse = ", "))
+        target_idx <- target_idx[!is.na(target_idx)]
+      }
+    } else {
+      target_idx <- items[items >= 1 & items <= J]
+    }
+    if (length(target_idx) == 0) stop("有効な項目が選択されていません。")
+  } else {
+    target_idx <- 1:J
+  }
+
+  a <- if (!is.null(est$a)) est$a else rep(1.0, J)
+  c_param <- if (!is.null(est$c)) est$c else rep(0.0, J)
+
+  out_curves <- list()
+
+  for (idx in seq_along(target_idx)) {
+    j <- target_idx[idx]
+
+    if (type == "binary") {
+      # 2値モデルの正答確率
+      eta <- a[j] * (theta_seq - b[j])
+      P <- c_param[j] + (1 - c_param[j]) * plogis(eta)
+
+      out_curves[[item_names[j]]] <- matrix(P, ncol = 1)
+      colnames(out_curves[[item_names[j]]]) <- "P(Y=1)"
+
+    } else if (type == "ordered") {
+      # 順序モデル(GRM)のカテゴリ選択確率
+      eta <- a[j] * theta_seq
+
+      # 累積確率 P(Y <= k)
+      P_cum <- matrix(1.0, nrow = length(theta_seq), ncol = K_cat + 1)
+      P_cum[, 1] <- 0.0 # P(Y <= 0) = 0
+
+      for (k in 1:(K_cat - 1)) {
+        P_cum[, k + 1] <- plogis(b[j, k] - eta)
+      }
+      # P_cum[, K_cat + 1] は初期値の 1.0 (P(Y <= K) = 1)
+
+      # 各カテゴリの確率 P(Y = k) = P(Y <= k) - P(Y <= k-1)
+      P_cat <- matrix(0, nrow = length(theta_seq), ncol = K_cat)
+      for (k in 1:K_cat) {
+        P_cat[, k] <- P_cum[, k + 1] - P_cum[, k]
+      }
+
+      colnames(P_cat) <- paste0("Cat", 1:K_cat)
+      out_curves[[item_names[j]]] <- P_cat
+    }
+  }
+
+  res <- list(theta = theta_seq, curves = out_curves, type = type)
+  class(res) <- "rtmb_item_curve"
+  return(res)
+}
+
+#' @method plot rtmb_item_curve
+#' @export
+plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
+  n_items <- length(x$curves)
+
+  if (x$type == "binary") {
+    # 2値モデル：全項目を1つのプロットに重ねて描画
+    P_mat <- do.call(cbind, x$curves)
+    matplot(x$theta, P_mat, type = "l", lty = 1, ylim = c(0, 1),
+            xlab = expression(theta ~ "(Ability)"), ylab = "Probability",
+            main = "Item Response Curves", ...)
+
+    if (legend && ncol(P_mat) > 0) {
+      legend("topleft", legend = names(x$curves), col = 1:n_items, lty = 1, cex = 0.8)
+    }
+
+  } else if (x$type == "ordered") {
+    # 順序モデル：項目ごとにカテゴリ反応曲線をパネル分割して描画
+    old_par <- par(no.readonly = TRUE)
+    on.exit(par(old_par))
+
+    if (n_items > 1) {
+      nr <- ceiling(sqrt(n_items))
+      nc <- ceiling(n_items / nr)
+      par(mfrow = c(nr, nc))
+    }
+
+    for (item_name in names(x$curves)) {
+      P_mat <- x$curves[[item_name]]
+      matplot(x$theta, P_mat, type = "l", lty = 1:ncol(P_mat), ylim = c(0, 1),
+              xlab = expression(theta), ylab = "Probability",
+              main = paste("Category Curves:", item_name), ...)
+
+      if (legend) {
+        legend("topleft", legend = colnames(P_mat), col = 1:ncol(P_mat),
+               lty = 1:ncol(P_mat), cex = 0.7)
+      }
+    }
+  }
+}

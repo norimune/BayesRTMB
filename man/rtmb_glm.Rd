@@ -8,11 +8,13 @@ rtmb_glm(
   formula,
   data,
   family = "gaussian",
-  y_range = NULL,
   penalty = c("none", "rhs", "ssp"),
-  prior = list(prior_ratio = 1, max_beta = 1, logit_scale = 2.5, log_scale = 1,
-    shape_rate = 1, phi_rate = 1, nu_rate = 0.1, cutpoint_sd = 2.5, expected_vars = 3,
-    slab_scale = 2, slab_df = 4, ssp_ratio = 0.25),
+  y_range = NULL,
+  use_weak_info = FALSE,
+  prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1,
+    cutpoint_sd = 2.5, shape_rate = 1, phi_rate = 1),
+  weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2,
+    slab_df = 4, ssp_ratio = 0.25),
   init = NULL
 )
 }
@@ -23,11 +25,15 @@ rtmb_glm(
 
 \item{family}{Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")}
 
-\item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max).}
-
 \item{penalty}{Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".}
 
-\item{prior}{List of hyperparameters for prior distributions}
+\item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.}
+
+\item{use_weak_info}{Logical; whether to explicitly use weakly informative priors (requires y_range for continuous models).}
+
+\item{prior}{List of hyperparameters for the default fixed priors.}
+
+\item{weak_info_prior}{List of hyperparameters for the weakly informative priors and regularization.}
 
 \item{init}{List of initial values}
 }
