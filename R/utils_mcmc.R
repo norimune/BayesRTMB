@@ -639,3 +639,49 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
     }
   }
 }
+#' 因子負荷量をソートして見やすく表示する関数
+#'
+#' @param loadings 因子負荷量の行列またはデータフレーム
+#' @param cutoff 負荷量の絶対値がこの値未満の場合は表示を空白にする（デフォルトは0.3）
+#' @param round_digits 小数点以下の表示桁数（デフォルトは3）
+#' @return 並び替えられた負荷量行列（不可視で返すため、変数への代入も可能）
+sort_loadings <- function(loadings, cutoff = 0.3, round_digits = 3) {
+  # 行列クラスに変換
+  load_mat <- as.matrix(loadings)
+
+  # 行名がない場合は連番を付与
+  if (is.null(rownames(load_mat))) {
+    rownames(load_mat) <- paste0("V", 1:nrow(load_mat))
+  }
+
+  # 1. 各変数が最も強い負荷（絶対値）を持つ因子（列番号）を取得
+  max_factor <- apply(abs(load_mat), 1, which.max)
+
+  # 2. その因子における最大の絶対負荷量を取得
+  max_loading <- apply(abs(load_mat), 1, max)
+
+  # 3. 並べ替え用の情報を持つデータフレームを作成
+  df_order <- data.frame(
+    var_name = rownames(load_mat),
+    factor = max_factor,
+    loading = max_loading,
+    stringsAsFactors = FALSE
+  )
+
+  # 4. 因子番号の昇順、その中で最大負荷量の降順でソート
+  df_order <- df_order[order(df_order$factor, -df_order$loading), ]
+
+  # 5. 並び替えた行列を作成
+  sorted_mat <- load_mat[df_order$var_name, , drop = FALSE]
+
+  # 6. コンソール表示用に見やすくフォーマット
+  print_mat <- round(sorted_mat, round_digits)
+  # cutoff未満の値を空白に置換（文字列表現になる）
+  print_mat[abs(sorted_mat) < cutoff] <- ""
+
+  # クォーテーションなしで出力
+  print(print_mat, quote = FALSE)
+
+  # 計算や保存に使えるよう、数値行列そのものを不可視で返す
+  return(invisible(sorted_mat))
+}
