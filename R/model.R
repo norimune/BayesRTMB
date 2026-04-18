@@ -1444,7 +1444,7 @@ rtmb_lm <- function(formula, data, y_range = NULL,
     data = data,
     family = "gaussian",
     y_range = y_range,
-    regularization = regularization,
+    penalty = regularization,
     prior = prior,
     init = init
   )
