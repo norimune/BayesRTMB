@@ -648,27 +648,20 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
 #' @export
 sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 
-  # 入力がリスト（かつデータフレームではない）場合、最初の要素を取り出す
   if (is.list(loadings) && !is.data.frame(loadings)) {
     if (length(loadings) == 0) stop("入力されたリストが空です。")
     loadings <- loadings[[1]]
   }
 
-  # 行列クラスに変換
   load_mat <- as.matrix(loadings)
 
-  # 行名がない場合は連番を付与
   if (is.null(rownames(load_mat))) {
     rownames(load_mat) <- paste0("V", 1:nrow(load_mat))
   }
 
-  # 1. 各変数が最も強い負荷（絶対値）を持つ因子（列番号）を取得
   max_factor <- apply(abs(load_mat), 1, which.max)
-
-  # 2. その因子における最大の絶対負荷量を取得
   max_loading <- apply(abs(load_mat), 1, max)
 
-  # 3. 並べ替え用の情報を持つデータフレームを作成
   df_order <- data.frame(
     var_name = rownames(load_mat),
     factor = max_factor,
@@ -676,37 +669,36 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
     stringsAsFactors = FALSE
   )
 
-  # 4. 因子番号の昇順、その中で最大負荷量の降順でソート
   df_order <- df_order[order(df_order$factor, -df_order$loading), ]
-
-  # 5. 並び替えた行列（純粋な数値）を作成
   sorted_mat <- load_mat[df_order$var_name, , drop = FALSE]
 
-  # 6. コンソール表示用に見やすくフォーマット
   print_mat <- matrix("", nrow = nrow(sorted_mat), ncol = ncol(sorted_mat))
   rownames(print_mat) <- rownames(sorted_mat)
   colnames(print_mat) <- colnames(sorted_mat)
+
+  # "-.000" のようなゼロを判定するための文字列を作成
+  zero_str <- paste0("-.", paste(rep("0", round_digits), collapse = ""))
 
   for (i in 1:nrow(sorted_mat)) {
     for (j in 1:ncol(sorted_mat)) {
       val <- sorted_mat[i, j]
       if (abs(val) >= cutoff) {
-        # 指定桁数でフォーマット (例: " 0.800", "-0.750")
         s <- sprintf(paste0("%.", round_digits, "f"), val)
-        # 先頭の "0." を "." に置換
         s <- sub("^0\\.", ".", s)
-        # 先頭の "-0." を "-." に置換
         s <- sub("^-0\\.", "-.", s)
+
+        # "-.000" を ".000" に置換
+        if (s == zero_str) {
+          s <- sub("^-", "", s)
+        }
 
         print_mat[i, j] <- s
       }
     }
   }
 
-  # 列幅や小数点の位置を綺麗に揃えるためにdata.frame化して出力
   print_df <- as.data.frame(print_mat, stringsAsFactors = FALSE)
   print(print_df, quote = FALSE, right = TRUE)
 
-  # 計算や保存に使えるよう、数値行列そのものを不可視で返す
   return(invisible(sorted_mat))
 }
