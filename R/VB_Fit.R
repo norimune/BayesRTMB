@@ -1058,22 +1058,18 @@ VB_Fit <- R6::R6Class(
     },
 
     #' @description Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
-    #'        This returns the parameter values from the iteration that has the highest log-posterior / ELBO.
     #' @param pars Character vector specifying the names of parameters to extract.
     #'        Use "parameters" for only model parameters, "all" for all variables
     #'        including transformed and generated quantities, or a character vector
     #'        of specific variable names. Default is "parameters".
     #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
+    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
+    #' @param type Character string specifying the type of MAP estimate.
+    #'        "marginal" (default) calculates the peak of the marginal posterior density for each parameter.
+    #'        "joint" returns the parameter values from the iteration with the highest log-posterior.
     #' @return A named list of MAP estimates structured for use as `init`.
-    MAP = function(pars = "parameters", chains = NULL) {
-      # Extract lp (or ELBO proxy) to find the iteration with the highest value
-      lp_samps <- self$draws(pars = "lp", chains = chains,
-                             inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
-      if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine MAP.")
-
-      max_idx <- which(lp_samps == max(lp_samps, na.rm = TRUE), arr.ind = TRUE)
-      best_i <- max_idx[1, 1]
-      best_c <- max_idx[1, 2]
+    MAP = function(pars = "parameters", chains = NULL, best_chains = NULL, type = c("marginal", "joint")) {
+      type <- match.arg(type)
 
       inc_tran <- TRUE
       inc_gen <- TRUE
@@ -1092,14 +1088,42 @@ VB_Fit <- R6::R6Class(
         inc_gen <- any(target_vars %in% names(self$generate_dims))
       }
 
-      samps <- self$draws(pars = target_vars, chains = chains,
+      samps <- self$draws(pars = target_vars, chains = chains, best_chains = best_chains,
                           inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
 
       if (dim(samps)[3] == 0) stop("No matching parameters found.")
 
-      # Extract the slice at the best iteration and chain
-      map_flat <- samps[best_i, best_c, ]
+      # ==== 重複変数の排除 (複数回rotateを実行した際の対策) ====
       flat_names <- dimnames(samps)[[3]]
+      if (any(duplicated(flat_names))) {
+        keep_idx <- !rev(duplicated(rev(flat_names)))
+        samps <- samps[, , keep_idx, drop = FALSE]
+        flat_names <- dimnames(samps)[[3]]
+      }
+      # ==========================================================
+
+      if (type == "joint") {
+        # 同時MAP推定 (lpが最大のサンプルを採用)
+        lp_samps <- self$draws(pars = "lp", chains = chains, best_chains = best_chains,
+                               inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
+        if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine joint MAP.")
+
+        max_idx <- which(lp_samps == max(lp_samps, na.rm = TRUE), arr.ind = TRUE)
+        best_i <- max_idx[1, 1]
+        best_c <- max_idx[1, 2]
+
+        map_flat <- samps[best_i, best_c, ]
+
+      } else {
+        # 周辺MAP推定 (各パラメータの分布の頂点を採用: デフォルト)
+        map_flat <- apply(samps, 3, function(z) {
+          valid_z <- z[is.finite(z)]
+          if (length(valid_z) == 0) return(NA)
+          if (abs(max(valid_z) - min(valid_z)) < 1e-10) return(valid_z[1])
+          d <- density(valid_z)
+          return(d$x[which.max(d$y)])
+        })
+      }
 
       res <- list()
       for (v in target_vars) {
