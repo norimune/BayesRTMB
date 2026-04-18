@@ -627,7 +627,8 @@ RTMB_Model <- R6::R6Class(
       }
 
       log_ml <- NA
-      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
+      # sdreport が正常に終了し、かつフォールバック（ginv）を使っていない場合のみ log_ml を計算する
+      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
         D <- length(opt$par)
         cov_mat <- sd_rep$cov.fixed
 
@@ -635,11 +636,13 @@ RTMB_Model <- R6::R6Class(
 
         if (!is.null(eig)) {
           vals <- eig$values
-          if (any(vals <= 0)) {
-            vals[vals <= 0] <- 1e-10
+          # 固有値に 0 以下、または極端に 0 に近い値がある場合はラプラス近似が破綻しているとみなす
+          if (any(vals <= 1e-8)) {
+            cat("Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.\n")
+          } else {
+            log_det_cov <- sum(log(vals))
+            log_ml <- - opt$objective + (D / 2) * log(2 * pi) + 0.5 * log_det_cov
           }
-          log_det_cov <- sum(log(vals))
-          log_ml <- - opt$objective + (D / 2) * log(2 * pi) + 0.5 * log_det_cov
         }
       }
 
@@ -1138,30 +1141,39 @@ RTMB_Model <- R6::R6Class(
         # deparse() は標準で中身を4文字インデントする
         lines <- deparse(expr, width.cutoff = 500L, control = "useSource")
 
-        # deparseが生成した各行の先頭にある4文字のインデントを2文字に置換する
-        lines <- gsub("^    ", "  ", lines)
+        # 行頭のスペースを数えて半分にする（ネストされたインデントを4文字から2文字にする）
+        lines <- sapply(lines, function(x) {
+          m <- regexpr("^ +", x)
+          if (m > 0) {
+            n_spaces <- attr(m, "match.length")
+            new_spaces <- strrep(" ", n_spaces / 2)
+            sub("^ +", new_spaces, x)
+          } else {
+            x
+          }
+        }, USE.NAMES = FALSE)
+
+        # "# 見出し" という文字列リテラルを純粋なコメントとして整形する
+        lines <- gsub('^(\\s*)"#(.*)"$', "\\1#\\2", lines)
 
         # さらに全体を2文字インデント
         lines <- paste0("  ", lines)
 
-        # 最初の "{" を "ブロック名 = {" に書き換える
+        # 最初の "{" を "  ブロック名 = {" に書き換える（★ここを修正）
         if (trimws(lines[1]) == "{") {
           lines[1] <- paste0("  ", block, " = {")
-        } else {
-          # 中身が1行だけで {} で囲まれていなかった場合の安全対策
-          lines <- c(paste0("  ", block, " = {"), paste0("  ", lines), "  }")
         }
 
-        # 最後のブロック以外は、閉じカッコ "}" の後にカンマを追加する
+        # 最後のブロック以外はカンマと改行をつける
         if (i < n_blocks) {
-          lines[length(lines)] <- paste0(lines[length(lines)], ",")
+          lines[length(lines)] <- paste0(lines[length(lines)], ", ")
         }
 
-        cat(paste(lines, collapse = "\n"), "\n")
+        cat(paste(lines, collapse = "\n"))
+        cat("\n")
       }
-
-      cat(")\n\n")
-      invisible(self)
+      cat(")\n")
+      return(invisible(self))
     }
   )
 )

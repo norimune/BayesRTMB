@@ -731,20 +731,20 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Recommended for continuous models; calculated from data if omitted.
-#' @param regularization Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
+#' @param penalty Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
 #' @param prior List of hyperparameters for prior distributions
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        y_range = NULL,
-                       regularization = c("none", "rhs", "ssp"),
+                       penalty = c("none", "rhs", "ssp"),
                        prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
                                     log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
                                     nu_rate = 0.1, cutpoint_sd = 2.5, lkj_eta = 1.0,
                                     expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                        init = NULL) {
 
-  regularization <- match.arg(regularization)
+  regularization <- match.arg(penalty)
   if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
   if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, y_range = y_range, regularization = regularization, prior = prior))
 
@@ -859,11 +859,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (is.null(y_range) || length(y_range) != 2) {
       min_y <- min(Y, na.rm = TRUE)
       max_y <- max(Y, na.rm = TRUE)
-      message("注: y_range が省略されたか不完全なため、データの最小・最大値を用いて事前分布を構成します。")
+      message("【推奨】y_range が省略されたため、データの最小・最大値から事前分布のスケールを自動設定しました。ベイズファクターを用いた厳密なモデル比較を行う場合は、データに依存しない理論的な y_range の指定を推奨します。")
     } else {
       min_y <- y_range[1]
       max_y <- y_range[2]
-      if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) warning("指定された y_range の範囲外のデータが存在します。")
+      if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE))
+        message("指定された y_range の範囲外のデータが存在します。")
     }
   } else {
     min_y <- 0; max_y <- 0
@@ -993,7 +994,50 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (num_ranef > 1) tran_exprs[[length(tran_exprs) + 1]] <- quote(cor <- CF_cor %*% t(CF_cor))
   tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
 
+  # --- Model Block Construction ---
+  transform_exprs <- list()
+  if (has_intercept) {
+    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
+    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(Intercept_c, N))
+  } else {
+    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(X %*% b))
+    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(0, N))
+  }
+  if (num_ranef > 1) {
+    transform_exprs[[length(transform_exprs) + 1]] <- quote(for (i in 1:N) eta[i] <- eta[i] + sum(Z_mat[i, ] * r_re[group_idx[i], ] * sd))
+  } else {
+    transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + Z_mat[,1] * r_re[group_idx] * sd)
+  }
+  if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
+
+  ll_data_exprs <- list()
+  ll_data_exprs[[1]] <- switch(family,
+                               "gaussian" = quote(Y ~ normal(eta, sigma)),
+                               "lognormal" = quote(Y ~ lognormal(eta, sigma)),
+                               "student_t" = quote(Y ~ student_t(nu, eta, sigma)),
+                               "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
+                               "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
+                               "binomial" = quote(Y ~ binomial_logit(trials, eta)),
+                               "poisson" = quote(Y ~ poisson(exp(eta))),
+                               "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
+                               "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints))
+  )
+
+  ll_random_exprs <- list()
+  if (num_ranef > 1) {
+    ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(CF_cor ~ lkj_CF_corr(prior_lkj_eta))
+    ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(for (j in 1:num_groups) r_re[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor))
+  } else {
+    ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(r_re ~ normal(0, 1))
+  }
+
   prior_exprs <- list()
+  if (family %in% c("gaussian", "lognormal", "student_t")) prior_exprs[[length(prior_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+  if (family == "student_t") prior_exprs[[length(prior_exprs) + 1]] <- quote(nu ~ exponential(prior_nu_rate))
+  if (family == "gamma") prior_exprs[[length(prior_exprs) + 1]] <- quote(shape ~ exponential(prior_shape_rate))
+  if (family == "neg_binomial") prior_exprs[[length(prior_exprs) + 1]] <- quote(phi ~ exponential(prior_phi_rate))
+  if (family == "ordered") prior_exprs[[length(prior_exprs) + 1]] <- quote(cutpoints ~ normal(0, prior_cutpoint_sd))
+
   if (has_intercept) prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
   if (K > 0) {
     if (regularization == "none") {
@@ -1012,45 +1056,18 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       prior_exprs[[length(prior_exprs) + 1]] <- quote(tau ~ exponential(1 / tau_scale))
     }
   }
+  prior_exprs[[length(prior_exprs) + 1]] <- quote(sd ~ exponential(tau_rate))
 
-  if (has_intercept) {
-    if (K > 0) eta_expr <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
-    else eta_expr <- quote(eta <- rep(Intercept_c, N))
-  } else {
-    if (K > 0) eta_expr <- quote(eta <- as.vector(X %*% b))
-    else eta_expr <- quote(eta <- rep(0, N))
-  }
+  model_exprs <- list()
+  model_exprs[[length(model_exprs) + 1]] <- "# Transform"
+  model_exprs <- c(model_exprs, transform_exprs)
+  model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Data)"
+  model_exprs <- c(model_exprs, ll_data_exprs)
+  model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Random)"
+  model_exprs <- c(model_exprs, ll_random_exprs)
+  model_exprs[[length(model_exprs) + 1]] <- "# Priors"
+  model_exprs <- c(model_exprs, prior_exprs)
 
-  ranef_exprs <- if (num_ranef > 1) {
-    quote({
-      sd ~ exponential(tau_rate)
-      CF_cor ~ lkj_CF_corr(prior_lkj_eta)
-      for (j in 1:num_groups) r_re[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor)
-      for (i in 1:N) eta[i] <- eta[i] + sum(Z_mat[i, ] * r_re[group_idx[i], ] * sd)
-    })
-  } else {
-    quote({
-      sd ~ exponential(tau_rate)
-      r_re ~ normal(0, 1)
-      eta <- eta + Z_mat[,1] * r_re[group_idx] * sd
-    })
-  }
-
-  offset_expr <- if (!is.null(offset)) quote(eta <- eta + offset) else NULL
-
-  ll_expr <- switch(family,
-                    "gaussian" = quote({ Y ~ normal(eta, sigma); sigma ~ exponential(sigma_rate) }),
-                    "lognormal" = quote({ Y ~ lognormal(eta, sigma); sigma ~ exponential(sigma_rate) }),
-                    "student_t" = quote({ Y ~ student_t(nu, eta, sigma); sigma ~ exponential(sigma_rate); nu ~ exponential(prior_nu_rate) }),
-                    "gamma" = quote({ Y ~ gamma(shape, shape / exp(eta)); shape ~ exponential(prior_shape_rate) }),
-                    "bernoulli" = quote({ Y ~ bernoulli_logit(eta) }),
-                    "binomial" = quote({ Y ~ binomial_logit(trials, eta) }),
-                    "poisson" = quote({ Y ~ poisson(exp(eta)) }),
-                    "neg_binomial" = quote({ Y ~ neg_binomial_2(exp(eta), phi); phi ~ exponential(prior_phi_rate) }),
-                    "ordered" = quote({ Y ~ ordered_logistic(eta, cutpoints); cutpoints ~ normal(0, prior_cutpoint_sd) })
-  )
-
-  model_exprs <- c(prior_exprs, list(eta_expr), as.list(ranef_exprs)[-1], if (!is.null(offset_expr)) list(offset_expr) else NULL, as.list(ll_expr)[-1])
   model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
   code_obj <- list(setup = setup_ast, parameters = param_ast)
@@ -1072,7 +1089,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   view_vars <- c()
   if (has_intercept) view_vars <- c("Intercept")
   if (K > 0) view_vars <- c(view_vars, "b")
-  view_vars <- c(view_vars, "sd", "sigma","cor")
+  view_vars <- c(view_vars, "sd", "sigma", "cor")
 
   obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
   obj$formula <- formula
@@ -1088,20 +1105,20 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max).
-#' @param regularization Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
+#' @param penalty Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
 #' @param prior List of hyperparameters for prior distributions
 #' @param init List of initial values
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
                      y_range = NULL,
-                     regularization = c("none", "rhs", "ssp"),
+                     penalty = c("none", "rhs", "ssp"),
                      prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
                                   log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
                                   nu_rate = 0.1, cutpoint_sd = 2.5,
                                   expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                      init = NULL) {
 
-  regularization <- match.arg(regularization)
+  regularization <- match.arg(penalty)
   mf <- model.frame(formula, data)
   Y <- model.response(mf)
   X <- model.matrix(formula, mf)
@@ -1134,7 +1151,6 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     } else Y <- as.numeric(Y)
   }
 
-  # --- SSP時の初期値自動生成 (内部でRHSをサイレント実行) ---
   if (regularization == "ssp" && is.null(init) && K > 0) {
     rhs_mod <- NULL
     suppressMessages(capture.output({
@@ -1202,12 +1218,12 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     if (is.null(y_range) || length(y_range) != 2) {
       min_y <- min(Y, na.rm = TRUE)
       max_y <- max(Y, na.rm = TRUE)
-      message("注: y_range が省略されたか不完全なため、データの最小・最大値を用いて事前分布を構成します。")
+      message("【推奨】y_range が省略されたため、データの最小・最大値から事前分布のスケールを自動設定しました。ベイズファクターを用いた厳密なモデル比較を行う場合は、データに依存しない理論的な y_range の指定を推奨します。")
     } else {
       min_y <- y_range[1]
       max_y <- y_range[2]
       if (any(Y < min_y, na.rm = TRUE) || any(Y > max_y, na.rm = TRUE)) {
-        warning("指定された y_range の範囲外のデータが存在します。")
+        message("指定された y_range の範囲外のデータが存在します。")
       }
     }
   } else {
@@ -1313,7 +1329,37 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   }
   tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
 
+  # --- Model Block Construction ---
+  transform_exprs <- list()
+  if (has_intercept) {
+    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
+    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(Intercept_c, N))
+  } else {
+    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(X %*% b))
+    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(0, N))
+  }
+  if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
+
+  ll_data_exprs <- list()
+  ll_data_exprs[[1]] <- switch(family,
+                               "gaussian" = quote(Y ~ normal(eta, sigma)),
+                               "lognormal" = quote(Y ~ lognormal(eta, sigma)),
+                               "student_t" = quote(Y ~ student_t(nu, eta, sigma)),
+                               "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
+                               "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
+                               "binomial" = quote(Y ~ binomial_logit(trials, eta)),
+                               "poisson" = quote(Y ~ poisson(exp(eta))),
+                               "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
+                               "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints))
+  )
+
   prior_exprs <- list()
+  if (family %in% c("gaussian", "lognormal", "student_t")) prior_exprs[[length(prior_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+  if (family == "student_t") prior_exprs[[length(prior_exprs) + 1]] <- quote(nu ~ exponential(prior_nu_rate))
+  if (family == "gamma") prior_exprs[[length(prior_exprs) + 1]] <- quote(shape ~ exponential(prior_shape_rate))
+  if (family == "neg_binomial") prior_exprs[[length(prior_exprs) + 1]] <- quote(phi ~ exponential(prior_phi_rate))
+  if (family == "ordered") prior_exprs[[length(prior_exprs) + 1]] <- quote(cutpoints ~ normal(0, prior_cutpoint_sd))
+
   if (has_intercept) prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
   if (K > 0) {
     if (regularization == "none") {
@@ -1333,29 +1379,14 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     }
   }
 
-  if (has_intercept) {
-    if (K > 0) eta_expr <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
-    else eta_expr <- quote(eta <- rep(Intercept_c, N))
-  } else {
-    if (K > 0) eta_expr <- quote(eta <- as.vector(X %*% b))
-    else eta_expr <- quote(eta <- rep(0, N))
-  }
+  model_exprs <- list()
+  model_exprs[[length(model_exprs) + 1]] <- "# Transform"
+  model_exprs <- c(model_exprs, transform_exprs)
+  model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Data)"
+  model_exprs <- c(model_exprs, ll_data_exprs)
+  model_exprs[[length(model_exprs) + 1]] <- "# Priors"
+  model_exprs <- c(model_exprs, prior_exprs)
 
-  offset_expr <- if (!is.null(offset)) quote(eta <- eta + offset) else NULL
-
-  ll_expr <- switch(family,
-                    "gaussian" = quote({ Y ~ normal(eta, sigma); sigma ~ exponential(sigma_rate) }),
-                    "lognormal" = quote({ Y ~ lognormal(eta, sigma); sigma ~ exponential(sigma_rate) }),
-                    "student_t" = quote({ Y ~ student_t(nu, eta, sigma); sigma ~ exponential(sigma_rate); nu ~ exponential(prior_nu_rate) }),
-                    "gamma" = quote({ Y ~ gamma(shape, shape / exp(eta)); shape ~ exponential(prior_shape_rate) }),
-                    "bernoulli" = quote({ Y ~ bernoulli_logit(eta) }),
-                    "binomial" = quote({ Y ~ binomial_logit(trials, eta) }),
-                    "poisson" = quote({ Y ~ poisson(exp(eta)) }),
-                    "neg_binomial" = quote({ Y ~ neg_binomial_2(exp(eta), phi); phi ~ exponential(prior_phi_rate) }),
-                    "ordered" = quote({ Y ~ ordered_logistic(eta, cutpoints); cutpoints ~ normal(0, prior_cutpoint_sd) })
-  )
-
-  model_exprs <- c(prior_exprs, if (!is.null(eta_expr)) list(eta_expr) else NULL, if (!is.null(offset_expr)) list(offset_expr) else NULL, as.list(ll_expr)[-1])
   model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
   code_obj <- list(setup = setup_ast, parameters = param_ast)
@@ -1392,19 +1423,19 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param formula Formula (e.g., Y ~ X1 + X2)
 #' @param data Data frame
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max).
-#' @param regularization Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
+#' @param penalty Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
 #' @param prior List of hyperparameters for prior distributions
 #' @param init List of initial values
 #' @export
 rtmb_lm <- function(formula, data, y_range = NULL,
-                    regularization = c("none", "rhs", "ssp"),
+                    penalty = c("none", "rhs", "ssp"),
                     prior = list(prior_ratio = 1.0, max_beta = 1.0, logit_scale = 2.5,
                                  log_scale = 1.0, shape_rate = 1.0, phi_rate = 1.0,
                                  nu_rate = 0.1, cutpoint_sd = 2.5,
                                  expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                     init = NULL) {
 
-  regularization <- match.arg(regularization)
+  regularization <- match.arg(penalty)
   default_prior <- eval(formals(rtmb_lm)$prior)
   prior <- modifyList(default_prior, prior)
 
