@@ -113,6 +113,7 @@ as_summary_df <- function(df) {
 }
 
 #' print for summary_BayesRTMB class
+#' @method print summary_BayesRTMB
 #' @param digits integer
 #' @export
 print.summary_BayesRTMB <- function(x, digits = NULL,...) {
