@@ -792,7 +792,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (regularization == "ssp" && is.null(init) && K_tmp > 0) {
     rhs_mod <- NULL
     suppressMessages(capture.output({
-      rhs_mod <- rtmb_glmer(formula, data, family, laplace, y_range = y_range, regularization = "rhs", prior, init = NULL)
+      rhs_mod <- rtmb_glmer(formula, data, family, laplace, y_range = y_range, penalty = "rhs", prior, init = NULL)
     }))
 
     jac_target <- if (laplace) "random" else "none"
@@ -1154,7 +1154,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   if (regularization == "ssp" && is.null(init) && K > 0) {
     rhs_mod <- NULL
     suppressMessages(capture.output({
-      rhs_mod <- rtmb_glm(formula, data, family, y_range = y_range, regularization = "rhs", prior, init = NULL)
+      rhs_mod <- rtmb_glm(formula, data, family, y_range = y_range, penalty = "rhs", prior, init = NULL)
     }))
 
     ad_setup <- NULL
