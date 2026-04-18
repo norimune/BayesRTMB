@@ -746,7 +746,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   regularization <- match.arg(penalty)
   if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
-  if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, y_range = y_range, regularization = regularization, prior = prior))
+  if (is.null(lme4::findbars(formula))) return(rtmb_glm(formula = formula, data = data, family = family, y_range = y_range, penalty = regularization, prior = prior))
 
   default_prior <- eval(formals(rtmb_glmer)$prior)
   prior <- modifyList(default_prior, prior)
