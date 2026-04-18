@@ -645,6 +645,7 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
 #' @param cutoff 負荷量の絶対値がこの値未満の場合は表示を空白にする（デフォルトは0.3）
 #' @param round_digits 小数点以下の表示桁数（デフォルトは3）
 #' @return 並び替えられた負荷量行列（不可視で返すため、変数への代入も可能）
+#' @export
 sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 
   # 入力がリスト（かつデータフレームではない）場合、最初の要素を取り出す
