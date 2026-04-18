@@ -1798,6 +1798,182 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   }
 }
 
+#' RTMB-based IRT (Item Response Theory) Wrapper
+#'
+#' @description
+#' Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model) using RTMB.
+#' Missing values (NA) in the data are automatically removed internally for efficient computation.
+#'
+#' @param data A data frame or matrix of item responses (N persons x J items).
+#' @param model Character string for the model type: "1PL", "2PL", or "3PL".
+#' @param type Character string for the data type: "binary" or "ordered".
+#' @param prior List of hyperparameters for prior distributions.
+#' @param init List of initial values.
+#' @export
+rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
+                     prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1),
+                     init = NULL) {
+
+  model <- match.arg(model)
+  type <- match.arg(type)
+
+  if (model == "3PL" && type == "ordered") {
+    stop("3PLモデルは 'binary' データのみをサポートしています。")
+  }
+
+  Y <- as.matrix(data)
+
+  # 行名・列名の取得
+  item_names <- colnames(Y)
+  if (is.null(item_names)) item_names <- paste0("Item", 1:ncol(Y))
+  person_names <- rownames(Y)
+  if (is.null(person_names)) person_names <- paste0("Person", 1:nrow(Y))
+
+  # NAを除外して縦持ち(Long format)に変換 (高速化・不要な計算グラフの削減)
+  obs_data <- which(!is.na(Y), arr.ind = TRUE)
+  person_idx <- as.integer(obs_data[, "row"])
+  item_idx <- as.integer(obs_data[, "col"])
+  Y_obs <- Y[obs_data]
+
+  if (type == "ordered") {
+    # 順序尺度はカテゴリが1始まりであることを想定（ordered_logisticの仕様）
+    min_y <- min(Y_obs)
+    if (min_y == 0) {
+      Y_obs <- Y_obs + 1
+      message("順序データの最小値が0であったため、内部で1から始まるインデックスに自動変換しました。")
+    }
+  }
+
+  default_prior <- list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1)
+  if (!is.null(prior)) prior <- modifyList(default_prior, prior) else prior <- default_prior
+
+  dat <- list(
+    person_idx = person_idx,
+    item_idx = item_idx,
+    Y_obs = Y_obs,
+    prior_a_log_mean = prior$a_log_mean,
+    prior_a_log_sd = prior$a_log_sd,
+    prior_b_mean = prior$b_mean,
+    prior_b_sd = prior$b_sd,
+    prior_c_alpha = prior$c_alpha,
+    prior_c_beta = prior$c_beta,
+    prior_theta_sd = prior$theta_sd
+  )
+
+  # --- Setup ブロックの構築 ---
+  setup_exprs <- list()
+  setup_exprs[[1]] <- quote(N_persons <- max(person_idx))
+  setup_exprs[[2]] <- quote(N_items <- max(item_idx))
+  setup_exprs[[3]] <- quote(N_obs <- length(Y_obs))
+  if (type == "ordered") setup_exprs[[4]] <- quote(K_cat <- max(Y_obs))
+  setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
+
+  tmp_env <- list2env(dat)
+  eval(setup_ast, tmp_env)
+
+  # --- Parameters ブロックの構築 ---
+  param_exprs <- list()
+  param_exprs[[length(param_exprs) + 1]] <- quote(theta <- Dim(N_persons, random = TRUE))
+
+  if (type == "binary") {
+    param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(N_items))
+  } else {
+    param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(c(N_items, K_cat - 1), type = "ordered"))
+  }
+
+  if (model %in% c("2PL", "3PL")) {
+    param_exprs[[length(param_exprs) + 1]] <- quote(a <- Dim(N_items, lower = 0))
+  }
+  if (model == "3PL") {
+    param_exprs[[length(param_exprs) + 1]] <- quote(c <- Dim(N_items, lower = 0, upper = 1))
+  }
+  param_ast <- as.call(c(list(as.name("{")), param_exprs))
+
+  # --- Model ブロックの構築 ---
+  loop_body <- list()
+  loop_body[[1]] <- quote(p <- person_idx[i])
+  loop_body[[2]] <- quote(j <- item_idx[i])
+  loop_body[[3]] <- quote(y <- Y_obs[i])
+
+  if (type == "binary") {
+    if (model == "1PL") {
+      loop_body[[4]] <- quote(eta <- theta[p] - b[j])
+    } else {
+      loop_body[[4]] <- quote(eta <- a[j] * (theta[p] - b[j]))
+    }
+
+    if (model == "3PL") {
+      loop_body[[5]] <- quote(prob <- c[j] + (1 - c[j]) * plogis(eta))
+      loop_body[[6]] <- quote(y ~ bernoulli(prob))
+    } else {
+      loop_body[[5]] <- quote(y ~ bernoulli_logit(eta))
+    }
+  } else if (type == "ordered") {
+    if (model == "1PL") {
+      loop_body[[4]] <- quote(eta <- theta[p])
+    } else {
+      loop_body[[4]] <- quote(eta <- a[j] * theta[p])
+    }
+    loop_body[[5]] <- quote(y ~ ordered_logistic(eta, b[j, ]))
+  }
+
+  # ループ全体を構築
+  loop_ast <- quote(for (i in 1:N_obs) {})
+  loop_ast[[4]] <- as.call(c(list(as.name("{")), loop_body))
+
+  model_exprs <- list()
+  model_exprs[[length(model_exprs) + 1]] <- "# Likelihood"
+  model_exprs[[length(model_exprs) + 1]] <- loop_ast
+
+  model_exprs[[length(model_exprs) + 1]] <- "# Priors"
+  if (model %in% c("2PL", "3PL")) {
+    model_exprs[[length(model_exprs) + 1]] <- quote(a ~ lognormal(prior_a_log_mean, prior_a_log_sd))
+  }
+  if (type == "binary") {
+    model_exprs[[length(model_exprs) + 1]] <- quote(b ~ normal(prior_b_mean, prior_b_sd))
+  } else {
+    model_exprs[[length(model_exprs) + 1]] <- quote(for (j in 1:N_items) b[j, ] ~ normal(prior_b_mean, prior_b_sd))
+  }
+  if (model == "3PL") {
+    model_exprs[[length(model_exprs) + 1]] <- quote(c ~ beta(prior_c_alpha, prior_c_beta))
+  }
+  model_exprs[[length(model_exprs) + 1]] <- quote(theta ~ normal(0, prior_theta_sd))
+
+  model_ast <- as.call(c(list(as.name("{")), model_exprs))
+
+  # --- パラメータ名のマッピング ---
+  code_obj <- list(setup = setup_ast, parameters = param_ast, model = model_ast)
+
+  par_names_list <- list()
+  par_names_list$theta <- person_names
+  if (type == "binary") {
+    par_names_list$b <- item_names
+  } else {
+    par_names_list$b <- list(item_names, paste0("Threshold", 1:(tmp_env$K_cat - 1)))
+  }
+  if (model %in% c("2PL", "3PL")) par_names_list$a <- item_names
+  if (model == "3PL") par_names_list$c <- item_names
+
+  view_vars <- c()
+  if (model %in% c("2PL", "3PL")) view_vars <- c(view_vars, "a")
+  view_vars <- c(view_vars, "b")
+  if (model == "3PL") view_vars <- c(view_vars, "c")
+
+  # --- 初期値の自動設定 ---
+  if (is.null(init)) {
+    init <- list()
+    if (type == "binary") {
+      init$b <- rep(0, length(item_names))
+    }
+    if (model %in% c("2PL", "3PL")) init$a <- rep(1.0, length(item_names))
+    if (model == "3PL") init$c <- rep(0.1, length(item_names))
+  }
+
+  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
+
+  return(obj)
+}
+
 
 #' 相関行列 (多変量正規分布) 推定ラッパー
 #'
