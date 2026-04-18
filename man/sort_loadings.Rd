@@ -4,10 +4,10 @@
 \alias{sort_loadings}
 \title{因子負荷量をソートして見やすく表示する関数}
 \usage{
-sort_loadings(loadings, cutoff = 0.3, round_digits = 3)
+sort_loadings(loadings, cutoff = 0, round_digits = 3)
 }
 \arguments{
-\item{loadings}{因子負荷量の行列またはデータフレーム}
+\item{loadings}{因子負荷量の行列、データフレーム、またはそれらを含むリスト（リストの場合は最初の要素を使用）}
 
 \item{cutoff}{負荷量の絶対値がこの値未満の場合は表示を空白にする（デフォルトは0.3）}
 
