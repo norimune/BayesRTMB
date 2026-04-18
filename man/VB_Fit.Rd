@@ -59,6 +59,8 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item \href{#method-advi_fit-internal_rotate}{\code{VB_Fit$internal_rotate()}}
 \item \href{#method-advi_fit-rotate}{\code{VB_Fit$rotate()}}
 \item \href{#method-advi_fit-fa_rotate}{\code{VB_Fit$fa_rotate()}}
+\item \href{#method-advi_fit-EAP}{\code{VB_Fit$EAP()}}
+\item \href{#method-advi_fit-MAP}{\code{VB_Fit$MAP()}}
 \item \href{#method-advi_fit-clone}{\code{VB_Fit$clone()}}
 }
 }
@@ -393,6 +395,57 @@ to which the inverse-transpose of the rotation matrix should be applied.}
 The `VB_Fit` object itself (invisibly).
 Rotated values are saved to `generate_fit` with a suffix indicating
 the rotation method.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = "parameters", chains = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to extract.
+Use "parameters" for only model parameters, "all" for all variables
+including transformed and generated quantities, or a character vector
+of specific variable names. Default is "parameters".}
+
+\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of EAP estimates structured for use as `init`.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
+       This returns the parameter values from the iteration that has the highest log-posterior / ELBO.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$MAP(pars = "parameters", chains = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to extract.
+Use "parameters" for only model parameters, "all" for all variables
+including transformed and generated quantities, or a character vector
+of specific variable names. Default is "parameters".}
+
+\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of MAP estimates structured for use as `init`.
 }
 }
 \if{html}{\out{<hr>}}

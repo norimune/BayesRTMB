@@ -995,6 +995,50 @@ MCMC_Fit <- R6::R6Class(
 
       self$generated_quantities(gen_ast)
 
+      all_names <- c(
+        if(!is.null(self$fit)) dimnames(self$fit)[[3]] else NULL,
+        if(!is.null(self$transform_fit)) dimnames(self$transform_fit)[[3]] else NULL,
+        if(!is.null(self$generate_fit)) dimnames(self$generate_fit)[[3]] else NULL
+      )
+
+      get_renamed_dimnames <- function(orig_var, new_var) {
+        orig_pattern <- paste0("^", orig_var, "(\\[.*\\])?$")
+        orig_flat_names <- grep(orig_pattern, all_names, value = TRUE)
+        if (length(orig_flat_names) > 0) {
+          return(sub(paste0("^", orig_var), new_var, orig_flat_names))
+        }
+        return(NULL)
+      }
+
+      gen_names <- dimnames(self$generate_fit)[[3]]
+
+      # target の名前引き継ぎ
+      new_target_names <- get_renamed_dimnames(target, target_rot)
+      if (!is.null(new_target_names)) {
+        target_gen_pattern <- paste0("^", target_rot, "(\\[.*\\])?$")
+        idx <- grep(target_gen_pattern, gen_names)
+        if (length(idx) == length(new_target_names)) {
+          gen_names[idx] <- new_target_names
+        }
+      }
+
+      # linked の名前引き継ぎ
+      if (!is.null(linked)) {
+        for (l_var in linked) {
+          l_rot <- paste0(l_var, "_rot")
+          new_linked_names <- get_renamed_dimnames(l_var, l_rot)
+          if (!is.null(new_linked_names)) {
+            l_gen_pattern <- paste0("^", l_rot, "(\\[.*\\])?$")
+            idx <- grep(l_gen_pattern, gen_names)
+            if (length(idx) == length(new_linked_names)) {
+              gen_names[idx] <- new_linked_names
+            }
+          }
+        }
+      }
+
+      dimnames(self$generate_fit)[[3]] <- gen_names
+
       invisible(self)
     },
 
@@ -1095,6 +1139,65 @@ MCMC_Fit <- R6::R6Class(
 
       gen_ast <- as.call(c(list(as.name("{")), exprs))
       self$generated_quantities(gen_ast)
+
+      all_names <- c(
+        if(!is.null(self$fit)) dimnames(self$fit)[[3]] else NULL,
+        if(!is.null(self$transform_fit)) dimnames(self$transform_fit)[[3]] else NULL,
+        if(!is.null(self$generate_fit)) dimnames(self$generate_fit)[[3]] else NULL
+      )
+
+      get_renamed_dimnames <- function(orig_var, new_var) {
+        orig_pattern <- paste0("^", orig_var, "(\\[.*\\])?$")
+        orig_flat_names <- grep(orig_pattern, all_names, value = TRUE)
+        if (length(orig_flat_names) > 0) {
+          return(sub(paste0("^", orig_var), new_var, orig_flat_names))
+        }
+        return(NULL)
+      }
+
+      gen_names <- dimnames(self$generate_fit)[[3]]
+
+      # target の名前引き継ぎ
+      new_target_names <- get_renamed_dimnames(target, rot_name)
+      if (!is.null(new_target_names)) {
+        target_gen_pattern <- paste0("^", rot_name, "(\\[.*\\])?$")
+        idx <- grep(target_gen_pattern, gen_names)
+        if (length(idx) == length(new_target_names)) {
+          gen_names[idx] <- new_target_names
+        }
+      }
+
+      # linked の名前引き継ぎ
+      if (!is.null(linked)) {
+        for (l_var in linked) {
+          l_rot <- paste0(l_var, "_", rotate)
+          new_linked_names <- get_renamed_dimnames(l_var, l_rot)
+          if (!is.null(new_linked_names)) {
+            l_gen_pattern <- paste0("^", l_rot, "(\\[.*\\])?$")
+            idx <- grep(l_gen_pattern, gen_names)
+            if (length(idx) == length(new_linked_names)) {
+              gen_names[idx] <- new_linked_names
+            }
+          }
+        }
+      }
+
+      # scores の名前引き継ぎ
+      if (!is.null(scores)) {
+        for (s_var in scores) {
+          s_rot <- paste0(s_var, "_", rotate)
+          new_scores_names <- get_renamed_dimnames(s_var, s_rot)
+          if (!is.null(new_scores_names)) {
+            s_gen_pattern <- paste0("^", s_rot, "(\\[.*\\])?$")
+            idx <- grep(s_gen_pattern, gen_names)
+            if (length(idx) == length(new_scores_names)) {
+              gen_names[idx] <- new_scores_names
+            }
+          }
+        }
+      }
+
+      dimnames(self$generate_fit)[[3]] <- gen_names
 
       invisible(self)
     },
@@ -1237,6 +1340,139 @@ MCMC_Fit <- R6::R6Class(
       obj$posterior_mean <- new_posterior_mean
 
       if (isTRUE(overwrite)) invisible(self) else obj
+    },
+
+    #' @description Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+    #' @param pars Character vector specifying the names of parameters to extract.
+    #'        Use "parameters" for only model parameters, "all" for all variables
+    #'        including transformed and generated quantities, or a character vector
+    #'        of specific variable names. Default is "parameters".
+    #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
+    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
+    #' @return A named list of EAP estimates structured for use as `init`.
+    EAP = function(pars = "parameters", chains = NULL, best_chains = NULL) {
+      inc_tran <- TRUE
+      inc_gen <- TRUE
+
+      if (identical(pars, "parameters")) {
+        target_vars <- names(self$model$par_list)
+        inc_tran <- FALSE
+        inc_gen <- FALSE
+      } else if (identical(pars, "all")) {
+        target_vars <- c(names(self$model$par_list),
+                         names(self$transform_dims),
+                         names(self$generate_dims))
+      } else {
+        target_vars <- pars
+        inc_tran <- any(target_vars %in% names(self$transform_dims))
+        inc_gen <- any(target_vars %in% names(self$generate_dims))
+      }
+
+      samps <- self$draws(pars = target_vars, chains = chains, best_chains = best_chains,
+                          inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
+
+      if (dim(samps)[3] == 0) stop("No matching parameters found.")
+
+      # Calculate mean over iterations and chains
+      eap_flat <- apply(samps, 3, mean, na.rm = TRUE)
+      flat_names <- dimnames(samps)[[3]]
+
+      res <- list()
+      for (v in target_vars) {
+        if (v %in% names(self$model$par_list)) {
+          v_dim <- self$model$par_list[[v]]$dim
+        } else if (v %in% names(self$transform_dims)) {
+          v_dim <- self$transform_dims[[v]]
+        } else if (v %in% names(self$generate_dims)) {
+          v_dim <- self$generate_dims[[v]]
+        } else {
+          next
+        }
+
+        pattern <- paste0("^", v, "(\\[.*\\])?$")
+        match_idx <- grep(pattern, flat_names)
+
+        if (length(match_idx) > 0) {
+          val <- unname(eap_flat[match_idx])
+          if (length(v_dim) > 1) {
+            dim(val) <- v_dim
+          }
+          res[[v]] <- val
+        }
+      }
+      return(res)
+    },
+
+    #' @description Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
+    #'        This returns the parameter values from the iteration that has the highest log-posterior / ELBO.
+    #' @param pars Character vector specifying the names of parameters to extract.
+    #'        Use "parameters" for only model parameters, "all" for all variables
+    #'        including transformed and generated quantities, or a character vector
+    #'        of specific variable names. Default is "parameters".
+    #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
+    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
+    #' @return A named list of MAP estimates structured for use as `init`.
+    MAP = function(pars = "parameters", chains = NULL, best_chains = NULL) {
+      # Extract lp (or ELBO proxy) to find the iteration with the highest value
+      # best_chains を draws() に渡す
+      lp_samps <- self$draws(pars = "lp", chains = chains, best_chains = best_chains,
+                             inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
+      if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine MAP.")
+
+      max_idx <- which(lp_samps == max(lp_samps, na.rm = TRUE), arr.ind = TRUE)
+      best_i <- max_idx[1, 1]
+      best_c <- max_idx[1, 2]
+
+      inc_tran <- TRUE
+      inc_gen <- TRUE
+
+      if (identical(pars, "parameters")) {
+        target_vars <- names(self$model$par_list)
+        inc_tran <- FALSE
+        inc_gen <- FALSE
+      } else if (identical(pars, "all")) {
+        target_vars <- c(names(self$model$par_list),
+                         names(self$transform_dims),
+                         names(self$generate_dims))
+      } else {
+        target_vars <- pars
+        inc_tran <- any(target_vars %in% names(self$transform_dims))
+        inc_gen <- any(target_vars %in% names(self$generate_dims))
+      }
+
+      samps <- self$draws(pars = target_vars, chains = chains, best_chains = best_chains,
+                          inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
+
+      if (dim(samps)[3] == 0) stop("No matching parameters found.")
+
+      # Extract the slice at the best iteration and chain
+      map_flat <- samps[best_i, best_c, ]
+      flat_names <- dimnames(samps)[[3]]
+
+      res <- list()
+      for (v in target_vars) {
+        if (v %in% names(self$model$par_list)) {
+          v_dim <- self$model$par_list[[v]]$dim
+        } else if (v %in% names(self$transform_dims)) {
+          v_dim <- self$transform_dims[[v]]
+        } else if (v %in% names(self$generate_dims)) {
+          v_dim <- self$generate_dims[[v]]
+        } else {
+          next
+        }
+
+        pattern <- paste0("^", v, "(\\[.*\\])?$")
+        match_idx <- grep(pattern, flat_names)
+
+        if (length(match_idx) > 0) {
+          val <- unname(map_flat[match_idx])
+          if (length(v_dim) > 1) {
+            dim(val) <- v_dim
+          }
+          res[[v]] <- val
+        }
+      }
+      return(res)
     }
   )
 )

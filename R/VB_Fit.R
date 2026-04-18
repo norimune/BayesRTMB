@@ -995,6 +995,136 @@ VB_Fit <- R6::R6Class(
       # 実行
       self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
       invisible(self)
+    },
+
+    #' @description Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+    #' @param pars Character vector specifying the names of parameters to extract.
+    #'        Use "parameters" for only model parameters, "all" for all variables
+    #'        including transformed and generated quantities, or a character vector
+    #'        of specific variable names. Default is "parameters".
+    #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
+    #' @return A named list of EAP estimates structured for use as `init`.
+    EAP = function(pars = "parameters", chains = NULL) {
+      inc_tran <- TRUE
+      inc_gen <- TRUE
+
+      if (identical(pars, "parameters")) {
+        target_vars <- names(self$model$par_list)
+        inc_tran <- FALSE
+        inc_gen <- FALSE
+      } else if (identical(pars, "all")) {
+        target_vars <- c(names(self$model$par_list),
+                         names(self$transform_dims),
+                         names(self$generate_dims))
+      } else {
+        target_vars <- pars
+        inc_tran <- any(target_vars %in% names(self$transform_dims))
+        inc_gen <- any(target_vars %in% names(self$generate_dims))
+      }
+
+      samps <- self$draws(pars = target_vars, chains = chains,
+                          inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
+
+      if (dim(samps)[3] == 0) stop("No matching parameters found.")
+
+      # Calculate mean over iterations and chains
+      eap_flat <- apply(samps, 3, mean, na.rm = TRUE)
+      flat_names <- dimnames(samps)[[3]]
+
+      res <- list()
+      for (v in target_vars) {
+        if (v %in% names(self$model$par_list)) {
+          v_dim <- self$model$par_list[[v]]$dim
+        } else if (v %in% names(self$transform_dims)) {
+          v_dim <- self$transform_dims[[v]]
+        } else if (v %in% names(self$generate_dims)) {
+          v_dim <- self$generate_dims[[v]]
+        } else {
+          next
+        }
+
+        pattern <- paste0("^", v, "(\\[.*\\])?$")
+        match_idx <- grep(pattern, flat_names)
+
+        if (length(match_idx) > 0) {
+          val <- unname(eap_flat[match_idx])
+          if (length(v_dim) > 1) {
+            dim(val) <- v_dim
+          }
+          res[[v]] <- val
+        }
+      }
+      return(res)
+    },
+
+    #' @description Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
+    #'        This returns the parameter values from the iteration that has the highest log-posterior / ELBO.
+    #' @param pars Character vector specifying the names of parameters to extract.
+    #'        Use "parameters" for only model parameters, "all" for all variables
+    #'        including transformed and generated quantities, or a character vector
+    #'        of specific variable names. Default is "parameters".
+    #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
+    #' @return A named list of MAP estimates structured for use as `init`.
+    MAP = function(pars = "parameters", chains = NULL) {
+      # Extract lp (or ELBO proxy) to find the iteration with the highest value
+      lp_samps <- self$draws(pars = "lp", chains = chains,
+                             inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
+      if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine MAP.")
+
+      max_idx <- which(lp_samps == max(lp_samps, na.rm = TRUE), arr.ind = TRUE)
+      best_i <- max_idx[1, 1]
+      best_c <- max_idx[1, 2]
+
+      inc_tran <- TRUE
+      inc_gen <- TRUE
+
+      if (identical(pars, "parameters")) {
+        target_vars <- names(self$model$par_list)
+        inc_tran <- FALSE
+        inc_gen <- FALSE
+      } else if (identical(pars, "all")) {
+        target_vars <- c(names(self$model$par_list),
+                         names(self$transform_dims),
+                         names(self$generate_dims))
+      } else {
+        target_vars <- pars
+        inc_tran <- any(target_vars %in% names(self$transform_dims))
+        inc_gen <- any(target_vars %in% names(self$generate_dims))
+      }
+
+      samps <- self$draws(pars = target_vars, chains = chains,
+                          inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
+
+      if (dim(samps)[3] == 0) stop("No matching parameters found.")
+
+      # Extract the slice at the best iteration and chain
+      map_flat <- samps[best_i, best_c, ]
+      flat_names <- dimnames(samps)[[3]]
+
+      res <- list()
+      for (v in target_vars) {
+        if (v %in% names(self$model$par_list)) {
+          v_dim <- self$model$par_list[[v]]$dim
+        } else if (v %in% names(self$transform_dims)) {
+          v_dim <- self$transform_dims[[v]]
+        } else if (v %in% names(self$generate_dims)) {
+          v_dim <- self$generate_dims[[v]]
+        } else {
+          next
+        }
+
+        pattern <- paste0("^", v, "(\\[.*\\])?$")
+        match_idx <- grep(pattern, flat_names)
+
+        if (length(match_idx) > 0) {
+          val <- unname(map_flat[match_idx])
+          if (length(v_dim) > 1) {
+            dim(val) <- v_dim
+          }
+          res[[v]] <- val
+        }
+      }
+      return(res)
     }
   )
 )

@@ -57,6 +57,8 @@ from MCMC estimation.
 \item \href{#method-mcmc_fit-rotate}{\code{MCMC_Fit$rotate()}}
 \item \href{#method-mcmc_fit-fa_rotate}{\code{MCMC_Fit$fa_rotate()}}
 \item \href{#method-mcmc_fit-resolve_switching}{\code{MCMC_Fit$resolve_switching()}}
+\item \href{#method-mcmc_fit-EAP}{\code{MCMC_Fit$EAP()}}
+\item \href{#method-mcmc_fit-MAP}{\code{MCMC_Fit$MAP()}}
 \item \href{#method-mcmc_fit-clone}{\code{MCMC_Fit$clone()}}
 }
 }
@@ -425,6 +427,61 @@ Resolve label switching in posterior draws.
 }
 \subsection{Returns}{
 Relabeled draws or updated object.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$EAP(pars = "parameters", chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to extract.
+Use "parameters" for only model parameters, "all" for all variables
+including transformed and generated quantities, or a character vector
+of specific variable names. Default is "parameters".}
+
+\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of EAP estimates structured for use as `init`.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
+       This returns the parameter values from the iteration that has the highest log-posterior / ELBO.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$MAP(pars = "parameters", chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to extract.
+Use "parameters" for only model parameters, "all" for all variables
+including transformed and generated quantities, or a character vector
+of specific variable names. Default is "parameters".}
+
+\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of MAP estimates structured for use as `init`.
 }
 }
 \if{html}{\out{<hr>}}
