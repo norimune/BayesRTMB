@@ -1452,14 +1452,12 @@ MCMC_Fit <- R6::R6Class(
 
       if (dim(samps)[3] == 0) stop("No matching parameters found.")
 
-      # ==== 重複変数の排除 (複数回rotateを実行した際の対策) ====
       flat_names <- dimnames(samps)[[3]]
       if (any(duplicated(flat_names))) {
         keep_idx <- !rev(duplicated(rev(flat_names)))
         samps <- samps[, , keep_idx, drop = FALSE]
         flat_names <- dimnames(samps)[[3]]
       }
-      # ==========================================================
 
       if (type == "joint") {
         # 同時MAP推定 (lpが最大のサンプルを採用)
