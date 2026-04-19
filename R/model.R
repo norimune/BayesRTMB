@@ -79,6 +79,18 @@ with_rtmb_error_handling <- function(expr, block_name) {
                  block_name, msg, call_str), call. = FALSE)
   })
 }
+
+#' 環境をリストに変換しつつ、元のリストの順序を保持する内部関数
+#' @keywords internal
+env_to_ordered_list <- function(env, orig_list) {
+  env_list <- as.list(env)
+  orig_names <- names(orig_list)
+  # 元のリストにあった変数と、環境内で新しく作られた変数に分ける
+  new_names <- setdiff(names(env_list), orig_names)
+  # 元の順序 + 新しい変数の順序 で再構築
+  return(env_list[c(intersect(orig_names, names(env_list)), new_names)])
+}
+
 #' RTMB_Model インスタンスを生成するラッパー関数
 #'
 #' @description
@@ -124,7 +136,8 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
       stop(sprintf("【setup ブロックのエラー】データの前処理中にエラーが発生しました:\n  %s", conditionMessage(e)), call. = FALSE)
     })
     # 評価後に作成・変更された変数をすべて data リストに戻す
-    data <- as.list(dat_env)
+    #data <- as.list(dat_env)
+    data <- env_to_ordered_list(dat_env, data)
   }
 
   # --- 2. Parameters ブロックの静的検証と評価 ---
@@ -1146,7 +1159,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (K > 0) view_vars <- c(view_vars, "b")
   view_vars <- c(view_vars, "sd", "sigma", "cor")
 
-  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
+  ordered_data <- env_to_ordered_list(tmp_env, dat)
+  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = view_vars)
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
@@ -1483,7 +1497,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
   if (has_intercept) view_vars <- c("Intercept")
   if (K > 0) view_vars <- c(view_vars, "b")
 
-  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
+  ordered_data <- env_to_ordered_list(tmp_env, dat)
+  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = view_vars)
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family

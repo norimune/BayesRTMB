@@ -1177,6 +1177,93 @@ RTMB_Model <- R6::R6Class(
       }
       cat(")\n")
       return(invisible(self))
+    },
+
+    #' @description Print a summary of the model data and parameters.
+    #' @return The object itself, invisibly.
+    summary = function() {
+      cat("=== RTMB Model Summary ===\n\n")
+
+      # --- 1. Data Information ---
+      cat("[Data]\n")
+      if (length(self$data) == 0) {
+        cat("  No data provided.\n")
+      } else {
+        for (name in names(self$data)) {
+          dat <- self$data[[name]]
+          cls <- class(dat)[1]
+
+          if (is.matrix(dat) || is.array(dat) || is.data.frame(dat)) {
+            dim_str <- paste(dim(dat), collapse = " x ")
+            cat(sprintf("  %-15s : %s (%s)\n", name, dim_str, cls))
+          } else {
+            len <- length(dat)
+            # スカラーの場合は値を直接表示（長すぎない場合のみ）
+            if (len == 1 && (is.numeric(dat) || is.logical(dat) || is.character(dat))) {
+              cat(sprintf("  %-15s : %s (%s)\n", name, as.character(dat), cls))
+            } else {
+              cat(sprintf("  %-15s : length %d (%s)\n", name, len, cls))
+            }
+          }
+        }
+      }
+      cat("\n")
+
+      # --- 2. Parameter Information ---
+      cat("[Parameters]\n")
+      if (length(self$par_list) == 0) {
+        cat("  No parameters defined.\n")
+      } else {
+        for (name in names(self$par_list)) {
+          p <- self$par_list[[name]]
+
+          # 次元の文字列化
+          dim_str <- paste(p$dim, collapse = " x ")
+          if (length(p$dim) == 1 && p$dim[1] == 1) dim_str <- "1" # スカラー表記
+
+          # 制約・型・ランダム効果の属性文字列化
+          attrs <- c()
+          if (!is.null(p$type)) {
+            attrs <- c(attrs, sprintf("type='%s'", p$type))
+          }
+          if (!is.null(p$lower) && any(p$lower != -Inf)) {
+            # 下限がすべて同じ値かチェック
+            l_val <- if (length(unique(p$lower)) == 1) p$lower[1] else "varies"
+            attrs <- c(attrs, sprintf("lower=%s", l_val))
+          }
+          if (!is.null(p$upper) && any(p$upper != Inf)) {
+            # 上限がすべて同じ値かチェック
+            u_val <- if (length(unique(p$upper)) == 1) p$upper[1] else "varies"
+            attrs <- c(attrs, sprintf("upper=%s", u_val))
+          }
+          if (isTRUE(p$random)) {
+            attrs <- c(attrs, "random=TRUE")
+          }
+
+          attr_str <- if (length(attrs) > 0) paste0(" (", paste(attrs, collapse = ", "), ")") else ""
+
+          cat(sprintf("  %-15s : %-10s%s\n", name, dim_str, attr_str))
+        }
+      }
+      cat("\n")
+
+      # --- 3. Model Blocks Information ---
+      cat("[Model Blocks]\n")
+      if (!is.null(self$code)) {
+        blocks <- names(self$code)
+        # 内部で付与している env などの非表示要素を除外
+        display_blocks <- setdiff(blocks, "env")
+        if (length(display_blocks) > 0) {
+          cat(sprintf("  Defined blocks : %s\n", paste(display_blocks, collapse = ", ")))
+        } else {
+          cat("  No structural blocks found.\n")
+        }
+      } else {
+        cat("  Model code AST is not available.\n")
+      }
+      cat("\n")
+
+      return(invisible(self))
     }
   )
 )
