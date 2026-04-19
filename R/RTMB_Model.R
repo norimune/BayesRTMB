@@ -84,8 +84,11 @@ RTMB_Model <- R6::R6Class(
         }
         self$log_prob(self$data, test_para)
       }, error = function(e) {
-        stop("R関数(log_prob)のテスト実行でエラーが発生しました。\n[エラー]: "
-             , e$message, call. = FALSE)
+        stop("R関数(log_prob)のテスト実行でエラーが発生しました。\n[エラー]: ",
+             e$message,
+             "\n  * 原因例: パラメータの初期値が不適切で尤度が計算できない（InfやNaNになる）可能性があります。",
+             "\n  * 対策: init 引数に定義域内（例: 分散なら0より大きい値）の適切な初期値を設定するか、データのスケールを見直してください。",
+             call. = FALSE)
       })
 
       if (!is.numeric(test_val) || length(test_val) != 1) {

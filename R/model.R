@@ -64,13 +64,13 @@ with_rtmb_error_handling <- function(expr, block_name) {
     # 3. advector の破壊 / 型変換の失敗
     if (grepl("lost class attribute", msg) || grepl("Invalid argument to 'advector'", msg) ||
         grepl("数学関数に非数値引数", msg) || grepl("non-numeric argument to mathematical function", msg)) {
-      stop(sprintf("【%s ブロックのエラー】自動微分(AD)の型が破壊されたか、不正な型の計算が行われました。\n  [発生箇所]: %s\n  * 原因例: numeric(N)等で初期化した空ベクトルへの代入 (型がリスト化してしまいます)。\n  * 対策: 計算をベクトル化するか、advector(numeric(N)) で初期化してください。",
+      stop(sprintf("【%s ブロックのエラー】自動微分(AD)の型が破壊されたか、不正な型の計算が行われました。\n  [発生箇所]: %s\n  * 原因例: numeric(N)等で初期化した空ベクトルへの代入 (型がリスト化してしまいます)。\n  * 対策:\n    1. 計算をベクトル化してループを避ける。\n    2. 'vec <- rep(theta[1]*0, N)' のようにAD型を保持したまま初期化する。\n    3. 'advector(numeric(N))' を使用する。",
                    block_name, call_str), call. = FALSE)
     }
 
     # 4. 行列の次元の不一致
     if (grepl("non-conformable arguments", msg) || grepl("適合しない", msg) || grepl("非等角", msg)) {
-      stop(sprintf("【%s ブロックのエラー】行列の掛け算(%%*%%)等で次元が合っていません。\n  [発生箇所]: %s",
+      stop(sprintf("【%s ブロックのエラー】行列の掛け算(%%*%%)や演算で次元が合っていません。\n  [発生箇所]: %s\n  * 注意: RTMBの行列演算では、R標準の「自動リサイクル規則（長さの違うベクトルの自動補完）」は適用されません。次元を厳密に合わせるか、rep()等で明示的にサイズを揃えてください。",
                    block_name, call_str), call. = FALSE)
     }
 
@@ -97,6 +97,13 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
 
   if (!"parameters" %in% names(code)) stop("code の中に 'parameters = { ... }' ブロックが必要です。")
   if (!"model" %in% names(code)) stop("code の中に 'model = { ... }' ブロックが必要です。")
+
+  for (name in names(data)) {
+    if (is.data.frame(data[[name]])) {
+      data[[name]] <- as.matrix(data[[name]])
+      message(sprintf("【自動変換】データ '%s' を data.frame から matrix に変換しました。", name))
+    }
+  }
 
   # --- 1. Data ブロックの静的検証 (オプション) ---
   if ("data" %in% names(code)) {
@@ -146,6 +153,31 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
     } else {
       stop("parametersブロックの書式エラー: ", paste(deparse(e), collapse = " "))
     }
+  }
+
+  for (v_name in names(evaluated_par_list)) {
+    p <- evaluated_par_list[[v_name]]
+    if (!is.null(p$type) && p$type %in% c("CF_cov", "CF_corr", "lower_tri")) {
+      if (length(p$dim) != 2 || p$dim[1] != p$dim[2]) {
+        stop(sprintf("【パラメータ定義エラー】変数 '%s' に type = '%s' が指定されていますが、正方行列の次元ではありません (指定された次元: %s)。",
+                     v_name, p$type, paste(p$dim, collapse = " x ")), call. = FALSE)
+      }
+    }
+  }
+
+  check_unsupported_funcs <- function(expr) {
+    if (is.call(expr)) {
+      func_name <- as.character(expr[[1]])
+      # 関数名が長さ1の文字列である場合のみ判定
+      if (length(func_name) == 1 && func_name %in% c("ifelse", "apply", "sapply", "lapply", "tapply", "vapply")) {
+        stop(sprintf("【model ブロックの記述エラー】自動微分(AD)に対応していない関数 '%s' が使用されています。\n  * 対策 (条件分岐): '(条件) * A + (!条件) * B' のような四則演算で代替してください。\n  * 対策 (ループ関数): 通常の for ループに書き換えてください。", func_name), call. = FALSE)
+      }
+      # 再帰的に内部をチェック
+      lapply(as.list(expr)[-1], check_unsupported_funcs)
+    }
+  }
+  if ("model" %in% names(code)) {
+    check_unsupported_funcs(code$model)
   }
 
   # --- 3. 動的コンパイル (model, transform, generate) ---
@@ -640,24 +672,21 @@ transform_code <- function(expr, env = parent.frame()) {
 #' ユーザーが誤って `data.frame` を渡した場合、計算グラフの構築時に不可解なエラーが発生するため、
 #' この関数で事前に捕捉します。
 validate_data <- function(dat_list, par_list) {
-  # 1. データフレームのチェック
+  # 1. データフレームの変換
   for (name in names(dat_list)) {
     if (is.data.frame(dat_list[[name]])) {
-      stop(sprintf(
-        "【エラー】データ '%s' がデータフレーム(data.frame)のまま渡されています。\n行列演算が失敗するため、as.matrix() で行列に変換してから渡してください。",
-        name
-      ), call. = FALSE)
+      dat_list[[name]] <- as.matrix(dat_list[[name]])
     }
   }
 
-  # 2. NAのチェック
+  # 2. NAのチェック (stopに変更)
   for (name in names(dat_list)) {
     if (any(is.na(dat_list[[name]]))) {
-      warning(sprintf("【警告】データ '%s' に欠損値(NA)が含まれています。予期せぬ動作を引き起こす可能性があります。", name), call. = FALSE)
+      stop(sprintf("【データエラー】データ '%s' に欠損値(NA)が含まれています。\n  * 対策: モデルに渡す前にNAを除外するか、欠損値を補完してください。\n  * ヒント: 欠損値を無視したい場合は、NAのインデックスを取得し、尤度計算のループから外す処理をデータ前処理で行う必要があります。", name), call. = FALSE)
     }
   }
 
-  invisible(NULL)
+  return(dat_list)
 }
 
 
@@ -677,7 +706,7 @@ validate_data <- function(dat_list, par_list) {
 #' @export
 safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
   # 事前検証を実行
-  validate_data(data, parameters)
+  data <- validate_data(data, parameters)
 
   tryCatch({
     # 実際のモデル構築処理
