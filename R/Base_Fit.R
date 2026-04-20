@@ -282,7 +282,7 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param rotate Character string specifying the rotation method.
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
-    fa_rotate = function(target = "loadings", linked = NULL, scores = NULL, rotate = "promax", ...) {
+    fa_rotate = function(target = "L", linked = NULL, scores = NULL, rotate = "promax", ...) {
       cat(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...\n", rotate, target, rotate))
 
       if (exists(rotate, mode = "function")) {

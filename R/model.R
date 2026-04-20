@@ -1558,7 +1558,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         score_expr <- if (score) quote({
           Y_c <- matrix(0, nrow = N, ncol = J)
           for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-          out$score <- Y_c %*% solve(Sigma, rot_mat)
+          rot_raw <- unclass(.(fn_call)(L_raw))
+          if (!is.matrix(rot_raw)) rot_raw <- unclass(rot_raw$loadings)
+          out$score <- Y_c %*% solve(Sigma, rot_raw)
         }) else quote({})
       } else {
         if (has_phi) {
@@ -1571,7 +1573,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
           score_expr <- if (score) quote({
             Y_c <- matrix(0, nrow = N, ncol = J)
             for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-            out$score <- Y_c %*% solve(Sigma, rot_mat %*% rot_obj$Phi)
+            rot_raw_obj <- .(fn_call)(L_raw)
+            rot_raw_mat <- unclass(rot_raw_obj$loadings)
+            out$score <- Y_c %*% solve(Sigma, rot_raw_mat %*% rot_raw_obj$Phi)
           }) else quote({})
         } else {
           rot_expr <- bquote({
@@ -1582,7 +1586,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
           score_expr <- if (score) quote({
             Y_c <- matrix(0, nrow = N, ncol = J)
             for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-            out$score <- Y_c %*% solve(Sigma, rot_mat)
+            rot_raw <- unclass(.(fn_call)(L_raw)$loadings)
+            out$score <- Y_c %*% solve(Sigma, rot_raw)
           }) else quote({})
         }
       }
@@ -1593,7 +1598,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         quote({
           Y_c <- matrix(0, nrow = N, ncol = J)
           for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-          out$score <- Y_c %*% solve(Sigma, L)
+          out$score <- Y_c %*% solve(Sigma, L_raw)
         })
       } else quote({})
     }
@@ -1849,6 +1854,7 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
 
   dat <- list(
     N = N, P = P, Y = Y,
+    Y_bar = apply(Y, 2, mean), S_Y = cov(Y) * (N - 1),
     prior_lkj_eta = prior$lkj_eta, prior_sigma_rate = prior$sigma_rate, prior_mu_sd = prior$mu_sd
   )
 
@@ -1862,9 +1868,7 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
     mean ~ normal(0, prior_mu_sd)
     sd ~ exponential(prior_sigma_rate)
     CF_cor ~ lkj_CF_corr(prior_lkj_eta)
-    for(i in 1:N) {
-      Y[i, ] ~ multi_normal_CF(mean, sd, CF_cor)
-    }
+    S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_cor)
   })
 
   tran_ast <- quote({
