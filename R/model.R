@@ -127,7 +127,7 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
 #'
 #' @return モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。
 #' @export
-rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL) {
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null = NULL) {
 
   if (!"parameters" %in% names(code)) stop("code の中に 'parameters = { ... }' ブロックが必要です。")
   if (!"model" %in% names(code)) stop("code の中に 'model = { ... }' ブロックが必要です。")
@@ -297,6 +297,10 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
     code       = code
   )
 
+  if (!is.null(null)) {
+    obj <- obj$null_model(pars = null)
+  }
+
   return(obj)
 }
 
@@ -433,13 +437,19 @@ model_code <- function(expr, env = parent.frame()) {
                        as.character(dist_call)), call. = FALSE)
         }
 
-        dist_name <- as.character(dist_call[[1]])
+        dist_name_raw <- dist_call[[1]]
+        if (is.call(dist_name_raw) && identical(dist_name_raw[[1]], as.name("::"))) {
+          dist_name <- as.character(dist_name_raw[[3]])
+        } else {
+          dist_name <- as.character(dist_name_raw)
+        }
         dist_args <- as.list(dist_call[-1])
 
         name_lpdf <- paste0(dist_name, "_lpdf")
         name_lpmf <- paste0(dist_name, "_lpmf")
 
         exists_in_pkg <- function(fname) {
+          if (length(fname) > 1) return(FALSE)
           requireNamespace("BayesRTMB", quietly = TRUE) &&
             exists(fname, mode = "function", envir = asNamespace("BayesRTMB"), inherits = FALSE)
         }
@@ -807,7 +817,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        use_weak_info = FALSE,
                        prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0),
                        weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
-                       init = NULL) {
+                       init = NULL, null = NULL) {
 
   regularization <- match.arg(penalty)
   if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
@@ -1218,6 +1228,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   obj$raw_data <- data
   obj$family <- family
 
+  if (!is.null(null)) {
+    obj <- obj$null_model(pars = null)
+  }
+
   return(obj)
 }
 
@@ -1239,7 +1253,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                      use_weak_info = FALSE,
                      prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0),
                      weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
-                     init = NULL) {
+                     init = NULL, null = NULL) {
   regularization <- match.arg(penalty)
   rtmb_glmer(
     formula = formula,
@@ -1251,7 +1265,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     use_weak_info = use_weak_info,
     prior = prior,
     weak_info_prior = weak_info_prior,
-    init = init
+    init = init,
+    null = null
   )
 }
 
@@ -1272,7 +1287,7 @@ rtmb_lm <- function(formula, data,
                     use_weak_info = FALSE,
                     prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0),
                     weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
-                    init = NULL) {
+                    init = NULL, null = NULL) {
 
   regularization <- match.arg(penalty)
   rtmb_glm(
@@ -1284,7 +1299,8 @@ rtmb_lm <- function(formula, data,
     penalty = regularization,
     prior = prior,
     weak_info_prior = weak_info_prior,
-    init = init
+    init = init,
+    null = null
   )
 }
 

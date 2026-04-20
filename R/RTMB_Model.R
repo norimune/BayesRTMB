@@ -48,6 +48,7 @@ RTMB_Model <- R6::R6Class(
     init       = NULL,
     view       = NULL,
     code       = NULL,
+    map        = NULL,
 
     # 1. コンストラクタ
     #' @description Create a new `RTMB_Model` object.
@@ -166,7 +167,7 @@ RTMB_Model <- R6::R6Class(
     #' @param jacobian_target Character string specifying which parameters to apply Jacobian adjustments to (e.g., "all", "random", or "none"). Default is "all".
     #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
     #' @return An RTMB objective object..
-    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL) { # 引数に map = NULL を追加
+    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL) {
 
       random_effs <- names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
@@ -204,7 +205,7 @@ RTMB_Model <- R6::R6Class(
           func = f_ad,
           parameters = init_unc_list,
           random = use_random,
-          map = map,           # <--- ここに map を追加
+          map = if (!is.null(map)) map else self$map,
           silent = TRUE
         )
       }, error = function(e) {
@@ -1200,6 +1201,128 @@ RTMB_Model <- R6::R6Class(
       }
       cat(")\n")
       return(invisible(self))
+    },
+
+    #' @description Create a null model by fixing specified parameters to a given value.
+    #' @param pars Character vector of parameter names or element specifications (e.g., "b", "b[x1]").
+    #' @param value Numeric value to fix parameters to. Default is 0.
+    #' @return A new RTMB_Model object with the specified parameters fixed.
+    null_model = function(pars, value = 0) {
+      # --- 制約タイプの分類 ---
+      # 個別固定不可（要素間に依存関係がある）
+      structural_bounds <- c("ordered", "positive_ordered", "simplex",
+                             "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
+                             "sum_to_zero", "centered_matrix",
+                             "centered_tri", "positive_centered_tri",
+                             "lower_tri_stz")
+      # 全体固定も不可（構造的に値を自由に指定できない）
+      no_fix_bounds <- c("simplex", "corr_matrix", "CF_corr",
+                         "cov_matrix", "CF_cov", "sum_to_zero",
+                         "centered_matrix", "centered_tri",
+                         "positive_centered_tri")
+      # 要素単位で1:1対応する制約
+      elementwise_bounds <- c("none", "lower", "upper", "interval")
+
+      # --- フラット名の構築 ---
+      all_flat_names <- character(0)
+      flat_to_info <- list()
+      for (name in names(self$par_list)) {
+        p <- self$par_list[[name]]
+        names_def <- self$par_names[[name]]
+        fnames <- BayesRTMB:::generate_flat_names(name, p$dim, names_def)
+        for (i in seq_along(fnames)) {
+          flat_to_info[[fnames[i]]] <- list(par = name, idx = i)
+        }
+        all_flat_names <- c(all_flat_names, fnames)
+      }
+
+      # --- 各 spec をパースして対象を特定 ---
+      targets <- list()  # par_name -> c(constrained indices)
+      for (spec in pars) {
+        if (spec %in% names(self$par_list)) {
+          # パラメータ全体
+          p <- self$par_list[[spec]]
+          if (p$bounds %in% no_fix_bounds) {
+            stop(sprintf("パラメータ '%s' (type='%s') は構造的制約のため固定できません。", spec, p$bounds), call. = FALSE)
+          }
+          targets[[spec]] <- 1:p$length
+        } else if (spec %in% all_flat_names) {
+          # 個別要素
+          info <- flat_to_info[[spec]]
+          p <- self$par_list[[info$par]]
+          if (p$bounds %in% structural_bounds) {
+            stop(sprintf("'%s' (type='%s') は要素間に依存関係があるため個別に固定できません。'%s' で全体を固定してください。",
+                         spec, p$bounds, info$par), call. = FALSE)
+          }
+          if (!(p$bounds %in% elementwise_bounds)) {
+            stop(sprintf("'%s' (type='%s') は個別要素の固定に対応していません。", spec, p$bounds), call. = FALSE)
+          }
+          targets[[info$par]] <- unique(c(targets[[info$par]], info$idx))
+        } else {
+          stop(sprintf("'%s' は有効なパラメータ名または要素名ではありません。\n利用可能: %s",
+                       spec, paste(c(names(self$par_list), head(all_flat_names, 20)), collapse = ", ")), call. = FALSE)
+        }
+      }
+
+      # --- 値の妥当性チェック & map の構築 ---
+      map_list <- list()
+      adjusted_init <- if (is.list(self$init)) self$init else list()
+
+      for (par_name in names(targets)) {
+        p <- self$par_list[[par_name]]
+        fix_indices <- targets[[par_name]]
+        is_full <- length(fix_indices) == p$length
+
+        # 値がパラメータの定義域内かチェック
+        if (!is.null(p$lower) && any(value < p$lower)) {
+          if (any(value == p$lower)) {
+            stop(sprintf("パラメータ '%s' の下限値 %g に固定することはできません（境界値）。", par_name, p$lower[1]), call. = FALSE)
+          }
+          stop(sprintf("値 %g はパラメータ '%s' の下限 %g を下回っています。", value, par_name, p$lower[1]), call. = FALSE)
+        }
+        if (!is.null(p$upper) && any(value > p$upper)) {
+          if (any(value == p$upper)) {
+            stop(sprintf("パラメータ '%s' の上限値 %g に固定することはできません（境界値）。", par_name, p$upper[1]), call. = FALSE)
+          }
+          stop(sprintf("値 %g はパラメータ '%s' の上限 %g を上回っています。", value, par_name, p$upper[1]), call. = FALSE)
+        }
+
+        # map の構築（無制約空間ベース）
+        if (is_full) {
+          map_list[[par_name]] <- factor(rep(NA, p$unc_length))
+        } else {
+          # 要素単位: unc_length == length (elementwise_bounds のため)
+          if (!(par_name %in% names(map_list))) {
+            map_list[[par_name]] <- factor(1:p$unc_length)
+          }
+          current <- as.integer(map_list[[par_name]])
+          current[fix_indices] <- NA
+          non_na <- !is.na(current)
+          if (any(non_na)) current[non_na] <- seq_len(sum(non_na))
+          map_list[[par_name]] <- factor(current)
+        }
+
+        # 初期値の設定
+        if (!(par_name %in% names(adjusted_init))) {
+          adjusted_init[[par_name]] <- rep(0, p$length)
+        }
+        val <- as.numeric(adjusted_init[[par_name]])
+        val[fix_indices] <- value
+        adjusted_init[[par_name]] <- val
+        if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
+      }
+
+      # --- クローンして返す ---
+      new_model <- self$clone()
+      new_model$map <- map_list
+      new_model$init <- adjusted_init
+
+      cat("Null model created. Fixed parameters:\n")
+      for (spec in pars) {
+        cat(sprintf("  %s → %g\n", spec, value))
+      }
+
+      return(new_model)
     },
 
     #' @description Print a summary of the model data and parameters.
