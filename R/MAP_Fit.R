@@ -35,6 +35,7 @@
 #'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
+  inherit = RTMB_Fit_Base,
 
   public = list(
     # --- フィールド ---
@@ -52,6 +53,38 @@ MAP_Fit <- R6::R6Class(
     opt_history    = NULL,
     transform      = NULL, # 追加
     generate       = NULL, # 追加
+
+    #' @description Get point estimate for a target parameter (internal use).
+    #' @param target Target parameter name.
+    #' @return Matrix or array of point estimate.
+    get_point_estimate = function(target) {
+      if (!is.null(self$par[[target]])) return(self$par[[target]])
+      if (!is.null(self$transform[[target]])) return(self$transform[[target]])
+      if (!is.null(self$generate[[target]])) return(self$generate[[target]])
+      stop("Parameter not found: ", target)
+    },
+
+    #' @description Return point estimates (EAP is not applicable).
+    #' @param ... Ignored.
+    #' @return A named list of point estimates.
+    EAP = function(...) {
+      warning("EAP is not applicable for MAP_Fit. Returning point estimates instead.")
+      return(c(self$par, self$transform, self$generate))
+    },
+
+    #' @description Return point estimates (MAP sampling method is not applicable).
+    #' @param ... Ignored.
+    #' @return A named list of point estimates.
+    MAP = function(...) {
+      warning("Sampling-based MAP is not applicable for MAP_Fit. Returning point estimates instead.")
+      return(c(self$par, self$transform, self$generate))
+    },
+
+    #' @description internal_rotate is not supported for MAP_Fit.
+    #' @param ... Ignored.
+    internal_rotate = function(...) {
+      stop("internal_rotate is not applicable for MAP_Fit. Use rotate() or fa_rotate() instead.")
+    },
 
     #' @description Create a new `MAP_Fit` object.
     #' @param model The `RTMB_Model` object used for estimation.
@@ -223,109 +256,6 @@ MAP_Fit <- R6::R6Class(
       }
 
       cat("Generated quantities updated.\n")
-      invisible(self)
-    },
-    #' @description Performs orthogonal Procrustes rotation on the MAP estimate.
-    #' @param target Character string specifying the name of the matrix parameter
-    #' to be used as the rotation reference.
-    #' @param reference Matrix to rotate towards. If NULL, the target itself is
-    #' used (no-op unless linked is provided).
-    #' @param linked A character vector of other parameter names to be rotated
-    #' in the same direction as the target.
-    #' @return The `MAP_Fit` object itself (invisibly).
-    #' Rotated values are saved to `generate` with a `_rot` suffix.
-    rotate = function(target, reference = NULL, linked = NULL) {
-      if (is.null(reference)) {
-        warning("No reference provided for Procrustes rotation.")
-        return(invisible(self))
-      }
-
-      # build AST for rotation
-      exprs <- list()
-      exprs[[length(exprs) + 1]] <- bquote(svd_res <- svd(t(.(as.name(target))) %*% .(reference)))
-      exprs[[length(exprs) + 1]] <- quote(Q <- svd_res$u %*% t(svd_res$v))
-
-      target_rot <- paste0(target, "_rot")
-      exprs[[length(exprs) + 1]] <- bquote(.(as.name(target_rot)) <- .(as.name(target)) %*% Q)
-
-      ret_list <- list()
-      ret_list[[target_rot]] <- as.name(target_rot)
-
-      if (!is.null(linked)) {
-        for (l_var in linked) {
-          l_rot <- paste0(l_var, "_rot")
-          exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% Q)
-          ret_list[[l_rot]] <- as.name(l_rot)
-        }
-      }
-
-      exprs[[length(exprs) + 1]] <- bquote(return(.(as.call(c(list(as.name("list")), ret_list)))))
-      self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
-      invisible(self)
-    },
-    #' @description Rotates factor loadings and optionally rotates associated parameters.
-    #' @param target Character string specifying the factor loadings matrix to
-    #' base the rotation on. Defaults to "loadings".
-    #' @param linked Character vector of parameters to which the same rotation
-    #' matrix should be applied.
-    #' @param scores Character vector of parameters to which the inverse-transpose
-    #' of the rotation matrix should be applied.
-    #' @param rotate Character string specifying the rotation method (e.g., "promax").
-    #' @param ... Additional arguments passed to the rotation function.
-    #' @return The `MAP_Fit` object itself (invisibly).
-    #' Rotated values are saved to `generate` with a method-specific suffix.
-    fa_rotate = function(target = "loadings", linked = NULL, scores = NULL, rotate = "promax", ...) {
-      cat(sprintf("Applying %s rotation to %s...\n", rotate, target))
-
-      # Identify function
-      if (exists(rotate, mode = "function")) {
-        fn_call <- as.name(rotate)
-      } else {
-        fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
-      }
-
-      # Test rotation type to see if it's oblique (has Phi)
-      t_val <- if (!is.null(self$par[[target]])) self$par[[target]] else self$transform[[target]]
-      test_rot <- eval(as.call(list(fn_call, t_val)))
-      is_matrix_rot <- is.matrix(test_rot)
-
-      # Build AST
-      exprs <- list()
-      rot_name <- paste0(target, "_", rotate)
-      exprs[[length(exprs) + 1]] <- bquote(rot_obj <- .(fn_call)(.(as.name(target))))
-
-      ret_list <- list()
-      if (is_matrix_rot) {
-        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj))
-      } else {
-        exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj$loadings))
-        if (!is.null(test_rot$Phi)) ret_list[["fa_cor"]] <- quote(rot_obj$Phi)
-      }
-      ret_list[[rot_name]] <- as.name("rot_mat")
-
-      # Handle linked and scores
-      if (!is_matrix_rot && (!is.null(linked) || !is.null(scores))) {
-        exprs[[length(exprs) + 1]] <- quote(rot_Th <- if (!is.null(rot_obj$Th)) rot_obj$Th else rot_obj$rotmat)
-
-        if (!is.null(linked)) {
-          for (l_var in linked) {
-            l_rot <- paste0(l_var, "_", rotate)
-            exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% rot_Th)
-            ret_list[[l_rot]] <- as.name(l_rot)
-          }
-        }
-        if (!is.null(scores)) {
-          exprs[[length(exprs) + 1]] <- quote(rot_Th_inv <- solve(t(rot_Th)))
-          for (s_var in scores) {
-            s_rot <- paste0(s_var, "_", rotate)
-            exprs[[length(exprs) + 1]] <- bquote(.(as.name(s_rot)) <- .(as.name(s_var)) %*% rot_Th_inv)
-            ret_list[[s_rot]] <- as.name(s_rot)
-          }
-        }
-      }
-
-      exprs[[length(exprs) + 1]] <- bquote(return(.(as.call(c(list(as.name("list")), ret_list)))))
-      self$generated_quantities(as.call(c(list(as.name("{")), exprs)))
       invisible(self)
     }
   )

@@ -82,12 +82,34 @@ with_rtmb_error_handling <- function(expr, block_name) {
 
 #' 環境をリストに変換しつつ、元のリストの順序を保持する内部関数
 #' @keywords internal
-env_to_ordered_list <- function(env, orig_list) {
+env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
   env_list <- as.list(env)
   orig_names <- names(orig_list)
-  # 元のリストにあった変数と、環境内で新しく作られた変数に分ける
-  new_names <- setdiff(names(env_list), orig_names)
-  # 元の順序 + 新しい変数の順序 で再構築
+  
+  if (!is.null(code_ast)) {
+    extract_assigned_vars <- function(expr) {
+      vars <- character()
+      if (is.call(expr)) {
+        if (identical(expr[[1]], as.name("<-")) || identical(expr[[1]], as.name("="))) {
+          if (is.name(expr[[2]])) vars <- c(vars, as.character(expr[[2]]))
+        } else if (identical(expr[[1]], as.name("{"))) {
+          for (i in 2:length(expr)) {
+            vars <- c(vars, extract_assigned_vars(expr[[i]]))
+          }
+        }
+      }
+      return(unique(vars))
+    }
+    
+    assigned_vars <- extract_assigned_vars(code_ast)
+    assigned_vars <- intersect(assigned_vars, names(env_list))
+    new_names <- intersect(assigned_vars, setdiff(names(env_list), orig_names))
+    other_new_names <- setdiff(names(env_list), c(orig_names, new_names))
+    new_names <- c(new_names, other_new_names)
+  } else {
+    new_names <- setdiff(names(env_list), orig_names)
+  }
+  
   return(env_list[c(intersect(orig_names, names(env_list)), new_names)])
 }
 
@@ -137,7 +159,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
     })
     # 評価後に作成・変更された変数をすべて data リストに戻す
     #data <- as.list(dat_env)
-    data <- env_to_ordered_list(dat_env, data)
+    data <- env_to_ordered_list(dat_env, data, code$setup)
   }
 
   # --- 2. Parameters ブロックの静的検証と評価 ---
@@ -170,7 +192,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL)
 
   for (v_name in names(evaluated_par_list)) {
     p <- evaluated_par_list[[v_name]]
-    if (!is.null(p$type) && p$type %in% c("CF_cov", "CF_corr", "lower_tri")) {
+    if (!is.null(p$type) && p$type %in% c("CF_cov", "CF_corr")) {
       if (length(p$dim) != 2 || p$dim[1] != p$dim[2]) {
         stop(sprintf("【パラメータ定義エラー】変数 '%s' に type = '%s' が指定されていますが、正方行列の次元ではありません (指定された次元: %s)。",
                      v_name, p$type, paste(p$dim, collapse = " x ")), call. = FALSE)
@@ -789,9 +811,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   regularization <- match.arg(penalty)
   if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
-  if (is.null(lme4::findbars(formula))) {
-    return(rtmb_glm(formula = formula, data = data, family = family, penalty = regularization, y_range = y_range, use_weak_info = use_weak_info, prior = prior, weak_info_prior = weak_info_prior, init = init))
-  }
+  has_random <- !is.null(lme4::findbars(formula))
 
   default_prior <- eval(formals(rtmb_glmer)$prior)
   prior <- modifyList(default_prior, prior)
@@ -809,12 +829,28 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     stop("family = '", family, "' で弱情報事前分布（または正則化）を使用する場合、y_range の指定が必須です。")
   }
 
-  parsed <- lme4::lFormula(formula, data = data, control = lme4::lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE  = "ignore"))
-  Y <- model.response(parsed$fr)
-  X <- parsed$X
-  reTrms <- parsed$reTrms
+  if (has_random) {
+    parsed <- lme4::lFormula(formula, data = data, control = lme4::lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE  = "ignore"))
+    Y <- model.response(parsed$fr)
+    X <- parsed$X
+    reTrms <- parsed$reTrms
 
-  if (length(reTrms$Ztlist) > 1) stop("現在、単一のグループ化変数のみに対応しています。")
+    if (length(reTrms$Ztlist) > 1) stop("現在、単一のグループ化変数のみに対応しています。")
+
+    Zt <- as.matrix(reTrms$Ztlist[[1]])
+    group_idx <- as.integer(reTrms$flist[[1]])
+    offset <- model.offset(parsed$fr)
+    ranef_names <- parsed$reTrms$cnms[[1]]
+    ranef_names[ranef_names == "(Intercept)"] <- "Int"
+  } else {
+    mf <- model.frame(formula, data)
+    Y <- model.response(mf)
+    X <- model.matrix(formula, mf)
+    offset <- model.offset(mf)
+    Zt <- NULL
+    group_idx <- NULL
+    ranef_names <- NULL
+  }
 
   has_intercept <- "(Intercept)" %in% colnames(X)
   if (family == "ordered") has_intercept <- FALSE
@@ -824,12 +860,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   fixed_names <- colnames(X)
   K_tmp <- ncol(X)
-  ranef_names <- parsed$reTrms$cnms[[1]]
-  ranef_names[ranef_names == "(Intercept)"] <- "Int"
-
-  Zt <- as.matrix(reTrms$Ztlist[[1]])
-  group_idx <- as.integer(reTrms$flist[[1]])
-  offset <- model.offset(parsed$fr)
 
   if (is.matrix(Y)) {
     if (ncol(Y) == 2 && family == "binomial") {
@@ -912,7 +942,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }, error = function(e) init <- NULL)
   }
 
-  dat <- list(Y = Y, trials = trials, X = X, Zt = Zt, group_idx = group_idx)
+  dat <- list(Y = Y, trials = trials, X = X)
+  if (has_random) {
+    dat$Zt <- Zt
+    dat$group_idx <- group_idx
+  }
   if (!is.null(offset)) dat$offset <- offset
   if (family == "ordered") dat$num_categories <- length(unique(Y))
 
@@ -920,15 +954,17 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   setup_exprs <- list()
   setup_exprs[[1]] <- quote(N <- length(Y))
   setup_exprs[[2]] <- quote(K <- ncol(X))
-  setup_exprs[[3]] <- quote(num_groups <- max(group_idx))
-  setup_exprs[[4]] <- quote(num_ranef <- nrow(Zt) / num_groups)
-  setup_exprs[[5]] <- quote(Z_mat <- matrix(0, nrow = N, ncol = num_ranef))
-  setup_exprs[[6]] <- quote(
-    for (i in 1:N) {
-      g <- group_idx[i]
-      Z_mat[i, ] <- Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i]
-    }
-  )
+  if (has_random) {
+    setup_exprs[[3]] <- quote(num_groups <- max(group_idx))
+    setup_exprs[[4]] <- quote(num_ranef <- nrow(Zt) / num_groups)
+    setup_exprs[[5]] <- quote(Z_mat <- matrix(0, nrow = N, ncol = num_ranef))
+    setup_exprs[[6]] <- quote(
+      for (i in 1:N) {
+        g <- group_idx[i]
+        Z_mat[i, ] <- Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i]
+      }
+    )
+  }
 
   if (use_weak_info) {
     if (family %in% c("bernoulli", "binomial", "ordered")) {
@@ -982,7 +1018,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   tmp_env <- list2env(dat)
   eval(setup_ast, tmp_env)
   N <- tmp_env$N; K <- tmp_env$K
-  num_groups <- tmp_env$num_groups; num_ranef <- tmp_env$num_ranef
+  if (has_random) {
+    num_groups <- tmp_env$num_groups; num_ranef <- tmp_env$num_ranef
+  }
 
   # --- Parameters AST ---
   param_exprs <- list()
@@ -1004,13 +1042,15 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   }
 
-  if (num_ranef == 1) {
-    param_exprs[[length(param_exprs) + 1]] <- quote(sd <- Dim(num_ranef, lower = 0))
-    param_exprs[[length(param_exprs) + 1]] <- quote(r_re <- Dim(num_groups, random = TRUE))
-  } else {
-    param_exprs[[length(param_exprs) + 1]] <- quote(sd <- Dim(num_ranef, lower = 0))
-    param_exprs[[length(param_exprs) + 1]] <- quote(CF_cor <- Dim(c(num_ranef, num_ranef), type = "CF_corr"))
-    param_exprs[[length(param_exprs) + 1]] <- quote(r_re <- Dim(c(num_groups, num_ranef), random = TRUE))
+  if (has_random) {
+    if (num_ranef == 1) {
+      param_exprs[[length(param_exprs) + 1]] <- quote(sd <- Dim(num_ranef, lower = 0))
+      param_exprs[[length(param_exprs) + 1]] <- quote(r_re <- Dim(num_groups, random = TRUE))
+    } else {
+      param_exprs[[length(param_exprs) + 1]] <- quote(sd <- Dim(num_ranef, lower = 0))
+      param_exprs[[length(param_exprs) + 1]] <- quote(CF_cor <- Dim(c(num_ranef, num_ranef), type = "CF_corr"))
+      param_exprs[[length(param_exprs) + 1]] <- quote(r_re <- Dim(c(num_groups, num_ranef), random = TRUE))
+    }
   }
 
   if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
@@ -1036,7 +1076,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
     else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
   }
-  if (num_ranef > 1) tran_exprs[[length(tran_exprs) + 1]] <- quote(cor <- CF_cor %*% t(CF_cor))
+  if (has_random && num_ranef > 1) tran_exprs[[length(tran_exprs) + 1]] <- quote(cor <- CF_cor %*% t(CF_cor))
   tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
 
   # --- Model AST ---
@@ -1048,10 +1088,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(X %*% b))
     else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(0, N))
   }
-  if (num_ranef > 1) {
-    transform_exprs[[length(transform_exprs) + 1]] <- quote(for (i in 1:N) eta[i] <- eta[i] + sum(Z_mat[i, ] * r_re[group_idx[i], ] * sd))
-  } else {
-    transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + Z_mat[,1] * r_re[group_idx] * sd)
+  if (has_random) {
+    if (num_ranef > 1) {
+      transform_exprs[[length(transform_exprs) + 1]] <- quote(for (i in 1:N) eta[i] <- eta[i] + sum(Z_mat[i, ] * r_re[group_idx[i], ] * sd))
+    } else {
+      transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + Z_mat[,1] * r_re[group_idx] * sd)
+    }
   }
   if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
 
@@ -1069,11 +1111,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   )
 
   ll_random_exprs <- list()
-  if (num_ranef > 1) {
-    ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(CF_cor ~ lkj_CF_corr(.(prior$lkj_eta)))
-    ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(for (j in 1:num_groups) r_re[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor))
-  } else {
-    ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(r_re ~ normal(0, 1))
+  if (has_random) {
+    if (num_ranef > 1) {
+      ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(CF_cor ~ lkj_CF_corr(.(prior$lkj_eta)))
+      ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(for (j in 1:num_groups) r_re[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor))
+    } else {
+      ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(r_re ~ normal(0, 1))
+    }
   }
 
   prior_exprs <- list()
@@ -1120,10 +1164,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   }
 
-  if (use_weak_info) {
-    prior_exprs[[length(prior_exprs) + 1]] <- quote(sd ~ exponential(tau_rate))
-  } else {
-    prior_exprs[[length(prior_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sd_rate)))
+  if (has_random) {
+    if (use_weak_info) {
+      prior_exprs[[length(prior_exprs) + 1]] <- quote(sd ~ exponential(tau_rate))
+    } else {
+      prior_exprs[[length(prior_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sd_rate)))
+    }
   }
 
   model_exprs <- list()
@@ -1131,8 +1177,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   model_exprs <- c(model_exprs, transform_exprs)
   model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Data)"
   model_exprs <- c(model_exprs, ll_data_exprs)
-  model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Random)"
-  model_exprs <- c(model_exprs, ll_random_exprs)
+  if (has_random) {
+    model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Random)"
+    model_exprs <- c(model_exprs, ll_random_exprs)
+  }
   model_exprs[[length(model_exprs) + 1]] <- "# Priors"
   model_exprs <- c(model_exprs, prior_exprs)
 
@@ -1151,15 +1199,20 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       par_names_list$beta_raw <- fixed_names; par_names_list$r <- fixed_names; par_names_list$tau <- fixed_names
     }
   }
-  par_names_list$sd <- ranef_names
-  if (num_ranef > 1) par_names_list$cor <- ranef_names
+  if (has_random) {
+    par_names_list$sd <- ranef_names
+    if (num_ranef > 1) par_names_list$cor <- ranef_names
+  }
 
   view_vars <- c()
   if (has_intercept) view_vars <- c("Intercept")
   if (K > 0) view_vars <- c(view_vars, "b")
-  view_vars <- c(view_vars, "sd", "sigma", "cor")
+  view_vars <- c(view_vars, "sigma")
+  if (has_random) {
+    view_vars <- c(view_vars, "sd", "cor")
+  }
 
-  ordered_data <- env_to_ordered_list(tmp_env, dat)
+  ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
   obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = view_vars)
   obj$formula <- formula
   obj$raw_data <- data
@@ -1184,326 +1237,22 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                      penalty = c("none", "rhs", "ssp"),
                      y_range = NULL,
                      use_weak_info = FALSE,
-                     prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0),
+                     prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0),
                      weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                      init = NULL) {
-
   regularization <- match.arg(penalty)
-
-  default_prior <- eval(formals(rtmb_glm)$prior)
-  prior <- modifyList(default_prior, prior)
-  default_weak_prior <- eval(formals(rtmb_glm)$weak_info_prior)
-  weak_info_prior <- modifyList(default_weak_prior, weak_info_prior)
-
-  if (!is.null(y_range) || regularization %in% c("rhs", "ssp")) {
-    use_weak_info <- TRUE
-  }
-
-  families_requiring_yrange <- c("gaussian", "lognormal", "student_t")
-  is_continuous <- family %in% families_requiring_yrange
-
-  if (use_weak_info && is_continuous && is.null(y_range)) {
-    stop("family = '", family, "' で弱情報事前分布（または正則化）を使用する場合、y_range の指定が必須です。")
-  }
-
-  mf <- model.frame(formula, data)
-  Y <- model.response(mf)
-  X <- model.matrix(formula, mf)
-
-  has_intercept <- "(Intercept)" %in% colnames(X)
-  if (family == "ordered") has_intercept <- FALSE
-  if ("(Intercept)" %in% colnames(X)) {
-    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
-  }
-
-  fixed_names <- colnames(X)
-  K <- ncol(X)
-  offset <- model.offset(mf)
-
-  if (is.matrix(Y)) {
-    if (ncol(Y) == 2 && family == "binomial") {
-      trials <- as.numeric(Y[, 1] + Y[, 2])
-      Y <- as.numeric(Y[, 1])
-    } else if (ncol(Y) == 1) {
-      Y <- as.numeric(Y[, 1])
-      trials <- rep(1, length(Y))
-    } else stop("応答変数の行列形式が不正です。")
-  } else {
-    trials <- rep(1, length(Y))
-    if (is.factor(Y)) {
-      Y <- if (family %in% c("bernoulli", "binomial")) as.numeric(Y) - 1 else as.numeric(Y)
-    } else Y <- as.numeric(Y)
-  }
-
-  # --- SSP 初期値自動生成 ---
-  if (regularization == "ssp" && is.null(init) && K > 0) {
-    rhs_mod <- NULL
-    suppressMessages(capture.output({
-      rhs_mod <- rtmb_glm(formula, data, family, penalty = "rhs", y_range = y_range, use_weak_info = use_weak_info, prior = prior, weak_info_prior = weak_info_prior, init = NULL)
-    }))
-
-    ad_setup <- NULL
-    suppressMessages(capture.output({
-      ad_setup <- rhs_mod$build_ad_obj(laplace = FALSE, jacobian_target = "none")
-    }))
-
-    ad_obj <- ad_setup$ad_obj
-    best_obj <- Inf
-    best_par <- ad_obj$par
-
-    for (i in 1:4) {
-      start_par <- if (i == 1) ad_obj$par else ad_obj$par + rnorm(length(ad_obj$par), 0, 0.5)
-      opt <- suppressWarnings(try(nlminb(start = start_par, objective = ad_obj$fn, gradient = ad_obj$gr), silent = TRUE))
-      if (!inherits(opt, "try-error") && !is.na(opt$objective) && opt$objective < best_obj) {
-        best_obj <- opt$objective
-        best_par <- opt$par
-      }
-    }
-
-    ad_obj$fn(best_par)
-    full_par <- if (!is.null(ad_obj$env$last.par.best)) ad_obj$env$last.par.best else ad_obj$env$last.par
-
-    unc_est_list <- BayesRTMB:::unconstrained_vector_to_list(full_par, rhs_mod$par_list)
-    con_est_list <- BayesRTMB:::to_constrained(unc_est_list, rhs_mod$par_list)
-    if (!is.null(rhs_mod$transform)) {
-      tran_res <- rhs_mod$transform(rhs_mod$data, con_est_list)
-      con_est_list <- c(con_est_list, tran_res)
-    }
-
-    b_est <- as.numeric(con_est_list$b)
-    if (length(b_est) == 0 || any(is.na(b_est))) b_est <- rep(0, K)
-
-    r_init <- ifelse(abs(b_est) > mean(abs(b_est)), 0.9, 0.1)
-    tau_init <- pmax(abs(b_est), 0.01)
-    beta_raw_init <- b_est / (r_init * tau_init)
-
-    init <- list(beta_raw = beta_raw_init, r = r_init, tau = tau_init)
-    if (has_intercept && !is.null(con_est_list$Intercept_c)) {
-      init$Intercept_c <- as.numeric(con_est_list$Intercept_c)[1]
-    }
-  } else if (is.null(init)) {
-    tryCatch({
-      glm_fam <- switch(family, "gaussian" = gaussian(), "student_t" = gaussian(), "lognormal" = gaussian(link="log"), "bernoulli" = binomial(), "binomial" = binomial(), "poisson" = poisson(), "neg_binomial" = poisson(), "gamma" = Gamma(link="log"), gaussian())
-      init_fit <- suppressWarnings(glm(formula, data = data, family = glm_fam))
-      init_coef <- unname(coef(init_fit))
-      init_coef[is.na(init_coef)] <- 0
-
-      init <- list()
-      if (has_intercept) init$Intercept_c <- init_coef[1]
-
-      if (regularization == "none" && K > 0) {
-        if (has_intercept) init$b <- init_coef[-1]
-        else init$b <- init_coef
-      }
-    }, error = function(e) init <- NULL)
-  }
-
-  dat <- list(Y = Y, trials = trials, X = X)
-  if (!is.null(offset)) dat$offset <- offset
-  if (family == "ordered") dat$num_categories <- length(unique(Y))
-
-  # --- Setup AST ---
-  setup_exprs <- list()
-  setup_exprs[[1]] <- quote(N <- length(Y))
-  setup_exprs[[2]] <- quote(K <- ncol(X))
-
-  if (use_weak_info) {
-    if (family %in% c("bernoulli", "binomial", "ordered")) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- pi / sqrt(3))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- base_scale)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
-    } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- 1.0)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- base_scale)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
-    } else {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
-      #setup_exprs[[length(setup_exprs) + 1]] <- quote(if (half_d_y == 0) half_d_y <- 0.5)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- half_d_y * weak_info_prior$sd_ratio)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
-    }
-
-    if (K > 0) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(beta_prior_sd <- weak_info_prior$max_beta * base_scale / X_sd)
-      if (has_intercept) {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
-      }
-
-      if (regularization == "rhs") {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(p0 <- min(weak_info_prior$expected_vars, K - 1))
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(if (p0 < 1) p0 <- 1)
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- (p0 / (K - p0)) * (base_scale / sqrt(N)))
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_df <- weak_info_prior$slab_df / 2.0)
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_scale2 <- (weak_info_prior$slab_df * weak_info_prior$slab_scale^2) / 2.0)
-      } else if (regularization == "ssp") {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- weak_info_prior$max_beta * base_scale / X_sd)
-      }
-    }
-  } else {
-    # 固定事前分布の場合の最低限の計算
-    if (K > 0) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
-      if (has_intercept) {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
-      }
-    }
-  }
-  setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-
-  # --- Parameters AST ---
-  param_exprs <- list()
-  if (has_intercept) param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
-  if (K > 0) {
-    if (regularization == "none") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
-    } else if (regularization == "rhs") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(K))
-      param_exprs[[length(param_exprs) + 1]] <- quote(lambda <- Dim(K, lower = 0))
-      param_exprs[[length(param_exprs) + 1]] <- quote(w_lambda <- Dim(K, lower = 0))
-      param_exprs[[length(param_exprs) + 1]] <- quote(tau_hs <- Dim(1, lower = 0))
-      param_exprs[[length(param_exprs) + 1]] <- quote(w_tau <- Dim(1, lower = 0))
-      param_exprs[[length(param_exprs) + 1]] <- quote(c2 <- Dim(1, lower = 0))
-    } else if (regularization == "ssp") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(beta_raw <- Dim(K))
-      param_exprs[[length(param_exprs) + 1]] <- quote(r <- Dim(K, lower = 0.001, upper = 0.999))
-      param_exprs[[length(param_exprs) + 1]] <- quote(tau <- Dim(K, lower = 0))
-    }
-  }
-
-  if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
-  if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
-  if (family == "gamma") param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
-  if (family == "neg_binomial") param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
-  if (family == "ordered") param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
-  param_ast <- as.call(c(list(as.name("{")), param_exprs))
-
-  # --- Transform AST ---
-  tran_exprs <- list()
-  if (K > 0) {
-    if (regularization == "rhs") {
-      tran_exprs[[length(tran_exprs) + 1]] <- quote(lambda_sq <- lambda^2)
-      tran_exprs[[length(tran_exprs) + 1]] <- quote(tau_sq <- tau_hs^2)
-      tran_exprs[[length(tran_exprs) + 1]] <- quote(lambda_tilde <- sqrt((c2 * lambda_sq) / (c2 + tau_sq * lambda_sq)))
-      tran_exprs[[length(tran_exprs) + 1]] <- quote(b <- z * lambda_tilde * tau_hs)
-    } else if (regularization == "ssp") {
-      tran_exprs[[length(tran_exprs) + 1]] <- quote(b <- beta_raw * r * tau)
-    }
-  }
-  if (has_intercept) {
-    if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
-    else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
-  }
-  tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
-
-  # --- Model AST ---
-  transform_exprs <- list()
-  if (has_intercept) {
-    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
-    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(Intercept_c, N))
-  } else {
-    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(X %*% b))
-    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(0, N))
-  }
-  if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
-
-  ll_data_exprs <- list()
-  ll_data_exprs[[1]] <- switch(family,
-                               "gaussian" = quote(Y ~ normal(eta, sigma)),
-                               "lognormal" = quote(Y ~ lognormal(eta, sigma)),
-                               "student_t" = quote(Y ~ student_t(nu, eta, sigma)),
-                               "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
-                               "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
-                               "binomial" = quote(Y ~ binomial_logit(trials, eta)),
-                               "poisson" = quote(Y ~ poisson(exp(eta))),
-                               "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
-                               "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints))
+  rtmb_glmer(
+    formula = formula,
+    data = data,
+    family = family,
+    laplace = FALSE,
+    penalty = regularization,
+    y_range = y_range,
+    use_weak_info = use_weak_info,
+    prior = prior,
+    weak_info_prior = weak_info_prior,
+    init = init
   )
-
-  prior_exprs <- list()
-  if (family %in% c("gaussian", "lognormal", "student_t")) {
-    if (use_weak_info) {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
-    } else {
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
-    }
-  }
-  if (family == "student_t") prior_exprs[[length(prior_exprs) + 1]] <- bquote(nu ~ exponential(.(prior$nu_rate)))
-  if (family == "gamma") prior_exprs[[length(prior_exprs) + 1]] <- bquote(shape ~ exponential(.(prior$shape_rate)))
-  if (family == "neg_binomial") prior_exprs[[length(prior_exprs) + 1]] <- bquote(phi ~ exponential(.(prior$phi_rate)))
-  if (family == "ordered") prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
-
-  if (has_intercept) {
-    if (use_weak_info) {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
-    } else {
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept_c ~ normal(0, .(prior$Intercept_sd)))
-    }
-  }
-
-  if (K > 0) {
-    if (regularization == "none") {
-      if (use_weak_info) {
-        prior_exprs[[length(prior_exprs) + 1]] <- quote(b ~ normal(0, beta_prior_sd))
-      } else {
-        prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
-      }
-    } else if (regularization == "rhs") {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(z ~ normal(0, 1))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(w_lambda ~ gamma(0.5, 0.5))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(lambda ~ half_normal(1 / sqrt(w_lambda)))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(w_tau ~ gamma(0.5, 0.5))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(tau_hs ~ half_normal(tau0 / sqrt(w_tau)))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(c2 ~ inverse_gamma(half_slab_df, half_slab_scale2))
-    } else if (regularization == "ssp") {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(beta_raw ~ laplace(0, 0.5))
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(mu_r <- log(.(weak_info_prior$ssp_ratio) / (1 - .(weak_info_prior$ssp_ratio))))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(r ~ logit_normal(mu_r, 3))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(tau ~ exponential(1 / tau_scale))
-    }
-  }
-
-  model_exprs <- list()
-  model_exprs[[length(model_exprs) + 1]] <- "# Transform"
-  model_exprs <- c(model_exprs, transform_exprs)
-  model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Data)"
-  model_exprs <- c(model_exprs, ll_data_exprs)
-  model_exprs[[length(model_exprs) + 1]] <- "# Priors"
-  model_exprs <- c(model_exprs, prior_exprs)
-
-  model_ast <- as.call(c(list(as.name("{")), model_exprs))
-
-  code_obj <- list(setup = setup_ast, parameters = param_ast)
-  if (!is.null(tran_ast)) code_obj$transform <- tran_ast
-  code_obj$model <- model_ast
-
-  tmp_env <- list2env(dat)
-  eval(setup_ast, tmp_env)
-
-  par_names_list <- list()
-  if (K > 0) {
-    par_names_list$b <- fixed_names
-    if (regularization == "rhs") {
-      par_names_list$z <- fixed_names; par_names_list$lambda <- fixed_names; par_names_list$w_lambda <- fixed_names
-    } else if (regularization == "ssp") {
-      par_names_list$beta_raw <- fixed_names; par_names_list$r <- fixed_names; par_names_list$tau <- fixed_names
-    }
-  }
-
-  view_vars <- c()
-  if (has_intercept) view_vars <- c("Intercept")
-  if (K > 0) view_vars <- c(view_vars, "b")
-
-  ordered_data <- env_to_ordered_list(tmp_env, dat)
-  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = view_vars)
-  obj$formula <- formula
-  obj$raw_data <- data
-  obj$family <- family
-
-  return(obj)
 }
 
 #' RTMB-based Linear Regression wrapper function
@@ -1648,16 +1397,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
 
     tran_ast <- quote({
-      loadings_raw <- Lambda_star * r * tau
-      h2 <- rowSums(loadings_raw * (loadings_raw %*% CF_Omega))
+      L_raw <- Lambda_star * r * tau
+      h2 <- rowSums(L_raw * (L_raw %*% CF_Omega))
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      loadings <- loadings_raw / sd_Y
+      L <- L_raw / sd_Y
       fa_cor <- CF_Omega %*% t(CF_Omega)
     })
 
     model_ast <- quote({
-      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, loadings_raw %*% CF_Omega)
+      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw %*% CF_Omega)
       mean ~ normal(0, prior_mean_sd)
       sd ~ exponential(prior_sd_rate)
       CF_Omega ~ lkj_CF_corr(1)
@@ -1669,9 +1418,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
 
     base_gq <- quote({
-      Sigma <- loadings_raw %*% fa_cor %*% t(loadings_raw) + diag(sd^2)
+      Sigma <- L_raw %*% fa_cor %*% t(L_raw) + diag(sd^2)
       var_total <- diag(Sigma)
-      var_common <- rowSums(loadings_raw * (loadings_raw %*% CF_Omega))
+      var_common <- rowSums(L_raw * (L_raw %*% CF_Omega))
       communality <- var_common / var_total
       out <- list(communality = communality)
     })
@@ -1680,7 +1429,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       quote({
         Y_c <- matrix(0, nrow = N, ncol = J)
         for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-        out$score <- Y_c %*% solve(Sigma, loadings_raw %*% fa_cor)
+        out$score <- Y_c %*% solve(Sigma, L_raw %*% fa_cor)
       })
     } else quote({})
 
@@ -1697,8 +1446,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       tau = var_names,
       sd = var_names,
       CF_Omega = paste0("Factor", 1:K),
-      loadings_raw = var_names,
-      loadings = var_names,
+      L_raw = var_names,
+      L = var_names,
       fa_cor = paste0("Factor", 1:K),
       communality = var_names
     )
@@ -1708,7 +1457,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
 
-    target_view <- c("loadings", "sd", "fa_cor")
+    target_view <- c("L", "sd", "fa_cor")
 
     obj <- rtmb_model(
       data = dat_fa,
@@ -1748,40 +1497,40 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
             if (j < k) init_loadings[j, k] <- 0
           }
         }
-        init <- list(mean = Y_bar, loadings_raw = init_loadings, sd = init_sd)
+        init <- list(mean = Y_bar, L_raw = init_loadings, sd = init_sd)
       }, error = function(e) { init <- NULL })
     }
 
     param_ast <- quote({
       mean <- Dim(dim = J)
-      loadings_raw <- Dim(dim = c(J, K_factors), type = "lower_tri")
+      L_raw <- Dim(dim = c(J, K_factors), type = "lower_tri")
       sd <- Dim(dim = J, lower = 0)
     })
 
     tran_ast <- quote({
-      h2 <- rowSums(loadings_raw^2)
+      h2 <- rowSums(L_raw^2)
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      loadings <- loadings_raw / sd_Y
+      L <- L_raw / sd_Y
     })
 
     model_ast <- quote({
-      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, loadings_raw)
+      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw)
       mean ~ normal(0, prior_mean_sd)
       sd ~ exponential(prior_sd_rate)
-      loadings_raw ~ lower_tri_normal(0, prior_loadings_sd)
+      L_raw ~ lower_tri_normal(0, prior_loadings_sd)
     })
 
     base_gq <- quote({
-      Sigma <- loadings_raw %*% t(loadings_raw) + diag(sd^2)
+      Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
       var_total <- diag(Sigma)
-      var_common <- rowSums(loadings_raw^2)
+      var_common <- rowSums(L_raw^2)
       communality <- var_common / var_total
       out <- list(communality = communality)
     })
 
     if (!is.null(rotate)) {
-      rot_loadings_name <- paste0("loadings_", rotate)
+      rot_loadings_name <- paste0("L_", rotate)
 
       if (exists(rotate, mode = "function")) {
         rot_fn <- match.fun(rotate)
@@ -1802,7 +1551,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
       if (is_matrix_rot) {
         rot_expr <- bquote({
-          rot_obj <- .(fn_call)(loadings)
+          rot_obj <- .(fn_call)(L)
           rot_mat <- unclass(rot_obj)
           out[[.(rot_loadings_name)]] <- rot_mat
         })
@@ -1814,7 +1563,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       } else {
         if (has_phi) {
           rot_expr <- bquote({
-            rot_obj <- .(fn_call)(loadings)
+            rot_obj <- .(fn_call)(L)
             rot_mat <- unclass(rot_obj$loadings)
             out$fa_cor <- rot_obj$Phi
             out[[.(rot_loadings_name)]] <- rot_mat
@@ -1826,7 +1575,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
           }) else quote({})
         } else {
           rot_expr <- bquote({
-            rot_obj <- .(fn_call)(loadings)
+            rot_obj <- .(fn_call)(L)
             rot_mat <- unclass(rot_obj$loadings)
             out[[.(rot_loadings_name)]] <- rot_mat
           })
@@ -1844,7 +1593,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         quote({
           Y_c <- matrix(0, nrow = N, ncol = J)
           for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-          out$score <- Y_c %*% solve(Sigma, loadings)
+          out$score <- Y_c %*% solve(Sigma, L)
         })
       } else quote({})
     }
@@ -1858,13 +1607,13 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     p_names <- list(
       mean = var_names,
-      loadings_raw = var_names,
+      L_raw = var_names,
       sd = var_names,
-      loadings = var_names,
+      L = var_names,
       communality = var_names
     )
     if (!is.null(rotate)) {
-      p_names[[paste0("loadings_", rotate)]] <- var_names
+      p_names[[paste0("L_", rotate)]] <- var_names
       if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K)
     }
     if (score) {
@@ -1873,7 +1622,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
 
-    target_view <- if (!is.null(rotate)) c(paste0("loadings_", rotate), "sd", "fa_cor") else c("loadings", "sd", "fa_cor")
+    target_view <- if (!is.null(rotate)) c(paste0("L_", rotate), "sd", "fa_cor") else c("L", "sd", "fa_cor")
 
     obj <- rtmb_model(
       data = dat_fa,
