@@ -525,8 +525,8 @@ positive_centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
   C <- ncol(x)
   max_d <- min(C, R - 1)
 
-  # 元の centered_tri_muilti_normal_lpdf を計算
-  lp <- centered_tri_nulti_normal_lpdf(x, sigma)
+  # 元の centered_tri_multi_normal_lpdf を計算
+  lp <- centered_tri_multi_normal_lpdf(x, sigma)
 
   # 切断正規分布としての正規化定数を補正（各列で1/2になるため、密度を 2^max_d 倍する）
   lp <- lp + max_d * log(2)

@@ -419,12 +419,25 @@ RTMB_Model <- R6::R6Class(
       unc_se_list  <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
 
       con_est_list <- to_constrained(unc_est_list, self$par_list)
+
+      # Cov_u の構築
+      L_u_total <- length(unc_est_vec)
+      Cov_u <- diag(unc_se_vec^2, nrow = L_u_total, ncol = L_u_total)
+      Cov_u[is.na(Cov_u)] <- 0
+      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
+        idx_ran <- ad_obj$env$random
+        idx_fix <- if (length(idx_ran) > 0) (1:L_u_total)[-idx_ran] else 1:L_u_total
+        Cov_u[idx_fix, idx_fix] <- sd_rep$cov.fixed
+      }
+
       con_se_list  <- list()
       con_lower_list <- list()
       con_upper_list <- list()
 
       z_95 <- qnorm(0.975)
       eps_diff <- 1e-5
+
+      u_idx_current <- 1
 
       for (name in names(self$par_list)) {
         p_info <- self$par_list[[name]]
@@ -436,6 +449,13 @@ RTMB_Model <- R6::R6Class(
         L_u <- p_info$unc_length
         L_c <- p_info$length
 
+        if (L_u > 0) {
+          u_indices <- u_idx_current:(u_idx_current + L_u - 1)
+          u_idx_current <- u_idx_current + L_u
+        } else {
+          u_indices <- integer(0)
+        }
+
         transform_single <- function(u) {
           tmp_list <- unc_est_list
           tmp_list[[name]] <- u
@@ -444,7 +464,7 @@ RTMB_Model <- R6::R6Class(
         }
 
         J <- matrix(0, nrow = L_c, ncol = L_u)
-        for (i in 1:L_u) {
+        for (i in seq_len(L_u)) {
           u_tmp <- u_val
           u_tmp[i] <- u_tmp[i] + eps_diff
           c_tmp <- transform_single(u_tmp)
@@ -452,8 +472,11 @@ RTMB_Model <- R6::R6Class(
         }
 
         c_se <- numeric(L_c)
-        for (j in 1:L_c) {
-          c_se[j] <- sqrt(sum((J[j, ] * u_se)^2, na.rm = TRUE)) # na.rm = TRUE を追加
+        if (L_u > 0) {
+          Cov_sub <- Cov_u[u_indices, u_indices, drop = FALSE]
+          for (j in 1:L_c) {
+            c_se[j] <- sqrt(sum((J[j, ] %*% Cov_sub) * J[j, ], na.rm = TRUE))
+          }
         }
 
         if (length(p_info$dim) > 1) dim(c_se) <- p_info$dim
