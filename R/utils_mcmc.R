@@ -534,6 +534,20 @@ plot.rtmb_test_info <- function(x, ...) {
        main = "Test Information Function", ...)
 }
 
+#' @method print rtmb_item_info
+#' @export
+print.rtmb_item_info <- function(x, ...) {
+  plot(x, ...)
+  invisible(x)
+}
+
+#' @method print rtmb_test_info
+#' @export
+print.rtmb_test_info <- function(x, ...) {
+  plot(x, ...)
+  invisible(x)
+}
+
 
 #' 項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
 #' @export
@@ -669,6 +683,13 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
       }
     }
   }
+}
+
+#' @method print rtmb_item_curve
+#' @export
+print.rtmb_item_curve <- function(x, ...) {
+  plot(x, ...)
+  invisible(x)
 }
 #' 因子負荷量をソートして見やすく表示する関数
 #'
