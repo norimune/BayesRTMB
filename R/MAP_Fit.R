@@ -119,6 +119,8 @@ MAP_Fit <- R6::R6Class(
       if (!is.null(self$random_effects)) self$random_effects <- lapply(self$random_effects, Re)
       if (!is.null(self$transform)) self$transform <- lapply(self$transform, Re)
       if (!is.null(self$generate)) self$generate <- lapply(self$generate, Re)
+      # Ensure S3 dispatch works for base class methods
+      class(self) <- c(class(self), "RTMB_Fit_Base")
     },
 
     #' @description Summarize MAP estimates.

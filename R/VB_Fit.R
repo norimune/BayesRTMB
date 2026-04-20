@@ -96,6 +96,8 @@ VB_Fit <- R6::R6Class(
       self$transform_dims <- list()
       self$generate_fit <- NULL
       self$generate_dims <- list()
+      # Ensure S3 dispatch works for base class methods
+      class(self) <- c(class(self), "RTMB_Fit_Base")
     },
 
     #' @description Print a brief summary of the fitted object.

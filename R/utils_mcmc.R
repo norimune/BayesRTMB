@@ -394,10 +394,11 @@ item_info <- function(x, ...) UseMethod("item_info")
 #' @export
 test_info <- function(x, ...) UseMethod("test_info")
 
-#' @method item_info map_fit
+#' @method item_info RTMB_Fit_Base
 #' @export
-item_info.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
-  est <- x$par
+item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
+  # MAP_Fit uses $par, MCMC/VB use EAP()
+  est <- if (!is.null(x$par)) x$par else x$EAP()
   b <- est$b
 
   # 修正箇所: names(b) ではなく、モデル構築時に保存した正しい項目名(par_names)を参照する
@@ -479,9 +480,19 @@ item_info.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), items
   return(res)
 }
 
-#' @method test_info map_fit
+#' @method item_info mcmc_fit
 #' @export
-test_info.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), ...) {
+item_info.mcmc_fit <- item_info.RTMB_Fit_Base
+#' @method item_info advi_fit
+#' @export
+item_info.advi_fit <- item_info.RTMB_Fit_Base
+#' @method item_info map_fit
+#' @export
+item_info.map_fit <- item_info.RTMB_Fit_Base
+
+#' @method test_info RTMB_Fit_Base
+#' @export
+test_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), ...) {
   ii <- item_info(x, theta_seq, ...)
   test_info_vec <- rowSums(ii$info)
 
@@ -489,6 +500,16 @@ test_info.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), ...) 
   class(res) <- "rtmb_test_info"
   return(res)
 }
+
+#' @method test_info mcmc_fit
+#' @export
+test_info.mcmc_fit <- test_info.RTMB_Fit_Base
+#' @method test_info advi_fit
+#' @export
+test_info.advi_fit <- test_info.RTMB_Fit_Base
+#' @method test_info map_fit
+#' @export
+test_info.map_fit <- test_info.RTMB_Fit_Base
 
 # --- プロット用メソッド ---
 
@@ -518,10 +539,10 @@ plot.rtmb_test_info <- function(x, ...) {
 #' @export
 item_curve <- function(x, ...) UseMethod("item_curve")
 
-#' @method item_curve map_fit
+#' @method item_curve RTMB_Fit_Base
 #' @export
-item_curve.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
-  est <- x$par
+item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
+  est <- if (!is.null(x$par)) x$par else x$EAP()
   b <- est$b
 
   par_names_b <- x$model$par_names$b
@@ -598,6 +619,16 @@ item_curve.map_fit <- function(x, theta_seq = seq(-4, 4, length.out = 100), item
   class(res) <- "rtmb_item_curve"
   return(res)
 }
+
+#' @method item_curve mcmc_fit
+#' @export
+item_curve.mcmc_fit <- item_curve.RTMB_Fit_Base
+#' @method item_curve advi_fit
+#' @export
+item_curve.advi_fit <- item_curve.RTMB_Fit_Base
+#' @method item_curve map_fit
+#' @export
+item_curve.map_fit <- item_curve.RTMB_Fit_Base
 
 #' @method plot rtmb_item_curve
 #' @export
