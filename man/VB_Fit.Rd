@@ -12,6 +12,9 @@ VB fit object
 An R6 class storing posterior samples and related information
 from Automatic Differentiation Variational Inference (ADVI).
 }
+\section{Super class}{
+\code{BayesRTMB::RTMB_Fit_Base} -> \code{advi_fit}
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -48,6 +51,7 @@ from Automatic Differentiation Variational Inference (ADVI).
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
+\item \href{#method-advi_fit-get_point_estimate}{\code{VB_Fit$get_point_estimate()}}
 \item \href{#method-advi_fit-new}{\code{VB_Fit$new()}}
 \item \href{#method-advi_fit-print}{\code{VB_Fit$print()}}
 \item \href{#method-advi_fit-draws}{\code{VB_Fit$draws()}}
@@ -56,12 +60,37 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item \href{#method-advi_fit-plot_trajectory}{\code{VB_Fit$plot_trajectory()}}
 \item \href{#method-advi_fit-transformed_draws}{\code{VB_Fit$transformed_draws()}}
 \item \href{#method-advi_fit-generated_quantities}{\code{VB_Fit$generated_quantities()}}
-\item \href{#method-advi_fit-internal_rotate}{\code{VB_Fit$internal_rotate()}}
-\item \href{#method-advi_fit-rotate}{\code{VB_Fit$rotate()}}
-\item \href{#method-advi_fit-fa_rotate}{\code{VB_Fit$fa_rotate()}}
-\item \href{#method-advi_fit-EAP}{\code{VB_Fit$EAP()}}
-\item \href{#method-advi_fit-MAP}{\code{VB_Fit$MAP()}}
 \item \href{#method-advi_fit-clone}{\code{VB_Fit$clone()}}
+}
+}
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
+<ul>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
+</ul>
+</details>
+}}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-get_point_estimate"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-get_point_estimate}{}}}
+\subsection{Method \code{get_point_estimate()}}{
+Get point estimate for a target parameter (internal use).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$get_point_estimate(target)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Target parameter name.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Matrix or array of point estimate.
 }
 }
 \if{html}{\out{<hr>}}
@@ -291,171 +320,6 @@ to be calculated using posterior samples.}
 \subsection{Returns}{
 The `VB_Fit` object itself (invisibly).
 Results are appended to the `generate_fit` field.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-internal_rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-internal_rotate}{}}}
-\subsection{Method \code{internal_rotate()}}{
-Apply internal rotation to sampled parameters.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$internal_rotate(
-  target,
-  method = "procrustes",
-  type = "orthogonal",
-  linked_straight = NULL,
-  linked_inverse = NULL,
-  overwrite = FALSE,
-  suffix = "rot",
-  ...
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
-
-\item{\code{method}}{Character string specifying the rotation method.}
-
-\item{\code{type}}{Character string specifying the rotation type.}
-
-\item{\code{linked_straight}}{Character vector of variable names to be rotated in the same direction.}
-
-\item{\code{linked_inverse}}{Character vector of variable names to be rotated in the inverse direction.}
-
-\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
-
-\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE.}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The updated object invisibly.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-rotate}{}}}
-\subsection{Method \code{rotate()}}{
-Performs orthogonal Procrustes rotation on posterior samples
-based on a specified reference (the MAP value at the point of maximum ELBO).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$rotate(target, linked = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the name of the matrix parameter
-to be used as the rotation reference.}
-
-\item{\code{linked}}{A character vector of other parameter names to be rotated
-in the same direction as the target.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The `VB_Fit` object itself (invisibly).
-Rotated values are saved to `generate_fit` with a `_rot` suffix added
-to the variable names.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-fa_rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-fa_rotate}{}}}
-\subsection{Method \code{fa_rotate()}}{
-Rotates factor loadings and optionally rotates associated parameters.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$fa_rotate(target, linked = NULL, scores = NULL, rotate = "promax")}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the factor loadings matrix to
-base the rotation on. Defaults to "loadings".}
-
-\item{\code{linked}}{Character vector of parameters (e.g., item parameters)
-to which the same rotation matrix should be applied.}
-
-\item{\code{scores}}{Character vector of parameters (e.g., factor scores)
-to which the inverse-transpose of the rotation matrix should be applied.}
-
-\item{\code{rotate}}{Character string specifying the rotation method (e.g., "promax",
-"varimax", "oblimin"). Supports `GPArotation` functions or "promax".}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The `VB_Fit` object itself (invisibly).
-Rotated values are saved to `generate_fit` with a suffix indicating
-the rotation method.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-EAP"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-EAP}{}}}
-\subsection{Method \code{EAP()}}{
-Calculate Expected A Posteriori (EAP) estimates from posterior samples.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = "parameters", chains = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".}
-
-\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of EAP estimates structured for use as `init`.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-MAP"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-MAP}{}}}
-\subsection{Method \code{MAP()}}{
-Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$MAP(
-  pars = "parameters",
-  chains = NULL,
-  best_chains = NULL,
-  type = c("marginal", "joint")
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".}
-
-\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
-
-\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
-
-\item{\code{type}}{Character string specifying the type of MAP estimate.
-"marginal" (default) calculates the peak of the marginal posterior density for each parameter.
-"joint" returns the parameter values from the iteration with the highest log-posterior.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of MAP estimates structured for use as `init`.
 }
 }
 \if{html}{\out{<hr>}}

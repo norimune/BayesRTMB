@@ -12,6 +12,9 @@ MAP fit object
 An R6 class storing optimization results from maximum a posteriori
 (MAP) estimation.
 }
+\section{Super class}{
+\code{BayesRTMB::RTMB_Fit_Base} -> \code{map_fit}
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -48,13 +51,82 @@ An R6 class storing optimization results from maximum a posteriori
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
+\item \href{#method-map_fit-get_point_estimate}{\code{MAP_Fit$get_point_estimate()}}
+\item \href{#method-map_fit-EAP}{\code{MAP_Fit$EAP()}}
+\item \href{#method-map_fit-MAP}{\code{MAP_Fit$MAP()}}
 \item \href{#method-map_fit-new}{\code{MAP_Fit$new()}}
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
-\item \href{#method-map_fit-rotate}{\code{MAP_Fit$rotate()}}
-\item \href{#method-map_fit-fa_rotate}{\code{MAP_Fit$fa_rotate()}}
 \item \href{#method-map_fit-clone}{\code{MAP_Fit$clone()}}
+}
+}
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
+<ul>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
+</ul>
+</details>
+}}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-get_point_estimate"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-get_point_estimate}{}}}
+\subsection{Method \code{get_point_estimate()}}{
+Get point estimate for a target parameter (internal use).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$get_point_estimate(target)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Target parameter name.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Matrix or array of point estimate.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+Return point estimates (EAP is not applicable).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$EAP(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Ignored.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of point estimates.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+Return point estimates (MAP sampling method is not applicable).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$MAP(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Ignored.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of point estimates.
 }
 }
 \if{html}{\out{<hr>}}
@@ -185,72 +257,6 @@ to be calculated using the MAP estimate.}
 \subsection{Returns}{
 The `MAP_Fit` object itself (invisibly).
 Results are added or updated in the `generate` list.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-map_fit-rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-map_fit-rotate}{}}}
-\subsection{Method \code{rotate()}}{
-Performs orthogonal Procrustes rotation on the MAP estimate.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$rotate(target, reference = NULL, linked = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the name of the matrix parameter
-to be used as the rotation reference.}
-
-\item{\code{reference}}{Matrix to rotate towards. If NULL, the target itself is
-used (no-op unless linked is provided).}
-
-\item{\code{linked}}{A character vector of other parameter names to be rotated
-in the same direction as the target.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The `MAP_Fit` object itself (invisibly).
-Rotated values are saved to `generate` with a `_rot` suffix.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-map_fit-fa_rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-map_fit-fa_rotate}{}}}
-\subsection{Method \code{fa_rotate()}}{
-Rotates factor loadings and optionally rotates associated parameters.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$fa_rotate(
-  target = "loadings",
-  linked = NULL,
-  scores = NULL,
-  rotate = "promax",
-  ...
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the factor loadings matrix to
-base the rotation on. Defaults to "loadings".}
-
-\item{\code{linked}}{Character vector of parameters to which the same rotation
-matrix should be applied.}
-
-\item{\code{scores}}{Character vector of parameters to which the inverse-transpose
-of the rotation matrix should be applied.}
-
-\item{\code{rotate}}{Character string specifying the rotation method (e.g., "promax").}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The `MAP_Fit` object itself (invisibly).
-Rotated values are saved to `generate` with a method-specific suffix.
 }
 }
 \if{html}{\out{<hr>}}

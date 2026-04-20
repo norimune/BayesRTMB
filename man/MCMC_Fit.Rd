@@ -12,6 +12,9 @@ MCMC fit object
 An R6 class storing posterior samples and related information
 from MCMC estimation.
 }
+\section{Super class}{
+\code{BayesRTMB::RTMB_Fit_Base} -> \code{mcmc_fit}
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -44,6 +47,7 @@ from MCMC estimation.
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
+\item \href{#method-mcmc_fit-get_point_estimate}{\code{MCMC_Fit$get_point_estimate()}}
 \item \href{#method-mcmc_fit-new}{\code{MCMC_Fit$new()}}
 \item \href{#method-mcmc_fit-print}{\code{MCMC_Fit$print()}}
 \item \href{#method-mcmc_fit-draws}{\code{MCMC_Fit$draws()}}
@@ -53,13 +57,38 @@ from MCMC estimation.
 \item \href{#method-mcmc_fit-bridgesampling}{\code{MCMC_Fit$bridgesampling()}}
 \item \href{#method-mcmc_fit-transformed_draws}{\code{MCMC_Fit$transformed_draws()}}
 \item \href{#method-mcmc_fit-generated_quantities}{\code{MCMC_Fit$generated_quantities()}}
-\item \href{#method-mcmc_fit-internal_rotate}{\code{MCMC_Fit$internal_rotate()}}
-\item \href{#method-mcmc_fit-rotate}{\code{MCMC_Fit$rotate()}}
-\item \href{#method-mcmc_fit-fa_rotate}{\code{MCMC_Fit$fa_rotate()}}
 \item \href{#method-mcmc_fit-resolve_switching}{\code{MCMC_Fit$resolve_switching()}}
-\item \href{#method-mcmc_fit-EAP}{\code{MCMC_Fit$EAP()}}
-\item \href{#method-mcmc_fit-MAP}{\code{MCMC_Fit$MAP()}}
 \item \href{#method-mcmc_fit-clone}{\code{MCMC_Fit$clone()}}
+}
+}
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
+<ul>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
+</ul>
+</details>
+}}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-get_point_estimate"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-get_point_estimate}{}}}
+\subsection{Method \code{get_point_estimate()}}{
+Get point estimate for a target parameter (internal use).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$get_point_estimate(target)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Target parameter name.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Matrix or array of point estimate.
 }
 }
 \if{html}{\out{<hr>}}
@@ -295,110 +324,6 @@ Results are appended to the `generate_fit` field.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-internal_rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-internal_rotate}{}}}
-\subsection{Method \code{internal_rotate()}}{
-Apply internal rotation to sampled parameters.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$internal_rotate(
-  target,
-  method = "procrustes",
-  type = "orthogonal",
-  linked_straight = NULL,
-  linked_inverse = NULL,
-  overwrite = FALSE,
-  suffix = "rot",
-  ...
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
-
-\item{\code{method}}{Character string specifying the rotation method.}
-
-\item{\code{type}}{Character string specifying the rotation type.}
-
-\item{\code{linked_straight}}{Character vector of variable names to be rotated in the same direction.}
-
-\item{\code{linked_inverse}}{Character vector of variable names to be rotated in the inverse direction.}
-
-\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
-
-\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE.}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The updated object invisibly.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-rotate}{}}}
-\subsection{Method \code{rotate()}}{
-Rotate sampled parameters.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$rotate(target, linked = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
-
-\item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
-
-\item{\code{overwrite}}{Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.}
-
-\item{\code{suffix}}{Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The updated object invisibly.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-fa_rotate"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-fa_rotate}{}}}
-\subsection{Method \code{fa_rotate()}}{
-Rotate factor loadings and optional factor scores.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$fa_rotate(
-  target = "loadings",
-  linked = NULL,
-  scores = NULL,
-  rotate = "promax"
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{target}}{Character string specifying the target variable to base the rotation on.}
-
-\item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
-
-\item{\code{scores}}{Character vector of variable names to be rotated as factor scores (inverse direction).}
-
-\item{\code{rotate}}{Character string specifying the rotation method.}
-
-\item{\code{...}}{Additional arguments passed to the rotation function.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The updated object invisibly.
-}
-}
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-resolve_switching"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-resolve_switching}{}}}
 \subsection{Method \code{resolve_switching()}}{
@@ -427,69 +352,6 @@ Resolve label switching in posterior draws.
 }
 \subsection{Returns}{
 Relabeled draws or updated object.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-EAP"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-EAP}{}}}
-\subsection{Method \code{EAP()}}{
-Calculate Expected A Posteriori (EAP) estimates from posterior samples.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$EAP(pars = "parameters", chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".}
-
-\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
-
-\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of EAP estimates structured for use as `init`.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-MAP"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-MAP}{}}}
-\subsection{Method \code{MAP()}}{
-Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$MAP(
-  pars = "parameters",
-  chains = NULL,
-  best_chains = NULL,
-  type = c("marginal", "joint")
-)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".}
-
-\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
-
-\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
-
-\item{\code{type}}{Character string specifying the type of MAP estimate.
-"marginal" (default) calculates the peak of the marginal posterior density for each parameter.
-"joint" returns the parameter values from the iteration with the highest log-posterior.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of MAP estimates structured for use as `init`.
 }
 }
 \if{html}{\out{<hr>}}
