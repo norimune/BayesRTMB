@@ -80,12 +80,6 @@ MAP_Fit <- R6::R6Class(
       return(c(self$par, self$transform, self$generate))
     },
 
-    #' @description internal_rotate is not supported for MAP_Fit.
-    #' @param ... Ignored.
-    internal_rotate = function(...) {
-      stop("internal_rotate is not applicable for MAP_Fit. Use rotate() or fa_rotate() instead.")
-    },
-
     #' @description Create a new `MAP_Fit` object.
     #' @param model The `RTMB_Model` object used for estimation.
     #' @param par_vec Parameter vector on the unconstrained scale.
