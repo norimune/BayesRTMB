@@ -13,7 +13,7 @@ An R6 class storing posterior samples and related information
 from MCMC estimation.
 }
 \section{Super class}{
-\code{BayesRTMB::RTMB_Fit_Base} -> \code{mcmc_fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{mcmc_fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
