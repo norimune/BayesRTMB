@@ -553,21 +553,30 @@ MCMC_Fit <- R6::R6Class(
 
       logml.bs <- as.numeric(log(ml_t) + log_Lm)
 
-      f1_vec <- ml_t / (S1 * L1 + S2 * ml_t)
-      f2_vec <- L2 / (S1 * L2 + S2 * ml_t)
-
-      V1 <- var(f1_vec)
-      V2 <- var(f2_vec)
-      E1 <- mean(f1_vec)
-      E2 <- mean(f2_vec)
-
-      re2 <- V1 / (n_eff * E1^2) + V2 / (M2 * E2^2)
-      error_logml <- sqrt(re2)
-
-      cat(sprintf("Bridge Sampling Converged: LogML = %.3f (Error = %.4f, ESS = %.1f)\n", logml.bs, error_logml, n_eff))
-
+      # 2. 推定誤差 (Approximate Standard Error) の計算
       res <- logml.bs
-      attr(res, "error") <- error_logml
+
+      if (method == "normal") {
+        f1_vec <- ml_t / (S1 * L1 + S2 * ml_t)
+        f2_vec <- L2 / (S1 * L2 + S2 * ml_t)
+
+        V1 <- var(f1_vec)
+        V2 <- var(f2_vec)
+        E1 <- mean(f1_vec)
+        E2 <- mean(f2_vec)
+
+        re2 <- V1 / (n_eff * E1^2) + V2 / (M2 * E2^2)
+        error_logml <- sqrt(re2)
+
+        cat(sprintf("Bridge Sampling Converged: LogML = %.3f (Error = %.4f, ESS = %.1f)\n", logml.bs, error_logml, n_eff))
+        attr(res, "error") <- error_logml
+
+      } else {
+        # warp3など、誤差の近似が困難な場合はNAを返す
+        cat(sprintf("Bridge Sampling Converged: LogML = %.3f (ESS = %.1f)\n", logml.bs, n_eff))
+        attr(res, "error") <- NA_real_
+      }
+
       attr(res, "ess") <- n_eff
 
       return(res)
