@@ -49,6 +49,8 @@
 #' @field treedepth Tree depth used in HMC/NUTS sampling.
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field posterior_mean Posterior mean estimates.
+#' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
+#' @field null_fit An \code{MCMC_Fit} object containing the fitted null model. This is automatically cached when calculating a Bayes factor using a target string.
 #'
 MCMC_Fit <- R6::R6Class(
   classname = "mcmc_fit",
@@ -68,6 +70,8 @@ MCMC_Fit <- R6::R6Class(
     treedepth      = NULL,
     laplace        = NULL,
     posterior_mean = NULL,
+    log_ml          = NULL,
+    null_fit       = NULL,
 
     # 1. コンストラクタ
     #' @description Get point estimate for a target parameter (internal use).
@@ -583,7 +587,97 @@ MCMC_Fit <- R6::R6Class(
       }
 
       attr(res, "ess") <- n_eff
+      self$log_ml <- res
 
+      return(res)
+    },
+
+    #' @description Calculate the Bayes Factor against a null model or another fit object.
+    #' @param null_model Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.
+    #' @param error_threshold Numeric; threshold for the approximate error warning. Default is 0.2.
+    #' @param ... Additional arguments passed to the sample() method when fitting a null model.
+    bayes_factor = function(null_model, error_threshold = 0.2, ...) {
+
+      # 1. 自身の周辺尤度が未計算なら計算して代入する（修正箇所）
+      if (is.null(self$log_ml)) {
+        cat("Calculating marginal likelihood for the full model...\n")
+        self$log_ml <- self$bridgesampling()
+      }
+      log_ml1 <- self$log_ml
+
+      log_ml2 <- NULL
+
+      # 2. 比較対象 (null_model) の型による分岐
+      if (is.character(null_model) && length(null_model) == 1) {
+        cat(sprintf("\n--- Preparing and Sampling Null Model (%s) ---\n", null_model))
+
+        mdl_null <- self$model$null_model(target = null_model)
+        fit_null <- mdl_null$sample(...)
+
+        cat("\n--- Calculating marginal likelihood for the null model ---\n")
+        # nullモデルの周辺尤度を代入する（修正箇所）
+        fit_null$log_ml <- fit_null$bridgesampling()
+        log_ml2 <- fit_null$log_ml
+
+        self$null_fit <- fit_null
+
+      } else if (inherits(null_model, "R6") && "bridgesampling" %in% names(null_model)) {
+        if (is.null(null_model$log_ml)) {
+          cat("Calculating marginal likelihood for the comparison model...\n")
+          # 比較対象の周辺尤度を代入する（修正箇所）
+          null_model$log_ml <- null_model$bridgesampling()
+        }
+        log_ml2 <- null_model$log_ml
+
+      } else {
+        stop("null_model 引数には null_model の文字列、または別の MCMC_Fit オブジェクトを指定してください。")
+      }
+
+      # 3. ベイズファクターの計算と誤差の評価
+      val1 <- as.numeric(log_ml1)
+      val2 <- as.numeric(log_ml2)
+      log_bf <- val1 - val2
+      bf <- exp(log_bf)
+
+      err1 <- attr(log_ml1, "error")
+      err2 <- attr(log_ml2, "error")
+      has_error <- !is.null(err1) && !is.null(err2) && !is.na(err1) && !is.na(err2)
+
+      if (has_error) {
+        log_bf_err <- sqrt(err1^2 + err2^2)
+        if (log_bf_err > error_threshold) {
+          warning(
+            sprintf(
+              "対数ベイズファクターの推定誤差 (%.3f) が閾値 (%g) を超えています。結果の解釈が不安定になる可能性があります。\n",
+              log_bf_err, error_threshold
+            ),
+            "精度を向上させるため、MCMCのサンプリング数を増やすか、ESSを高める工夫を検討してください。\n",
+            call. = FALSE, immediate. = TRUE
+          )
+        }
+      } else {
+        log_bf_err <- NA_real_
+      }
+
+      # 4. 解釈の付与
+      if (bf > 100) evidence <- "Decisive evidence for Model 1"
+      else if (bf > 10) evidence <- "Strong evidence for Model 1"
+      else if (bf > 3) evidence <- "Substantial evidence for Model 1"
+      else if (bf > 1) evidence <- "Anecdotal evidence for Model 1"
+      else if (bf == 1) evidence <- "No evidence"
+      else if (bf >= 1/3) evidence <- "Anecdotal evidence for Model 2"
+      else if (bf >= 1/10) evidence <- "Substantial evidence for Model 2"
+      else if (bf >= 1/100) evidence <- "Strong evidence for Model 2"
+      else evidence <- "Decisive evidence for Model 2"
+
+      res <- list(
+        BF12 = bf,
+        log_BF12 = log_bf,
+        log_BF_error = log_bf_err,
+        interpretation = evidence
+      )
+
+      class(res) <- "bayes_factor"
       return(res)
     },
 

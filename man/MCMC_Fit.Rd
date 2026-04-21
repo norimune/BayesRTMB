@@ -41,6 +41,10 @@ from MCMC estimation.
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
 \item{\code{posterior_mean}}{Posterior mean estimates.}
+
+\item{\code{log_ml}}{Numeric value storing the calculated log marginal likelihood from bridge sampling.}
+
+\item{\code{null_fit}}{An \code{MCMC_Fit} object containing the fitted null model. This is automatically cached when calculating a Bayes factor using a target string.}
 }
 \if{html}{\out{</div>}}
 }
@@ -55,6 +59,7 @@ from MCMC estimation.
 \item \href{#method-mcmc_fit-unconstrain_draws}{\code{MCMC_Fit$unconstrain_draws()}}
 \item \href{#method-mcmc_fit-log_prob}{\code{MCMC_Fit$log_prob()}}
 \item \href{#method-mcmc_fit-bridgesampling}{\code{MCMC_Fit$bridgesampling()}}
+\item \href{#method-mcmc_fit-bayes_factor}{\code{MCMC_Fit$bayes_factor()}}
 \item \href{#method-mcmc_fit-transformed_draws}{\code{MCMC_Fit$transformed_draws()}}
 \item \href{#method-mcmc_fit-generated_quantities}{\code{MCMC_Fit$generated_quantities()}}
 \item \href{#method-mcmc_fit-resolve_switching}{\code{MCMC_Fit$resolve_switching()}}
@@ -264,7 +269,7 @@ Numeric vector of log-probability values.
 Estimate the marginal likelihood by bridge sampling.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bridgesampling(
-  method = "warp3",
+  method = "normal",
   use_neff = TRUE,
   seed = NULL,
   max_iter = 100
@@ -286,6 +291,27 @@ Estimate the marginal likelihood by bridge sampling.
 }
 \subsection{Returns}{
 Bridge sampling result.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-bayes_factor"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-bayes_factor}{}}}
+\subsection{Method \code{bayes_factor()}}{
+Calculate the Bayes Factor against a null model or another fit object.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bayes_factor(null_model, error_threshold = 0.2, ...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{null_model}}{Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.}
+
+\item{\code{error_threshold}}{Numeric; threshold for the approximate error warning. Default is 0.2.}
+
+\item{\code{...}}{Additional arguments passed to the sample() method when fitting a null model.}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}
