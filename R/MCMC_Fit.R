@@ -594,14 +594,15 @@ MCMC_Fit <- R6::R6Class(
 
     #' @description Calculate the Bayes Factor against a null model or another fit object.
     #' @param null_model Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.
+    #' @param bs_method Character; the method to use for bridge sampling ("normal" or "warp3"). Default is "normal".
     #' @param error_threshold Numeric; threshold for the approximate error warning. Default is 0.2.
-    #' @param ... Additional arguments passed to the sample() method when fitting a null model.
-    bayes_factor = function(null_model, error_threshold = 0.2, ...) {
+    #' @param ... Additional arguments passed to the sample() method when fitting a null model (e.g., \code{chains = 4}, \code{sampling = 4000}).
+    bayes_factor = function(null_model, bs_method = "normal", error_threshold = 0.2, ...) {
 
-      # 1. 自身の周辺尤度が未計算なら計算して代入する（修正箇所）
+      # 1. 自身の周辺尤度が未計算なら計算して代入する
       if (is.null(self$log_ml)) {
         cat("Calculating marginal likelihood for the full model...\n")
-        self$log_ml <- self$bridgesampling()
+        self$log_ml <- self$bridgesampling(method = bs_method)
       }
       log_ml1 <- self$log_ml
 
@@ -612,11 +613,24 @@ MCMC_Fit <- R6::R6Class(
         cat(sprintf("\n--- Preparing and Sampling Null Model (%s) ---\n", null_model))
 
         mdl_null <- self$model$null_model(target = null_model)
-        fit_null <- mdl_null$sample(...)
+
+        # --- 修正箇所: フルモデルの設定を引き継ぐ ---
+        sample_args <- list(...) # ユーザーが指定した引数をリスト化
+
+        # 指定がない場合は、自身の fit 配列の次元から回数とチェイン数を取得して補完
+        if (is.null(sample_args$sampling)) {
+          sample_args$sampling <- dim(self$fit)[1]
+        }
+        if (is.null(sample_args$chains)) {
+          sample_args$chains <- dim(self$fit)[2]
+        }
+
+        # 補完した引数リストを使って null モデルをサンプリング
+        fit_null <- do.call(mdl_null$sample, sample_args)
+        # ---------------------------------------------
 
         cat("\n--- Calculating marginal likelihood for the null model ---\n")
-        # nullモデルの周辺尤度を代入する（修正箇所）
-        fit_null$log_ml <- fit_null$bridgesampling()
+        fit_null$log_ml <- fit_null$bridgesampling(method = bs_method)
         log_ml2 <- fit_null$log_ml
 
         self$null_fit <- fit_null
@@ -624,8 +638,7 @@ MCMC_Fit <- R6::R6Class(
       } else if (inherits(null_model, "R6") && "bridgesampling" %in% names(null_model)) {
         if (is.null(null_model$log_ml)) {
           cat("Calculating marginal likelihood for the comparison model...\n")
-          # 比較対象の周辺尤度を代入する（修正箇所）
-          null_model$log_ml <- null_model$bridgesampling()
+          null_model$log_ml <- null_model$bridgesampling(method = bs_method)
         }
         log_ml2 <- null_model$log_ml
 
@@ -680,6 +693,7 @@ MCMC_Fit <- R6::R6Class(
       class(res) <- "bayes_factor"
       return(res)
     },
+
 
     #' @description Compute transformed parameters from posterior draws.
     #' @return Transformed parameter draws.

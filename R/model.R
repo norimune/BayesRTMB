@@ -302,14 +302,10 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
 
     # 入力形式の基本的な検証
     if (!is.character(null_target) || length(null_target) != 1) {
-      stop("引数 null_target は単一の文字列で指定してください（例: null_target = 'delta ~ cauchy(0, r)'）。", call. = FALSE)
+      stop("引数 null_target は単一の文字列で指定してください（例: null_target = 'delta ~ cauchy(0, r)' または 'delta'）。", call. = FALSE)
     }
 
-    if (!grepl("~", null_target)) {
-      stop("引数 null_target には対象パラメータと事前分布を '~' で繋いで指定してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
-    }
-
-    # 実際のフォーミュラ解釈とモデルの再構築は R6クラスの null_model メソッドに委譲
+    # 実際のフォーミュラ解釈・自動補完・モデルの再構築は R6クラスの null_model メソッドに委譲
     obj <- obj$null_model(target = null_target)
   }
 

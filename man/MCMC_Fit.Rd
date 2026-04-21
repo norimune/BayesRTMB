@@ -299,7 +299,12 @@ Bridge sampling result.
 \subsection{Method \code{bayes_factor()}}{
 Calculate the Bayes Factor against a null model or another fit object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bayes_factor(null_model, error_threshold = 0.2, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bayes_factor(
+  null_model,
+  bs_method = "normal",
+  error_threshold = 0.2,
+  ...
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -307,9 +312,11 @@ Calculate the Bayes Factor against a null model or another fit object.
 \describe{
 \item{\code{null_model}}{Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.}
 
+\item{\code{bs_method}}{Character; the method to use for bridge sampling ("normal" or "warp3"). Default is "normal".}
+
 \item{\code{error_threshold}}{Numeric; threshold for the approximate error warning. Default is 0.2.}
 
-\item{\code{...}}{Additional arguments passed to the sample() method when fitting a null model.}
+\item{\code{...}}{Additional arguments passed to the sample() method when fitting a null model (e.g., \code{chains = 4}, \code{sampling = 4000}).}
 }
 \if{html}{\out{</div>}}
 }

@@ -1223,20 +1223,78 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Create a null model by fixing specified parameters to a given value.
-    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)").
+    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]") to automatically extract the prior from the model code.
     #' @param value Numeric value to fix parameters to. Default is 0.
     #' @return A new RTMB_Model object with the specified parameters fixed.
     null_model = function(target, value = 0) {
 
-      # --- 1. フォーミュラのパース ---
+      # --- 1. 入力の検証と自動補完 ---
       # 文字列であるかの確認
       if (!is.character(target) || length(target) != 1) {
-        stop("target は単一の文字列で指定してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
+        stop("target は単一の文字列で指定してください（例: 'delta ~ cauchy(0, r)' または 'delta'）。", call. = FALSE)
       }
 
-      # "~" が含まれているかの確認
+      # "~" が含まれていない場合の自動補完処理
       if (!grepl("~", target)) {
-        stop("target には '~' が含まれている必要があります（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
+        target_ast <- str2lang(target)
+        has_index <- is.call(target_ast) && identical(target_ast[[1]], as.name("["))
+
+        if (has_index) {
+          base_name  <- as.character(target_ast[[2]])
+          idx_expr   <- target_ast[[3]] # 数値の 2 や シンボルの X1 など
+        } else {
+          base_name  <- as.character(target_ast)
+          idx_expr   <- NULL
+        }
+
+        # ASTから対象パラメータの事前分布を探す内部関数
+        find_prior <- function(expr) {
+          if (is.call(expr)) {
+            if (identical(expr[[1]], as.name("~")) && identical(expr[[2]], as.name(base_name))) {
+              return(expr[[3]])
+            }
+            for (i in seq_along(expr)) {
+              res <- find_prior(expr[[i]])
+              if (!is.null(res)) return(res)
+            }
+          }
+          return(NULL)
+        }
+
+        prior_expr <- find_prior(self$code$model)
+        if (is.null(prior_expr)) {
+          stop(sprintf("モデルコード内に '%s' の事前分布の定義が見つかりません。", base_name), call. = FALSE)
+        }
+
+        # インデックス指定がある場合、データ環境に基づいて引数を動的に解決する
+        if (has_index) {
+          eval_env <- list2env(self$data, parent = parent.frame())
+
+          # インデックス値の決定: 変数として存在すれば評価し、なければ文字列として扱う
+          idx_val <- tryCatch(
+            eval(idx_expr, envir = eval_env),
+            error = function(e) as.character(idx_expr)
+          )
+
+          for (i in 2:length(prior_expr)) {
+            arg_expr <- prior_expr[[i]]
+
+            # 数値リテラル以外（変数や計算式）の場合
+            if (!is.numeric(arg_expr)) {
+              # データ環境で引数を評価
+              arg_val <- tryCatch(eval(arg_expr, envir = eval_env), error = function(e) NULL)
+
+              # 評価結果がベクトル（長さ2以上）の場合のみインデックスを適用
+              if (!is.null(arg_val) && length(arg_val) > 1) {
+                prior_expr[[i]] <- arg_val[idx_val]
+              }
+            }
+          }
+        }
+
+        new_formula <- call("~", target_ast, prior_expr)
+        target <- paste(deparse(new_formula), collapse = " ")
+        cat(sprintf("Auto-completed target: %s\n", target))
       }
 
       # フォーミュラとしてパースできるかの確認
@@ -1244,10 +1302,11 @@ RTMB_Model <- R6::R6Class(
         stop("target の解釈に失敗しました。'パラメータ ~ 事前分布' の形式で指定してください。", call. = FALSE)
       })
 
-      # 左辺と右辺の両方が存在するか（Rのフォーミュラは両辺があるとlengthが3になる）を確認
+      # 左辺と右辺の両方が存在するかを確認
       if (length(f) != 3) {
         stop("target は左辺（パラメータ）と右辺（事前分布）の両方を記述してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
       }
+
       spec <- deparse(f[[2]])        # 左辺 (例: "beta" や "beta[1]")
       prior_expr <- f[[3]]           # 右辺 (callオブジェクト)
       prior_str <- deparse(prior_expr)
