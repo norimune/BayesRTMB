@@ -818,6 +818,7 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 #' @param prior List of hyperparameters for the default fixed priors.
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values (generated automatically based on glm if omitted)
+#' @import lme4
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        penalty = c("none", "rhs", "ssp"),
