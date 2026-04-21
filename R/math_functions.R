@@ -78,7 +78,8 @@ log1p_exp <- function(x) {
 #' @return The natural logarithm of 1 - exp(x).
 #' @export
 log1m_exp <- function(x) {
-  return(log(1 - exp(x) + 1e-10))
+  # Stable implementation of log(1 - exp(x)) for x < 0
+  ifelse(x > -0.6931472, log(-expm1(x)), log1p(-exp(x)))
 }
 
 #' Log mixture of two probabilities

@@ -4,7 +4,14 @@
 \alias{rtmb_model}
 \title{RTMB_Model インスタンスを生成するラッパー関数}
 \usage{
-rtmb_model(data, code, par_names = list(), init = NULL, view = NULL)
+rtmb_model(
+  data,
+  code,
+  par_names = list(),
+  init = NULL,
+  view = NULL,
+  null = NULL
+)
 }
 \arguments{
 \item{data}{モデルで使用する観測データや定数（サンプルサイズなど）を含む名前付きリスト。}

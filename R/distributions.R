@@ -119,8 +119,7 @@ laplace_lpdf <- function(x, location = 0, scale = 1) {
 #' @return The sum of the log-density.
 #' @export
 logit_normal_lpdf <- function(x, mu, sd) {
-  #x_safe <- pmax(pmin(x, 1 - 1e-10), 1e-10)
-  logit_x <- log(x) - log1p(-x)
+  logit_x <- qlogis(x)
   log_jacobian <- -log(x) - log1p(-x)
 
   sum(dnorm(logit_x, mean = mu, sd = sd, log = TRUE) + log_jacobian)
@@ -157,6 +156,11 @@ uniform_lpdf <- function(x, a, b) {
 #' @return The log-density.
 #' @export
 lkj_corr_lpdf <- function(Omega, eta = 1) {
+  if (length(Omega) == 1) {
+    rho <- Omega
+    x <- (rho + 1) / 2
+    return(dbeta(x, shape1 = eta, shape2 = eta, log = TRUE) - log(2))
+  }
   if (eta == 1) return(0)
   safe_Omega <- Omega + diag(1e-11, nrow(Omega))
   U <- chol(safe_Omega)
@@ -585,7 +589,7 @@ wishart_lpdf <- function(X, n, V) {
   lp <- (n - p - 1) / 2 * log_det_X - 0.5 * trace_term -
     (n * p / 2) * log(2) - (n / 2) * log_det_V - log_gamma_p
 
-  return(as.numeric(lp))
+  return(lp)
 }
 #' Wishart log-probability density function parameterized by Cholesky factor of correlation matrix
 #'
@@ -615,7 +619,7 @@ wishart_CF_lpdf <- function(X, n, sd, CF_Omega) {
   lp <- (n - p - 1) / 2 * log_det_X - 0.5 * trace_term -
     (n * p / 2) * log(2) - (n / 2) * log_det_Sigma - log_gamma_p
 
-  return(as.numeric(lp))
+  return(lp)
 }
 
 #' Factor analysis multivariate normal log-probability density function
@@ -700,7 +704,7 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
     0.5 * trace_term -
     0.5 * N * quad_mean
 
-  return(as.numeric(lp))
+  return(lp)
 }
 #' Sufficient statistics factor analysis multivariate normal log-probability density function
 #'

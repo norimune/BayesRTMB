@@ -76,12 +76,12 @@ MCMC_Fit <- R6::R6Class(
     get_point_estimate = function(target) {
       target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)
-      
+
       lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
       best_iter <- max_idx[1, 1]
       best_chain <- max_idx[1, 2]
-      
+
       t_info <- self$model$par_list[[target]]
       if (!is.null(t_info)) {
         t_dim <- t_info$dim
@@ -92,11 +92,11 @@ MCMC_Fit <- R6::R6Class(
       } else {
         t_dim <- dim(target_draws)[3]
       }
-      
+
       target_map_flat <- target_draws[best_iter, best_chain, ]
       target_map <- target_map_flat
       if (length(t_dim) > 1) dim(target_map) <- t_dim
-      
+
       return(target_map)
     },
 
@@ -360,7 +360,24 @@ MCMC_Fit <- R6::R6Class(
       target_par_list <- if (self$laplace && any(random_flags)) orig_pl[!random_flags] else orig_pl
       draws_ob <- self$fit[, , -1, drop = FALSE]
 
-      Q <- sum(sapply(target_par_list, function(x) x$unc_length))
+      # --- 修正箇所: mapを考慮して有効なパラメータ数を計算 ---
+      map_list <- self$model$map
+      if (!is.null(map_list)) {
+        Q <- 0
+        for (name in names(target_par_list)) {
+          L <- target_par_list[[name]]$unc_length
+          if (L > 0) {
+            if (!is.null(map_list[[name]])) {
+              Q <- Q + sum(!is.na(map_list[[name]]))
+            } else {
+              Q <- Q + L
+            }
+          }
+        }
+      } else {
+        Q <- sum(sapply(target_par_list, function(x) x$unc_length))
+      }
+
       draws_uc <- array(NA, dim = c(I, C, Q))
 
       for (i in 1:I) {
@@ -368,7 +385,24 @@ MCMC_Fit <- R6::R6Class(
           con_vec <- draws_ob[i, j, ]
           con_list <- constrained_vector_to_list(con_vec, target_par_list)
           unc_list <- to_unconstrained(con_list, target_par_list)
-          draws_uc[i, j, ] <- unlist(unc_list, use.names = FALSE)
+
+          # --- 修正箇所: mapが指定されている場合は非固定パラメータのみ抽出 ---
+          if (!is.null(map_list)) {
+            unc_vec <- c()
+            for (name in names(target_par_list)) {
+              val <- unc_list[[name]]
+              if (length(val) > 0) {
+                if (!is.null(map_list[[name]])) {
+                  unc_vec <- c(unc_vec, val[!is.na(map_list[[name]])])
+                } else {
+                  unc_vec <- c(unc_vec, val)
+                }
+              }
+            }
+            draws_uc[i, j, ] <- unc_vec
+          } else {
+            draws_uc[i, j, ] <- unlist(unc_list, use.names = FALSE)
+          }
         }
       }
       return(matrix(draws_uc, nrow = I * C, ncol = Q))
@@ -390,10 +424,11 @@ MCMC_Fit <- R6::R6Class(
 
     #' @description Estimate the marginal likelihood by bridge sampling.
     #' @param method Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".
+    #' @param use_neff Logical; whether to use the effective sample size (ESS) to adjust for autocorrelation. Default is TRUE.
     #' @param seed Integer; random seed for reproducibility. Default is NULL.
     #' @param max_iter Integer; maximum number of iterations for the estimation algorithm. Default is 100.
     #' @return Bridge sampling result.
-    bridgesampling = function(method = "warp3", seed = NULL, max_iter = 100) {
+    bridgesampling = function(method = "warp3", use_neff = TRUE, seed = NULL, max_iter = 100) {
 
       if (!is.null(seed)) set.seed(seed)
 
@@ -412,17 +447,32 @@ MCMC_Fit <- R6::R6Class(
       M2 <- nrow(z_fit)
       M  <- M1 + M2
 
-      S1 <- M1/M
-      S2 <- M2/M
-
+      # 事前計算: 提案分布のパラメータ推定
       meanz <- apply(z_fit, 2, mean)
       covz <- cov(z_fit)
+
+      # 事後確率サンプルの対数事後確率を計算
+      lp_post <- apply(z_post, 1, log_prob_fn)
+
+      if (isTRUE(use_neff)) {
+        n_eff <- tryCatch({
+          posterior::ess_basic(lp_post)
+        }, error = function(e) M1)
+        if (is.na(n_eff) || n_eff <= 0) n_eff <- M1
+      } else {
+        n_eff <- M1
+      }
+
+      # Meng & Wong に基づく最適ウェイト
+      S1 <- n_eff / (n_eff + M2)
+      S2 <- M2 / (n_eff + M2)
 
       if (method == "normal") {
         z_propose <- MASS::mvrnorm(M2, meanz, covz)
         log_propose <- function(z) mvtnorm::dmvnorm(z, meanz, covz, log = TRUE)
 
-        log_L1 <- apply(z_post, 1, log_prob_fn) - log_propose(z_post)
+        # 事前計算済みの lp_post を再利用
+        log_L1 <- lp_post - log_propose(z_post)
         log_L2 <- apply(z_propose, 1, log_prob_fn) - log_propose(z_propose)
 
         valid_log_L1 <- log_L1[is.finite(log_L1)]
@@ -491,7 +541,6 @@ MCMC_Fit <- R6::R6Class(
         for(m in 1:M2) bunshi <- bunshi + L2[m] / (S1*L2[m] + S2*ml_t)
 
         ml_t <- (bunshi/M2) / (bunbo/M1)
-        cat(paste0("iteration: ", t, "\n"))
 
         if (is.na(ml_t) || is.nan(ml_t) || ml_t <= 0) {
           warning("計算中に ml_t が 0 または NA になりました。")
@@ -503,7 +552,25 @@ MCMC_Fit <- R6::R6Class(
       }
 
       logml.bs <- as.numeric(log(ml_t) + log_Lm)
-      return(logml.bs)
+
+      f1_vec <- ml_t / (S1 * L1 + S2 * ml_t)
+      f2_vec <- L2 / (S1 * L2 + S2 * ml_t)
+
+      V1 <- var(f1_vec)
+      V2 <- var(f2_vec)
+      E1 <- mean(f1_vec)
+      E2 <- mean(f2_vec)
+
+      re2 <- V1 / (n_eff * E1^2) + V2 / (M2 * E2^2)
+      error_logml <- sqrt(re2)
+
+      cat(sprintf("Bridge Sampling Converged: LogML = %.3f (Error = %.4f, ESS = %.1f)\n", logml.bs, error_logml, n_eff))
+
+      res <- logml.bs
+      attr(res, "error") <- error_logml
+      attr(res, "ess") <- n_eff
+
+      return(res)
     },
 
     #' @description Compute transformed parameters from posterior draws.

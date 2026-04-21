@@ -263,13 +263,20 @@ Numeric vector of log-probability values.
 \subsection{Method \code{bridgesampling()}}{
 Estimate the marginal likelihood by bridge sampling.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bridgesampling(method = "warp3", seed = NULL, max_iter = 100)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bridgesampling(
+  method = "warp3",
+  use_neff = TRUE,
+  seed = NULL,
+  max_iter = 100
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{method}}{Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".}
+
+\item{\code{use_neff}}{Logical; whether to use the effective sample size (ESS) to adjust for autocorrelation. Default is TRUE.}
 
 \item{\code{seed}}{Integer; random seed for reproducibility. Default is NULL.}
 

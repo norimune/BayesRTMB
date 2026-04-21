@@ -15,7 +15,8 @@ rtmb_glm(
     cutpoint_sd = 2.5, shape_rate = 1, phi_rate = 1, lkj_eta = 1),
   weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2,
     slab_df = 4, ssp_ratio = 0.25),
-  init = NULL
+  init = NULL,
+  null = NULL
 )
 }
 \arguments{

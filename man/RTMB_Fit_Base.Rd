@@ -149,7 +149,7 @@ The updated object invisibly.
 Rotate factor loadings and optional factor scores.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$fa_rotate(
-  target = "loadings",
+  target = "L",
   linked = NULL,
   scores = NULL,
   rotate = "promax",
