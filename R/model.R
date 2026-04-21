@@ -124,10 +124,11 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
 #' @param par_names 各パラメータの次元に対応する具体的な変数名のリスト（省略可能）。
 #' @param init パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。
 #' @param view `summary()` などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。
+#' @param null_target Character string. 帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布をフォーミュラ形式の文字列で指定します（例: \code{"delta ~ cauchy(0, r)"}）。指定しない場合は \code{NULL}（デフォルト）。
 #'
 #' @return モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。
 #' @export
-rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null = NULL) {
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null_target = NULL) {
 
   if (!"parameters" %in% names(code)) stop("code の中に 'parameters = { ... }' ブロックが必要です。")
   if (!"model" %in% names(code)) stop("code の中に 'model = { ... }' ブロックが必要です。")
@@ -296,13 +297,21 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     code       = code
   )
 
-  # null引数が指定された場合の処理（parsとpriorの必須チェック、valueのデフォルト処理を含む）
-  if (!is.null(null)) {
-    if (!is.list(null) || is.null(null$pars) || is.null(null$prior)) {
-      stop("null引数は pars と prior を含むリストで指定してください (例: null = list(pars = 'delta', prior = 'cauchy(0, r)') )。")
+
+  if (!is.null(null_target)) {
+
+    # 入力形式の基本的な検証
+    if (!is.character(null_target) || length(null_target) != 1) {
+      stop("引数 null_target は単一の文字列で指定してください（例: null_target = 'delta ~ cauchy(0, r)'）。", call. = FALSE)
     }
+
+    if (!grepl("~", null_target)) {
+      stop("引数 null_target には対象パラメータと事前分布を '~' で繋いで指定してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
+    }
+
+    # 実際のフォーミュラ解釈とモデルの再構築は R6クラスの null_model メソッドに委譲
     val <- if (!is.null(null$value)) null$value else 0
-    obj <- obj$null_model(pars = null$pars, value = val, prior = null$prior)
+    obj <- obj$null_model(target = null_target, val = val)
   }
 
   return(obj)

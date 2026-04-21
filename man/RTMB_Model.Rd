@@ -10,7 +10,7 @@ rtmb_model(
   par_names = list(),
   init = NULL,
   view = NULL,
-  null = NULL
+  null_target = NULL
 )
 }
 \arguments{
@@ -23,6 +23,8 @@ rtmb_model(
 \item{init}{パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。}
 
 \item{view}{`summary()` などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。}
+
+\item{null_target}{Character string. 帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布をフォーミュラ形式の文字列で指定します（例: \code{"delta ~ cauchy(0, r)"}）。指定しない場合は \code{NULL}（デフォルト）。}
 }
 \value{
 モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。

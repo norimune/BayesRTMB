@@ -1223,37 +1223,36 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Create a null model by fixing specified parameters to a given value.
-    #' @param pars Character vector of parameter names or element specifications (e.g., "b", "b[x1]").
+    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)").
     #' @param value Numeric value to fix parameters to. Default is 0.
-    #' @param prior Character string specifying the prior distribution (e.g., "cauchy(0, r)"). Required.
     #' @return A new RTMB_Model object with the specified parameters fixed.
-    null_model = function(pars, value = 0, prior = NULL) {
-      if (is.null(prior)) {
-        stop("null_modelを評価するための 'prior' 引数の指定が必須です（例: prior = 'cauchy(0, r)'）。")
+    null_model = function(target, value = 0) {
+
+      # --- 1. フォーミュラのパース ---
+      # 文字列であるかの確認
+      if (!is.character(target) || length(target) != 1) {
+        stop("target は単一の文字列で指定してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
       }
 
-      # --- 事前分布の補正値(prior_correction)の計算 ---
-      prior_expr <- parse(text = prior)[[1]]
-      if (is.call(prior_expr)) {
-        fn_name <- as.character(prior_expr[[1]])
-        lpdf_fn_name <- paste0(fn_name, "_lpdf")
-        prior_expr[[1]] <- as.name(lpdf_fn_name)
-
-        # 第一引数に固定値(value)を挿入する: 例 cauchy_lpdf(value, 0, r)
-        prior_expr <- as.call(append(as.list(prior_expr), value, after = 1))
-
-        # dataの環境下で評価して対数密度を計算
-        eval_env <- list2env(self$data, parent = parent.frame())
-        correction_val <- tryCatch({
-          eval(prior_expr, envir = eval_env)
-        }, error = function(e) {
-          stop(sprintf("事前分布 '%s' の評価に失敗しました。分布関数(%s)が存在するか、引数の変数がdataに含まれているか確認してください。エラー: %s", prior, lpdf_fn_name, e$message))
-        })
-      } else {
-        stop("prior引数には関数呼び出しの形式（例: 'cauchy(0, r)'）を指定してください。")
+      # "~" が含まれているかの確認
+      if (!grepl("~", target)) {
+        stop("target には '~' が含まれている必要があります（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
       }
 
-      # --- 以下、既存の 制約タイプの分類 〜 mapの構築 処理 ---
+      # フォーミュラとしてパースできるかの確認
+      f <- tryCatch(as.formula(target), error = function(e) {
+        stop("target の解釈に失敗しました。'パラメータ ~ 事前分布' の形式で指定してください。", call. = FALSE)
+      })
+
+      # 左辺と右辺の両方が存在するか（Rのフォーミュラは両辺があるとlengthが3になる）を確認
+      if (length(f) != 3) {
+        stop("target は左辺（パラメータ）と右辺（事前分布）の両方を記述してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
+      }
+      spec <- deparse(f[[2]])        # 左辺 (例: "beta" や "beta[1]")
+      prior_expr <- f[[3]]           # 右辺 (callオブジェクト)
+      prior_str <- deparse(prior_expr)
+
+      # --- 2. 制約タイプの分類とフラット名の構築 ---
       structural_bounds <- c("ordered", "positive_ordered", "simplex",
                              "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
                              "sum_to_zero", "centered_matrix",
@@ -1277,75 +1276,93 @@ RTMB_Model <- R6::R6Class(
         all_flat_names <- c(all_flat_names, fnames)
       }
 
+      # --- 3. ターゲットの特定 ---
       targets <- list()
-      for (spec in pars) {
-        if (spec %in% names(self$par_list)) {
-          p <- self$par_list[[spec]]
-          if (p$bounds %in% no_fix_bounds) {
-            stop(sprintf("パラメータ '%s' (type='%s') は構造的制約のため固定できません。", spec, p$bounds), call. = FALSE)
-          }
-          targets[[spec]] <- 1:p$length
-        } else if (spec %in% all_flat_names) {
-          info <- flat_to_info[[spec]]
-          p <- self$par_list[[info$par]]
-          if (p$bounds %in% structural_bounds) {
-            stop(sprintf("'%s' (type='%s') は要素間に依存関係があるため個別に固定できません。'%s' で全体を固定してください。",
-                         spec, p$bounds, info$par), call. = FALSE)
-          }
-          if (!(p$bounds %in% elementwise_bounds)) {
-            stop(sprintf("'%s' (type='%s') は個別要素の固定に対応していません。", spec, p$bounds), call. = FALSE)
-          }
-          targets[[info$par]] <- unique(c(targets[[info$par]], info$idx))
-        } else {
-          stop(sprintf("'%s' は有効なパラメータ名または要素名ではありません。", spec), call. = FALSE)
+      if (spec %in% names(self$par_list)) {
+        p <- self$par_list[[spec]]
+        if (p$bounds %in% no_fix_bounds) {
+          stop(sprintf("パラメータ '%s' (type='%s') は構造的制約のため固定できません。", spec, p$bounds), call. = FALSE)
         }
+        targets[[spec]] <- 1:p$length
+      } else if (spec %in% all_flat_names) {
+        info <- flat_to_info[[spec]]
+        p <- self$par_list[[info$par]]
+        if (p$bounds %in% structural_bounds) {
+          stop(sprintf("'%s' (type='%s') は要素間に依存関係があるため個別に固定できません。'%s' で全体を固定してください。",
+                       spec, p$bounds, info$par), call. = FALSE)
+        }
+        if (!(p$bounds %in% elementwise_bounds)) {
+          stop(sprintf("'%s' (type='%s') は個別要素の固定に対応していません。", spec, p$bounds), call. = FALSE)
+        }
+        targets[[info$par]] <- unique(c(targets[[info$par]], info$idx))
+      } else {
+        stop(sprintf("'%s' は有効なパラメータ名または要素名ではありません。", spec), call. = FALSE)
       }
 
+      # --- 4. 次元数（固定する要素数）の取得 ---
+      par_name <- names(targets)[1]
+      fix_indices <- targets[[par_name]]
+      k_fixed <- length(fix_indices)
+
+      # --- 5. 事前分布の補正値(prior_correction)の計算 ---
+      if (is.call(prior_expr)) {
+        fn_name <- as.character(prior_expr[[1]])
+        lpdf_fn_name <- paste0(fn_name, "_lpdf")
+        prior_expr[[1]] <- as.name(lpdf_fn_name)
+
+        # rep(value, k_fixed) を第一引数として挿入し、要素数分のベクトルにする
+        prior_expr <- as.call(append(as.list(prior_expr), call("rep", value, k_fixed), after = 1))
+
+        eval_env <- list2env(self$data, parent = parent.frame())
+        correction_val <- tryCatch({
+          # 評価した対数密度がベクトルの場合は sum() で足し合わせる
+          sum(eval(prior_expr, envir = eval_env))
+        }, error = function(e) {
+          stop(sprintf("事前分布 '%s' の評価に失敗しました。エラー: %s", prior_str, e$message))
+        })
+      } else {
+        stop("事前分布は関数呼び出しの形式（例: cauchy(0, r)）で指定してください。")
+      }
+
+      # --- 6. 値の妥当性チェック & map の構築 ---
       map_list <- list()
       adjusted_init <- if (is.list(self$init)) self$init else list()
 
-      for (par_name in names(targets)) {
-        p <- self$par_list[[par_name]]
-        fix_indices <- targets[[par_name]]
-        is_full <- length(fix_indices) == p$length
+      p <- self$par_list[[par_name]]
+      is_full <- length(fix_indices) == p$length
 
-        if (!is.null(p$lower) && any(value < p$lower)) stop("値が下限を下回っています。", call. = FALSE)
-        if (!is.null(p$upper) && any(value > p$upper)) stop("値が上限を上回っています。", call. = FALSE)
+      if (!is.null(p$lower) && any(value < p$lower)) stop("値が下限を下回っています。", call. = FALSE)
+      if (!is.null(p$upper) && any(value > p$upper)) stop("値が上限を上回っています。", call. = FALSE)
 
-        if (is_full) {
-          map_list[[par_name]] <- factor(rep(NA, p$unc_length))
-        } else {
-          if (!(par_name %in% names(map_list))) {
-            map_list[[par_name]] <- factor(1:p$unc_length)
-          }
-          current <- as.integer(map_list[[par_name]])
-          current[fix_indices] <- NA
-          non_na <- !is.na(current)
-          if (any(non_na)) current[non_na] <- seq_len(sum(non_na))
-          map_list[[par_name]] <- factor(ifelse(is.na(current), NA, paste0(par_name, "_", current)))
+      if (is_full) {
+        map_list[[par_name]] <- factor(rep(NA, p$unc_length))
+      } else {
+        if (!(par_name %in% names(map_list))) {
+          map_list[[par_name]] <- factor(1:p$unc_length)
         }
-
-        if (!(par_name %in% names(adjusted_init))) adjusted_init[[par_name]] <- rep(0, p$length)
-        val <- as.numeric(adjusted_init[[par_name]])
-        val[fix_indices] <- value
-        adjusted_init[[par_name]] <- val
-        if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
+        current <- as.integer(map_list[[par_name]])
+        current[fix_indices] <- NA
+        non_na <- !is.na(current)
+        if (any(non_na)) current[non_na] <- seq_len(sum(non_na))
+        map_list[[par_name]] <- factor(ifelse(is.na(current), NA, paste0(par_name, "_", current)))
       }
 
-      # --- クローンして返す ---
+      if (!(par_name %in% names(adjusted_init))) adjusted_init[[par_name]] <- rep(0, p$length)
+      val <- as.numeric(adjusted_init[[par_name]])
+      val[fix_indices] <- value
+      adjusted_init[[par_name]] <- val
+      if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
+
+      # --- 7. クローンして返す ---
       new_model <- self$clone()
       if (!is.null(new_model$code)) new_model$code <- as.list(self$code)
 
       new_model$map <- map_list
       new_model$init <- adjusted_init
-
-      # 補正値を保存
       new_model$prior_correction <- correction_val
 
       cat("Null model created. Fixed parameters:\n")
-      for (spec in pars) {
-        cat(sprintf("  %s -> %g\n", spec, value))
-      }
+      cat(sprintf("  %s -> %g (Dimensions: %d)\n", spec, value, k_fixed))
       cat(sprintf("  Prior correction applied: %f\n", correction_val))
 
       return(new_model)
