@@ -232,7 +232,7 @@ RTMB_Model <- R6::R6Class(
     #' @param map Optional list specifying parameters to fix. Default is NULL.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
-                        optimizer = "nlminb", method = "BFGS", map = NULL) { # 引数に map = NULL を追加
+                        optimizer = "nlminb", method = "BFGS", map = NULL) {
       cat("Starting optimization...\n")
 
       opt_results <- list()
@@ -242,7 +242,6 @@ RTMB_Model <- R6::R6Class(
       # MAP推定ではヤコビアンは不要
       jac_target <- if (laplace) "random" else "none"
 
-      # --- 修正: map引数を渡す ---
       ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target, map = map)
       base_ad_obj <- ad_setup$ad_obj
 
@@ -251,9 +250,7 @@ RTMB_Model <- R6::R6Class(
           cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
 
         res <- tryCatch({
-          # --- 修正: map使用時はパラメータ長が変わるため、乱数付与の方法を変更 ---
           if (i > 1 && is.null(init)) {
-            # MakeADFunが保持する「アクティブなパラメータ（固定されていないもの）」に直接乱数を加えて散らす
             base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), mean = 0, sd = 0.5)
           }
 
@@ -301,7 +298,6 @@ RTMB_Model <- R6::R6Class(
       }
       cat("\n")
 
-      # 有効な結果の中から Objective が最小のものを選択
       valid_idx <- which(!is.na(obj_vals))
       if (length(valid_idx) == 0) {
         stop("すべての最適化試行が失敗しました。初期値やモデルの定義を確認してください。")
@@ -310,13 +306,10 @@ RTMB_Model <- R6::R6Class(
       best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
       best_res <- opt_results[[best_idx]]
 
-      # 推定結果の診断表示
       if (num_estimate == 1) {
-        # 1回だけのときは、結果がどうなったかだけを短く報告
         status <- if (conv_codes[1] == 0) "converged" else "Not Converged"
         cat(sprintf("Optimization %s. Final objective: %.2f\n", status, obj_vals[1]))
       } else {
-        # 複数回のときは、診断テーブルを表示
         cat("\nOptimization Diagnostics per estimate:\n")
         for (i in 1:num_estimate) {
           if (is.na(obj_vals[i])) {
@@ -335,81 +328,151 @@ RTMB_Model <- R6::R6Class(
       opt    <- best_res$opt
       ad_obj$fn(opt$par)
 
-      # 1. まず通常の sdreport を試みる
       sd_rep <- tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL)
 
-      if (!is.null(ad_obj$env$last.par.best)) {
-        unc_est_vec <- ad_obj$env$last.par.best
-      } else {
-        unc_est_vec <- ad_obj$env$last.par
+      unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE)
+
+      # --- 【究極の修正コア部分】opt$par と last.par の正確なマッピング ---
+      L_u_total <- length(unc_est_vec)
+      idx_ran <- ad_obj$env$random
+      if (is.null(idx_ran)) idx_ran <- integer(0)
+
+      target_map <- if (!is.null(map)) map else self$map
+
+      # TMBが推定する「アクティブな固定パラメータ」の正確なインデックスを構築
+      idx_fix_active <- integer(0)
+      factor_levels_seen <- list()
+      opt_par_curr <- 1
+      idx_curr <- 1
+
+      for (name in names(self$par_list)) {
+        L_u <- self$par_list[[name]]$unc_length
+        if (L_u > 0) {
+          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+
+          for (i in 1:L_u) {
+            pos_last <- idx_curr + i - 1
+
+            # ランダム効果なら固定パラメータではないのでスキップ
+            if (pos_last %in% idx_ran) next
+
+            # NAにマップされている（固定されている）ならスキップ
+            if (!is.null(map_f) && is.na(map_f[i])) next
+
+            if (!is.null(map_f)) {
+              # 重複して同じ値にマッピングされている場合の処理（初回のみ追加）
+              lvl <- as.character(map_f[i])
+              if (!(lvl %in% names(factor_levels_seen))) {
+                factor_levels_seen[[lvl]] <- opt_par_curr
+                idx_fix_active <- c(idx_fix_active, pos_last)
+                opt_par_curr <- opt_par_curr + 1
+              }
+            } else {
+              # マップなし（通常のアクティブパラメータ）
+              idx_fix_active <- c(idx_fix_active, pos_last)
+              opt_par_curr <- opt_par_curr + 1
+            }
+          }
+          idx_curr <- idx_curr + L_u
+        }
       }
 
-      unc_se_vec  <- rep(NA, length(unc_est_vec))
-      idx_ran <- ad_obj$env$random
-
+      unc_se_vec <- rep(0, L_u_total)
+      Cov_u <- diag(0, nrow = L_u_total, ncol = L_u_total)
       fallback_needed <- FALSE
 
-      # sdreportがオブジェクトを返した場合でも、NAが含まれていないかチェックする
-      if (!is.null(sd_rep)) {
-        smry_fix <- tryCatch(summary(sd_rep, select = "fixed"), error = function(e) NULL)
-        if (!is.null(smry_fix)) {
-          se_fix <- smry_fix[, "Std. Error"]
-          # 標準誤差に NA や NaN が含まれていればフォールバックを発動
-          if (any(is.na(se_fix) | is.nan(se_fix))) {
-            fallback_needed <- TRUE
-          } else {
-            if (laplace && length(idx_ran) > 0) {
-              smry_ran <- summary(sd_rep, select = "random")
-              unc_se_vec[-idx_ran] <- se_fix
-              unc_se_vec[idx_ran]  <- smry_ran[, "Std. Error"]
-            } else {
-              unc_se_vec <- se_fix
+      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
+        # summaryを使わず、cov.fixed行列の対角成分から直接標準誤差を抽出
+        # （これによりADREPORT等の名前被りによる抽出ミスを100%防ぐ）
+        se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
+
+        # 安全装置：計算したインデックス数とTMBの出力数が完全一致するか確認
+        if (length(idx_fix_active) == length(se_fix)) {
+
+          # 1. 独立したパラメータへの標準誤差代入
+          unc_se_vec[idx_fix_active] <- se_fix
+
+          # 2. 共分散行列の対応する箇所への代入
+          Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
+
+          # 3. 共有（重複）パラメータへの標準誤差のコピー
+          idx_curr <- 1
+          for (name in names(self$par_list)) {
+            L_u <- self$par_list[[name]]$unc_length
+            if (L_u > 0) {
+              map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+              for (i in 1:L_u) {
+                pos_last <- idx_curr + i - 1
+                if (pos_last %in% idx_ran) next
+                if (!is.null(map_f) && !is.na(map_f[i])) {
+                  lvl <- as.character(map_f[i])
+                  mapped_opt_idx <- factor_levels_seen[[lvl]]
+                  if (!is.null(mapped_opt_idx)) {
+                    unc_se_vec[pos_last] <- se_fix[mapped_opt_idx]
+                  }
+                }
+              }
+              idx_curr <- idx_curr + L_u
+            }
+          }
+
+          # ランダム効果の標準誤差を取得
+          if (laplace && length(idx_ran) > 0) {
+            smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL)
+            if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran)) {
+              unc_se_vec[idx_ran] <- smry_ran[, "Std. Error"]
             }
           }
         } else {
           fallback_needed <- TRUE
+          cat("Warning: Computed active parameter indices mismatch TMB output. Falling back to ginv().\n")
         }
       } else {
         fallback_needed <- TRUE
       }
 
-      # フォールバック処理（擬似逆行列による計算）
       if (fallback_needed) {
         cat("sdreport failed or produced NAs. Falling back to ginv()...\n")
-
-        # ぴったり0の点ではラプラス事前分布の微分が計算できずエラーになるため、
-        # パラメータに微小なジッター（ノイズ）を加えてヘッセ行列を計算します。
         eps_jitter <- 1e-6
         H <- tryCatch(ad_obj$he(opt$par + eps_jitter), error = function(e) NULL)
-
-        # それでも失敗した場合（NaNが含まれるなど）はマイナス方向のジッターを試す
         if (is.null(H) || any(is.na(H) | is.nan(H))) {
           H <- tryCatch(ad_obj$he(opt$par - eps_jitter), error = function(e) NULL)
         }
-
         if (!is.null(H)) {
-          # 計算上生じた NaN や Inf を 0 に置き換える
           H[!is.finite(H)] <- 0
-          # 行列が完全にゼロになって特異になるのを防ぐためのリッジペナルティ
           diag(H) <- diag(H) + 1e-6
-
           if (!requireNamespace("MASS", quietly = TRUE)) {
             warning("Package 'MASS' is required for ginv(). Standard errors will be NA.")
           } else {
             Cov_pseudo <- tryCatch(MASS::ginv(H), error = function(e) NULL)
-
             if (!is.null(Cov_pseudo)) {
-              # 分散が計算誤差でごくわずかに負になるのを防ぐため、pmaxで0以上を保証
               se_pseudo <- sqrt(pmax(diag(Cov_pseudo), 0))
 
-              if (length(idx_ran) > 0) {
-                unc_se_vec[-idx_ran] <- se_pseudo
-              } else {
-                unc_se_vec <- se_pseudo
-              }
+              if (length(idx_fix_active) == length(se_pseudo)) {
+                unc_se_vec[idx_fix_active] <- se_pseudo
+                Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
 
-              # 後の派生パラメータの計算が動くようにダミーの sd_rep を作成
-              sd_rep <- list(cov.fixed = Cov_pseudo)
+                # フォールバック時も重複パラメータへコピー
+                idx_curr <- 1
+                for (name in names(self$par_list)) {
+                  L_u <- self$par_list[[name]]$unc_length
+                  if (L_u > 0) {
+                    map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+                    for (i in 1:L_u) {
+                      pos_last <- idx_curr + i - 1
+                      if (pos_last %in% idx_ran) next
+                      if (!is.null(map_f) && !is.na(map_f[i])) {
+                        lvl <- as.character(map_f[i])
+                        mapped_opt_idx <- factor_levels_seen[[lvl]]
+                        if (!is.null(mapped_opt_idx)) {
+                          unc_se_vec[pos_last] <- se_pseudo[mapped_opt_idx]
+                        }
+                      }
+                    }
+                    idx_curr <- idx_curr + L_u
+                  }
+                }
+              }
             } else {
               cat("ginv() の計算にも失敗しました。\n")
             }
@@ -421,17 +484,16 @@ RTMB_Model <- R6::R6Class(
 
       unc_est_list <- unconstrained_vector_to_list(unc_est_vec, self$par_list)
       unc_se_list  <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
-
       con_est_list <- to_constrained(unc_est_list, self$par_list)
 
-      # Cov_u の構築
-      L_u_total <- length(unc_est_vec)
+      # Cov_u の構築（アクティブな部分行列のみを上書きする）
       Cov_u <- diag(unc_se_vec^2, nrow = L_u_total, ncol = L_u_total)
       Cov_u[is.na(Cov_u)] <- 0
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-        idx_ran <- ad_obj$env$random
-        idx_fix <- if (length(idx_ran) > 0) (1:L_u_total)[-idx_ran] else 1:L_u_total
-        Cov_u[idx_fix, idx_fix] <- sd_rep$cov.fixed
+        # インデックス長と行列サイズが一致し、かつ範囲内に収まっている場合のみ代入
+        if (length(idx_fix_active) == nrow(sd_rep$cov.fixed) && max(c(0, idx_fix_active)) <= L_u_total) {
+          Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
+        }
       }
 
       con_se_list  <- list()
@@ -440,12 +502,10 @@ RTMB_Model <- R6::R6Class(
 
       z_95 <- qnorm(0.975)
       eps_diff <- 1e-5
-
       u_idx_current <- 1
 
       for (name in names(self$par_list)) {
         p_info <- self$par_list[[name]]
-
         u_val <- unc_est_list[[name]]
         u_se  <- unc_se_list[[name]]
         c_val <- con_est_list[[name]]
@@ -520,7 +580,7 @@ RTMB_Model <- R6::R6Class(
           p_info <- self$par_list[[name]]
           if (p_info$random == target_random) {
             names_def <- self$par_names[[name]]
-            f_names <- generate_flat_names(name, p_info$dim, names_def)
+            f_names <- BayesRTMB:::generate_flat_names(name, p_info$dim, names_def)
 
             names_vec <- c(names_vec, f_names)
             est_vec <- c(est_vec, as.numeric(con_est_list[[name]]))
@@ -548,7 +608,6 @@ RTMB_Model <- R6::R6Class(
 
       con_est_vec <- unlist(con_est_list, use.names = FALSE)
 
-      # 1. 事前に transform と generate の結果をリストとして計算
       tran_list <- NULL
       if (!is.null(self$transform)) {
         tran_list <- tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL)
@@ -561,7 +620,6 @@ RTMB_Model <- R6::R6Class(
         gq_list <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
       }
 
-      # 2. base_out を受け取るように変更した関数
       build_derived_df <- function(func, base_out, is_generate = FALSE) {
         if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
 
@@ -594,18 +652,16 @@ RTMB_Model <- R6::R6Class(
           J[, i] <- (flat_tmp - flat_base) / eps_diff
         }
 
-        Cov_u <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
-        Cov_u[is.na(Cov_u)] <- 0
+        Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
+        Cov_u_derived[is.na(Cov_u_derived)] <- 0
 
         if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-          idx_ran <- ad_obj$env$random
-          idx_fix <- if (length(idx_ran) > 0) (1:L_u)[-idx_ran] else 1:L_u
-          Cov_u[idx_fix, idx_fix] <- sd_rep$cov.fixed
+          Cov_u_derived[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
         }
 
         se_out <- numeric(L_out)
         for (j in 1:L_out) {
-          se_out[j] <- sqrt(sum((J[j, ] %*% Cov_u) * J[j, ]))
+          se_out[j] <- sqrt(sum((J[j, ] %*% Cov_u_derived) * J[j, ]))
         }
 
         z_95 <- qnorm(0.975)
@@ -632,7 +688,6 @@ RTMB_Model <- R6::R6Class(
         return(df)
       }
 
-      # 3. 呼び出し時に第2引数として tran_list を渡す
       df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE)
 
       if (!is.null(gq_list) && length(gq_list) > 0) {
@@ -657,43 +712,39 @@ RTMB_Model <- R6::R6Class(
       }
 
       log_ml <- NA
-      # sdreport が正常に終了し、かつフォールバック（ginv）を使っていない場合のみ log_ml を計算する
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
         D <- length(opt$par)
         cov_mat <- sd_rep$cov.fixed
-
         eig <- tryCatch(eigen(cov_mat, symmetric = TRUE), error = function(e) NULL)
 
         if (!is.null(eig)) {
           vals <- eig$values
-          # 固有値に 0 以下、または極端に 0 に近い値がある場合はラプラス近似が破綻しているとみなす
           if (any(vals <= 1e-8)) {
             cat("Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.\n")
           } else {
             log_det_cov <- sum(log(vals))
-            log_ml <- - opt$objective + (D / 2) * log(2 * pi) + 0.5 * log_det_cov
+            log_ml <- - opt$objective + (D / 2) * log(2 * pi) + 0.5 * log_det_cov - self$prior_correction
           }
         }
       }
 
       opt_history <- data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes)
 
-      # 4. 最後にMAP_Fitへ渡す
       res_obj <- MAP_Fit$new(
         model          = self,
         par_vec        = con_est_vec,
         par            = con_est_list,
         objective      = opt$objective,
-        log_ml = log_ml,
-        convergence = opt$convergence,
-        sd_rep = sd_rep,
-        df_fixed = df_fixed,
+        log_ml         = log_ml,
+        convergence    = opt$convergence,
+        sd_rep         = sd_rep,
+        df_fixed       = df_fixed,
         random_effects = df_random,
-        df_transform = df_transform,
-        df_generate = df_generate,
-        opt_history = opt_history,
-        transform = tran_list,
-        generate = gq_list
+        df_transform   = df_transform,
+        df_generate    = df_generate,
+        opt_history    = opt_history,
+        transform      = tran_list,
+        generate       = gq_list
       )
 
       return(res_obj)
@@ -1270,11 +1321,17 @@ RTMB_Model <- R6::R6Class(
         if (has_index) {
           eval_env <- list2env(self$data, parent = parent.frame())
 
-          # インデックス値の決定: 変数として存在すれば評価し、なければ文字列として扱う
-          idx_val <- tryCatch(
-            eval(idx_expr, envir = eval_env),
-            error = function(e) as.character(idx_expr)
-          )
+          # 修正箇所: インデックス値の決定を安全にする
+          # 環境内で評価し、長さ1の数値または文字列であれば採用。
+          # そうでなければ（データ列などのベクトルなら）、変数名そのものを文字列として扱う
+          idx_val <- tryCatch({
+            res <- eval(idx_expr, envir = eval_env)
+            if (length(res) == 1 && (is.numeric(res) || is.character(res))) {
+              res
+            } else {
+              as.character(idx_expr)
+            }
+          }, error = function(e) as.character(idx_expr))
 
           for (i in 2:length(prior_expr)) {
             arg_expr <- prior_expr[[i]]
@@ -1286,7 +1343,16 @@ RTMB_Model <- R6::R6Class(
 
               # 評価結果がベクトル（長さ2以上）の場合のみインデックスを適用
               if (!is.null(arg_val) && length(arg_val) > 1) {
-                prior_expr[[i]] <- arg_val[idx_val]
+                # インデックスによる抽出を安全にテスト
+                ext_val <- arg_val[idx_val]
+
+                # NAにならずに1つの値が抽出できた場合のみ定数として置き換える
+                if (length(ext_val) == 1 && !is.na(ext_val)) {
+                  prior_expr[[i]] <- ext_val
+                } else {
+                  # 抽出できなかった場合（例: 名前なしベクトルに文字列でアクセスした等）は式として残す
+                  prior_expr[[i]] <- call("[", arg_expr, idx_expr)
+                }
               }
             }
           }
