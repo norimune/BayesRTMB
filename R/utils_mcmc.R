@@ -754,3 +754,67 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 
   return(invisible(sorted_mat))
 }
+#' 対数周辺尤度からベイズファクターを計算する関数
+#'
+#' @param logml1 モデル1の対数周辺尤度 (対象モデルなど)
+#' @param logml2 モデル2の対数周辺尤度 (基準モデル/帰無モデルなど)
+#' @return ベイズファクター、対数ベイズファクター、推定誤差、および解釈を含むオブジェクト
+#' @export
+bayes_factor <- function(logml1, logml2) {
+  # 属性（errorやess）を剥がして純粋な数値として計算
+  val1 <- as.numeric(logml1)
+  val2 <- as.numeric(logml2)
+
+  # 対数ベイズファクターとベイズファクターの計算
+  log_bf <- val1 - val2
+  bf <- exp(log_bf)
+
+  # 誤差の伝播（logml1, logml2 に "error" 属性が含まれていれば計算）
+  err1 <- attr(logml1, "error")
+  err2 <- attr(logml2, "error")
+
+  has_error <- !is.null(err1) && !is.null(err2) && !is.na(err1) && !is.na(err2)
+
+  if (has_error) {
+    # 2つのMCMCサンプリングが独立であると仮定した場合の標準誤差
+    log_bf_err <- sqrt(err1^2 + err2^2)
+  } else {
+    log_bf_err <- NA_real_
+  }
+
+  # Jeffreys (1961) / Kass & Raftery (1995) に基づく証拠の強さの解釈
+  if (bf > 100) evidence <- "Decisive evidence for Model 1"
+  else if (bf > 10) evidence <- "Strong evidence for Model 1"
+  else if (bf > 3) evidence <- "Substantial evidence for Model 1"
+  else if (bf > 1) evidence <- "Anecdotal evidence for Model 1"
+  else if (bf == 1) evidence <- "No evidence"
+  else if (bf >= 1/3) evidence <- "Anecdotal evidence for Model 2"
+  else if (bf >= 1/10) evidence <- "Substantial evidence for Model 2"
+  else if (bf >= 1/100) evidence <- "Strong evidence for Model 2"
+  else evidence <- "Decisive evidence for Model 2"
+
+  res <- list(
+    BF12 = bf,
+    log_BF12 = log_bf,
+    log_BF_error = log_bf_err,
+    interpretation = evidence
+  )
+
+  class(res) <- "bayes_factor"
+  return(res)
+}
+
+#' bayes_factor オブジェクトの print メソッド
+#' @export
+print.bayes_factor <- function(x, digits = 4, ...) {
+  cat("Bayes Factor (BF12) :", round(x$BF12, digits), "\n")
+
+  if (!is.na(x$log_BF_error)) {
+    cat(sprintf("Log Bayes Factor    : %.4f (Approx. Error = %.4f)\n", x$log_BF12, x$log_BF_error))
+  } else {
+    cat(sprintf("Log Bayes Factor    : %.4f\n", x$log_BF12))
+  }
+
+  cat("Interpretation      :", x$interpretation, "\n")
+  invisible(x)
+}

@@ -553,6 +553,11 @@ MCMC_Fit <- R6::R6Class(
 
       logml.bs <- as.numeric(log(ml_t) + log_Lm)
 
+      correction <- self$model$prior_correction
+      if (!is.null(correction) && correction != 0) {
+        logml.bs <- logml.bs - correction
+      }
+
       # 2. 推定誤差 (Approximate Standard Error) の計算
       res <- logml.bs
 

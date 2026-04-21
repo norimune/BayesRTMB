@@ -85,7 +85,7 @@ with_rtmb_error_handling <- function(expr, block_name) {
 env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
   env_list <- as.list(env)
   orig_names <- names(orig_list)
-  
+
   if (!is.null(code_ast)) {
     extract_assigned_vars <- function(expr) {
       vars <- character()
@@ -100,7 +100,7 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
       }
       return(unique(vars))
     }
-    
+
     assigned_vars <- extract_assigned_vars(code_ast)
     assigned_vars <- intersect(assigned_vars, names(env_list))
     new_names <- intersect(assigned_vars, setdiff(names(env_list), orig_names))
@@ -109,7 +109,7 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
   } else {
     new_names <- setdiff(names(env_list), orig_names)
   }
-  
+
   return(env_list[c(intersect(orig_names, names(env_list)), new_names)])
 }
 
@@ -173,7 +173,6 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
       v_name <- as.character(e[[2]])
       d_expr <- e[[3]]
 
-      # ★ Rのスコープに頼らない最強のAST静的解析 ★
       # all.vars は関数名(Dimなど)を除外し、使われている純粋な変数名だけを抽出します
       used_vars <- all.vars(d_expr)
       missing_vars <- setdiff(used_vars, names(data))
@@ -297,8 +296,13 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     code       = code
   )
 
+  # null引数が指定された場合の処理（parsとpriorの必須チェック、valueのデフォルト処理を含む）
   if (!is.null(null)) {
-    obj <- obj$null_model(pars = null)
+    if (!is.list(null) || is.null(null$pars) || is.null(null$prior)) {
+      stop("null引数は pars と prior を含むリストで指定してください (例: null = list(pars = 'delta', prior = 'cauchy(0, r)') )。")
+    }
+    val <- if (!is.null(null$value)) null$value else 0
+    obj <- obj$null_model(pars = null$pars, value = val, prior = null$prior)
   }
 
   return(obj)
