@@ -818,7 +818,7 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 #' @param prior List of hyperparameters for the default fixed priors.
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values (generated automatically based on glm if omitted)
-#' @import lme4
+#' @import reformulas
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        penalty = c("none", "rhs", "ssp"),
@@ -1067,7 +1067,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       param_exprs[[length(param_exprs) + 1]] <- quote(r_re <- Dim(num_groups, random = TRUE))
     } else {
       param_exprs[[length(param_exprs) + 1]] <- quote(sd <- Dim(num_ranef, lower = 0))
-      param_exprs[[length(param_exprs) + 1]] <- quote(CF_cor <- Dim(c(num_ranef, num_ranef), type = "CF_corr"))
+      param_exprs[[length(param_exprs) + 1]] <- quote(CF_corr <- Dim(c(num_ranef, num_ranef), type = "CF_corr"))
       param_exprs[[length(param_exprs) + 1]] <- quote(r_re <- Dim(c(num_groups, num_ranef), random = TRUE))
     }
   }
@@ -1095,7 +1095,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
     else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
   }
-  if (has_random && num_ranef > 1) tran_exprs[[length(tran_exprs) + 1]] <- quote(cor <- CF_cor %*% t(CF_cor))
+  if (has_random && num_ranef > 1) tran_exprs[[length(tran_exprs) + 1]] <- quote(corr <- CF_corr %*% t(CF_corr))
   tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
 
   # --- Model AST ---
@@ -1132,8 +1132,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   ll_random_exprs <- list()
   if (has_random) {
     if (num_ranef > 1) {
-      ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(CF_cor ~ lkj_CF_corr(.(prior$lkj_eta)))
-      ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(for (j in 1:num_groups) r_re[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_cor))
+      ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
+      ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(for (j in 1:num_groups) r_re[j, ] ~ multi_normal_CF(rep(0, num_ranef), rep(1, num_ranef), CF_corr))
     } else {
       ll_random_exprs[[length(ll_random_exprs) + 1]] <- quote(r_re ~ normal(0, 1))
     }
@@ -1220,7 +1220,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
   if (has_random) {
     par_names_list$sd <- ranef_names
-    if (num_ranef > 1) par_names_list$cor <- ranef_names
+    if (num_ranef > 1) par_names_list$corr <- ranef_names
   }
 
   view_vars <- c()
@@ -1228,7 +1228,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (K > 0) view_vars <- c(view_vars, "b")
   view_vars <- c(view_vars, "sigma")
   if (has_random) {
-    view_vars <- c(view_vars, "sd", "cor")
+    view_vars <- c(view_vars, "sd", "corr")
   }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
@@ -1857,7 +1857,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' @param data 観測データフレームまたは行列 (N x P)
 #' @param prior 事前分布のハイパーパラメータのリスト
 #' @export
-rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)) {
+rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)) {
 
   Y <- as.matrix(data)
   N <- nrow(Y)
@@ -1886,18 +1886,18 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   param_ast <- quote({
     mean   <- Dim(P)
     sd     <- Dim(P, lower = 0)
-    CF_cor <- Dim(c(P, P), type = "CF_corr")
+    CF_corr <- Dim(c(P, P), type = "CF_corr")
   })
 
   model_ast <- quote({
     mean ~ normal(0, prior_mu_sd)
     sd ~ exponential(prior_sigma_rate)
-    CF_cor ~ lkj_CF_corr(prior_lkj_eta)
-    S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_cor)
+    CF_corr ~ lkj_CF_corr(prior_lkj_eta)
+    S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
   })
 
   tran_ast <- quote({
-    cor <- CF_cor %*% t(CF_cor)
+    corr <- CF_corr %*% t(CF_corr)
   })
 
   # --- 新しい rtmb_code への組み立て ---
@@ -1906,8 +1906,8 @@ rtmb_cor <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 
   obj <- rtmb_model(
     data = dat,
     code = code_obj,
-    par_names = list(mean = var_names, sd = var_names, cor = var_names),
-    view = c("cor")
+    par_names = list(mean = var_names, sd = var_names, corr = var_names),
+    view = c("corr")
   )
 
   return(obj)

@@ -1317,10 +1317,12 @@ RTMB_Model <- R6::R6Class(
                              "sum_to_zero", "centered_matrix",
                              "centered_tri", "positive_centered_tri",
                              "lower_tri_stz")
-      no_fix_bounds <- c("simplex", "corr_matrix", "CF_corr",
+
+      no_fix_bounds <- c("simplex", "corr_matrix",
                          "cov_matrix", "CF_cov", "sum_to_zero",
                          "centered_matrix", "centered_tri",
                          "positive_centered_tri")
+
       elementwise_bounds <- c("none", "lower", "upper", "interval")
 
       all_flat_names <- character(0)
