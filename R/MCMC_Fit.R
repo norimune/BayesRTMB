@@ -428,7 +428,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param seed Integer; random seed for reproducibility. Default is NULL.
     #' @param max_iter Integer; maximum number of iterations for the estimation algorithm. Default is 100.
     #' @return Bridge sampling result.
-    bridgesampling = function(method = "warp3", use_neff = TRUE, seed = NULL, max_iter = 100) {
+    bridgesampling = function(method = "normal", use_neff = TRUE, seed = NULL, max_iter = 100) {
 
       if (!is.null(seed)) set.seed(seed)
 
