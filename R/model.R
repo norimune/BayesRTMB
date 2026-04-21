@@ -310,8 +310,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     }
 
     # 実際のフォーミュラ解釈とモデルの再構築は R6クラスの null_model メソッドに委譲
-    val <- if (!is.null(null$value)) null$value else 0
-    obj <- obj$null_model(target = null_target, val = val)
+    obj <- obj$null_model(target = null_target)
   }
 
   return(obj)
