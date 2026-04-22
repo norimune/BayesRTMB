@@ -2,7 +2,7 @@ url: https://norimune.github.io/BayesRTMB/
 
 template:
   bootstrap: 5
-  theme: flatly
+  bootswatch: flatly
 
 reference:
   - title: "Wrapper Functions"
