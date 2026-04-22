@@ -1101,7 +1101,8 @@ RTMB_Model <- R6::R6Class(
                 run_advi_prog(c)
               }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
             }, warning = function(w) {
-              if (grepl("package:BayesRTMB", conditionMessage(w))) {
+              msg <- conditionMessage(w)
+              if (grepl("BayesRTMB", msg)) {
                 invokeRestart("muffleWarning")
               }
             })
