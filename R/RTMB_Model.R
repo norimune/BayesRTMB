@@ -1141,8 +1141,8 @@ RTMB_Model <- R6::R6Class(
         res <- results_list[[c]]
         fit[, c, ] <- res$fit[, 1, ]
         if (P_random > 0) random_fit[, c, ] <- res$random_fit[, 1, ]
-        elbo_history_list[[c]] <- res$elbo_history
-        elbo_final_vec[c] <- res$elbo_final
+        elbo_history_list[[c]] <- res$elbo_history - self$prior_correction
+        elbo_final_vec[c]      <- res$elbo_final   - self$prior_correction
         rel_obj_vec[c] <- res$rel_obj_final
       }
 
