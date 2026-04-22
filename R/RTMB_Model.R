@@ -1458,9 +1458,29 @@ RTMB_Model <- R6::R6Class(
       p <- self$par_list[[par_name]]
       is_full <- length(fix_indices) == p$length
 
-      if (!is.null(p$lower) && any(value < p$lower)) stop("値が下限を下回っています。", call. = FALSE)
-      if (!is.null(p$upper) && any(value > p$upper)) stop("値が上限を上回っています。", call. = FALSE)
+      # 境界値ジャスト
+      if (!is.null(p$lower) && any(value <= p$lower)) stop("固定する値は下限より大きい必要があります（境界値そのものは指定できません）。", call. = FALSE)
+      if (!is.null(p$upper) && any(value >= p$upper)) stop("固定する値は上限より小さい必要があります（境界値そのものは指定できません）。", call. = FALSE)
 
+      # --- ヤコビアン補正の加算 ---
+      b_type <- p$bounds
+      if (b_type %in% c("lower", "upper", "interval")) {
+        val_vec <- rep(value, length.out = k_fixed)
+        lj_val <- 0
+
+        if (b_type == "lower") {
+          u_val <- log(val_vec - p$lower)
+          lj_val <- sum(u_val)
+        } else if (b_type == "upper") {
+          u_val <- log(p$upper - val_vec)
+          lj_val <- sum(u_val)
+        } else if (b_type == "interval") {
+          prob <- (val_vec - p$lower) / (p$upper - p$lower)
+          u_val <- log(prob / (1 - prob))
+          lj_val <- sum(log(p$upper - p$lower) - u_val - 2 * log(1 + exp(-u_val)))
+        }
+        correction_val <- correction_val + lj_val
+      }
       if (is_full) {
         map_list[[par_name]] <- factor(rep(NA, p$unc_length))
       } else {

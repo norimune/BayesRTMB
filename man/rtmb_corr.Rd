@@ -4,13 +4,26 @@
 \alias{rtmb_corr}
 \title{相関行列 (多変量正規分布) 推定ラッパー}
 \usage{
-rtmb_corr(data, prior = list(lkj_eta = 1, mu_sd = 10, sigma_rate = 1))
+rtmb_corr(
+  data,
+  prior = list(lkj_eta = 1, mu_sd = 10, sigma_rate = 1),
+  init = NULL,
+  null = NULL
+)
 }
 \arguments{
-\item{data}{観測データフレームまたは行列 (N x P)}
+\item{data}{観測データフレームまたは行列 (N x P)。}
 
-\item{prior}{事前分布のハイパーパラメータのリスト}
+\item{prior}{事前分布のハイパーパラメータのリスト。デフォルトは \code{list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)}。}
+
+\item{init}{初期値のリスト（省略可能）。}
+
+\item{null}{帰無モデルを作成する際のターゲット（例: \code{"corr"}）。省略可能。}
+}
+\value{
+\code{RTMB_Model} クラスのインスタンス。
 }
 \description{
-相関行列 (多変量正規分布) 推定ラッパー
+観測データから多変量正規分布を仮定して相関行列（および平均・標準偏差）を推定します。
+観測変数が2つの場合は、直接スカラーの相関係数 (`corr`) を推定するよう自動で切り替わります。
 }

@@ -161,10 +161,21 @@ lkj_corr_lpdf <- function(Omega, eta = 1) {
     x <- (rho + 1) / 2
     return(dbeta(x, shape1 = eta, shape2 = eta, log = TRUE) - log(2))
   }
-  if (eta == 1) return(0)
-  safe_Omega <- Omega + diag(1e-11, nrow(Omega))
+  # 行列（3変数以上）のケース
+  K <- nrow(Omega)
+  log_C <- 0
+  for (k in 1:(K - 1)) {
+    log_C <- log_C - (lgamma(eta + (K - 1 - k) / 2) +
+                        lgamma(k / 2) -
+                        lgamma(eta + (K - 1) / 2))
+  }
+  if (eta == 1) {
+    return(log_C)
+  }
+  safe_Omega <- Omega + diag(1e-11, K)
   U <- chol(safe_Omega)
-  return((eta - 1) * 2 * sum(log(diag(U))))
+  log_det <- 2 * sum(log(diag(U)))
+  return(log_C + (eta - 1) * log_det)
 }
 
 #' LKJ correlation log-probability density function for Cholesky factors
@@ -174,8 +185,20 @@ lkj_corr_lpdf <- function(Omega, eta = 1) {
 #' @return The log-density.
 #' @export
 lkj_CF_corr_lpdf <- function(CF_Omega, eta = 1) {
-  if (eta == 1) return(0)
-  return((eta - 1) * 2 * sum(log(diag(CF_Omega))))
+  K <- nrow(CF_Omega)
+  log_C <- 0
+  if (K > 1) {
+    for (k in 1:(K - 1)) {
+      log_C <- log_C - (lgamma(eta + (K - 1 - k) / 2) +
+                          lgamma(k / 2) -
+                          lgamma(eta + (K - 1) / 2))
+    }
+  }
+  if (eta == 1) {
+    return(log_C)
+  }
+  log_det <- 2 * sum(log(diag(CF_Omega)))
+  return(log_C + (eta - 1) * log_det)
 }
 
 #' Bernoulli log-probability mass function

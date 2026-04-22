@@ -1854,10 +1854,17 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 
 #' 相関行列 (多変量正規分布) 推定ラッパー
 #'
-#' @param data 観測データフレームまたは行列 (N x P)
-#' @param prior 事前分布のハイパーパラメータのリスト
+#' @description
+#' 観測データから多変量正規分布を仮定して相関行列（および平均・標準偏差）を推定します。
+#' 観測変数が2つの場合は、直接スカラーの相関係数 (`corr`) を推定するよう自動で切り替わります。
+#'
+#' @param data 観測データフレームまたは行列 (N x P)。
+#' @param prior 事前分布のハイパーパラメータのリスト。デフォルトは \code{list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)}。
+#' @param init 初期値のリスト（省略可能）。
+#' @param null 帰無モデルを作成する際のターゲット（例: \code{"corr"}）。省略可能。
+#' @return \code{RTMB_Model} クラスのインスタンス。
 #' @export
-rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)) {
+rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0), init = NULL, null = NULL) {
 
   Y <- as.matrix(data)
   N <- nrow(Y)
@@ -1883,35 +1890,65 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
     prior_lkj_eta = prior$lkj_eta, prior_sigma_rate = prior$sigma_rate, prior_mu_sd = prior$mu_sd
   )
 
-  param_ast <- quote({
-    mean   <- Dim(P)
-    sd     <- Dim(P, lower = 0)
-    CF_corr <- Dim(c(P, P), type = "CF_corr")
-  })
+  if (P == 2) {
+    # --- 2変数の場合: 相関係数(スカラー)を直接推定 ---
+    param_ast <- quote({
+      mean   <- Dim(P)
+      sd     <- Dim(P, lower = 0)
+      corr   <- Dim(lower = -1, upper = 1)
+    })
 
-  model_ast <- quote({
-    mean ~ normal(0, prior_mu_sd)
-    sd ~ exponential(prior_sigma_rate)
-    CF_corr ~ lkj_CF_corr(prior_lkj_eta)
-    S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
-  })
+    model_ast <- quote({
+      mean ~ normal(0, prior_mu_sd)
+      sd ~ exponential(prior_sigma_rate)
+      corr ~ lkj_corr(prior_lkj_eta)
 
-  tran_ast <- quote({
-    corr <- CF_corr %*% t(CF_corr)
-  })
+      # スカラーから 2x2 のコレスキー因子を直接構築
+      CF_corr <- matrix(c(1, corr, 0, sqrt(1 - corr^2)), nrow = 2, ncol = 2)
+      S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
+    })
 
-  # --- 新しい rtmb_code への組み立て ---
-  code_obj <- list(parameters = param_ast, model = model_ast, transform = tran_ast)
+    code_obj <- list(parameters = param_ast, model = model_ast)
+    par_names_list <- list(mean = var_names, sd = var_names, corr = "rho")
 
+  } else {
+    # --- 3変数以上の場合: コレスキー因子(行列)経由で推定 ---
+    param_ast <- quote({
+      mean    <- Dim(P)
+      sd      <- Dim(P, lower = 0)
+      CF_corr <- Dim(c(P, P), type = "CF_corr")
+    })
+
+    model_ast <- quote({
+      mean ~ normal(0, prior_mu_sd)
+      sd ~ exponential(prior_sigma_rate)
+      CF_corr ~ lkj_CF_corr(prior_lkj_eta)
+      S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
+    })
+
+    tran_ast <- quote({
+      corr <- CF_corr %*% t(CF_corr)
+    })
+
+    code_obj <- list(parameters = param_ast, model = model_ast, transform = tran_ast)
+    par_names_list <- list(mean = var_names, sd = var_names, corr = var_names)
+  }
+
+  # モデルインスタンスの作成
   obj <- rtmb_model(
     data = dat,
     code = code_obj,
-    par_names = list(mean = var_names, sd = var_names, corr = var_names),
+    par_names = par_names_list,
+    init = init,
     view = c("corr")
   )
 
+  # null_model の指定があれば適用
+  if (!is.null(null)) {
+    obj <- obj$null_model(target = null)
+  }
+
   return(obj)
 }
-
 
 

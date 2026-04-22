@@ -627,7 +627,6 @@ MCMC_Fit <- R6::R6Class(
 
         # 補完した引数リストを使って null モデルをサンプリング
         fit_null <- do.call(mdl_null$sample, sample_args)
-        # ---------------------------------------------
 
         cat("\n--- Calculating marginal likelihood for the null model ---\n")
         fit_null$log_ml <- fit_null$bridgesampling(method = bs_method)
