@@ -3,3 +3,9 @@
 ^README\.Rmd$
 ^LICENSE\.md$
 ^^test/\.*\\.csv$$
+^\.vscode$
+^BWMU_functions\.R$
+^BayesRTMB_mcmc$
+^modeling\.rmd$
+^test$
+^workspace\.rmd$

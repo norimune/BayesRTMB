@@ -1,3 +1,15 @@
+#' @import future
+#' @import future.apply
+#' @import progressr
+#' @import MASS
+#' @import GPArotation
+#' @importFrom grDevices col2rgb hcl.colors rgb
+#' @importFrom graphics abline axis legend lines matplot mtext pairs par points polygon segments strwidth text
+#' @importFrom stats Gamma binomial coef cor cov delete.response density dunif gaussian glm median model.frame model.matrix model.offset model.response na.omit nlminb poisson quantile rnorm runif sd terms var
+#' @importFrom utils capture.output getFromNamespace modifyList read.csv
+NULL
+
+
 #' Catch and Translate RTMB Errors into User-Friendly Messages
 #'
 #' @description
