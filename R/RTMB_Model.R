@@ -890,18 +890,25 @@ RTMB_Model <- R6::R6Class(
 
         progressr::with_progress({
           p <- progressr::progressor(steps = total_updates)
-          results_list <- future.apply::future_lapply(1:chains, function(c) {
-            run_chain(c, p_callback = function(msg = "", amt = 1, ...) {
-              if (is.numeric(msg)) {
-                amt <- msg
-                msg <- ""
-              }
-              p(amount = amt, message = as.character(msg))
-            })
-          }, future.seed = TRUE,
-          future.packages = c("RTMB","BayesRTMB"),
-          future.globals =TRUE
-          )
+          results_list <- withCallingHandlers({
+            future.apply::future_lapply(1:chains, function(c) {
+              run_chain(c, p_callback = function(msg = "", amt = 1, ...) {
+                if (is.numeric(msg)) {
+                  amt <- msg
+                  msg <- ""
+                }
+                p(amount = amt, message = as.character(msg))
+              })
+            }, future.seed = TRUE,
+            future.packages = c("RTMB","BayesRTMB"),
+            future.globals = TRUE
+            )
+          }, warning = function(w) {
+            # 英語環境と日本語環境の両方の警告メッセージをキャッチして握りつぶす
+            if (grepl("may not be available when loading|ロード時には使えない可能性があります", conditionMessage(w))) {
+              invokeRestart("muffleWarning")
+            }
+          })
         })
         future::plan(future::sequential)
       } else {
@@ -1091,9 +1098,16 @@ RTMB_Model <- R6::R6Class(
               return(res)
             }
 
-            future.apply::future_lapply(1:num_estimate, function(c) {
-              run_advi_prog(c)
-            }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
+            # withCallingHandlers で囲む
+            withCallingHandlers({
+              future.apply::future_lapply(1:num_estimate, function(c) {
+                run_advi_prog(c)
+              }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
+            }, warning = function(w) {
+              if (grepl("may not be available when loading|ロード時には使えない可能性があります", conditionMessage(w))) {
+                invokeRestart("muffleWarning")
+              }
+            })
           })
 
         } else {
