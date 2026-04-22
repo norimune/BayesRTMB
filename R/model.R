@@ -328,7 +328,7 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
 
     if (length(func_name) == 1) {
       if (exists(func_name, envir = asNamespace(pkg), inherits = FALSE)) {
-        expr[[1]] <- call("::", as.name(pkg), as.name(func_name))
+        expr[[1]] <- call(":::", as.name(pkg), as.name(func_name))
       }
     }
 
