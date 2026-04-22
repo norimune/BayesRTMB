@@ -6,6 +6,13 @@
 \usage{
 \method{print}{bayes_factor}(x, digits = 4, ...)
 }
+\arguments{
+\item{x}{An object of class bayes_factor.}
+
+\item{digits}{表示する小数点以下の桁数（デフォルトは4）。}
+
+\item{...}{Additional arguments.}
+}
 \description{
 bayes_factor オブジェクトの print メソッド
 }

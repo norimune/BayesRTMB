@@ -11,7 +11,7 @@ binomial_logit_lpmf(x, size, eta)
 
 \item{size}{Number of trials.}
 
-\item{mu}{Linear predictor (logit probability).}
+\item{eta}{Linear predictor (logit probability).}
 }
 \value{
 The sum of the log-probability.

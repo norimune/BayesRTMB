@@ -6,6 +6,13 @@
 \usage{
 conditional_effects(fit, effect, ...)
 }
+\arguments{
+\item{fit}{モデルのフィットオブジェクト。}
+
+\item{effect}{効果を可視化したい変数名。}
+
+\item{...}{その他の引数。}
+}
 \description{
 周辺効果 (Conditional Effects) を計算する
 }

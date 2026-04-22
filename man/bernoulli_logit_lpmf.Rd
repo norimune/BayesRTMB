@@ -9,7 +9,7 @@ bernoulli_logit_lpmf(x, eta)
 \arguments{
 \item{x}{Vector of binary outcomes (0 or 1).}
 
-\item{mu}{Linear predictor (logit probability).}
+\item{eta}{Linear predictor (logit probability).}
 }
 \value{
 The sum of the log-probability.

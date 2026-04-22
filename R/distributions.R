@@ -225,7 +225,7 @@ binomial_lpmf <- function(x, size, prob) {
 #' Bernoulli log-probability mass function with logit parameterization
 #'
 #' @param x Vector of binary outcomes (0 or 1).
-#' @param mu Linear predictor (logit probability).
+#' @param eta Linear predictor (logit probability).
 #' @return The sum of the log-probability.
 #' @export
 bernoulli_logit_lpmf <- function(x, eta) {
@@ -236,7 +236,7 @@ bernoulli_logit_lpmf <- function(x, eta) {
 #'
 #' @param x Vector of quantiles (number of successes).
 #' @param size Number of trials.
-#' @param mu Linear predictor (logit probability).
+#' @param eta Linear predictor (logit probability).
 #' @return The sum of the log-probability.
 #' @export
 binomial_logit_lpmf <- function(x, size, eta) {

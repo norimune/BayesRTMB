@@ -6,6 +6,11 @@
 \usage{
 \method{print}{ce_rtmb}(x, ...)
 }
+\arguments{
+\item{x}{An object of class ce_rtmb}
+
+\item{...}{Additional arguments.}
+}
 \description{
 ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
 }

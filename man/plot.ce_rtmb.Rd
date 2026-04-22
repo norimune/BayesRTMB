@@ -6,6 +6,11 @@
 \usage{
 \method{plot}{ce_rtmb}(x, ...)
 }
+\arguments{
+\item{x}{An object of class ce_rtmb}
+
+\item{...}{Additional arguments.}
+}
 \description{
 ce_rtmb クラス専用のプロットメソッド (Base R)
 }

@@ -718,7 +718,6 @@ transform_code <- function(expr, env = parent.frame()) {
 #' および欠損値の有無などをチェックし、エラーや警告を出力します。
 #'
 #' @param dat_list モデルに渡すデータのリスト（通常、行列や数値ベクトルを含む）。
-#' @param par_list `Dim()` で定義されたパラメータのリスト。
 #'
 #' @return 検証に成功した場合は不可視の `NULL` を返します。問題がある場合は `stop()` で処理を中断、または `warning()` を発出します。
 #'
@@ -749,9 +748,11 @@ validate_data <- function(dat_list) {
 #' 難解なエラーメッセージを、ユーザーが理解しやすい日本語のヒントに翻訳して出力します。
 #'
 #' @param data `validate_data` を通過したデータのリスト。
-#' @param parameters `Dim()` で定義されたパラメータのリスト。
-#' @param model `model_code({})` で定義された尤度や事前分布のコードブロック。
-#' @param generate `transform_code({})` で定義された生成量のコードブロック（省略可能）。
+#' @param code `model_code({})` で定義された尤度や事前分布のコードブロック。
+#' @param par_names 各パラメータの次元に対応する変数名のリスト（省略可能）。
+#' @param init パラメータの初期値のリストまたは数値ベクトル（省略可能）。
+#' @param view 結果のsummary出力時に優先して表示したいパラメータ名の文字ベクトル（省略可能）。
+#' @param null_target 帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布を指定する文字列（省略可能）。
 #'
 #' @return 正常にコンパイルが完了した場合は、`rtmb_model` オブジェクト（R6クラスのインスタンス）を返します。
 #'
@@ -809,6 +810,7 @@ safe_rtmb_model <- function(data, code, par_names = list(), init = NULL, view = 
 #' @param prior List of hyperparameters for the default fixed priors.
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values (generated automatically based on glm if omitted)
+#' @param null Character string specifying the target parameter for the null model.
 #' @import reformulas
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
@@ -1246,6 +1248,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param prior List of hyperparameters for the default fixed priors.
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values
+#' @param null Character string specifying the target parameter for the null model.
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
                      penalty = c("none", "rhs", "ssp"),
@@ -1280,6 +1283,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param prior List of hyperparameters for the default fixed priors.
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values.
+#' @param null Character string specifying the target parameter for the null model.
 #' @export
 rtmb_lm <- function(formula, data,
                     penalty = c("none", "rhs", "ssp"),

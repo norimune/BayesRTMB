@@ -40,6 +40,8 @@ rtmb_glmer(
 \item{weak_info_prior}{List of hyperparameters for the weakly informative priors and regularization.}
 
 \item{init}{List of initial values (generated automatically based on glm if omitted)}
+
+\item{null}{Character string specifying the target parameter for the null model.}
 }
 \description{
 RTMB-based GLMM wrapper function

@@ -8,8 +8,6 @@ validate_data(dat_list)
 }
 \arguments{
 \item{dat_list}{モデルに渡すデータのリスト（通常、行列や数値ベクトルを含む）。}
-
-\item{par_list}{`Dim()` で定義されたパラメータのリスト。}
 }
 \value{
 検証に成功した場合は不可視の `NULL` を返します。問題がある場合は `stop()` で処理を中断、または `warning()` を発出します。

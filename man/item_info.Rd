@@ -6,6 +6,11 @@
 \usage{
 item_info(x, ...)
 }
+\arguments{
+\item{x}{An object of class RTMB_Fit_Base}
+
+\item{...}{Additional arguments.}
+}
 \description{
 項目情報関数の計算
 }

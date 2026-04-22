@@ -34,6 +34,8 @@ rtmb_lm(
 \item{weak_info_prior}{List of hyperparameters for the weakly informative priors and regularization.}
 
 \item{init}{List of initial values.}
+
+\item{null}{Character string specifying the target parameter for the null model.}
 }
 \description{
 RTMB-based Linear Regression wrapper function

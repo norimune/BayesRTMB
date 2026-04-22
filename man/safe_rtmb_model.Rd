@@ -16,11 +16,15 @@ safe_rtmb_model(
 \arguments{
 \item{data}{`validate_data` を通過したデータのリスト。}
 
-\item{parameters}{`Dim()` で定義されたパラメータのリスト。}
+\item{code}{`model_code({})` で定義された尤度や事前分布のコードブロック。}
 
-\item{model}{`model_code({})` で定義された尤度や事前分布のコードブロック。}
+\item{par_names}{各パラメータの次元に対応する変数名のリスト（省略可能）。}
 
-\item{generate}{`transform_code({})` で定義された生成量のコードブロック（省略可能）。}
+\item{init}{パラメータの初期値のリストまたは数値ベクトル（省略可能）。}
+
+\item{view}{結果のsummary出力時に優先して表示したいパラメータ名の文字ベクトル（省略可能）。}
+
+\item{null_target}{帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布を指定する文字列（省略可能）。}
 }
 \value{
 正常にコンパイルが完了した場合は、`rtmb_model` オブジェクト（R6クラスのインスタンス）を返します。

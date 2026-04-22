@@ -7,7 +7,11 @@
 \method{print}{summary_BayesRTMB}(x, digits = NULL, ...)
 }
 \arguments{
+\item{x}{An object of class summary_BayesRTMB}
+
 \item{digits}{integer}
+
+\item{...}{Additional arguments.}
 }
 \description{
 print for summary_BayesRTMB class

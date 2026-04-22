@@ -114,7 +114,9 @@ as_summary_df <- function(df) {
 
 #' print for summary_BayesRTMB class
 #' @method print summary_BayesRTMB
+#' @param x An object of class summary_BayesRTMB
 #' @param digits integer
+#' @param ... Additional arguments.
 #' @export
 print.summary_BayesRTMB <- function(x, digits = NULL,...) {
   df <- x
@@ -174,13 +176,21 @@ print.summary_BayesRTMB <- function(x, digits = NULL,...) {
 }
 
 #' 周辺効果 (Conditional Effects) を計算する
+#' @param fit モデルのフィットオブジェクト。
+#' @param effect 効果を可視化したい変数名。
+#' @param ... その他の引数。
 #' @export
 conditional_effects <- function(fit, effect, ...) {
   UseMethod("conditional_effects")
 }
 
-#' ce_rtmb クラス専用のプロットメソッド (Base R)
+#' MCMCフィットオブジェクトの周辺効果を計算する
 #' @method conditional_effects mcmc_fit
+#' @param fit `MCMC_Fit` クラスのオブジェクト。
+#' @param effect 効果を可視化したい説明変数の名前（例: "X1" や "X1:X2"）。
+#' @param resolution 連続変数の場合に計算するグリッドの解像度（デフォルトは100）。
+#' @param prob 信用区間の確率（デフォルトは0.95）。
+#' @param ... その他の引数。
 #' @export
 conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, ...) {
   model_obj <- fit$model
@@ -293,6 +303,8 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
 
 #' ce_rtmb クラス専用のプロットメソッド (Base R)
 #' @method plot ce_rtmb
+#' @param x An object of class ce_rtmb
+#' @param ... Additional arguments.
 #' @export
 plot.ce_rtmb <- function(x, ...) {
   df <- x$data
@@ -380,6 +392,8 @@ plot.ce_rtmb <- function(x, ...) {
 
 #' ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
 #' @method print ce_rtmb
+#' @param x An object of class ce_rtmb
+#' @param ... Additional arguments.
 #' @export
 print.ce_rtmb <- function(x, ...) {
   plot(x, ...)
@@ -387,14 +401,23 @@ print.ce_rtmb <- function(x, ...) {
 }
 
 #' 項目情報関数の計算
+#' @param x An object of class RTMB_Fit_Base
+#' @param ... Additional arguments.
 #' @export
 item_info <- function(x, ...) UseMethod("item_info")
 
 #' テスト情報関数の計算
+#' @param x An object of class RTMB_Fit_Base
+#' @param ... Additional arguments.
 #' @export
 test_info <- function(x, ...) UseMethod("test_info")
 
+#' RTMB_Fit_Base の項目情報関数
 #' @method item_info RTMB_Fit_Base
+#' @param x An object of class RTMB_Fit_Base.
+#' @param theta_seq 評価する特性値（能力値）のシーケンス。
+#' @param items 計算対象を特定の項目に絞る場合のインデックスまたは項目名（省略可能）。
+#' @param ... Additional arguments.
 #' @export
 item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
   # MAP_Fit uses $par, MCMC/VB use EAP()
@@ -551,9 +574,16 @@ print.rtmb_test_info <- function(x, ...) {
 
 #' 項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
 #' @export
+#' @param x An object of class
+#' @param ... Additional arguments.
 item_curve <- function(x, ...) UseMethod("item_curve")
 
+#' RTMB_Fit_Base の項目反応曲線
 #' @method item_curve RTMB_Fit_Base
+#' @param x An object of class RTMB_Fit_Base.
+#' @param theta_seq 評価する特性値（能力値）のシーケンス。
+#' @param items 計算対象を特定の項目に絞る場合のインデックスまたは項目名（省略可能）。
+#' @param ... Additional arguments.
 #' @export
 item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
   est <- if (!is.null(x$par)) x$par else x$EAP()
@@ -805,6 +835,9 @@ bayes_factor <- function(logml1, logml2) {
 }
 
 #' bayes_factor オブジェクトの print メソッド
+#' @param x An object of class bayes_factor.
+#' @param digits 表示する小数点以下の桁数（デフォルトは4）。
+#' @param ... Additional arguments.
 #' @export
 print.bayes_factor <- function(x, digits = 4, ...) {
   cat("Bayes Factor (BF12) :", round(x$BF12, digits), "\n")

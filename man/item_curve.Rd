@@ -6,6 +6,11 @@
 \usage{
 item_curve(x, ...)
 }
+\arguments{
+\item{x}{An object of class}
+
+\item{...}{Additional arguments.}
+}
 \description{
 項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
 }

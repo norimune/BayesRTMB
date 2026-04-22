@@ -6,6 +6,11 @@
 \usage{
 test_info(x, ...)
 }
+\arguments{
+\item{x}{An object of class RTMB_Fit_Base}
+
+\item{...}{Additional arguments.}
+}
 \description{
 テスト情報関数の計算
 }

@@ -2,10 +2,21 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{conditional_effects.mcmc_fit}
 \alias{conditional_effects.mcmc_fit}
-\title{ce_rtmb クラス専用のプロットメソッド (Base R)}
+\title{MCMCフィットオブジェクトの周辺効果を計算する}
 \usage{
 \method{conditional_effects}{mcmc_fit}(fit, effect, resolution = 100, prob = 0.95, ...)
 }
+\arguments{
+\item{fit}{`MCMC_Fit` クラスのオブジェクト。}
+
+\item{effect}{効果を可視化したい説明変数の名前（例: "X1" や "X1:X2"）。}
+
+\item{resolution}{連続変数の場合に計算するグリッドの解像度（デフォルトは100）。}
+
+\item{prob}{信用区間の確率（デフォルトは0.95）。}
+
+\item{...}{その他の引数。}
+}
 \description{
-ce_rtmb クラス専用のプロットメソッド (Base R)
+MCMCフィットオブジェクトの周辺効果を計算する
 }
