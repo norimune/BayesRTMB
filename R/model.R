@@ -462,7 +462,7 @@ model_code <- function(expr, env = parent.frame()) {
         }
 
         if (use_pkg_namespace) {
-          func_call <- call("::", as.name("BayesRTMB"), as.name(actual_name))
+          func_call <- call(":::", as.name("BayesRTMB"), as.name(actual_name))
         } else {
           func_call <- as.name(actual_name)
         }
