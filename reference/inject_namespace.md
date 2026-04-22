@@ -1,6 +1,7 @@
-# ユーザーのコード(AST)を探索し、パッケージの関数に名前空間を自動付与する関数
+# Internal function to search AST and inject namespace to package functions
 
-ユーザーのコード(AST)を探索し、パッケージの関数に名前空間を自動付与する関数
+Internal function to search AST and inject namespace to package
+functions
 
 ## Usage
 
@@ -12,8 +13,8 @@ inject_namespace(expr, pkg = "BayesRTMB")
 
 - expr:
 
-  評価前のコード(AST)
+  Unevaluated code (AST)
 
 - pkg:
 
-  対象のパッケージ名
+  Target package name

@@ -1,6 +1,6 @@
-# ce_rtmb クラス専用のプロットメソッド (Base R)
+# Plot method for ce_rtmb class (Base R)
 
-ce_rtmb クラス専用のプロットメソッド (Base R)
+Plot method for ce_rtmb class (Base R)
 
 ## Usage
 

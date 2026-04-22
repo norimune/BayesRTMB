@@ -1,8 +1,8 @@
-# 安全なRTMBモデルの構築（エラーメッセージ翻訳付き）
+# Safe RTMB model construction (with error message translation)
 
-\`rtmb_model\` をラップし、内部の \`MakeADFun\` 実行時に発生する
-C++/RTMB 由来の
-難解なエラーメッセージを、ユーザーが理解しやすい日本語のヒントに翻訳して出力します。
+Wraps \`rtmb_model\` to translate cryptic error messages generated
+during \`MakeADFun\` execution (originating from C++/RTMB) into
+user-friendly hints.
 
 ## Usage
 
@@ -21,29 +21,32 @@ safe_rtmb_model(
 
 - data:
 
-  \`validate_data\` を通過したデータのリスト。
+  A list of data that has passed \`validate_data\`.
 
 - code:
 
-  \`model_code()\` で定義された尤度や事前分布のコードブロック。
+  Code blocks for likelihood and priors defined with \`model_code()\`.
 
 - par_names:
 
-  各パラメータの次元に対応する変数名のリスト（省略可能）。
+  A list of variable names corresponding to the dimensions of each
+  parameter (optional).
 
 - init:
 
-  パラメータの初期値のリストまたは数値ベクトル（省略可能）。
+  A list or numeric vector of initial values (optional).
 
 - view:
 
-  結果のsummary出力時に優先して表示したいパラメータ名の文字ベクトル（省略可能）。
+  Character vector of parameter names to be displayed preferentially in
+  summary outputs (optional).
 
 - null_target:
 
-  帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布を指定する文字列（省略可能）。
+  A character string specifying the parameter to fix and the prior to
+  disable for creating a null model (optional).
 
 ## Value
 
-正常にコンパイルが完了した場合は、\`rtmb_model\`
-オブジェクト（R6クラスのインスタンス）を返します。
+Returns an \`rtmb_model\` object (R6 class instance) upon successful
+compilation.

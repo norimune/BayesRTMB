@@ -1,6 +1,6 @@
-# \#' Positive lower-triangular normal log-probability density function
+# Positive lower-triangular normal log-probability density function
 
-\#' Positive lower-triangular normal log-probability density function
+Positive lower-triangular normal log-probability density function
 
 ## Usage
 

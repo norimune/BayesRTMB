@@ -1,6 +1,6 @@
-# 対数周辺尤度からベイズファクターを計算する関数
+# Calculate Bayes factor from log marginal likelihoods
 
-対数周辺尤度からベイズファクターを計算する関数
+Calculate Bayes factor from log marginal likelihoods
 
 ## Usage
 
@@ -12,12 +12,13 @@ bayes_factor(logml1, logml2)
 
 - logml1:
 
-  モデル1の対数周辺尤度 (対象モデルなど)
+  Log marginal likelihood of Model 1 (e.g., target model)
 
 - logml2:
 
-  モデル2の対数周辺尤度 (基準モデル/帰無モデルなど)
+  Log marginal likelihood of Model 2 (e.g., reference/null model)
 
 ## Value
 
-ベイズファクター、対数ベイズファクター、推定誤差、および解釈を含むオブジェクト
+An object containing Bayes factor, log Bayes factor, estimation error,
+and interpretation

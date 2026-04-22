@@ -1,6 +1,6 @@
-# RTMB_Fit_Base の項目情報関数
+# Item Information Function for RTMB_Fit_Base
 
-RTMB_Fit_Base の項目情報関数
+Item Information Function for RTMB_Fit_Base
 
 ## Usage
 
@@ -17,11 +17,12 @@ item_info(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...)
 
 - theta_seq:
 
-  評価する特性値（能力値）のシーケンス。
+  Sequence of trait values (ability) to evaluate.
 
 - items:
 
-  計算対象を特定の項目に絞る場合のインデックスまたは項目名（省略可能）。
+  Index or item names to restrict the calculation to specific items
+  (optional).
 
 - ...:
 

@@ -1,6 +1,6 @@
-# ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
+# Print method for ce_rtmb class (automatically calls plot)
 
-ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
+Print method for ce_rtmb class (automatically calls plot)
 
 ## Usage
 

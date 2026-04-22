@@ -1,6 +1,7 @@
-# 環境をリストに変換しつつ、元のリストの順序を保持する内部関数
+# Internal function to convert an environment to a list while maintaining original order
 
-環境をリストに変換しつつ、元のリストの順序を保持する内部関数
+Internal function to convert an environment to a list while maintaining
+original order
 
 ## Usage
 

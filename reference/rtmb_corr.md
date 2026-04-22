@@ -1,8 +1,9 @@
-# 相関行列 (多変量正規分布) 推定ラッパー
+# Wrapper for estimating correlation matrix (multivariate normal distribution)
 
-観測データから多変量正規分布を仮定して相関行列（および平均・標準偏差）を推定します。
-観測変数が2つの場合は、直接スカラーの相関係数 (\`corr\`)
-を推定するよう自動で切り替わります。
+Estimates a correlation matrix (along with means and standard
+deviations) assuming a multivariate normal distribution from observation
+data. If there are 2 observed variables, it automatically switches to
+estimate the scalar correlation coefficient (\`corr\`) directly.
 
 ## Usage
 
@@ -19,21 +20,21 @@ rtmb_corr(
 
 - data:
 
-  観測データフレームまたは行列 (N x P)。
+  Observation data frame or matrix (N x P).
 
 - prior:
 
-  事前分布のハイパーパラメータのリスト。デフォルトは
-  `list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)`。
+  List of hyperparameters for prior distributions. Default is
+  `list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)`.
 
 - init:
 
-  初期値のリスト（省略可能）。
+  List of initial values (optional).
 
 - null:
 
-  帰無モデルを作成する際のターゲット（例: `"corr"`）。省略可能。
+  Target when creating a null model (e.g., `"corr"`). Optional.
 
 ## Value
 
-`RTMB_Model` クラスのインスタンス。
+An instance of the `RTMB_Model` class.

@@ -1,6 +1,6 @@
-# bayes_factor オブジェクトの print メソッド
+# Print method for bayes_factor objects
 
-bayes_factor オブジェクトの print メソッド
+Print method for bayes_factor objects
 
 ## Usage
 
@@ -17,7 +17,7 @@ print(x, digits = 4, ...)
 
 - digits:
 
-  表示する小数点以下の桁数（デフォルトは4）。
+  Number of decimal places to display (default is 4).
 
 - ...:
 

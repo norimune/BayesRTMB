@@ -2,13 +2,9 @@
 
 Transformed Code Wrapper for RTMB
 
-Transformed Code Wrapper for RTMB
-
 ## Usage
 
 ``` r
-transform_code(expr, env = parent.frame())
-
 transform_code(expr, env = parent.frame())
 ```
 
@@ -23,7 +19,5 @@ transform_code(expr, env = parent.frame())
   Environment to assign to the generated function.
 
 ## Value
-
-A function taking (dat, par) that returns a named list.
 
 A function taking (dat, par) that returns a named list.

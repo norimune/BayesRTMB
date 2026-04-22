@@ -1,6 +1,6 @@
-# MCMCフィットオブジェクトの周辺効果を計算する
+# Calculate conditional effects for MCMC fit objects
 
-MCMCフィットオブジェクトの周辺効果を計算する
+Calculate conditional effects for MCMC fit objects
 
 ## Usage
 
@@ -13,20 +13,21 @@ conditional_effects(fit, effect, resolution = 100, prob = 0.95, ...)
 
 - fit:
 
-  \`MCMC_Fit\` クラスのオブジェクト。
+  An object of class \`MCMC_Fit\`.
 
 - effect:
 
-  効果を可視化したい説明変数の名前（例: "X1" や "X1:X2"）。
+  Name of the explanatory variable to visualize (e.g., "X1" or "X1:X2").
 
 - resolution:
 
-  連続変数の場合に計算するグリッドの解像度（デフォルトは100）。
+  Grid resolution to calculate for continuous variables (default is
+  100).
 
 - prob:
 
-  信用区間の確率（デフォルトは0.95）。
+  Probability for the credible interval (default is 0.95).
 
 - ...:
 
-  その他の引数。
+  Additional arguments.

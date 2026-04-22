@@ -1,8 +1,9 @@
-# パラメータ定義用コードブロック
+# Code block for parameter definitions
 
-\`rtmb_model\` に渡すパラメータのリストを定義します。 \`\`
-で囲まれたブロック内で \`変数名 = Dim(...)\` の形式で記述することで、
-評価を遅延させ、モデル構築時の厳密なエラーチェックを可能にします。
+Defines the list of parameters to be passed to \`rtmb_model\`. By
+writing in the format \`variable_name = Dim(...)\` within a block
+enclosed in \`\`, evaluation is delayed, enabling strict error checking
+during model construction.
 
 ## Usage
 
@@ -14,8 +15,8 @@ parameters_code(expr)
 
 - expr:
 
-  \`\` で囲まれたパラメータ定義の式
+  A parameter definition expression enclosed in \`\`.
 
 ## Value
 
-評価が遅延されたパラメータのリスト
+A lazily evaluated list of parameters.

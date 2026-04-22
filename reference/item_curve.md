@@ -1,6 +1,6 @@
-# 項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
+# Calculate Item Response Curve / Category Response Curve
 
-項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
+Calculate Item Response Curve / Category Response Curve
 
 ## Usage
 

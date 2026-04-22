@@ -1,6 +1,6 @@
-# 項目情報関数の計算
+# Calculate Item Information Function
 
-項目情報関数の計算
+Calculate Item Information Function
 
 ## Usage
 

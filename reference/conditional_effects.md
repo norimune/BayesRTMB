@@ -1,6 +1,6 @@
-# 周辺効果 (Conditional Effects) を計算する
+# Calculate Conditional Effects
 
-周辺効果 (Conditional Effects) を計算する
+Calculate Conditional Effects
 
 ## Usage
 
@@ -12,12 +12,12 @@ conditional_effects(fit, effect, ...)
 
 - fit:
 
-  モデルのフィットオブジェクト。
+  Model fit object.
 
 - effect:
 
-  効果を可視化したい変数名。
+  Name of the variable to visualize the effect.
 
 - ...:
 
-  その他の引数。
+  Additional arguments.

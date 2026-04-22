@@ -1,6 +1,7 @@
-# StanライクなRTMBモデル定義ブロック (ハイブリッド対応版)
+# Stan-like RTMB model definition block (Hybrid syntax supported)
 
-R標準のカンマ区切り記法と、Stan風のカンマなし記法(の内側での記述)の両方に対応します。
+Supports both R standard comma-separated syntax and Stan-like comma-less
+syntax (within ).
 
 ## Usage
 
@@ -12,8 +13,8 @@ rtmb_code(...)
 
 - ...:
 
-  モデル定義ブロック
+  Model definition blocks.
 
 ## Value
 
-未評価のコードブロックのリスト
+A list of unevaluated code blocks.

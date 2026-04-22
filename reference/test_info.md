@@ -1,6 +1,6 @@
-# テスト情報関数の計算
+# Calculate Test Information Function
 
-テスト情報関数の計算
+Calculate Test Information Function
 
 ## Usage
 

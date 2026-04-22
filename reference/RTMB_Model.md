@@ -1,8 +1,8 @@
-# RTMB_Model インスタンスを生成するラッパー関数
+# Wrapper function to create an RTMB_Model instance
 
-ユーザーが定義したデータ、およびモデルコード（尤度や事前分布）を結合し、
-ベイズ推論（MCMC, VB, MAP推定）を実行するための \`RTMB_Model\`
-(R6クラス) インスタンスを生成します。
+Combines user-defined data and model code (likelihood and priors) to
+create an \`RTMB_Model\` (R6 class) instance for Bayesian inference
+(MCMC, VB, MAP estimation).
 
 ## Usage
 
@@ -21,33 +21,35 @@ rtmb_model(
 
 - data:
 
-  モデルで使用する観測データや定数（サンプルサイズなど）を含む名前付きリスト。
+  A named list containing observation data and constants (e.g., sample
+  size) used in the model.
 
 - code:
 
-  \`rtmb_code(...)\` で記述されたモデル定義ブロック（data, parameters,
-  model, transform, generate を含む）。
+  A model definition block described by \`rtmb_code(...)\` (including
+  data, parameters, model, transform, generate).
 
 - par_names:
 
-  各パラメータの次元に対応する具体的な変数名のリスト（省略可能）。
+  A list of specific variable names corresponding to the dimensions of
+  each parameter (optional).
 
 - init:
 
-  パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。
+  A list or numeric vector of initial values for parameters (optional).
+  If not specified, initialized randomly.
 
 - view:
 
-  \`summary()\`
-  などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。
+  Character vector of parameter names to be displayed preferentially at
+  the top when outputting results like \`summary()\` (optional).
 
 - null_target:
 
-  Character string.
-  帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布をフォーミュラ形式の文字列で指定します（例:
-  `"delta ~ cauchy(0, r)"`）。指定しない場合は `NULL`（デフォルト）。
+  Character string. To simultaneously create a null model, specify the
+  target parameter to fix and the prior distribution to disable as a
+  formula string (e.g., `"delta ~ cauchy(0, r)"`). Default is `NULL`.
 
 ## Value
 
-モデルのコンパイルと事前テストが完了した \`RTMB_Model\`
-クラスのインスタンス。
+An \`RTMB_Model\` class instance with compiled and pre-tested model.

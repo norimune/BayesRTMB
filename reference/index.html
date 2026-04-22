@@ -3,7 +3,7 @@
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
 
 
-    <nav class="navbar navbar-expand-lg fixed-top bg-light" data-bs-theme="light" aria-label="Site navigation"><div class="container">
+    <nav class="navbar navbar-expand-lg fixed-top bg-primary" data-bs-theme="dark" aria-label="Site navigation"><div class="container">
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
@@ -84,7 +84,7 @@
           <code><a href="RTMB_Model.html">rtmb_model()</a></code>
 
         </dt>
-        <dd>RTMB_Model インスタンスを生成するラッパー関数</dd>
+        <dd>Wrapper function to create an RTMB_Model instance</dd>
 
         <dt>
 
@@ -98,98 +98,21 @@
           <code><a href="bayes_factor.html">bayes_factor()</a></code>
 
         </dt>
-        <dd>対数周辺尤度からベイズファクターを計算する関数</dd>
-
-        <dt>
-
-          <code><a href="bernoulli_logit_lpmf.html">bernoulli_logit_lpmf()</a></code>
-
-        </dt>
-        <dd>Bernoulli log-probability mass function with logit parameterization</dd>
-
-        <dt>
-
-          <code><a href="bernoulli_lpmf.html">bernoulli_lpmf()</a></code>
-
-        </dt>
-        <dd>Bernoulli log-probability mass function</dd>
-
-        <dt>
-
-          <code><a href="beta_lpdf.html">beta_lpdf()</a></code>
-
-        </dt>
-        <dd>Beta log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="binomial_logit_lpmf.html">binomial_logit_lpmf()</a></code>
-
-        </dt>
-        <dd>Binomial log-probability mass function with logit parameterization</dd>
-
-        <dt>
-
-          <code><a href="binomial_lpmf.html">binomial_lpmf()</a></code>
-
-        </dt>
-        <dd>Binomial log-probability mass function</dd>
-
-        <dt>
-
-          <code><a href="bw_categorical_logit_lpmf.html">bw_categorical_logit_lpmf()</a></code>
-
-        </dt>
-        <dd>Best-Worst Categorical Logit Log-PMF (RTMB optimized)</dd>
-
-        <dt>
-
-          <code><a href="categorical_logit_lpmf.html">categorical_logit_lpmf()</a></code>
-
-        </dt>
-        <dd>Categorical log-probability mass function with logit parameterization</dd>
-
-        <dt>
-
-          <code><a href="categorical_lpmf.html">categorical_lpmf()</a></code>
-
-        </dt>
-        <dd>Categorical log-probability mass function</dd>
-
-        <dt>
-
-          <code><a href="cauchy_lpdf.html">cauchy_lpdf()</a></code>
-
-        </dt>
-        <dd>Cauchy log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="centered_tri_multi_normal_lpdf.html">centered_tri_multi_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Centered triangular multivariate normal log-probability density function</dd>
+        <dd>Calculate Bayes factor from log marginal likelihoods</dd>
 
         <dt>
 
           <code><a href="conditional_effects.html">conditional_effects()</a></code>
 
         </dt>
-        <dd>周辺効果 (Conditional Effects) を計算する</dd>
+        <dd>Calculate Conditional Effects</dd>
 
         <dt>
 
           <code><a href="conditional_effects.mcmc_fit.html">conditional_effects(<i>&lt;mcmc_fit&gt;</i>)</a></code>
 
         </dt>
-        <dd>MCMCフィットオブジェクトの周辺効果を計算する</dd>
-
-        <dt>
-
-          <code><a href="dirichlet_lpdf.html">dirichlet_lpdf()</a></code>
-
-        </dt>
-        <dd>Dirichlet log-probability density function</dd>
+        <dd>Calculate conditional effects for MCMC fit objects</dd>
 
         <dt>
 
@@ -200,31 +123,10 @@
 
         <dt>
 
-          <code><a href="exponential_lpdf.html">exponential_lpdf()</a></code>
-
-        </dt>
-        <dd>Exponential log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="fa_multi_normal_lpdf.html">fa_multi_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Factor analysis multivariate normal log-probability density function</dd>
-
-        <dt>
-
           <code><a href="fabs.html">fabs()</a></code>
 
         </dt>
         <dd>Smooth absolute value function</dd>
-
-        <dt>
-
-          <code><a href="gamma_lpdf.html">gamma_lpdf()</a></code>
-
-        </dt>
-        <dd>Gamma log-probability density function</dd>
 
         <dt>
 
@@ -235,13 +137,6 @@
 
         <dt>
 
-          <code><a href="half_normal_lpdf.html">half_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Half-Normal log-probability density function</dd>
-
-        <dt>
-
           <code><a href="inv_logit.html">inv_logit()</a></code>
 
         </dt>
@@ -249,59 +144,31 @@
 
         <dt>
 
-          <code><a href="inverse_gamma_lpdf.html">inverse_gamma_lpdf()</a></code>
-
-        </dt>
-        <dd>Inverse-gamma log-probability density function</dd>
-
-        <dt>
-
           <code><a href="item_curve.RTMB_Fit_Base.html">item_curve(<i>&lt;RTMB_Fit_Base&gt;</i>)</a></code>
 
         </dt>
-        <dd>RTMB_Fit_Base の項目反応曲線</dd>
+        <dd>Item Response Curve for RTMB_Fit_Base</dd>
 
         <dt>
 
           <code><a href="item_curve.html">item_curve()</a></code>
 
         </dt>
-        <dd>項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算</dd>
+        <dd>Calculate Item Response Curve / Category Response Curve</dd>
 
         <dt>
 
           <code><a href="item_info.RTMB_Fit_Base.html">item_info(<i>&lt;RTMB_Fit_Base&gt;</i>)</a></code>
 
         </dt>
-        <dd>RTMB_Fit_Base の項目情報関数</dd>
+        <dd>Item Information Function for RTMB_Fit_Base</dd>
 
         <dt>
 
           <code><a href="item_info.html">item_info()</a></code>
 
         </dt>
-        <dd>項目情報関数の計算</dd>
-
-        <dt>
-
-          <code><a href="laplace_lpdf.html">laplace_lpdf()</a></code>
-
-        </dt>
-        <dd>Laplace log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="lkj_CF_corr_lpdf.html">lkj_CF_corr_lpdf()</a></code>
-
-        </dt>
-        <dd>LKJ correlation log-probability density function for Cholesky factors</dd>
-
-        <dt>
-
-          <code><a href="lkj_corr_lpdf.html">lkj_corr_lpdf()</a></code>
-
-        </dt>
-        <dd>LKJ correlation log-probability density function</dd>
+        <dd>Calculate Item Information Function</dd>
 
         <dt>
 
@@ -361,27 +228,6 @@
 
         <dt>
 
-          <code><a href="logit_normal_lpdf.html">logit_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Logit-Normal log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="lognormal_lpdf.html">lognormal_lpdf()</a></code>
-
-        </dt>
-        <dd>Lognormal log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="lower_tri_normal_lpdf.html">lower_tri_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Lower-triangular normal log-probability density function</dd>
-
-        <dt>
-
           <code><a href="model_code.html">model_code()</a></code>
 
         </dt>
@@ -389,73 +235,17 @@
 
         <dt>
 
-          <code><a href="multi_normal_CF_lpdf.html">multi_normal_CF_lpdf()</a></code>
-
-        </dt>
-        <dd>Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix</dd>
-
-        <dt>
-
-          <code><a href="multi_normal_lpdf.html">multi_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Multivariate normal log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="multinomial_lpmf.html">multinomial_lpmf()</a></code>
-
-        </dt>
-        <dd>Multinomial log-probability mass function</dd>
-
-        <dt>
-
-          <code><a href="neg_binomial_2_lpmf.html">neg_binomial_2_lpmf()</a></code>
-
-        </dt>
-        <dd>Negative binomial log-probability mass function (alternative parameterization)</dd>
-
-        <dt>
-
-          <code><a href="neg_binomial_lpmf.html">neg_binomial_lpmf()</a></code>
-
-        </dt>
-        <dd>Negative binomial log-probability mass function</dd>
-
-        <dt>
-
-          <code><a href="normal_lpdf.html">normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Normal log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="normal_mixture_lpdf.html">normal_mixture_lpdf()</a></code>
-
-        </dt>
-        <dd>Normal Mixture log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="ordered_logistic_lpmf.html">ordered_logistic_lpmf()</a></code>
-
-        </dt>
-        <dd>Ordered logistic log-probability mass function</dd>
-
-        <dt>
-
           <code><a href="parameters_code.html">parameters_code()</a></code>
 
         </dt>
-        <dd>パラメータ定義用コードブロック</dd>
+        <dd>Code block for parameter definitions</dd>
 
         <dt>
 
           <code><a href="plot.ce_rtmb.html">plot(<i>&lt;ce_rtmb&gt;</i>)</a></code>
 
         </dt>
-        <dd>ce_rtmb クラス専用のプロットメソッド (Base R)</dd>
+        <dd>Plot method for ce_rtmb class (Base R)</dd>
 
         <dt>
 
@@ -494,38 +284,17 @@
 
         <dt>
 
-          <code><a href="poisson_lpmf.html">poisson_lpmf()</a></code>
-
-        </dt>
-        <dd>Poisson log-probability mass function</dd>
-
-        <dt>
-
-          <code><a href="positive_centered_tri_multi_normal_lpdf.html">positive_centered_tri_multi_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>Positive centered triangular multivariate normal log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="positive_lower_tri_normal_lpdf.html">positive_lower_tri_normal_lpdf()</a></code>
-
-        </dt>
-        <dd>#' Positive lower-triangular normal log-probability density function</dd>
-
-        <dt>
-
           <code><a href="print.bayes_factor.html">print(<i>&lt;bayes_factor&gt;</i>)</a></code>
 
         </dt>
-        <dd>bayes_factor オブジェクトの print メソッド</dd>
+        <dd>Print method for bayes_factor objects</dd>
 
         <dt>
 
           <code><a href="print.ce_rtmb.html">print(<i>&lt;ce_rtmb&gt;</i>)</a></code>
 
         </dt>
-        <dd>ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)</dd>
+        <dd>Print method for ce_rtmb class (automatically calls plot)</dd>
 
         <dt>
 
@@ -560,14 +329,14 @@
           <code><a href="rtmb_code.html">rtmb_code()</a></code>
 
         </dt>
-        <dd>StanライクなRTMBモデル定義ブロック (ハイブリッド対応版)</dd>
+        <dd>Stan-like RTMB model definition block (Hybrid syntax supported)</dd>
 
         <dt>
 
           <code><a href="rtmb_corr.html">rtmb_corr()</a></code>
 
         </dt>
-        <dd>相関行列 (多変量正規分布) 推定ラッパー</dd>
+        <dd>Wrapper for estimating correlation matrix (multivariate normal distribution)</dd>
 
         <dt>
 
@@ -616,7 +385,7 @@
           <code><a href="safe_rtmb_model.html">safe_rtmb_model()</a></code>
 
         </dt>
-        <dd>安全なRTMBモデルの構築（エラーメッセージ翻訳付き）</dd>
+        <dd>Safe RTMB model construction (with error message translation)</dd>
 
         <dt>
 
@@ -630,7 +399,7 @@
           <code><a href="sort_loadings.html">sort_loadings()</a></code>
 
         </dt>
-        <dd>因子負荷量をソートして見やすく表示する関数</dd>
+        <dd>Sort and display factor loadings neatly</dd>
 
         <dt>
 
@@ -641,31 +410,10 @@
 
         <dt>
 
-          <code><a href="student_t_lpdf.html">student_t_lpdf()</a></code>
-
-        </dt>
-        <dd>Student-t log-probability density function</dd>
-
-        <dt>
-
           <code><a href="stz_basis.html">stz_basis()</a></code>
 
         </dt>
         <dd>stz basis function</dd>
-
-        <dt>
-
-          <code><a href="sufficient_multi_normal_CF_lpdf.html">sufficient_multi_normal_CF_lpdf()</a></code>
-
-        </dt>
-        <dd>Sufficient statistics multivariate normal log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="sufficient_multi_normal_fa_lpdf.html">sufficient_multi_normal_fa_lpdf()</a></code>
-
-        </dt>
-        <dd>Sufficient statistics factor analysis multivariate normal log-probability density function</dd>
 
         <dt>
 
@@ -676,17 +424,10 @@
 
         <dt>
 
-          <code><a href="sum_to_zero_multi_norm_lpdf.html">sum_to_zero_multi_norm_lpdf()</a></code>
-
-        </dt>
-        <dd>Sum-to-zero multivariate normal log-probability density function</dd>
-
-        <dt>
-
           <code><a href="test_info.html">test_info()</a></code>
 
         </dt>
-        <dd>テスト情報関数の計算</dd>
+        <dd>Calculate Test Information Function</dd>
 
         <dt>
 
@@ -718,38 +459,10 @@
 
         <dt>
 
-          <code><a href="uniform_lpdf.html">uniform_lpdf()</a></code>
-
-        </dt>
-        <dd>Uniform log-probability density function</dd>
-
-        <dt>
-
           <code><a href="validate_data.html">validate_data()</a></code>
 
         </dt>
-        <dd>データとパラメータの事前検証</dd>
-
-        <dt>
-
-          <code><a href="weibull_lpdf.html">weibull_lpdf()</a></code>
-
-        </dt>
-        <dd>Weibull log-probability density function</dd>
-
-        <dt>
-
-          <code><a href="wishart_CF_lpdf.html">wishart_CF_lpdf()</a></code>
-
-        </dt>
-        <dd>Wishart log-probability density function parameterized by Cholesky factor of correlation matrix</dd>
-
-        <dt>
-
-          <code><a href="wishart_lpdf.html">wishart_lpdf()</a></code>
-
-        </dt>
-        <dd>Wishart log-probability density function</dd>
+        <dd>Pre-validation of data and parameters</dd>
       </dl></div>
   </main></div>
 
