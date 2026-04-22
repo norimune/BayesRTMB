@@ -1,0 +1,33 @@
+# Generate Random Initial Values
+
+Generates random initial values for model parameters by drawing from a
+uniform distribution on the unconstrained scale and then transforming
+them to the constrained scale.
+
+## Usage
+
+``` r
+generate_random_init(pl_full, par_list, range = 2)
+```
+
+## Arguments
+
+- pl_full:
+
+  A list containing the full parameter structure, including the \`init\`
+  field which serves as a template.
+
+- par_list:
+
+  A list defining the structure and constraints of the parameters,
+  including \`unc_length\`.
+
+- range:
+
+  Numeric; the range for the uniform distribution \`\[-range, range\]\`
+  used for generating unconstrained values. Default is 2.
+
+## Value
+
+A numeric vector of initial values where \`NA\` elements are replaced
+with randomly generated constrained values.
