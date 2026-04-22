@@ -19,3 +19,4 @@ The sum of the log-probability.
 \description{
 Multinomial log-probability mass function
 }
+\keyword{internal}

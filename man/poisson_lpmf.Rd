@@ -17,3 +17,4 @@ The sum of the log-probability.
 \description{
 Poisson log-probability mass function
 }
+\keyword{internal}

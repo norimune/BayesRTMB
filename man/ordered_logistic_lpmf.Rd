@@ -19,3 +19,4 @@ The sum of the log-probability.
 \description{
 Ordered logistic log-probability mass function
 }
+\keyword{internal}

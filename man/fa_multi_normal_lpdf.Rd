@@ -21,3 +21,4 @@ The sum of the log-density.
 \description{
 Woodbury matrix identity is used for efficient computation.
 }
+\keyword{internal}

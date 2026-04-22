@@ -19,3 +19,4 @@ The log-density with all constant terms.
 \description{
 Wishart log-probability density function
 }
+\keyword{internal}

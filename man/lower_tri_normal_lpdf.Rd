@@ -19,3 +19,4 @@ The log-density calculated only for the non-zero lower triangular elements.
 \description{
 Lower-triangular normal log-probability density function
 }
+\keyword{internal}

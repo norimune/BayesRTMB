@@ -17,3 +17,4 @@ The sum of the log-probability.
 \description{
 Categorical log-probability mass function with logit parameterization
 }
+\keyword{internal}

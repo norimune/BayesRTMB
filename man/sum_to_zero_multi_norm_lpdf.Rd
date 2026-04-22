@@ -19,3 +19,4 @@ The log-density.
 \description{
 Sum-to-zero multivariate normal log-probability density function
 }
+\keyword{internal}

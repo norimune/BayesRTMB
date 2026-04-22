@@ -17,3 +17,4 @@ The log-density.
 \description{
 Centered triangular multivariate normal log-probability density function
 }
+\keyword{internal}

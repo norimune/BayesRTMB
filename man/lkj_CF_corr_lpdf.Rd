@@ -17,3 +17,4 @@ The log-density.
 \description{
 LKJ correlation log-probability density function for Cholesky factors
 }
+\keyword{internal}

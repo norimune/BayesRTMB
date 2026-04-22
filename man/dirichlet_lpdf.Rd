@@ -17,3 +17,4 @@ The sum of the log-density.
 \description{
 Dirichlet log-probability density function
 }
+\keyword{internal}

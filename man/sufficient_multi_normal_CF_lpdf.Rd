@@ -25,3 +25,4 @@ The exact log-likelihood of the N raw observations.
 \description{
 Sufficient statistics multivariate normal log-probability density function
 }
+\keyword{internal}

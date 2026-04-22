@@ -21,3 +21,4 @@ The log-density with all constant terms.
 \description{
 Wishart log-probability density function parameterized by Cholesky factor of correlation matrix
 }
+\keyword{internal}

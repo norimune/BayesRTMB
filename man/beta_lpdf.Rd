@@ -19,3 +19,4 @@ The sum of the log-density.
 \description{
 Beta log-probability density function
 }
+\keyword{internal}

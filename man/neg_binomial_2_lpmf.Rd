@@ -19,3 +19,4 @@ The sum of the log-probability.
 \description{
 Negative binomial log-probability mass function (alternative parameterization)
 }
+\keyword{internal}

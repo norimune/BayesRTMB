@@ -21,3 +21,4 @@ The sum of the log-density.
 \description{
 Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix
 }
+\keyword{internal}

@@ -19,3 +19,4 @@ Log-probability (scalar advector).
 \description{
 Best-Worst Categorical Logit Log-PMF (RTMB optimized)
 }
+\keyword{internal}

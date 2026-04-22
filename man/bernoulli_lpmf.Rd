@@ -17,3 +17,4 @@ The sum of the log-probability.
 \description{
 Bernoulli log-probability mass function
 }
+\keyword{internal}

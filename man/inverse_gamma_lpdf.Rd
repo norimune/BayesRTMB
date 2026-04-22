@@ -19,3 +19,4 @@ The sum of the log-density.
 \description{
 Inverse-gamma log-probability density function
 }
+\keyword{internal}

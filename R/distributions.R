@@ -7,7 +7,7 @@ NULL
 #' @param mean Vector of means.
 #' @param sd Vector of standard deviations.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 normal_lpdf <- function(x, mean, sd) {
   sum(dnorm(x, mean = mean, sd = sd, log = TRUE))
 }
@@ -18,7 +18,7 @@ normal_lpdf <- function(x, mean, sd) {
 #' @param meanlog Mean of the distribution on the log scale.
 #' @param sdlog Standard deviation of the distribution on the log scale.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 lognormal_lpdf <- function(x, meanlog, sdlog) {
   sum(suppressWarnings(dlnorm(x, meanlog = meanlog, sdlog = sdlog, log = TRUE)))
 }
@@ -28,7 +28,7 @@ lognormal_lpdf <- function(x, meanlog, sdlog) {
 #' @param x Vector of quantiles.
 #' @param rate Vector of rates.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 exponential_lpdf <- function(x, rate) {
   sum(dexp(x, rate, log = TRUE))
 }
@@ -38,7 +38,7 @@ exponential_lpdf <- function(x, rate) {
 #' @param x Vector of quantiles (must be non-negative).
 #' @param sd Vector of standard deviations (scale parameter).
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 half_normal_lpdf <- function(x, sd) {
   sum(dnorm(x, mean = 0, sd = sd, log = TRUE) + log(2))
 }
@@ -49,7 +49,7 @@ half_normal_lpdf <- function(x, sd) {
 #' @param a Shape parameter alpha.
 #' @param b Shape parameter beta.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 beta_lpdf <- function(x, a, b) {
   sum(dbeta(x, a, b, log = TRUE))
 }
@@ -60,7 +60,7 @@ beta_lpdf <- function(x, a, b) {
 #' @param shape Shape parameter.
 #' @param rate Rate parameter.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 gamma_lpdf <- function(x, shape, rate) {
   sum(suppressWarnings(dgamma(x, shape = shape, rate = rate, log = TRUE)))
 }
@@ -71,7 +71,7 @@ gamma_lpdf <- function(x, shape, rate) {
 #' @param shape Shape parameter.
 #' @param scale Scale parameter.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 inverse_gamma_lpdf <- function(x, shape, scale) {
   sum(shape * log(scale) - lgamma(shape) - (shape + 1) * log(x) - scale / x)
 }
@@ -82,7 +82,7 @@ inverse_gamma_lpdf <- function(x, shape, scale) {
 #' @param location Location parameter.
 #' @param scale Scale parameter.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 cauchy_lpdf <- function(x, location, scale) {
   sum(suppressWarnings(dcauchy(x, location = location, scale = scale, log = TRUE)))
 }
@@ -94,7 +94,7 @@ cauchy_lpdf <- function(x, location, scale) {
 #' @param mu Location parameter.
 #' @param sigma Scale parameter.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 student_t_lpdf <- function(x, df, mu = 0, sigma = 1) {
   sum(suppressWarnings(dt((x - mu) / sigma, df = df, log = TRUE) - log(sigma)))
 }
@@ -105,7 +105,7 @@ student_t_lpdf <- function(x, df, mu = 0, sigma = 1) {
 #' @param location Location parameter.
 #' @param scale Scale parameter.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 laplace_lpdf <- function(x, location = 0, scale = 1) {
   sum(-log(2 * scale) - sqrt((x - location)^2 + 1e-8) / scale)
 }
@@ -116,7 +116,7 @@ laplace_lpdf <- function(x, location = 0, scale = 1) {
 #' @param mu Vector of means on the logit scale.
 #' @param sd Vector of standard deviations on the logit scale.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 logit_normal_lpdf <- function(x, mu, sd) {
   logit_x <- qlogis(x)
   log_jacobian <- -log(x) - log1p(-x)
@@ -130,9 +130,7 @@ logit_normal_lpdf <- function(x, mu, sd) {
 #' @param shape Shape parameter.
 #' @param scale Scale parameter.
 #' @return The sum of the log-density.
-#' @export
-#'
-#'
+#' @keywords internal
 weibull_lpdf <- function(x, shape, scale) {
   sum(suppressWarnings(dweibull(x, shape = shape, scale = scale, log = TRUE)))
 }
@@ -143,7 +141,7 @@ weibull_lpdf <- function(x, shape, scale) {
 #' @param a Lower limit of the distribution.
 #' @param b Upper limit of the distribution.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 uniform_lpdf <- function(x, a, b) {
   sum(dunif(x, a, b, log = TRUE))
 }
@@ -153,7 +151,7 @@ uniform_lpdf <- function(x, a, b) {
 #' @param Omega Correlation matrix.
 #' @param eta Shape parameter.
 #' @return The log-density.
-#' @export
+#' @keywords internal
 lkj_corr_lpdf <- function(Omega, eta = 1) {
   if (length(Omega) == 1) {
     rho <- Omega
@@ -182,7 +180,7 @@ lkj_corr_lpdf <- function(Omega, eta = 1) {
 #' @param CF_Omega Cholesky factor of a correlation matrix.
 #' @param eta Shape parameter.
 #' @return The log-density.
-#' @export
+#' @keywords internal
 lkj_CF_corr_lpdf <- function(CF_Omega, eta = 1) {
   K <- nrow(CF_Omega)
   log_C <- 0
@@ -205,7 +203,7 @@ lkj_CF_corr_lpdf <- function(CF_Omega, eta = 1) {
 #' @param x Vector of binary outcomes (0 or 1).
 #' @param prob Probability of success.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 bernoulli_lpmf <- function(x, prob) {
   sum(dbinom(x, 1, prob, log = TRUE))
 }
@@ -216,7 +214,7 @@ bernoulli_lpmf <- function(x, prob) {
 #' @param size Number of trials.
 #' @param prob Probability of success.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 binomial_lpmf <- function(x, size, prob) {
   sum(dbinom(x, size, prob, log = TRUE))
 }
@@ -226,7 +224,7 @@ binomial_lpmf <- function(x, size, prob) {
 #' @param x Vector of binary outcomes (0 or 1).
 #' @param eta Linear predictor (logit probability).
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 bernoulli_logit_lpmf <- function(x, eta) {
   sum(x * eta - log1p_exp(eta))
 }
@@ -237,7 +235,7 @@ bernoulli_logit_lpmf <- function(x, eta) {
 #' @param size Number of trials.
 #' @param eta Linear predictor (logit probability).
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 binomial_logit_lpmf <- function(x, size, eta) {
   sum(lgamma(size + 1) - lgamma(x + 1) - lgamma(size - x + 1) + x * eta - size * log1p_exp(eta))
 }
@@ -247,7 +245,7 @@ binomial_logit_lpmf <- function(x, size, eta) {
 #' @param x Vector of quantiles.
 #' @param mean Expected value.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 poisson_lpmf <- function(x, mean) {
   sum(dpois(x, mean, log = TRUE))
 }
@@ -258,7 +256,7 @@ poisson_lpmf <- function(x, mean) {
 #' @param size Target for number of successful trials.
 #' @param prob Probability of success in each trial.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 neg_binomial_lpmf <- function(x, size, prob) {
   sum(suppressWarnings(dnbinom(x, size = size, prob = prob, log = TRUE)))
 }
@@ -269,7 +267,7 @@ neg_binomial_lpmf <- function(x, size, prob) {
 #' @param mu Mean parameter.
 #' @param size Dispersion parameter.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 neg_binomial_2_lpmf <- function(x, mu, size) {
   sum(suppressWarnings(dnbinom(x, size = size, mu = mu, log = TRUE)))
 }
@@ -279,7 +277,7 @@ neg_binomial_2_lpmf <- function(x, mu, size) {
 #' @param x Vector of categorical outcomes.
 #' @param prob Vector or matrix of probabilities.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 categorical_lpmf <- function(x, prob) {
   if (is.matrix(prob)) {
     sum(log(prob[cbind(seq_along(x), x)]))
@@ -293,7 +291,7 @@ categorical_lpmf <- function(x, prob) {
 #' @param x Integer or integer vector. The observed category index.
 #' @param eta A numeric vector of linear predictors (unnormalized log-probabilities).
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 categorical_logit_lpmf <- function(x, eta) {
   sum(eta[x]) - length(x) * log_sum_exp(eta)
 }
@@ -304,7 +302,7 @@ categorical_logit_lpmf <- function(x, eta) {
 #' @param size Total number of trials.
 #' @param prob Vector of probabilities for each category.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 multinomial_lpmf <- function(x, size, prob) {
   sum(suppressWarnings(dmultinom(x, size = size, prob = prob, log = TRUE)))
 }
@@ -315,7 +313,7 @@ multinomial_lpmf <- function(x, size, prob) {
 #' @param eta Linear predictor.
 #' @param cutpoints Vector of cutpoints.
 #' @return The sum of the log-probability.
-#' @export
+#' @keywords internal
 ordered_logistic_lpmf <- function(x, eta, cutpoints) {
   N <- length(x)
   K <- length(cutpoints) + 1
@@ -362,7 +360,7 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints) {
 #' @param x Vector or matrix of simplexes.
 #' @param alpha Vector of concentration parameters.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 dirichlet_lpdf <- function(x, alpha) {
   sum((alpha - 1) * log(x)) + lgamma(sum(alpha)) - sum(lgamma(alpha))
 }
@@ -372,7 +370,7 @@ dirichlet_lpdf <- function(x, alpha) {
 #' @param mean Mean of the normal distribution.
 #' @param sd Standard deviation of the normal distribution.
 #' @return The log-density calculated only for the non-zero lower triangular elements.
-#' @export
+#' @keywords internal
 lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
   R <- nrow(x)
   C <- ncol(x)
@@ -389,7 +387,7 @@ lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
 #' @param mean Mean of the normal distribution (assumed to be 0 for the half-normal correction).
 #' @param sd Standard deviation of the normal distribution.
 #' @return The log-density calculated for the non-zero lower triangular elements.
-#' @export
+#' @keywords internal
 positive_lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
   R <- nrow(x)
   C <- ncol(x)
@@ -412,7 +410,7 @@ positive_lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
 #' @param sd Vector of standard deviations.
 #' @param CF_Omega Cholesky factor of the correlation matrix.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega) {
   if (length(sd) == 1) {
     L_Sigma <- matrix(sd, 1, 1) %*% CF_Omega
@@ -443,7 +441,7 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega) {
 #' @param mean Vector or matrix of means.
 #' @param Sigma Covariance matrix.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 multi_normal_lpdf <- function(x, mean, Sigma) {
 
   log_det_chol <- function(L) {
@@ -484,7 +482,7 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
 #' @param mean Vector of means for each cluster.
 #' @param sd Vector of standard deviations for each cluster.
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 normal_mixture_lpdf <- function(x, pi_w, mean, sd) {
   N <- length(x)
   log_pi <- log(pi_w)
@@ -507,7 +505,7 @@ normal_mixture_lpdf <- function(x, pi_w, mean, sd) {
 #' @param sigma Standard deviation parameter.
 #' @param K Dimension. If NULL, inferred from the length of x.
 #' @return The log-density.
-#' @export
+#' @keywords internal
 sum_to_zero_multi_norm_lpdf <- function(x, sigma = 1, K = NULL) {
   if (is.null(K)) K <- length(x)
   lp <- -0.5 * (K - 1) * log(2 * pi) - (K - 1) * log(sigma) - 0.5 * sum(x^2) / sigma^2
@@ -519,7 +517,7 @@ sum_to_zero_multi_norm_lpdf <- function(x, sigma = 1, K = NULL) {
 #' @param x Matrix of quantiles.
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
-#' @export
+#' @keywords internal
 centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
@@ -545,7 +543,7 @@ centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
 #' @param x Matrix of quantiles (centered triangular matrix with positive diagonals).
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
-#' @export
+#' @keywords internal
 positive_centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
   R <- nrow(x)
   C <- ncol(x)
@@ -566,7 +564,7 @@ positive_centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
 #' @param U Vector of utilities for each item.
 #' @param lambda Scaling parameter.
 #' @return Log-probability (scalar advector).
-#' @export
+#' @keywords internal
 bw_categorical_logit_lpmf <- function(x, U, lambda = 1) {
   # 1. Handle missing values
   if (any(is.na(as.numeric(x)))) return(0)
@@ -600,7 +598,7 @@ bw_categorical_logit_lpmf <- function(x, U, lambda = 1) {
 #' @param n Degrees of freedom (sample size N).
 #' @param V Scale matrix (covariance matrix Omega).
 #' @return The log-density with all constant terms.
-#' @export
+#' @keywords internal
 wishart_lpdf <- function(X, n, V) {
   p <- nrow(X)
   L_V <- chol(V)
@@ -620,7 +618,7 @@ wishart_lpdf <- function(X, n, V) {
 #' @param sd Vector of standard deviations.
 #' @param CF_Omega Cholesky factor of the correlation matrix.
 #' @return The log-density with all constant terms.
-#' @export
+#' @keywords internal
 wishart_CF_lpdf <- function(X, n, sd, CF_Omega) {
   p <- nrow(X)
 
@@ -653,7 +651,7 @@ wishart_CF_lpdf <- function(X, n, sd, CF_Omega) {
 #' @param Lambda Factor loading matrix (P x K).
 #' @param psi Vector of unique variances (P).
 #' @return The sum of the log-density.
-#' @export
+#' @keywords internal
 fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
@@ -699,7 +697,7 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
 #' @param sd Standard deviation parameter vector.
 #' @param CF_Omega Cholesky factor of correlation matrix.
 #' @return The exact log-likelihood of the N raw observations.
-#' @export
+#' @keywords internal
 sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega) {
   p <- length(y_bar)
 
@@ -737,7 +735,7 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
 #' @param Lambda Factor loading matrix (P x K).
 #' @param psi Vector of unique variances (P).
 #' @return The exact log-likelihood of the N raw observations.
-#' @export
+#' @keywords internal
 sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)

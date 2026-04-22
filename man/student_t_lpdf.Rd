@@ -21,3 +21,4 @@ The sum of the log-density.
 \description{
 Student-t log-probability density function
 }
+\keyword{internal}
