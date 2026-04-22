@@ -118,8 +118,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     ad_obj$fn(best_par)
     full_par <- if (!is.null(ad_obj$env$last.par.best)) ad_obj$env$last.par.best else ad_obj$env$last.par
 
-    unc_est_list <- BayesRTMB:::unconstrained_vector_to_list(full_par, rhs_mod$par_list)
-    con_est_list <- BayesRTMB:::to_constrained(unc_est_list, rhs_mod$par_list)
+    unc_est_list <- unconstrained_vector_to_list(full_par, rhs_mod$par_list)
+    con_est_list <- to_constrained(unc_est_list, rhs_mod$par_list)
     if (!is.null(rhs_mod$transform)) {
       tran_res <- rhs_mod$transform(rhs_mod$data, con_est_list)
       con_est_list <- c(con_est_list, tran_res)

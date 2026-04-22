@@ -54,34 +54,34 @@ with_rtmb_error_handling <- function(expr, block_name) {
     }
 
     # 1. Use of non-existent variables
-    if (grepl("object '.*' not found", msg) || grepl("オブジェクト '.*' がありません", msg)) {
-      var_name <- sub(".*(?:object|オブジェクト) '(.*)'.*", "\\1", msg)
+    if (grepl("object '.*' not found", msg)) {
+      var_name <- sub(".*object '(.*)'.*", "\\1", msg)
       stop(sprintf("[Error in '%s' block] Undefined variable '%s' is used.\n  [Location]: %s\n  * Please check if it is included in 'data' or 'parameters'.",
                    block_name, var_name, call_str), call. = FALSE)
     }
 
-    # 1. Use of non-existent functions
-    if (grepl("could not find function", msg) || grepl("関数 .* を見つけることができません", msg) || grepl("関数 .* が見つかりません", msg)) {
-      func_name <- sub(".*(?:function|関数) [\"']?(.*?)[\"']? ?(?:を見つける|が見つかり|could not).*", "\\1", msg)
+    # 2. Use of non-existent functions
+    if (grepl("could not find function", msg)) {
+      func_name <- sub(".*function [\"']?(.*?)[\"']? could not.*", "\\1", msg)
       stop(sprintf("[Error in '%s' block] Undefined function '%s' is used.\n  [Location]: %s",
                    block_name, func_name, call_str), call. = FALSE)
     }
 
-    # 2. Index error
-    if (grepl("subscript out of bounds", msg) || grepl("範囲外", msg)) {
+    # 3. Index error
+    if (grepl("subscript out of bounds", msg)) {
       stop(sprintf("[Error in '%s' block] Array or matrix subscript out of bounds.\n  [Location]: %s",
                    block_name, call_str), call. = FALSE)
     }
 
-    # 3. Destruction of advector / Failure of type conversion
+    # 4. Destruction of advector / Failure of type conversion
     if (grepl("lost class attribute", msg) || grepl("Invalid argument to 'advector'", msg) ||
-        grepl("数学関数に非数値引数", msg) || grepl("non-numeric argument to mathematical function", msg)) {
+        grepl("non-numeric argument to mathematical function", msg)) {
       stop(sprintf("[Error in '%s' block] Automatic differentiation (AD) type was lost or an invalid operation was performed.\n  [Location]: %s\n  * Possible cause: Assigning values to an empty vector initialized with 'numeric(N)' (turns into a list type).\n  * Solutions:\n    1. Vectorize the calculation to avoid loops.\n    2. Initialize while preserving AD type, e.g., 'vec <- rep(theta[1]*0, N)'.\n    3. Use 'advector(numeric(N))'.",
                    block_name, call_str), call. = FALSE)
     }
 
-    # 4. Matrix dimension mismatch
-    if (grepl("non-conformable arguments", msg) || grepl("適合しない", msg) || grepl("非等角", msg)) {
+    # 5. Matrix dimension mismatch
+    if (grepl("non-conformable arguments", msg)) {
       stop(sprintf("[Error in '%s' block] Non-conformable arguments in matrix multiplication (%%*%%) or operations.\n  [Location]: %s\n  * Note: R's standard 'automatic recycling rule' for vectors of different lengths does not apply to RTMB matrix operations. Ensure dimensions match exactly or use rep() to align sizes explicitly.",
                    block_name, call_str), call. = FALSE)
     }
@@ -253,23 +253,23 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   }
 
   if (!is.null(comp_transform)) {
-    test_tran <- BayesRTMB:::with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
+    test_tran <- with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
     if (is.list(test_tran)) test_para <- c(test_para, test_tran)
   }
 
-  BayesRTMB:::with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
+  with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
 
   if (!is.null(comp_generate)) {
-    BayesRTMB:::with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
+    with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
   }
 
   # --- 5. Create safe wrappers for execution ---
-  safe_model <- function(dat, para) { BayesRTMB:::with_rtmb_error_handling({ comp_model(dat, para) }, "model") }
+  safe_model <- function(dat, para) { with_rtmb_error_handling({ comp_model(dat, para) }, "model") }
 
   safe_transformed <- NULL
   if (!is.null(comp_transform)) {
     safe_transformed <- function(dat, para) {
-      res <- BayesRTMB:::with_rtmb_error_handling({ comp_transform(dat, para) }, "transform")
+      res <- with_rtmb_error_handling({ comp_transform(dat, para) }, "transform")
       if (!is.list(res)) stop("The return value must be a 'named list'.")
       res
     }
@@ -279,7 +279,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   safe_generate <- NULL
   if (!is.null(comp_generate)) {
     safe_generate <- function(dat, para) {
-      res <- BayesRTMB:::with_rtmb_error_handling({ comp_generate(dat, para) }, "generate")
+      res <- with_rtmb_error_handling({ comp_generate(dat, para) }, "generate")
       if (!is.list(res)) stop("The return value must be a 'named list'.")
       res
     }
@@ -404,7 +404,6 @@ rtmb_code <- function(...) {
 #' @param expr A block of code containing model description.
 #' @param env Environment to assign to the generated function.
 #' @return A standard R function object taking (dat, par).
-#' @export
 model_code <- function(expr, env = parent.frame()) {
   raw_expr <- substitute(expr)
 
@@ -516,7 +515,6 @@ model_code <- function(expr, env = parent.frame()) {
 #' @param expr A block of code containing calculations for transformed parameters.
 #' @param env Environment to assign to the generated function.
 #' @return A function taking (dat, par) that returns a named list.
-#' @export
 transform_code <- function(expr, env = parent.frame()) {
   raw_expr <- substitute(expr)
 
@@ -587,7 +585,6 @@ transform_code <- function(expr, env = parent.frame()) {
 #'
 #' @param expr A parameter definition expression enclosed in `{}`.
 #' @return A lazily evaluated list of parameters.
-#' @export
 parameters_code <- function(expr) {
   ast <- substitute(expr)
 

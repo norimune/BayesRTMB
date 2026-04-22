@@ -134,14 +134,14 @@ RTMB_Model <- R6::R6Class(
       target_init <- if (!is.null(init_arg)) init_arg else self$init
 
       if (is.null(target_init)) {
-        return(BayesRTMB:::generate_random_init(self$pl_full, self$par_list, range = 2))
+        return(generate_random_init(self$pl_full, self$par_list, range = 2))
       }
 
       # When a named list is provided (partial initial value specification)
       if (is.list(target_init)) {
         # 1. First, initialize everything with random values and convert to list format
-        base_vec <- BayesRTMB:::generate_random_init(self$pl_full, self$par_list, range = 2)
-        base_list <- BayesRTMB:::constrained_vector_to_list(base_vec, self$par_list)
+        base_vec <- generate_random_init(self$pl_full, self$par_list, range = 2)
+        base_list <- constrained_vector_to_list(base_vec, self$par_list)
 
         # 2. Overwrite only the parameters specified by the user
         for (name in names(target_init)) {
@@ -176,8 +176,8 @@ RTMB_Model <- R6::R6Class(
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
       current_init <- self$prepare_init(init)
-      current_init_list <- BayesRTMB:::constrained_vector_to_list(current_init, self$par_list)
-      init_unc_list <- BayesRTMB:::to_unconstrained(current_init_list, self$par_list)
+      current_init_list <- constrained_vector_to_list(current_init, self$par_list)
+      init_unc_list <- to_unconstrained(current_init_list, self$par_list)
 
       pl_full_local    <- self$pl_full
       par_list_local   <- self$par_list
@@ -185,7 +185,7 @@ RTMB_Model <- R6::R6Class(
       data_local       <- self$data
 
       f_ad <- function(y_unc_list) {
-        para <- BayesRTMB:::to_constrained(y_unc_list, par_list_local)
+        para <- to_constrained(y_unc_list, par_list_local)
         if (!is.null(self$transform)) {
           tran_res <- self$transform(data_local, para)
           para <- c(para, tran_res)
@@ -193,10 +193,10 @@ RTMB_Model <- R6::R6Class(
         lp <- log_prob_local(data_local, para)
 
         if (jacobian_target == "all") {
-          lj <- BayesRTMB:::calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
           return(-(lp + lj))
         } else if (jacobian_target == "random") {
-          lj <- BayesRTMB:::calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
           return(-(lp + lj))
         } else {
           return(-lp)
@@ -580,7 +580,7 @@ RTMB_Model <- R6::R6Class(
           p_info <- self$par_list[[name]]
           if (p_info$random == target_random) {
             names_def <- self$par_names[[name]]
-            f_names <- BayesRTMB:::generate_flat_names(name, p_info$dim, names_def)
+            f_names <- generate_flat_names(name, p_info$dim, names_def)
 
             names_vec <- c(names_vec, f_names)
             est_vec <- c(est_vec, as.numeric(con_est_list[[name]]))
@@ -813,8 +813,8 @@ RTMB_Model <- R6::R6Class(
         library(BayesRTMB)
         base_init <- self$prepare_init(init)
 
-        unc_init_list <- BayesRTMB:::to_unconstrained(
-          BayesRTMB:::constrained_vector_to_list(base_init, self$par_list),
+        unc_init_list <- to_unconstrained(
+          constrained_vector_to_list(base_init, self$par_list),
           self$par_list
         )
         unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
@@ -839,14 +839,14 @@ RTMB_Model <- R6::R6Class(
           unc_init_vec <- unc_init_vec + jitter_vec
         }
 
-        unc_init_list_new <- BayesRTMB:::unconstrained_vector_to_list(unc_init_vec, self$par_list)
-        init_full_list <- BayesRTMB:::to_constrained(unc_init_list_new, self$par_list)
+        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
+        init_full_list <- to_constrained(unc_init_list_new, self$par_list)
         init_full <- unlist(init_full_list, use.names = FALSE)
 
         ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
         ad_obj <- ad_setup$ad_obj
 
-        res <- BayesRTMB:::NUTS_method(
+        res <- NUTS_method(
           model = ad_obj,
           sampling = sampling,
           warmup = warmup,
@@ -872,7 +872,7 @@ RTMB_Model <- R6::R6Class(
             para_list <- ad_obj$env$parList(x = x_in)
           }
 
-          con_list <- BayesRTMB:::to_constrained(para_list, self$par_list)
+          con_list <- to_constrained(para_list, self$par_list)
           para_final[i, ] <- unlist(con_list, use.names = FALSE)
         }
         res$para <- para_final
@@ -1054,7 +1054,7 @@ RTMB_Model <- R6::R6Class(
 
         ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
 
-        res <- BayesRTMB:::ADVI_method(
+        res <- ADVI_method(
           model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
           iter = iter, tol_rel_obj = tol_rel_obj,
           window_size = window_size, num_samples = num_samples, alpha = alpha,
@@ -1086,7 +1086,7 @@ RTMB_Model <- R6::R6Class(
                 p(amount = amount)
               }
 
-              res <- BayesRTMB:::ADVI_method(
+              res <- ADVI_method(
                 model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
                 iter = iter, tol_rel_obj = tol_rel_obj,
                 window_size = window_size, num_samples = num_samples, alpha = alpha,
@@ -1405,7 +1405,7 @@ RTMB_Model <- R6::R6Class(
       for (name in names(self$par_list)) {
         p <- self$par_list[[name]]
         names_def <- self$par_names[[name]]
-        fnames <- BayesRTMB:::generate_flat_names(name, p$dim, names_def)
+        fnames <- generate_flat_names(name, p$dim, names_def)
         for (i in seq_along(fnames)) {
           flat_to_info[[fnames[i]]] <- list(par = name, idx = i)
         }
@@ -1528,17 +1528,17 @@ RTMB_Model <- R6::R6Class(
 
 remove_prior_from_ast <- function(expr, target_vars) {
   if (is.call(expr)) {
-    # Check contents of the block { ... }
+    # Check the contents of the { ... } block
     if (identical(expr[[1]], as.name("{"))) {
       new_args <- lapply(as.list(expr)[-1], function(e) remove_prior_from_ast(e, target_vars))
-      new_args <- Filter(Negate(is.null), new_args) # Remove deleted rows (NULL)
+      new_args <- Filter(Negate(is.null), new_args) # Remove deleted lines (NULL)
       return(as.call(c(as.name("{"), new_args)))
     }
     # Check the prior distribution expression ~
     else if (identical(expr[[1]], as.name("~"))) {
       lhs <- deparse(expr[[2]]) # Get the variable name on the left side
       if (lhs %in% target_vars) {
-        return(NULL) # Delete this line completely if it's the target variable
+        return(NULL) # Delete this line completely if it is the target variable
       }
     }
     # Process other function calls recursively
