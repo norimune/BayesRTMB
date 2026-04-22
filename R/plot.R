@@ -295,3 +295,136 @@ plot_acf <- function(x, var_idx = 1) {
 
   mtext(paste0("Autocorrelation (", parname, ")"), outer = TRUE, cex = 1.2, font = 2)
 }
+
+#' Plot parameter estimates and credible intervals (Forest Plot)
+#'
+#' @param x A 3D array of posterior samples with dimensions `(iterations, chains, variables)`.
+#' @param prob Numeric. Probability mass for the credible interval (default is 0.95).
+#'
+#' @return No return value.
+#' @export
+plot_forest <- function(x, prob = 0.95) {
+  if (is.null(dim(x)) || length(dim(x)) != 3) {
+    stop("`x` must be a 3D array with dimension (iterations, chains, variables).", call. = FALSE)
+  }
+
+  n_variables <- dim(x)[3]
+  parnames <- dimnames(x)[[3]]
+  if (is.null(parnames)) {
+    parnames <- paste0("V", seq_len(n_variables))
+  }
+
+  # 全チェインを結合してパラメータごとの要約統計量を計算
+  lower_prob <- (1 - prob) / 2
+  upper_prob <- 1 - lower_prob
+
+  summaries <- t(apply(x, 3, function(v) {
+    v_flat <- as.vector(v[!is.na(v)])
+    c(
+      mean = mean(v_flat),
+      median = median(v_flat),
+      lower = quantile(v_flat, probs = lower_prob, names = FALSE),
+      upper = quantile(v_flat, probs = upper_prob, names = FALSE)
+    )
+  }))
+
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par))
+
+  # 左側のマージンを広げてパラメータ名を表示できるようにする
+  par(mar = c(5, 6, 3, 2))
+
+  # Y軸は下から上へ並べるため反転
+  y_pos <- seq(n_variables, 1, by = -1)
+
+  plot(
+    x = summaries[, "median"],
+    y = y_pos,
+    xlim = range(c(summaries[, "lower"], summaries[, "upper"])),
+    ylim = c(0.5, n_variables + 0.5),
+    type = "n",
+    yaxt = "n",
+    ylab = "",
+    xlab = "Estimate",
+    main = sprintf("Forest Plot (%g%% CI)", prob * 100)
+  )
+
+  abline(v = 0, lty = 2, col = "gray50")
+
+  # 信用区間の線と中央値の点を描画
+  segments(
+    x0 = summaries[, "lower"], y0 = y_pos,
+    x1 = summaries[, "upper"], y1 = y_pos,
+    lwd = 2, col = "black"
+  )
+  points(summaries[, "median"], y_pos, pch = 16, col = "black", cex = 1.2)
+
+  axis(2, at = y_pos, labels = parnames, las = 1, tick = FALSE, line = -0.5)
+}
+
+#' Plot pairs for posterior samples
+#'
+#' Draw a scatterplot matrix to examine posterior correlations between parameters.
+#'
+#' @param x A 3D array of posterior samples with dimensions `(iterations, chains, variables)`.
+#' @param pars Character vector or integer vector specifying which parameters to plot.
+#'   If NULL (default), up to the first 10 parameters are plotted to prevent overplotting.
+#'
+#' @return No return value.
+#' @export
+plot_pairs <- function(x, pars = NULL) {
+  if (is.null(dim(x)) || length(dim(x)) != 3) {
+    stop("`x` must be a 3D array with dimension (iterations, chains, variables).", call. = FALSE)
+  }
+
+  n_variables <- dim(x)[3]
+  parnames <- dimnames(x)[[3]]
+  if (is.null(parnames)) {
+    parnames <- paste0("V", seq_len(n_variables))
+  }
+
+  # 表示対象のパラメータを絞り込み
+  if (!is.null(pars)) {
+    if (is.character(pars)) {
+      idx <- match(pars, parnames)
+      if (any(is.na(idx))) stop("Some specified parameters were not found.", call. = FALSE)
+      plot_idx <- idx
+    } else if (is.numeric(pars)) {
+      plot_idx <- pars
+    }
+  } else {
+    # デフォルトは最大10個まで（それ以上は描画が重く、見にくくなるため）
+    plot_idx <- seq_len(min(n_variables, 10))
+  }
+
+  if (length(plot_idx) < 2) {
+    stop("At least 2 parameters are required for a pairs plot.", call. = FALSE)
+  }
+
+  # 全チェインを結合して 2次元行列に変換
+  mat <- apply(x[, , plot_idx, drop = FALSE], 3, as.vector)
+  colnames(mat) <- parnames[plot_idx]
+
+  # パネル上部に相関係数を表示するカスタム関数
+  panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
+    usr <- par("usr"); on.exit(par(usr))
+    par(usr = c(0, 1, 0, 1))
+    r <- cor(x, y, use = "complete.obs")
+    txt <- format(c(r, 0.123456789), digits = digits)[1]
+    txt <- paste0(prefix, txt)
+    if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
+    # 相関の強さに応じて文字の大きさを変える
+    text(0.5, 0.5, txt, cex = cex.cor * (0.5 + abs(r) / 2))
+  }
+
+  # 散布図の点を半透明にして密度を見やすくするカスタム関数
+  panel.scatter <- function(x, y, ...) {
+    points(x, y, pch = 16, col = rgb(0, 0, 0, alpha = 0.2), cex = 0.5)
+  }
+
+  pairs(mat,
+        lower.panel = panel.scatter,
+        upper.panel = panel.cor,
+        gap = 0.2,
+        main = "Pairs Plot")
+}

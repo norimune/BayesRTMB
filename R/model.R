@@ -820,8 +820,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        init = NULL, null = NULL) {
 
   regularization <- match.arg(penalty)
-  if (!requireNamespace("lme4", quietly = TRUE)) stop("フォーミュラの解析に 'lme4' パッケージが必要です。")
-  has_random <- !is.null(lme4::findbars(formula))
+  if (!requireNamespace("reformulas", quietly = TRUE)) stop("フォーミュラの解析に 'reformulas' パッケージが必要です。")
+  has_random <- !is.null(reformulas::findbars(formula))
 
   default_prior <- eval(formals(rtmb_glmer)$prior)
   prior <- modifyList(default_prior, prior)
@@ -936,7 +936,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   } else if (is.null(init)) {
     tryCatch({
-      fixed_formula <- if (requireNamespace("reformulas", quietly = TRUE)) reformulas::nobars(formula) else suppressWarnings(lme4::nobars(formula))
+      fixed_formula <- if (requireNamespace("reformulas", quietly = TRUE)) reformulas::nobars(formula) else suppressWarnings(reformulas::nobars(formula))
       glm_fam <- switch(family, "gaussian" = gaussian(), "student_t" = gaussian(), "lognormal" = gaussian(link="log"), "bernoulli" = binomial(), "binomial" = binomial(), "poisson" = poisson(), "neg_binomial" = poisson(), "gamma" = Gamma(link="log"), gaussian())
       init_fit <- suppressWarnings(glm(fixed_formula, data = data, family = glm_fam))
       init_coef <- unname(coef(init_fit))
