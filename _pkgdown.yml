@@ -1,4 +1,28 @@
 url: https://norimune.github.io/BayesRTMB/
+
 template:
   bootstrap: 5
+  theme: flatly
 
+reference:
+  - title: "Wrapper Functions"
+    desc: "Ready-to-use models with weakly informative priors."
+    contents:
+      - rtmb_ttest
+      - rtmb_lm
+      - rtmb_glm
+      - rtmb_glmer
+      - rtmb_fa
+      - rtmb_irt
+      - rtmb_corr
+
+  - title: "Core Modeling"
+    desc: "Define and build custom RTMB models."
+    contents:
+      - rtmb_code
+      - rtmb_model
+
+  - title: "Plotting & Diagnostics"
+    contents:
+      - starts_with("plot_")
+      - conditional_effects
