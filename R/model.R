@@ -429,7 +429,7 @@ model_code <- function(expr, env = parent.frame()) {
         }
 
         dist_name_raw <- dist_call[[1]]
-        if (is.call(dist_name_raw) && identical(dist_name_raw[[1]], as.name("::"))) {
+        if (is.call(dist_name_raw) && identical(dist_name_raw[[1]], as.name(":::"))) {
           dist_name <- as.character(dist_name_raw[[3]])
         } else {
           dist_name <- as.character(dist_name_raw)
