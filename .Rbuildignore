@@ -9,3 +9,7 @@
 ^modeling\.rmd$
 ^test$
 ^workspace\.rmd$
+^_pkgdown\.yml$
+^docs$
+^pkgdown$
+^\.github$
