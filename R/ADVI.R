@@ -273,7 +273,7 @@ ADVI_method <- function(model, par_list, pl_full,
     lp_final[i] <- -model$fn(zeta_sample)
 
     if (laplace && length(model$env$random) > 0) {
-      para_list_res <- model$env$parList()
+      para_list_res <- model$env$parList(x = model$env$last.par)
     } else {
       para_list_res <- model$env$parList(x = zeta_sample)
     }
@@ -316,7 +316,7 @@ ADVI_method <- function(model, par_list, pl_full,
     # Laplace近似などのために環境を評価
     model$fn(zeta_hist)
     if (laplace && length(model$env$random) > 0) {
-      para_list_res <- model$env$parList()
+      para_list_res <- model$env$parList(x = model$env$last.par)
     } else {
       para_list_res <- model$env$parList(x = zeta_hist)
     }

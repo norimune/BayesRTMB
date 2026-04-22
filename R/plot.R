@@ -18,6 +18,7 @@ plot_dens <- function(x, mono = FALSE) {
     stop("`x` must be a matrix or a 3D array.", call. = FALSE)
   }
 
+
   dims <- dim(x)
 
   if (length(dims) == 2) {
@@ -77,6 +78,17 @@ plot_dens <- function(x, mono = FALSE) {
 
     if (min_x == Inf || max_x == -Inf) {
       min_x <- 0; max_x <- 1; max_dens <- 1
+    }
+
+    if (length(valid_data) > 1) {
+      # 分散が0の場合はわずかなジッターを加えるか、densityの計算を保護する
+      if (var(valid_data) == 0) {
+        valid_data <- jitter(valid_data, amount = 1e-5)
+      }
+      dens_list[[n]] <- stats::density(valid_data)
+      max_dens <- max(max_dens, max(dens_list[[n]]$y))
+      min_x <- min(min_x, min(dens_list[[n]]$x))
+      max_x <- max(max_x, max(dens_list[[n]]$x))
     }
 
     # 各パラメータごとに独立した xlim, ylim を設定

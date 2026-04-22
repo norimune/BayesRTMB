@@ -4,7 +4,7 @@
 \alias{validate_data}
 \title{データとパラメータの事前検証}
 \usage{
-validate_data(dat_list, par_list)
+validate_data(dat_list)
 }
 \arguments{
 \item{dat_list}{モデルに渡すデータのリスト（通常、行列や数値ベクトルを含む）。}

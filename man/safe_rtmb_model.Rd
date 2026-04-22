@@ -4,7 +4,14 @@
 \alias{safe_rtmb_model}
 \title{安全なRTMBモデルの構築（エラーメッセージ翻訳付き）}
 \usage{
-safe_rtmb_model(data, parameters, model, generate = NULL)
+safe_rtmb_model(
+  data,
+  code,
+  par_names = list(),
+  init = NULL,
+  view = NULL,
+  null_target = NULL
+)
 }
 \arguments{
 \item{data}{`validate_data` を通過したデータのリスト。}

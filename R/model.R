@@ -133,12 +133,14 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   if (!"parameters" %in% names(code)) stop("code の中に 'parameters = { ... }' ブロックが必要です。")
   if (!"model" %in% names(code)) stop("code の中に 'model = { ... }' ブロックが必要です。")
 
-  for (name in names(data)) {
-    if (is.data.frame(data[[name]])) {
-      data[[name]] <- as.matrix(data[[name]])
-      message(sprintf("【自動変換】データ '%s' を data.frame から matrix に変換しました。", name))
-    }
-  }
+  data <- validate_data(data)
+
+  # for (name in names(data)) {
+  #   if (is.data.frame(data[[name]])) {
+  #     data[[name]] <- as.matrix(data[[name]])
+  #     message(sprintf("【自動変換】データ '%s' を data.frame から matrix に変換しました。", name))
+  #   }
+  # }
 
   # --- 1. Data ブロックの静的検証 (オプション) ---
   if ("data" %in% names(code)) {
@@ -724,21 +726,18 @@ transform_code <- function(expr, env = parent.frame()) {
 #' RTMBの自動微分エンジンは純粋な `matrix` や `numeric` を要求します。
 #' ユーザーが誤って `data.frame` を渡した場合、計算グラフの構築時に不可解なエラーが発生するため、
 #' この関数で事前に捕捉します。
-validate_data <- function(dat_list, par_list) {
-  # 1. データフレームの変換
+validate_data <- function(dat_list) {
   for (name in names(dat_list)) {
     if (is.data.frame(dat_list[[name]])) {
       dat_list[[name]] <- as.matrix(dat_list[[name]])
+      #message(sprintf("【自動変換】データ '%s' を data.frame から matrix に変換しました。", name))
     }
   }
-
-  # 2. NAのチェック (stopに変更)
   for (name in names(dat_list)) {
     if (any(is.na(dat_list[[name]]))) {
-      stop(sprintf("【データエラー】データ '%s' に欠損値(NA)が含まれています。\n  * 対策: モデルに渡す前にNAを除外するか、欠損値を補完してください。\n  * ヒント: 欠損値を無視したい場合は、NAのインデックスを取得し、尤度計算のループから外す処理をデータ前処理で行う必要があります。", name), call. = FALSE)
+      stop(sprintf("【データエラー】データ '%s' に欠損値(NA)が含まれています。\n  * 対策: モデルに渡す前にNAを除外するか、欠損値を補完してください。", name), call. = FALSE)
     }
   }
-
   return(dat_list)
 }
 
@@ -757,13 +756,14 @@ validate_data <- function(dat_list, par_list) {
 #' @return 正常にコンパイルが完了した場合は、`rtmb_model` オブジェクト（R6クラスのインスタンス）を返します。
 #'
 #' @export
-safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
+safe_rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null_target = NULL) {
   # 事前検証を実行
-  data <- validate_data(data, parameters)
+  data <- validate_data(data)
 
   tryCatch({
     # 実際のモデル構築処理
-    obj <- rtmb_model(data, parameters, model, generate)
+    obj <- rtmb_model(data = data, code = code, par_names = par_names,
+                      init = init, view = view, null_target = null_target)
     return(obj)
 
   }, error = function(e) {
@@ -771,33 +771,24 @@ safe_rtmb_model <- function(data, parameters, model, generate = NULL) {
 
     # ADクラス消失エラーの翻訳
     if (grepl("lost class attribute", err_msg) || grepl("Invalid argument to 'advector'", err_msg)) {
-      stop(
-        "【モデル構築エラー】自動微分(AD)の型が途中で消失しました。\n",
-        "・原因: model_code 内で rep() や空の array() に対して for ループで逐次代入を行っている可能性があります。\n",
-        "・対策: 行列のベクトル化計算を使用するか、初期化には numeric(M) などを利用してください。\n",
-        "[元のエラー]: ", err_msg,
-        call. = FALSE
-      )
+      stop("【モデル構築エラー】自動微分(AD)の型が途中で消失しました。\n",
+           "・原因: model_code 内で rep() や空の array() に対して for ループで逐次代入を行っている可能性があります。\n",
+           "・対策: 行列のベクトル化計算を使用するか、初期化には numeric(M) などを利用してください。\n",
+           "[元のエラー]: ", err_msg, call. = FALSE)
     }
 
     # 不正な演算エラーの翻訳
     if (grepl("illegal operation", err_msg) || grepl("not a valid 'advector'", err_msg)) {
-      stop(
-        "【モデル構築エラー】実行不可能な演算、または型の不整合が発生しました。\n",
-        "・原因: 行列の掛け算(%*%)の左右で次元が合っていない、または Dim() の型指定 (CF_cov, lower_tri など) が実際の行列サイズと矛盾している可能性があります。\n",
-        "[元のエラー]: ", err_msg,
-        call. = FALSE
-      )
+      stop("【モデル構築エラー】実行不可能な演算、または型の不整合が発生しました。\n",
+           "・原因: 行列の掛け算(%*%)の左右で次元が合っていない、または Dim() の型指定 (CF_cov, lower_tri など) が実際の行列サイズと矛盾している可能性があります。\n",
+           "[元のエラー]: ", err_msg, call. = FALSE)
     }
 
     # 数値/行列型エラーの翻訳
     if (grepl("requires numeric/complex matrix/vector", err_msg)) {
-      stop(
-        "【データ型エラー】数値ベクトルまたは行列が必要な箇所に、別の型が渡されています。\n",
-        "・原因: 観測データやインデックスが data.frame や list になっていませんか？\n",
-        "[元のエラー]: ", err_msg,
-        call. = FALSE
-      )
+      stop("【データ型エラー】数値ベクトルまたは行列が必要な箇所に、別の型が渡されています。\n",
+           "・原因: 観測データやインデックスが data.frame や list になっていませんか？\n",
+           "[元のエラー]: ", err_msg, call. = FALSE)
     }
 
     # 未知のエラーはそのまま出力
@@ -1892,45 +1883,46 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
 
   if (P == 2) {
     # --- 2変数の場合: 相関係数(スカラー)を直接推定 ---
-    param_ast <- quote({
-      mean   <- Dim(P)
-      sd     <- Dim(P, lower = 0)
-      corr   <- Dim(lower = -1, upper = 1)
-    })
+    code_obj <- rtmb_code(
+      parameters = {
+        mean = Dim(P)
+        sd   = Dim(P, lower = 0)
+        corr = Dim(lower = -1, upper = 1)
+      },
+      model = {
+        mean ~ normal(0, prior_mu_sd)
+        sd ~ exponential(prior_sigma_rate)
+        corr ~ lkj_corr(prior_lkj_eta)
 
-    model_ast <- quote({
-      mean ~ normal(0, prior_mu_sd)
-      sd ~ exponential(prior_sigma_rate)
-      corr ~ lkj_corr(prior_lkj_eta)
+        # AD型の破壊を防ぐための安全な行列初期化
+        CF_corr <- matrix(corr * 0, nrow = 2, ncol = 2)
+        CF_corr[1, 1] <- 1
+        CF_corr[2, 1] <- corr
+        CF_corr[2, 2] <- sqrt(1 - corr^2)
 
-      # スカラーから 2x2 のコレスキー因子を直接構築
-      CF_corr <- matrix(c(1, corr, 0, sqrt(1 - corr^2)), nrow = 2, ncol = 2)
-      S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
-    })
-
-    code_obj <- list(parameters = param_ast, model = model_ast)
+        S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
+      }
+    )
     par_names_list <- list(mean = var_names, sd = var_names, corr = "rho")
 
   } else {
     # --- 3変数以上の場合: コレスキー因子(行列)経由で推定 ---
-    param_ast <- quote({
-      mean    <- Dim(P)
-      sd      <- Dim(P, lower = 0)
-      CF_corr <- Dim(c(P, P), type = "CF_corr")
-    })
-
-    model_ast <- quote({
-      mean ~ normal(0, prior_mu_sd)
-      sd ~ exponential(prior_sigma_rate)
-      CF_corr ~ lkj_CF_corr(prior_lkj_eta)
-      S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
-    })
-
-    tran_ast <- quote({
-      corr <- CF_corr %*% t(CF_corr)
-    })
-
-    code_obj <- list(parameters = param_ast, model = model_ast, transform = tran_ast)
+    code_obj <- rtmb_code(
+      parameters = {
+        mean    = Dim(P)
+        sd      = Dim(P, lower = 0)
+        CF_corr = Dim(c(P, P), type = "CF_corr")
+      },
+      model = {
+        mean ~ normal(0, prior_mu_sd)
+        sd ~ exponential(prior_sigma_rate)
+        CF_corr ~ lkj_CF_corr(prior_lkj_eta)
+        S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr)
+      },
+      transform = {
+        corr <- CF_corr %*% t(CF_corr)
+      }
+    )
     par_names_list <- list(mean = var_names, sd = var_names, corr = var_names)
   }
 
@@ -1951,4 +1943,127 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
   return(obj)
 }
 
+#' RTMB-based Bayesian two-sample t-test wrapper function
+#'
+#' @description
+#' Performs a Bayesian two-sample t-test using RTMB.
+#' It estimates the effect size (delta) with a Cauchy prior, allowing for robust inference
+#' and calculation of Bayes factors.
+#'
+#' @param y1 Numeric vector of responses for group 1.
+#' @param y2 Numeric vector of responses for group 2.
+#' @param r Numeric; Cauchy prior scale for the effect size (delta). Default is 0.707.
+#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
+#' @param use_weak_info Logical; whether to explicitly use weakly informative priors.
+#' @param prior List of hyperparameters for the default fixed priors.
+#' @param weak_info_prior List of hyperparameters for the weakly informative priors.
+#' @param init List of initial values.
+#' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
+#' @return An \code{RTMB_Model} object.
+#' @export
+rtmb_ttest <- function(y1, y2, r = 0.707,
+                       y_range = NULL,
+                       use_weak_info = FALSE,
+                       prior = list(mean_sd = 10, sd_rate = 0.1),
+                       weak_info_prior = list(sd_ratio = 0.5),
+                       init = NULL, null = NULL) {
 
+  if (!is.null(y_range)) {
+    use_weak_info <- TRUE
+  }
+
+  if (use_weak_info && is.null(y_range)) {
+    stop("弱情報事前分布を使用する場合、y_range の指定が必須です。")
+  }
+
+  default_prior <- list(mean_sd = 10, sd_rate = 0.1)
+  if (!is.null(prior)) {
+    prior <- modifyList(default_prior, prior)
+  } else {
+    prior <- default_prior
+  }
+
+  default_weak_prior <- list(sd_ratio = 0.5)
+  if (!is.null(weak_info_prior)) {
+    weak_info_prior <- modifyList(default_weak_prior, weak_info_prior)
+  } else {
+    weak_info_prior <- default_weak_prior
+  }
+
+  Y1 <- as.numeric(na.omit(y1))
+  Y2 <- as.numeric(na.omit(y2))
+
+  dat <- list(Y1 = Y1, Y2 = Y2, r = r)
+  tmp_env <- list2env(dat, parent = environment())
+
+  # --- Setup AST ---
+  if (use_weak_info) {
+    setup_exprs <- list()
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- half_d_y * weak_info_prior$sd_ratio)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mu_prior_sd <- half_d_y)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
+
+    setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
+    eval(setup_ast, tmp_env)
+  } else {
+    setup_ast <- NULL
+  }
+
+  # --- Parameters AST ---
+  param_ast <- quote({
+    mean = Dim(1)
+    sd = Dim(1, lower = 0)
+    delta = Dim(1)
+  })
+
+  # --- Transform AST ---
+  tran_ast <- quote({
+    diff <- delta * sd
+    mean0 <- mean - diff / 2
+    mean1 <- mean + diff / 2
+  })
+
+  # --- Model AST ---
+  model_exprs <- list()
+  model_exprs[[length(model_exprs) + 1]] <- quote(Y1 ~ normal(mean0, sd))
+  model_exprs[[length(model_exprs) + 1]] <- quote(Y2 ~ normal(mean1, sd))
+  model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ cauchy(0, r))
+
+  if (use_weak_info) {
+    model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, mu_prior_sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate))
+  } else {
+    model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior$mean_sd)))
+    model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sd_rate)))
+  }
+
+  model_ast <- as.call(c(list(as.name("{")), model_exprs))
+
+  # --- モデルオブジェクトの構築 ---
+  code_args <- list(parameters = param_ast, transform = tran_ast, model = model_ast)
+  if (!is.null(setup_ast)) {
+    code_args <- c(list(setup = setup_ast), code_args)
+  }
+
+  code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
+
+  ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
+
+  view_vars <- c("delta", "mean", "sd")
+
+  obj <- rtmb_model(
+    data = ordered_data,
+    code = code_obj,
+    par_names = list(),
+    init = init,
+    view = view_vars
+  )
+
+  if (!is.null(null)) {
+    obj <- obj$null_model(target = null)
+  }
+
+  return(obj)
+}

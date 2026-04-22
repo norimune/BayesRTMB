@@ -18,16 +18,16 @@ NUTS_method <- function(model,
   q_fixed_init <- model$par
   P_fixed <- length(q_fixed_init)
 
-  # --- CSV保存の準備 ---
-  if (!is.null(save_info)) {
-    backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", chain, ".csv"))
-    prog_file <- file.path(save_info$dir, paste0(save_info$name, "_progress_", chain, ".txt"))
-
-    param_names <- names(q_fixed_init)
-    if (is.null(param_names)) param_names <- paste0("V", 1:P_fixed)
-    header <- c("iteration", "lp", "accept", "treedepth", "eps", param_names)
-    write.table(t(header), file = backup_file, append = FALSE, sep = ",", col.names = FALSE, row.names = FALSE)
-  }
+  # # --- CSV保存の準備 ---
+  # if (!is.null(save_info)) {
+  #   backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", chain, ".csv"))
+  #   prog_file <- file.path(save_info$dir, paste0(save_info$name, "_progress_", chain, ".txt"))
+  #
+  #   param_names <- names(q_fixed_init)
+  #   if (is.null(param_names)) param_names <- paste0("V", 1:P_fixed)
+  #   header <- c("iteration", "lp", "accept", "treedepth", "eps", param_names)
+  #   write.table(t(header), file = backup_file, append = FALSE, sep = ",", col.names = FALSE, row.names = FALSE)
+  # }
 
 
   para_fixed <- array(NA, dim=c(iter, P_fixed))

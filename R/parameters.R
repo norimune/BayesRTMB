@@ -104,13 +104,13 @@ generate_flat_names <- function(base_name, dims, names_def = NULL) {
     if (!is.null(names_def)) {
       if (is.list(names_def) && length(names_def) == length(dims)) {
         # 次元ごとにリストで名前が指定された場合
-        grid <- do.call(expand.grid, names_def)
+        grid <- do.call(expand.grid, c(names_def, list(stringsAsFactors = FALSE)))
         return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
       } else if (is.atomic(names_def) && length(names_def) == dims[1]) {
         # ベクトルで名前が指定された場合
         if (length(dims) == 2 && dims[1] == dims[2]) {
           # 正方行列（CF_corr など）: 行と列の両方に適用
-          grid <- expand.grid(names_def, names_def)
+          grid <- expand.grid(names_def, names_def, stringsAsFactors = FALSE)
         } else {
           # 非正方行列: 行のみに適用
           dim_list <- lapply(dims, seq_len)
