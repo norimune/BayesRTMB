@@ -904,7 +904,7 @@ RTMB_Model <- R6::R6Class(
             )
           }, warning = function(w) {
             # Catch and suppress warning messages for both English and Japanese environments
-            if (grepl("may not be available when loading", conditionMessage(w))) {
+            if (grepl("package:BayesRTMB", conditionMessage(w))) {
               invokeRestart("muffleWarning")
             }
           })
@@ -1101,7 +1101,7 @@ RTMB_Model <- R6::R6Class(
                 run_advi_prog(c)
               }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
             }, warning = function(w) {
-              if (grepl("may not be available when loading", conditionMessage(w))) {
+              if (grepl("package:BayesRTMB", conditionMessage(w))) {
                 invokeRestart("muffleWarning")
               }
             })
