@@ -7,7 +7,7 @@ NUTS_method <- function(model,
   iter <- sampling + warmup
   P_all <- length(model$env$last.par)
 
-  nuts_core <- BayesRTMB:::create_NUTS_core(model)
+  nuts_core <- create_NUTS_core(model)
   fn_NUTS <- nuts_core$fn_NUTS
   gr_NUTS <- nuts_core$gr_NUTS
   calc_H <- nuts_core$calc_H
