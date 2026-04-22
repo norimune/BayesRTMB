@@ -23,15 +23,15 @@ VB_Fit <- R6::R6Class(
   inherit = RTMB_Fit_Base,
 
   public = list(
-    # --- フィールド ---
-    model          = NULL, # RTMB_Model のインスタンスへの参照
+    # --- Fields ---
+    model          = NULL, # Reference to RTMB_Model instance
     fit            = NULL,
     random_fit     = NULL,
-    transform_fit       = NULL, # 変換量を保存
-    generate_fit         = NULL, # 生成量を保存
-    transform_dims      = NULL, # 変換量の次元情報を保存
-    generate_dims        = NULL, # GQ変数の次元情報を保存
-    elbo_history   = NULL, # ELBOの推移を保存
+    transform_fit  = NULL, # Store transformed quantities
+    generate_fit   = NULL, # Store generated quantities
+    transform_dims = NULL, # Store dimension info for transformed quantities
+    generate_dims  = NULL, # Store dimension info for generated quantities
+    elbo_history   = NULL, # Store ELBO history
     laplace        = NULL,
     posterior_mean = NULL,
     ELBO           = NULL,
@@ -39,19 +39,19 @@ VB_Fit <- R6::R6Class(
     best_chain     = NULL,
     mu_history     = NULL,
 
-    # 1. コンストラクタ
+    # 1. Constructor
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
     #' @return Matrix or array of point estimate.
     get_point_estimate = function(target) {
       target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)
-      
+
       lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
       best_iter <- max_idx[1, 1]
       best_chain <- max_idx[1, 2]
-      
+
       t_info <- self$model$par_list[[target]]
       if (!is.null(t_info)) {
         t_dim <- t_info$dim
@@ -62,11 +62,11 @@ VB_Fit <- R6::R6Class(
       } else {
         t_dim <- dim(target_draws)[3]
       }
-      
+
       target_map_flat <- target_draws[best_iter, best_chain, ]
       target_map <- target_map_flat
       if (length(t_dim) > 1) dim(target_map) <- t_dim
-      
+
       return(target_map)
     },
 
@@ -169,7 +169,7 @@ VB_Fit <- R6::R6Class(
         if (is.numeric(pars)) {
           valid_idx <- pars[pars >= 1 & pars <= P]
           if (length(valid_idx) == 0) {
-            stop("`pars` に指定されたインデックスが見つかりません。", call. = FALSE)
+            stop("The index specified in 'pars' was not found.", call. = FALSE)
           }
           target_idx <- valid_idx
 
@@ -177,12 +177,12 @@ VB_Fit <- R6::R6Class(
           base_names <- gsub("\\[.*\\]$", "", param_names)
           matched <- which(param_names %in% pars | base_names %in% pars)
           if (length(matched) == 0) {
-            stop("`pars` に指定された変数名が見つかりません。", call. = FALSE)
+            stop("The variable name specified in 'pars' was not found.", call. = FALSE)
           }
           target_idx <- matched
 
         } else {
-          stop("`pars` は numeric か character で指定してください。", call. = FALSE)
+          stop("'pars' must be either numeric or character.", call. = FALSE)
         }
       }
 
@@ -215,12 +215,12 @@ VB_Fit <- R6::R6Class(
 
       target_idx <- 1:P
 
-      # --- lp と model$view による優先並び替え ---
+      # --- Priority sorting by lp and model$view ---
       if (length(target_idx) > 0) {
         current_names <- param_names[target_idx]
         base_names <- gsub("\\[.*\\]$", "", current_names)
 
-        # lp を常に最優先にする
+        # Always prioritize lp
         target_views <- c("lp")
         if (!is.null(self$model$view)) {
           target_views <- c(target_views, self$model$view)
@@ -252,7 +252,7 @@ VB_Fit <- R6::R6Class(
 
         var_name <- param_names[p]
 
-        # 軌跡データから変動幅を計算
+        # Calculate fluctuation range from trajectory data
         if (!is.null(self$mu_history) && var_name %in% colnames(self$mu_history)) {
           hist_vec <- self$mu_history[, var_name]
           n_hist <- length(hist_vec)
@@ -296,13 +296,13 @@ VB_Fit <- R6::R6Class(
           map      = map_val,
           q2.5     = unname(q95[1]),
           q97.5    = unname(q95[2]),
-          #drift    = drift_val,   # NAの場合はそのままNAになるためif文は不要です
+          #drift    = drift_val,   # if statement is unnecessary since NA remains NA
           #rel_sd   = rel_sd_val,
           stringsAsFactors = FALSE
         )
       }
       res_df <- do.call(rbind, res_list_sum)
-      # データフレーム内の数値列のうち、ゼロに極めて近い微小な値を厳密な0に置換する
+      # Replace extremely small values close to zero with exact 0 in numeric columns of the dataframe
       num_cols <- sapply(res_df, is.numeric)
       res_df[num_cols] <- lapply(res_df[num_cols], function(x) {
         x[abs(x) < 1e-12 & !is.na(x)] <- 0
@@ -348,7 +348,7 @@ VB_Fit <- R6::R6Class(
       max_rel_obj_val <- self$rel_obj_vals[best_c]
       sub_title <- if(!is.na(max_rel_obj_val)) sprintf("Best (est%d) Final rel_obj: %.5f", best_c, max_rel_obj_val) else ""
 
-      # --- 描画するチェインの選択処理 ---
+      # --- Chain selection for plotting ---
       if (is.null(ests)) {
         target_idx <- seq_len(num_estimate)
       } else if (identical(ests, "best")) {
@@ -366,8 +366,8 @@ VB_Fit <- R6::R6Class(
 
       plot_data <- plot_data[, target_idx, drop = FALSE]
 
-      # --- 線の色と太さの調整 ---
-      # 基本はグレー（1本のみの場合は黒）で、ベストチェインが含まれる場合のみ青くハイライトする
+      # --- Line color and thickness adjustment ---
+      # Default is gray (black if only 1), highlight blue only if best chain is included
       cols <- rep("gray", length(target_idx))
       lwds <- rep(1, length(target_idx))
 
@@ -383,7 +383,7 @@ VB_Fit <- R6::R6Class(
               xlab = "Iteration", ylab = "ELBO",
               main = main_title, sub = sub_title, ...)
 
-      # --- 凡例の描画 ---
+      # --- Draw legend ---
       if (length(target_idx) > 1) {
         if (length(best_in_plot) > 0) {
           legend("bottomright", legend = c(paste("Best (est", best_c, ")"), "Others"),
@@ -416,11 +416,11 @@ VB_Fit <- R6::R6Class(
       if (!is.null(pars)) {
         valid_pars <- character(0)
         for (p in pars) {
-          # 1. 完全一致による検索 (例: "delta[1]" や "mat[1,2]")
+          # 1. Search by exact match (e.g., "delta[1]" or "mat[1,2]")
           if (p %in% colnames(plot_data)) {
             valid_pars <- c(valid_pars, p)
           } else {
-            # 2. ベース名による一括検索 (例: "delta" -> "delta[1]", "mat" -> "mat[1,1]")
+            # 2. Bulk search by base name (e.g., "delta" -> "delta[1]", "mat" -> "mat[1,1]")
             pattern <- paste0("^", p, "\\[.*\\]$")
             matched <- grep(pattern, colnames(plot_data), value = TRUE)
             valid_pars <- c(valid_pars, matched)
@@ -438,7 +438,7 @@ VB_Fit <- R6::R6Class(
       n_steps <- nrow(plot_data)
       x_axis <- seq_len(n_steps)
 
-      # --- 縦軸(ylim)の自動調整アルゴリズム ---
+      # --- Automatic adjustment algorithm for vertical axis (ylim) ---
       y_min <- min(plot_data, na.rm = TRUE)
       y_max <- max(plot_data, na.rm = TRUE)
       y_mean <- mean(plot_data, na.rm = TRUE)
@@ -446,17 +446,17 @@ VB_Fit <- R6::R6Class(
 
       args_list <- list(...)
 
-      # ユーザーが明示的に ylim を指定していない場合のみ自動調整
+      # Auto-adjust only if ylim is not explicitly specified by user
       if (!"ylim" %in% names(args_list)) {
-        # 最小限確保する縦軸の幅 (絶対値0.1 または 平均値の5% のどちらか大きい方)
+        # Minimum vertical axis range to secure (max of absolute 0.1 or 5% of mean)
         min_range <- max(0.1, abs(y_mean) * 0.05)
 
         if (y_range < min_range) {
-          # 変動が小さすぎる場合は、最小幅を適用して「平坦」に見せる
+          # If fluctuation is too small, apply minimum range to make it look "flat"
           y_min <- y_mean - min_range / 2
           y_max <- y_mean + min_range / 2
         } else {
-          # 変動が十分ある場合は、上下に5%の余白を持たせる
+          # If fluctuation is sufficient, add 5% margin to top and bottom
           y_min <- y_min - y_range * 0.05
           y_max <- y_max + y_range * 0.05
         }
@@ -465,7 +465,7 @@ VB_Fit <- R6::R6Class(
 
       main_title <- sprintf("Parameter Trajectory (Last %d steps)", n_steps)
 
-      # --- matplotの引数を動的に構築して呼び出し ---
+      # --- Dynamically build arguments for matplot and call ---
       args_list$x <- x_axis
       args_list$y <- plot_data
       args_list$type <- type
@@ -560,7 +560,7 @@ VB_Fit <- R6::R6Class(
     #' @return The `VB_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.
     generated_quantities = function(code) {
-      # 1. 引数のキャプチャとASTの抽出 (MCMC_Fitと同様)
+      # 1. Capture arguments and extract AST (Same as MCMC_Fit)
       raw_code <- substitute(code)
       if (is.name(raw_code)) {
         evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
@@ -573,16 +573,16 @@ VB_Fit <- R6::R6Class(
         gen_ast <- code
       }
 
-      # 2. 関数化
+      # 2. Functionalize
       gen_fn <- eval(bquote(transform_code(.(gen_ast))))
       environment(gen_fn) <- parent.env(globalenv())
 
-      # 3. 全サンプルの取得
+      # 3. Get all samples
       all_draws <- self$draws(inc_random = TRUE, inc_transform = TRUE, inc_generate = FALSE, best_only = FALSE)
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]
 
-      # 4. 次元情報の取得
+      # 4. Get dimension information
       test_p_list <- constrained_vector_to_list(all_draws[1, 1, -1], self$model$par_list)
       if (!is.null(self$model$transform)) {
         tran_res <- self$model$transform(self$model$data, test_p_list)
@@ -594,7 +594,7 @@ VB_Fit <- R6::R6Class(
         for (g_name in names(self$generate_dims)) {
           g_dim <- self$generate_dims[[g_name]]
           flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
-          # 既存の generate_fit に存在するものだけを取り出す
+          # Extract only those existing in generate_fit
           if (all(flat_nms %in% existing_gq)) {
             val <- self$generate_fit[1, 1, flat_nms]
             if (length(g_dim) > 1) dim(val) <- g_dim
@@ -614,11 +614,11 @@ VB_Fit <- R6::R6Class(
         gq_names <- c(gq_names, generate_flat_names(name, dim_val, self$model$par_names[[name]]))
       }
 
-      # 5. 結果格納用の配列
+      # 5. Array for storing results
       new_gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
       dimnames(new_gq_array) <- list(iteration = NULL, chain = paste0("est", seq_len(chains)), variable = gq_names)
 
-      # 6. 全エスティメイト・全サンプルに対して実行
+      # 6. Execute for all estimates and samples
       pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
       counter <- 0
       for (c in seq_len(chains)) {
@@ -633,7 +633,7 @@ VB_Fit <- R6::R6Class(
             for (g_name in names(self$generate_dims)) {
               g_dim <- self$generate_dims[[g_name]]
               flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
-              # 既存の generate_fit に存在するものだけを取り出す
+              # Extract only those existing in generate_fit
               if (all(flat_nms %in% existing_gq)) {
                 val <- self$generate_fit[i, c, flat_nms]
                 if (length(g_dim) > 1) dim(val) <- g_dim
@@ -649,7 +649,7 @@ VB_Fit <- R6::R6Class(
       }
       close(pb)
 
-      # 7. 既存の結果とマージ
+      # 7. Merge with existing results
       if (is.null(self$generate_fit)) {
         self$generate_fit <- new_gq_array
       } else {

@@ -2,19 +2,19 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{item_info.RTMB_Fit_Base}
 \alias{item_info.RTMB_Fit_Base}
-\title{RTMB_Fit_Base の項目情報関数}
+\title{Item Information Function for RTMB_Fit_Base}
 \usage{
 \method{item_info}{RTMB_Fit_Base}(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...)
 }
 \arguments{
 \item{x}{An object of class RTMB_Fit_Base.}
 
-\item{theta_seq}{評価する特性値（能力値）のシーケンス。}
+\item{theta_seq}{Sequence of trait values (ability) to evaluate.}
 
-\item{items}{計算対象を特定の項目に絞る場合のインデックスまたは項目名（省略可能）。}
+\item{items}{Index or item names to restrict the calculation to specific items (optional).}
 
 \item{...}{Additional arguments.}
 }
 \description{
-RTMB_Fit_Base の項目情報関数
+Item Information Function for RTMB_Fit_Base
 }

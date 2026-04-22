@@ -38,7 +38,7 @@ MAP_Fit <- R6::R6Class(
   inherit = RTMB_Fit_Base,
 
   public = list(
-    # --- フィールド ---
+    # --- Fields ---
     model          = NULL,
     par_vec        = NULL,
     par            = NULL,
@@ -48,11 +48,11 @@ MAP_Fit <- R6::R6Class(
     sd_rep         = NULL,
     df_fixed       = NULL,
     random_effects = NULL,
-    df_transform   = NULL, # 変更
-    df_generate    = NULL, # 変更
+    df_transform   = NULL, # Modified
+    df_generate    = NULL, # Modified
     opt_history    = NULL,
-    transform      = NULL, # 追加
-    generate       = NULL, # 追加
+    transform      = NULL, # Added
+    generate       = NULL, # Added
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -113,7 +113,7 @@ MAP_Fit <- R6::R6Class(
       self$transform <- transform
       self$generate <- generate
 
-      # 複素数型（complex）の混入を防ぐための実数化処理
+      # Realization process to prevent mixing of complex types
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
       if (!is.null(self$random_effects)) self$random_effects <- lapply(self$random_effects, Re)
@@ -165,12 +165,12 @@ MAP_Fit <- R6::R6Class(
         return(invisible(df_combined))
       }
 
-      # --- lp と model$view による優先並び替え ---
+      # --- Priority sorting by lp and model$view ---
       if (nrow(df_combined) > 0) {
         var_names <- rownames(df_combined)
         base_names <- gsub("\\[.*\\]$", "", var_names)
 
-        # lp を常に最優先にする
+        # Always prioritize lp
         target_views <- c()
         if (!is.null(self$model$view)) {
           target_views <- c(target_views, self$model$view)

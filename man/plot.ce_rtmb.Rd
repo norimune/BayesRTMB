@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{plot.ce_rtmb}
 \alias{plot.ce_rtmb}
-\title{ce_rtmb クラス専用のプロットメソッド (Base R)}
+\title{Plot method for ce_rtmb class (Base R)}
 \usage{
 \method{plot}{ce_rtmb}(x, ...)
 }
@@ -12,5 +12,5 @@
 \item{...}{Additional arguments.}
 }
 \description{
-ce_rtmb クラス専用のプロットメソッド (Base R)
+Plot method for ce_rtmb class (Base R)
 }

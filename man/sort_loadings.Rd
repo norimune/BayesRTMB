@@ -2,20 +2,20 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{sort_loadings}
 \alias{sort_loadings}
-\title{因子負荷量をソートして見やすく表示する関数}
+\title{Sort and display factor loadings neatly}
 \usage{
 sort_loadings(loadings, cutoff = 0, round_digits = 3)
 }
 \arguments{
-\item{loadings}{因子負荷量の行列、データフレーム、またはそれらを含むリスト（リストの場合は最初の要素を使用）}
+\item{loadings}{Matrix, data frame, or list of factor loadings (if list, the first element is used)}
 
-\item{cutoff}{負荷量の絶対値がこの値未満の場合は表示を空白にする（デフォルトは0.3）}
+\item{cutoff}{Absolute loadings below this value will be displayed as blank (default is 0.0)}
 
-\item{round_digits}{小数点以下の表示桁数（デフォルトは3）}
+\item{round_digits}{Number of decimal places to display (default is 3)}
 }
 \value{
-並び替えられた負荷量行列（不可視で返すため、変数への代入も可能）
+Sorted loading matrix (returned invisibly, allowing assignment to a variable)
 }
 \description{
-因子負荷量をソートして見やすく表示する関数
+Sort and display factor loadings neatly
 }

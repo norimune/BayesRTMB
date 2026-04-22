@@ -2,16 +2,16 @@
 % Please edit documentation in R/model.R
 \name{inject_namespace}
 \alias{inject_namespace}
-\title{ユーザーのコード(AST)を探索し、パッケージの関数に名前空間を自動付与する関数}
+\title{Internal function to search AST and inject namespace to package functions}
 \usage{
 inject_namespace(expr, pkg = "BayesRTMB")
 }
 \arguments{
-\item{expr}{評価前のコード(AST)}
+\item{expr}{Unevaluated code (AST)}
 
-\item{pkg}{対象のパッケージ名}
+\item{pkg}{Target package name}
 }
 \description{
-ユーザーのコード(AST)を探索し、パッケージの関数に名前空間を自動付与する関数
+Internal function to search AST and inject namespace to package functions
 }
 \keyword{internal}

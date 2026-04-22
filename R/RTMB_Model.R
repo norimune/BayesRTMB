@@ -53,7 +53,7 @@ RTMB_Model <- R6::R6Class(
     map        = NULL,
     prior_correction = 0,
 
-    # 1. コンストラクタ
+    # 1. Constructor
     #' @description Create a new `RTMB_Model` object.
     initialize = function(data, par_list, log_prob,
                           transform = NULL, generate = NULL, par_names = NULL,
@@ -77,7 +77,7 @@ RTMB_Model <- R6::R6Class(
       self$pl_full <- parse_parameters(self$par_list, self$par_names)
       names(self$pl_full$init) <- self$pl_full$names
 
-      # ここを prepare_init を経由するように変更
+      # Changed to go through prepare_init
       init_vec <- self$prepare_init(self$init)
       test_para <- constrained_vector_to_list(init_vec, self$par_list)
 
@@ -88,31 +88,31 @@ RTMB_Model <- R6::R6Class(
         }
         self$log_prob(self$data, test_para)
       }, error = function(e) {
-        stop("R関数(log_prob)のテスト実行でエラーが発生しました。\n[エラー]: ",
+        stop("An error occurred during the test execution of the R function (log_prob).\n[Error]: ",
              e$message,
-             "\n  * 原因例: パラメータの初期値が不適切で尤度が計算できない（InfやNaNになる）可能性があります。",
-             "\n  * 対策: init 引数に定義域内（例: 分散なら0より大きい値）の適切な初期値を設定するか、データのスケールを見直してください。",
+             "\n  * Possible cause: Inappropriate initial parameter values may lead to uncomputable likelihoods (Inf or NaN).",
+             "\n  * Solution: Set appropriate initial values within the domain (e.g., >0 for variance) via the 'init' argument, or reconsider the data scaling.",
              call. = FALSE)
       })
 
       if (!is.numeric(test_val) || length(test_val) != 1) {
-        stop("log_prob は長さ1の数値（スカラー）を返す必要があります。")
+        stop("log_prob must return a single numeric value (scalar).")
       }
 
       if (!is.null(self$transform)) {
         test_tran <- tryCatch({
           self$transform(self$data, test_para)
         }, error = function(e) {
-          stop("R関数(transform)のテスト実行でエラーが発生しました。\n[エラー]: ",
+          stop("An error occurred during the test execution of the R function (transform).\n[Error]: ",
                e$message, call. = FALSE)
         })
 
         if (!is.null(test_tran)) {
           if (!is.list(test_tran)) {
-            stop("transform は list を返す必要があります。", call. = FALSE)
+            stop("transform must return a list.", call. = FALSE)
           }
           if (is.null(names(test_tran)) || any(names(test_tran) == "")) {
-            stop("transform は名前付き list を返す必要があります。", call. = FALSE)
+            stop("transform must return a named list.", call. = FALSE)
           }
         }
       }
@@ -121,12 +121,12 @@ RTMB_Model <- R6::R6Class(
       test_ad <- self$build_ad_obj(init = init_vec, laplace = FALSE, jacobian_target = "all")
       test_gr <- tryCatch(test_ad$ad_obj$gr(test_ad$ad_obj$par), error = function(e) e)
       if (inherits(test_gr, "error")) {
-        stop("MakeADFun の勾配計算でエラーが発生しました。\n[エラー]: ",
+        stop("An error occurred during gradient calculation in MakeADFun.\n[Error]: ",
              test_gr$message, call. = FALSE)
       }
     },
 
-    # 初期値の整形と補完を行うヘルパーメソッド (引数がない場合はself$initを使うように変更)
+    # Helper method to format and complement initial values (uses self$init if no arguments are provided)
     #' @description Prepare and format initial values for the model parameters.
     #' @param init_arg Optional list or numeric vector of initial values. If NULL, defaults to `self$init` or random generation.
     #' @return A flat numeric vector of constrained initial values.
@@ -137,33 +137,33 @@ RTMB_Model <- R6::R6Class(
         return(BayesRTMB:::generate_random_init(self$pl_full, self$par_list, range = 2))
       }
 
-      # 名前付きリストが渡された場合（部分的な初期値指定）
+      # When a named list is provided (partial initial value specification)
       if (is.list(target_init)) {
-        # 1. まず全体をランダムな値で初期化し、リスト形式に変換
+        # 1. First, initialize everything with random values and convert to list format
         base_vec <- BayesRTMB:::generate_random_init(self$pl_full, self$par_list, range = 2)
         base_list <- BayesRTMB:::constrained_vector_to_list(base_vec, self$par_list)
 
-        # 2. ユーザーが指定したパラメータだけを上書き
+        # 2. Overwrite only the parameters specified by the user
         for (name in names(target_init)) {
           if (name %in% names(base_list)) {
             base_list[[name]] <- as.numeric(target_init[[name]])
           } else {
-            warning(sprintf("初期値として指定された '%s' はモデルに存在しません。", name), call. = FALSE)
+            warning(sprintf("The initial value specified for '%s' does not exist in the model.", name), call. = FALSE)
           }
         }
-        # 3. 再び完全なフラットベクトルに戻して返す
+        # 3. Return to a complete flat vector and return
         return(unlist(base_list, use.names = FALSE))
       }
 
-      # ベクトルが渡された場合（全体指定）
+      # When a vector is provided (full specification)
       if (is.numeric(target_init)) {
         return(target_init)
       }
 
-      stop("init は名前付きリスト、または数値ベクトルで指定してください。")
+      stop("init must be specified as a named list or a numeric vector.")
     },
 
-    # ヤコビアンを追加するかどうかを引数で制御
+    # Control whether to add Jacobian via argument
     #' @description Build the RTMB automatic differentiation object.
     #' @param init Optional numeric vector or list of initial values for the parameters. Default is NULL.
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is FALSE.
@@ -212,7 +212,7 @@ RTMB_Model <- R6::R6Class(
           silent = TRUE
         )
       }, error = function(e) {
-        stop("MakeADFun のセットアップに失敗しました。\n[エラー]: ", e$message, call. = FALSE)
+        stop("Failed to setup MakeADFun.\n[Error]: ", e$message, call. = FALSE)
       })
 
       return(list(
@@ -222,7 +222,7 @@ RTMB_Model <- R6::R6Class(
       ))
     },
 
-    # 3. 最尤法 / MAP推定 メソッド
+    # 3. Maximum Likelihood / MAP Estimation Method
     #' @param num_estimate Integer; Number of estimate
     #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
     #' @param init Optional initial values for parameters.
@@ -239,7 +239,7 @@ RTMB_Model <- R6::R6Class(
       obj_vals <- numeric(num_estimate)
       conv_codes <- numeric(num_estimate)
 
-      # MAP推定ではヤコビアンは不要
+      # Jacobian is not required for MAP estimation
       jac_target <- if (laplace) "random" else "none"
 
       ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target, map = map)
@@ -277,7 +277,7 @@ RTMB_Model <- R6::R6Class(
             )
             opt$objective <- opt$value
           } else {
-            stop("optimizerは 'optim' または 'nlminb' を指定してください。")
+            stop("optimizer must be either 'optim' or 'nlminb'.")
           }
 
           list(opt = opt, ad_obj = base_ad_obj)
@@ -300,7 +300,7 @@ RTMB_Model <- R6::R6Class(
 
       valid_idx <- which(!is.na(obj_vals))
       if (length(valid_idx) == 0) {
-        stop("すべての最適化試行が失敗しました。初期値やモデルの定義を確認してください。")
+        stop("All optimization attempts failed. Check the initial values and model definition.")
       }
 
       best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
@@ -332,14 +332,14 @@ RTMB_Model <- R6::R6Class(
 
       unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE)
 
-      # --- 【究極の修正コア部分】opt$par と last.par の正確なマッピング ---
+      # --- Core correction: Accurate mapping between opt$par and last.par ---
       L_u_total <- length(unc_est_vec)
       idx_ran <- ad_obj$env$random
       if (is.null(idx_ran)) idx_ran <- integer(0)
 
       target_map <- if (!is.null(map)) map else self$map
 
-      # TMBが推定する「アクティブな固定パラメータ」の正確なインデックスを構築
+      # Construct accurate indices of 'active fixed parameters' estimated by TMB
       idx_fix_active <- integer(0)
       factor_levels_seen <- list()
       opt_par_curr <- 1
@@ -353,14 +353,14 @@ RTMB_Model <- R6::R6Class(
           for (i in 1:L_u) {
             pos_last <- idx_curr + i - 1
 
-            # ランダム効果なら固定パラメータではないのでスキップ
+            # Skip if random effect as it's not a fixed parameter
             if (pos_last %in% idx_ran) next
 
-            # NAにマップされている（固定されている）ならスキップ
+            # Skip if mapped to NA (fixed)
             if (!is.null(map_f) && is.na(map_f[i])) next
 
             if (!is.null(map_f)) {
-              # 重複して同じ値にマッピングされている場合の処理（初回のみ追加）
+              # Handling duplicate mappings to the same value (add only the first time)
               lvl <- as.character(map_f[i])
               if (!(lvl %in% names(factor_levels_seen))) {
                 factor_levels_seen[[lvl]] <- opt_par_curr
@@ -368,7 +368,7 @@ RTMB_Model <- R6::R6Class(
                 opt_par_curr <- opt_par_curr + 1
               }
             } else {
-              # マップなし（通常のアクティブパラメータ）
+              # No mapping (normal active parameter)
               idx_fix_active <- c(idx_fix_active, pos_last)
               opt_par_curr <- opt_par_curr + 1
             }
@@ -382,20 +382,20 @@ RTMB_Model <- R6::R6Class(
       fallback_needed <- FALSE
 
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-        # summaryを使わず、cov.fixed行列の対角成分から直接標準誤差を抽出
-        # （これによりADREPORT等の名前被りによる抽出ミスを100%防ぐ）
+        # Extract standard errors directly from the diagonal of the cov.fixed matrix without using summary
+        # (This completely prevents extraction errors due to name collisions in ADREPORT, etc.)
         se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
 
-        # 安全装置：計算したインデックス数とTMBの出力数が完全一致するか確認
+        # Safety check: Ensure the number of calculated indices perfectly matches the TMB output size
         if (length(idx_fix_active) == length(se_fix)) {
 
-          # 1. 独立したパラメータへの標準誤差代入
+          # 1. Assign standard errors to independent parameters
           unc_se_vec[idx_fix_active] <- se_fix
 
-          # 2. 共分散行列の対応する箇所への代入
+          # 2. Assign to the corresponding locations in the covariance matrix
           Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
 
-          # 3. 共有（重複）パラメータへの標準誤差のコピー
+          # 3. Copy standard errors to shared (duplicate) parameters
           idx_curr <- 1
           for (name in names(self$par_list)) {
             L_u <- self$par_list[[name]]$unc_length
@@ -416,7 +416,7 @@ RTMB_Model <- R6::R6Class(
             }
           }
 
-          # ランダム効果の標準誤差を取得
+          # Get standard errors of random effects
           if (laplace && length(idx_ran) > 0) {
             smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL)
             if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran)) {
@@ -452,7 +452,7 @@ RTMB_Model <- R6::R6Class(
                 unc_se_vec[idx_fix_active] <- se_pseudo
                 Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
 
-                # フォールバック時も重複パラメータへコピー
+                # Copy to duplicate parameters during fallback
                 idx_curr <- 1
                 for (name in names(self$par_list)) {
                   L_u <- self$par_list[[name]]$unc_length
@@ -474,11 +474,11 @@ RTMB_Model <- R6::R6Class(
                 }
               }
             } else {
-              cat("ginv() の計算にも失敗しました。\n")
+              cat("ginv() calculation also failed.\n")
             }
           }
         } else {
-          cat("ジッターを加えてもヘッセ行列の計算に失敗しました。\n")
+          cat("Hessian calculation failed even after adding jitter.\n")
         }
       }
 
@@ -486,11 +486,11 @@ RTMB_Model <- R6::R6Class(
       unc_se_list  <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
       con_est_list <- to_constrained(unc_est_list, self$par_list)
 
-      # Cov_u の構築（アクティブな部分行列のみを上書きする）
+      # Construct Cov_u (overwrite only the active submatrix)
       Cov_u <- diag(unc_se_vec^2, nrow = L_u_total, ncol = L_u_total)
       Cov_u[is.na(Cov_u)] <- 0
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-        # インデックス長と行列サイズが一致し、かつ範囲内に収まっている場合のみ代入
+        # Assign only if index length matches matrix size and is within range
         if (length(idx_fix_active) == nrow(sd_rep$cov.fixed) && max(c(0, idx_fix_active)) <= L_u_total) {
           Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
         }
@@ -751,7 +751,7 @@ RTMB_Model <- R6::R6Class(
     },
 
 
-    # 4. MCMC NUTS サンプリング メソッド
+    # 4. MCMC NUTS Sampling Method
     #' @description Draw posterior samples from the model.
     #' @param sampling Number of sampling iterations. Default is 1000.
     #' @param warmup Number of warmup iterations. Default is 1000.
@@ -776,13 +776,13 @@ RTMB_Model <- R6::R6Class(
       set.seed(seed)
       orig_pl <- self$par_list
 
-      # --- CSV保存用の情報整理とディレクトリ作成 ---
+      # --- Prepare information for CSV saving and create directory ---
       if (!is.null(save_csv)) {
-        if (!is.list(save_csv)) stop("save_csv は list(name='...', dir='...') の形式で指定してください。")
+        if (!is.list(save_csv)) stop("save_csv must be specified in the format list(name='...', dir='...').")
         save_name <- if (!is.null(save_csv$name)) save_csv$name else "model"
         save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_mcmc"
 
-        # 追加: 保存頻度（0ならチェイン終了時にまとめて1回で保存）
+        # Added: Save frequency (0 means save all at once at the end of the chain)
         save_freq <- if (!is.null(save_csv$freq)) save_csv$freq else 0
 
         if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
@@ -822,7 +822,7 @@ RTMB_Model <- R6::R6Class(
         if (init_jitter > 0) {
           jitter_vec <- rnorm(length(unc_init_vec), mean = 0, sd = init_jitter)
 
-          # null_model等で固定されたパラメータ(mapでNAになっている要素)にはジッターを加えない
+          # Do not add jitter to fixed parameters (elements mapped to NA, e.g., in null_model)
           if (!is.null(self$map)) {
             idx <- 1
             for (name in names(self$par_list)) {
@@ -872,7 +872,6 @@ RTMB_Model <- R6::R6Class(
             para_list <- ad_obj$env$parList(x = x_in)
           }
 
-          # ここに BayesRTMB::: をつける
           con_list <- BayesRTMB:::to_constrained(para_list, self$par_list)
           para_final[i, ] <- unlist(con_list, use.names = FALSE)
         }
@@ -884,7 +883,7 @@ RTMB_Model <- R6::R6Class(
       results_list <- list()
       if (parallel) {
         future::plan(future::multisession, workers = chains)
-        cat(paste0("並列サンプリングを開始します (chains = ", chains, ")...\n"))
+        cat(paste0("Starting parallel sampling (chains = ", chains, ")...\n"))
         iter <- sampling + warmup
         total_updates <- chains * (1+floor(iter / 100))
 
@@ -904,7 +903,7 @@ RTMB_Model <- R6::R6Class(
             future.globals = TRUE
             )
           }, warning = function(w) {
-            # 英語環境と日本語環境の両方の警告メッセージをキャッチして握りつぶす
+            # Catch and suppress warning messages for both English and Japanese environments
             if (grepl("may not be available when loading|ロード時には使えない可能性があります", conditionMessage(w))) {
               invokeRestart("muffleWarning")
             }
@@ -912,7 +911,7 @@ RTMB_Model <- R6::R6Class(
         })
         future::plan(future::sequential)
       } else {
-        cat(paste0("直列サンプリングを開始します (chains = ", chains, ")...\n"))
+        cat(paste0("Starting sequential sampling (chains = ", chains, ")...\n"))
         results_list <- lapply(1:chains, function(c) {
           run_chain(c, p_callback = NULL)
         })
@@ -972,7 +971,7 @@ RTMB_Model <- R6::R6Class(
         for (c in 1:chains) {
           backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
 
-          # サンプラーの指標をまとめたデータフレームを作成
+          # Create a data frame summarizing sampler metrics
           df_metrics <- data.frame(
             iteration = mcmc_index,
             accept    = accept_mat[, c],
@@ -1006,7 +1005,6 @@ RTMB_Model <- R6::R6Class(
 
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
-      #has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
       if (has_tran) res_obj$transformed_draws(self$transform)
       if (has_generate) res_obj$generated_quantities(self$code$generate)
@@ -1039,9 +1037,9 @@ RTMB_Model <- R6::R6Class(
       set.seed(seed)
       method <- match.arg(method)
 
-      # --- CSV保存用の情報整理とディレクトリ作成 ---
+      # --- Prepare information for CSV saving and create directory ---
       if (!is.null(save_csv)) {
-        if (!is.list(save_csv)) stop("save_csv は list(name='...', dir='...') の形式で指定してください。")
+        if (!is.list(save_csv)) stop("save_csv must be specified in the format list(name='...', dir='...').")
         save_name <- if (!is.null(save_csv$name)) save_csv$name else "model_vb"
         save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_vb"
         if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
@@ -1052,7 +1050,7 @@ RTMB_Model <- R6::R6Class(
 
       run_advi <- function(c) {
         library(BayesRTMB)
-        if (print_freq > 0) cat(sprintf("\n--- VB推定開始: est%d ---\n", c))
+        if (print_freq > 0) cat(sprintf("\n--- Starting VB estimation: est%d ---\n", c))
 
         ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
 
@@ -1068,7 +1066,7 @@ RTMB_Model <- R6::R6Class(
       results_list <- list()
       if (parallel && num_estimate > 1) {
         future::plan(future::multisession, workers = num_estimate)
-        cat(paste0("並列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
+        cat(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")...\n"))
 
         if (requireNamespace("progressr", quietly = TRUE)) {
           progressr::handlers(global = TRUE)
@@ -1098,7 +1096,6 @@ RTMB_Model <- R6::R6Class(
               return(res)
             }
 
-            # withCallingHandlers で囲む
             withCallingHandlers({
               future.apply::future_lapply(1:num_estimate, function(c) {
                 run_advi_prog(c)
@@ -1111,7 +1108,7 @@ RTMB_Model <- R6::R6Class(
           })
 
         } else {
-          cat("※プログレスバーを表示するには 'progressr' パッケージをインストールしてください。\n")
+          cat("* Install the 'progressr' package to display a progress bar.\n")
           results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
             run_advi(c)
           }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
@@ -1119,13 +1116,13 @@ RTMB_Model <- R6::R6Class(
 
         future::plan(future::sequential)
       } else {
-        cat(paste0("直列VB推定を開始します (num_estimate = ", num_estimate, ")...\n"))
+        cat(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")...\n"))
         results_list <- lapply(1:num_estimate, function(c) {
           run_advi(c)
         })
       }
 
-      # 推定結果をまとめる
+      # Summarize estimation results
       P_fixed <- dim(results_list[[1]]$fit)[3] - 1
       P_random <- if (!is.null(results_list[[1]]$random_fit)) dim(results_list[[1]]$random_fit)[3] else 0
 
@@ -1160,7 +1157,7 @@ RTMB_Model <- R6::R6Class(
         rel_obj_vec[c] <- res$rel_obj_final
       }
 
-      # --- 推定完了後に各estimateの事後サンプルをCSVへ一括保存 ---
+      # --- Save posterior samples of each estimate to CSV in bulk after estimation is complete ---
       if (!is.null(save_info)) {
         for (c in 1:num_estimate) {
           backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
@@ -1214,7 +1211,6 @@ RTMB_Model <- R6::R6Class(
 
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
-      #has_cf_corr <- any(sapply(self$par_list, function(x) x$type == "CF_corr"))
 
       if (has_tran){
         cat("Calculating transformed parameters...\n")
@@ -1230,7 +1226,7 @@ RTMB_Model <- R6::R6Class(
     },
 
 
-    # 5. モデルコードの表示メソッド
+    # 5. Print model code method
     #' @description Print model code or model structure.
     #' @return The object itself, invisibly.
     print_code = function() {
@@ -1249,10 +1245,10 @@ RTMB_Model <- R6::R6Class(
         block <- blocks[i]
         expr <- self$code[[block]]
 
-        # deparse() は標準で中身を4文字インデントする
+        # deparse() standardly indents contents by 4 spaces
         lines <- deparse(expr, width.cutoff = 500L, control = "useSource")
 
-        # 行頭のスペースを数えて半分にする（ネストされたインデントを4文字から2文字にする）
+        # Count leading spaces and halve them (reduce nested indents from 4 to 2 spaces)
         lines <- sapply(lines, function(x) {
           m <- regexpr("^ +", x)
           if (m > 0) {
@@ -1264,18 +1260,18 @@ RTMB_Model <- R6::R6Class(
           }
         }, USE.NAMES = FALSE)
 
-        # "# 見出し" という文字列リテラルを純粋なコメントとして整形する
+        # Format the string literal "# Header" as a pure comment
         lines <- gsub('^(\\s*)"#(.*)"$', "\\1#\\2", lines)
 
-        # さらに全体を2文字インデント
+        # Further indent the whole thing by 2 spaces
         lines <- paste0("  ", lines)
 
-        # 最初の "{" を "  ブロック名 = {" に書き換える（★ここを修正）
+        # Rewrite the first "{" to "  block_name = {" (*Fixed here)
         if (trimws(lines[1]) == "{") {
           lines[1] <- paste0("  ", block, " = {")
         }
 
-        # 最後のブロック以外はカンマと改行をつける
+        # Add commas and newlines except for the last block
         if (i < n_blocks) {
           lines[length(lines)] <- paste0(lines[length(lines)], ", ")
         }
@@ -1293,26 +1289,26 @@ RTMB_Model <- R6::R6Class(
     #' @return A new RTMB_Model object with the specified parameters fixed.
     null_model = function(target, value = 0) {
 
-      # --- 1. 入力の検証と自動補完 ---
-      # 文字列であるかの確認
+      # --- 1. Input validation and auto-completion ---
+      # Check if it is a string
       if (!is.character(target) || length(target) != 1) {
-        stop("target は単一の文字列で指定してください（例: 'delta ~ cauchy(0, r)' または 'delta'）。", call. = FALSE)
+        stop("target must be specified as a single string (e.g., 'delta ~ cauchy(0, r)' or 'delta').", call. = FALSE)
       }
 
-      # "~" が含まれていない場合の自動補完処理
+      # Auto-completion processing when "~" is not included
       if (!grepl("~", target)) {
         target_ast <- str2lang(target)
         has_index <- is.call(target_ast) && identical(target_ast[[1]], as.name("["))
 
         if (has_index) {
           base_name  <- as.character(target_ast[[2]])
-          idx_expr   <- target_ast[[3]] # 数値の 2 や シンボルの X1 など
+          idx_expr   <- target_ast[[3]] # e.g., numeric 2 or symbol X1
         } else {
           base_name  <- as.character(target_ast)
           idx_expr   <- NULL
         }
 
-        # ASTから対象パラメータの事前分布を探す内部関数
+        # Internal function to find the prior distribution of the target parameter from the AST
         find_prior <- function(expr) {
           if (is.call(expr)) {
             if (identical(expr[[1]], as.name("~")) && identical(expr[[2]], as.name(base_name))) {
@@ -1328,16 +1324,16 @@ RTMB_Model <- R6::R6Class(
 
         prior_expr <- find_prior(self$code$model)
         if (is.null(prior_expr)) {
-          stop(sprintf("モデルコード内に '%s' の事前分布の定義が見つかりません。", base_name), call. = FALSE)
+          stop(sprintf("The prior distribution definition for '%s' was not found in the model code.", base_name), call. = FALSE)
         }
 
-        # インデックス指定がある場合、データ環境に基づいて引数を動的に解決する
+        # If an index is specified, dynamically resolve arguments based on the data environment
         if (has_index) {
           eval_env <- list2env(self$data, parent = parent.frame())
 
-          # 修正箇所: インデックス値の決定を安全にする
-          # 環境内で評価し、長さ1の数値または文字列であれば採用。
-          # そうでなければ（データ列などのベクトルなら）、変数名そのものを文字列として扱う
+          # Fix: Make index value determination safe
+          # Evaluate in environment, and adopt if it is a numeric or string of length 1.
+          # Otherwise (if it's a vector like a data column), treat the variable name itself as a string
           idx_val <- tryCatch({
             res <- eval(idx_expr, envir = eval_env)
             if (length(res) == 1 && (is.numeric(res) || is.character(res))) {
@@ -1350,21 +1346,21 @@ RTMB_Model <- R6::R6Class(
           for (i in 2:length(prior_expr)) {
             arg_expr <- prior_expr[[i]]
 
-            # 数値リテラル以外（変数や計算式）の場合
+            # If not a numeric literal (variable or formula)
             if (!is.numeric(arg_expr)) {
-              # データ環境で引数を評価
+              # Evaluate arguments in the data environment
               arg_val <- tryCatch(eval(arg_expr, envir = eval_env), error = function(e) NULL)
 
-              # 評価結果がベクトル（長さ2以上）の場合のみインデックスを適用
+              # Apply index only if the evaluation result is a vector (length >= 2)
               if (!is.null(arg_val) && length(arg_val) > 1) {
-                # インデックスによる抽出を安全にテスト
+                # Safely test extraction by index
                 ext_val <- arg_val[idx_val]
 
-                # NAにならずに1つの値が抽出できた場合のみ定数として置き換える
+                # Replace with a constant only if one value could be extracted without being NA
                 if (length(ext_val) == 1 && !is.na(ext_val)) {
                   prior_expr[[i]] <- ext_val
                 } else {
-                  # 抽出できなかった場合（例: 名前なしベクトルに文字列でアクセスした等）は式として残す
+                  # If extraction failed (e.g., accessed unnamed vector with string), leave as expression
                   prior_expr[[i]] <- call("[", arg_expr, idx_expr)
                 }
               }
@@ -1377,21 +1373,20 @@ RTMB_Model <- R6::R6Class(
         cat(sprintf("Auto-completed target: %s\n", target))
       }
 
-      # フォーミュラとしてパースできるかの確認
       f <- tryCatch(as.formula(target), error = function(e) {
-        stop("target の解釈に失敗しました。'パラメータ ~ 事前分布' の形式で指定してください。", call. = FALSE)
+        stop("Failed to parse 'target'. Please specify in the format 'parameter ~ prior'.", call. = FALSE)
       })
 
-      # 左辺と右辺の両方が存在するかを確認
+      # Check if both left and right sides exist
       if (length(f) != 3) {
-        stop("target は左辺（パラメータ）と右辺（事前分布）の両方を記述してください（例: 'delta ~ cauchy(0, r)'）。", call. = FALSE)
+        stop("Please provide both the left side (parameter) and right side (prior distribution) for 'target' (e.g., 'delta ~ cauchy(0, r)').", call. = FALSE)
       }
 
-      spec <- deparse(f[[2]])        # 左辺 (例: "beta" や "beta[1]")
-      prior_expr <- f[[3]]           # 右辺 (callオブジェクト)
+      spec <- deparse(f[[2]])        # Left side (e.g., "beta" or "beta[1]")
+      prior_expr <- f[[3]]           # Right side (call object)
       prior_str <- deparse(prior_expr)
 
-      # --- 2. 制約タイプの分類とフラット名の構築 ---
+      # --- 2. Classification of constraint types and construction of flat names ---
       structural_bounds <- c("ordered", "positive_ordered", "simplex",
                              "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
                              "sum_to_zero", "centered_matrix",
@@ -1417,66 +1412,66 @@ RTMB_Model <- R6::R6Class(
         all_flat_names <- c(all_flat_names, fnames)
       }
 
-      # --- 3. ターゲットの特定 ---
+      # --- 3. Identification of targets ---
       targets <- list()
       if (spec %in% names(self$par_list)) {
         p <- self$par_list[[spec]]
         if (p$bounds %in% no_fix_bounds) {
-          stop(sprintf("パラメータ '%s' (type='%s') は構造的制約のため固定できません。", spec, p$bounds), call. = FALSE)
+          stop(sprintf("Parameter '%s' (type='%s') cannot be fixed due to structural constraints.", spec, p$bounds), call. = FALSE)
         }
         targets[[spec]] <- 1:p$length
       } else if (spec %in% all_flat_names) {
         info <- flat_to_info[[spec]]
         p <- self$par_list[[info$par]]
         if (p$bounds %in% structural_bounds) {
-          stop(sprintf("'%s' (type='%s') は要素間に依存関係があるため個別に固定できません。'%s' で全体を固定してください。",
+          stop(sprintf("Elements of '%s' (type='%s') cannot be individually fixed because they are interdependent. Fix the entire '%s'.",
                        spec, p$bounds, info$par), call. = FALSE)
         }
         if (!(p$bounds %in% elementwise_bounds)) {
-          stop(sprintf("'%s' (type='%s') は個別要素の固定に対応していません。", spec, p$bounds), call. = FALSE)
+          stop(sprintf("Fixing individual elements is not supported for '%s' (type='%s').", spec, p$bounds), call. = FALSE)
         }
         targets[[info$par]] <- unique(c(targets[[info$par]], info$idx))
       } else {
-        stop(sprintf("'%s' は有効なパラメータ名または要素名ではありません。", spec), call. = FALSE)
+        stop(sprintf("'%s' is not a valid parameter or element name.", spec), call. = FALSE)
       }
 
-      # --- 4. 次元数（固定する要素数）の取得 ---
+      # --- 4. Get dimensions (number of elements to fix) ---
       par_name <- names(targets)[1]
       fix_indices <- targets[[par_name]]
       k_fixed <- length(fix_indices)
 
-      # --- 5. 事前分布の補正値(prior_correction)の計算 ---
+      # --- 5. Calculate prior_correction ---
       if (is.call(prior_expr)) {
         fn_name <- as.character(prior_expr[[1]])
         lpdf_fn_name <- paste0(fn_name, "_lpdf")
         prior_expr[[1]] <- as.name(lpdf_fn_name)
 
-        # rep(value, k_fixed) を第一引数として挿入し、要素数分のベクトルにする
+        # Insert rep(value, k_fixed) as the first argument to make a vector of the number of elements
         prior_expr <- as.call(append(as.list(prior_expr), call("rep", value, k_fixed), after = 1))
 
         eval_env <- list2env(self$data, parent = parent.frame())
         correction_val <- tryCatch({
-          # 評価した対数密度がベクトルの場合は sum() で足し合わせる
+          # If the evaluated log-density is a vector, sum it using sum()
           sum(eval(prior_expr, envir = eval_env))
         }, error = function(e) {
-          stop(sprintf("事前分布 '%s' の評価に失敗しました。エラー: %s", prior_str, e$message))
+          stop(sprintf("Failed to evaluate prior '%s'. Error: %s", prior_str, e$message))
         })
       } else {
-        stop("事前分布は関数呼び出しの形式（例: cauchy(0, r)）で指定してください。")
+        stop("Priors must be specified as function calls (e.g., cauchy(0, r)).")
       }
 
-      # --- 6. 値の妥当性チェック & map の構築 ---
+      # --- 6. Value validity check & map construction ---
       map_list <- list()
       adjusted_init <- if (is.list(self$init)) self$init else list()
 
       p <- self$par_list[[par_name]]
       is_full <- length(fix_indices) == p$length
 
-      # 境界値ジャスト
-      if (!is.null(p$lower) && any(value <= p$lower)) stop("固定する値は下限より大きい必要があります（境界値そのものは指定できません）。", call. = FALSE)
-      if (!is.null(p$upper) && any(value >= p$upper)) stop("固定する値は上限より小さい必要があります（境界値そのものは指定できません）。", call. = FALSE)
+      # Exactly on the boundary
+      if (!is.null(p$lower) && any(value <= p$lower)) stop("Fixed value must be strictly greater than the lower bound (the boundary itself cannot be specified).", call. = FALSE)
+      if (!is.null(p$upper) && any(value >= p$upper)) stop("Fixed value must be strictly less than the upper bound (the boundary itself cannot be specified).", call. = FALSE)
 
-      # --- ヤコビアン補正の加算 ---
+      # --- Addition of Jacobian correction ---
       b_type <- p$bounds
       if (b_type %in% c("lower", "upper", "interval")) {
         val_vec <- rep(value, length.out = k_fixed)
@@ -1514,7 +1509,7 @@ RTMB_Model <- R6::R6Class(
       adjusted_init[[par_name]] <- val
       if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
 
-      # --- 7. クローンして返す ---
+      # --- 7. Clone and return ---
       new_model <- self$clone()
       if (!is.null(new_model$code)) new_model$code <- as.list(self$code)
 
@@ -1533,20 +1528,20 @@ RTMB_Model <- R6::R6Class(
 
 remove_prior_from_ast <- function(expr, target_vars) {
   if (is.call(expr)) {
-    # ブロック { ... } の中身をチェック
+    # Check contents of the block { ... }
     if (identical(expr[[1]], as.name("{"))) {
       new_args <- lapply(as.list(expr)[-1], function(e) remove_prior_from_ast(e, target_vars))
-      new_args <- Filter(Negate(is.null), new_args) # 削除された行(NULL)を詰める
+      new_args <- Filter(Negate(is.null), new_args) # Remove deleted rows (NULL)
       return(as.call(c(as.name("{"), new_args)))
     }
-    # 事前分布の式 ~ をチェック
+    # Check the prior distribution expression ~
     else if (identical(expr[[1]], as.name("~"))) {
-      lhs <- deparse(expr[[2]]) # 左辺の変数名を取得
+      lhs <- deparse(expr[[2]]) # Get the variable name on the left side
       if (lhs %in% target_vars) {
-        return(NULL) # ターゲット変数ならこの行をまるごと削除
+        return(NULL) # Delete this line completely if it's the target variable
       }
     }
-    # それ以外の関数呼び出しは再帰的に処理
+    # Process other function calls recursively
     new_args <- lapply(as.list(expr), function(e) remove_prior_from_ast(e, target_vars))
     return(as.call(new_args))
   }

@@ -107,7 +107,6 @@ student_t_lpdf <- function(x, df, mu = 0, sigma = 1) {
 #' @return The sum of the log-density.
 #' @export
 laplace_lpdf <- function(x, location = 0, scale = 1) {
-  #sum(-log(2 * scale) - abs(x - location) / scale)
   sum(-log(2 * scale) - sqrt((x - location)^2 + 1e-8) / scale)
 }
 
@@ -161,7 +160,7 @@ lkj_corr_lpdf <- function(Omega, eta = 1) {
     x <- (rho + 1) / 2
     return(dbeta(x, shape1 = eta, shape2 = eta, log = TRUE) - log(2))
   }
-  # 行列（3変数以上）のケース
+  # Matrix case (3 or more variables)
   K <- nrow(Omega)
   log_C <- 0
   for (k in 1:(K - 1)) {
@@ -335,7 +334,7 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints) {
     eta_vec <- eta
   }
 
-  # インデックスを利用してベクトル演算を行う
+  # Perform vector operations using indices
   idx_1 <- which(x == 1)
   idx_K <- which(x == K)
   idx_mid <- which(x > 1 & x < K)
@@ -384,7 +383,7 @@ lower_tri_normal_lpdf <- function(x, mean = 0, sd = 1) {
   }
   return(lp)
 }
-#' #' Positive lower-triangular normal log-probability density function
+#' Positive lower-triangular normal log-probability density function
 #'
 #' @param x A matrix of lower-triangular parameters (Cholesky factor with positive diagonals).
 #' @param mean Mean of the normal distribution (assumed to be 0 for the half-normal correction).
@@ -472,7 +471,7 @@ multi_normal_lpdf <- function(x, mean, Sigma) {
     return(-0.5 * (n * k * log(2 * pi) + n * log_det + quad_form))
   } else {
     k <- length(x)
-    # ベクトルに対する計算
+    # Calculation for vectors
     quad_form <- quad_form_chol(x - mean, L)
     return(-0.5 * (k * log(2 * pi) + log_det + quad_form))
   }
@@ -492,10 +491,10 @@ normal_mixture_lpdf <- function(x, pi_w, mean, sd) {
 
   lp <- 0
   for (i in 1:N) {
-    # 各クラスタからの対数尤度
+    # Log-likelihood from each cluster
     log_probs <- log_pi + dnorm(x[i], mean = mean, sd = sd, log = TRUE)
 
-    # Log-Sum-Exp トリックによる加算
+    # Addition using the Log-Sum-Exp trick
     max_lp <- max(log_probs)
     lp <- lp + max_lp + log(sum(exp(log_probs - max_lp)))
   }
@@ -531,7 +530,7 @@ centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
     df <- sum(R - (1:max_d))
     lp <- -0.5 * df * log(2 * pi) - df * log(sigma) - 0.5 * sum(x^2) / sigma^2
   } else {
-    # 次元ごとに異なる sigma を指定する場合
+    # When specifying a different sigma for each dimension
     for (d in 1:max_d) {
       x_d <- x[d:R, d]
       K <- length(x_d)
@@ -552,10 +551,10 @@ positive_centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
   C <- ncol(x)
   max_d <- min(C, R - 1)
 
-  # 元の centered_tri_multi_normal_lpdf を計算
+  # Calculate the original centered_tri_multi_normal_lpdf
   lp <- centered_tri_multi_normal_lpdf(x, sigma)
 
-  # 切断正規分布としての正規化定数を補正（各列で1/2になるため、密度を 2^max_d 倍する）
+  # Correct the normalizing constant for the truncated normal distribution (multiply density by 2^max_d since it's halved for each column)
   lp <- lp + max_d * log(2)
 
   return(lp)
@@ -678,7 +677,7 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
     return(lp)
 
   } else {
-    # ベクトル(1サンプル)の場合
+    # Vector case (single sample)
     y_c <- x - mu
     term1 <- sum((y_c^2) * inv_psi)
 
@@ -704,7 +703,7 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi) {
 sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega) {
   p <- length(y_bar)
 
-  # 1. L_Sigmaとlog|Sigma|の計算
+  # 1. Calculate L_Sigma and log|Sigma|
   if (length(sd) == 1) {
     L_Sigma <- matrix(sd, 1, 1) %*% CF_Omega
   } else {
@@ -712,16 +711,16 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
   }
   log_det_Sigma <- 2 * sum(log(diag(L_Sigma)))
 
-  # 2. 平均ベクトルのマハラノビス距離 (N * (y_bar - mu)^T Sigma^-1 (y_bar - mu))
+  # 2. Mahalanobis distance of the mean vector (N * (y_bar - mu)^T Sigma^-1 (y_bar - mu))
   z <- solve(L_Sigma, y_bar - mean)
   quad_mean <- sum(z^2)
 
-  # 3. 偏差積和行列のトレース項 (tr(Sigma^-1 S_mat))
+  # 3. Trace term of the deviation sum of squares matrix (tr(Sigma^-1 S_mat))
   L_inv <- solve(L_Sigma)
   Sigma_inv <- t(L_inv) %*% L_inv
   trace_term <- sum(Sigma_inv * S_mat)
 
-  # 4. 元の多変量正規分布の完全な対数尤度
+  # 4. Full log-likelihood of the original multivariate normal distribution
   lp <- -0.5 * N * p * log(2 * pi) -
     0.5 * N * log_det_Sigma -
     0.5 * trace_term -
@@ -746,7 +745,7 @@ sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
   psi_safe <- psi^2 + 1e-8
   inv_psi <- 1 / psi_safe
 
-  # 修正点1: ベクトルでのリサイクル掛け算を避け、明示的な行列積にする
+  # Modification 1: Avoid recycling multiplication with vectors and use explicit matrix multiplication
   Lambda_scaled <- diag(inv_psi) %*% Lambda
 
   M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)
@@ -754,28 +753,28 @@ sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
 
   log_det_Sigma <- sum(log(psi_safe)) + 2 * sum(log(diag(L_M)))
 
-  # --- 1. トレース項の計算 ---
+  # --- 1. Calculate trace term ---
   term1_trace <- sum(diag(S_mat) * inv_psi)
 
   Q <- t(Lambda_scaled) %*% S_mat %*% Lambda_scaled
   term2_trace <- sum(diag(solve(M, Q)))
   trace_term <- term1_trace - term2_trace
 
-  # --- 2. 平均項の計算 ---
+  # --- 2. Calculate mean term ---
   d <- y_bar - mu
   term1_mean <- sum((d^2) * inv_psi)
 
-  # 修正点2: as.vector()を避け、厳密な列ベクトル(matrix)として扱う
+  # Modification 2: Avoid as.vector() and treat strictly as a column vector (matrix)
   d_mat <- matrix(d, ncol = 1)
   z_lambda <- t(Lambda_scaled) %*% d_mat
   theta <- solve(M, z_lambda)
 
-  # 修正点3: 行列同士の内積からスカラーを抽出
+  # Modification 3: Extract scalar from inner product of matrices
   term2_mean <- sum(t(z_lambda) %*% theta)
 
   quad_mean <- term1_mean - term2_mean
 
-  # --- 3. 完全な対数尤度の計算 ---
+  # --- 3. Calculate full log-likelihood ---
   lp <- -0.5 * (N * P * 1.83787706640935 +
                   N * log_det_Sigma +
                   trace_term +

@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{item_curve}
 \alias{item_curve}
-\title{項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算}
+\title{Calculate Item Response Curve / Category Response Curve}
 \usage{
 item_curve(x, ...)
 }
@@ -12,5 +12,5 @@ item_curve(x, ...)
 \item{...}{Additional arguments.}
 }
 \description{
-項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
+Calculate Item Response Curve / Category Response Curve
 }

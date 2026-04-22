@@ -18,17 +18,6 @@ NUTS_method <- function(model,
   q_fixed_init <- model$par
   P_fixed <- length(q_fixed_init)
 
-  # # --- CSV保存の準備 ---
-  # if (!is.null(save_info)) {
-  #   backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", chain, ".csv"))
-  #   prog_file <- file.path(save_info$dir, paste0(save_info$name, "_progress_", chain, ".txt"))
-  #
-  #   param_names <- names(q_fixed_init)
-  #   if (is.null(param_names)) param_names <- paste0("V", 1:P_fixed)
-  #   header <- c("iteration", "lp", "accept", "treedepth", "eps", param_names)
-  #   write.table(t(header), file = backup_file, append = FALSE, sep = ",", col.names = FALSE, row.names = FALSE)
-  # }
-
 
   para_fixed <- array(NA, dim=c(iter, P_fixed))
   para_full  <- array(NA, dim=c(iter, P_all))
@@ -45,13 +34,13 @@ NUTS_method <- function(model,
   M_inv <- rep(1, P_fixed)
   eps <- FindReasonableEpsilon(q_fixed_init, M_inv)
 
-  # Dual Averaging パラメータ
+  # Dual Averaging parameters
   mu_DA <- log(10 * eps)
   Hbar <- 0; gamma_DA <- 0.05; t0 <- 10; kappa <- 0.75
   eps_bar <- 1; log_eps_bar <- log(eps_bar)
   da_iter <- 1
 
-  # --- Windowed Adaptation 設定 ---
+  # --- Windowed Adaptation setting ---
   init_buffer <- 75
   term_buffer <- 50
   base_window <- 25
@@ -69,7 +58,6 @@ NUTS_method <- function(model,
   next_window <- init_buffer + base_window
   window_size <- base_window
 
-  # Welfordのアルゴリズム用状態変数
   w_mean <- rep(0, P_fixed)
   w_var  <- rep(0, P_fixed)
   w_n    <- 0
@@ -218,7 +206,6 @@ create_NUTS_core <- function(ad_obj) {
     }
 
     out1 <- BuildTree(p, q, gr, log_u, v, j - 1L, eps, H0, M_inv)
-    # isTRUEで確実に論理値にする
     if (isTRUE(out1$s == 0L)) return(out1)
 
     if (v == -1L) {
@@ -239,12 +226,10 @@ create_NUTS_core <- function(ad_obj) {
     sum1 <- sum(dq * (out1$p_minus * M_inv))
     sum2 <- sum(dq * (out1$p_plus * M_inv))
 
-    # 判定結果にNAが混入しないようisTRUEを使用
     s_uturn <- isTRUE(sum1 >= 0) && isTRUE(sum2 >= 0)
 
     out1$n <- total_n
 
-    # 掛け算を使わず、論理積で確実に 0L か 1L にする
     out1$s <- if (isTRUE(out1$s == 1L) && isTRUE(out2$s == 1L) && s_uturn) 1L else 0L
 
     out1$alpha <- out1$alpha + out2$alpha

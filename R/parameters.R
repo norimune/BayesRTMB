@@ -103,16 +103,16 @@ generate_flat_names <- function(base_name, dims, names_def = NULL) {
   if (length(dims) > 1) {
     if (!is.null(names_def)) {
       if (is.list(names_def) && length(names_def) == length(dims)) {
-        # 次元ごとにリストで名前が指定された場合
+        # When names are specified as a list per dimension
         grid <- do.call(expand.grid, c(names_def, list(stringsAsFactors = FALSE)))
         return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
       } else if (is.atomic(names_def) && length(names_def) == dims[1]) {
-        # ベクトルで名前が指定された場合
+        # When names are specified as a vector
         if (length(dims) == 2 && dims[1] == dims[2]) {
-          # 正方行列（CF_corr など）: 行と列の両方に適用
+          # Square matrix (e.g., CF_corr): Apply to both rows and columns
           grid <- expand.grid(names_def, names_def, stringsAsFactors = FALSE)
         } else {
-          # 非正方行列: 行のみに適用
+          # Non-square matrix: Apply only to rows
           dim_list <- lapply(dims, seq_len)
           dim_list[[1]] <- names_def
           grid <- do.call(expand.grid, dim_list)
@@ -120,11 +120,11 @@ generate_flat_names <- function(base_name, dims, names_def = NULL) {
         return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
       }
     }
-    # 名前指定がない場合、またはサイズが合わない場合
+    # When names are not specified, or sizes do not match
     grid <- do.call(expand.grid, lapply(dims, seq_len))
     return(paste0(base_name, "[", apply(grid, 1, paste, collapse = ","), "]"))
   } else {
-    # 1次元ベクトルの場合
+    # For 1D vectors
     if (!is.null(names_def) && length(names_def) == len) {
       return(paste0(base_name, "[", names_def, "]"))
     }
@@ -141,7 +141,7 @@ stz_basis <- function(K) {
   return(Q)
 }
 
-# 制約空間(元の形)のフラットベクトルをリストに復元する関数
+# Function to restore a flat vector in constrained space to a list
 constrained_vector_to_list <- function(vec, par_list) {
   res <- list()
   idx <- 1
@@ -166,7 +166,7 @@ constrained_vector_to_list <- function(vec, par_list) {
   return(res)
 }
 
-# 無制約空間のフラットベクトルをリストに復元する関数 (★欠落していたため追加)
+# Function to restore a flat vector in unconstrained space to a list (*Added due to omission)
 unconstrained_vector_to_list <- function(vec, par_list) {
   res <- list()
   idx <- 1
@@ -184,7 +184,7 @@ unconstrained_vector_to_list <- function(vec, par_list) {
   return(res)
 }
 
-# 無制約空間への変換
+# Convert to unconstrained space
 to_unconstrained <- function(para_orig_list, par_list) {
   para_unc <- list()
   for (name in names(par_list)) {
@@ -368,7 +368,7 @@ to_constrained <- function(para_unc_list, par_list) {
     val_unc <- para_unc_list[[name]]
     b_type <- p$bounds
 
-    # RTMBのadvector属性を維持するためのゼロ (スカラー)
+    # Zero (scalar) to preserve RTMB's advector attribute
     ad_zero <- val_unc[1] * 0
 
     if (b_type == "lower") {
@@ -583,7 +583,7 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
       for (d in 1:min(C, R - 1)) {
         n_d <- R - d + 1
         u1 <- val_unc[idx]
-        # ヤコビアン log(|J|) = u1 + 0.5 * log(n_d / (n_d - 1))
+        # Jacobian log(|J|) = u1 + 0.5 * log(n_d / (n_d - 1))
         lj <- lj + u1 + 0.5 * log(n_d / (n_d - 1))
         idx <- idx + n_d - 1
       }
@@ -623,7 +623,7 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
       for (i in 1:R) {
         max_j <- min(i, C)
         for (j in 1:max_j) {
-          if (i == j) lj <- lj + val_unc[idx] # 対角成分だけを足す
+          if (i == j) lj <- lj + val_unc[idx] # Add only diagonal elements
           idx <- idx + 1
         }
       }

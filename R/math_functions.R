@@ -178,7 +178,6 @@ stz_basis <- function(K) {
 #' @return A numeric vector of length K whose elements sum to zero.
 #' @export
 sum_to_zero <- function(x) {
-  # パラメータ数 K を特定 (入力は K-1 次元)
   K <- length(x) + 1
   Q <- stz_basis(K)
   return(as.vector(Q %*% x))
@@ -203,13 +202,9 @@ to_lower_tri <- function(x, M, D) {
 #' @return An R x C matrix where each column sums to zero.
 #' @export
 to_centered_matrix <- function(x, R, C) {
-  # 1. 無制約ベクトルを (R-1) x C の行列に整形
-  # RTMB::advector(0) で初期化して型を合わせる
   mat_unc <- matrix(x[1] * 0, nrow = R - 1, ncol = C)
   mat_unc[] <- x
   Q <- stz_basis(R)
-
-  # 結果も advector 属性を持つ行列として返される
   return(Q %*% mat_unc)
 }
 #' Vector to centered triangular matrix (RTMB compatible)

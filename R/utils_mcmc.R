@@ -12,7 +12,7 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
   test_file <- file.path(dir, paste0(name, "-1.csv"))
   if (!file.exists(test_file)) stop(paste("File not found:", test_file))
 
-  # --- 修正: check.names = FALSE を追加 ---
+  # --- Fix: Add check.names = FALSE ---
   test_dat <- read.csv(test_file, header = TRUE, check.names = FALSE)
   n_samples <- nrow(test_dat)
 
@@ -48,7 +48,7 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
     file_path <- file.path(dir, paste0(name, "-", c, ".csv"))
     if (!file.exists(file_path)) stop(paste("File not found:", file_path))
 
-    # --- 修正: check.names = FALSE を追加 ---
+    # --- Fix: Add check.names = FALSE ---
     dat <- read.csv(file_path, header = TRUE, check.names = FALSE)
 
     if (nrow(dat) != n_samples) {
@@ -106,7 +106,7 @@ read_mcmc_csv <- function(model, name, dir = "BayesRTMB_mcmc", chains = 4, lapla
 
   return(res_obj)
 }
-# summaryの結果にクラスを付与するヘルパー
+# Helper to assign class to summary results
 as_summary_df <- function(df) {
   class(df) <- c("summary_BayesRTMB", "data.frame")
   return(df)
@@ -126,12 +126,12 @@ print.summary_BayesRTMB <- function(x, digits = NULL,...) {
     if (is.null(digits)) digits <- 2
   }
 
-  # 1. 各列を文字列に変換 (表示形式の指定)
+  # 1. Convert each column to string (specify display format)
   out_char <- as.data.frame(lapply(names(df), function(cn) {
     val <- df[[cn]]
     if (is.numeric(val)) {
       if (grepl("ess|iter|count", cn, ignore.case = TRUE)) {
-        # ESSなどは整数 (NA対策込み)
+        # ESS and similar metrics are integers (including NA handling)
         ifelse(is.na(val), "NA", sprintf("%.0f", val))
       } else {
         fmt <- paste0("%.", digits, "f")
@@ -147,25 +147,25 @@ print.summary_BayesRTMB <- function(x, digits = NULL,...) {
     max(nchar(names(out_char)[i]), nchar(out_char[, i]), na.rm = TRUE)
   })
 
-  # 2. 列幅の計算
+  # 2. Calculate column widths
   col_widths <- sapply(seq_along(names(out_char)), function(i) {
     max(nchar(names(out_char)[i]), nchar(out_char[, i]))
   })
 
-  # 3. ヘッダーの表示 (タイトルはすべて右揃え)
+  # 3. Display header (all titles right-aligned)
   header_parts <- sapply(seq_along(col_widths), function(i) {
     sprintf(paste0("%", col_widths[i], "s"), names(out_char)[i])
   })
   cat(paste(header_parts, collapse = "  "), "\n")
 
-  # 4. データの表示 (1列目のデータのみ左揃え)
+  # 4. Display data (only the first column is left-aligned)
   for (r in seq_len(nrow(out_char))) {
     row_parts <- sapply(seq_along(col_widths), function(c) {
       if (c == 1) {
-        # 変数名データのみ左揃え
+        # Left-align only the variable name data
         sprintf(paste0("%-", col_widths[c], "s"), out_char[r, c])
       } else {
-        # 数値データは右揃え
+        # Right-align numeric data
         sprintf(paste0("%", col_widths[c], "s"), out_char[r, c])
       }
     })
@@ -175,42 +175,42 @@ print.summary_BayesRTMB <- function(x, digits = NULL,...) {
   return(invisible(x))
 }
 
-#' 周辺効果 (Conditional Effects) を計算する
-#' @param fit モデルのフィットオブジェクト。
-#' @param effect 効果を可視化したい変数名。
-#' @param ... その他の引数。
+#' Calculate Conditional Effects
+#' @param fit Model fit object.
+#' @param effect Name of the variable to visualize the effect.
+#' @param ... Additional arguments.
 #' @export
 conditional_effects <- function(fit, effect, ...) {
   UseMethod("conditional_effects")
 }
 
-#' MCMCフィットオブジェクトの周辺効果を計算する
+#' Calculate conditional effects for MCMC fit objects
 #' @method conditional_effects mcmc_fit
-#' @param fit `MCMC_Fit` クラスのオブジェクト。
-#' @param effect 効果を可視化したい説明変数の名前（例: "X1" や "X1:X2"）。
-#' @param resolution 連続変数の場合に計算するグリッドの解像度（デフォルトは100）。
-#' @param prob 信用区間の確率（デフォルトは0.95）。
-#' @param ... その他の引数。
+#' @param fit An object of class `MCMC_Fit`.
+#' @param effect Name of the explanatory variable to visualize (e.g., "X1" or "X1:X2").
+#' @param resolution Grid resolution to calculate for continuous variables (default is 100).
+#' @param prob Probability for the credible interval (default is 0.95).
+#' @param ... Additional arguments.
 #' @export
 conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, ...) {
   model_obj <- fit$model
   if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
-    stop("このモデルオブジェクトには formula または元のデータが含まれていません。")
+    stop("This model object does not contain a formula or the original data.")
   }
 
   form <- model_obj$formula
   raw_data <- model_obj$raw_data
   fam <- model_obj$family
 
-  # 交互作用かどうかの判定と分割
+  # Check for interaction and split
   eff_vars <- strsplit(effect, ":")[[1]]
   if (length(eff_vars) > 2) {
-    stop("3つ以上の変数の交互作用プロットには現在対応していません。")
+    stop("Interaction plots for 3 or more variables are not currently supported.")
   }
   eff1 <- eff_vars[1]
   eff2 <- if (length(eff_vars) == 2) eff_vars[2] else NULL
 
-  # 1. ベースとなるデータフレームの作成 (他の変数を平均/最頻値に固定)
+  # 1. Create base data frame (fixing other variables to mean/mode)
   base_data <- lapply(raw_data, function(x) {
     if (is.numeric(x)) {
       mean(x, na.rm = TRUE)
@@ -223,9 +223,9 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   })
   base_data <- as.data.frame(base_data)
 
-  # 2. effect変数のみを動かした newdata を作成
+  # 2. Create newdata moving only the effect variable
   val1 <- raw_data[[eff1]]
-  if (is.null(val1)) stop(sprintf("データの中に変数 '%s' が見つかりません。", eff1))
+  if (is.null(val1)) stop(sprintf("Variable '%s' not found in the data.", eff1))
 
   is_numeric1 <- is.numeric(val1)
   if (is_numeric1) {
@@ -236,14 +236,14 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
 
   if (!is.null(eff2)) {
     val2 <- raw_data[[eff2]]
-    if (is.null(val2)) stop(sprintf("データの中に変数 '%s' が見つかりません。", eff2))
+    if (is.null(val2)) stop(sprintf("Variable '%s' not found in the data.", eff2))
 
-    # 第2変数が連続値で種類が多い場合は、代表的な3点(Mean-1SD, Mean, Mean+1SD)に絞る
+    # If the second variable is continuous and has many unique values, restrict to 3 representative points (Mean-1SD, Mean, Mean+1SD)
     if (is.numeric(val2) && length(unique(val2)) > 5) {
       seq2 <- c(mean(val2, na.rm=TRUE) - sd(val2, na.rm=TRUE),
                 mean(val2, na.rm=TRUE),
                 mean(val2, na.rm=TRUE) + sd(val2, na.rm=TRUE))
-      seq2 <- round(seq2, 2) # 表示が見やすいように丸める
+      seq2 <- round(seq2, 2) # Round for better display
     } else {
       seq2 <- sort(unique(val2))
     }
@@ -259,21 +259,21 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
     newdata[[eff1]] <- seq1
   }
 
-  # 3. デザイン行列の作成
+  # 3. Create design matrix
   rhs <- delete.response(terms(form))
   X_new <- model.matrix(rhs, data = newdata)
 
-  # 4. 事後サンプルの取得 (固定効果のみ)
+  # 4. Obtain posterior samples (fixed effects only)
   beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
   I <- dim(beta_samples)[1]
   C <- dim(beta_samples)[2]
   P <- dim(beta_samples)[3]
   beta_flat <- matrix(beta_samples, nrow = I * C, ncol = P)
 
-  # 5. 線形予測子の計算
+  # 5. Calculate linear predictor
   eta <- X_new %*% t(beta_flat)
 
-  # 6. 逆リンク関数で期待値に変換
+  # 6. Convert to expected value via inverse link function
   if (is.null(fam)) fam <- "gaussian"
   inv_link <- switch(fam,
                      "gaussian" = , "lognormal" = , "student_t" = function(x) x,
@@ -283,7 +283,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   )
   mu <- inv_link(eta)
 
-  # 7. 事後分布の要約
+  # 7. Summarize posterior distribution
   alpha <- 1 - prob
   lower_q <- alpha / 2
   upper_q <- 1 - alpha / 2
@@ -295,13 +295,13 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   )
   res_df <- cbind(newdata[, eff_vars, drop = FALSE], res_df)
 
-  # 8. 結果をリストにまとめてクラスを付与
+  # 8. Combine results into a list and assign class
   res <- list(data = res_df, effect_vars = eff_vars, is_numeric = is_numeric1)
   class(res) <- "ce_rtmb"
   return(res)
 }
 
-#' ce_rtmb クラス専用のプロットメソッド (Base R)
+#' Plot method for ce_rtmb class (Base R)
 #' @method plot ce_rtmb
 #' @param x An object of class ce_rtmb
 #' @param ... Additional arguments.
@@ -318,7 +318,7 @@ plot.ce_rtmb <- function(x, ...) {
   y_up  <- df$upper
 
   if (!has_interaction) {
-    # --- 交互作用なしの場合 ---
+    # --- Without interaction ---
     col_line <- rgb(0, 0.45, 0.7)
     col_ribbon <- rgb(0, 0.45, 0.7, 0.2)
 
@@ -338,16 +338,16 @@ plot.ce_rtmb <- function(x, ...) {
     }
 
   } else {
-    # --- 交互作用ありの場合 ---
+    # --- With interaction ---
     eff2 <- eff_vars[2]
     groups <- unique(df[[eff2]])
     n_groups <- length(groups)
 
-    # グループ数に応じたカラーパレットの作成
+    # Create color palette based on number of groups
     cols_line <- hcl.colors(n_groups, palette = "Dark 2")
     cols_ribbon <- sapply(cols_line, function(col) {
       rgb_val <- col2rgb(col) / 255
-      rgb(rgb_val[1], rgb_val[2], rgb_val[3], 0.2) # 透過度0.2
+      rgb(rgb_val[1], rgb_val[2], rgb_val[3], 0.2) # Transparency 0.2
     })
 
     if (x$is_numeric) {
@@ -371,7 +371,7 @@ plot.ce_rtmb <- function(x, ...) {
            main = paste("Conditional effect of", eff1, "by", eff2), ...)
       axis(1, at = unique(x_num), labels = levels(x_fct))
 
-      # エラーバーが重ならないようにX軸を少しずらす
+      # Shift X-axis slightly to avoid overlapping error bars
       offset_step <- 0.1
       offsets <- seq(-offset_step * (n_groups-1)/2, offset_step * (n_groups-1)/2, length.out = n_groups)
 
@@ -383,14 +383,14 @@ plot.ce_rtmb <- function(x, ...) {
       }
     }
 
-    # 凡例の追加
+    # Add legend
     legend("topright", title = eff2, legend = format(groups, digits = 3),
            col = cols_line, lty = 1, pch = ifelse(x$is_numeric, NA, 16), lwd = 2, bty = "n")
   }
   invisible(x)
 }
 
-#' ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
+#' Print method for ce_rtmb class (automatically calls plot)
 #' @method print ce_rtmb
 #' @param x An object of class ce_rtmb
 #' @param ... Additional arguments.
@@ -400,23 +400,23 @@ print.ce_rtmb <- function(x, ...) {
   invisible(x)
 }
 
-#' 項目情報関数の計算
+#' Calculate Item Information Function
 #' @param x An object of class RTMB_Fit_Base
 #' @param ... Additional arguments.
 #' @export
 item_info <- function(x, ...) UseMethod("item_info")
 
-#' テスト情報関数の計算
+#' Calculate Test Information Function
 #' @param x An object of class RTMB_Fit_Base
 #' @param ... Additional arguments.
 #' @export
 test_info <- function(x, ...) UseMethod("test_info")
 
-#' RTMB_Fit_Base の項目情報関数
+#' Item Information Function for RTMB_Fit_Base
 #' @method item_info RTMB_Fit_Base
 #' @param x An object of class RTMB_Fit_Base.
-#' @param theta_seq 評価する特性値（能力値）のシーケンス。
-#' @param items 計算対象を特定の項目に絞る場合のインデックスまたは項目名（省略可能）。
+#' @param theta_seq Sequence of trait values (ability) to evaluate.
+#' @param items Index or item names to restrict the calculation to specific items (optional).
 #' @param ... Additional arguments.
 #' @export
 item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
@@ -424,10 +424,10 @@ item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100),
   est <- if (!is.null(x$par)) x$par else x$EAP()
   b <- est$b
 
-  # 修正箇所: names(b) ではなく、モデル構築時に保存した正しい項目名(par_names)を参照する
+  # Fix: Refer to the correct item names (par_names) saved during model construction instead of names(b)
   par_names_b <- x$model$par_names$b
 
-  # データ型と項目名の取得
+  # Get data type and item names
   if (is.matrix(b)) {
     type <- "ordered"
     J <- nrow(b)
@@ -439,18 +439,18 @@ item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100),
     item_names <- if (!is.null(par_names_b)) par_names_b else paste0("Item", 1:J)
   }
 
-  # 選択対象のインデックスを特定
+  # Identify indices of target items
   if (!is.null(items)) {
     if (is.character(items)) {
       target_idx <- match(items, item_names)
       if (any(is.na(target_idx))) {
-        warning("指定された項目名が見つかりません: ", paste(items[is.na(target_idx)], collapse = ", "))
+        warning("Specified item names not found: ", paste(items[is.na(target_idx)], collapse = ", "))
         target_idx <- target_idx[!is.na(target_idx)]
       }
     } else {
       target_idx <- items[items >= 1 & items <= J]
     }
-    if (length(target_idx) == 0) stop("有効な項目が選択されていません。")
+    if (length(target_idx) == 0) stop("No valid items selected.")
   } else {
     target_idx <- 1:J
   }
@@ -534,7 +534,7 @@ test_info.advi_fit <- test_info.RTMB_Fit_Base
 #' @export
 test_info.map_fit <- test_info.RTMB_Fit_Base
 
-# --- プロット用メソッド ---
+# --- Plotting Methods ---
 
 #' @method plot rtmb_item_info
 #' @export
@@ -543,7 +543,7 @@ plot.rtmb_item_info <- function(x, legend = TRUE, ...) {
           xlab = expression(theta ~ "(Ability)"), ylab = "Information",
           main = "Item Information Functions", ...)
 
-  # 凡例の追加 (legend = TRUE の場合)
+  # Add legend (if legend = TRUE)
   if (legend && ncol(x$info) > 0) {
     legend("topright", legend = colnames(x$info), col = 1:ncol(x$info), lty = 1, cex = 0.8)
   }
@@ -572,17 +572,17 @@ print.rtmb_test_info <- function(x, ...) {
 }
 
 
-#' 項目反応曲線 (Item Response Curve) / カテゴリ反応曲線の計算
+#' Calculate Item Response Curve / Category Response Curve
 #' @export
 #' @param x An object of class
 #' @param ... Additional arguments.
 item_curve <- function(x, ...) UseMethod("item_curve")
 
-#' RTMB_Fit_Base の項目反応曲線
+#' Item Response Curve for RTMB_Fit_Base
 #' @method item_curve RTMB_Fit_Base
 #' @param x An object of class RTMB_Fit_Base.
-#' @param theta_seq 評価する特性値（能力値）のシーケンス。
-#' @param items 計算対象を特定の項目に絞る場合のインデックスまたは項目名（省略可能）。
+#' @param theta_seq Sequence of trait values (ability) to evaluate.
+#' @param items Index or item names to restrict the calculation to specific items (optional).
 #' @param ... Additional arguments.
 #' @export
 item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
@@ -591,7 +591,7 @@ item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100)
 
   par_names_b <- x$model$par_names$b
 
-  # データ型と項目名の取得
+  # Get data type and item names
   if (is.matrix(b)) {
     type <- "ordered"
     J <- nrow(b)
@@ -603,18 +603,18 @@ item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100)
     item_names <- if (!is.null(par_names_b)) par_names_b else paste0("Item", 1:J)
   }
 
-  # 選択対象のインデックスを特定
+  # Identify indices of target items
   if (!is.null(items)) {
     if (is.character(items)) {
       target_idx <- match(items, item_names)
       if (any(is.na(target_idx))) {
-        warning("指定された項目名が見つかりません: ", paste(items[is.na(target_idx)], collapse = ", "))
+        warning("Specified item names not found: ", paste(items[is.na(target_idx)], collapse = ", "))
         target_idx <- target_idx[!is.na(target_idx)]
       }
     } else {
       target_idx <- items[items >= 1 & items <= J]
     }
-    if (length(target_idx) == 0) stop("有効な項目が選択されていません。")
+    if (length(target_idx) == 0) stop("No valid items selected.")
   } else {
     target_idx <- 1:J
   }
@@ -628,7 +628,7 @@ item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100)
     j <- target_idx[idx]
 
     if (type == "binary") {
-      # 2値モデルの正答確率
+      # Probability of correct response for binary model
       eta <- a[j] * (theta_seq - b[j])
       P <- c_param[j] + (1 - c_param[j]) * plogis(eta)
 
@@ -636,19 +636,19 @@ item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100)
       colnames(out_curves[[item_names[j]]]) <- "P(Y=1)"
 
     } else if (type == "ordered") {
-      # 順序モデル(GRM)のカテゴリ選択確率
+      # Category selection probability for ordered model (GRM)
       eta <- a[j] * theta_seq
 
-      # 累積確率 P(Y <= k)
+      # Cumulative probability P(Y <= k)
       P_cum <- matrix(1.0, nrow = length(theta_seq), ncol = K_cat + 1)
       P_cum[, 1] <- 0.0 # P(Y <= 0) = 0
 
       for (k in 1:(K_cat - 1)) {
         P_cum[, k + 1] <- plogis(b[j, k] - eta)
       }
-      # P_cum[, K_cat + 1] は初期値の 1.0 (P(Y <= K) = 1)
+      # P_cum[, K_cat + 1] is initialized to 1.0 (P(Y <= K) = 1)
 
-      # 各カテゴリの確率 P(Y = k) = P(Y <= k) - P(Y <= k-1)
+      # Probability of each category P(Y = k) = P(Y <= k) - P(Y <= k-1)
       P_cat <- matrix(0, nrow = length(theta_seq), ncol = K_cat)
       for (k in 1:K_cat) {
         P_cat[, k] <- P_cum[, k + 1] - P_cum[, k]
@@ -680,7 +680,7 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
   n_items <- length(x$curves)
 
   if (x$type == "binary") {
-    # 2値モデル：全項目を1つのプロットに重ねて描画
+    # Binary model: Draw all items overlaid on a single plot
     P_mat <- do.call(cbind, x$curves)
     matplot(x$theta, P_mat, type = "l", lty = 1, ylim = c(0, 1),
             xlab = expression(theta ~ "(Ability)"), ylab = "Probability",
@@ -691,7 +691,7 @@ plot.rtmb_item_curve <- function(x, legend = TRUE, ...) {
     }
 
   } else if (x$type == "ordered") {
-    # 順序モデル：項目ごとにカテゴリ反応曲線をパネル分割して描画
+    # Ordered model: Draw category response curves in separate panels per item
     old_par <- par(no.readonly = TRUE)
     on.exit(par(old_par))
 
@@ -721,17 +721,17 @@ print.rtmb_item_curve <- function(x, ...) {
   plot(x, ...)
   invisible(x)
 }
-#' 因子負荷量をソートして見やすく表示する関数
+#' Sort and display factor loadings neatly
 #'
-#' @param loadings 因子負荷量の行列、データフレーム、またはそれらを含むリスト（リストの場合は最初の要素を使用）
-#' @param cutoff 負荷量の絶対値がこの値未満の場合は表示を空白にする（デフォルトは0.3）
-#' @param round_digits 小数点以下の表示桁数（デフォルトは3）
-#' @return 並び替えられた負荷量行列（不可視で返すため、変数への代入も可能）
+#' @param loadings Matrix, data frame, or list of factor loadings (if list, the first element is used)
+#' @param cutoff Absolute loadings below this value will be displayed as blank (default is 0.0)
+#' @param round_digits Number of decimal places to display (default is 3)
+#' @return Sorted loading matrix (returned invisibly, allowing assignment to a variable)
 #' @export
 sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 
   if (is.list(loadings) && !is.data.frame(loadings)) {
-    if (length(loadings) == 0) stop("入力されたリストが空です。")
+    if (length(loadings) == 0) stop("The input list is empty.")
     loadings <- loadings[[1]]
   }
 
@@ -758,7 +758,7 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
   rownames(print_mat) <- rownames(sorted_mat)
   colnames(print_mat) <- colnames(sorted_mat)
 
-  # "-.000" のようなゼロを判定するための文字列を作成
+  # Create a string to identify zeros like "-.000"
   zero_str <- paste0("-.", paste(rep("0", round_digits), collapse = ""))
 
   for (i in 1:nrow(sorted_mat)) {
@@ -769,7 +769,7 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
         s <- sub("^0\\.", ".", s)
         s <- sub("^-0\\.", "-.", s)
 
-        # "-.000" を ".000" に置換
+        # Replace "-.000" with ".000"
         if (s == zero_str) {
           s <- sub("^-", "", s)
         }
@@ -784,35 +784,35 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 
   return(invisible(sorted_mat))
 }
-#' 対数周辺尤度からベイズファクターを計算する関数
+#' Calculate Bayes factor from log marginal likelihoods
 #'
-#' @param logml1 モデル1の対数周辺尤度 (対象モデルなど)
-#' @param logml2 モデル2の対数周辺尤度 (基準モデル/帰無モデルなど)
-#' @return ベイズファクター、対数ベイズファクター、推定誤差、および解釈を含むオブジェクト
+#' @param logml1 Log marginal likelihood of Model 1 (e.g., target model)
+#' @param logml2 Log marginal likelihood of Model 2 (e.g., reference/null model)
+#' @return An object containing Bayes factor, log Bayes factor, estimation error, and interpretation
 #' @export
 bayes_factor <- function(logml1, logml2) {
-  # 属性（errorやess）を剥がして純粋な数値として計算
+  # Strip attributes (error, ess) and calculate as pure numbers
   val1 <- as.numeric(logml1)
   val2 <- as.numeric(logml2)
 
-  # 対数ベイズファクターとベイズファクターの計算
+  # Calculate log Bayes factor and Bayes factor
   log_bf <- val1 - val2
   bf <- exp(log_bf)
 
-  # 誤差の伝播（logml1, logml2 に "error" 属性が含まれていれば計算）
+  # Error propagation (calculate if logml1 and logml2 contain "error" attribute)
   err1 <- attr(logml1, "error")
   err2 <- attr(logml2, "error")
 
   has_error <- !is.null(err1) && !is.null(err2) && !is.na(err1) && !is.na(err2)
 
   if (has_error) {
-    # 2つのMCMCサンプリングが独立であると仮定した場合の標準誤差
+    # Standard error assuming the two MCMC samplings are independent
     log_bf_err <- sqrt(err1^2 + err2^2)
   } else {
     log_bf_err <- NA_real_
   }
 
-  # Jeffreys (1961) / Kass & Raftery (1995) に基づく証拠の強さの解釈
+  # Interpretation of evidence strength based on Jeffreys (1961) / Kass & Raftery (1995)
   if (bf > 100) evidence <- "Decisive evidence for Model 1"
   else if (bf > 10) evidence <- "Strong evidence for Model 1"
   else if (bf > 3) evidence <- "Substantial evidence for Model 1"
@@ -834,9 +834,9 @@ bayes_factor <- function(logml1, logml2) {
   return(res)
 }
 
-#' bayes_factor オブジェクトの print メソッド
+#' Print method for bayes_factor objects
 #' @param x An object of class bayes_factor.
-#' @param digits 表示する小数点以下の桁数（デフォルトは4）。
+#' @param digits Number of decimal places to display (default is 4).
 #' @param ... Additional arguments.
 #' @export
 print.bayes_factor <- function(x, digits = 4, ...) {

@@ -2,7 +2,7 @@
 % Please edit documentation in R/distributions.R
 \name{positive_lower_tri_normal_lpdf}
 \alias{positive_lower_tri_normal_lpdf}
-\title{#' Positive lower-triangular normal log-probability density function}
+\title{Positive lower-triangular normal log-probability density function}
 \usage{
 positive_lower_tri_normal_lpdf(x, mean = 0, sd = 1)
 }
@@ -17,5 +17,5 @@ positive_lower_tri_normal_lpdf(x, mean = 0, sd = 1)
 The log-density calculated for the non-zero lower triangular elements.
 }
 \description{
-#' Positive lower-triangular normal log-probability density function
+Positive lower-triangular normal log-probability density function
 }

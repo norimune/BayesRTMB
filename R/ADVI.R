@@ -28,7 +28,7 @@ ADVI_method <- function(model, par_list, pl_full,
   mu <- model$par
   par_names_rtmb <- names(model$par)
 
-  # 固定効果と変量効果のインデックスを特定
+  # fixed and random effect index
   random_flags <- sapply(par_list, function(x) isTRUE(x$random))
   random_bases <- names(par_list)[random_flags]
 
@@ -38,7 +38,6 @@ ADVI_method <- function(model, par_list, pl_full,
   P_fixed <- length(idx_fixed)
   P_random <- length(idx_random)
 
-  # Laplace近似等で変量効果がない場合のフォールバック処理
   if (method == "hybrid") {
     if (P_random == 0) {
       method <- "fullrank"
@@ -82,7 +81,7 @@ ADVI_method <- function(model, par_list, pl_full,
   mu_history <- matrix(NA, nrow = window_size, ncol = P)
 
   for (t in 1:iter) {
-    # --- 進捗バーの更新 ---
+    # --- update progress bar ---
     if (!is.null(update_progress) && t %% update_interval == 0) {
       update_progress(1)
     }
@@ -127,13 +126,13 @@ ADVI_method <- function(model, par_list, pl_full,
 
       grad_mu <- gr_val
 
-      # 固定効果 (Full-rank)
+      # fixed effect (Full-rank)
       gr_fixed <- gr_val[idx_fixed]
       grad_L_mat <- outer(gr_fixed, eps_fixed)
       grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
       grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
 
-      # 変量効果 (Mean-field)
+      # random effect (Mean-field)
       gr_random <- gr_val[idx_random]
       grad_omega <- gr_random * (eps_random * sigma_random) + 1
 
@@ -190,7 +189,6 @@ ADVI_method <- function(model, par_list, pl_full,
       omega <- omega + alpha * (m_omega / (1 - beta1^t)) / (sqrt(v_omega / (1 - beta2^t)) + epsilon)
     }
 
-    # 最後の window_size 回の mu を保存
     idx <- (t - 1) %% window_size + 1
     mu_history[idx, ] <- mu
 
@@ -199,7 +197,7 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
-  # 最終的な収束評価を計算
+  # convergence index
   check_start <- 2 * window_size
   if (iter > check_start) {
     med_prev <- median(elbo_history[(iter - 2 * window_size + 1):(iter - window_size)])
@@ -313,7 +311,6 @@ ADVI_method <- function(model, par_list, pl_full,
   for (i in 1:window_size) {
     zeta_hist <- mu_history[i, ]
 
-    # Laplace近似などのために環境を評価
     model$fn(zeta_hist)
     if (laplace && length(model$env$random) > 0) {
       para_list_res <- model$env$parList(x = model$env$last.par)
@@ -324,7 +321,6 @@ ADVI_method <- function(model, par_list, pl_full,
     con_list <- to_constrained(para_list_res, par_list)
     para_hist_all <- unlist(con_list, use.names = FALSE)
 
-    # fixedとrandomの列に格納
     mu_hist_constrained[i, 1:length(fixed_idx)] <- para_hist_all[fixed_idx]
     if (length(random_idx) > 0) {
       mu_hist_constrained[i, (length(fixed_idx) + 1):ncol(mu_hist_constrained)] <- para_hist_all[random_idx]

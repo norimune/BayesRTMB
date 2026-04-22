@@ -2,17 +2,17 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{conditional_effects}
 \alias{conditional_effects}
-\title{周辺効果 (Conditional Effects) を計算する}
+\title{Calculate Conditional Effects}
 \usage{
 conditional_effects(fit, effect, ...)
 }
 \arguments{
-\item{fit}{モデルのフィットオブジェクト。}
+\item{fit}{Model fit object.}
 
-\item{effect}{効果を可視化したい変数名。}
+\item{effect}{Name of the variable to visualize the effect.}
 
-\item{...}{その他の引数。}
+\item{...}{Additional arguments.}
 }
 \description{
-周辺効果 (Conditional Effects) を計算する
+Calculate Conditional Effects
 }

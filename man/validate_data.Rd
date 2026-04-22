@@ -2,22 +2,22 @@
 % Please edit documentation in R/model.R
 \name{validate_data}
 \alias{validate_data}
-\title{データとパラメータの事前検証}
+\title{Pre-validation of data and parameters}
 \usage{
 validate_data(dat_list)
 }
 \arguments{
-\item{dat_list}{モデルに渡すデータのリスト（通常、行列や数値ベクトルを含む）。}
+\item{dat_list}{A list of data to be passed to the model (usually containing matrices or numeric vectors).}
 }
 \value{
-検証に成功した場合は不可視の `NULL` を返します。問題がある場合は `stop()` で処理を中断、または `warning()` を発出します。
+Returns invisible `NULL` on success. Interrupts execution with `stop()` or issues `warning()` if issues are found.
 }
 \description{
-`rtmb_model` にデータを渡す前に、R特有のデータ型（data.frameなど）が混入していないか、
-および欠損値の有無などをチェックし、エラーや警告を出力します。
+Before passing data to `rtmb_model`, it checks for the presence of R-specific data types (such as data.frame)
+and missing values, and outputs errors or warnings accordingly.
 }
 \details{
-RTMBの自動微分エンジンは純粋な `matrix` や `numeric` を要求します。
-ユーザーが誤って `data.frame` を渡した場合、計算グラフの構築時に不可解なエラーが発生するため、
-この関数で事前に捕捉します。
+RTMB's automatic differentiation engine requires pure `matrix` or `numeric` types.
+If a user mistakenly passes a `data.frame`, incomprehensible errors occur during the construction of the computation graph.
+This function catches such issues in advance.
 }

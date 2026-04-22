@@ -8,7 +8,7 @@
 #' @export
 RTMB_Fit_Base <- R6::R6Class(
   classname = "RTMB_Fit_Base",
-  
+
   public = list(
     model = NULL,
 
@@ -52,7 +52,7 @@ RTMB_Fit_Base <- R6::R6Class(
 
       flat_names <- dimnames(samps)[[3]]
       if (any(duplicated(flat_names))) {
-        # 同じ名前が複数ある場合は最後（最新）のインデックスを残す
+        # Keep the last (latest) index if there are duplicate names
         keep_idx <- !rev(duplicated(rev(flat_names)))
         samps <- samps[, , keep_idx, drop = FALSE]
         flat_names <- dimnames(samps)[[3]]
@@ -131,7 +131,7 @@ RTMB_Fit_Base <- R6::R6Class(
       }
 
       if (type == "joint") {
-        # 同時MAP推定 (lpが最大のサンプルを採用)
+        # Joint MAP estimation (adopt the sample with the maximum lp)
         lp_samps <- self$draws(pars = "lp", chains = chains, best_chains = best_chains,
                                inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
         if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine joint MAP.")
@@ -143,7 +143,7 @@ RTMB_Fit_Base <- R6::R6Class(
         map_flat <- samps[best_i, best_c, ]
 
       } else {
-        # 周辺MAP推定 (各パラメータの分布の頂点を採用: デフォルト)
+        # Marginal MAP estimation (adopt the peak of each parameter's distribution: default)
         map_flat <- apply(samps, 3, function(z) {
           valid_z <- z[is.finite(z)]
           if (length(valid_z) == 0) return(NA)
@@ -228,7 +228,6 @@ RTMB_Fit_Base <- R6::R6Class(
 
       self$generated_quantities(gen_ast)
 
-      # MCMC and VB need to rename dimensions in generate_fit. MAP_Fit does not have generate_fit.
       if (!is.null(self$generate_fit)) {
         all_names <- c(
           if(!is.null(self$fit)) dimnames(self$fit)[[3]] else character(0),
@@ -297,8 +296,8 @@ RTMB_Fit_Base <- R6::R6Class(
       }
 
       target_map <- self$get_point_estimate(target)
-      
-      if (length(dim(target_map)) != 2) stop("fa_rotate は行列(2次元)パラメータに対してのみ適用可能です。")
+
+      if (length(dim(target_map)) != 2) stop("fa_rotate is only applicable to matrix (2D) parameters.")
 
       test_rot <- rot_fn(target_map, ...)
       is_matrix_rot <- is.matrix(test_rot)
@@ -323,7 +322,7 @@ RTMB_Fit_Base <- R6::R6Class(
 
       if (!is.null(linked) || !is.null(scores)) {
         if (is_matrix_rot) {
-          warning("指定された回転関数は行列のみを返すため、回転行列が取得できません。linked / scores は回転されません。")
+          warning("The specified rotation function returns only a matrix, so the rotation matrix cannot be obtained. 'linked' and 'scores' will not be rotated.")
         } else {
           exprs[[length(exprs) + 1]] <- quote(rot_Th <- if (!is.null(rot_obj$Th)) rot_obj$Th else rot_obj$rotmat)
 

@@ -57,14 +57,14 @@ MCMC_Fit <- R6::R6Class(
   inherit = RTMB_Fit_Base,
 
   public = list(
-    # --- フィールド ---
-    model          = NULL, # RTMB_Model のインスタンスへの参照
+    # --- Fields ---
+    model          = NULL, # Reference to RTMB_Model instance
     fit            = NULL,
     random_fit     = NULL,
-    transform_fit  = NULL, # 変換量を保存
-    generate_fit   = NULL, # 生成量を保存
-    transform_dims = NULL, # 変換量の次元情報を保存
-    generate_dims  = NULL, # GQ変数の次元情報を保存
+    transform_fit  = NULL, # Store transformed quantities
+    generate_fit   = NULL, # Store generated quantities
+    transform_dims = NULL, # Store dimension info for transformed quantities
+    generate_dims  = NULL, # Store dimension info for generated quantities
     eps            = NULL,
     accept         = NULL,
     treedepth      = NULL,
@@ -73,7 +73,7 @@ MCMC_Fit <- R6::R6Class(
     log_ml          = NULL,
     null_fit       = NULL,
 
-    # 1. コンストラクタ
+    # 1. Constructor
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
     #' @return Matrix or array of point estimate.
@@ -140,14 +140,14 @@ MCMC_Fit <- R6::R6Class(
     draws = function(pars = NULL, chains = NULL, best_chains = NULL,
                      inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE) {
 
-      # 1. 使用する chain の決定
+      # 1. Determine chains to use
       total_chains <- dim(self$fit)[2]
       available_chains <- 1:total_chains
 
       if (!is.null(chains)) {
         available_chains <- intersect(available_chains, chains)
         if (length(available_chains) == 0) {
-          stop("指定された chains が見つかりません。", call. = FALSE)
+          stop("The specified chains were not found.", call. = FALSE)
         }
       }
 
@@ -155,7 +155,7 @@ MCMC_Fit <- R6::R6Class(
         lp_idx <- which(dimnames(self$fit)[[3]] == "lp")
         if (length(lp_idx) == 0) lp_idx <- 1
 
-        # available_chains に対する lp の平均値を計算
+        # Calculate mean of lp for available_chains
         lp_means <- apply(self$fit[, available_chains, lp_idx, drop = FALSE], 2, mean, na.rm = TRUE)
         n_best <- min(best_chains, length(available_chains))
         ordered_idx <- order(lp_means, decreasing = TRUE)
@@ -165,7 +165,7 @@ MCMC_Fit <- R6::R6Class(
 
       available_chains <- sort(available_chains)
 
-      # 2. 配列の抽出と結合
+      # 2. Extract and bind arrays
       out_array <- self$fit[, available_chains, , drop = FALSE]
 
       if (inc_random && !is.null(self$random_fit)) {
@@ -220,7 +220,7 @@ MCMC_Fit <- R6::R6Class(
         if (is.numeric(pars)) {
           valid_idx <- pars[pars >= 1 & pars <= P]
           if (length(valid_idx) == 0) {
-            stop("`pars` に指定されたインデックスが見つかりません。", call. = FALSE)
+            stop("The index specified in 'pars' was not found.", call. = FALSE)
           }
           target_idx <- valid_idx
 
@@ -228,12 +228,12 @@ MCMC_Fit <- R6::R6Class(
           base_names <- gsub("\\[.*\\]$", "", param_names)
           matched <- which(param_names %in% pars | base_names %in% pars)
           if (length(matched) == 0) {
-            stop("`pars` に指定された変数名が見つかりません。", call. = FALSE)
+            stop("The variable name specified in 'pars' was not found.", call. = FALSE)
           }
           target_idx <- matched
 
         } else {
-          stop("`pars` は numeric か character で指定してください。", call. = FALSE)
+          stop("'pars' must be either numeric or character.", call. = FALSE)
         }
       }
 
@@ -265,12 +265,12 @@ MCMC_Fit <- R6::R6Class(
 
       target_idx <- 1:P
 
-      # --- lp と model$view による優先並び替え ---
+      # --- Priority sorting by lp and model$view ---
       if (length(target_idx) > 0) {
         current_names <- param_names[target_idx]
         base_names <- gsub("\\[.*\\]$", "", current_names)
 
-        # lp を常に最優先にする
+        # Always prioritize lp
         target_views <- c("lp")
         if (!is.null(self$model$view)) {
           target_views <- c(target_views, self$model$view)
@@ -342,7 +342,7 @@ MCMC_Fit <- R6::R6Class(
         )
       }
       res_df <- do.call(rbind, res_list_sum)
-      # データフレーム内の数値列のうち、ゼロに極めて近い微小な値を厳密な0に置換する
+      # Replace extremely small values close to zero with exact 0 in numeric columns of the dataframe
       num_cols <- sapply(res_df, is.numeric)
       res_df[num_cols] <- lapply(res_df[num_cols], function(x) {
         x[abs(x) < 1e-12 & !is.na(x)] <- 0
@@ -364,7 +364,7 @@ MCMC_Fit <- R6::R6Class(
       target_par_list <- if (self$laplace && any(random_flags)) orig_pl[!random_flags] else orig_pl
       draws_ob <- self$fit[, , -1, drop = FALSE]
 
-      # --- 修正箇所: mapを考慮して有効なパラメータ数を計算 ---
+      # --- Modified: Calculate the number of effective parameters considering map ---
       map_list <- self$model$map
       if (!is.null(map_list)) {
         Q <- 0
@@ -390,7 +390,7 @@ MCMC_Fit <- R6::R6Class(
           con_list <- constrained_vector_to_list(con_vec, target_par_list)
           unc_list <- to_unconstrained(con_list, target_par_list)
 
-          # --- 修正箇所: mapが指定されている場合は非固定パラメータのみ抽出 ---
+          # --- Modified: Extract only non-fixed parameters if map is specified ---
           if (!is.null(map_list)) {
             unc_vec <- c()
             for (name in names(target_par_list)) {
@@ -451,11 +451,11 @@ MCMC_Fit <- R6::R6Class(
       M2 <- nrow(z_fit)
       M  <- M1 + M2
 
-      # 事前計算: 提案分布のパラメータ推定
+      # Pre-computation: parameter estimation of proposal distribution
       meanz <- apply(z_fit, 2, mean)
       covz <- cov(z_fit)
 
-      # 事後確率サンプルの対数事後確率を計算
+      # Calculate log-posterior for posterior samples
       lp_post <- apply(z_post, 1, log_prob_fn)
 
       if (isTRUE(use_neff)) {
@@ -467,7 +467,7 @@ MCMC_Fit <- R6::R6Class(
         n_eff <- M1
       }
 
-      # Meng & Wong に基づく最適ウェイト
+      # Optimal weights based on Meng & Wong
       S1 <- n_eff / (n_eff + M2)
       S2 <- M2 / (n_eff + M2)
 
@@ -475,12 +475,12 @@ MCMC_Fit <- R6::R6Class(
         z_propose <- MASS::mvrnorm(M2, meanz, covz)
         log_propose <- function(z) mvtnorm::dmvnorm(z, meanz, covz, log = TRUE)
 
-        # 事前計算済みの lp_post を再利用
+        # Reuse pre-calculated lp_post
         log_L1 <- lp_post - log_propose(z_post)
         log_L2 <- apply(z_propose, 1, log_prob_fn) - log_propose(z_propose)
 
         valid_log_L1 <- log_L1[is.finite(log_L1)]
-        if (length(valid_log_L1) == 0) stop("有効な事後確率サンプルがありません。")
+        if (length(valid_log_L1) == 0) stop("No valid posterior samples found.")
         log_Lm <- median(valid_log_L1)
 
         L1 <- exp(log_L1 - log_Lm)
@@ -521,7 +521,7 @@ MCMC_Fit <- R6::R6Class(
         log_L2 <- apply(eta_prop, 1, log_target_warp3) - apply(eta_prop, 1, log_propose_std)
 
         valid_log_L1 <- log_L1[is.finite(log_L1)]
-        if (length(valid_log_L1) == 0) stop("有効な事後確率サンプルがありません。")
+        if (length(valid_log_L1) == 0) stop("No valid posterior samples found.")
         log_Lm <- median(valid_log_L1)
 
         L1 <- exp(log_L1 - log_Lm)
@@ -533,7 +533,7 @@ MCMC_Fit <- R6::R6Class(
         if (is.na(ml_t) || is.nan(ml_t) || ml_t == 0) ml_t <- 1e-10
 
       } else {
-        stop("method引数は 'normal' または 'warp3' を指定してください。")
+        stop("The 'method' argument must be either 'normal' or 'warp3'.")
       }
 
       Trial <- max_iter
@@ -547,7 +547,7 @@ MCMC_Fit <- R6::R6Class(
         ml_t <- (bunshi/M2) / (bunbo/M1)
 
         if (is.na(ml_t) || is.nan(ml_t) || ml_t <= 0) {
-          warning("計算中に ml_t が 0 または NA になりました。")
+          warning("ml_t became 0 or NA during calculation.")
           break
         }
         if(abs(log(ml_t) - log(ml_t_old)) < 0.000001){
@@ -562,7 +562,7 @@ MCMC_Fit <- R6::R6Class(
         logml.bs <- logml.bs - correction
       }
 
-      # 2. 推定誤差 (Approximate Standard Error) の計算
+      # 2. Calculation of approximate standard error
       res <- logml.bs
 
       if (method == "normal") {
@@ -581,7 +581,7 @@ MCMC_Fit <- R6::R6Class(
         attr(res, "error") <- error_logml
 
       } else {
-        # warp3など、誤差の近似が困難な場合はNAを返す
+        # Return NA if error approximation is difficult, such as in warp3
         cat(sprintf("Bridge Sampling Converged: LogML = %.3f (ESS = %.1f)\n", logml.bs, n_eff))
         attr(res, "error") <- NA_real_
       }
@@ -599,7 +599,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param ... Additional arguments passed to the sample() method when fitting a null model (e.g., \code{chains = 4}, \code{sampling = 4000}).
     bayes_factor = function(null_model, bs_method = "normal", error_threshold = 0.2, ...) {
 
-      # 1. 自身の周辺尤度が未計算なら計算して代入する
+      # 1. Calculate and assign marginal likelihood if not already calculated
       if (is.null(self$log_ml)) {
         cat("Calculating marginal likelihood for the full model...\n")
         self$log_ml <- self$bridgesampling(method = bs_method)
@@ -608,16 +608,16 @@ MCMC_Fit <- R6::R6Class(
 
       log_ml2 <- NULL
 
-      # 2. 比較対象 (null_model) の型による分岐
+      # 2. Branch by the type of comparison target (null_model)
       if (is.character(null_model) && length(null_model) == 1) {
         cat(sprintf("\n--- Preparing and Sampling Null Model (%s) ---\n", null_model))
 
         mdl_null <- self$model$null_model(target = null_model)
 
-        # --- 修正箇所: フルモデルの設定を引き継ぐ ---
-        sample_args <- list(...) # ユーザーが指定した引数をリスト化
+        # --- Modified: Inherit full model settings ---
+        sample_args <- list(...) # List of arguments specified by the user
 
-        # 指定がない場合は、自身の fit 配列の次元から回数とチェイン数を取得して補完
+        # If not specified, obtain iterations and chains from own fit array dimensions to supplement
         if (is.null(sample_args$sampling)) {
           sample_args$sampling <- dim(self$fit)[1]
         }
@@ -625,7 +625,7 @@ MCMC_Fit <- R6::R6Class(
           sample_args$chains <- dim(self$fit)[2]
         }
 
-        # 補完した引数リストを使って null モデルをサンプリング
+        # Sample null model using supplemented argument list
         fit_null <- do.call(mdl_null$sample, sample_args)
 
         cat("\n--- Calculating marginal likelihood for the null model ---\n")
@@ -642,10 +642,10 @@ MCMC_Fit <- R6::R6Class(
         log_ml2 <- null_model$log_ml
 
       } else {
-        stop("null_model 引数には null_model の文字列、または別の MCMC_Fit オブジェクトを指定してください。")
+        stop("The 'null_model' argument must be a null_model string or another MCMC_Fit object.")
       }
 
-      # 3. ベイズファクターの計算と誤差の評価
+      # 3. Calculation of Bayes factor and evaluation of error
       val1 <- as.numeric(log_ml1)
       val2 <- as.numeric(log_ml2)
       log_bf <- val1 - val2
@@ -660,10 +660,10 @@ MCMC_Fit <- R6::R6Class(
         if (log_bf_err > error_threshold) {
           warning(
             sprintf(
-              "対数ベイズファクターの推定誤差 (%.3f) が閾値 (%g) を超えています。結果の解釈が不安定になる可能性があります。\n",
+              "The estimation error of the log Bayes factor (%.3f) exceeds the threshold (%g). Interpretation of the results may be unstable.\n",
               log_bf_err, error_threshold
             ),
-            "精度を向上させるため、MCMCのサンプリング数を増やすか、ESSを高める工夫を検討してください。\n",
+            "Consider increasing the number of MCMC samples or ESS to improve precision.\n",
             call. = FALSE, immediate. = TRUE
           )
         }
@@ -671,7 +671,7 @@ MCMC_Fit <- R6::R6Class(
         log_bf_err <- NA_real_
       }
 
-      # 4. 解釈の付与
+      # 4. Assignment of interpretation
       if (bf > 100) evidence <- "Decisive evidence for Model 1"
       else if (bf > 10) evidence <- "Strong evidence for Model 1"
       else if (bf > 3) evidence <- "Substantial evidence for Model 1"
@@ -715,14 +715,14 @@ MCMC_Fit <- R6::R6Class(
           if (is.null(user_res)) {
             user_res <- list()
           } else if (!is.list(user_res)) {
-            stop("`transformed_parameters` は list を返す必要があります。", call. = FALSE)
+            stop("'transformed_parameters' must return a list.", call. = FALSE)
           }
 
           dup_names <- intersect(names(res), names(user_res))
           if (length(dup_names) > 0) {
             stop(
               sprintf(
-                "transformed parameters 名が重複しています: %s",
+                "Transformed parameter names are duplicated: %s",
                 paste(dup_names, collapse = ", ")
               ),
               call. = FALSE
@@ -801,7 +801,7 @@ MCMC_Fit <- R6::R6Class(
       if (is.call(raw_code) && identical(raw_code[[1]], as.name("rtmb_code"))) {
         parsed_code <- eval(raw_code, envir = parent.frame())
         if (!"generate" %in% names(parsed_code)) {
-          stop("rtmb_code() の中に generate ブロックがありません。")
+          stop("There is no 'generate' block in rtmb_code().")
         }
         gen_ast <- parsed_code$generate
       } else if (is.call(raw_code) && identical(raw_code[[1]], as.name("{"))) {
@@ -811,7 +811,7 @@ MCMC_Fit <- R6::R6Class(
       } else if (is.list(code) && "generate" %in% names(code)) {
         gen_ast <- code$generate
       } else {
-        stop("code は rtmb_code(generate = { ... }) または { ... } の形式で指定してください。")
+        stop("'code' must be specified in the format rtmb_code(generate = { ... }) or { ... }.")
       }
 
       cat("Running generated_quantities...\n")

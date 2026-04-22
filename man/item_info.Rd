@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{item_info}
 \alias{item_info}
-\title{項目情報関数の計算}
+\title{Calculate Item Information Function}
 \usage{
 item_info(x, ...)
 }
@@ -12,5 +12,5 @@ item_info(x, ...)
 \item{...}{Additional arguments.}
 }
 \description{
-項目情報関数の計算
+Calculate Item Information Function
 }

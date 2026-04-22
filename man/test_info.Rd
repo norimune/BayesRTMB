@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{test_info}
 \alias{test_info}
-\title{テスト情報関数の計算}
+\title{Calculate Test Information Function}
 \usage{
 test_info(x, ...)
 }
@@ -12,5 +12,5 @@ test_info(x, ...)
 \item{...}{Additional arguments.}
 }
 \description{
-テスト情報関数の計算
+Calculate Test Information Function
 }

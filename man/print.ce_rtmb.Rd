@@ -2,7 +2,7 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{print.ce_rtmb}
 \alias{print.ce_rtmb}
-\title{ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)}
+\title{Print method for ce_rtmb class (automatically calls plot)}
 \usage{
 \method{print}{ce_rtmb}(x, ...)
 }
@@ -12,5 +12,5 @@
 \item{...}{Additional arguments.}
 }
 \description{
-ce_rtmb クラスのprintメソッド (自動的にplotを呼ぶ)
+Print method for ce_rtmb class (automatically calls plot)
 }

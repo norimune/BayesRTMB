@@ -2,18 +2,18 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{bayes_factor}
 \alias{bayes_factor}
-\title{対数周辺尤度からベイズファクターを計算する関数}
+\title{Calculate Bayes factor from log marginal likelihoods}
 \usage{
 bayes_factor(logml1, logml2)
 }
 \arguments{
-\item{logml1}{モデル1の対数周辺尤度 (対象モデルなど)}
+\item{logml1}{Log marginal likelihood of Model 1 (e.g., target model)}
 
-\item{logml2}{モデル2の対数周辺尤度 (基準モデル/帰無モデルなど)}
+\item{logml2}{Log marginal likelihood of Model 2 (e.g., reference/null model)}
 }
 \value{
-ベイズファクター、対数ベイズファクター、推定誤差、および解釈を含むオブジェクト
+An object containing Bayes factor, log Bayes factor, estimation error, and interpretation
 }
 \description{
-対数周辺尤度からベイズファクターを計算する関数
+Calculate Bayes factor from log marginal likelihoods
 }

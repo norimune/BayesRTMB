@@ -2,7 +2,7 @@
 % Please edit documentation in R/model.R
 \name{rtmb_model}
 \alias{rtmb_model}
-\title{RTMB_Model インスタンスを生成するラッパー関数}
+\title{Wrapper function to create an RTMB_Model instance}
 \usage{
 rtmb_model(
   data,
@@ -14,22 +14,22 @@ rtmb_model(
 )
 }
 \arguments{
-\item{data}{モデルで使用する観測データや定数（サンプルサイズなど）を含む名前付きリスト。}
+\item{data}{A named list containing observation data and constants (e.g., sample size) used in the model.}
 
-\item{code}{`rtmb_code(...)` で記述されたモデル定義ブロック（data, parameters, model, transform, generate を含む）。}
+\item{code}{A model definition block described by `rtmb_code(...)` (including data, parameters, model, transform, generate).}
 
-\item{par_names}{各パラメータの次元に対応する具体的な変数名のリスト（省略可能）。}
+\item{par_names}{A list of specific variable names corresponding to the dimensions of each parameter (optional).}
 
-\item{init}{パラメータの初期値のリストまたは数値ベクトル（省略可能）。指定しない場合は自動でランダムに初期化されます。}
+\item{init}{A list or numeric vector of initial values for parameters (optional). If not specified, initialized randomly.}
 
-\item{view}{`summary()` などで結果を出力する際、優先して上部に表示したいパラメータ名の文字ベクトル（省略可能）。}
+\item{view}{Character vector of parameter names to be displayed preferentially at the top when outputting results like `summary()` (optional).}
 
-\item{null_target}{Character string. 帰無モデルを同時に作成する場合に、固定対象のパラメータと無効化する事前分布をフォーミュラ形式の文字列で指定します（例: \code{"delta ~ cauchy(0, r)"}）。指定しない場合は \code{NULL}（デフォルト）。}
+\item{null_target}{Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.}
 }
 \value{
-モデルのコンパイルと事前テストが完了した `RTMB_Model` クラスのインスタンス。
+An `RTMB_Model` class instance with compiled and pre-tested model.
 }
 \description{
-ユーザーが定義したデータ、およびモデルコード（尤度や事前分布）を結合し、
-ベイズ推論（MCMC, VB, MAP推定）を実行するための `RTMB_Model` (R6クラス) インスタンスを生成します。
+Combines user-defined data and model code (likelihood and priors) to create an
+`RTMB_Model` (R6 class) instance for Bayesian inference (MCMC, VB, MAP estimation).
 }

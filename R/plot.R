@@ -18,7 +18,6 @@ plot_dens <- function(x, mono = FALSE) {
     stop("`x` must be a matrix or a 3D array.", call. = FALSE)
   }
 
-
   dims <- dim(x)
 
   if (length(dims) == 2) {
@@ -41,7 +40,7 @@ plot_dens <- function(x, mono = FALSE) {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
-  # 変数数に応じて自動でグリッドレイアウトを決定
+  # Determine grid layout automatically based on the number of variables
   n_cols <- ceiling(sqrt(n_variables))
   n_rows <- ceiling(n_variables / n_cols)
 
@@ -68,7 +67,7 @@ plot_dens <- function(x, mono = FALSE) {
       valid_data <- valid_data[!is.na(valid_data)]
 
       if (length(valid_data) > 1) {
-        # density 関数が計算した本来のカーブの広さを取得
+        # Retrieve the original curve width calculated by the density function
         dens_list[[n]] <- stats::density(valid_data)
         max_dens <- max(max_dens, max(dens_list[[n]]$y))
         min_x <- min(min_x, min(dens_list[[n]]$x))
@@ -81,7 +80,7 @@ plot_dens <- function(x, mono = FALSE) {
     }
 
     if (length(valid_data) > 1) {
-      # 分散が0の場合はわずかなジッターを加えるか、densityの計算を保護する
+      # Add slight jitter if variance is zero to protect density calculation
       if (var(valid_data) == 0) {
         valid_data <- jitter(valid_data, amount = 1e-5)
       }
@@ -91,7 +90,7 @@ plot_dens <- function(x, mono = FALSE) {
       max_x <- max(max_x, max(dens_list[[n]]$x))
     }
 
-    # 各パラメータごとに独立した xlim, ylim を設定
+    # Set independent xlim and ylim for each parameter
     plot(
       dens_list[[1]],
       lty = 1,
@@ -179,7 +178,7 @@ plot_trace <- function(x, mono = FALSE) {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
-  # 変数数に応じて自動でグリッドレイアウトを決定
+  # Determine grid layout automatically based on the number of variables
   n_cols <- ceiling(sqrt(n_variables))
   n_rows <- ceiling(n_variables / n_cols)
 
@@ -193,7 +192,7 @@ plot_trace <- function(x, mono = FALSE) {
     min_val <- min(x[, , i], na.rm = TRUE)
     max_val <- max(x[, , i], na.rm = TRUE)
 
-    # Y軸の上下に5%の余白を持たせる
+    # Add 5% padding to the top and bottom of the Y-axis
     pad <- 0.05 * (max_val - min_val)
     if (is.na(pad) || pad == 0) pad <- 1e-8
     y_limit <- c(min_val - pad, max_val + pad)
@@ -314,7 +313,7 @@ plot_forest <- function(x, prob = 0.95) {
     parnames <- paste0("V", seq_len(n_variables))
   }
 
-  # 全チェインを結合してパラメータごとの要約統計量を計算
+  # Combine all chains and compute summary statistics for each parameter
   lower_prob <- (1 - prob) / 2
   upper_prob <- 1 - lower_prob
 
@@ -331,10 +330,10 @@ plot_forest <- function(x, prob = 0.95) {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
-  # 左側のマージンを広げてパラメータ名を表示できるようにする
+  # Expand left margin to accommodate parameter names
   par(mar = c(5, 6, 3, 2))
 
-  # Y軸は下から上へ並べるため反転
+  # Reverse Y-axis to order from bottom to top
   y_pos <- seq(n_variables, 1, by = -1)
 
   plot(
@@ -351,7 +350,7 @@ plot_forest <- function(x, prob = 0.95) {
 
   abline(v = 0, lty = 2, col = "gray50")
 
-  # 信用区間の線と中央値の点を描画
+  # Draw credible interval lines and median points
   segments(
     x0 = summaries[, "lower"], y0 = y_pos,
     x1 = summaries[, "upper"], y1 = y_pos,
@@ -383,7 +382,7 @@ plot_pairs <- function(x, pars = NULL) {
     parnames <- paste0("V", seq_len(n_variables))
   }
 
-  # 表示対象のパラメータを絞り込み
+  # Filter target parameters for display
   if (!is.null(pars)) {
     if (is.character(pars)) {
       idx <- match(pars, parnames)
@@ -393,7 +392,7 @@ plot_pairs <- function(x, pars = NULL) {
       plot_idx <- pars
     }
   } else {
-    # デフォルトは最大10個まで（それ以上は描画が重く、見にくくなるため）
+    # Default to maximum of 10 parameters (more would be slow and cluttered)
     plot_idx <- seq_len(min(n_variables, 10))
   }
 
@@ -401,11 +400,11 @@ plot_pairs <- function(x, pars = NULL) {
     stop("At least 2 parameters are required for a pairs plot.", call. = FALSE)
   }
 
-  # 全チェインを結合して 2次元行列に変換
+  # Combine all chains into a 2D matrix
   mat <- apply(x[, , plot_idx, drop = FALSE], 3, as.vector)
   colnames(mat) <- parnames[plot_idx]
 
-  # パネル上部に相関係数を表示するカスタム関数
+  # Custom function to display correlation coefficients in the upper panels
   panel.cor <- function(x, y, digits = 2, prefix = "", cex.cor, ...) {
     usr <- par("usr"); on.exit(par(usr))
     par(usr = c(0, 1, 0, 1))
@@ -413,11 +412,11 @@ plot_pairs <- function(x, pars = NULL) {
     txt <- format(c(r, 0.123456789), digits = digits)[1]
     txt <- paste0(prefix, txt)
     if(missing(cex.cor)) cex.cor <- 0.8/strwidth(txt)
-    # 相関の強さに応じて文字の大きさを変える
+    # Adjust text size based on the strength of the correlation
     text(0.5, 0.5, txt, cex = cex.cor * (0.5 + abs(r) / 2))
   }
 
-  # 散布図の点を半透明にして密度を見やすくするカスタム関数
+  # Custom function to draw semi-transparent points to visualize density
   panel.scatter <- function(x, y, ...) {
     points(x, y, pch = 16, col = rgb(0, 0, 0, alpha = 0.2), cex = 0.5)
   }

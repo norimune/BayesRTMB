@@ -2,11 +2,11 @@
 % Please edit documentation in R/model.R
 \name{env_to_ordered_list}
 \alias{env_to_ordered_list}
-\title{環境をリストに変換しつつ、元のリストの順序を保持する内部関数}
+\title{Internal function to convert an environment to a list while maintaining original order}
 \usage{
 env_to_ordered_list(env, orig_list, code_ast = NULL)
 }
 \description{
-環境をリストに変換しつつ、元のリストの順序を保持する内部関数
+Internal function to convert an environment to a list while maintaining original order
 }
 \keyword{internal}

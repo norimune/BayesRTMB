@@ -2,18 +2,18 @@
 % Please edit documentation in R/model.R
 \name{parameters_code}
 \alias{parameters_code}
-\title{パラメータ定義用コードブロック}
+\title{Code block for parameter definitions}
 \usage{
 parameters_code(expr)
 }
 \arguments{
-\item{expr}{`{}` で囲まれたパラメータ定義の式}
+\item{expr}{A parameter definition expression enclosed in `{}`.}
 }
 \value{
-評価が遅延されたパラメータのリスト
+A lazily evaluated list of parameters.
 }
 \description{
-`rtmb_model` に渡すパラメータのリストを定義します。
-`{}` で囲まれたブロック内で `変数名 = Dim(...)` の形式で記述することで、
-評価を遅延させ、モデル構築時の厳密なエラーチェックを可能にします。
+Defines the list of parameters to be passed to `rtmb_model`.
+By writing in the format `variable_name = Dim(...)` within a block enclosed in `{}`,
+evaluation is delayed, enabling strict error checking during model construction.
 }

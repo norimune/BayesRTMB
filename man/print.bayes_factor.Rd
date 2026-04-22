@@ -2,17 +2,17 @@
 % Please edit documentation in R/utils_mcmc.R
 \name{print.bayes_factor}
 \alias{print.bayes_factor}
-\title{bayes_factor オブジェクトの print メソッド}
+\title{Print method for bayes_factor objects}
 \usage{
 \method{print}{bayes_factor}(x, digits = 4, ...)
 }
 \arguments{
 \item{x}{An object of class bayes_factor.}
 
-\item{digits}{表示する小数点以下の桁数（デフォルトは4）。}
+\item{digits}{Number of decimal places to display (default is 4).}
 
 \item{...}{Additional arguments.}
 }
 \description{
-bayes_factor オブジェクトの print メソッド
+Print method for bayes_factor objects
 }
