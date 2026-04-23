@@ -706,6 +706,8 @@ MCMC_Fit <- R6::R6Class(
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]
 
+      if (is.null(tran_fn)) tran_fn <- self$model$transform
+
       wrapper_tran_fn <- function(dat, param) {
         res <- list()
 

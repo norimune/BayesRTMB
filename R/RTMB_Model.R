@@ -384,6 +384,7 @@ RTMB_Model <- R6::R6Class(
       unc_se_vec <- rep(0, L_u_total)
       Cov_u <- diag(0, nrow = L_u_total, ncol = L_u_total)
       fallback_needed <- FALSE
+      cov_source <- "none"
 
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
         # Extract standard errors directly from the diagonal of the cov.fixed matrix without using summary
@@ -397,6 +398,7 @@ RTMB_Model <- R6::R6Class(
 
           # 2. Assign to the corresponding locations in the covariance matrix
           Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
+          cov_source <- "sdreport"
 
           # 3. Copy standard errors to shared (duplicate) parameters
           idx_curr <- 1
@@ -454,6 +456,7 @@ RTMB_Model <- R6::R6Class(
               if (length(idx_fix_active) == length(se_pseudo)) {
                 unc_se_vec[idx_fix_active] <- se_pseudo
                 Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
+                cov_source <- "fallback"
 
                 # Copy to duplicate parameters during fallback
                 idx_curr <- 1
@@ -489,15 +492,10 @@ RTMB_Model <- R6::R6Class(
       unc_se_list  <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
       con_est_list <- to_constrained(unc_est_list, self$par_list)
 
-      # Construct Cov_u (overwrite only the active submatrix)
-      Cov_u <- diag(unc_se_vec^2, nrow = L_u_total, ncol = L_u_total)
+      # Fill diagonal for parameters without covariance information while preserving any
+      # covariance matrix obtained from sdreport() or the fallback ginv() route.
+      diag(Cov_u) <- pmax(diag(Cov_u), unc_se_vec^2)
       Cov_u[is.na(Cov_u)] <- 0
-      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-        # Assign only if index length matches matrix size and is within range
-        if (length(idx_fix_active) == nrow(sd_rep$cov.fixed) && max(c(0, idx_fix_active)) <= L_u_total) {
-          Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
-        }
-      }
 
       con_se_list  <- list()
       con_lower_list <- list()
@@ -845,14 +843,12 @@ RTMB_Model <- R6::R6Class(
               J[, i] <- (flat_tmp - flat_base) / eps_diff
             }
 
-            Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
-            Cov_u_derived[is.na(Cov_u_derived)] <- 0
-
-            if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-              if (length(idx_fix_active) == nrow(sd_rep$cov.fixed) && max(c(0, idx_fix_active)) <= L_u) {
-                Cov_u_derived[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
-              }
+            Cov_u_derived <- Cov_u
+            if (!all(dim(Cov_u_derived) == c(L_u, L_u))) {
+              Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
             }
+            diag(Cov_u_derived) <- pmax(diag(Cov_u_derived), unc_se_vec^2)
+            Cov_u_derived[is.na(Cov_u_derived)] <- 0
 
             se_out <- numeric(L_out)
             for (j in 1:L_out) {

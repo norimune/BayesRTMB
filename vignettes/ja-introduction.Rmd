@@ -31,8 +31,8 @@ BayesRTMB には、次のような特徴があります。
 GitHub 版をインストールする場合は、次のようにします。
 
 ```{r eval=FALSE}
-# install.packages("remotes")
-remotes::install_github("norimune/BayesRTMB")
+# install.packages("pak")
+pak::pak("norimune/BayesRTMB")
 ```
 
 ```{r eval=FALSE}

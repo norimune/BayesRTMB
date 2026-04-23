@@ -110,20 +110,42 @@ VB_Fit <- R6::R6Class(
 
     #' @description Extract posterior draws for selected parameters.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.
+    #' @param chains Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.
+    #' @param best_chains Integer; number of best chains to retain based on ELBO. If supplied, chains with the highest ELBO are retained.
     #' @param inc_random Logical; whether to include random effects in the output. Default is FALSE.
     #' @param inc_transform Logical; whether to include transformed parameters in the output. Default is TRUE.
     #' @param inc_generate Logical; whether to include generated quantities in the output. Default is TRUE.
-    #' @param best_only Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.
+    #' @param best_only Logical; whether to extract only from the chain with the maximum ELBO. Default is FALSE unless explicitly requested.
     #' @return A 3D array of posterior draws `[iterations, chains, parameters]`.
-    draws = function(pars = NULL, inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE, best_only = TRUE) {
-      out_array <- self$fit
+    draws = function(pars = NULL, chains = NULL, best_chains = NULL,
+                     inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE,
+                     best_only = FALSE) {
+      total_chains <- dim(self$fit)[2]
+      available_chains <- seq_len(total_chains)
+
+      if (!is.null(chains)) {
+        available_chains <- intersect(available_chains, chains)
+        if (length(available_chains) == 0) {
+          stop("The specified chains were not found.", call. = FALSE)
+        }
+      }
+
+      if (!is.null(best_chains)) {
+        elbo_vals <- self$ELBO[available_chains]
+        n_best <- min(best_chains, length(available_chains))
+        ordered_idx <- order(elbo_vals, decreasing = TRUE, na.last = NA)
+        available_chains <- available_chains[ordered_idx[seq_len(n_best)]]
+      }
+
+      available_chains <- sort(unique(available_chains))
+      out_array <- self$fit[, available_chains, , drop = FALSE]
 
       if (inc_random && !is.null(self$random_fit)) {
         P1 <- dim(out_array)[3]; P2 <- dim(self$random_fit)[3]
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$random_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$random_fit[, available_chains, , drop = FALSE]
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
@@ -137,7 +159,7 @@ VB_Fit <- R6::R6Class(
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$transform_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$transform_fit[, available_chains, , drop = FALSE]
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
@@ -151,7 +173,7 @@ VB_Fit <- R6::R6Class(
         I <- dim(out_array)[1]; C <- dim(out_array)[2]
         new_out <- array(NA, dim = c(I, C, P1 + P2))
         new_out[,,1:P1] <- out_array
-        new_out[,,(P1+1):(P1+P2)] <- self$generate_fit
+        new_out[,,(P1+1):(P1+P2)] <- self$generate_fit[, available_chains, , drop = FALSE]
         dimnames(new_out) <- list(
           iteration = dimnames(out_array)[[1]],
           chain = dimnames(out_array)[[2]],
@@ -187,13 +209,17 @@ VB_Fit <- R6::R6Class(
       }
 
       if (best_only) {
-        return(out_array[, self$best_chain, target_idx, drop = FALSE])
-      } else {
-        return(out_array[, , target_idx, drop = FALSE])
+        if (!(self$best_chain %in% available_chains)) {
+          stop("The best chain is not included in the selected chains.", call. = FALSE)
+        }
+        best_pos <- which(available_chains == self$best_chain)[1]
+        return(out_array[, best_pos, target_idx, drop = FALSE])
       }
+
+      return(out_array[, , target_idx, drop = FALSE])
     },
 
-    #' @description Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
+    #' @description Summarize posterior draws.
     #' @param pars Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.
     #' @param max_rows Integer; maximum number of rows to print in the summary table. Default is 10.
     #' @param digits Integer; number of decimal places to print. Default is 2.
@@ -204,23 +230,25 @@ VB_Fit <- R6::R6Class(
     summary = function(pars = NULL, max_rows = 10, digits = 2,
                        inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE) {
 
-      draws_array <- self$draws(pars = pars,
-                                inc_random = inc_random,
-                                inc_transform = inc_transform,
-                                inc_generate = inc_generate,
-                                best_only = TRUE)
+      draws_best <- self$draws(pars = pars,
+                               inc_random = inc_random,
+                               inc_transform = inc_transform,
+                               inc_generate = inc_generate,
+                               best_only = TRUE)
 
-      P <- dim(draws_array)[3]
-      param_names <- dimnames(draws_array)[[3]]
+      draws_all <- self$draws(pars = pars,
+                              inc_random = inc_random,
+                              inc_transform = inc_transform,
+                              inc_generate = inc_generate,
+                              best_only = FALSE)
 
-      target_idx <- 1:P
+      P <- dim(draws_best)[3]
+      param_names <- dimnames(draws_best)[[3]]
+      target_idx <- seq_len(P)
 
-      # --- Priority sorting by lp and model$view ---
       if (length(target_idx) > 0) {
         current_names <- param_names[target_idx]
         base_names <- gsub("\\[.*\\]$", "", current_names)
-
-        # Always prioritize lp
         target_views <- c("lp")
         if (!is.null(self$model$view)) {
           target_views <- c(target_views, self$model$view)
@@ -238,75 +266,71 @@ VB_Fit <- R6::R6Class(
 
       if (!is.null(max_rows)) {
         limit <- min(length(target_idx), as.integer(max_rows))
-        target_idx <- target_idx[1:limit]
+        target_idx <- target_idx[seq_len(limit)]
+      }
+
+      max_rel_obj <- if (!is.null(self$rel_obj_vals) && length(self$rel_obj_vals) >= self$best_chain) {
+        self$rel_obj_vals[self$best_chain]
+      } else {
+        NA_real_
       }
 
       res_list_sum <- vector("list", length(target_idx))
 
       for (i in seq_along(target_idx)) {
         p <- target_idx[i]
-
-        mat_best <- as.matrix(draws_array[, 1, p])
-        vec_best <- as.vector(mat_best)
+        vec_best <- as.vector(draws_best[, 1, p])
         valid_vec <- vec_best[is.finite(vec_best)]
-
+        mat_all <- as.matrix(draws_all[, , p, drop = FALSE])
         var_name <- param_names[p]
-
-        # Calculate fluctuation range from trajectory data
-        if (!is.null(self$mu_history) && var_name %in% colnames(self$mu_history)) {
-          hist_vec <- self$mu_history[, var_name]
-          n_hist <- length(hist_vec)
-          half_n <- floor(n_hist / 2)
-
-          mean_all   <- mean(hist_vec)
-          mean_first <- mean(hist_vec[1:half_n])
-          mean_last  <- mean(hist_vec[(half_n + 1):n_hist])
-
-          scale_factor <- abs(mean_all) + 1e-4
-          drift_val <- abs(mean_last - mean_first) / scale_factor
-          rel_sd_val <- sd(hist_vec) / scale_factor
-
-        } else {
-          drift_val <- NA_real_
-          rel_sd_val <- NA_real_
-        }
 
         if (length(valid_vec) == 0) {
           res_list_sum[[i]] <- data.frame(
-            variable = var_name, mean = NA, sd = NA, map = NA,
-            q2.5 = NA, q97.5 = NA, opt_diff = NA,
-            stringsAsFactors = FALSE, check.names = FALSE
+            variable = var_name,
+            mean = NA, sd = NA, map = NA,
+            q2.5 = NA, q97.5 = NA,
+            `Max rel_obj` = max_rel_obj,
+            rhat = NA,
+            stringsAsFactors = FALSE,
+            check.names = FALSE
           )
           next
         }
 
         sd_val <- sd(valid_vec)
         if (is.na(sd_val) || sd_val < 1e-10) {
-          map_val <- valid_vec[1]; q95 <- c(valid_vec[1], valid_vec[1])
-          diff_sd_ratio <- NA
+          map_val <- valid_vec[1]
+          q95 <- c(valid_vec[1], valid_vec[1])
         } else {
-          map_val   <- map_est(valid_vec)
-          q95       <- quantile95(valid_vec)
+          map_val <- map_est(valid_vec)
+          q95 <- quantile95(valid_vec)
+        }
+
+        if (ncol(mat_all) >= 2 && all(apply(mat_all, 2, function(z) sum(is.finite(z)) > 1))) {
+          rhat_val <- posterior::rhat(mat_all)
+        } else {
+          rhat_val <- NA_real_
         }
 
         res_list_sum[[i]] <- data.frame(
-          variable = param_names[p],
-          mean     = mean(valid_vec),
-          sd       = sd_val,
-          map      = map_val,
-          q2.5     = unname(q95[1]),
-          q97.5    = unname(q95[2]),
-          #drift    = drift_val,   # if statement is unnecessary since NA remains NA
-          #rel_sd   = rel_sd_val,
-          stringsAsFactors = FALSE
+          variable = var_name,
+          mean = mean(valid_vec),
+          sd = sd_val,
+          map = map_val,
+          q2.5 = unname(q95[1]),
+          q97.5 = unname(q95[2]),
+          `Max rel_obj` = max_rel_obj,
+          rhat = rhat_val,
+          stringsAsFactors = FALSE,
+          check.names = FALSE
         )
       }
+
       res_df <- do.call(rbind, res_list_sum)
-      # Replace extremely small values close to zero with exact 0 in numeric columns of the dataframe
       num_cols <- sapply(res_df, is.numeric)
       res_df[num_cols] <- lapply(res_df[num_cols], function(x) {
         x[abs(x) < 1e-12 & !is.na(x)] <- 0
-        return(x)
+        x
       })
       class(res_df) <- c("summary_BayesRTMB", "data.frame")
       attr(res_df, "digits") <- digits
@@ -498,6 +522,8 @@ VB_Fit <- R6::R6Class(
 
       iter   <- dim(all_draws)[1]
       chains <- dim(all_draws)[2]
+
+      if (is.null(tran_fn)) tran_fn <- self$model$transform
 
       wrapper_tran_fn <- function(dat, param) {
         res <- list()

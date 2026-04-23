@@ -64,7 +64,7 @@ fit_MAP$log_ml
 オプションの説明
 デフォルトはsampling=1000, warmup=1000,chains=4, thin=1
 ここでは出力を簡単にするために減らしていることを説明
-```{r include=FALSE}
+```{r results = "hide"}
 fit_mcmc <- mdl$sample(sampling = 500,
                        warmup   = 500,
                        chains   = 2,
@@ -162,7 +162,7 @@ opt_reg$summary()
 ```
 
 ## MCMC
-```{r include=FALSE}
+```{r results = "hide"}
 mcmc_reg <- mdl_reg$sample()
 ```
 
@@ -173,10 +173,13 @@ mcmc_reg
 
 ### bayes_factor
 null_modelに対して対数周辺尤度を比較して、係数のBFを計算できることを説明
-```{r}
-mcmc_reg$bayes_factor(null_model = "beta")
+```{r results = "hide"}
+bf_result <- mcmc_reg$bayes_factor(null_model = "beta")
 ```
 
+```{r}
+bf_result
+```
 
 
 # Hierarchical model
@@ -210,7 +213,7 @@ code_hlm <- rtmb_code(
     r ~ normal(0, 1)
     alpha ~ normal(0, 100)
     beta  ~ normal(0, 10)
-    tau ~ exponential(1/10)
+    tau   ~ exponential(1/10)
     sigma ~ exponential(1/10)
   }
 )
@@ -240,7 +243,7 @@ opt_hlm$random_effects$Estimate |> hist()
 
 ## MCMC
 並列化できることの説明
-```{r include=FALSE}
+```{r results = "hide"}
 mcmc_hlm <- mdl_hlm$sample(parallel=TRUE)
 ```
 

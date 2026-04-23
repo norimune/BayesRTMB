@@ -40,7 +40,6 @@ plot_dens <- function(x, mono = FALSE) {
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
-  # Determine grid layout automatically based on the number of variables
   n_cols <- ceiling(sqrt(n_variables))
   n_rows <- ceiling(n_variables / n_cols)
 
@@ -64,10 +63,12 @@ plot_dens <- function(x, mono = FALSE) {
 
     for (n in seq_len(n_chains)) {
       valid_data <- x[, n, i]
-      valid_data <- valid_data[!is.na(valid_data)]
+      valid_data <- valid_data[is.finite(valid_data)]
 
       if (length(valid_data) > 1) {
-        # Retrieve the original curve width calculated by the density function
+        if (stats::var(valid_data) == 0) {
+          valid_data <- jitter(valid_data, amount = 1e-5)
+        }
         dens_list[[n]] <- stats::density(valid_data)
         max_dens <- max(max_dens, max(dens_list[[n]]$y))
         min_x <- min(min_x, min(dens_list[[n]]$x))
@@ -75,26 +76,21 @@ plot_dens <- function(x, mono = FALSE) {
       }
     }
 
-    if (min_x == Inf || max_x == -Inf) {
-      min_x <- 0; max_x <- 1; max_dens <- 1
+    valid_idx <- which(!vapply(dens_list, is.null, logical(1)))
+
+    if (length(valid_idx) == 0) {
+      plot.new()
+      title(main = parnames[i])
+      mtext("No finite draws", side = 3, line = -1.5, cex = 0.9)
+      next
     }
 
-    if (length(valid_data) > 1) {
-      # Add slight jitter if variance is zero to protect density calculation
-      if (var(valid_data) == 0) {
-        valid_data <- jitter(valid_data, amount = 1e-5)
-      }
-      dens_list[[n]] <- stats::density(valid_data)
-      max_dens <- max(max_dens, max(dens_list[[n]]$y))
-      min_x <- min(min_x, min(dens_list[[n]]$x))
-      max_x <- max(max_x, max(dens_list[[n]]$x))
-    }
+    plot_idx <- valid_idx[1]
 
-    # Set independent xlim and ylim for each parameter
     plot(
-      dens_list[[1]],
-      lty = 1,
-      col = colors[1],
+      dens_list[[plot_idx]],
+      lty = plot_idx,
+      col = colors[plot_idx],
       xlab = "",
       ylab = "Density",
       main = parnames[i],
@@ -102,22 +98,24 @@ plot_dens <- function(x, mono = FALSE) {
       ylim = c(0, max_dens * 1.15)
     )
 
-    legend_text <- "chain1"
+    legend_text <- paste0("chain", plot_idx)
+    legend_lty <- plot_idx
+    legend_col <- colors[plot_idx]
 
-    if (n_chains > 1) {
-      for (n in 2:n_chains) {
-        if (!is.null(dens_list[[n]])) {
-          lines(dens_list[[n]], lty = n, col = colors[n])
-          legend_text <- c(legend_text, paste0("chain", n))
-        }
+    if (length(valid_idx) > 1) {
+      for (n in valid_idx[-1]) {
+        lines(dens_list[[n]], lty = n, col = colors[n])
+        legend_text <- c(legend_text, paste0("chain", n))
+        legend_lty <- c(legend_lty, n)
+        legend_col <- c(legend_col, colors[n])
       }
     }
 
     legend(
       "topright",
       legend = legend_text,
-      lty = seq_len(n_chains),
-      col = colors,
+      lty = legend_lty,
+      col = legend_col,
       bg = "transparent",
       bty = "n",
       cex = 0.75
