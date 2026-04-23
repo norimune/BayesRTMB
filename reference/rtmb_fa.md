@@ -99,7 +99,16 @@ fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE
 map_fa2 <- fit_fa2$optimize()
 #> Starting optimization...
 #> 
-#> Optimization Not Converged. Final objective: 206.84
+#> Optimization Not Converged. Final objective: 206.78
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
+#> Warning: NaNs produced
 #> Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.
 # The summary prioritizes rotated loadings (L_promax), standard deviations, and factor correlations
 map_fa2$summary()
@@ -107,21 +116,21 @@ map_fa2$summary()
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 206.84
+#> Negative Log-Posterior: 206.78
 #> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> Point Estimates and 95% Wald CI:
 #>         variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_promax[mpg,1]   -0.85656          NA         NA         NA 
-#> L_promax[disp,1]   0.87762          NA         NA         NA 
-#> L_promax[hp,1]     0.51364          NA         NA         NA 
-#> L_promax[drat,1]  -0.83326          NA         NA         NA 
-#> L_promax[wt,1]     1.05053          NA         NA         NA 
-#> L_promax[qsec,1]   0.16628          NA         NA         NA 
-#> L_promax[mpg,2]    0.12929          NA         NA         NA 
-#> L_promax[disp,2]  -0.13700          NA         NA         NA 
-#> L_promax[hp,2]    -0.54735          NA         NA         NA 
-#> L_promax[drat,2]  -0.20049          NA         NA         NA 
+#> L_promax[mpg,1]   -0.85647          NA         NA         NA 
+#> L_promax[disp,1]   0.87871          NA         NA         NA 
+#> L_promax[hp,1]     0.51456          NA         NA         NA 
+#> L_promax[drat,1]  -0.83115          NA         NA         NA 
+#> L_promax[wt,1]     1.04979          NA         NA         NA 
+#> L_promax[qsec,1]   0.16682          NA         NA         NA 
+#> L_promax[mpg,2]    0.12989          NA         NA         NA 
+#> L_promax[disp,2]  -0.13529          NA         NA         NA 
+#> L_promax[hp,2]    -0.54786          NA         NA         NA 
+#> L_promax[drat,2]  -0.20078          NA         NA         NA 
 #> 
 
 # --- 3. Regularized Factor Analysis using Spike-and-Slab Prior (SSP) ---
@@ -146,16 +155,16 @@ map_ssp$summary()
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L[mpg,1]    0.84509     0.05781    0.73177    0.95840 
-#> L[disp,1]  -0.87043     0.04690   -0.96236   -0.77851 
-#> L[hp,1]    -0.57253     0.10029   -0.76910   -0.37597 
-#> L[drat,1]   0.74646     0.07892    0.59178    0.90113 
-#> L[wt,1]    -0.97569     0.03629   -1.04681   -0.90456 
-#> L[qsec,1]  -0.00000     0.00008   -0.00017    0.00016 
-#> L[mpg,2]    0.27978     0.09614    0.09134    0.46821 
-#> L[disp,2]  -0.29591     0.08900   -0.47035   -0.12148 
-#> L[hp,2]    -0.64628     0.09614   -0.83472   -0.45784 
-#> L[drat,2]  -0.00001     0.00096   -0.00189    0.00187 
+#> L[mpg,1]    0.85437     0.04478    0.76661    0.94214 
+#> L[disp,1]  -0.87684     0.03865   -0.95260   -0.80107 
+#> L[hp,1]    -0.58709     0.08231   -0.74842   -0.42577 
+#> L[drat,1]   0.75269     0.07476    0.60617    0.89921 
+#> L[wt,1]    -0.97723     0.01624   -1.00906   -0.94541 
+#> L[qsec,1]   0.00000     0.00009   -0.00018    0.00018 
+#> L[mpg,2]    0.27325     0.08279    0.11099    0.43551 
+#> L[disp,2]  -0.28719     0.07484   -0.43388   -0.14051 
+#> L[hp,2]    -0.63513     0.07922   -0.79039   -0.47986 
+#> L[drat,2]   0.00000     0.00041   -0.00081    0.00081 
 #> 
 
 # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
@@ -190,15 +199,15 @@ mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
 #> Generated quantities added to samples.
 mcmc_ssp$summary()
 #>  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp         -286.85  5.90  -285.03  -299.19  -276.37       216       673  1.01 
-#> L[mpg,1]      0.40  0.42     0.01    -0.31     0.95         6        34  1.35 
-#> L[disp,1]    -0.41  0.43    -0.91    -0.96     0.30         6        32  1.32 
-#> L[hp,1]      -0.39  0.50    -0.64    -0.96     0.96         7        42  1.21 
-#> L[drat,1]     0.27  0.41    -0.02    -0.38     0.85         4       456  1.47 
-#> L[wt,1]      -0.35  0.57    -0.99    -1.06     0.48         4       148  1.53 
-#> L[qsec,1]     0.27  0.74     0.98    -1.01     1.12         3       107  1.78 
-#> L[mpg,2]     -0.20  0.69    -0.91    -1.08     1.04         3        60  1.83 
-#> L[disp,2]     0.20  0.71     0.94    -1.06     1.09         3        57  1.84 
-#> L[hp,2]      -0.10  0.63    -0.57    -1.08     0.85         3       230  1.60 
+#> lp         -286.59  5.65  -284.67  -298.73  -276.92       223       573  1.01 
+#> L[mpg,1]      0.44  0.60     0.87    -0.92     0.95         4        58  1.56 
+#> L[disp,1]    -0.45  0.61    -0.89    -0.97     0.94         4        76  1.57 
+#> L[hp,1]      -0.39  0.42    -0.61    -0.92     0.68        11       111  1.13 
+#> L[drat,1]     0.32  0.56     0.74    -0.80     0.87         4        70  1.54 
+#> L[wt,1]      -0.41  0.76    -0.99    -1.07     1.01         4        62  1.58 
+#> L[qsec,1]     0.21  0.58    -0.01    -0.86     1.08        10       281  1.15 
+#> L[mpg,2]     -0.16  0.48     0.02    -1.01     0.56         6       399  1.27 
+#> L[disp,2]     0.15  0.50    -0.03    -0.57     1.03         6       448  1.26 
+#> L[hp,2]      -0.17  0.71    -0.58    -1.17     1.10         4        83  1.53 
 # }
 ```
