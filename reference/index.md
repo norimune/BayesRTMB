@@ -13,7 +13,7 @@
 - [`RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
   : Base class for RTMB Fit objects
 - [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
-  : Wrapper function to create an RTMB_Model instance
+  : Create an RTMB_Model Object
 - [`VB_Fit`](https://norimune.github.io/BayesRTMB/reference/VB_Fit.md) :
   VB fit object
 - [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
@@ -24,6 +24,8 @@
   : Calculate conditional effects for MCMC fit objects
 - [`distance()`](https://norimune.github.io/BayesRTMB/reference/distance.md)
   : Euclidean distance
+- [`distributions`](https://norimune.github.io/BayesRTMB/reference/distributions.md)
+  : Probability Distributions for RTMB Models
 - [`fabs()`](https://norimune.github.io/BayesRTMB/reference/fabs.md) :
   Smooth absolute value function
 - [`generate_random_init()`](https://norimune.github.io/BayesRTMB/reference/generate_random_init.md)
@@ -54,8 +56,12 @@
   : Log-sum-exp function
 - [`logit()`](https://norimune.github.io/BayesRTMB/reference/logit.md) :
   Logit function
+- [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
+  : Mathematical and Matrix Utility Functions for RTMB Models
 - [`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
   : Model Code Wrapper for RTMB
+- [`parameter_types`](https://norimune.github.io/BayesRTMB/reference/parameter_types.md)
+  : Parameter Types and Constraints in RTMB Models
 - [`parameters_code()`](https://norimune.github.io/BayesRTMB/reference/parameters_code.md)
   : Code block for parameter definitions
 - [`plot(`*`<ce_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/plot.ce_rtmb.md)
@@ -83,7 +89,7 @@
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
-  : Stan-like RTMB model definition block (Hybrid syntax supported)
+  : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
   : Wrapper for estimating correlation matrix (multivariate normal
   distribution)
@@ -99,6 +105,8 @@
   : RTMB-based Linear Regression wrapper function
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
+- [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
+  : Common Features and Arguments of RTMB Wrapper Functions
 - [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
   : Safe RTMB model construction (with error message translation)
 - [`softmax()`](https://norimune.github.io/BayesRTMB/reference/softmax.md)

@@ -28,6 +28,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/conditional_effects.mcmc_fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/dirichlet_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/distance.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/distributions.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/env_to_ordered_list.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/exponential_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fa_multi_normal_lpdf.html</loc></url>
@@ -57,6 +58,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/logit_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lognormal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lower_tri_normal_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/math_functions.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/model_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_lpdf.html</loc></url>
@@ -66,6 +68,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/normal_mixture_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/ordered_logistic_lpmf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/parameter_types.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/parameters_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot.ce_rtmb.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_acf.html</loc></url>
@@ -90,6 +93,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_irt.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_lm.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/softmax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sort_loadings.html</loc></url>
