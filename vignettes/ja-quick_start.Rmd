@@ -1,17 +1,39 @@
 ---
-title: "quick_start"
-author: "Hiroshi Shimizu"
-date: "2026-04-23"
+title: "BayesRTMB 日本語クイックスタート"
+description: "BayesRTMB の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。"
 output: html_document
+vignette: >
+  %\VignetteIndexEntry{BayesRTMB 日本語クイックスタート}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
-  chunk_output_type: console
+  chunk_output_type: inline
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
+このページでは、**BayesRTMB を実際に使い始めるための最短ルート**を順を追って説明します。
+
+最初に単純な二項モデルで `rtmb_code()` と `rtmb_model()` の基本的な流れを確認し、
+次に回帰モデルで各ブロックの役割を見て、最後に階層モデルで random effect と Laplace 近似の使い方を確認します。
+
+## このページで扱う流れ
+
+BayesRTMB の基本的な使い方は、ほぼ次の 3 段階にまとまります。
+
+1. **データを用意する**
+2. **`rtmb_code()` でモデルを書く**
+3. **`rtmb_model()` でモデルオブジェクトを作り、`optimize()`・`sample()`・`variational()` を使う**
+
+---
+
 # Binomial model
+
+最初に、もっとも単純な二項モデルを例に、`rtmb_code()` と `rtmb_model()` の基本的な流れを確認します。
+ここでは、10 回の試行のうち成功が 6 回観測された状況を扱います。
+
 ```{r}
 library(BayesRTMB)
 Trial <- 10
@@ -31,43 +53,60 @@ model_code <- rtmb_code(
 ```
 
 ## rtmb_model
-データとモデルが必須であることを説明
+
+`rtmb_model()` は、データとモデル定義を受け取って**推定用のモデルオブジェクト**を作る関数です。
+最低限必要なのは、観測データをまとめた `data` と、`rtmb_code()` で作成した `code` です。
+
+この段階ではまだ推定は行われません。
+ここで作られたモデルオブジェクトに対して、以後 `optimize()`、`sample()`、`variational()` を実行していきます。
+
 ```{r}
 mdl <- rtmb_model(data = data_list, code = model_code)
 ```
 
-
 ## MAP
+
+`optimize()` は MAP 推定を行います。
+事後分布の最頻値に対応する**点推定**を求めたいときに使います。
+まずは追加オプションなしで実行し、推定値と区間推定の出力を確認します。
+
 ```{r}
 fit_MAP <- mdl$optimize()
 fit_MAP
 ```
 
 ### se_sampling
-標準誤差をパラメトリックブートストラップ法で計算するオプションについての説明
-これを使うとgenerateしたパラメータも信頼区間の計算が可能
+
+`se_sampling = TRUE` を指定すると、推定結果の不確実性を使って、**シミュレーションベースで標準誤差と 95% 区間**を計算します。
+この方法を使うと、`transform` で作成した派生量や `generate` で作成した量についても区間推定を出しやすくなります。
+
+派生量の信頼区間まで含めて見たいときに便利です。
+
 ```{r}
 fit_MAP <- mdl$optimize(se_sampling = TRUE)
 fit_MAP
 ```
 
 ### log_ml
-MAP推定のモデル評価指標として、近似対数周辺尤度があります。
-事後分布が多変量正規分布に近似できることを仮定している
+
+MAP 推定では、近似対数周辺尤度 `log_ml` が計算されます。
+これは **Laplace 近似**にもとづく量で、モデル比較の参考になります。
+
+ただし、事後分布が強く歪んでいる場合や多峰的な場合には、注意が必要です。
+
 ```{r}
 fit_MAP$log_ml
 ```
 
-
-
 ## MCMC
-オプションの説明
-デフォルトはsampling=1000, warmup=1000,chains=4, thin=1
-ここでは出力を簡単にするために減らしていることを説明
+
+`sample()` は NUTS を用いた MCMC サンプリングを行います。
+既定値は `sampling = 1000`, `warmup = 1000`, `chains = 4`, `thin = 1` です。
+
 ```{r results = "hide"}
-fit_mcmc <- mdl$sample(sampling = 500,
-                       warmup   = 500,
-                       chains   = 2,
+fit_mcmc <- mdl$sample(sampling = 1000,
+                       warmup   = 1000,
+                       chains   = 4,
                        thin     = 1
                        )
 ```
@@ -76,10 +115,13 @@ fit_mcmc <- mdl$sample(sampling = 500,
 fit_mcmc
 ```
 
-
 ### bridgesampling
-対数周辺尤度を計算する　推定誤差が出力されるので、精度を求めたいならsamplingの回数を増やすことを説明
-一度bridgesampling()メソッドを走らせると$log_mlに保存されることも説明
+
+`bridgesampling()` を使うと、MCMC サンプルにもとづいて**対数周辺尤度**を推定できます。
+出力には推定誤差も付くため、誤差が大きい場合はサンプル数を増やして精度を上げます。
+
+一度計算した結果は `fit_mcmc$log_ml` に保存されるため、同じオブジェクトで後から再利用できます。
+
 ```{r}
 fit_mcmc$bridgesampling()
 
@@ -87,9 +129,13 @@ fit_mcmc$log_ml
 ```
 
 ## ADVI
-自動微分変分ベイズ法による推定
-推定回数を指定して、収束しているかを確認する
-収束していなければ回数を増やす
+
+`variational()` は、自動微分変分ベイズ法による**近似推定**を行います。
+MCMC より高速に結果の概形をつかみたいときに便利ですが、あくまで近似法なので、難しいモデルでは精度確認が重要です。
+
+`iter` は最適化の反復回数です。
+ELBO の推移を見ながら、十分に収束しているかを確認します。
+
 ```{r include=FALSE}
 fit_vb <- mdl$variational(iter = 3000)
 ```
@@ -99,32 +145,44 @@ fit_vb$plot_elbo()
 fit_vb
 ```
 
+### ADVI のモデル評価指標
 
-### ADVIのモデル評価指標
-ELBO(変分対数周辺尤度)を出力する
-ただ、事後分布が独立した多変量正規分布に近似できることを仮定しているので、
-それが成り立たないモデルでは、対数周辺尤度から乖離する
+ADVI では ELBO（変分下界）が出力されます。
+ELBO は近似分布の良さを見るための指標で、値が大きいほど、その近似分布のもとでは望ましい方向にあります。
+
+ただし、ELBO は**真の対数周辺尤度そのものではありません**。
+とくに、事後分布が強く歪んでいる場合や、パラメータ間の依存が強い場合には、ELBO と真の対数周辺尤度が大きくずれることがあります。
+
 ```{r}
 fit_vb$ELBO
 ```
 
-
+---
 
 # Regression model
-回帰分析を用いて具体的な使い方を説明
-各ブロックの構造、役割など
-回帰係数は正規分布、残差標準偏差は指数分布を事前分布にしていることの説明
+
+次に、回帰分析を例に `rtmb_code()` の各ブロックの役割を確認します。
+この例では、
+
+- `setup` でデータの次元を整理し、
+- `parameters` で推定するパラメータを宣言し、
+- `transform` で平均構造 `mu` を定義し、
+- `model` で尤度と事前分布を書く
+
+という流れになっています。
+
+ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えています。
 
 ```{r}
 set.seed(123)
 alpha <- 5
-beta <- c(1,1)
+beta <- c(1)
 sigma <- 2
 N <- 50
-X <- seq(1,5,length.out = N)
-Y <- alpha + X*beta + rnorm(N,0,sigma)
+X <- matrix(seq(1, 5, length.out = N), ncol = 1)
+Y <- alpha + X[, 1] * beta + rnorm(N, 0, sigma)
 
-data_reg <- list(Y=Y, X=X)
+data_reg <- list(Y = Y, X = X)
 
 code_reg <- rtmb_code(
   setup = {
@@ -137,7 +195,7 @@ code_reg <- rtmb_code(
     sigma   = Dim(lower=0)
   },
   transform = {
-    mu = alpha + beta * X
+    mu = alpha + as.vector(X %*% beta)
   },
   model = {
     Y ~ normal(mu, sigma)
@@ -148,20 +206,33 @@ code_reg <- rtmb_code(
 )
 ```
 
-## rtmb_mode
-initで初期値を決められる説明
+## rtmb_model
+
+`rtmb_model()` では `init` を指定して初期値を与えることができます。
+初期値を明示しておくと、複雑なモデルで推定が安定しやすくなることがあります。
+一部のパラメータだけ指定した場合は、残りを自動で補うこともできます。
+
 ```{r}
 mdl_reg <- rtmb_model(data_reg, code_reg, init = list(alpha = 0, beta = 0))
 ```
 
 ## MAP
-par_namesやviewを指定しておくと、結果に反映されることの説明
+
+`par_names` や `view` をモデル作成時に指定しておくと、要約結果の表示がわかりやすくなります。
+`par_names` はパラメータの表示名を付けるために使い、`view` は `summary()` などで優先的に上に表示したい変数を指定するために使います。
+
+この例では未指定ですが、階層モデルの例で実際の使い方を示します。
+
 ```{r}
 opt_reg <- mdl_reg$optimize()
 opt_reg$summary()
 ```
 
 ## MCMC
+
+回帰モデルでも `sample()` を使えば事後分布全体を評価できます。
+MAP では点推定が中心ですが、MCMC では分布の形、不確実性、パラメータ間のばらつきまで確認できます。
+
 ```{r results = "hide"}
 mcmc_reg <- mdl_reg$sample()
 ```
@@ -170,9 +241,13 @@ mcmc_reg <- mdl_reg$sample()
 mcmc_reg
 ```
 
-
 ### bayes_factor
-null_modelに対して対数周辺尤度を比較して、係数のBFを計算できることを説明
+
+`bayes_factor()` を使うと、推定したモデルと帰無モデルの周辺尤度を比較し、**ベイズファクター**を計算できます。
+`null_model = "beta"` のように指定すると、その係数を 0 に固定した帰無モデルを内部で作成して比較します。
+
+係数の有無をベイズ的に評価したいときに便利です。
+
 ```{r results = "hide"}
 bf_result <- mcmc_reg$bayes_factor(null_model = "beta")
 ```
@@ -181,10 +256,15 @@ bf_result <- mcmc_reg$bayes_factor(null_model = "beta")
 bf_result
 ```
 
+---
 
 # Hierarchical model
-チキンデータを用いた例
-推定の安定性のために説明変数を中心化して推定する方法を説明
+
+最後に、階層モデルの例として `ChickWeight` データを用います。
+ここでは個体ごとのランダム効果を導入し、個体差を表現します。
+
+階層モデルでは、推定の安定性を高めるために、説明変数の中心化や適切な初期値の指定が有効になることがあります。
+
 ```{r}
 Y <- ChickWeight$weight
 X <- model.matrix(weight ~ Time + Diet, data = ChickWeight)[,-1]
@@ -206,7 +286,7 @@ code_hlm <- rtmb_code(
     r       = Dim(G, random = TRUE)
   },
   transform = {
-    mu = alpha + X %*% beta + r[ID] * tau
+    mu = alpha + as.vector(X %*% beta) + r[ID] * tau
   },
   model = {
     Y ~ normal(mu, sigma)
@@ -219,8 +299,13 @@ code_hlm <- rtmb_code(
 )
 ```
 
-### rtmb_model
-変数名の指定ができること、優先的に表示する変数名を指定できることを説明
+## rtmb_model
+
+`par_names` や `view` をモデル作成時に指定しておくと、要約結果の表示がわかりやすくなります。`par_names` はパラメータの表示名を付けるために使い、`view` は `summary()` などで優先的に上に表示したい変数を指定するために使います。
+
+この例では `par_names` を使って回帰係数に変数名を付け、`view` を使って `summary()` で`tau`を`sigma`より優先表示するように指定しています。
+出力の可読性を高めたい場合は、この 2 つをあらかじめ設定しておくと便利です。
+
 ```{r}
 mdl_hlm <-
   rtmb_model(
@@ -232,8 +317,13 @@ mdl_hlm <-
 ```
 
 ## MAP Laplace approximation
-laplace近似についての説明と、何回か走らせたときのベストをとれることの説明
-変量効果は別に保存されていることの説明
+
+`optimize(laplace = TRUE)` とすると、ランダム効果を **Laplace 近似**で積分消去しながら固定効果を推定できます。
+階層モデルでは計算をかなり軽くできることが多く、まず MAP で全体像を確認したいときに有用です。
+
+また、`num_estimate` を大きくすると複数回の最適化を行い、その中で目的関数が最も良かった結果を採用できます。
+ランダム効果の推定結果は `random_effects` に別途保存されます。
+
 ```{r}
 opt_hlm <- mdl_hlm$optimize(num_estimate = 4, laplace=TRUE)
 opt_hlm
@@ -242,7 +332,11 @@ opt_hlm$random_effects$Estimate |> hist()
 ```
 
 ## MCMC
-並列化できることの説明
+
+階層モデルでも `sample()` によってMCMC推定を行えます。
+チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE` を指定して並列計算することもできます。
+収束診断を確認しながら、必要なら `warmup` や `sampling` を増やしていきます。
+
 ```{r results = "hide"}
 mcmc_hlm <- mdl_hlm$sample(parallel=TRUE)
 ```
@@ -251,3 +345,13 @@ mcmc_hlm <- mdl_hlm$sample(parallel=TRUE)
 mcmc_hlm$summary()
 ```
 
+## まとめ
+
+このページでは、BayesRTMB の基本的な流れを 3 つのモデルで確認しました。
+
+- **単純なモデル**では、`rtmb_code()` と `rtmb_model()` の最小構成を確認する
+- **回帰モデル**では、`setup`・`parameters`・`transform`・`model` の役割を理解する
+- **階層モデル**では、random effect と Laplace 近似の使い方を確認する
+
+最初は MAP でモデルの動作を確認し、その後に MCMC や ADVI を試す流れがわかりやすいです。
+より詳しく確認したい場合は、日本語紹介ページと Reference をあわせて見ると全体像をつかみやすくなります。
