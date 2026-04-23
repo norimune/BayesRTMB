@@ -13,7 +13,7 @@ vignette: >
 **BayesRTMB** は、RTMB を自動微分エンジンとして用いる R パッケージです。
 Stan に近い感覚でモデルを書きつつ、R の中でそのままベイズ推定を進められます。
 
-このページでは、BayesRTMB の位置づけと、最初に押さえておくとよい使い方を日本語でまとめます。
+このページでは、BayesRTMB の位置づけと、最初に押さえておくとよい使い方をまとめます。
 
 ## BayesRTMB でできること
 
@@ -47,14 +47,14 @@ BayesRTMB の基本的な流れは次の 3 段階です。
 2. **`rtmb_code()`** でモデルを書く
 3. **`rtmb_model()`** でモデルオブジェクトを作り、推定する
 
-最小例として、平均 `mu` と標準偏差 `sigma` を推定する単純な正規モデルを示します。
+例として、平均 `mu` と標準偏差 `sigma` を推定する単純な正規分布モデルをとりあげます。
 
 ```{r eval=FALSE}
 library(BayesRTMB)
 
 # 1. データ
 Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
-dat <- list(Y = Y, N = length(Y))
+dat <- list(Y = Y)
 
 # 2. モデル
 code <- rtmb_code(
@@ -80,24 +80,28 @@ mdl <- rtmb_model(data = dat, code = code)
 ### MAP 推定
 
 まずモデルが正しく動くかを素早く確認したいときに便利です。
+いわゆる最尤法のような推定方法ですが、事前分布を考慮しているのでベイズ推定になります。
 
 ```{r eval=FALSE}
 fit_map <- mdl$optimize()
 fit_map$summary()
 ```
 
-### NUTS による MCMC
+### MCMC 推定（NUTS）
 
-最も標準的なベイズ推定です。事後分布の要約、区間推定、収束診断を行いたいときに使います。
+最も標準的なベイズ推定です。
+ベイズ推定の中では一番正確で、複雑なモデルでも推定できます。
+parallel = TRUEにすると並列計算も可能です（デフォルトはFALSE）。
 
 ```{r eval=FALSE}
-fit_mcmc <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4)
+fit_mcmc <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, parallel = FALSE)
 fit_mcmc$summary()
 ```
 
 ### ADVI による変分推論
 
 近似推定でよいので高速に結果を得たいときに向いています。
+MAPでは解きにくいモデルも推定できます。ただ、標準誤差はバイアスが大きいので点推定値だけを得たいときに便利です。
 
 ```{r eval=FALSE}
 fit_vb <- mdl$variational(
@@ -127,6 +131,8 @@ code_hier <- rtmb_code(
 ```
 
 このようなモデルでは、Laplace 近似を使って random effect を周辺化できます。
+optimizeではlaplace=TRUEがデフォルトです。
+MCMCでもlaplace=TRUEが可能ですが、基本的にはFALSEでいいと思います。
 
 ```{r eval=FALSE}
 fit_map_laplace  <- mdl$optimize(laplace = TRUE)
@@ -135,7 +141,7 @@ fit_mcmc_laplace <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, lapla
 
 ## ラッパー関数から始める
 
-BayesRTMB には、標準的なモデルを簡単に使うためのラッパー関数があります。
+BayesRTMB には、標準的なモデルを簡単に使うためのラッパー関数がたくさんあります。
 
 たとえば線形回帰なら次のように書けます。
 
@@ -150,6 +156,19 @@ mcmc_lm$summary()
 ```
 
 一般化線形混合モデルは `rtmb_glmer()`、t 検定は `rtmb_ttest()`、因子分析は `rtmb_fa()` のように、分析目的に応じた関数が用意されています。
+
+`rtmb_ttest()`では、簡単にベイジアンt検定が可能です。
+null_modelは、パラメータを0に固定したい変数を選びます。すると、自動的にnull_modelのMCMCが始まり、ベイズファクターの計算もできます。
+
+```{r}
+mdl_ttest <- rtmb_ttest(y1, y2, r = 0.707)
+mcmc_ttest <- mdl_ttest$sample()
+
+bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+print(bf_ttest)
+
+```
+
 
 ## どのページから読むとよいか
 

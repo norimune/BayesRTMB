@@ -4,6 +4,8 @@ output: github_document
 
 # BayesRTMB
 
+**Language / 言語**: [English introduction](articles/introduction.html) | [日本語紹介](articles/ja-introduction.html)
+
 **BayesRTMB** is an R package for fast, flexible, and compile-free Bayesian modeling. 
 
 Powered by **RTMB** (R template Model Builder) as its automatic differentiation engine, BayesRTMB allows you to write models natively in R with a syntax similar to Stan, while eliminating the need for lengthy C++ compilation times.

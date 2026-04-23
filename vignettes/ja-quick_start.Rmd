@@ -1,0 +1,250 @@
+---
+title: "quick_start"
+author: "Hiroshi Shimizu"
+date: "2026-04-23"
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Binomial model
+```{r}
+library(BayesRTMB)
+Trial <- 10
+Y <- 6
+
+data_list <- list(Trial = Trial, Y = Y)
+
+model_code <- rtmb_code(
+  parameters={
+    theta=Dim(lower=0,upper=1)
+  },
+  model={
+    Y~binomial(Trial,theta)
+    theta ~ beta(2,2)
+  }
+)
+```
+
+## rtmb_model
+データとモデルが必須であることを説明
+```{r}
+mdl <- rtmb_model(data = data_list, code = model_code)
+```
+
+
+## MAP
+```{r}
+fit_MAP <- mdl$optimize()
+fit_MAP
+```
+
+### se_sampling
+標準誤差をパラメトリックブートストラップ法で計算するオプションについての説明
+これを使うとgenerateしたパラメータも信頼区間の計算が可能
+```{r}
+fit_MAP <- mdl$optimize(se_sampling = TRUE)
+fit_MAP
+```
+
+### log_ml
+MAP推定のモデル評価指標として、近似対数周辺尤度があります。
+事後分布が多変量正規分布に近似できることを仮定している
+```{r}
+fit_MAP$log_ml
+```
+
+
+
+## MCMC
+オプションの説明
+デフォルトはsampling=1000, warmup=1000,chains=4, thin=1
+ここでは出力を簡単にするために減らしていることを説明
+```{r include=FALSE}
+fit_mcmc <- mdl$sample(sampling = 500,
+                       warmup   = 500,
+                       chains   = 2,
+                       thin     = 1
+                       )
+```
+
+```{r}
+fit_mcmc
+```
+
+
+### bridgesampling
+対数周辺尤度を計算する　推定誤差が出力されるので、精度を求めたいならsamplingの回数を増やすことを説明
+一度bridgesampling()メソッドを走らせると$log_mlに保存されることも説明
+```{r}
+fit_mcmc$bridgesampling()
+
+fit_mcmc$log_ml
+```
+
+## ADVI
+自動微分変分ベイズ法による推定
+推定回数を指定して、収束しているかを確認する
+収束していなければ回数を増やす
+```{r include=FALSE}
+fit_vb <- mdl$variational(iter = 3000)
+```
+
+```{r}
+fit_vb$plot_elbo()
+fit_vb
+```
+
+
+### ADVIのモデル評価指標
+ELBO(変分対数周辺尤度)を出力する
+ただ、事後分布が独立した多変量正規分布に近似できることを仮定しているので、
+それが成り立たないモデルでは、対数周辺尤度から乖離する
+```{r}
+fit_vb$ELBO
+```
+
+
+
+# Regression model
+回帰分析を用いて具体的な使い方を説明
+各ブロックの構造、役割など
+回帰係数は正規分布、残差標準偏差は指数分布を事前分布にしていることの説明
+
+```{r}
+set.seed(123)
+alpha <- 5
+beta <- c(1,1)
+sigma <- 2
+N <- 50
+X <- seq(1,5,length.out = N)
+Y <- alpha + X*beta + rnorm(N,0,sigma)
+
+data_reg <- list(Y=Y, X=X)
+
+code_reg <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha   = Dim()
+    beta    = Dim(P)
+    sigma   = Dim(lower=0)
+  },
+  transform = {
+    mu = alpha + beta * X
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha ~ normal(0, 100)
+    beta  ~ normal(0, 10)
+    sigma ~ exponential(1/10)
+  }
+)
+```
+
+## rtmb_mode
+initで初期値を決められる説明
+```{r}
+mdl_reg <- rtmb_model(data_reg, code_reg, init = list(alpha = 0, beta = 0))
+```
+
+## MAP
+par_namesやviewを指定しておくと、結果に反映されることの説明
+```{r}
+opt_reg <- mdl_reg$optimize()
+opt_reg$summary()
+```
+
+## MCMC
+```{r include=FALSE}
+mcmc_reg <- mdl_reg$sample()
+```
+
+```{r}
+mcmc_reg
+```
+
+
+### bayes_factor
+null_modelに対して対数周辺尤度を比較して、係数のBFを計算できることを説明
+```{r}
+mcmc_reg$bayes_factor(null_model = "beta")
+```
+
+
+
+# Hierarchical model
+チキンデータを用いた例
+推定の安定性のために説明変数を中心化して推定する方法を説明
+```{r}
+Y <- ChickWeight$weight
+X <- model.matrix(weight ~ Time + Diet, data = ChickWeight)[,-1]
+ID <- ChickWeight$Chick
+
+data_hlm <- list(Y=Y,X=X,ID=ID)
+
+code_hlm <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    G <- length(unique(ID))
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha   = Dim()
+    beta    = Dim(P)
+    tau     = Dim(lower=0)
+    sigma   = Dim(lower=0)
+    r       = Dim(G, random = TRUE)
+  },
+  transform = {
+    mu = alpha + X %*% beta + r[ID] * tau
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    r ~ normal(0, 1)
+    alpha ~ normal(0, 100)
+    beta  ~ normal(0, 10)
+    tau ~ exponential(1/10)
+    sigma ~ exponential(1/10)
+  }
+)
+```
+
+### rtmb_model
+変数名の指定ができること、優先的に表示する変数名を指定できることを説明
+```{r}
+mdl_hlm <-
+  rtmb_model(
+    data = data_hlm,
+    code = code_hlm,
+    par_names = list(beta = c("Time","Diet2","Diet3","Diet4")),
+    view = c("alpha", "beta", "tau", "sigma")
+  )
+```
+
+## MAP Laplace approximation
+laplace近似についての説明と、何回か走らせたときのベストをとれることの説明
+変量効果は別に保存されていることの説明
+```{r}
+opt_hlm <- mdl_hlm$optimize(num_estimate = 4, laplace=TRUE)
+opt_hlm
+
+opt_hlm$random_effects$Estimate |> hist()
+```
+
+## MCMC
+並列化できることの説明
+```{r include=FALSE}
+mcmc_hlm <- mdl_hlm$sample(parallel=TRUE)
+```
+
+```{r}
+mcmc_hlm$summary()
+```
+
