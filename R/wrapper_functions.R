@@ -12,6 +12,26 @@
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @param null Character string specifying the target parameter for the null model.
 #' @import reformulas
+#' @examples
+#' \donttest{
+#' # Fit a linear mixed-effects model using the built-in ChickWeight dataset
+#' # Modeling 'weight' predicted by 'Time', with random intercepts for each 'Chick'
+#' fit_glmer <- rtmb_glmer(
+#'   weight ~ Time + (1 | Chick),
+#'   data = ChickWeight,
+#'   family = "gaussian"
+#' )
+#'
+#' # MAP estimation with Laplace approximation
+#' # 'laplace = TRUE' marginalizes the random effects during optimization
+#' map_glmer <- fit_glmer$optimize(laplace = TRUE)
+#' map_glmer$summary()
+#'
+#' # MCMC sampling
+#' # MCMC automatically samples both fixed and random effects
+#' mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
+#' mcmc_glmer$summary()
+#' }
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        penalty = c("none", "rhs", "ssp"),
@@ -448,6 +468,20 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values
 #' @param null Character string specifying the target parameter for the null model.
+#' @examples
+#' \donttest{
+#' # Fit a logistic regression model using the built-in mtcars dataset
+#' # Predicting transmission type (am: 0 = automatic, 1 = manual)
+#' fit_glm <- rtmb_glm(am ~ mpg + hp, data = mtcars, family = "binomial")
+#'
+#' # Maximum A Posteriori (MAP) estimation
+#' map_glm <- fit_glm$optimize()
+#' map_glm$summary()
+#'
+#' # MCMC sampling
+#' mcmc_glm <- fit_glm$sample(sampling = 500, warmup = 500, chains = 2)
+#' mcmc_glm$summary()
+#' }
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
                      penalty = c("none", "rhs", "ssp"),
@@ -483,6 +517,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model.
+#' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
                     penalty = c("none", "rhs", "ssp"),
