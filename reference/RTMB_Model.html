@@ -88,6 +88,171 @@
     <p>An `RTMB_Model` class instance with compiled and pre-tested model.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span><span class="co"># Simulate data for 3 groups</span></span></span>
+<span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">60</span></span></span>
+<span class="r-in"><span><span class="va">group_idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, <span class="va">N</span>, replace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">group_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"Control"</span>, <span class="st">"Treatment_A"</span>, <span class="st">"Treatment_B"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># True group means: Control = 0, Treatment_A = 2, Treatment_B = -1</span></span></span>
+<span class="r-in"><span><span class="va">true_means</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2</span>, <span class="op">-</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">true_means</span><span class="op">[</span><span class="va">group_idx</span><span class="op">]</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, K <span class="op">=</span> <span class="fl">3</span>, group_idx <span class="op">=</span> <span class="va">group_idx</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Define the model using rtmb_code</span></span></span>
+<span class="r-in"><span><span class="va">model_code</span> <span class="op">&lt;-</span> <span class="fu"><a href="rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span></span>
+<span class="r-in"><span>  parameters <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="va">mu</span>    <span class="op">=</span> <span class="fu"><a href="Dim.html">Dim</a></span><span class="op">(</span><span class="va">K</span><span class="op">)</span>             <span class="co"># Vector of length K (group means)</span></span></span>
+<span class="r-in"><span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span>, lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>  <span class="co"># Scalar (residual standard deviation)</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span>,</span></span>
+<span class="r-in"><span>  model <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="co"># Priors</span></span></span>
+<span class="r-in"><span>    <span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">K</span><span class="op">)</span> <span class="va">mu</span><span class="op">[</span><span class="va">k</span><span class="op">]</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>    <span class="co"># Likelihood</span></span></span>
+<span class="r-in"><span>    <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>      <span class="va">y</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span><span class="op">[</span><span class="va">group_idx</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span>, <span class="va">sigma</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">}</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># --- 1. Basic Model Creation ---</span></span></span>
+<span class="r-in"><span><span class="co"># Create the RTMB_Model object</span></span></span>
+<span class="r-in"><span><span class="va">mod_basic</span> <span class="op">&lt;-</span> <span class="fu">rtmb_model</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  data <span class="op">=</span> <span class="va">data_list</span>,</span></span>
+<span class="r-in"><span>  code <span class="op">=</span> <span class="va">model_code</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Perform Maximum A Posteriori (MAP) estimation</span></span></span>
+<span class="r-in"><span><span class="va">map_basic</span> <span class="op">&lt;-</span> <span class="va">mod_basic</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Optimization converged. Final objective: 46.99</span>
+<span class="r-in"><span><span class="co"># The summary displays default parameter names: mu[1], mu[2], mu[3]</span></span></span>
+<span class="r-in"><span><span class="va">map_basic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 46.99</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -52.63</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1]     -0.12319     0.09499   -0.30936    0.06298 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2]      2.15919     0.10806    1.94741    2.37098 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3]     -1.11887     0.09722   -1.30942   -0.92832 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma      0.44511     0.04041    0.37255    0.53179 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Perform MCMC sampling using the named model (chains/iters reduced for speed)</span></span></span>
+<span class="r-in"><span><span class="va">mcmc_basic</span> <span class="op">&lt;-</span> <span class="va">mod_basic</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 700 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 900 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 700 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 900 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
+<span class="r-in"><span><span class="va">mcmc_basic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp        -49.80  1.41  -48.84  -53.55  -48.05       416       652  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1]      -0.12  0.10   -0.11   -0.31    0.06      1106       715  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2]       2.16  0.11    2.16    1.94    2.38       851       584  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3]      -1.12  0.10   -1.12   -1.33   -0.91       857       700  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma       0.47  0.04    0.47    0.39    0.56       705       756  1.00 </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># --- 2. Optional: Adding Custom Parameter Names and initial values ---</span></span></span>
+<span class="r-in"><span><span class="co"># You can optionally use 'par_names' to assign meaningful labels</span></span></span>
+<span class="r-in"><span><span class="co"># to vector or matrix elements for easier interpretation.</span></span></span>
+<span class="r-in"><span><span class="va">mod_named</span> <span class="op">&lt;-</span> <span class="fu">rtmb_model</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  data <span class="op">=</span> <span class="va">data_list</span>,</span></span>
+<span class="r-in"><span>  code <span class="op">=</span> <span class="va">model_code</span>,</span></span>
+<span class="r-in"><span>  init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span>, sigma <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span></span>
+<span class="r-in"><span>  par_names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">group_names</span><span class="op">)</span></span></span>
+<span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="va">map_named</span> <span class="op">&lt;-</span> <span class="va">mod_named</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Optimization converged. Final objective: 46.99</span>
+<span class="r-in"><span><span class="co"># The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]</span></span></span>
+<span class="r-in"><span><span class="va">map_named</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 46.99</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -52.63</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Control]      -0.12319     0.09499   -0.30936    0.06298 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_A]   2.15921     0.10806    1.94742    2.37099 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_B]  -1.11887     0.09722   -1.30942   -0.92832 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.44510     0.04041    0.37255    0.53178 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span><span class="co"># Perform MCMC sampling using the named model (chains/iters reduced for speed)</span></span></span>
+<span class="r-in"><span><span class="va">mcmc_named</span> <span class="op">&lt;-</span> <span class="va">mod_named</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 700 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 900 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 700 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 900 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
+<span class="r-in"><span><span class="va">mcmc_named</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp               -49.84  1.43  -49.11  -53.41  -48.11       495       654  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Control]       -0.12  0.10   -0.12   -0.32    0.08      1285       710  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_A]    2.16  0.11    2.16    1.95    2.37      1014       733  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_B]   -1.13  0.10   -1.13   -1.31   -0.92      1194       633  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma              0.47  0.04    0.47    0.39    0.56       964       576  1.00 </span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

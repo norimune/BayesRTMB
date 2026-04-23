@@ -111,6 +111,10 @@ MAP fit object"></head><body>
 <dd><p>List of generated quantities maintaining their original dimensions.</p></dd>
 
 
+<dt><code>se_samples</code></dt>
+<dd><p>List of simulated samples for standard error estimation.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -207,7 +211,8 @@ MAP fit object"></head><body>
 <span>  df_generate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  opt_history <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  transform <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  generate <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  generate <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  se_samples <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -269,6 +274,10 @@ MAP fit object"></head><body>
 <dd><p>List of generated quantities maintaining their original dimensions.</p></dd>
 
 
+<dt><code>se_samples</code></dt>
+<dd><p>List of simulated samples for standard error estimation.</p></dd>
+
+
 </dl><p></p></div>
 </div>
 
@@ -297,7 +306,7 @@ MAP fit object"></head><body>
 </div>
 <div class="section">
 <h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
-<p>A summary object, typically a data frame or list.</p>
+<p>A summary object, typically a data frame.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-print"></a><div class="section">
@@ -342,16 +351,14 @@ MAP fit object"></head><body>
 <div class="section">
 <h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
-<dd><p>An `rtmb_code( ... )` or ` ... ` block containing the logic
-to be calculated using the MAP estimate.</p></dd>
+<dd><p>An `rtmb_code( ... )` or ` ... ` block containing the logic to be calculated using the MAP estimate.</p></dd>
 
 
 </dl><p></p></div>
 </div>
 <div class="section">
 <h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
-<p>The `MAP_Fit` object itself (invisibly).
-Results are added or updated in the `generate` list.</p>
+<p>The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-clone"></a><div class="section">

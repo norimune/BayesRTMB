@@ -72,6 +72,10 @@ estimation.
 
   List of generated quantities maintaining their original dimensions.
 
+- `se_samples`:
+
+  List of simulated samples for standard error estimation.
+
 ## Methods
 
 ### Public methods
@@ -179,7 +183,8 @@ Create a new \`MAP_Fit\` object.
       df_generate = NULL,
       opt_history = NULL,
       transform = NULL,
-      generate = NULL
+      generate = NULL,
+      se_samples = NULL
     )
 
 #### Arguments
@@ -240,6 +245,10 @@ Create a new \`MAP_Fit\` object.
 
   List of generated quantities maintaining their original dimensions.
 
+- `se_samples`:
+
+  List of simulated samples for standard error estimation.
+
 ------------------------------------------------------------------------
 
 ### Method [`summary()`](https://rdrr.io/r/base/summary.html)
@@ -267,7 +276,7 @@ Summarize MAP estimates.
 
 #### Returns
 
-A summary object, typically a data frame or list.
+A summary object, typically a data frame.
 
 ------------------------------------------------------------------------
 
@@ -321,7 +330,7 @@ Compute generated quantities from the MAP estimate.
 #### Returns
 
 The \`MAP_Fit\` object itself (invisibly). Results are added or updated
-in the \`generate\` list.
+in the \`generate\` list and \`df_generate\`.
 
 ------------------------------------------------------------------------
 
