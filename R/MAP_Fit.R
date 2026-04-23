@@ -17,6 +17,7 @@
 #' @param opt_history A vector of optimize objective history.
 #' @param transform List of transformed parameters maintaining their original dimensions.
 #' @param generate List of generated quantities maintaining their original dimensions.
+#' @param se_samples List of simulated samples for standard error estimation.
 #'
 #' @field model The `RTMB_Model` object used for estimation.
 #' @field par_vec Parameter vector on the unconstrained scale.
@@ -32,6 +33,7 @@
 #' @field opt_history A vector of optimize objective history.
 #' @field transform List of transformed parameters maintaining their original dimensions.
 #' @field generate List of generated quantities maintaining their original dimensions.
+#' @field se_samples List of simulated samples for standard error estimation.
 #'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
@@ -48,11 +50,12 @@ MAP_Fit <- R6::R6Class(
     sd_rep         = NULL,
     df_fixed       = NULL,
     random_effects = NULL,
-    df_transform   = NULL, # Modified
-    df_generate    = NULL, # Modified
+    df_transform   = NULL,
+    df_generate    = NULL,
     opt_history    = NULL,
-    transform      = NULL, # Added
-    generate       = NULL, # Added
+    transform      = NULL,
+    generate       = NULL,
+    se_samples     = NULL,
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -95,9 +98,10 @@ MAP_Fit <- R6::R6Class(
     #' @param opt_history A vector of optimize objective history.
     #' @param transform List of transformed parameters maintaining their original dimensions.
     #' @param generate List of generated quantities maintaining their original dimensions.
+    #' @param se_samples List of simulated samples for standard error estimation.
     initialize = function(model,par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
-                          transform = NULL, generate = NULL) {
+                          transform = NULL, generate = NULL, se_samples = NULL) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -112,14 +116,13 @@ MAP_Fit <- R6::R6Class(
       self$opt_history <- opt_history
       self$transform <- transform
       self$generate <- generate
+      self$se_samples <- se_samples
 
-      # Realization process to prevent mixing of complex types
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
       if (!is.null(self$random_effects)) self$random_effects <- lapply(self$random_effects, Re)
       if (!is.null(self$transform)) self$transform <- lapply(self$transform, Re)
       if (!is.null(self$generate)) self$generate <- lapply(self$generate, Re)
-      # Ensure S3 dispatch works for base class methods
       class(self) <- c(class(self), "RTMB_Fit_Base")
     },
 
@@ -127,7 +130,7 @@ MAP_Fit <- R6::R6Class(
     #' @param pars Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.
     #' @param max_rows Maximum number of rows to print in summaries. Default is 10.
     #' @param digits Number of digits to print.
-    #' @return A summary object, typically a data frame or list.
+    #' @return A summary object, typically a data frame.
     summary = function(pars = NULL, max_rows = 10, digits = 5) {
       cat("\nCall:\nMAP Estimation via RTMB\n")
       cat(sprintf("\nNegative Log-Posterior: %.2f\n", self$objective))
@@ -165,12 +168,10 @@ MAP_Fit <- R6::R6Class(
         return(invisible(df_combined))
       }
 
-      # --- Priority sorting by lp and model$view ---
       if (nrow(df_combined) > 0) {
         var_names <- rownames(df_combined)
         base_names <- gsub("\\[.*\\]$", "", var_names)
 
-        # Always prioritize lp
         target_views <- c()
         if (!is.null(self$model$view)) {
           target_views <- c(target_views, self$model$view)
@@ -218,13 +219,11 @@ MAP_Fit <- R6::R6Class(
       self$summary(pars = pars, max_rows = max_rows, digits = digits, ...)
       invisible(self)
     },
+
     #' @description Compute generated quantities from the MAP estimate.
-    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic
-    #' to be calculated using the MAP estimate.
-    #' @return The `MAP_Fit` object itself (invisibly).
-    #' Results are added or updated in the `generate` list.
+    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.
+    #' @return The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.
     generated_quantities = function(code) {
-      # 1. Capture and extract AST
       raw_code <- substitute(code)
       if (is.name(raw_code)) {
         evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
@@ -233,22 +232,113 @@ MAP_Fit <- R6::R6Class(
 
       gen_ast <- if (is.call(code) && identical(code[[1]], as.name("rtmb_code"))) code$generate else code
 
-      # 2. Prepare function and environment
       gen_fn <- eval(bquote(transform_code(.(gen_ast))))
       environment(gen_fn) <- parent.env(globalenv())
 
-      # 3. Create context (par + transform + generate)
       p_list <- self$par
       if (!is.null(self$transform)) p_list <- c(p_list, self$transform)
       if (!is.null(self$generate)) p_list <- c(p_list, self$generate)
 
-      # 4. Execute
       res <- gen_fn(self$model$data, p_list)
 
-      # 5. Store results
       if (is.null(self$generate)) self$generate <- list()
       for (n in names(res)) {
         self$generate[[n]] <- res[[n]]
+      }
+
+      flat_base <- unlist(res, use.names = FALSE)
+      names_vec <- c()
+      for (name in names(res)) {
+        val <- res[[name]]
+        dim_val <- dim(val)
+        if (is.null(dim_val)) dim_val <- length(val)
+        names_def <- self$model$par_names[[name]]
+        names_vec <- c(names_vec, generate_flat_names(name, dim_val, names_def))
+      }
+
+      se_out <- rep(NA, length(flat_base))
+      low_out <- rep(NA, length(flat_base))
+      up_out <- rep(NA, length(flat_base))
+
+      # Apply se_sampling if available
+      if (!is.null(self$se_samples)) {
+        num_samples <- nrow(self$se_samples$con[[1]])
+        samps_res <- list()
+
+        for (s in 1:num_samples) {
+          tmp_p_list <- list()
+          for (name in names(self$se_samples$con)) {
+            val <- self$se_samples$con[[name]][s, ]
+            if (length(dim(self$par[[name]])) > 1) dim(val) <- dim(self$par[[name]])
+            tmp_p_list[[name]] <- val
+          }
+          if (!is.null(self$se_samples$tran)) {
+            for (name in names(self$se_samples$tran)) {
+              val <- self$se_samples$tran[[name]][s, ]
+              if (length(dim(self$transform[[name]])) > 1) dim(val) <- dim(self$transform[[name]])
+              tmp_p_list[[name]] <- val
+            }
+          }
+          if (!is.null(self$se_samples$gq)) {
+            for (name in names(self$se_samples$gq)) {
+              val <- self$se_samples$gq[[name]][s, ]
+              if (length(dim(self$generate[[name]])) > 1) dim(val) <- dim(self$generate[[name]])
+              tmp_p_list[[name]] <- val
+            }
+          }
+
+          tmp_res <- tryCatch(gen_fn(self$model$data, tmp_p_list), error = function(e) NULL)
+          if (!is.null(tmp_res)) {
+            for (name in names(tmp_res)) {
+              val <- as.numeric(tmp_res[[name]])
+              if (is.null(samps_res[[name]])) samps_res[[name]] <- matrix(NA, num_samples, length(val))
+              samps_res[[name]][s, ] <- val
+            }
+          }
+        }
+
+        if (length(samps_res) > 0) {
+          if (is.null(self$se_samples$gq)) self$se_samples$gq <- list()
+          for (name in names(samps_res)) {
+            self$se_samples$gq[[name]] <- samps_res[[name]]
+          }
+
+          mat_list <- list()
+          for (name in names(res)) {
+            if (!is.null(samps_res[[name]])) {
+              mat_list[[name]] <- samps_res[[name]]
+            } else {
+              mat_list[[name]] <- matrix(NA, num_samples, length(res[[name]]))
+            }
+          }
+          mat_all <- do.call(cbind, unname(mat_list))
+
+          se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
+          low_out <- apply(mat_all, 2, quantile, probs = 0.025, na.rm = TRUE)
+          up_out <- apply(mat_all, 2, quantile, probs = 0.975, na.rm = TRUE)
+        }
+      }
+
+      new_df <- data.frame(
+        Estimate     = flat_base,
+        `Std. Error` = se_out,
+        `Lower 95%`  = low_out,
+        `Upper 95%`  = up_out,
+        row.names    = names_vec,
+        check.names  = FALSE
+      )
+
+      if (is.null(self$df_generate)) {
+        self$df_generate <- new_df
+      } else {
+        overlap <- intersect(rownames(self$df_generate), rownames(new_df))
+        if (length(overlap) > 0) {
+          self$df_generate[overlap, ] <- new_df[overlap, ]
+          new_df <- new_df[!(rownames(new_df) %in% overlap), , drop = FALSE]
+        }
+        if (nrow(new_df) > 0) {
+          self$df_generate <- rbind(self$df_generate, new_df)
+        }
       }
 
       cat("Generated quantities updated.\n")

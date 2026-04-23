@@ -33,3 +33,70 @@ An `RTMB_Model` class instance with compiled and pre-tested model.
 Combines user-defined data and model code (likelihood and priors) to create an
 `RTMB_Model` (R6 class) instance for Bayesian inference (MCMC, VB, MAP estimation).
 }
+\examples{
+\donttest{
+# Simulate data for 3 groups
+set.seed(123)
+N <- 60
+group_idx <- sample(1:3, N, replace = TRUE)
+group_names <- c("Control", "Treatment_A", "Treatment_B")
+
+# True group means: Control = 0, Treatment_A = 2, Treatment_B = -1
+true_means <- c(0, 2, -1)
+y <- true_means[group_idx] + rnorm(N, mean = 0, sd = 0.5)
+
+data_list <- list(N = N, K = 3, group_idx = group_idx, y = y)
+
+# Define the model using rtmb_code
+model_code <- rtmb_code(
+  parameters = {
+    mu    = Dim(K)             # Vector of length K (group means)
+    sigma = Dim(1, lower = 0)  # Scalar (residual standard deviation)
+  },
+  model = {
+    # Priors
+    for (k in 1:K) mu[k] ~ normal(0, 10)
+    sigma ~ exponential(1)
+
+    # Likelihood
+    for (i in 1:N) {
+      y[i] ~ normal(mu[group_idx[i]], sigma)
+    }
+  }
+)
+
+# --- 1. Basic Model Creation ---
+# Create the RTMB_Model object
+mod_basic <- rtmb_model(
+  data = data_list,
+  code = model_code
+)
+
+# Perform Maximum A Posteriori (MAP) estimation
+map_basic <- mod_basic$optimize()
+# The summary displays default parameter names: mu[1], mu[2], mu[3]
+map_basic$summary()
+
+# Perform MCMC sampling using the named model (chains/iters reduced for speed)
+mcmc_basic <- mod_basic$sample(sampling = 500, warmup = 500, chains = 2)
+mcmc_basic$summary()
+
+# --- 2. Optional: Adding Custom Parameter Names and initial values ---
+# You can optionally use 'par_names' to assign meaningful labels
+# to vector or matrix elements for easier interpretation.
+mod_named <- rtmb_model(
+  data = data_list,
+  code = model_code,
+  init = list(mu = rep(0, 3), sigma = 1),
+  par_names = list(mu = group_names)
+)
+
+map_named <- mod_named$optimize()
+# The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]
+map_named$summary()
+
+# Perform MCMC sampling using the named model (chains/iters reduced for speed)
+mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
+mcmc_named$summary()
+}
+}

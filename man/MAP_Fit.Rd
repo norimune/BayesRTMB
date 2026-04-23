@@ -45,6 +45,8 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{transform}}{List of transformed parameters maintaining their original dimensions.}
 
 \item{\code{generate}}{List of generated quantities maintaining their original dimensions.}
+
+\item{\code{se_samples}}{List of simulated samples for standard error estimation.}
 }
 \if{html}{\out{</div>}}
 }
@@ -149,7 +151,8 @@ Create a new `MAP_Fit` object.
   df_generate = NULL,
   opt_history = NULL,
   transform = NULL,
-  generate = NULL
+  generate = NULL,
+  se_samples = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -183,6 +186,8 @@ Create a new `MAP_Fit` object.
 \item{\code{transform}}{List of transformed parameters maintaining their original dimensions.}
 
 \item{\code{generate}}{List of generated quantities maintaining their original dimensions.}
+
+\item{\code{se_samples}}{List of simulated samples for standard error estimation.}
 }
 \if{html}{\out{</div>}}
 }
@@ -208,7 +213,7 @@ Summarize MAP estimates.
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A summary object, typically a data frame or list.
+A summary object, typically a data frame.
 }
 }
 \if{html}{\out{<hr>}}
@@ -249,14 +254,12 @@ Compute generated quantities from the MAP estimate.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic
-to be calculated using the MAP estimate.}
+\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-The `MAP_Fit` object itself (invisibly).
-Results are added or updated in the `generate` list.
+The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.
 }
 }
 \if{html}{\out{<hr>}}

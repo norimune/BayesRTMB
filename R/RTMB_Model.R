@@ -230,9 +230,13 @@ RTMB_Model <- R6::R6Class(
     #' @param optimizer Character; The optimizer to use, either "optim" or "nlminb". Default is "optim".
     #' @param method Character; The method for "optim" (e.g. "BFGS", "L-BFGS-B"). Default is "BFGS".
     #' @param map Optional list specifying parameters to fix. Default is NULL.
+    #' @param se_sampling Logical; whether to use sampling from the multivariate normal distribution of unconstrained parameters to estimate standard errors and 95% CIs. Default is FALSE.
+    #' @param num_samples Integer; number of samples to draw when se_sampling is TRUE. Default is 1000.
+    #' @param seed Integer; random seed for se_sampling.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
-                        optimizer = "nlminb", method = "BFGS", map = NULL) {
+                        optimizer = "nlminb", method = "BFGS", map = NULL,
+                        se_sampling = FALSE, num_samples = 1000, seed = sample.int(1e6, 1)) {
       cat("Starting optimization...\n")
 
       opt_results <- list()
@@ -383,7 +387,6 @@ RTMB_Model <- R6::R6Class(
 
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
         # Extract standard errors directly from the diagonal of the cov.fixed matrix without using summary
-        # (This completely prevents extraction errors due to name collisions in ADREPORT, etc.)
         se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
 
         # Safety check: Ensure the number of calculated indices perfectly matches the TMB output size
@@ -500,75 +503,235 @@ RTMB_Model <- R6::R6Class(
       con_lower_list <- list()
       con_upper_list <- list()
 
-      z_95 <- qnorm(0.975)
-      eps_diff <- 1e-5
-      u_idx_current <- 1
+      samps_con <- list()
+      samps_tran <- list()
+      samps_gq <- list()
 
-      for (name in names(self$par_list)) {
-        p_info <- self$par_list[[name]]
-        u_val <- unc_est_list[[name]]
-        u_se  <- unc_se_list[[name]]
-        c_val <- con_est_list[[name]]
-
-        L_u <- p_info$unc_length
-        L_c <- p_info$length
-
-        if (L_u > 0) {
-          u_indices <- u_idx_current:(u_idx_current + L_u - 1)
-          u_idx_current <- u_idx_current + L_u
-        } else {
-          u_indices <- integer(0)
+      # --- SE Sampling Logic ---
+      if (se_sampling) {
+        cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
+        set.seed(seed)
+        if (!requireNamespace("MASS", quietly = TRUE)) {
+          stop("Package 'MASS' is required for se_sampling=TRUE.")
         }
 
-        transform_single <- function(u) {
-          tmp_list <- unc_est_list
-          tmp_list[[name]] <- u
-          tmp_con <- to_constrained(tmp_list, self$par_list)
-          return(as.numeric(tmp_con[[name]]))
-        }
+        Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]
+        mu_valid <- unc_est_vec[idx_fix_active]
 
-        J <- matrix(0, nrow = L_c, ncol = L_u)
-        for (i in seq_len(L_u)) {
-          u_tmp <- u_val
-          u_tmp[i] <- u_tmp[i] + eps_diff
-          c_tmp <- transform_single(u_tmp)
-          J[, i] <- (c_tmp - as.numeric(c_val)) / eps_diff
-        }
+        # Ensure Positive Definite for MASS::mvrnorm
+        eig <- eigen(Cov_u_valid, symmetric = TRUE)
+        eig$values <- pmax(eig$values, 1e-8)
+        Cov_u_pd <- eig$vectors %*% diag(eig$values, nrow=length(eig$values)) %*% t(eig$vectors)
 
-        c_se <- numeric(L_c)
-        if (L_u > 0) {
-          Cov_sub <- Cov_u[u_indices, u_indices, drop = FALSE]
-          for (j in 1:L_c) {
-            c_se[j] <- sqrt(sum((J[j, ] %*% Cov_sub) * J[j, ], na.rm = TRUE))
+        raw_samples <- MASS::mvrnorm(num_samples, mu = mu_valid, Sigma = Cov_u_pd)
+        if (!is.matrix(raw_samples)) raw_samples <- as.matrix(raw_samples)
+
+        u_samples_mat <- matrix(rep(unc_est_vec, each = num_samples), nrow = num_samples)
+        u_samples_mat[, idx_fix_active] <- raw_samples
+
+        # Assign back to mapped variables
+        idx_curr <- 1
+        for (name in names(self$par_list)) {
+          L_u <- self$par_list[[name]]$unc_length
+          if (L_u > 0) {
+            map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+            for (i in 1:L_u) {
+              pos_last <- idx_curr + i - 1
+              if (pos_last %in% idx_ran) next
+              if (!is.null(map_f) && !is.na(map_f[i])) {
+                lvl <- as.character(map_f[i])
+                mapped_opt_idx <- factor_levels_seen[[lvl]]
+                if (!is.null(mapped_opt_idx)) {
+                  u_samples_mat[, pos_last] <- raw_samples[, mapped_opt_idx]
+                }
+              }
+            }
+            idx_curr <- idx_curr + L_u
           }
         }
 
-        if (length(p_info$dim) > 1) dim(c_se) <- p_info$dim
-        con_se_list[[name]] <- c_se
+        # Sample random effects independently
+        if (laplace && length(idx_ran) > 0) {
+          for(ridx in idx_ran) {
+            u_samples_mat[, ridx] <- rnorm(num_samples, mean = unc_est_vec[ridx], sd = unc_se_vec[ridx])
+          }
+        }
 
-        if (p_info$bounds == "corr_matrix") {
-          c_low <- rep(NA, L_c)
-          c_up  <- rep(NA, L_c)
+        # Progress reporting for transformation
+        if (requireNamespace("progressr", quietly = TRUE)) {
+          progressr::with_progress({
+            p <- progressr::progressor(steps = num_samples)
+            for (s in 1:num_samples) {
+              u_vec <- u_samples_mat[s, ]
+              tmp_unc_list <- unconstrained_vector_to_list(u_vec, self$par_list)
+              tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
+
+              for (name in names(tmp_con_list)) {
+                val <- as.numeric(tmp_con_list[[name]])
+                if (is.null(samps_con[[name]])) samps_con[[name]] <- matrix(NA, num_samples, length(val))
+                samps_con[[name]][s, ] <- val
+              }
+
+              if (!is.null(self$transform)) {
+                tmp_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
+                if (!is.null(tmp_tran)) {
+                  for (name in names(tmp_tran)) {
+                    val <- as.numeric(tmp_tran[[name]])
+                    if (is.null(samps_tran[[name]])) samps_tran[[name]] <- matrix(NA, num_samples, length(val))
+                    samps_tran[[name]][s, ] <- val
+                  }
+                  tmp_con_list <- c(tmp_con_list, tmp_tran)
+                }
+              }
+
+              if (!is.null(self$generate)) {
+                tmp_gq <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
+                if (!is.null(tmp_gq)) {
+                  for (name in names(tmp_gq)) {
+                    val <- as.numeric(tmp_gq[[name]])
+                    if (is.null(samps_gq[[name]])) samps_gq[[name]] <- matrix(NA, num_samples, length(val))
+                    samps_gq[[name]][s, ] <- val
+                  }
+                }
+              }
+              p()
+            }
+          })
         } else {
-          u_low <- u_val - z_95 * u_se
-          u_up  <- u_val + z_95 * u_se
-          c_low <- transform_single(u_low)
-          c_up  <- transform_single(u_up)
+          for (s in 1:num_samples) {
+            u_vec <- u_samples_mat[s, ]
+            tmp_unc_list <- unconstrained_vector_to_list(u_vec, self$par_list)
+            tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
 
-          c_low_final <- pmin(c_low, c_up)
-          c_up_final  <- pmax(c_low, c_up)
-          c_low <- c_low_final
-          c_up  <- c_up_final
+            for (name in names(tmp_con_list)) {
+              val <- as.numeric(tmp_con_list[[name]])
+              if (is.null(samps_con[[name]])) samps_con[[name]] <- matrix(NA, num_samples, length(val))
+              samps_con[[name]][s, ] <- val
+            }
+
+            if (!is.null(self$transform)) {
+              tmp_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
+              if (!is.null(tmp_tran)) {
+                for (name in names(tmp_tran)) {
+                  val <- as.numeric(tmp_tran[[name]])
+                  if (is.null(samps_tran[[name]])) samps_tran[[name]] <- matrix(NA, num_samples, length(val))
+                  samps_tran[[name]][s, ] <- val
+                }
+                tmp_con_list <- c(tmp_con_list, tmp_tran)
+              }
+            }
+
+            if (!is.null(self$generate)) {
+              tmp_gq <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
+              if (!is.null(tmp_gq)) {
+                for (name in names(tmp_gq)) {
+                  val <- as.numeric(tmp_gq[[name]])
+                  if (is.null(samps_gq[[name]])) samps_gq[[name]] <- matrix(NA, num_samples, length(val))
+                  samps_gq[[name]][s, ] <- val
+                }
+              }
+            }
+          }
         }
 
-        if (length(p_info$dim) > 1) {
-          dim(c_low) <- p_info$dim
-          dim(c_up)  <- p_info$dim
+        # Compute SE and CI
+        for (name in names(self$par_list)) {
+          p_info <- self$par_list[[name]]
+          mat <- samps_con[[name]]
+
+          if (is.null(mat)) {
+            c_se <- rep(NA, p_info$length)
+            c_low <- rep(NA, p_info$length)
+            c_up <- rep(NA, p_info$length)
+          } else {
+            c_se <- apply(mat, 2, sd, na.rm=TRUE)
+            c_low <- apply(mat, 2, quantile, probs=0.025, na.rm=TRUE)
+            c_up <- apply(mat, 2, quantile, probs=0.975, na.rm=TRUE)
+          }
+
+          if (length(p_info$dim) > 1) {
+            dim(c_se) <- p_info$dim
+            dim(c_low) <- p_info$dim
+            dim(c_up) <- p_info$dim
+          }
+          con_se_list[[name]] <- c_se
+          con_lower_list[[name]] <- c_low
+          con_upper_list[[name]] <- c_up
         }
-        con_lower_list[[name]] <- c_low
-        con_upper_list[[name]] <- c_up
+
+      } else {
+        # --- Original Delta Method Logic ---
+        z_95 <- qnorm(0.975)
+        eps_diff <- 1e-5
+        u_idx_current <- 1
+
+        for (name in names(self$par_list)) {
+          p_info <- self$par_list[[name]]
+          u_val <- unc_est_list[[name]]
+          u_se  <- unc_se_list[[name]]
+          c_val <- con_est_list[[name]]
+
+          L_u <- p_info$unc_length
+          L_c <- p_info$length
+
+          if (L_u > 0) {
+            u_indices <- u_idx_current:(u_idx_current + L_u - 1)
+            u_idx_current <- u_idx_current + L_u
+          } else {
+            u_indices <- integer(0)
+          }
+
+          transform_single <- function(u) {
+            tmp_list <- unc_est_list
+            tmp_list[[name]] <- u
+            tmp_con <- to_constrained(tmp_list, self$par_list)
+            return(as.numeric(tmp_con[[name]]))
+          }
+
+          J <- matrix(0, nrow = L_c, ncol = L_u)
+          for (i in seq_len(L_u)) {
+            u_tmp <- u_val
+            u_tmp[i] <- u_tmp[i] + eps_diff
+            c_tmp <- transform_single(u_tmp)
+            J[, i] <- (c_tmp - as.numeric(c_val)) / eps_diff
+          }
+
+          c_se <- numeric(L_c)
+          if (L_u > 0) {
+            Cov_sub <- Cov_u[u_indices, u_indices, drop = FALSE]
+            for (j in 1:L_c) {
+              c_se[j] <- sqrt(sum((J[j, ] %*% Cov_sub) * J[j, ], na.rm = TRUE))
+            }
+          }
+
+          if (length(p_info$dim) > 1) dim(c_se) <- p_info$dim
+          con_se_list[[name]] <- c_se
+
+          if (p_info$bounds == "corr_matrix") {
+            c_low <- rep(NA, L_c)
+            c_up  <- rep(NA, L_c)
+          } else {
+            u_low <- u_val - z_95 * u_se
+            u_up  <- u_val + z_95 * u_se
+            c_low <- transform_single(u_low)
+            c_up  <- transform_single(u_up)
+
+            c_low_final <- pmin(c_low, c_up)
+            c_up_final  <- pmax(c_low, c_up)
+            c_low <- c_low_final
+            c_up  <- c_up_final
+          }
+
+          if (length(p_info$dim) > 1) {
+            dim(c_low) <- p_info$dim
+            dim(c_up)  <- p_info$dim
+          }
+          con_lower_list[[name]] <- c_low
+          con_upper_list[[name]] <- c_up
+        }
       }
 
+      # Compile output format
       build_df <- function(target_random = FALSE) {
         names_vec <- c()
         est_vec <- c()
@@ -623,50 +786,80 @@ RTMB_Model <- R6::R6Class(
       build_derived_df <- function(func, base_out, is_generate = FALSE) {
         if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
 
-        u_base <- unc_est_vec
-        L_u <- length(u_base)
-
-        calc_derived <- function(u) {
-          tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
-          tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
-
-          if (is_generate && !is.null(self$transform)) {
-            user_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
-            if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
-          }
-
-          res <- tryCatch(func(self$data, tmp_con_list), error = function(e) NULL)
-          return(res)
-        }
-
         flat_base <- unlist(base_out, use.names = FALSE)
         L_out <- length(flat_base)
 
-        eps_diff <- 1e-5
-        J <- matrix(0, nrow = L_out, ncol = L_u)
-        for (i in 1:L_u) {
-          u_tmp <- u_base
-          u_tmp[i] <- u_tmp[i] + eps_diff
-          tmp_out <- calc_derived(u_tmp)
-          flat_tmp <- unlist(tmp_out, use.names = FALSE)
-          J[, i] <- (flat_tmp - flat_base) / eps_diff
+        if (se_sampling) {
+          samps_list <- if (is_generate) samps_gq else samps_tran
+          if (length(samps_list) == 0) {
+            se_out <- rep(NA, L_out)
+            low_out <- rep(NA, L_out)
+            up_out <- rep(NA, L_out)
+          } else {
+            mat_list <- list()
+            for (name in names(base_out)) {
+              if (!is.null(samps_list[[name]])) {
+                mat_list[[name]] <- samps_list[[name]]
+              } else {
+                mat_list[[name]] <- matrix(NA, num_samples, length(base_out[[name]]))
+              }
+            }
+            mat_all <- do.call(cbind, unname(mat_list))
+            se_out <- apply(mat_all, 2, sd, na.rm=TRUE)
+            low_out <- apply(mat_all, 2, quantile, probs=0.025, na.rm=TRUE)
+            up_out <- apply(mat_all, 2, quantile, probs=0.975, na.rm=TRUE)
+          }
+        } else {
+          if (is_generate) {
+            se_out <- rep(NA, L_out)
+            low_out <- rep(NA, L_out)
+            up_out <- rep(NA, L_out)
+          } else {
+            u_base <- unc_est_vec
+            L_u <- length(u_base)
+
+            calc_derived <- function(u) {
+              tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
+              tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
+
+              if (is_generate && !is.null(self$transform)) {
+                user_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
+                if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
+              }
+
+              res <- tryCatch(func(self$data, tmp_con_list), error = function(e) NULL)
+              return(res)
+            }
+
+            eps_diff <- 1e-5
+            J <- matrix(0, nrow = L_out, ncol = L_u)
+            for (i in 1:L_u) {
+              u_tmp <- u_base
+              u_tmp[i] <- u_tmp[i] + eps_diff
+              tmp_out <- calc_derived(u_tmp)
+              flat_tmp <- unlist(tmp_out, use.names = FALSE)
+              J[, i] <- (flat_tmp - flat_base) / eps_diff
+            }
+
+            Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
+            Cov_u_derived[is.na(Cov_u_derived)] <- 0
+
+            if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
+              if (length(idx_fix_active) == nrow(sd_rep$cov.fixed) && max(c(0, idx_fix_active)) <= L_u) {
+                Cov_u_derived[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
+              }
+            }
+
+            se_out <- numeric(L_out)
+            for (j in 1:L_out) {
+              se_out[j] <- sqrt(sum((J[j, ] %*% Cov_u_derived) * J[j, ], na.rm = TRUE))
+            }
+
+            z_95 <- qnorm(0.975)
+            low_out <- flat_base - z_95 * se_out
+            up_out <- flat_base + z_95 * se_out
+          }
         }
-
-        Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
-        Cov_u_derived[is.na(Cov_u_derived)] <- 0
-
-        if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-          Cov_u_derived[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
-        }
-
-        se_out <- numeric(L_out)
-        for (j in 1:L_out) {
-          se_out[j] <- sqrt(sum((J[j, ] %*% Cov_u_derived) * J[j, ]))
-        }
-
-        z_95 <- qnorm(0.975)
-        low_out <- flat_base - z_95 * se_out
-        up_out <- flat_base + z_95 * se_out
 
         names_vec <- c()
         for (name in names(base_out)) {
@@ -689,27 +882,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE)
-
-      if (!is.null(gq_list) && length(gq_list) > 0) {
-        flat_base <- unlist(gq_list, use.names = FALSE)
-        names_vec <- c()
-        for (name in names(gq_list)) {
-          val <- gq_list[[name]]
-          dim_val <- dim(val)
-          if (is.null(dim_val)) dim_val <- length(val)
-          names_vec <- c(names_vec, generate_flat_names(name, dim_val, self$par_names[[name]]))
-        }
-        df_generate <- data.frame(
-          Estimate     = flat_base,
-          `Std. Error` = NA,
-          `Lower 95%`  = NA,
-          `Upper 95%`  = NA,
-          row.names    = names_vec,
-          check.names  = FALSE
-        )
-      } else {
-        df_generate <- NULL
-      }
+      df_generate  <- build_derived_df(self$generate, gq_list, is_generate = TRUE)
 
       log_ml <- NA
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
@@ -744,7 +917,8 @@ RTMB_Model <- R6::R6Class(
         df_generate    = df_generate,
         opt_history    = opt_history,
         transform      = tran_list,
-        generate       = gq_list
+        generate       = gq_list,
+        se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL
       )
 
       return(res_obj)
