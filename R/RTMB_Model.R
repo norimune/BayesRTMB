@@ -518,6 +518,10 @@ RTMB_Model <- R6::R6Class(
         Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]
         mu_valid <- unc_est_vec[idx_fix_active]
 
+        # --- 追加: 共分散行列と平均値ベクトルから NaN や Inf を取り除く ---
+        Cov_u_valid[!is.finite(Cov_u_valid)] <- 0
+        mu_valid[!is.finite(mu_valid)] <- 0
+
         # Ensure Positive Definite for MASS::mvrnorm
         eig <- eigen(Cov_u_valid, symmetric = TRUE)
         eig$values <- pmax(eig$values, 1e-8)

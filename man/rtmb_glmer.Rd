@@ -71,5 +71,27 @@ RTMB-based GLMM wrapper function
   # MCMC sampling (chains and iterations reduced for faster execution)
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_glmer$summary()
+
+  # --- 4. Regularized Regression (Variable Selection) ---
+  # You can apply regularization to the fixed effects to shrink noise variables towards zero.
+  # Use penalty = "rhs" for the Regularized Horseshoe prior, or "ssp" for the Spike-and-Slab prior.
+  # Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum
+  # values of the response variable) to automatically set up the required weakly informative priors.
+
+  # Fit a linear regression using all predictors in mtcars with the Horseshoe prior
+  # 'mpg' theoretically ranges roughly between 0 and 40
+  fit_rhs <- rtmb_lm(mpg ~ ., data = mtcars, penalty = "rhs", y_range = c(0, 40))
+  map_rhs <- fit_rhs$optimize()
+  # Summarize only the fixed effects (slopes)
+  map_rhs$summary("b")
+
+  # Fit a linear regression with the Spike-and-Slab prior
+  fit_ssp <- rtmb_lm(mpg ~ ., data = mtcars, penalty = "ssp", y_range = c(0, 40))
+  map_ssp <- fit_ssp$optimize()
+  map_ssp$summary("b")
+
+  # For models with complex penalties, MCMC often provides more reliable credible intervals
+  mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
+  mcmc_ssp$summary("b")
 }
 }

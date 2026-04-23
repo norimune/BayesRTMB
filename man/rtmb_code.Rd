@@ -2,7 +2,7 @@
 % Please edit documentation in R/model.R
 \name{rtmb_code}
 \alias{rtmb_code}
-\title{Stan-like RTMB model definition block (Hybrid syntax supported)}
+\title{Define an RTMB Model with Stan-like Syntax}
 \usage{
 rtmb_code(...)
 }
@@ -13,5 +13,83 @@ rtmb_code(...)
 A list of unevaluated code blocks.
 }
 \description{
-Supports both R standard comma-separated syntax and Stan-like comma-less syntax (within {}).
+\code{rtmb_code} is the primary interface for defining Bayesian or Frequentist models
+within the RTMB framework. It allows you to organize model logic into functional
+blocks while utilizing a Stan-like \code{~} operator for specifying priors and likelihoods.
+}
+\details{
+\strong{Key Blocks and Logic:}
+\itemize{
+  \item \code{setup}: Pre-compilation data processing.
+  \item \code{parameters}: Declaration of estimated parameters. See \code{\link{parameter_types}} for available constraints.
+  \item \code{transform}: Definition of intermediate variables. Use \code{\link{math_functions}} for stable AD calculations.
+  \item \code{model}: Likelihood and Priors. Refer to \code{\link{distributions}} for available sampling statements.
+  \item \code{generate}: Post-hoc calculation of predictions or diagnostics.
+}
+
+\strong{Automatic Differentiation (AD) Note:}
+All code within \code{parameters}, \code{transform}, and \code{model} is
+automatically differentiated by RTMB. To ensure numerical stability, use
+provided utility functions like \code{\link{log_sum_exp}} or \code{\link{inv_logit}}
+instead of raw algebraic implementations.
+}
+\examples{
+\donttest{
+# Simulate data for a linear regression
+set.seed(123)
+N <- 100
+x <- rnorm(N)
+y <- 2.0 + 1.5 * x + rnorm(N, mean = 0, sd = 1)
+data_list <- list(N = N, x = x, y = y)
+
+# Define the model using rtmb_code
+code <- rtmb_code({
+  setup = {
+    # Center the predictor variable (executed once)
+    x_centered <- x - mean(x)
+  }
+  parameters = {
+    # Define parameters and their constraints
+    alpha = Dim(1)
+    beta  = Dim(1)
+    sigma = Dim(1, lower = 0)
+  }
+  transform = {
+    # Calculate the linear predictor
+    mu <- alpha + beta * x_centered
+  }
+  model = {
+    # Priors
+    alpha ~ normal(0, 10)
+    beta  ~ normal(0, 10)
+    sigma ~ exponential(1)
+
+    # Likelihood (Vectorized)
+    y ~ normal(mu, sigma)
+  }
+  generate = {
+    # Calculate generated quantities
+    y_pred <- mu
+
+    # Must return a named list
+    list(y_pred = y_pred)
+  }
+})
+
+# Create the model object
+mod <- rtmb_model(data = data_list, code = code)
+
+# Fit the model using MAP estimation
+map_res <- mod$optimize()
+map_res$summary(pars = c("alpha", "beta", "sigma"))
+
+# The generated quantity 'y_pred' can also be summarized
+map_res$summary("y_pred", max_rows = 5)
+}
+}
+\seealso{
+\code{\link{rtmb_model}} for building the model object.
+\code{\link{parameter_types}} for constraining parameters.
+\code{\link{distributions}} for likelihood functions.
+\code{\link{math_functions}} for numerical utilities.
 }
