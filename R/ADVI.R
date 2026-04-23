@@ -305,10 +305,17 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
-  mu_hist_constrained <- matrix(NA, nrow = window_size, ncol = length(fixed_idx) + length(random_idx))
+  valid_hist_idx <- which(mu_hist_filled & apply(mu_history, 1, function(z) all(is.finite(z))))
+
+  mu_hist_constrained <- matrix(
+    NA,
+    nrow = length(valid_hist_idx),
+    ncol = length(fixed_idx) + length(random_idx)
+  )
   colnames(mu_hist_constrained) <- c(fixed_names, random_names)
 
-  for (i in 1:window_size) {
+  for (j in seq_along(valid_hist_idx)) {
+    i <- valid_hist_idx[j]
     zeta_hist <- mu_history[i, ]
 
     model$fn(zeta_hist)
@@ -321,9 +328,9 @@ ADVI_method <- function(model, par_list, pl_full,
     con_list <- to_constrained(para_list_res, par_list)
     para_hist_all <- unlist(con_list, use.names = FALSE)
 
-    mu_hist_constrained[i, 1:length(fixed_idx)] <- para_hist_all[fixed_idx]
+    mu_hist_constrained[j, 1:length(fixed_idx)] <- para_hist_all[fixed_idx]
     if (length(random_idx) > 0) {
-      mu_hist_constrained[i, (length(fixed_idx) + 1):ncol(mu_hist_constrained)] <- para_hist_all[random_idx]
+      mu_hist_constrained[j, (length(fixed_idx) + 1):ncol(mu_hist_constrained)] <- para_hist_all[random_idx]
     }
   }
 

@@ -505,6 +505,10 @@ RTMB_Model <- R6::R6Class(
       samps_tran <- list()
       samps_gq <- list()
 
+      samps_con <- list()
+      samps_tran <- list()
+      samps_gq <- list()
+
       # --- SE Sampling Logic ---
       if (se_sampling) {
         cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
@@ -516,7 +520,6 @@ RTMB_Model <- R6::R6Class(
         Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]
         mu_valid <- unc_est_vec[idx_fix_active]
 
-        # --- 追加: 共分散行列と平均値ベクトルから NaN や Inf を取り除く ---
         Cov_u_valid[!is.finite(Cov_u_valid)] <- 0
         mu_valid[!is.finite(mu_valid)] <- 0
 
@@ -559,80 +562,85 @@ RTMB_Model <- R6::R6Class(
           }
         }
 
+        local_data <- self$data
+        local_par_list <- self$par_list
+        local_transform <- self$transform
+        local_generate <- self$generate
+
+        test_con_list <- to_constrained(unconstrained_vector_to_list(unc_est_vec, local_par_list), local_par_list)
+
+        for (name in names(test_con_list)) {
+          samps_con[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_con_list[[name]])))
+        }
+
+        if (!is.null(local_transform)) {
+          test_tran <- local_transform(local_data, test_con_list)
+          if (!is.null(test_tran)) {
+            for (name in names(test_tran)) {
+              samps_tran[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_tran[[name]])))
+            }
+            test_con_list <- c(test_con_list, test_tran)
+          }
+        }
+
+        if (!is.null(local_generate)) {
+          test_gq <- local_generate(local_data, test_con_list)
+          if (!is.null(test_gq)) {
+            for (name in names(test_gq)) {
+              samps_gq[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_gq[[name]])))
+            }
+          }
+        }
+
+        process_sample <- function(s, u_vec) {
+          tmp_unc_list <- unconstrained_vector_to_list(u_vec, local_par_list)
+          tmp_con_list <- to_constrained(tmp_unc_list, local_par_list)
+
+          for (name in names(tmp_con_list)) {
+            samps_con[[name]][s, ] <<- as.numeric(tmp_con_list[[name]])
+          }
+
+          if (!is.null(local_transform)) {
+            tmp_tran <- local_transform(local_data, tmp_con_list)
+            if (!is.null(tmp_tran)) {
+              for (name in names(tmp_tran)) {
+                samps_tran[[name]][s, ] <<- as.numeric(tmp_tran[[name]])
+              }
+              tmp_con_list <- c(tmp_con_list, tmp_tran)
+            }
+          }
+
+          if (!is.null(local_generate)) {
+            tmp_gq <- local_generate(local_data, tmp_con_list)
+            if (!is.null(tmp_gq)) {
+              for (name in names(tmp_gq)) {
+                samps_gq[[name]][s, ] <<- as.numeric(tmp_gq[[name]])
+              }
+            }
+          }
+        }
+
         # Progress reporting for transformation
         if (requireNamespace("progressr", quietly = TRUE)) {
           progressr::with_progress({
             p <- progressr::progressor(steps = num_samples)
+
+            update_interval <- max(1, floor(num_samples / 100))
+
             for (s in 1:num_samples) {
-              u_vec <- u_samples_mat[s, ]
-              tmp_unc_list <- unconstrained_vector_to_list(u_vec, self$par_list)
-              tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
-
-              for (name in names(tmp_con_list)) {
-                val <- as.numeric(tmp_con_list[[name]])
-                if (is.null(samps_con[[name]])) samps_con[[name]] <- matrix(NA, num_samples, length(val))
-                samps_con[[name]][s, ] <- val
+              process_sample(s, u_samples_mat[s, ])
+              if (s %% update_interval == 0) {
+                p(amount = update_interval)
               }
-
-              if (!is.null(self$transform)) {
-                tmp_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
-                if (!is.null(tmp_tran)) {
-                  for (name in names(tmp_tran)) {
-                    val <- as.numeric(tmp_tran[[name]])
-                    if (is.null(samps_tran[[name]])) samps_tran[[name]] <- matrix(NA, num_samples, length(val))
-                    samps_tran[[name]][s, ] <- val
-                  }
-                  tmp_con_list <- c(tmp_con_list, tmp_tran)
-                }
-              }
-
-              if (!is.null(self$generate)) {
-                tmp_gq <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
-                if (!is.null(tmp_gq)) {
-                  for (name in names(tmp_gq)) {
-                    val <- as.numeric(tmp_gq[[name]])
-                    if (is.null(samps_gq[[name]])) samps_gq[[name]] <- matrix(NA, num_samples, length(val))
-                    samps_gq[[name]][s, ] <- val
-                  }
-                }
-              }
-              p()
+            }
+            remainder <- num_samples %% update_interval
+            if (remainder != 0) {
+              p(amount = remainder)
             }
           })
         } else {
           for (s in 1:num_samples) {
-            u_vec <- u_samples_mat[s, ]
-            tmp_unc_list <- unconstrained_vector_to_list(u_vec, self$par_list)
-            tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
-
-            for (name in names(tmp_con_list)) {
-              val <- as.numeric(tmp_con_list[[name]])
-              if (is.null(samps_con[[name]])) samps_con[[name]] <- matrix(NA, num_samples, length(val))
-              samps_con[[name]][s, ] <- val
-            }
-
-            if (!is.null(self$transform)) {
-              tmp_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
-              if (!is.null(tmp_tran)) {
-                for (name in names(tmp_tran)) {
-                  val <- as.numeric(tmp_tran[[name]])
-                  if (is.null(samps_tran[[name]])) samps_tran[[name]] <- matrix(NA, num_samples, length(val))
-                  samps_tran[[name]][s, ] <- val
-                }
-                tmp_con_list <- c(tmp_con_list, tmp_tran)
-              }
-            }
-
-            if (!is.null(self$generate)) {
-              tmp_gq <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
-              if (!is.null(tmp_gq)) {
-                for (name in names(tmp_gq)) {
-                  val <- as.numeric(tmp_gq[[name]])
-                  if (is.null(samps_gq[[name]])) samps_gq[[name]] <- matrix(NA, num_samples, length(val))
-                  samps_gq[[name]][s, ] <- val
-                }
-              }
-            }
+            process_sample(s, u_samples_mat[s, ])
           }
         }
 

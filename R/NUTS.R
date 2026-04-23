@@ -125,9 +125,10 @@ NUTS_method <- function(model,
         w_var <- w_var + delta_q * (q_new - w_mean)
 
         if (i == next_window || i == warmup - term_buffer) {
-          new_M_inv <- w_var / (w_n - 1)
-          new_M_inv[is.na(new_M_inv) | new_M_inv < 1e-8] <- 1e-8
-          M_inv <- new_M_inv
+          new_var <- w_var / (w_n - 1)
+          new_var[!is.finite(new_var)] <- 1
+          new_var <- pmax(new_var, 1e-8)
+          M_inv <- new_var
 
           w_mean <- rep(0, P_fixed); w_var <- rep(0, P_fixed); w_n <- 0
           window_size <- window_size * 2

@@ -586,20 +586,32 @@ VB_Fit <- R6::R6Class(
     #' @return The `VB_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.
     generated_quantities = function(code) {
-      # 1. Capture arguments and extract AST (Same as MCMC_Fit)
       raw_code <- substitute(code)
+
       if (is.name(raw_code)) {
         evaluated <- tryCatch(eval(raw_code, envir = parent.frame()), error = function(e) NULL)
-        if (is.language(evaluated) || is.call(evaluated)) code <- evaluated
+        if (is.language(evaluated) || is.call(evaluated)) {
+          code <- evaluated
+          raw_code <- evaluated
+        }
       }
 
-      if (is.call(code) && identical(code[[1]], as.name("rtmb_code"))) {
+      if (is.call(raw_code) && identical(raw_code[[1]], as.name("rtmb_code"))) {
+        parsed_code <- eval(raw_code, envir = parent.frame())
+        if (!"generate" %in% names(parsed_code)) {
+          stop("There is no 'generate' block in rtmb_code().")
+        }
+        gen_ast <- parsed_code$generate
+      } else if (is.call(raw_code) && identical(raw_code[[1]], as.name("{"))) {
+        gen_ast <- raw_code
+      } else if (is.call(code) && identical(code[[1]], as.name("{"))) {
+        gen_ast <- code
+      } else if (is.list(code) && "generate" %in% names(code)) {
         gen_ast <- code$generate
       } else {
-        gen_ast <- code
+        stop("'code' must be specified in the format rtmb_code(generate = { ... }) or { ... }.")
       }
 
-      # 2. Functionalize
       gen_fn <- eval(bquote(transform_code(.(gen_ast))))
       environment(gen_fn) <- parent.env(globalenv())
 

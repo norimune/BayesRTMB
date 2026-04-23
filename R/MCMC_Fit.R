@@ -765,8 +765,12 @@ MCMC_Fit <- R6::R6Class(
       )
 
       cat("Calculating transformed parameters...\n")
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
+
+      total_steps <- iter * chains
+      pb <- txtProgressBar(min = 0, max = total_steps, style = 3)
       counter <- 0
+
+      update_interval <- max(1, floor(total_steps / 100))
 
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
@@ -775,9 +779,12 @@ MCMC_Fit <- R6::R6Class(
           tran_array[i, c, ] <- unlist(res, use.names = FALSE)
 
           counter <- counter + 1
-          setTxtProgressBar(pb, counter)
+          if (counter %% update_interval == 0) {
+            setTxtProgressBar(pb, counter)
+          }
         }
       }
+      setTxtProgressBar(pb, total_steps)
       close(pb)
 
       self$transform_fit <- tran_array
@@ -870,6 +877,7 @@ MCMC_Fit <- R6::R6Class(
         gq_names <- c(gq_names, flat_nms)
       }
 
+      # (前略)
       new_gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
       dimnames(new_gq_array) <- list(
         iteration = NULL,
@@ -877,8 +885,12 @@ MCMC_Fit <- R6::R6Class(
         variable = gq_names
       )
 
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
+      total_steps <- iter * chains
+      pb <- txtProgressBar(min = 0, max = total_steps, style = 3)
       counter <- 0
+
+      update_interval <- max(1, floor(total_steps / 100))
+
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
@@ -900,10 +912,15 @@ MCMC_Fit <- R6::R6Class(
           }
           res <- gen_fn(self$model$data, p_list)
           new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
+
           counter <- counter + 1
-          setTxtProgressBar(pb, counter)
+
+          if (counter %% update_interval == 0) {
+            setTxtProgressBar(pb, counter)
+          }
         }
       }
+      setTxtProgressBar(pb, total_steps)
       close(pb)
 
       if (is.null(self$generate_fit)) {

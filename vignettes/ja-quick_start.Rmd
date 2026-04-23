@@ -7,7 +7,7 @@ vignette: >
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
-  chunk_output_type: inline
+  chunk_output_type: console
 ---
 
 ```{r setup, include=FALSE}
@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE)
 最初に単純な二項モデルで `rtmb_code()` と `rtmb_model()` の基本的な流れを確認し、
 次に回帰モデルで各ブロックの役割を見て、最後に階層モデルで random effect と Laplace 近似の使い方を確認します。
 
-## このページで扱う流れ
+# このページで扱う流れ
 
 BayesRTMB の基本的な使い方は、ほぼ次の 3 段階にまとまります。
 
@@ -224,7 +224,7 @@ mdl_reg <- rtmb_model(data_reg, code_reg, init = list(alpha = 0, beta = 0))
 この例では未指定ですが、階層モデルの例で実際の使い方を示します。
 
 ```{r}
-opt_reg <- mdl_reg$optimize()
+opt_reg <- mdl_reg$optimize(se_sampling=TRUE)
 opt_reg$summary()
 ```
 
@@ -345,7 +345,7 @@ mcmc_hlm <- mdl_hlm$sample(parallel=TRUE)
 mcmc_hlm$summary()
 ```
 
-## まとめ
+# まとめ
 
 このページでは、BayesRTMB の基本的な流れを 3 つのモデルで確認しました。
 
