@@ -809,7 +809,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
           rot_mat <- unclass(rot_obj)
           out[[.(rot_loadings_name)]] <- rot_mat
         })
-        score_expr <- if (score) quote({
+        score_expr <- if (score) bquote({
           Y_c <- matrix(0, nrow = N, ncol = J)
           for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
           rot_raw <- unclass(.(fn_call)(L_raw))
@@ -824,7 +824,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
             out$fa_cor <- rot_obj$Phi
             out[[.(rot_loadings_name)]] <- rot_mat
           })
-          score_expr <- if (score) quote({
+          score_expr <- if (score) bquote({
             Y_c <- matrix(0, nrow = N, ncol = J)
             for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
             rot_raw_obj <- .(fn_call)(L_raw)
@@ -837,7 +837,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
             rot_mat <- unclass(rot_obj$loadings)
             out[[.(rot_loadings_name)]] <- rot_mat
           })
-          score_expr <- if (score) quote({
+          score_expr <- if (score) bquote({
             Y_c <- matrix(0, nrow = N, ncol = J)
             for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
             rot_raw <- unclass(.(fn_call)(L_raw)$loadings)
@@ -906,39 +906,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 #' @param type Character string for the data type: "binary" or "ordered".
 #' @param prior List of hyperparameters for prior distributions.
 #' @param init List of initial values.
-#' @examples
-#' \donttest{
-#' # --- 1. Binary Data (e.g., correct/incorrect answers) ---
-#' # Simulate binary response data for 100 persons and 5 items
-#' set.seed(123)
-#' bin_data <- matrix(rbinom(500, size = 1, prob = 0.6), nrow = 100, ncol = 5)
-#' colnames(bin_data) <- paste0("Item", 1:5)
-#'
-#' # Introduce some missing values (NA) to demonstrate automatic handling
-#' bin_data[sample(1:500, 10)] <- NA
-#'
-#' # Fit a 2-Parameter Logistic (2PL) model
-#' fit_2pl <- rtmb_irt(data = bin_data, model = "2PL", type = "binary")
-#'
-#' # Maximum A Posteriori (MAP) estimation
-#' map_2pl <- fit_2pl$optimize()
-#' map_2pl$summary()
-#'
-#' # --- 2. Ordered Data (e.g., Likert scale) ---
-#' # Simulate ordered response data (categories 1 to 5)
-#' ord_data <- matrix(sample(1:5, 500, replace = TRUE), nrow = 100, ncol = 5)
-#' colnames(ord_data) <- paste0("Item", 1:5)
-#'
-#' # Fit a Graded Response Model (2PL for ordered data)
-#' fit_ord <- rtmb_irt(data = ord_data, model = "2PL", type = "ordered")
-#'
-#' map_ord <- fit_ord$optimize()
-#' map_ord$summary()
-#'
-#' # MCMC sampling for the ordered model (chains and iterations reduced)
-#' mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_ord$summary()
-#' }
+#' @examples inst/examples/ex_irt.R
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1),
@@ -1125,32 +1093,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' @param init List of initial values (optional).
 #' @param null Target when creating a null model (e.g., \code{"corr"}). Optional.
 #' @return An instance of the \code{RTMB_Model} class.
-#' @examples
-#' \donttest{
-#' # Simulate bivariate normal data with a true correlation of 0.5
-#' set.seed(123)
-#' N <- 50
-#' rho <- 0.5
-#' cov_mat <- matrix(c(1, rho, rho, 1), nrow = 2)
-#'
-#' # Using MASS::mvrnorm to generate data
-#' if (requireNamespace("MASS", quietly = TRUE)) {
-#'   data_corr <- MASS::mvrnorm(N, mu = c(0, 0), Sigma = cov_mat)
-#'   colnames(data_corr) <- c("X1", "X2")
-#'
-#'   # Fit the correlation model
-#'   fit_corr <- rtmb_corr(data = data_corr)
-#'
-#'   # MCMC sampling (chains and iterations reduced for faster execution)
-#'   mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
-#'   mcmc_corr$summary()
-#'
-#'   # Calculate Bayes factor against the null hypothesis (correlation = 0)
-#'   # Specifying "corr" automatically fixes the parameter to 0 and drops its prior
-#'   bf_corr <- mcmc_corr$bayes_factor(null_model = "corr")
-#'   print(bf_corr)
-#' }
-#' }
+#' @examples inst/examples/ex_corr.R
 #' @export
 rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0), init = NULL, null = NULL) {
 
@@ -1257,26 +1200,7 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
 #' @return An \code{RTMB_Model} object.
-#' @examples
-#' \donttest{
-#' # Simulate two-sample data with a true effect size
-#' set.seed(123)
-#' y1 <- rnorm(30, mean = 0.5, sd = 1)
-#' y2 <- rnorm(30, mean = 0.0, sd = 1)
-#'
-#' # Fit the Bayesian two-sample t-test model
-#' # r = 0.707 is the standard scale for the Cauchy prior on the effect size
-#' fit_ttest <- rtmb_ttest(y1, y2, r = 0.707)
-#'
-#' # MCMC sampling (chains and iterations reduced for faster execution)
-#' mcmc_ttest <- fit_ttest$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_ttest$summary()
-#'
-#' # Calculate Bayes factor against the null hypothesis (effect size delta = 0)
-#' # Specifying "delta" automatically fixes the parameter to 0 and drops its prior
-#' bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
-#' print(bf_ttest)
-#' }
+#' @examples inst/examples/ex_ttest.R
 #' @export
 rtmb_ttest <- function(y1, y2, r = 0.707,
                        y_range = NULL,
