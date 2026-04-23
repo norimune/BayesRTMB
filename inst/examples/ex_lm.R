@@ -1,23 +1,25 @@
 \donttest{
-  # Fit a linear regression model using the built-in mtcars dataset
-  fit_model <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
+  # --- 1. Linear Regression (rtmb_lm) ---
+  # Fit a linear regression model using the mtcars dataset
+  fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
+  map_lm <- fit_lm$optimize()
+  map_lm$summary()
 
-  # 1. Maximum A Posteriori (MAP) estimation
-  map_res <- fit_model$optimize()
+  # --- 2. Generalized Linear Model (rtmb_glm) ---
+  # Fit a logistic regression model
+  fit_glm <- rtmb_glm(am ~ mpg + hp, data = mtcars, family = "binomial")
+  map_glm <- fit_glm$optimize()
+  map_glm$summary()
 
-  # Output the summary of the MAP estimates
-  map_res$summary()
+  # --- 3. Generalized Linear Mixed Model (rtmb_glmer) ---
+  # Fit a linear mixed-effects model with random intercepts
+  fit_glmer <- rtmb_glmer(weight ~ Time + (1 | Chick), data = ChickWeight, family = "gaussian")
 
-  # 2. MCMC sampling
-  # The number of chains and iterations are reduced to minimize execution time
-  mcmc_res <- fit_model$sample(sampling = 500, warmup = 500, chains = 2)
+  # MAP estimation using Laplace approximation for random effects
+  map_glmer <- fit_glmer$optimize(laplace = TRUE)
+  map_glmer$summary()
 
-  # Output the summary of the posterior distribution
-  mcmc_res$summary()
-
-  # 3. Variational Inference (ADVI)
-  vb_res <- fit_model$variational()
-
-  # Output the summary of the variational approximation
-  vb_res$summary()
+  # MCMC sampling (chains and iterations reduced for faster execution)
+  mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
+  mcmc_glmer$summary()
 }

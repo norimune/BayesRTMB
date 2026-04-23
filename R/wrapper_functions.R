@@ -12,26 +12,7 @@
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @param null Character string specifying the target parameter for the null model.
 #' @import reformulas
-#' @examples
-#' \donttest{
-#' # Fit a linear mixed-effects model using the built-in ChickWeight dataset
-#' # Modeling 'weight' predicted by 'Time', with random intercepts for each 'Chick'
-#' fit_glmer <- rtmb_glmer(
-#'   weight ~ Time + (1 | Chick),
-#'   data = ChickWeight,
-#'   family = "gaussian"
-#' )
-#'
-#' # MAP estimation with Laplace approximation
-#' # 'laplace = TRUE' marginalizes the random effects during optimization
-#' map_glmer <- fit_glmer$optimize(laplace = TRUE)
-#' map_glmer$summary()
-#'
-#' # MCMC sampling
-#' # MCMC automatically samples both fixed and random effects
-#' mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_glmer$summary()
-#' }
+#' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        penalty = c("none", "rhs", "ssp"),
@@ -468,20 +449,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values
 #' @param null Character string specifying the target parameter for the null model.
-#' @examples
-#' \donttest{
-#' # Fit a logistic regression model using the built-in mtcars dataset
-#' # Predicting transmission type (am: 0 = automatic, 1 = manual)
-#' fit_glm <- rtmb_glm(am ~ mpg + hp, data = mtcars, family = "binomial")
-#'
-#' # Maximum A Posteriori (MAP) estimation
-#' map_glm <- fit_glm$optimize()
-#' map_glm$summary()
-#'
-#' # MCMC sampling
-#' mcmc_glm <- fit_glm$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_glm$summary()
-#' }
+#' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
                      penalty = c("none", "rhs", "ssp"),
@@ -557,6 +525,38 @@ rtmb_lm <- function(formula, data,
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
 #' @param prior List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
 #' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
+#' @examples
+#' \donttest{
+#' # Prepare a subset of the mtcars dataset for factor analysis
+#' # Scaling is recommended for variables with different units
+#' fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])
+#'
+#' # --- 1. Standard Exploratory Factor Analysis (1 Factor) ---
+#' fit_fa1 <- rtmb_fa(data = fa_data, nfactors = 1)
+#'
+#' # Maximum A Posteriori (MAP) estimation
+#' map_fa1 <- fit_fa1$optimize()
+#' map_fa1$summary()
+#'
+#' # --- 2. Factor Analysis with Rotation and Factor Scores (2 Factors) ---
+#' # Extract 2 factors, apply Promax rotation, and calculate factor scores
+#' fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
+#'
+#' map_fa2 <- fit_fa2$optimize()
+#' # The summary prioritizes rotated loadings (L_promax), standard deviations, and factor correlations
+#' map_fa2$summary()
+#'
+#' # --- 3. Regularized Factor Analysis using Spike-and-Slab Prior (SSP) ---
+#' # Specifying 'rotate = "ssp"' enables sparse loading matrix estimation
+#' fit_ssp <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "ssp")
+#'
+#' map_ssp <- fit_ssp$optimize()
+#' map_ssp$summary()
+#'
+#' # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
+#' mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
+#' mcmc_ssp$summary()
+#' }
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
@@ -906,6 +906,39 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 #' @param type Character string for the data type: "binary" or "ordered".
 #' @param prior List of hyperparameters for prior distributions.
 #' @param init List of initial values.
+#' @examples
+#' \donttest{
+#' # --- 1. Binary Data (e.g., correct/incorrect answers) ---
+#' # Simulate binary response data for 100 persons and 5 items
+#' set.seed(123)
+#' bin_data <- matrix(rbinom(500, size = 1, prob = 0.6), nrow = 100, ncol = 5)
+#' colnames(bin_data) <- paste0("Item", 1:5)
+#'
+#' # Introduce some missing values (NA) to demonstrate automatic handling
+#' bin_data[sample(1:500, 10)] <- NA
+#'
+#' # Fit a 2-Parameter Logistic (2PL) model
+#' fit_2pl <- rtmb_irt(data = bin_data, model = "2PL", type = "binary")
+#'
+#' # Maximum A Posteriori (MAP) estimation
+#' map_2pl <- fit_2pl$optimize()
+#' map_2pl$summary()
+#'
+#' # --- 2. Ordered Data (e.g., Likert scale) ---
+#' # Simulate ordered response data (categories 1 to 5)
+#' ord_data <- matrix(sample(1:5, 500, replace = TRUE), nrow = 100, ncol = 5)
+#' colnames(ord_data) <- paste0("Item", 1:5)
+#'
+#' # Fit a Graded Response Model (2PL for ordered data)
+#' fit_ord <- rtmb_irt(data = ord_data, model = "2PL", type = "ordered")
+#'
+#' map_ord <- fit_ord$optimize()
+#' map_ord$summary()
+#'
+#' # MCMC sampling for the ordered model (chains and iterations reduced)
+#' mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
+#' mcmc_ord$summary()
+#' }
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1),
@@ -1092,6 +1125,32 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' @param init List of initial values (optional).
 #' @param null Target when creating a null model (e.g., \code{"corr"}). Optional.
 #' @return An instance of the \code{RTMB_Model} class.
+#' @examples
+#' \donttest{
+#' # Simulate bivariate normal data with a true correlation of 0.5
+#' set.seed(123)
+#' N <- 50
+#' rho <- 0.5
+#' cov_mat <- matrix(c(1, rho, rho, 1), nrow = 2)
+#'
+#' # Using MASS::mvrnorm to generate data
+#' if (requireNamespace("MASS", quietly = TRUE)) {
+#'   data_corr <- MASS::mvrnorm(N, mu = c(0, 0), Sigma = cov_mat)
+#'   colnames(data_corr) <- c("X1", "X2")
+#'
+#'   # Fit the correlation model
+#'   fit_corr <- rtmb_corr(data = data_corr)
+#'
+#'   # MCMC sampling (chains and iterations reduced for faster execution)
+#'   mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
+#'   mcmc_corr$summary()
+#'
+#'   # Calculate Bayes factor against the null hypothesis (correlation = 0)
+#'   # Specifying "corr" automatically fixes the parameter to 0 and drops its prior
+#'   bf_corr <- mcmc_corr$bayes_factor(null_model = "corr")
+#'   print(bf_corr)
+#' }
+#' }
 #' @export
 rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0), init = NULL, null = NULL) {
 
@@ -1198,6 +1257,26 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
 #' @return An \code{RTMB_Model} object.
+#' @examples
+#' \donttest{
+#' # Simulate two-sample data with a true effect size
+#' set.seed(123)
+#' y1 <- rnorm(30, mean = 0.5, sd = 1)
+#' y2 <- rnorm(30, mean = 0.0, sd = 1)
+#'
+#' # Fit the Bayesian two-sample t-test model
+#' # r = 0.707 is the standard scale for the Cauchy prior on the effect size
+#' fit_ttest <- rtmb_ttest(y1, y2, r = 0.707)
+#'
+#' # MCMC sampling (chains and iterations reduced for faster execution)
+#' mcmc_ttest <- fit_ttest$sample(sampling = 500, warmup = 500, chains = 2)
+#' mcmc_ttest$summary()
+#'
+#' # Calculate Bayes factor against the null hypothesis (effect size delta = 0)
+#' # Specifying "delta" automatically fixes the parameter to 0 and drops its prior
+#' bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+#' print(bf_ttest)
+#' }
 #' @export
 rtmb_ttest <- function(y1, y2, r = 0.707,
                        y_range = NULL,

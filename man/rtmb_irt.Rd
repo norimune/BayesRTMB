@@ -28,3 +28,37 @@ rtmb_irt(
 Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model) using RTMB.
 Missing values (NA) in the data are automatically removed internally for efficient computation.
 }
+\examples{
+\donttest{
+# --- 1. Binary Data (e.g., correct/incorrect answers) ---
+# Simulate binary response data for 100 persons and 5 items
+set.seed(123)
+bin_data <- matrix(rbinom(500, size = 1, prob = 0.6), nrow = 100, ncol = 5)
+colnames(bin_data) <- paste0("Item", 1:5)
+
+# Introduce some missing values (NA) to demonstrate automatic handling
+bin_data[sample(1:500, 10)] <- NA
+
+# Fit a 2-Parameter Logistic (2PL) model
+fit_2pl <- rtmb_irt(data = bin_data, model = "2PL", type = "binary")
+
+# Maximum A Posteriori (MAP) estimation
+map_2pl <- fit_2pl$optimize()
+map_2pl$summary()
+
+# --- 2. Ordered Data (e.g., Likert scale) ---
+# Simulate ordered response data (categories 1 to 5)
+ord_data <- matrix(sample(1:5, 500, replace = TRUE), nrow = 100, ncol = 5)
+colnames(ord_data) <- paste0("Item", 1:5)
+
+# Fit a Graded Response Model (2PL for ordered data)
+fit_ord <- rtmb_irt(data = ord_data, model = "2PL", type = "ordered")
+
+map_ord <- fit_ord$optimize()
+map_ord$summary()
+
+# MCMC sampling for the ordered model (chains and iterations reduced)
+mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
+mcmc_ord$summary()
+}
+}

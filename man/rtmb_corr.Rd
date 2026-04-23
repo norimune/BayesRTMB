@@ -27,3 +27,30 @@ An instance of the \code{RTMB_Model} class.
 Estimates a correlation matrix (along with means and standard deviations) assuming a multivariate normal distribution from observation data.
 If there are 2 observed variables, it automatically switches to estimate the scalar correlation coefficient (`corr`) directly.
 }
+\examples{
+\donttest{
+# Simulate bivariate normal data with a true correlation of 0.5
+set.seed(123)
+N <- 50
+rho <- 0.5
+cov_mat <- matrix(c(1, rho, rho, 1), nrow = 2)
+
+# Using MASS::mvrnorm to generate data
+if (requireNamespace("MASS", quietly = TRUE)) {
+  data_corr <- MASS::mvrnorm(N, mu = c(0, 0), Sigma = cov_mat)
+  colnames(data_corr) <- c("X1", "X2")
+
+  # Fit the correlation model
+  fit_corr <- rtmb_corr(data = data_corr)
+
+  # MCMC sampling (chains and iterations reduced for faster execution)
+  mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
+  mcmc_corr$summary()
+
+  # Calculate Bayes factor against the null hypothesis (correlation = 0)
+  # Specifying "corr" automatically fixes the parameter to 0 and drops its prior
+  bf_corr <- mcmc_corr$bayes_factor(null_model = "corr")
+  print(bf_corr)
+}
+}
+}
