@@ -525,38 +525,7 @@ rtmb_lm <- function(formula, data,
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
 #' @param prior List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
 #' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
-#' @examples
-#' \donttest{
-#' # Prepare a subset of the mtcars dataset for factor analysis
-#' # Scaling is recommended for variables with different units
-#' fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])
-#'
-#' # --- 1. Standard Exploratory Factor Analysis (1 Factor) ---
-#' fit_fa1 <- rtmb_fa(data = fa_data, nfactors = 1)
-#'
-#' # Maximum A Posteriori (MAP) estimation
-#' map_fa1 <- fit_fa1$optimize()
-#' map_fa1$summary()
-#'
-#' # --- 2. Factor Analysis with Rotation and Factor Scores (2 Factors) ---
-#' # Extract 2 factors, apply Promax rotation, and calculate factor scores
-#' fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
-#'
-#' map_fa2 <- fit_fa2$optimize()
-#' # The summary prioritizes rotated loadings (L_promax), standard deviations, and factor correlations
-#' map_fa2$summary()
-#'
-#' # --- 3. Regularized Factor Analysis using Spike-and-Slab Prior (SSP) ---
-#' # Specifying 'rotate = "ssp"' enables sparse loading matrix estimation
-#' fit_ssp <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "ssp")
-#'
-#' map_ssp <- fit_ssp$optimize()
-#' map_ssp$summary()
-#'
-#' # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
-#' mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_ssp$summary()
-#' }
+#' @examples inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
