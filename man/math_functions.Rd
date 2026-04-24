@@ -37,7 +37,7 @@ Used to convert unconstrained vectors into structured matrices (e.g., for factor
 \strong{4. Linear Algebra for AD:}
 \itemize{
   \item \code{log_det_chol(L)}: Calculates the log-determinant of a covariance matrix from its Cholesky factor \code{L}.
-  \item \code{quad_form_chol(x, L)}: Computes the quadratic form $x^T \Sigma^{-1} x$ using the Cholesky factor \code{L}.
+  \item \code{quad_form_chol(x, L)}: Computes the quadratic form x^T Sigma^(-1) x using the Cholesky factor \code{L}.
   \item \code{distance(x, y)}: Computes the Euclidean distance between two vectors with a small epsilon for stability.
 }
 }
