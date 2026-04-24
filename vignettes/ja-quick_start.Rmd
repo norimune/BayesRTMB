@@ -1,6 +1,6 @@
 ---
 title: "BayesRTMB 日本語クイックスタート"
-description: "BayesRTMB の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して実践的に紹介します。"
+description: "BayesRTMB の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。"
 output: html_document
 vignette: >
   %\VignetteIndexEntry{BayesRTMB 日本語クイックスタート}
@@ -16,84 +16,125 @@ knitr::opts_chunk$set(echo = TRUE)
 
 このページでは、**BayesRTMB を実際に使い始めるための最短ルート**を順を追って説明します。
 
-1.  **二項モデル**: `rtmb_code()` と `rtmb_model()` の最小構成の流れを確認します。
-2.  **回帰モデル**: モデル定義内の各ブロック (`setup`, `transform` など) の役割を確認します。
-3.  **階層モデル**: ランダム効果 (random effect) と Laplace 近似の実践的な使い方を確認します。
+最初に単純な二項モデルで `rtmb_code()` と `rtmb_model()` の基本的な流れを確認し、
+次に回帰モデルで各ブロックの役割を見て、最後に階層モデルで random effect と Laplace 近似の使い方を確認します。
+
+# このページで扱う流れ
+
+BayesRTMB の基本的な使い方は、ほぼ次の 3 段階にまとまります。
+
+1. **データを用意する**
+2. **`rtmb_code()` でモデルを書く**
+3. **`rtmb_model()` でモデルオブジェクトを作り、`optimize()`・`sample()`・`variational()` を使う**
 
 ---
 
-# 1. Binomial model (二項モデル)
+# Binomial model
 
-最初に、もっとも単純な二項モデルを例に、基本的な流れを確認します。10 回の試行のうち、成功が 6 回観測された状況を扱います。
+最初に、もっとも単純な二項モデルを例に、`rtmb_code()` と `rtmb_model()` の基本的な流れを確認します。
+ここでは、10 回の試行のうち成功が 6 回観測された状況を扱います。
 
 ```{r}
 library(BayesRTMB)
-
 Trial <- 10
 Y <- 6
+
 data_list <- list(Trial = Trial, Y = Y)
 
 model_code <- rtmb_code(
-  parameters = {
-    theta = Dim(lower = 0, upper = 1) # 確率は0~1の範囲に制約
+  parameters={
+    theta=Dim(lower=0,upper=1)
   },
-  model = {
-    # 尤度
-    Y ~ binomial(Trial, theta)
-    # 事前分布
-    theta ~ beta(2, 2)
+  model={
+    Y~binomial(Trial,theta)
+    theta ~ beta(2,2)
   }
 )
 ```
 
-## モデルオブジェクトの作成 (`rtmb_model`)
+## rtmb_model
 
-`rtmb_model()` は、観測データ `data` とモデル定義 `code` を結びつけ、**推定用のモデルオブジェクト**を作ります。この段階ではまだ推定は行われません。
+`rtmb_model()` は、データとモデル定義を受け取って**推定用のモデルオブジェクト**を作る関数です。
+最低限必要なのは、観測データをまとめた `data` と、`rtmb_code()` で作成した `code` です。
+
+この段階ではまだ推定は行われません。
+ここで作られたモデルオブジェクトに対して、以後 `optimize()`、`sample()`、`variational()` を実行していきます。
 
 ```{r}
 mdl <- rtmb_model(data = data_list, code = model_code)
 ```
 
-## MAP推定 (`optimize`)
+## MAP
 
-事後分布の最頻値に対応する**点推定**を求めたいときは `optimize()` を使います。
+`optimize()` は MAP 推定を行います。
+事後分布の最頻値に対応する**点推定**を求めたいときに使います。
+まずは追加オプションなしで実行し、推定値と区間推定の出力を確認します。
 
 ```{r}
 fit_MAP <- mdl$optimize()
 fit_MAP
 ```
 
-### 標準誤差と区間推定 (`se_sampling`)
-`se_sampling = TRUE` を指定すると、自動微分で計算されたパラメータの共分散行列をもとにシミュレーションを行い、パラメータや派生量の**標準誤差と 95% 信頼区間**を計算してくれます。
+### se_sampling
+
+`se_sampling = TRUE` を指定すると、推定結果の不確実性を使って、**シミュレーションベースで標準誤差と 95% 区間**を計算します。
+この方法を使うと、`transform` で作成した派生量や `generate` で作成した量についても区間推定を出しやすくなります。
+
+派生量の信頼区間まで含めて見たいときに便利です。
 
 ```{r}
 fit_MAP <- mdl$optimize(se_sampling = TRUE)
 fit_MAP
 ```
 
-## MCMC推定 (`sample`)
+### log_ml
 
-NUTS (No-U-Turn Sampler) を用いた MCMC サンプリングを行います。事後分布全体の形状や不確実性を正確に評価したい場合の標準的な手法です。
+MAP 推定では、近似対数周辺尤度 `log_ml` が計算されます。
+これは **Laplace 近似**にもとづく量で、モデル比較の参考になります。
+
+ただし、事後分布が強く歪んでいる場合や多峰的な場合には、注意が必要です。
+
+```{r}
+fit_MAP$log_ml
+```
+
+## MCMC
+
+`sample()` は NUTS を用いた MCMC サンプリングを行います。
+既定値は `sampling = 1000`, `warmup = 1000`, `chains = 4`, `thin = 1` です。
 
 ```{r results = "hide"}
-fit_mcmc <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, thin = 1)
+fit_mcmc <- mdl$sample(sampling = 1000,
+                       warmup   = 1000,
+                       chains   = 4,
+                       thin     = 1
+                       )
 ```
 
 ```{r}
 fit_mcmc
 ```
 
-### 周辺尤度の計算 (`bridgesampling`)
-`bridgesampling()` メソッドを呼ぶと、得られた MCMC サンプルをもとに**対数周辺尤度 (log_ml)** を推定します。一度計算された結果はオブジェクトに保存され、モデル比較に利用できます。
+### bridgesampling
+
+`bridgesampling()` を使うと、MCMC サンプルにもとづいて**対数周辺尤度**を推定できます。
+出力には推定誤差も付くため、誤差が大きい場合はサンプル数を増やして精度を上げます。
+
+一度計算した結果は `fit_mcmc$log_ml` に保存されるため、同じオブジェクトで後から再利用できます。
 
 ```{r}
 fit_mcmc$bridgesampling()
+
 fit_mcmc$log_ml
 ```
 
-## 変分推論 (`variational`)
+## ADVI
 
-自動微分変分ベイズ法 (ADVI) による**近似推定**を行います。MCMC より高速に結果の概形をつかみたいときに便利です。
+`variational()` は、自動微分変分ベイズ法による**近似推定**を行います。
+MCMC より高速に結果の概形をつかみたいときに便利ですが、あくまで近似法なので、難しいモデルでは精度確認が重要です。
+
+`iter` は最適化の反復回数です。
+ELBO の推移を見ながら、十分に収束しているかを確認します。
 
 ```{r include=FALSE}
 fit_vb <- mdl$variational(iter = 3000)
@@ -104,16 +145,33 @@ fit_vb$plot_elbo()
 fit_vb
 ```
 
+### ADVI のモデル評価指標
+
+ADVI では ELBO（変分下界）が出力されます。
+ELBO は近似分布の良さを見るための指標で、値が大きいほど、その近似分布のもとでは望ましい方向にあります。
+
+ただし、ELBO は**真の対数周辺尤度そのものではありません**。
+とくに、事後分布が強く歪んでいる場合や、パラメータ間の依存が強い場合には、ELBO と真の対数周辺尤度が大きくずれることがあります。
+
+```{r}
+fit_vb$ELBO
+```
+
 ---
 
-# 2. Regression model (回帰モデル)
+# Regression model
 
-次に、単回帰分析を例に `rtmb_code()` の **各ブロックの役割** を確認します。
+次に、回帰分析を例に `rtmb_code()` の各ブロックの役割を確認します。
+この例では、
 
-* **`setup`**: データの次元整理や定数の計算を行います（ここは自動微分されず、1回だけ実行されます）。
-* **`parameters`**: 推定するパラメータを宣言します。
-* **`transform`**: パラメータから構成される派生量（ここでは線形予測子 `mu`）を定義します。
-* **`model`**: 尤度関数と事前分布を定義します。
+- `setup` でデータの次元を整理し、
+- `parameters` で推定するパラメータを宣言し、
+- `transform` で平均構造 `mu` を定義し、
+- `model` で尤度と事前分布を書く
+
+という流れになっています。
+
+ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えています。
 
 ```{r}
 set.seed(123)
@@ -132,12 +190,11 @@ code_reg <- rtmb_code(
     P <- ncol(X)
   },
   parameters = {
-    alpha = Dim()
-    beta  = Dim(P)
-    sigma = Dim(lower = 0)
+    alpha   = Dim()
+    beta    = Dim(P)
+    sigma   = Dim(lower=0)
   },
   transform = {
-    # 行列演算を用いた線形予測子の計算
     mu = alpha + as.vector(X %*% beta)
   },
   model = {
@@ -149,26 +206,49 @@ code_reg <- rtmb_code(
 )
 ```
 
-### 初期値の指定と表示の制御
-`rtmb_model()` では `init` で初期値を与えたり、`view` で `summary()` 時の優先表示順を指定したりできます。初期値を明示しておくと、複雑なモデルで推定が安定しやすくなります。
+## rtmb_model
+
+`rtmb_model()` では `init` を指定して初期値を与えることができます。
+初期値を明示しておくと、複雑なモデルで推定が安定しやすくなることがあります。
+一部のパラメータだけ指定した場合は、残りを自動で補うこともできます。
 
 ```{r}
-mdl_reg <- rtmb_model(
-  data = data_reg, 
-  code = code_reg, 
-  init = list(alpha = 0, beta = 0),
-  view = c("alpha", "beta", "sigma")
-)
+mdl_reg <- rtmb_model(data_reg, code_reg, init = list(alpha = 0, beta = 0))
+```
 
-opt_reg <- mdl_reg$optimize(se_sampling = TRUE)
+## MAP
+
+`par_names` や `view` をモデル作成時に指定しておくと、要約結果の表示がわかりやすくなります。
+`par_names` はパラメータの表示名を付けるために使い、`view` は `summary()` などで優先的に上に表示したい変数を指定するために使います。
+
+この例では未指定ですが、階層モデルの例で実際の使い方を示します。
+
+```{r}
+opt_reg <- mdl_reg$optimize(se_sampling=TRUE)
 opt_reg$summary()
 ```
 
-### ベイズファクターによる変数評価 (`bayes_factor`)
-MCMC 実行後、特定の係数が 0 であるという仮説（帰無モデル）との間でベイズファクターを計算できます。以下の例では、`beta` を 0 に固定したモデルとフルモデルを比較します。
+## MCMC
+
+回帰モデルでも `sample()` を使えば事後分布全体を評価できます。
+MAP では点推定が中心ですが、MCMC では分布の形、不確実性、パラメータ間のばらつきまで確認できます。
 
 ```{r results = "hide"}
 mcmc_reg <- mdl_reg$sample()
+```
+
+```{r}
+mcmc_reg
+```
+
+### bayes_factor
+
+`bayes_factor()` を使うと、推定したモデルと帰無モデルの周辺尤度を比較し、**ベイズファクター**を計算できます。
+`null_model = "beta"` のように指定すると、その係数を 0 に固定した帰無モデルを内部で作成して比較します。
+
+係数の有無をベイズ的に評価したいときに便利です。
+
+```{r results = "hide"}
 bf_result <- mcmc_reg$bayes_factor(null_model = "beta")
 ```
 
@@ -178,18 +258,19 @@ bf_result
 
 ---
 
-# 3. Hierarchical model (階層モデル)
+# Hierarchical model
 
-最後に、個体ごとのランダム効果 (random effect) を含む階層モデルを作成します。R に組み込みの `ChickWeight` データを用います。
+最後に、階層モデルの例として `ChickWeight` データを用います。
+ここでは個体ごとのランダム効果を導入し、個体差を表現します。
 
-パラメータ宣言時に `random = TRUE` を指定することで、その変数はランダム効果として扱われます。
+階層モデルでは、推定の安定性を高めるために、説明変数の中心化や適切な初期値の指定が有効になることがあります。
 
 ```{r}
 Y <- ChickWeight$weight
-X <- model.matrix(weight ~ Time + Diet, data = ChickWeight)[, -1]
-ID <- as.integer(as.factor(ChickWeight$Chick)) # インデックス化
+X <- model.matrix(weight ~ Time + Diet, data = ChickWeight)[,-1]
+ID <- ChickWeight$Chick
 
-data_hlm <- list(Y = Y, X = X, ID = ID)
+data_hlm <- list(Y=Y,X=X,ID=ID)
 
 code_hlm <- rtmb_code(
   setup = {
@@ -198,51 +279,68 @@ code_hlm <- rtmb_code(
     P <- ncol(X)
   },
   parameters = {
-    alpha = Dim()
-    beta  = Dim(P)
-    tau   = Dim(lower = 0)
-    sigma = Dim(lower = 0)
-    r     = Dim(G, random = TRUE) # ランダム効果として宣言
+    alpha   = Dim()
+    beta    = Dim(P)
+    tau     = Dim(lower=0)
+    sigma   = Dim(lower=0)
+    r       = Dim(G, random = TRUE)
   },
   transform = {
-    mu = alpha + as.vector(X %*% beta) + r[ID] * tau
+    mu = alpha + X %*% beta + r[ID] * tau
   },
   model = {
     Y ~ normal(mu, sigma)
-    r ~ normal(0, 1)      # 個体差の事前分布（標準正規分布）
+    r ~ normal(0, 1)
     alpha ~ normal(0, 100)
     beta  ~ normal(0, 10)
     tau   ~ exponential(1/10)
     sigma ~ exponential(1/10)
   }
 )
-
-mdl_hlm <- rtmb_model(
-  data = data_hlm,
-  code = code_hlm,
-  par_names = list(beta = c("Time", "Diet2", "Diet3", "Diet4")),
-  view = c("alpha", "beta", "tau", "sigma")
-)
 ```
 
-## Laplace 近似を用いた MAP 推定
-階層モデルで `optimize(laplace = TRUE)` を指定すると、TMB の強力な機能である **Laplace 近似** を用いてランダム効果を積分消去しながら固定効果を推定します。これにより計算が劇的に高速化・安定化します。
+## rtmb_model
+
+`par_names` や `view` をモデル作成時に指定しておくと、要約結果の表示がわかりやすくなります。`par_names` はパラメータの表示名を付けるために使い、`view` は `summary()` などで優先的に上に表示したい変数を指定するために使います。
+
+この例では `par_names` を使って回帰係数に変数名を付け、`view` を使って `summary()` で`tau`を`sigma`より優先表示するように指定しています。
+出力の可読性を高めたい場合は、この 2 つをあらかじめ設定しておくと便利です。
 
 ```{r}
-opt_hlm <- mdl_hlm$optimize(num_estimate = 4, laplace = TRUE)
-opt_hlm$summary()
+mdl_hlm <-
+  rtmb_model(
+    data = data_hlm,
+    code = code_hlm,
+    par_names = list(beta = c("Time","Diet2","Diet3","Diet4")),
+    view = c("alpha", "beta", "tau", "sigma")
+  )
+```
+
+## MAP Laplace approximation
+
+`optimize(laplace = TRUE)` とすると、ランダム効果を **Laplace 近似**で積分消去しながら固定効果を推定できます。
+階層モデルでは計算をかなり軽くできることが多く、まず MAP で全体像を確認したいときに有用です。
+
+また、`num_estimate` を大きくすると複数回の最適化を行い、その中で目的関数が最も良かった結果を採用できます。
+ランダム効果の推定結果は `random_effects` に別途保存されます。
+
+```{r}
+opt_hlm <- mdl_hlm$optimize(num_estimate = 4)
+opt_hlm
+
+opt_hlm$random_effects$Estimate |> hist()
 ```
 
 ## MCMC
 
 階層モデルでも `sample()` によってMCMC推定を行えます。
-チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE` を指定して並列計算することもできます(下ではFALSEにしています)。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります。
+チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE` を指定して並列計算することもできます。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります(下ではFALSEにしています)。
 収束診断を確認しながら、必要なら `warmup` や `sampling` を増やしていきます。
 
 ```{r results = "hide"}
 mcmc_hlm <- mdl_hlm$sample(sampling = 2000,
                            warmup = 2000,
-                           parallel = TRUE)
+                           parallel = FALSE)
 ```
 
 ```{r}
@@ -264,36 +362,47 @@ mcmc_hlm <- mdl_hlm$sample(sampling = 1000,
 mcmc_hlm$summary()
 ```
 
+## ADVI
 
-## 変分推論 (ADVI)
-階層モデルは MCMC だと時間がかかることがありますが、ADVI を使うと近似的に素早く分布を得られます。局所解に陥るのを防ぐため、`parallel = TRUE` と初期値の指定を組み合わせて複数回推定を行うのが安全です（下では直列にしています）。
+複雑な階層モデルでは、MAPがうまく解を出せず、またMCMCではとても時間がかかることがあります。そういうときに、近似的に解を得たいときには変分ベイズ法が便利です。
+変分ベイズ法も並列化が可能です。
+ただし、複雑なモデルになると収束判断が難しいので、`plot_elbo()`メソッドで収束しているか確認するのが重要です。変分ベイズ法は初期値依存があるので、大雑把にでも初期値を与えておくと収束が安定します。
 
-```{r results = "hide", message=FALSE, warning=FALSE}
-# lme4 を使って初期値を大まかに設定
-result_lmer <- lme4::lmer(weight ~ Time + Diet + (1|Chick), data = ChickWeight)
+また、ADVIでもlaplace近似が使えます。さらにmethodを`fullrank`にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的にはMAPと同様の結果がでるはずです。ただし、laplace近似を実行すると計算が遅くなります。
+
+```{r　results = "hide"}
+result <- lme4::lmer(weight ~ Time + Diet +(1|Chick), data = ChickWeight)
+alpha_init <- result@beta[1]
+beta_init <- result@beta[-1]
 
 vb_hlm <- mdl_hlm$variational(
   iter = 7000,
   parallel = FALSE,
-  init = list(alpha = result_lmer@beta[1], beta = result_lmer@beta[-1]),
-  method = "fullrank", # 事後分布の相関も考慮
+  init = list(alpha = alpha_init, beta = beta_init),
+  method = "fullrank",
   laplace = TRUE
 )
 ```
 
-ADVI は近似手法であるため、ELBO（変分下界）が適切に収束しているかの確認が必須です。`ests = "best"` を指定することで、複数回実行したうち最も ELBO が高かった結果の推移を確認できます。
+収束が悪い推定結果がある場合、bestなものだけを見ることができます。
+これで過去1000回分のELBOの推定が真横にランダムに並んでいれば大丈夫です。
+右上がりになっている場合はまだ収束していない可能性があります。
 
 ```{r}
-vb_hlm$plot_elbo(ests = "best")
+vb_hlm$plot_elbo(ests="best")
+
 vb_hlm$summary()
 ```
+
+
 
 # まとめ
 
 このページでは、BayesRTMB の基本的な流れを 3 つのモデルで確認しました。
 
-* **単純なモデル**では、`rtmb_code()` と `rtmb_model()` の最小構成を確認しました。
-* **回帰モデル**では、`setup`・`parameters`・`transform`・`model` の役割を理解しました。
-* **階層モデル**では、ランダム効果と Laplace 近似の活用方法を確認しました。
+- **単純なモデル**では、`rtmb_code()` と `rtmb_model()` の最小構成を確認する
+- **回帰モデル**では、`setup`・`parameters`・`transform`・`model` の役割を理解する
+- **階層モデル**では、random effect と Laplace 近似の使い方を確認する
 
-まずは `optimize()` (MAP) でモデルの動作を確認し、その後に `sample()` (MCMC) や `variational()` (ADVI) を試す流れがスムーズです。
+最初は MAP でモデルの動作を確認し、その後に MCMC や ADVI を試す流れがわかりやすいです。
+より詳しく確認したい場合は、日本語紹介ページと Reference をあわせて見ると全体像をつかみやすくなります。
