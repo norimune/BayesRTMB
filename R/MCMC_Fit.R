@@ -413,15 +413,24 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Evaluate log-probability values.
+    #' @param safe Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.
     #' @return Numeric vector of log-probability values.
-    log_prob = function() {
+    log_prob = function(safe = FALSE) {
       ad_setup <- self$model$build_ad_obj(init = self$posterior_mean, laplace = self$laplace, jacobian_target = "all")
       ad_obj <- ad_setup$ad_obj
 
-      fn <- function(q) {
-        val <- tryCatch({ -ad_obj$fn(q) }, error = function(e) -Inf)
-        if (is.na(val) || is.nan(val)) return(-Inf)
-        return(val)
+      if (safe) {
+        fn <- function(q) {
+          val <- tryCatch({ -ad_obj$fn(q) }, error = function(e) -Inf)
+          if (is.na(val) || is.nan(val)) return(-Inf)
+          return(val)
+        }
+      } else {
+        fn <- function(q) {
+          val <- -ad_obj$fn(q)
+          if (is.na(val) || is.nan(val)) return(-Inf)
+          return(val)
+        }
       }
       return(fn)
     },

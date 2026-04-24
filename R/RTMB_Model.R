@@ -1330,6 +1330,30 @@ RTMB_Model <- R6::R6Class(
           stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
         })
 
+        if (!is.null(use_random)) {
+          orig_fn <- ad_obj$fn
+          orig_gr <- ad_obj$gr
+          idx_fixed <- ad_obj$env$lfixed()
+          P_all <- length(ad_obj$env$last.par)
+
+          ad_obj$fn <- function(x, ...) {
+            if (length(x) == P_all) x <- x[idx_fixed]
+            orig_fn(x, ...)
+          }
+          ad_obj$gr <- function(x, ...) {
+            is_full <- (length(x) == P_all)
+            if (is_full) x <- x[idx_fixed]
+            g <- orig_gr(x, ...)
+
+            if (is_full) {
+              g_full <- rep(0, P_all)
+              g_full[idx_fixed] <- g
+              return(g_full)
+            }
+            return(g)
+          }
+        }
+
         res <- ADVI_method(
           model = ad_obj, par_list = local_par_list, pl_full = local_pl_full,
           iter = iter, tol_rel_obj = tol_rel_obj,

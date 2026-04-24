@@ -334,11 +334,13 @@ opt_hlm$random_effects$Estimate |> hist()
 ## MCMC
 
 階層モデルでも `sample()` によってMCMC推定を行えます。
-チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE` を指定して並列計算することもできます。
+チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE` を指定して並列計算することもできます。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります。
 収束診断を確認しながら、必要なら `warmup` や `sampling` を増やしていきます。
 
 ```{r results = "hide"}
-mcmc_hlm <- mdl_hlm$sample(parallel = TRUE)
+mcmc_hlm <- mdl_hlm$sample(sampling = 2000,
+                           warmup = 2000,
+                           parallel = TRUE)
 ```
 
 ```{r}
@@ -351,15 +353,19 @@ mcmc_hlm$summary()
 変分ベイズ法も並列化が可能です。
 ただし、複雑なモデルになると収束判断が難しいので、`plot_elbo()`メソッドで収束しているか確認するのが重要です。変分ベイズ法は初期値依存があるので、大雑把にでも初期値を与えておくと収束が安定します。
 
+また、ADVIでもlaplace近似が使えます。さらにmethodを`fullrank`にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的にはMAPと同様の結果がでるはずです。ただし、laplace近似を実行すると計算が遅くなります。
+
 ```{r　results = "hide"}
 result <- lme4::lmer(weight ~ Time + Diet +(1|Chick), data = ChickWeight)
 alpha_init <- result@beta[1]
 beta_init <- result@beta[-1]
 
 vb_hlm <- mdl_hlm$variational(
-  iter = 7000,
+  iter = 15000,
   parallel = TRUE,
-  init = list(alpha = alpha_init, beta = beta_init)
+  init = list(alpha = alpha_init, beta = beta_init),
+  method = "fullrank",
+  laplace = TRUE
 )
 ```
 

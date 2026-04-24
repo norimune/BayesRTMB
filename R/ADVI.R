@@ -74,6 +74,20 @@ ADVI_method <- function(model, par_list, pl_full,
     m_omega <- rep(0, P); v_omega <- rep(0, P)
   }
 
+  # --- Optimization: Pre-compute matrix indices for fullrank/hybrid ---
+  if (method == "hybrid" && P_fixed > 0) {
+    idx_L_lower <- which(lower.tri(matrix(NA, P_fixed, P_fixed)))
+    idx_L_diag <- 1 + 0:(P_fixed - 1) * (P_fixed + 1)
+  } else if (method == "fullrank") {
+    idx_L_lower <- which(lower.tri(matrix(NA, P, P)))
+    idx_L_diag <- 1 + 0:(P - 1) * (P + 1)
+  }
+
+  # Optimization: Initialize Adam decay terms
+  b1_t <- 1
+  b2_t <- 1
+  # ------------------------------------------------------------
+
   elbo_history <- numeric(iter)
   converged <- FALSE
   rel_obj_final <- NA
@@ -81,6 +95,10 @@ ADVI_method <- function(model, par_list, pl_full,
   mu_history <- matrix(NA, nrow = window_size, ncol = P)
 
   for (t in 1:iter) {
+    # Update Adam decay terms efficiently
+    b1_t <- b1_t * beta1
+    b2_t <- b2_t * beta2
+
     # --- update progress bar ---
     if (!is.null(update_progress) && t %% update_interval == 0) {
       update_progress(1)
@@ -93,8 +111,8 @@ ADVI_method <- function(model, par_list, pl_full,
       eps_random <- eps[idx_random]
 
       L <- matrix(0, P_fixed, P_fixed)
-      if (length(L_off) > 0) L[lower.tri(L)] <- L_off
-      diag(L) <- exp(L_diag)
+      if (length(L_off) > 0) L[idx_L_lower] <- L_off
+      L[idx_L_diag] <- exp(L_diag)
       theta_fixed <- mu[idx_fixed] + as.vector(L %*% eps_fixed)
 
       sigma_random <- exp(omega)
@@ -105,8 +123,8 @@ ADVI_method <- function(model, par_list, pl_full,
       theta[idx_random] <- theta_random
     } else if (method == "fullrank") {
       L <- matrix(0, P, P)
-      if (length(L_off) > 0) L[lower.tri(L)] <- L_off
-      diag(L) <- exp(L_diag)
+      if (length(L_off) > 0) L[idx_L_lower] <- L_off
+      L[idx_L_diag] <- exp(L_diag)
       theta <- mu + as.vector(L %*% eps)
     } else {
       sigma <- exp(omega)
@@ -129,8 +147,9 @@ ADVI_method <- function(model, par_list, pl_full,
       # fixed effect (Full-rank)
       gr_fixed <- gr_val[idx_fixed]
       grad_L_mat <- outer(gr_fixed, eps_fixed)
-      grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
-      grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
+
+      grad_diag <- grad_L_mat[idx_L_diag] * exp(L_diag) + 1
+      grad_off <- grad_L_mat[idx_L_lower]
 
       # random effect (Mean-field)
       gr_random <- gr_val[idx_random]
@@ -138,42 +157,45 @@ ADVI_method <- function(model, par_list, pl_full,
 
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
-      mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
+
+      mu <- mu + alpha * (m_mu / (1 - b1_t)) / (sqrt(v_mu / (1 - b2_t)) + epsilon)
 
       m_diag <- beta1 * m_diag + (1 - beta1) * grad_diag
       v_diag <- beta2 * v_diag + (1 - beta2) * (grad_diag^2)
-      L_diag <- L_diag + alpha * (m_diag / (1 - beta1^t)) / (sqrt(v_diag / (1 - beta2^t)) + epsilon)
+      L_diag <- L_diag + alpha * (m_diag / (1 - b1_t)) / (sqrt(v_diag / (1 - b2_t)) + epsilon)
 
       if (length(L_off) > 0) {
         m_off <- beta1 * m_off + (1 - beta1) * grad_off
         v_off <- beta2 * v_off + (1 - beta2) * (grad_off^2)
-        L_off <- L_off + alpha * (m_off / (1 - beta1^t)) / (sqrt(v_off / (1 - beta2^t)) + epsilon)
+        L_off <- L_off + alpha * (m_off / (1 - b1_t)) / (sqrt(v_off / (1 - b2_t)) + epsilon)
       }
 
       if (length(omega) > 0) {
         m_omega <- beta1 * m_omega + (1 - beta1) * grad_omega
         v_omega <- beta2 * v_omega + (1 - beta2) * (grad_omega^2)
-        omega <- omega + alpha * (m_omega / (1 - beta1^t)) / (sqrt(v_omega / (1 - beta2^t)) + epsilon)
+        omega <- omega + alpha * (m_omega / (1 - b1_t)) / (sqrt(v_omega / (1 - b2_t)) + epsilon)
       }
     } else if (method == "fullrank") {
       elbo_history[t] <- fn_val + sum(L_diag) + entropy_const
       grad_mu <- gr_val
       grad_L_mat <- outer(gr_val, eps)
-      grad_diag <- diag(grad_L_mat) * exp(L_diag) + 1
-      grad_off <- grad_L_mat[lower.tri(grad_L_mat)]
+
+      grad_diag <- grad_L_mat[idx_L_diag] * exp(L_diag) + 1
+      grad_off <- grad_L_mat[idx_L_lower]
 
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
-      mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
+
+      mu <- mu + alpha * (m_mu / (1 - b1_t)) / (sqrt(v_mu / (1 - b2_t)) + epsilon)
 
       m_diag <- beta1 * m_diag + (1 - beta1) * grad_diag
       v_diag <- beta2 * v_diag + (1 - beta2) * (grad_diag^2)
-      L_diag <- L_diag + alpha * (m_diag / (1 - beta1^t)) / (sqrt(v_diag / (1 - beta2^t)) + epsilon)
+      L_diag <- L_diag + alpha * (m_diag / (1 - b1_t)) / (sqrt(v_diag / (1 - b2_t)) + epsilon)
 
       if (length(L_off) > 0) {
         m_off <- beta1 * m_off + (1 - beta1) * grad_off
         v_off <- beta2 * v_off + (1 - beta2) * (grad_off^2)
-        L_off <- L_off + alpha * (m_off / (1 - beta1^t)) / (sqrt(v_off / (1 - beta2^t)) + epsilon)
+        L_off <- L_off + alpha * (m_off / (1 - b1_t)) / (sqrt(v_off / (1 - b2_t)) + epsilon)
       }
     } else {
       elbo_history[t] <- fn_val + sum(omega) + entropy_const
@@ -182,11 +204,12 @@ ADVI_method <- function(model, par_list, pl_full,
 
       m_mu <- beta1 * m_mu + (1 - beta1) * grad_mu
       v_mu <- beta2 * v_mu + (1 - beta2) * (grad_mu^2)
-      mu <- mu + alpha * (m_mu / (1 - beta1^t)) / (sqrt(v_mu / (1 - beta2^t)) + epsilon)
+
+      mu <- mu + alpha * (m_mu / (1 - b1_t)) / (sqrt(v_mu / (1 - b2_t)) + epsilon)
 
       m_omega <- beta1 * m_omega + (1 - beta1) * grad_omega
       v_omega <- beta2 * v_omega + (1 - beta2) * (grad_omega^2)
-      omega <- omega + alpha * (m_omega / (1 - beta1^t)) / (sqrt(v_omega / (1 - beta2^t)) + epsilon)
+      omega <- omega + alpha * (m_omega / (1 - b1_t)) / (sqrt(v_omega / (1 - b2_t)) + epsilon)
     }
 
     idx <- (t - 1) %% window_size + 1
@@ -270,11 +293,7 @@ ADVI_method <- function(model, par_list, pl_full,
     zeta_sample <- fit_matrix[i, ]
     lp_final[i] <- -model$fn(zeta_sample)
 
-    if (laplace && length(model$env$random) > 0) {
-      para_list_res <- model$env$parList(x = model$env$last.par)
-    } else {
-      para_list_res <- model$env$parList(x = zeta_sample)
-    }
+    para_list_res <- model$env$parList(x = as.numeric(model$env$last.par))
 
     con_list <- to_constrained(para_list_res, par_list)
     para_final[i, ] <- unlist(con_list, use.names = FALSE)
@@ -320,11 +339,7 @@ ADVI_method <- function(model, par_list, pl_full,
     zeta_hist <- mu_history[i, ]
 
     model$fn(zeta_hist)
-    if (laplace && length(model$env$random) > 0) {
-      para_list_res <- model$env$parList(x = model$env$last.par)
-    } else {
-      para_list_res <- model$env$parList(x = zeta_hist)
-    }
+    para_list_res <- model$env$parList(x = as.numeric(model$env$last.par))
 
     con_list <- to_constrained(para_list_res, par_list)
     para_hist_all <- unlist(con_list, use.names = FALSE)
