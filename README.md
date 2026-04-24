@@ -1,7 +1,8 @@
 
 # BayesRTMB
 
-**Language / 言語**: [English introduction](articles/introduction.html) | [日本語紹介](articles/ja-introduction.html)
+**Language / 言語**: [English introduction](articles/introduction.html)
+\| [日本語トップ](articles/ja-introduction.html)
 
 **BayesRTMB** is an R package for fast, flexible, and compile-free
 Bayesian modeling.
@@ -39,7 +40,25 @@ You can install the development version from GitHub with:
 
 ``` r
 # install.packages("remotes")
-remotes::install_github("YOUR_GITHUB_NAME/BayesRTMB")
+remotes::install_github("norimune/BayesRTMB")
+```
+
+### Important Note for Windows Users
+
+Since BayesRTMB depends on C++ libraries through the `RTMB` and `TMB`
+ecosystems, Windows users **must install Rtools** to compile the
+underlying dependencies.
+
+1.  Download and install the appropriate version of
+    [Rtools](https://cran.r-project.org/bin/windows/Rtools/) that
+    matches your R version (e.g., Rtools44 for R 4.4.x).
+2.  After installation, restart RStudio.
+3.  You can verify if Rtools is correctly installed and recognized by
+    your system by running:
+
+``` r
+# If TRUE is returned, your system is ready to build packages.
+pkgbuild::check_build_tools(debug = TRUE)
 ```
 
 ## Basic Usage

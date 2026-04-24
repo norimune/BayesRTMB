@@ -17,15 +17,17 @@ navbar:
         href: articles/introduction.html
       - text: "-------"
       - text: 日本語
-      - text: 日本語紹介
+      - text: パッケージ紹介
         href: articles/ja-introduction.html
+      - text: クイックスタート
+        href: articles/ja-quick_start.html
       - text: "-------"
       - text: すべての記事
         href: articles/index.html
 
 home:
   links:
-  - text: 日本語紹介ページ
+  - text: パッケージ紹介
     href: articles/ja-introduction.html
   - text: English introduction
     href: articles/introduction.html
