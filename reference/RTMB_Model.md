@@ -197,11 +197,11 @@ mcmc_basic <- mod_basic$sample(sampling = 500, warmup = 500, chains = 2)
 #> chain 2: iter 1000 sampling 
 mcmc_basic$summary()
 #> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp        -49.80  1.41  -48.84  -53.55  -48.05       416       652  1.00 
-#> mu[1]      -0.12  0.10   -0.11   -0.31    0.06      1106       715  1.00 
-#> mu[2]       2.16  0.11    2.16    1.94    2.38       851       584  1.01 
-#> mu[3]      -1.12  0.10   -1.12   -1.33   -0.91       857       700  1.00 
-#> sigma       0.47  0.04    0.47    0.39    0.56       705       756  1.00 
+#> lp        -49.82  1.45  -48.75  -53.40  -48.06       415       671  1.00 
+#> mu[1]      -0.12  0.10   -0.12   -0.31    0.07      1091       691  1.00 
+#> mu[2]       2.16  0.11    2.17    1.95    2.39      1036       621  1.00 
+#> mu[3]      -1.12  0.10   -1.11   -1.31   -0.91       819       588  1.00 
+#> sigma       0.47  0.05    0.45    0.39    0.56       819       754  1.00 
 
 # --- 2. Optional: Adding Custom Parameter Names and initial values ---
 # You can optionally use 'par_names' to assign meaningful labels
@@ -263,10 +263,10 @@ mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
 #> chain 2: iter 1000 sampling 
 mcmc_named$summary()
 #>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp               -49.84  1.43  -49.11  -53.41  -48.11       495       654  1.00 
-#> mu[Control]       -0.12  0.10   -0.12   -0.32    0.08      1285       710  1.00 
-#> mu[Treatment_A]    2.16  0.11    2.16    1.95    2.37      1014       733  1.00 
-#> mu[Treatment_B]   -1.13  0.10   -1.13   -1.31   -0.92      1194       633  1.00 
-#> sigma              0.47  0.04    0.47    0.39    0.56       964       576  1.00 
+#> lp               -49.84  1.40  -48.85  -53.22  -48.09       313       698  1.01 
+#> mu[Control]       -0.12  0.10   -0.10   -0.32    0.07      1000       631  1.00 
+#> mu[Treatment_A]    2.16  0.11    2.15    1.94    2.38      1107       362  1.00 
+#> mu[Treatment_B]   -1.12  0.10   -1.12   -1.33   -0.92       923       407  1.00 
+#> sigma              0.47  0.04    0.46    0.40    0.56       833       753  1.01 
 # }
 ```

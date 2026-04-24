@@ -22,10 +22,10 @@ mathematical space during estimation.
 
 **Constrained Vectors:**
 
-- `"simplex"`: A vector where all elements are \$ 0\$ and \$ x = 1\$.
+- `"simplex"`: A vector where all elements are \>= 0 and sum(x) = 1.
 
-- `"sum_to_zero"`: A vector of length \$K\$ where \$ x = 0\$. (Estimated
-  using \$K-1\$ degrees of freedom).
+- `"sum_to_zero"`: A vector of length K where sum(x) = 0. (Estimated
+  using K-1 degrees of freedom).
 
 **Correlation and Covariance Matrices:**
 

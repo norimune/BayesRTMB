@@ -69,7 +69,7 @@ Used to convert unconstrained vectors into structured matrices (e.g., for factor
 <li><p><code>to_centered_matrix(x, R, C)</code>: Creates an R x C matrix where each column sums to zero.</p></li>
 <li><p><code>to_centered_tri(x, R, C)</code>: Creates an R x C matrix with column-wise sum-to-zero constraints on the lower elements (useful for identification in factor analysis).</p></li>
 </ul><p><strong>4. Linear Algebra for AD:</strong></p><ul><li><p><code>log_det_chol(L)</code>: Calculates the log-determinant of a covariance matrix from its Cholesky factor <code>L</code>.</p></li>
-<li><p><code>quad_form_chol(x, L)</code>: Computes the quadratic form $x^T ^-1 x$ using the Cholesky factor <code>L</code>.</p></li>
+<li><p><code>quad_form_chol(x, L)</code>: Computes the quadratic form x^T Sigma^(-1) x using the Cholesky factor <code>L</code>.</p></li>
 <li><p><code>distance(x, y)</code>: Computes the Euclidean distance between two vectors with a small epsilon for stability.</p></li>
 </ul></div>
 

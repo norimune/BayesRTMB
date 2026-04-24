@@ -346,7 +346,14 @@ Evaluate log-probability values.
 
 #### Usage
 
-    MCMC_Fit$log_prob()
+    MCMC_Fit$log_prob(safe = FALSE)
+
+#### Arguments
+
+- `safe`:
+
+  Logical; whether to wrap the evaluation in a tryCatch block. Default
+  is FALSE for speed.
 
 #### Returns
 

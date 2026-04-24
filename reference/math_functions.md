@@ -51,7 +51,7 @@ identification constraints).
 - `log_det_chol(L)`: Calculates the log-determinant of a covariance
   matrix from its Cholesky factor `L`.
 
-- `quad_form_chol(x, L)`: Computes the quadratic form \$x^T ^-1 x\$
+- `quad_form_chol(x, L)`: Computes the quadratic form x^T Sigma^(-1) x
   using the Cholesky factor `L`.
 
 - `distance(x, y)`: Computes the Euclidean distance between two vectors

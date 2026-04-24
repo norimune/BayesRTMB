@@ -62,8 +62,8 @@ space during estimation.</p>
   Use <code>lower</code> and <code>upper</code> for element-wise bounds.</p></li>
 </ul><p><strong>Ordering Constraints:</strong></p><ul><li><p><code>"ordered"</code>: A vector where $x_1 &lt; x_2 &lt; ... &lt; x_K$.</p></li>
 <li><p><code>"positive_ordered"</code>: A vector where $0 &lt; x_1 &lt; x_2 &lt; ... &lt; x_K$.</p></li>
-</ul><p><strong>Constrained Vectors:</strong></p><ul><li><p><code>"simplex"</code>: A vector where all elements are $ 0$ and $ x = 1$.</p></li>
-<li><p><code>"sum_to_zero"</code>: A vector of length $K$ where $ x = 0$. (Estimated using $K-1$ degrees of freedom).</p></li>
+</ul><p><strong>Constrained Vectors:</strong></p><ul><li><p><code>"simplex"</code>: A vector where all elements are &gt;= 0 and sum(x) = 1.</p></li>
+<li><p><code>"sum_to_zero"</code>: A vector of length K where sum(x) = 0. (Estimated using K-1 degrees of freedom).</p></li>
 </ul><p><strong>Correlation and Covariance Matrices:</strong></p><ul><li><p><code>"corr_matrix"</code>: A symmetric, positive-definite correlation matrix (diagonal elements are 1).</p></li>
 <li><p><code>"cov_matrix"</code>: A symmetric, positive-definite covariance matrix.</p></li>
 <li><p><code>"CF_corr"</code>: The Cholesky factor of a correlation matrix.</p></li>

@@ -221,10 +221,12 @@ Extract posterior draws for selected parameters.
 
     VB_Fit$draws(
       pars = NULL,
+      chains = NULL,
+      best_chains = NULL,
       inc_random = FALSE,
       inc_transform = TRUE,
       inc_generate = TRUE,
-      best_only = TRUE
+      best_only = FALSE
     )
 
 #### Arguments
@@ -234,6 +236,16 @@ Extract posterior draws for selected parameters.
   Character or numeric vector specifying the names or indices of
   parameters to extract. If NULL, all available parameters are
   extracted.
+
+- `chains`:
+
+  Numeric vector specifying the chains to extract. If NULL, draws from
+  all chains are returned.
+
+- `best_chains`:
+
+  Integer; number of best chains to retain based on ELBO. If supplied,
+  chains with the highest ELBO are retained.
 
 - `inc_random`:
 
@@ -253,7 +265,7 @@ Extract posterior draws for selected parameters.
 - `best_only`:
 
   Logical; whether to extract only from the chain with the maximum ELBO.
-  Default is TRUE.
+  Default is FALSE unless explicitly requested.
 
 #### Returns
 
@@ -263,8 +275,7 @@ A 3D array of posterior draws \`\[iterations, chains, parameters\]\`.
 
 ### Method [`summary()`](https://rdrr.io/r/base/summary.html)
 
-Summarize posterior draws. (Note: Rhat and ESS are not computed for
-ADVI).
+Summarize posterior draws.
 
 #### Usage
 

@@ -1,13 +1,13 @@
-# BayesRTMB 日本語紹介
+# BayesRTMB の概要
 
-## BayesRTMB 日本語紹介
+## BayesRTMB とは？
 
 **BayesRTMB** は、RTMB を自動微分エンジンとして用いる R パッケージです。
 Stan に近い感覚でモデルを書きつつ、R
 の中でそのままベイズ推定を進められます。
 
 このページでは、BayesRTMB
-の位置づけと、最初に押さえておくとよい使い方を日本語でまとめます。
+の位置づけと、最初に押さえておくとよい全体像をまとめます。
 
 ### BayesRTMB でできること
 
@@ -30,17 +30,14 @@ BayesRTMB には、次のような特徴があります。
 GitHub 版をインストールする場合は、次のようにします。
 
 ``` r
-# install.packages("remotes")
-remotes::install_github("norimune/BayesRTMB")
-```
-
-``` r
+# install.packages("pak")
+pak::pak("norimune/BayesRTMB")
 library(BayesRTMB)
 ```
 
 ### 基本の流れ
 
-BayesRTMB の基本的な流れは次の 3 段階です。
+BayesRTMB の基本的な分析は、次の 3 段階で進みます。
 
 1.  **データ**を用意する
 2.  **[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)**
@@ -48,17 +45,15 @@ BayesRTMB の基本的な流れは次の 3 段階です。
 3.  **[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)**
     でモデルオブジェクトを作り、推定する
 
-最小例として、平均 `mu` と標準偏差 `sigma`
-を推定する単純な正規モデルを示します。
+例として、平均 `mu` と標準偏差 `sigma`
+を推定する単純な正規分布モデルをとりあげます。
 
 ``` r
-library(BayesRTMB)
-
-# 1. データ
+# 1. データの準備
 Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
-dat <- list(Y = Y, N = length(Y))
+dat <- list(Y = Y)
 
-# 2. モデル
+# 2. モデルの定義
 code <- rtmb_code(
   parameters = {
     mu    = Dim(1)
@@ -77,29 +72,33 @@ mdl <- rtmb_model(data = dat, code = code)
 
 ### 推定法の使い分け
 
-同じ `mdl` に対して、複数の推定法を使えます。
+作成した 1 つの `mdl`
+オブジェクトに対して、目的に応じて複数の推定メソッドを呼び出すことができます。
 
-#### MAP 推定
+#### 1. MAP 推定 (`optimize`)
 
-まずモデルが正しく動くかを素早く確認したいときに便利です。
+事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。
 
 ``` r
 fit_map <- mdl$optimize()
 fit_map$summary()
 ```
 
-#### NUTS による MCMC
+#### 2. MCMC 推定 (`sample`)
 
-最も標準的なベイズ推定です。事後分布の要約、区間推定、収束診断を行いたいときに使います。
+NUTS (No-U-Turn Sampler)
+アルゴリズムを用いて、事後分布全体から正確なサンプルを抽出する最も標準的なベイズ推論のアプローチです。`parallel = TRUE`
+を指定すると複数チェーンの並列計算が可能です（デフォルトは `FALSE`）。
 
 ``` r
-fit_mcmc <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4)
+fit_mcmc <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, parallel = FALSE)
 fit_mcmc$summary()
 ```
 
-#### ADVI による変分推論
+#### 3. 変分推論 (`variational`)
 
-近似推定でよいので高速に結果を得たいときに向いています。
+ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求めます。MCMC
+では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。
 
 ``` r
 fit_vb <- mdl$variational(
@@ -110,9 +109,10 @@ fit_vb <- mdl$variational(
 fit_vb$summary()
 ```
 
-### random effect を含むモデル
+### ランダム効果 (Random effect) を含むモデル
 
-階層モデルでは、パラメータを `random = TRUE` として宣言できます。
+階層モデルなどを構築する場合、パラメータを `random = TRUE`
+として宣言できます。
 
 ``` r
 code_hier <- rtmb_code(
@@ -128,56 +128,74 @@ code_hier <- rtmb_code(
 )
 ```
 
-このようなモデルでは、Laplace 近似を使って random effect
-を周辺化できます。
+このようなモデルでは、Laplace
+近似を使ってランダム効果を周辺化（積分消去）できます。MAP 推定
+([`optimize()`](https://rdrr.io/r/stats/optimize.html)) ではデフォルトで
+`laplace = TRUE` となり、自動的に適用されます。MCMC
+([`sample()`](https://rdrr.io/r/base/sample.html))
+でも指定は可能ですが、基本的にはデフォルトの `laplace = FALSE`
+で問題ありません。
 
 ``` r
 fit_map_laplace  <- mdl$optimize(laplace = TRUE)
-fit_mcmc_laplace <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, laplace = TRUE)
+fit_mcmc_laplace <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, laplace = FALSE)
 ```
 
-### ラッパー関数から始める
+### ラッパー関数で素早く分析する
 
-BayesRTMB には、標準的なモデルを簡単に使うためのラッパー関数があります。
+BayesRTMB
+には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。
 
-たとえば線形回帰なら次のように書けます。
+たとえば線形回帰であれば
+[`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
+を使います。
 
 ``` r
 fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
 
+# MAP推定
 map_lm <- fit_lm$optimize()
 map_lm$summary()
 
+# MCMC推定
 mcmc_lm <- fit_lm$sample(sampling = 1000, warmup = 1000, chains = 4)
 mcmc_lm$summary()
 ```
 
-一般化線形混合モデルは
-[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)、t
-検定は
-[`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)、因子分析は
+一般化線形混合モデルには
+[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)、因子分析には
 [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
-のように、分析目的に応じた関数が用意されています。
+など、分析目的に応じた関数が利用できます。
 
-### どのページから読むとよいか
+また、[`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
+を使うと、ベイジアン t
+検定が簡単に実行できます。[`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
+メソッドで `null_model` 引数に「0
+に固定したいパラメータ名」を指定するだけで、自動的に帰無モデルの推定とベイズファクターの計算が行われます。
 
-初めて使う場合は、次の順番がわかりやすいです。
+``` r
+mdl_ttest <- rtmb_ttest(y1, y2, r = 0.707)
+mcmc_ttest <- mdl_ttest$sample()
 
-1.  この日本語紹介ページで全体像をつかむ
-2.  `Reference` で
-    [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md),
-    [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md),
-    [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md)
-    を確認する
-3.  ラッパー関数や example を見て、自分の分析に近い形から試す
+# 効果量(delta)を0に固定した帰無モデルとの比較
+bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+print(bf_ttest)
+```
 
-### 次の候補
+### 次のステップ
 
-日本語ページを今後増やすなら、次の 3 つが特に有用です。
+BayesRTMB
+の全体像がつかめたら、以下の順番でドキュメントを参照して具体的な使い方を深めていくことをおすすめします。
 
-- **日本語クイックスタート**
-- **モデル記法の日本語解説**
-- **NUTS / ADVI / MAP の使い分け**
-
-これらを追加すると、英語の Reference
-を読む前に全体像を理解しやすくなります。
+1.  **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
+    二項モデル、回帰モデル、階層モデルの 3 つの具体例を通して、`setup`
+    や `transform`
+    などの各ブロックの役割と、実践的な分析フローを学びます。
+2.  **Reference (リファレンス)**
+    各関数の詳細な仕様を確認できます。特に自分でモデルを構築する際は、以下のページが役立ちます。
+    - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md):
+      各ブロックの記述ルールと仕様
+    - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md):
+      パラメータの型と制約（`parameter_types`）
+    - `distributions` / `math_functions`:
+      組み込みの確率分布や、数値計算を安定させる数学関数

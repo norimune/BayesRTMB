@@ -4,14 +4,23 @@
 
 BayesRTMB の英語記事です。
 
-- [introduction](https://norimune.github.io/BayesRTMB/articles/introduction.md):
+- [Introduction to
+  BayesRTMB](https://norimune.github.io/BayesRTMB/articles/introduction.md):
+
+  An overview of the concepts, basic usage, and main inference methods
+  in BayesRTMB.
 
 ### 日本語
 
 BayesRTMB の概要と使い方を日本語でまとめた記事です。
 
 - [BayesRTMB
-  日本語紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):
+  の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):
+
+  BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。
+
+- [BayesRTMB
+  日本語クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
 
   BayesRTMB
-  の考え方、基本的な使い方、主要な推論法の流れを日本語で紹介します。
+  の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して実践的に紹介します。

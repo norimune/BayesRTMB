@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>BayesRTMB 日本語紹介 • BayesRTMB</title>
+<title>BayesRTMB の概要 • BayesRTMB</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="BayesRTMB 日本語紹介">
-<meta name="description" content="BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを日本語で紹介します。">
-<meta property="og:description" content="BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを日本語で紹介します。">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="BayesRTMB の概要">
+<meta name="description" content="BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。">
+<meta property="og:description" content="BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -63,7 +63,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>BayesRTMB 日本語紹介</h1>
+      <h1>BayesRTMB の概要</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/vignettes/ja-introduction.Rmd" class="external-link"><code>vignettes/ja-introduction.Rmd</code></a></small>
@@ -73,13 +73,13 @@
     
     
 <div class="section level2">
-<h2 id="bayesrtmb-日本語紹介">BayesRTMB 日本語紹介<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E6%97%A5%E6%9C%AC%E8%AA%9E%E7%B4%B9%E4%BB%8B"></a>
+<h2 id="bayesrtmb-とは">BayesRTMB とは？<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A8%E3%81%AF"></a>
 </h2>
 <p><strong>BayesRTMB</strong> は、RTMB を自動微分エンジンとして用いる R
 パッケージです。 Stan に近い感覚でモデルを書きつつ、R
 の中でそのままベイズ推定を進められます。</p>
 <p>このページでは、BayesRTMB
-の位置づけと、最初に押さえておくとよい使い方を日本語でまとめます。</p>
+の位置づけと、最初に押さえておくとよい全体像をまとめます。</p>
 <div class="section level3">
 <h3 id="bayesrtmb-でできること">BayesRTMB でできること<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A7%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8"></a>
 </h3>
@@ -108,15 +108,14 @@
 </h3>
 <p>GitHub 版をインストールする場合は、次のようにします。</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
+<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span>
+<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="基本の流れ">基本の流れ<a class="anchor" aria-label="anchor" href="#%E5%9F%BA%E6%9C%AC%E3%81%AE%E6%B5%81%E3%82%8C"></a>
 </h3>
-<p>BayesRTMB の基本的な流れは次の 3 段階です。</p>
+<p>BayesRTMB の基本的な分析は、次の 3 段階で進みます。</p>
 <ol style="list-style-type: decimal">
 <li>
 <strong>データ</strong>を用意する</li>
@@ -126,16 +125,14 @@
 <strong><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code></strong>
 でモデルオブジェクトを作り、推定する</li>
 </ol>
-<p>最小例として、平均 <code>mu</code> と標準偏差 <code>sigma</code>
-を推定する単純な正規モデルを示します。</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 1. データ</span></span>
+<p>例として、平均 <code>mu</code> と標準偏差 <code>sigma</code>
+を推定する単純な正規分布モデルをとりあげます。</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 1. データの準備</span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5.2</span>, <span class="fl">4.8</span>, <span class="fl">5.5</span>, <span class="fl">6.1</span>, <span class="fl">4.9</span>, <span class="fl">5.3</span><span class="op">)</span></span>
-<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, N <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 2. モデル</span></span>
+<span><span class="co"># 2. モデルの定義</span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">mu</span>    <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
@@ -154,28 +151,33 @@
 <div class="section level3">
 <h3 id="推定法の使い分け">推定法の使い分け<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E5%AE%9A%E6%B3%95%E3%81%AE%E4%BD%BF%E3%81%84%E5%88%86%E3%81%91"></a>
 </h3>
-<p>同じ <code>mdl</code> に対して、複数の推定法を使えます。</p>
+<p>作成した 1 つの <code>mdl</code>
+オブジェクトに対して、目的に応じて複数の推定メソッドを呼び出すことができます。</p>
 <div class="section level4">
-<h4 id="map-推定">MAP 推定<a class="anchor" aria-label="anchor" href="#map-%E6%8E%A8%E5%AE%9A"></a>
+<h4 id="map-推定-optimize">1. MAP 推定 (<code>optimize</code>)<a class="anchor" aria-label="anchor" href="#map-%E6%8E%A8%E5%AE%9A-optimize"></a>
 </h4>
-<p>まずモデルが正しく動くかを素早く確認したいときに便利です。</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<p>事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_map</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level4">
-<h4 id="nuts-による-mcmc">NUTS による MCMC<a class="anchor" aria-label="anchor" href="#nuts-%E3%81%AB%E3%82%88%E3%82%8B-mcmc"></a>
+<h4 id="mcmc-推定-sample">2. MCMC 推定 (<code>sample</code>)<a class="anchor" aria-label="anchor" href="#mcmc-%E6%8E%A8%E5%AE%9A-sample"></a>
 </h4>
-<p>最も標準的なベイズ推定です。事後分布の要約、区間推定、収束診断を行いたいときに使います。</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
+<p>NUTS (No-U-Turn Sampler)
+アルゴリズムを用いて、事後分布全体から正確なサンプルを抽出する最も標準的なベイズ推論のアプローチです。<code>parallel = TRUE</code>
+を指定すると複数チェーンの並列計算が可能です（デフォルトは
+<code>FALSE</code>）。</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, parallel <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level4">
-<h4 id="advi-による変分推論">ADVI による変分推論<a class="anchor" aria-label="anchor" href="#advi-%E3%81%AB%E3%82%88%E3%82%8B%E5%A4%89%E5%88%86%E6%8E%A8%E8%AB%96"></a>
+<h4 id="変分推論-variational">3. 変分推論 (<code>variational</code>)<a class="anchor" aria-label="anchor" href="#%E5%A4%89%E5%88%86%E6%8E%A8%E8%AB%96-variational"></a>
 </h4>
-<p>近似推定でよいので高速に結果を得たいときに向いています。</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<p>ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求めます。MCMC
+では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"meanfield"</span>,</span>
 <span>  iter <span class="op">=</span> <span class="fl">3000</span>,</span>
@@ -185,11 +187,11 @@
 </div>
 </div>
 <div class="section level3">
-<h3 id="random-effect-を含むモデル">random effect を含むモデル<a class="anchor" aria-label="anchor" href="#random-effect-%E3%82%92%E5%90%AB%E3%82%80%E3%83%A2%E3%83%87%E3%83%AB"></a>
+<h3 id="ランダム効果-random-effect-を含むモデル">ランダム効果 (Random effect) を含むモデル<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%B3%E3%83%80%E3%83%A0%E5%8A%B9%E6%9E%9C-random-effect-%E3%82%92%E5%90%AB%E3%82%80%E3%83%A2%E3%83%87%E3%83%AB"></a>
 </h3>
-<p>階層モデルでは、パラメータを <code>random = TRUE</code>
+<p>階層モデルなどを構築する場合、パラメータを <code>random = TRUE</code>
 として宣言できます。</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_hier</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">mu_global</span>    <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
@@ -201,53 +203,72 @@
 <span>    <span class="co"># ... likelihood ...</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>このようなモデルでは、Laplace 近似を使って random effect
-を周辺化できます。</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<p>このようなモデルでは、Laplace
+近似を使ってランダム効果を周辺化（積分消去）できます。MAP 推定
+(<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>) ではデフォルトで <code>laplace = TRUE</code>
+となり、自動的に適用されます。MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>)
+でも指定は可能ですが、基本的にはデフォルトの
+<code>laplace = FALSE</code> で問題ありません。</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map_laplace</span>  <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">fit_mcmc_laplace</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">fit_mcmc_laplace</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, laplace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="ラッパー関数から始める">ラッパー関数から始める<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%83%E3%83%91%E3%83%BC%E9%96%A2%E6%95%B0%E3%81%8B%E3%82%89%E5%A7%8B%E3%82%81%E3%82%8B"></a>
+<h3 id="ラッパー関数で素早く分析する">ラッパー関数で素早く分析する<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%83%E3%83%91%E3%83%BC%E9%96%A2%E6%95%B0%E3%81%A7%E7%B4%A0%E6%97%A9%E3%81%8F%E5%88%86%E6%9E%90%E3%81%99%E3%82%8B"></a>
 </h3>
 <p>BayesRTMB
-には、標準的なモデルを簡単に使うためのラッパー関数があります。</p>
-<p>たとえば線形回帰なら次のように書けます。</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。</p>
+<p>たとえば線形回帰であれば <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> を使います。</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">wt</span> <span class="op">+</span> <span class="va">cyl</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># MAP推定</span></span>
 <span><span class="va">map_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">map_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
+<span><span class="co"># MCMC推定</span></span>
 <span><span class="va">mcmc_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span><span class="va">mcmc_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>一般化線形混合モデルは <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>、t 検定は
-<code><a href="../reference/rtmb_ttest.html">rtmb_ttest()</a></code>、因子分析は <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code>
-のように、分析目的に応じた関数が用意されています。</p>
+<p>一般化線形混合モデルには <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>、因子分析には
+<code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> など、分析目的に応じた関数が利用できます。</p>
+<p>また、<code><a href="../reference/rtmb_ttest.html">rtmb_ttest()</a></code> を使うと、ベイジアン t
+検定が簡単に実行できます。<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> メソッドで
+<code>null_model</code> 引数に「0
+に固定したいパラメータ名」を指定するだけで、自動的に帰無モデルの推定とベイズファクターの計算が行われます。</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
+<span><span class="va">mcmc_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 効果量(delta)を0に固定した帰無モデルとの比較</span></span>
+<span><span class="va">bf_ttest</span> <span class="op">&lt;-</span> <span class="va">mcmc_ttest</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"delta"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_ttest</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="どのページから読むとよいか">どのページから読むとよいか<a class="anchor" aria-label="anchor" href="#%E3%81%A9%E3%81%AE%E3%83%9A%E3%83%BC%E3%82%B8%E3%81%8B%E3%82%89%E8%AA%AD%E3%82%80%E3%81%A8%E3%82%88%E3%81%84%E3%81%8B"></a>
+<h3 id="次のステップ">次のステップ<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97"></a>
 </h3>
-<p>初めて使う場合は、次の順番がわかりやすいです。</p>
+<p>BayesRTMB
+の全体像がつかめたら、以下の順番でドキュメントを参照して具体的な使い方を深めていくことをおすすめします。</p>
 <ol style="list-style-type: decimal">
-<li>この日本語紹介ページで全体像をつかむ</li>
 <li>
-<code>Reference</code> で <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>,
-<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>, <code><a href="../reference/Dim.html">Dim()</a></code> を確認する</li>
-<li>ラッパー関数や example を見て、自分の分析に近い形から試す</li>
-</ol>
-</div>
-<div class="section level3">
-<h3 id="次の候補">次の候補<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AE%E5%80%99%E8%A3%9C"></a>
-</h3>
-<p>日本語ページを今後増やすなら、次の 3 つが特に有用です。</p>
+<strong><a href="ja-quick_start.html">クイックスタート</a></strong>
+二項モデル、回帰モデル、階層モデルの 3
+つの具体例を通して、<code>setup</code> や <code>transform</code>
+などの各ブロックの役割と、実践的な分析フローを学びます。</li>
+<li>
+<strong>Reference (リファレンス)</strong>
+各関数の詳細な仕様を確認できます。特に自分でモデルを構築する際は、以下のページが役立ちます。
 <ul>
-<li><strong>日本語クイックスタート</strong></li>
-<li><strong>モデル記法の日本語解説</strong></li>
-<li><strong>NUTS / ADVI / MAP の使い分け</strong></li>
+<li>
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>: 各ブロックの記述ルールと仕様</li>
+<li>
+<code><a href="../reference/Dim.html">Dim()</a></code>:
+パラメータの型と制約（<code>parameter_types</code>）</li>
+<li>
+<code>distributions</code> / <code>math_functions</code>:
+組み込みの確率分布や、数値計算を安定させる数学関数</li>
 </ul>
-<p>これらを追加すると、英語の Reference
-を読む前に全体像を理解しやすくなります。</p>
+</li>
+</ol>
 </div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

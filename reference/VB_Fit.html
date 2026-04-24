@@ -248,10 +248,12 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 <h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inc_random <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  inc_transform <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  inc_generate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  best_only <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  best_only <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -259,6 +261,14 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 <h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Integer; number of best chains to retain based on ELBO. If supplied, chains with the highest ELBO are retained.</p></dd>
 
 
 <dt><code>inc_random</code></dt>
@@ -274,7 +284,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 
 
 <dt><code>best_only</code></dt>
-<dd><p>Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.</p></dd>
+<dd><p>Logical; whether to extract only from the chain with the maximum ELBO. Default is FALSE unless explicitly requested.</p></dd>
 
 
 </dl><p></p></div>
@@ -286,7 +296,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 
 </div><p></p><hr><a id="method-advi_fit-summary"></a><div class="section">
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
-<p>Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).</p><div class="section">
+<p>Summarize posterior draws.</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
