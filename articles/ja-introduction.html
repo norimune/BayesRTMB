@@ -39,7 +39,8 @@
     <li><a class="dropdown-item" href="../articles/introduction.html">Introduction</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
-    <li><a class="dropdown-item" href="../articles/ja-introduction.html">日本語紹介</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-quick_start.html">クイックスタート</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -104,13 +105,33 @@
 </ul>
 </div>
 <div class="section level3">
-<h3 id="インストール">インストール<a class="anchor" aria-label="anchor" href="#%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB"></a>
+<h3 id="インストール方法">インストール方法<a class="anchor" aria-label="anchor" href="#%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB%E6%96%B9%E6%B3%95"></a>
 </h3>
-<p>GitHub 版をインストールする場合は、次のようにします。</p>
+<p>GitHubから開発版をインストールできます。</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("pak")</span></span>
-<span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level4">
+<h4 id="windows-ユーザーへの重要なお知らせ">Windows ユーザーへの重要なお知らせ<a class="anchor" aria-label="anchor" href="#windows-%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E3%81%B8%E3%81%AE%E9%87%8D%E8%A6%81%E3%81%AA%E3%81%8A%E7%9F%A5%E3%82%89%E3%81%9B"></a>
+</h4>
+<p>BayesRTMB は裏側の計算エンジンとして <code>RTMB</code> や
+<code>TMB</code> を使用しており、これらは C++
+のライブラリに依存しています。そのため、Windows
+環境でパッケージをインストールするには、C++
+のコードをコンパイルするためのツールである <strong>Rtools
+のインストールが必須</strong> となります。</p>
+<ol style="list-style-type: decimal">
+<li>ご自身の R のバージョンに合った <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>
+をダウンロードしてインストールしてください（例: R 4.4.x をお使いの場合は
+Rtools44）。</li>
+<li>インストール完了後、RStudio を再起動します。</li>
+<li>以下のコードを実行し、Rtools
+がシステムに正しく認識されているかを確認できます。</li>
+</ol>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 実行結果として TRUE が返ってくれば、コンパイル環境の構築は成功です。</span></span>
+<span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level3">
 <h3 id="基本の流れ">基本の流れ<a class="anchor" aria-label="anchor" href="#%E5%9F%BA%E6%9C%AC%E3%81%AE%E6%B5%81%E3%82%8C"></a>
@@ -127,7 +148,7 @@
 </ol>
 <p>例として、平均 <code>mu</code> と標準偏差 <code>sigma</code>
 を推定する単純な正規分布モデルをとりあげます。</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 1. データの準備</span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5.2</span>, <span class="fl">4.8</span>, <span class="fl">5.5</span>, <span class="fl">6.1</span>, <span class="fl">4.9</span>, <span class="fl">5.3</span><span class="op">)</span></span>
 <span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span><span class="op">)</span></span>
@@ -157,7 +178,7 @@
 <h4 id="map-推定-optimize">1. MAP 推定 (<code>optimize</code>)<a class="anchor" aria-label="anchor" href="#map-%E6%8E%A8%E5%AE%9A-optimize"></a>
 </h4>
 <p>事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_map</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -168,7 +189,7 @@
 アルゴリズムを用いて、事後分布全体から正確なサンプルを抽出する最も標準的なベイズ推論のアプローチです。<code>parallel = TRUE</code>
 を指定すると複数チェーンの並列計算が可能です（デフォルトは
 <code>FALSE</code>）。</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, parallel <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -177,7 +198,7 @@
 </h4>
 <p>ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求めます。MCMC
 では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"meanfield"</span>,</span>
 <span>  iter <span class="op">=</span> <span class="fl">3000</span>,</span>
@@ -191,7 +212,7 @@
 </h3>
 <p>階層モデルなどを構築する場合、パラメータを <code>random = TRUE</code>
 として宣言できます。</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_hier</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">mu_global</span>    <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
@@ -209,7 +230,7 @@
 となり、自動的に適用されます。MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>)
 でも指定は可能ですが、基本的にはデフォルトの
 <code>laplace = FALSE</code> で問題ありません。</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map_laplace</span>  <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc_laplace</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, laplace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -219,7 +240,7 @@
 <p>BayesRTMB
 には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。</p>
 <p>たとえば線形回帰であれば <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> を使います。</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">wt</span> <span class="op">+</span> <span class="va">cyl</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># MAP推定</span></span>
@@ -235,7 +256,7 @@
 検定が簡単に実行できます。<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> メソッドで
 <code>null_model</code> 引数に「0
 に固定したいパラメータ名」を指定するだけで、自動的に帰無モデルの推定とベイズファクターの計算が行われます。</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
 <span><span class="va">mcmc_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>

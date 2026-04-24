@@ -39,7 +39,8 @@
     <li><a class="dropdown-item" href="articles/introduction.html">Introduction</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
-    <li><a class="dropdown-item" href="articles/ja-introduction.html">日本語紹介</a></li>
+    <li><a class="dropdown-item" href="articles/ja-introduction.html">パッケージ紹介</a></li>
+    <li><a class="dropdown-item" href="articles/ja-quick_start.html">クイックスタート</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="articles/index.html">すべての記事</a></li>
   </ul>
@@ -60,7 +61,7 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="bayesrtmb">BayesRTMB<a class="anchor" aria-label="anchor" href="#bayesrtmb"></a>
 </h1></div>
-<p><strong>Language / 言語</strong>: <a href="articles/introduction.html">English introduction</a> | <a href="articles/ja-introduction.html">日本語紹介</a></p>
+<p><strong>Language / 言語</strong>: <a href="articles/introduction.html">English introduction</a> | <a href="articles/ja-introduction.html">日本語トップ</a></p>
 <p><strong>BayesRTMB</strong> is an R package for fast, flexible, and compile-free Bayesian modeling.</p>
 <p>Powered by <strong>RTMB</strong> (R template Model Builder) as its automatic differentiation engine, BayesRTMB allows you to write models natively in R with a syntax similar to Stan, while eliminating the need for lengthy C++ compilation times.</p>
 <div class="section level2">
@@ -98,13 +99,26 @@
 <p>You can install the development version from GitHub with:</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"YOUR_GITHUB_NAME/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="important-note-for-windows-users">Important Note for Windows Users<a class="anchor" aria-label="anchor" href="#important-note-for-windows-users"></a>
+</h3>
+<p>Since BayesRTMB depends on C++ libraries through the <code>RTMB</code> and <code>TMB</code> ecosystems, Windows users <strong>must install Rtools</strong> to compile the underlying dependencies.</p>
+<ol style="list-style-type: decimal">
+<li>Download and install the appropriate version of <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> that matches your R version (e.g., Rtools44 for R 4.4.x).</li>
+<li>After installation, restart RStudio.</li>
+<li>You can verify if Rtools is correctly installed and recognized by your system by running:</li>
+</ol>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># If TRUE is returned, your system is ready to build packages.</span></span>
+<span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="basic-usage">Basic Usage<a class="anchor" aria-label="anchor" href="#basic-usage"></a>
 </h2>
 <p>A model in BayesRTMB is defined by combining your data with an <code><a href="reference/rtmb_code.html">rtmb_code()</a></code> block. Here is a simple example of estimating a mean and standard deviation.</p>
-<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 1. Prepare data</span></span>
@@ -140,7 +154,7 @@
 <h2 id="advanced-inference">Advanced Inference<a class="anchor" aria-label="anchor" href="#advanced-inference"></a>
 </h2>
 <p>BayesRTMB provides a unified interface for various inference methods using R6 objects. You can easily apply different algorithms to the exact same model object.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Maximum a Posteriori (MAP) estimation</span></span>
 <span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -151,7 +165,7 @@
 <h3 id="dealing-with-random-effects">Dealing with Random Effects<a class="anchor" aria-label="anchor" href="#dealing-with-random-effects"></a>
 </h3>
 <p>For hierarchical models, you can declare parameters as random effects. BayesRTMB can utilize RTMB’s <strong>Laplace approximation</strong> to integrate them out, significantly speeding up both MAP and NUTS.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_hierarchical</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">mu_global</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
@@ -173,7 +187,7 @@
 <h2 id="model-comparison--bayes-factors">Model Comparison &amp; Bayes Factors<a class="anchor" aria-label="anchor" href="#model-comparison--bayes-factors"></a>
 </h2>
 <p>BayesRTMB integrates bridge sampling to easily compute marginal likelihoods for model comparison. You can evaluate the strength of evidence for one model over another using Bayes factors.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Assume fit_model1 and fit_model2 are MCMC_Fit objects</span></span>
 <span><span class="co"># Compute marginal likelihoods via Bridge Sampling</span></span>
 <span><span class="va">bs1</span> <span class="op">&lt;-</span> <span class="va">fit_model1</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span>
@@ -187,7 +201,7 @@
 <h2 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a>
 </h2>
 <p>The package includes built-in functions to visualize posterior distributions and diagnose MCMC performance quickly.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Extract the underlying array of samples</span></span>
 <span><span class="va">samples</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="va">fit</span></span>
 <span></span>
@@ -204,7 +218,7 @@
 <h2 id="built-in-wrappers">Built-in Wrappers<a class="anchor" aria-label="anchor" href="#built-in-wrappers"></a>
 </h2>
 <p>If you don’t want to write model code from scratch, BayesRTMB offers wrapper functions for common tasks, complete with automated weakly informative priors.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Bayesian Two-Sample T-Test</span></span>
 <span><span class="co"># Automatically scales priors based on y_range</span></span>
 <span><span class="va">mdl_test</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span></span>
@@ -221,7 +235,7 @@
 <ul class="list-unstyled">
 <li><a href="https://github.com/norimune/BayesRTMB/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/norimune/BayesRTMB/issues" class="external-link">Report a bug</a></li>
-<li><a href="articles/ja-introduction.html">日本語紹介ページ</a></li>
+<li><a href="articles/ja-introduction.html">パッケージ紹介</a></li>
 <li><a href="articles/introduction.html">English introduction</a></li>
 </ul>
 </div>

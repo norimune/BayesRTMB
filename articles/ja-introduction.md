@@ -25,14 +25,35 @@ BayesRTMB には、次のような特徴があります。
   [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
   などのラッパー関数**で、標準的な分析をすぐに始められる
 
-### インストール
+### インストール方法
 
-GitHub 版をインストールする場合は、次のようにします。
+GitHubから開発版をインストールできます。
 
 ``` r
-# install.packages("pak")
-pak::pak("norimune/BayesRTMB")
-library(BayesRTMB)
+# install.packages("remotes")
+remotes::install_github("norimune/BayesRTMB")
+```
+
+#### Windows ユーザーへの重要なお知らせ
+
+BayesRTMB は裏側の計算エンジンとして `RTMB` や `TMB`
+を使用しており、これらは C++
+のライブラリに依存しています。そのため、Windows
+環境でパッケージをインストールするには、C++
+のコードをコンパイルするためのツールである **Rtools
+のインストールが必須** となります。
+
+1.  ご自身の R のバージョンに合った
+    [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
+    をダウンロードしてインストールしてください（例: R 4.4.x
+    をお使いの場合は Rtools44）。
+2.  インストール完了後、RStudio を再起動します。
+3.  以下のコードを実行し、Rtools
+    がシステムに正しく認識されているかを確認できます。
+
+``` r
+# 実行結果として TRUE が返ってくれば、コンパイル環境の構築は成功です。
+pkgbuild::check_build_tools(debug = TRUE)
 ```
 
 ### 基本の流れ
