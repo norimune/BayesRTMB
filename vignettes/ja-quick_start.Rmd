@@ -233,8 +233,40 @@ opt_hlm <- mdl_hlm$optimize(num_estimate = 4, laplace = TRUE)
 opt_hlm$summary()
 ```
 
+## MCMC
+
+階層モデルでも `sample()` によってMCMC推定を行えます。
+チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE` を指定して並列計算することもできます(下ではFALSEにしています)。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります。
+収束診断を確認しながら、必要なら `warmup` や `sampling` を増やしていきます。
+
+```{r results = "hide"}
+mcmc_hlm <- mdl_hlm$sample(sampling = 2000,
+                           warmup = 2000,
+                           parallel = TRUE)
+```
+
+```{r}
+mcmc_hlm$summary()
+```
+
+
+MCMCでもlaplace近似を実行できます。推定結果は変わりませんが、MCMCの自己相関は下がりやすいので、収束は安定します。ただ、推定時間は長くなるので、一長一短です。MCMCで十分収束するなら、laplace近似を特別使う必要はないかも知れません。
+ただ、WAICなどの予測指標を使うとき、階層化するときとしないときの比較が難しいので、laplace近似が自動でできると便利なときもあります。
+
+```{r results = "hide"}
+mcmc_hlm <- mdl_hlm$sample(sampling = 1000,
+                           warmup = 1000,
+                           parallel = FALSE,
+                           laplace = TRUE)
+```
+
+```{r}
+mcmc_hlm$summary()
+```
+
+
 ## 変分推論 (ADVI)
-階層モデルは MCMC だと時間がかかることがありますが、ADVI を使うと近似的に素早く分布を得られます。局所解に陥るのを防ぐため、`parallel = TRUE` と初期値の指定を組み合わせて複数回推定を行うのが安全です。
+階層モデルは MCMC だと時間がかかることがありますが、ADVI を使うと近似的に素早く分布を得られます。局所解に陥るのを防ぐため、`parallel = TRUE` と初期値の指定を組み合わせて複数回推定を行うのが安全です（下では直列にしています）。
 
 ```{r results = "hide", message=FALSE, warning=FALSE}
 # lme4 を使って初期値を大まかに設定
@@ -242,7 +274,7 @@ result_lmer <- lme4::lmer(weight ~ Time + Diet + (1|Chick), data = ChickWeight)
 
 vb_hlm <- mdl_hlm$variational(
   iter = 7000,
-  parallel = TRUE,
+  parallel = FALSE,
   init = list(alpha = result_lmer@beta[1], beta = result_lmer@beta[-1]),
   method = "fullrank", # 事後分布の相関も考慮
   laplace = TRUE
