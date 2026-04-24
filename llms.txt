@@ -336,4 +336,4 @@ BayesRTMB の概要と使い方を日本語でまとめた記事です。
   日本語クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
 
   BayesRTMB
-  の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して実践的に紹介します。
+  の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。
