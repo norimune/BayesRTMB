@@ -255,9 +255,16 @@ Posterior draws on the unconstrained scale.
 \subsection{Method \code{log_prob()}}{
 Evaluate log-probability values.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$log_prob()}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$log_prob(safe = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{safe}}{Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.}
+}
+\if{html}{\out{</div>}}
+}
 \subsection{Returns}{
 Numeric vector of log-probability values.
 }

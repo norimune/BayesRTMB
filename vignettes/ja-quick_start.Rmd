@@ -361,7 +361,7 @@ alpha_init <- result@beta[1]
 beta_init <- result@beta[-1]
 
 vb_hlm <- mdl_hlm$variational(
-  iter = 15000,
+  iter = 7000,
   parallel = TRUE,
   init = list(alpha = alpha_init, beta = beta_init),
   method = "fullrank",

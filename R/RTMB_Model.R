@@ -1333,24 +1333,24 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(use_random)) {
           orig_fn <- ad_obj$fn
           orig_gr <- ad_obj$gr
-          idx_fixed <- ad_obj$env$lfixed()
-          P_all <- length(ad_obj$env$last.par)
+          idx_fixed_mask <- ad_obj$env$lfixed()
+          n_fixed <- sum(idx_fixed_mask)
 
           ad_obj$fn <- function(x, ...) {
-            if (length(x) == P_all) x <- x[idx_fixed]
+            if (length(x) != n_fixed) {
+              x <- x[idx_fixed_mask]
+            }
             orig_fn(x, ...)
           }
           ad_obj$gr <- function(x, ...) {
-            is_full <- (length(x) == P_all)
-            if (is_full) x <- x[idx_fixed]
-            g <- orig_gr(x, ...)
-
-            if (is_full) {
-              g_full <- rep(0, P_all)
-              g_full[idx_fixed] <- g
+            is_wrong_len <- (length(x) != n_fixed)
+            if (is_wrong_len) {
+              g <- orig_gr(x[idx_fixed_mask], ...)
+              g_full <- rep(0, length(x))
+              g_full[idx_fixed_mask] <- g
               return(g_full)
             }
-            return(g)
+            return(orig_gr(x, ...))
           }
         }
 

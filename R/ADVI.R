@@ -293,7 +293,11 @@ ADVI_method <- function(model, par_list, pl_full,
     zeta_sample <- fit_matrix[i, ]
     lp_final[i] <- -model$fn(zeta_sample)
 
-    para_list_res <- model$env$parList(x = as.numeric(model$env$last.par))
+    if (laplace && length(model$env$random) > 0) {
+      para_list_res <- model$env$parList(x = as.numeric(zeta_sample[model$env$lfixed()]))
+    } else {
+      para_list_res <- model$env$parList(x = as.numeric(zeta_sample))
+    }
 
     con_list <- to_constrained(para_list_res, par_list)
     para_final[i, ] <- unlist(con_list, use.names = FALSE)
@@ -339,7 +343,11 @@ ADVI_method <- function(model, par_list, pl_full,
     zeta_hist <- mu_history[i, ]
 
     model$fn(zeta_hist)
-    para_list_res <- model$env$parList(x = as.numeric(model$env$last.par))
+    if (laplace && length(model$env$random) > 0) {
+      para_list_res <- model$env$parList(x = as.numeric(zeta_hist[model$env$lfixed()]))
+    } else {
+      para_list_res <- model$env$parList(x = as.numeric(zeta_hist))
+    }
 
     con_list <- to_constrained(para_list_res, par_list)
     para_hist_all <- unlist(con_list, use.names = FALSE)
