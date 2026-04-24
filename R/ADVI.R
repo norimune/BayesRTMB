@@ -305,6 +305,7 @@ ADVI_method <- function(model, par_list, pl_full,
     }
   }
 
+  mu_hist_filled <- !is.na(mu_history[, 1])
   valid_hist_idx <- which(mu_hist_filled & apply(mu_history, 1, function(z) all(is.finite(z))))
 
   mu_hist_constrained <- matrix(

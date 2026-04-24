@@ -319,8 +319,8 @@ VB_Fit <- R6::R6Class(
           map = map_val,
           q2.5 = unname(q95[1]),
           q97.5 = unname(q95[2]),
-          `Max rel_obj` = max_rel_obj,
-          rhat = rhat_val,
+          #`Max rel_obj` = max_rel_obj,
+          #rhat = rhat_val,
           stringsAsFactors = FALSE,
           check.names = FALSE
         )

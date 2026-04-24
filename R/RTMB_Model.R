@@ -991,27 +991,52 @@ RTMB_Model <- R6::R6Class(
       P_fixed <- length(pl_fixed$names)
       P_random <- if(!is.null(pl_random)) length(pl_random$names) else 0
 
+      # --- Set up parallel plan early to allow messaging ---
+      if (parallel) {
+        if (inherits(future::plan(), "sequential")) {
+          if (.Platform$OS.type == "unix") {
+            future::plan(future::multicore, workers = chains)
+          } else {
+            future::plan(future::multisession, workers = chains)
+          }
+        }
+        cat(paste0("Starting parallel sampling (chains = ", chains, ")...\n"))
+      } else {
+        cat(paste0("Starting sequential sampling (chains = ", chains, ")...\n"))
+      }
+
+      # --- Data extraction to minimize serialization payload to workers ---
+      local_data       <- self$data
+      local_par_list   <- self$par_list
+      local_pl_full    <- self$pl_full
+      local_map        <- self$map
+      local_log_prob   <- self$log_prob
+      local_transform  <- self$transform
+
+      random_effs <- names(local_par_list)[random_flags]
+      use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
+
+      base_init <- self$prepare_init(init)
+
+      # --- Worker function definition without self references ---
       run_chain <- function(c, p_callback = NULL) {
         library(BayesRTMB)
-        base_init <- self$prepare_init(init)
 
         unc_init_list <- to_unconstrained(
-          constrained_vector_to_list(base_init, self$par_list),
-          self$par_list
+          constrained_vector_to_list(base_init, local_par_list),
+          local_par_list
         )
         unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
         if (init_jitter > 0) {
           jitter_vec <- rnorm(length(unc_init_vec), mean = 0, sd = init_jitter)
-
-          # Do not add jitter to fixed parameters (elements mapped to NA, e.g., in null_model)
-          if (!is.null(self$map)) {
+          if (!is.null(local_map)) {
             idx <- 1
-            for (name in names(self$par_list)) {
-              L_unc <- self$par_list[[name]]$unc_length
+            for (name in names(local_par_list)) {
+              L_unc <- local_par_list[[name]]$unc_length
               if (L_unc > 0) {
-                if (!is.null(self$map[[name]])) {
-                  is_fixed <- is.na(self$map[[name]])
+                if (!is.null(local_map[[name]])) {
+                  is_fixed <- is.na(local_map[[name]])
                   jitter_vec[idx:(idx + L_unc - 1)][is_fixed] <- 0
                 }
                 idx <- idx + L_unc
@@ -1020,13 +1045,30 @@ RTMB_Model <- R6::R6Class(
           }
           unc_init_vec <- unc_init_vec + jitter_vec
         }
+        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, self$par_list)
-        init_full_list <- to_constrained(unc_init_list_new, self$par_list)
-        init_full <- unlist(init_full_list, use.names = FALSE)
+        f_ad <- function(y_unc_list) {
+          para <- to_constrained(y_unc_list, local_par_list)
+          if (!is.null(local_transform)) {
+            tran_res <- local_transform(local_data, para)
+            para <- c(para, tran_res)
+          }
+          lp <- local_log_prob(local_data, para)
+          lj <- calc_log_jacobian(y_unc_list, local_par_list, only_random = FALSE)
+          return(-(lp + lj))
+        }
 
-        ad_setup <- self$build_ad_obj(init = init_full, laplace = laplace, jacobian_target = "all")
-        ad_obj <- ad_setup$ad_obj
+        ad_obj <- tryCatch({
+          RTMB::MakeADFun(
+            func = f_ad,
+            parameters = unc_init_list_new,
+            random = use_random,
+            map = local_map,
+            silent = TRUE
+          )
+        }, error = function(e) {
+          stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
+        })
 
         res <- NUTS_method(
           model = ad_obj,
@@ -1040,11 +1082,11 @@ RTMB_Model <- R6::R6Class(
           save_info = save_info
         )
 
-        P_all_true <- length(self$pl_full$names)
-        iter <- sampling + warmup
-        para_final <- array(NA, dim = c(iter, P_all_true))
+        P_all_true <- length(local_pl_full$names)
+        iter_total <- sampling + warmup
+        para_final <- array(NA, dim = c(iter_total, P_all_true))
 
-        for (i in 1:iter) {
+        for (i in 1:iter_total) {
           x_in <- as.numeric(res$para_fixed[i, ])
 
           if (laplace && length(ad_obj$env$random) > 0) {
@@ -1054,7 +1096,7 @@ RTMB_Model <- R6::R6Class(
             para_list <- ad_obj$env$parList(x = x_in)
           }
 
-          con_list <- to_constrained(para_list, self$par_list)
+          con_list <- to_constrained(para_list, local_par_list)
           para_final[i, ] <- unlist(con_list, use.names = FALSE)
         }
         res$para <- para_final
@@ -1062,10 +1104,9 @@ RTMB_Model <- R6::R6Class(
         return(res)
       }
 
+      # --- Execution block ---
       results_list <- list()
       if (parallel) {
-        future::plan(future::multisession, workers = chains)
-        cat(paste0("Starting parallel sampling (chains = ", chains, ")...\n"))
         iter <- sampling + warmup
         total_updates <- chains * (1+floor(iter / 100))
 
@@ -1082,23 +1123,21 @@ RTMB_Model <- R6::R6Class(
               })
             }, future.seed = TRUE,
             future.packages = c("RTMB","BayesRTMB"),
-            future.globals = TRUE
+            future.globals = FALSE  # Automatic global search disabled for performance
             )
           }, warning = function(w) {
-            # Catch and suppress warning messages for both English and Japanese environments
             if (grepl("package:BayesRTMB", conditionMessage(w))) {
               invokeRestart("muffleWarning")
             }
           })
         })
-        future::plan(future::sequential)
       } else {
-        cat(paste0("Starting sequential sampling (chains = ", chains, ")...\n"))
         results_list <- lapply(1:chains, function(c) {
           run_chain(c, p_callback = NULL)
         })
       }
 
+      # --- Compile outputs ---
       mcmc_index <- seq(from = (warmup+1), to = (warmup+sampling), by = thin)
       accept_mat <- array(NA, dim=c(length(mcmc_index), chains))
       td_mat <- array(NA, dim=c(length(mcmc_index), chains))
@@ -1153,7 +1192,6 @@ RTMB_Model <- R6::R6Class(
         for (c in 1:chains) {
           backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
 
-          # Create a data frame summarizing sampler metrics
           df_metrics <- data.frame(
             iteration = mcmc_index,
             accept    = accept_mat[, c],
@@ -1203,7 +1241,7 @@ RTMB_Model <- R6::R6Class(
     #' @param alpha Numeric; learning rate for the Adam optimizer. Default is 0.01.
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is TRUE.
     #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 100.
-    #' @param method Vector; method of Variational Inference Default is meanfield.
+    #' @param method Character; method of Variational Inference. Default is "meanfield".
     #' @param parallel Logical; whether to run estimations in parallel. Default is FALSE.
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
@@ -1230,61 +1268,105 @@ RTMB_Model <- R6::R6Class(
         save_info <- NULL
       }
 
-      run_advi <- function(c) {
-        library(BayesRTMB)
-        if (print_freq > 0) cat(sprintf("\n--- Starting VB estimation: est%d ---\n", c))
+      # --- Set up parallel plan early to allow messaging ---
+      if (parallel && num_estimate > 1) {
+        if (inherits(future::plan(), "sequential")) {
+          if (.Platform$OS.type == "unix") {
+            future::plan(future::multicore, workers = num_estimate)
+          } else {
+            future::plan(future::multisession, workers = num_estimate)
+          }
+        }
+        cat(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")...\n"))
+      } else {
+        cat(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")...\n"))
+      }
 
-        ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
+      # --- Data extraction to minimize serialization payload to workers ---
+      local_data       <- self$data
+      local_par_list   <- self$par_list
+      local_pl_full    <- self$pl_full
+      local_map        <- self$map
+      local_log_prob   <- self$log_prob
+      local_transform  <- self$transform
+
+      random_flags <- sapply(local_par_list, function(x) isTRUE(x$random))
+      random_effs  <- names(local_par_list)[random_flags]
+      use_random   <- if (laplace && length(random_effs) > 0) random_effs else NULL
+
+      base_init <- self$prepare_init(init)
+
+      # --- Worker function definition without self references ---
+      run_advi_worker <- function(c, p_callback = NULL, p_interval = 0) {
+        library(BayesRTMB)
+
+        unc_init_list <- to_unconstrained(
+          constrained_vector_to_list(base_init, local_par_list),
+          local_par_list
+        )
+        unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
+        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
+
+        f_ad <- function(y_unc_list) {
+          para <- to_constrained(y_unc_list, local_par_list)
+          if (!is.null(local_transform)) {
+            tran_res <- local_transform(local_data, para)
+            para <- c(para, tran_res)
+          }
+          lp <- local_log_prob(local_data, para)
+          lj <- calc_log_jacobian(y_unc_list, local_par_list, only_random = FALSE)
+          return(-(lp + lj))
+        }
+
+        ad_obj <- tryCatch({
+          RTMB::MakeADFun(
+            func = f_ad,
+            parameters = unc_init_list_new,
+            random = use_random,
+            map = local_map,
+            silent = TRUE
+          )
+        }, error = function(e) {
+          stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
+        })
 
         res <- ADVI_method(
-          model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
+          model = ad_obj, par_list = local_par_list, pl_full = local_pl_full,
           iter = iter, tol_rel_obj = tol_rel_obj,
           window_size = window_size, num_samples = num_samples, alpha = alpha,
-          laplace = laplace, print_freq = print_freq, method = method
+          laplace = laplace,
+          print_freq = if(is.null(p_callback)) print_freq else 0,
+          method = method,
+          update_progress = p_callback,
+          update_interval = p_interval
         )
         return(res)
       }
 
+      # --- Execution block ---
       results_list <- list()
       if (parallel && num_estimate > 1) {
-        future::plan(future::multisession, workers = num_estimate)
-        cat(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")...\n"))
-
         if (requireNamespace("progressr", quietly = TRUE)) {
           progressr::handlers(global = TRUE)
 
-          update_interval <- 100
+          # Dynamically scale update interval (minimum 1)
+          update_interval <- max(1, floor(iter / 100))
           steps_per_chain <- ceiling(iter / update_interval)
           total_steps <- steps_per_chain * num_estimate
 
           results_list <- progressr::with_progress({
             p <- progressr::progressor(steps = total_steps)
 
-            run_advi_prog <- function(c) {
-              library(BayesRTMB)
-              ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = "all")
-
-              update_prog_fn <- function(amount = 1) {
-                p(amount = amount)
-              }
-
-              res <- ADVI_method(
-                model = ad_setup$ad_obj, par_list = self$par_list, pl_full = self$pl_full,
-                iter = iter, tol_rel_obj = tol_rel_obj,
-                window_size = window_size, num_samples = num_samples, alpha = alpha,
-                laplace = laplace, print_freq = 0, method = method,
-                update_progress = update_prog_fn, update_interval = update_interval
-              )
-              return(res)
-            }
-
             withCallingHandlers({
               future.apply::future_lapply(1:num_estimate, function(c) {
-                run_advi_prog(c)
-              }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
+                run_advi_worker(
+                  c = c,
+                  p_callback = function(amount = 1) p(amount = amount),
+                  p_interval = update_interval
+                )
+              }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"), future.globals = FALSE)
             }, warning = function(w) {
-              msg <- conditionMessage(w)
-              if (grepl("BayesRTMB", msg)) {
+              if (grepl("BayesRTMB", conditionMessage(w))) {
                 invokeRestart("muffleWarning")
               }
             })
@@ -1293,19 +1375,18 @@ RTMB_Model <- R6::R6Class(
         } else {
           cat("* Install the 'progressr' package to display a progress bar.\n")
           results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
-            run_advi(c)
-          }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"))
+            run_advi_worker(c, p_callback = NULL, p_interval = 0)
+          }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"), future.globals = FALSE)
         }
 
-        future::plan(future::sequential)
       } else {
-        cat(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")...\n"))
         results_list <- lapply(1:num_estimate, function(c) {
-          run_advi(c)
+          if (print_freq > 0) cat(sprintf("\n--- Starting VB estimation: est%d ---\n", c))
+          run_advi_worker(c, p_callback = NULL, p_interval = 0)
         })
       }
 
-      # Summarize estimation results
+      # --- Summarize estimation results ---
       P_fixed <- dim(results_list[[1]]$fit)[3] - 1
       P_random <- if (!is.null(results_list[[1]]$random_fit)) dim(results_list[[1]]$random_fit)[3] else 0
 
@@ -1340,7 +1421,7 @@ RTMB_Model <- R6::R6Class(
         rel_obj_vec[c] <- res$rel_obj_final
       }
 
-      # --- Save posterior samples of each estimate to CSV in bulk after estimation is complete ---
+      # --- Save posterior samples of each estimate to CSV ---
       if (!is.null(save_info)) {
         for (c in 1:num_estimate) {
           backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
@@ -1403,7 +1484,6 @@ RTMB_Model <- R6::R6Class(
         cat("Calculating generated quantities...\n")
         res_obj$generated_quantities(self$code$generate)
       }
-
 
       return(res_obj)
     },

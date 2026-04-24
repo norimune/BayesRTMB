@@ -167,10 +167,12 @@ Extract posterior draws for selected parameters.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VB_Fit$draws(
   pars = NULL,
+  chains = NULL,
+  best_chains = NULL,
   inc_random = FALSE,
   inc_transform = TRUE,
   inc_generate = TRUE,
-  best_only = TRUE
+  best_only = FALSE
 )}\if{html}{\out{</div>}}
 }
 
@@ -179,13 +181,17 @@ Extract posterior draws for selected parameters.
 \describe{
 \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
 
+\item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO. If supplied, chains with the highest ELBO are retained.}
+
 \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
 
 \item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
 
 \item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
 
-\item{\code{best_only}}{Logical; whether to extract only from the chain with the maximum ELBO. Default is TRUE.}
+\item{\code{best_only}}{Logical; whether to extract only from the chain with the maximum ELBO. Default is FALSE unless explicitly requested.}
 }
 \if{html}{\out{</div>}}
 }
@@ -197,7 +203,7 @@ A 3D array of posterior draws `[iterations, chains, parameters]`.
 \if{html}{\out{<a id="method-advi_fit-summary"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-summary}{}}}
 \subsection{Method \code{summary()}}{
-Summarize posterior draws. (Note: Rhat and ESS are not computed for ADVI).
+Summarize posterior draws.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{VB_Fit$summary(
   pars = NULL,

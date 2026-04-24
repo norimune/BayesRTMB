@@ -338,12 +338,42 @@ opt_hlm$random_effects$Estimate |> hist()
 収束診断を確認しながら、必要なら `warmup` や `sampling` を増やしていきます。
 
 ```{r results = "hide"}
-mcmc_hlm <- mdl_hlm$sample(parallel=TRUE)
+mcmc_hlm <- mdl_hlm$sample(parallel = TRUE)
 ```
 
 ```{r}
 mcmc_hlm$summary()
 ```
+
+## ADVI
+
+複雑な階層モデルでは、MAPがうまく解を出せず、またMCMCではとても時間がかかることがあります。そういうときに、近似的に解を得たいときには変分ベイズ法が便利です。
+変分ベイズ法も並列化が可能です。
+ただし、複雑なモデルになると収束判断が難しいので、`plot_elbo()`メソッドで収束しているか確認するのが重要です。変分ベイズ法は初期値依存があるので、大雑把にでも初期値を与えておくと収束が安定します。
+
+```{r　results = "hide"}
+result <- lme4::lmer(weight ~ Time + Diet +(1|Chick), data = ChickWeight)
+alpha_init <- result@beta[1]
+beta_init <- result@beta[-1]
+
+vb_hlm <- mdl_hlm$variational(
+  iter = 7000,
+  parallel = TRUE,
+  init = list(alpha = alpha_init, beta = beta_init)
+)
+```
+
+収束が悪い推定結果がある場合、bestなものだけを見ることができます。
+これで過去1000回分のELBOの推定が真横にランダムに並んでいれば大丈夫です。
+右上がりになっている場合はまだ収束していない可能性があります。
+
+```{r}
+vb_hlm$plot_elbo(ests="best")
+
+vb_hlm$summary()
+```
+
+
 
 # まとめ
 
