@@ -370,7 +370,7 @@ mcmc_hlm$summary()
 
 また、ADVIでもlaplace近似が使えます。さらにmethodを`fullrank`にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的にはMAPと同様の結果がでるはずです。ただし、laplace近似を実行すると計算が遅くなります。
 
-```{r　results = "hide"}
+```{r results = "hide"}
 result <- lme4::lmer(weight ~ Time + Diet +(1|Chick), data = ChickWeight)
 alpha_init <- result@beta[1]
 beta_init <- result@beta[-1]
