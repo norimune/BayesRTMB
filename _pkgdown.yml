@@ -42,3 +42,4 @@ articles:
   desc: BayesRTMB の概要と使い方を日本語でまとめた記事です。
   contents:
   - ja-introduction
+  - ja-quick_start

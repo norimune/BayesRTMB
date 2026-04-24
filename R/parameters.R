@@ -21,8 +21,8 @@
 #'
 #' \strong{Constrained Vectors:}
 #' \itemize{
-#'   \item \code{"simplex"}: A vector where all elements are $\ge 0$ and $\sum x = 1$.
-#'   \item \code{"sum_to_zero"}: A vector of length $K$ where $\sum x = 0$. (Estimated using $K-1$ degrees of freedom).
+#'   \item \code{"simplex"}: A vector where all elements are \eqn{\ge 0} and \eqn{\sum x = 1}.
+#'   \item \code{"sum_to_zero"}: A vector of length \eqn{K} where \eqn{\sum x = 0}. (Estimated using \eqn{K-1} degrees of freedom).
 #' }
 #'
 #' \strong{Correlation and Covariance Matrices:}

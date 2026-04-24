@@ -160,7 +160,7 @@ mcmc_lm$summary()
 `rtmb_ttest()`では、簡単にベイジアンt検定が可能です。
 null_modelは、パラメータを0に固定したい変数を選びます。すると、自動的にnull_modelのMCMCが始まり、ベイズファクターの計算もできます。
 
-```{r}
+```{r eval=FALSE}
 mdl_ttest <- rtmb_ttest(y1, y2, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
