@@ -578,7 +578,7 @@ rtmb_lm <- function(formula, data,
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
 #' @param prior List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
 #' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
-#' @examples inst/examples/ex_fa.R
+#' @example inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
@@ -928,7 +928,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 #' @param type Character string for the data type: "binary" or "ordered".
 #' @param prior List of hyperparameters for prior distributions.
 #' @param init List of initial values.
-#' @examples inst/examples/ex_irt.R
+#' @example inst/examples/ex_irt.R
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1),
@@ -1115,7 +1115,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' @param init List of initial values (optional).
 #' @param null Target when creating a null model (e.g., \code{"corr"}). Optional.
 #' @return An instance of the \code{RTMB_Model} class.
-#' @examples inst/examples/ex_corr.R
+#' @example inst/examples/ex_corr.R
 #' @export
 rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0), init = NULL, null = NULL) {
 
@@ -1222,7 +1222,7 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
 #' @return An \code{RTMB_Model} object.
-#' @examples inst/examples/ex_ttest.R
+#' @example inst/examples/ex_ttest.R
 #' @export
 rtmb_ttest <- function(y1, y2, r = 0.707,
                        y_range = NULL,

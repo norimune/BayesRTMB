@@ -13,7 +13,7 @@ which internally adds the log-density to the model's total log-posterior.
 In `rtmb_code`, you can specify distributions in two ways:
 \itemize{
   \item \strong{Sampling Syntax (Recommended):} \code{y ~ normal(mu, sigma)}
-  \item \strong{Explicit Function Call:} \code{target <- target + normal_lpdf(y, mu, sigma)}
+  \item \strong{Explicit Function Call:} \code{lp <- lp + normal_lpdf(y, mu, sigma)}
 }
 
 \strong{Continuous Distributions (LPDF):}
