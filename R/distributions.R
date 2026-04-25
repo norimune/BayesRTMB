@@ -552,17 +552,34 @@ normal_mixture_lpdf <- function(x, pi_w, mean, sd) {
   return(lp)
 }
 
-#' Sum-to-zero multivariate normal log-probability density function
+#' Centered / Centered matrix multivariate normal log-probability density function
 #'
-#' @param x Vector of quantiles.
-#' @param sigma Standard deviation parameter.
-#' @param K Dimension. If NULL, inferred from the length of x.
+#' @param x Vector or matrix of quantiles. If a matrix, it assumes each column sums to zero.
+#' @param sigma Standard deviation parameter. Can be a scalar, or a vector of length ncol(x) if x is a matrix.
+#' @param K Dimension. If NULL, inferred from the length or nrow of x.
 #' @return The log-density.
 #' @keywords internal
-centered_multi_normal_lpdf <- function(x, sigma = 1, K = NULL) {
-  if (is.null(K)) K <- length(x)
-  lp <- -0.5 * (K - 1) * log(2 * pi) - (K - 1) * log(sigma) - 0.5 * sum(x^2) / sigma^2
-  return(lp)
+centered_multi_normal_lpdf <- function(x, sigma, K = NULL) {
+  if (is.matrix(x)) {
+    R <- nrow(x)
+    C <- ncol(x)
+    if (length(sigma) == 1) {
+      df <- (R - 1) * C
+      lp <- -0.5 * df * log(2 * pi) - df * log(sigma) - 0.5 * sum(x^2) / sigma^2
+    } else {
+      lp <- 0
+      for (c in 1:C) {
+        x_c <- x[, c]
+        sd_c <- sigma[c]
+        lp <- lp - 0.5 * (R - 1) * log(2 * pi) - (R - 1) * log(sd_c) - 0.5 * sum(x_c^2) / sd_c^2
+      }
+    }
+    return(lp)
+  } else {
+    if (is.null(K)) K <- length(x)
+    lp <- -0.5 * (K - 1) * log(2 * pi) - (K - 1) * log(sigma) - 0.5 * sum(x^2) / sigma^2
+    return(lp)
+  }
 }
 
 #' Centered triangular multivariate normal log-probability density function
@@ -571,7 +588,7 @@ centered_multi_normal_lpdf <- function(x, sigma = 1, K = NULL) {
 #' @param sigma Standard deviation parameter(s).
 #' @return The log-density.
 #' @keywords internal
-centered_tri_multi_normal_lpdf <- function(x, sigma = 1) {
+centered_tri_multi_normal_lpdf <- function(x, sigma) {
   R <- nrow(x)
   C <- ncol(x)
   max_d <- min(C, R - 1)
