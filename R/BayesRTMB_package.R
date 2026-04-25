@@ -1,7 +1,5 @@
-#' @keywords internal
-#' @aliases BayesRTMB-package
-"_PACKAGE"
-
+#' BayesRTMB: Bayesian Modeling with RTMB
+#'
 #' @description
 #' The `BayesRTMB` package provides an intuitive, R-based Bayesian modeling
 #' environment using the `RTMB` package as its computational backend.
@@ -29,5 +27,5 @@
 #' * [https://github.com/norimune/BayesRTMB](https://github.com/norimune/BayesRTMB)
 #' * Report bugs at [https://github.com/norimune/BayesRTMB/issues](https://github.com/norimune/BayesRTMB/issues)
 #'
-#' @name BayesRTMB
-NULL
+#' @keywords internal
+"_PACKAGE"
