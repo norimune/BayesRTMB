@@ -559,7 +559,7 @@ normal_mixture_lpdf <- function(x, pi_w, mean, sd) {
 #' @param K Dimension. If NULL, inferred from the length of x.
 #' @return The log-density.
 #' @keywords internal
-centered_multi_norm_lpdf <- function(x, sigma = 1, K = NULL) {
+centered_multi_normal_lpdf <- function(x, sigma = 1, K = NULL) {
   if (is.null(K)) K <- length(x)
   lp <- -0.5 * (K - 1) * log(2 * pi) - (K - 1) * log(sigma) - 0.5 * sum(x^2) / sigma^2
   return(lp)
