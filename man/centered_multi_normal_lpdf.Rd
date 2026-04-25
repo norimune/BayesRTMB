@@ -2,21 +2,21 @@
 % Please edit documentation in R/distributions.R
 \name{centered_multi_normal_lpdf}
 \alias{centered_multi_normal_lpdf}
-\title{Sum-to-zero multivariate normal log-probability density function}
+\title{Centered / Centered matrix multivariate normal log-probability density function}
 \usage{
-centered_multi_normal_lpdf(x, sigma = 1, K = NULL)
+centered_multi_normal_lpdf(x, sigma, K = NULL)
 }
 \arguments{
-\item{x}{Vector of quantiles.}
+\item{x}{Vector or matrix of quantiles. If a matrix, it assumes each column sums to zero.}
 
-\item{sigma}{Standard deviation parameter.}
+\item{sigma}{Standard deviation parameter. Can be a scalar, or a vector of length ncol(x) if x is a matrix.}
 
-\item{K}{Dimension. If NULL, inferred from the length of x.}
+\item{K}{Dimension. If NULL, inferred from the length or nrow of x.}
 }
 \value{
 The log-density.
 }
 \description{
-Sum-to-zero multivariate normal log-probability density function
+Centered / Centered matrix multivariate normal log-probability density function
 }
 \keyword{internal}

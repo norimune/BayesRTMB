@@ -4,7 +4,7 @@
 \alias{centered_tri_multi_normal_lpdf}
 \title{Centered triangular multivariate normal log-probability density function}
 \usage{
-centered_tri_multi_normal_lpdf(x, sigma = 1)
+centered_tri_multi_normal_lpdf(x, sigma)
 }
 \arguments{
 \item{x}{Matrix of quantiles.}
