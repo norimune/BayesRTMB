@@ -1676,12 +1676,12 @@ RTMB_Model <- R6::R6Class(
       # --- 2. Classification of constraint types and construction of flat names ---
       structural_bounds <- c("ordered", "positive_ordered", "simplex",
                              "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
-                             "sum_to_zero", "centered_matrix",
+                             "centered", "centered_matrix",
                              "centered_tri", "positive_centered_tri",
                              "lower_tri_stz")
 
       no_fix_bounds <- c("simplex", "corr_matrix",
-                         "cov_matrix", "CF_cov", "sum_to_zero",
+                         "cov_matrix", "CF_cov", "centered",
                          "centered_matrix", "centered_tri",
                          "positive_centered_tri")
 

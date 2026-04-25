@@ -1,0 +1,313 @@
+---
+title: "コードの書き方 (How to write code)"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{コードの書き方}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+このページでは、BayesRTMB のコアとなる `rtmb_code` ブロックを用いたモデルの記述方法や、利用可能な確率分布・数学関数について解説します。
+
+## 1. rtmb_code の構造と役割についての概説
+
+`rtmb_code()` は、Stan に似た直感的な文法でベイズモデルを定義するための関数です。モデルは目的ごとにいくつかの「ブロック」に分けて記述します。
+
+```{r eval=FALSE}
+library(BayesRTMB)
+
+code <- rtmb_code(
+  setup = {
+    # データの事前処理や定数の定義
+  },
+  parameters = {
+    # 推定するパラメータの宣言
+  },
+  transform = {
+    # パラメータやデータを使った派生変数の計算
+  },
+  model = {
+    # 事前分布と尤度の定義
+  },
+  generate = {
+    # 事後予測や生成量の計算
+  }
+)
+```
+
+### 1-1. parameters ブロック
+モデルで推定したいパラメータを宣言するブロックです。`Dim()` 関数を用いて、変数の次元や制約（下限・上限など）を指定します。
+
+**コード例:**
+```{r eval=FALSE}
+parameters = {
+  # スカラーパラメータ（下限0の制約）
+  sigma = Dim(lower = 0)
+  
+  # ベクトルパラメータ（長さN）
+  mu = Dim(N)
+  
+  # 行列パラメータ（N行M列）
+  X = Dim(N, M)
+}
+```
+ここでは一般的な連続値のパラメータを定義していますが、`type` 引数を用いることで「相関行列」や「和がゼロになるベクトル」など、より複雑な構造を持つパラメータ（型）を定義することもできます（詳細は後述の「3. 変数の型（Dim）について」を参照してください）。
+
+### 1-2. model ブロック
+事前分布と尤度（データが生成されるプロセス）を定義する、モデルの心臓部です。Stan と同様に `~`（チルダ）を用いたサンプリング構文が推奨されています。
+
+```{r eval=FALSE}
+model = {
+  # 事前分布
+  mu ~ normal(0, 10)
+  sigma ~ exponential(1)
+
+  # 尤度
+  Y ~ normal(mu, sigma)
+}
+```
+
+内部的には、指定された確率分布の対数密度（log-density）がモデルの総対数事後確率に自動的に加算されます。サンプリング構文の代わりに `lp <- lp + normal_lpdf(Y, mu, sigma)` のように明示的に関数を呼び出すことも可能です。このとき `lp` は予約語なので、対数確率を足し合わせたいときは必ず `lp` を使ってください。
+
+### 1-3. setup ブロック
+モデルの計算が始まる前に、一度だけ実行されるブロックです。主に、R から渡された `data` リストの中身を使って、データのサイズ（行数や列数）を変数として抽出したり、計算に必要な定数を作ったりするのに使います。
+
+**コード例:**
+```{r eval=FALSE}
+setup = {
+  N <- length(Y)  # 観測データのサンプルサイズを取得
+  P <- ncol(X)    # デザイン行列の列数（説明変数の数）を取得
+}
+```
+
+### 1-4. transform ブロック
+パラメータとデータから、尤度計算に必要な派生変数（平均 `mu` や線形予測子など）を作成するブロックです。ここで作成した変数は、`model` ブロック内でそのまま使用できます。
+
+**重要なポイント:** ここで計算された派生変数はモデルオブジェクト内に自動的に保存されます。推定後に事後分布のサンプルを取得できるだけでなく、MAP推定（`optimize`）を実行した際には、デルタ法を用いてこれらの派生変数に対する標準誤差や 95% 信頼区間も自動的に計算・出力されます。
+
+### 1-5. generate ブロック
+事後予測チェック（PPC）のための予測分布や、推定パラメータから計算される新たな関心量を作成するためのブロックです。
+
+**重要なポイント:** `generate` ブロックに書かれた計算は尤度評価（AD計算）には含まれず、推定が完全に終わった後に事後的に計算することが可能です。そのため、ここにどれだけ重い計算を書いても推定速度（MAP や MCMC）には一切悪影響を与えません。
+また、モデル定義時に書き忘れた場合や後から別の量を計算したくなった場合でも、推定済みのモデルオブジェクトに対して `mdl$generated_quantities(new_generate_code)` メソッドを呼び出すことで、事後的にこれらを再計算することが可能です。
+
+## 2. 使える確率分布
+
+BayesRTMB では、`model` ブロック内で多くの確率分布を使用できます。ほとんどの1変量分布はベクトル化されており、`Y` と `mu` がベクトルの場合、一度の記述で全要素の対数密度の和を効率的に計算します。
+
+### 2-1. 一般的な確率密度、確率質量関数
+
+**連続型の確率分布（LPDF）:**
+* `normal(mean, sd)`: 正規分布。
+* `lognormal(meanlog, sdlog)`: 対数正規分布。
+* `exponential(rate)`: 指数分布。
+* `cauchy(location, scale)`: コーシー分布。
+* `student_t(df, mu, sigma)`: スチューデントのt分布。
+* `gamma(shape, rate)`: ガンマ分布。
+* `inverse_gamma(shape, scale)`: 逆ガンマ分布。
+* `beta(a, b)`: ベータ分布。
+
+**離散型の確率分布（LPMF）:**
+* `bernoulli(prob)`: ベルヌーイ分布（二値データ）。
+* `binomial(size, prob)`: 二項分布。
+* `poisson(mean)`: ポアソン分布（カウントデータ）。
+* `neg_binomial_2(mu, size)`: 負の二項分布（平均・分散パラメータ化）。
+
+### 2-2. 応用的な確率分布
+
+計算の安定性を高めたり、特殊なモデリングを行うための分布も用意されています。
+
+* `bernoulli_logit(eta)` / `binomial_logit(size, eta)`: 確率ではなく、ロジットスケールの線形予測子（eta）を直接受け取る関数です。数値的に安定します。
+* `ordered_logistic(eta, cutpoints)`: 順序ロジスティック回帰など、順序カテゴリカルデータに用います。
+* `lkj_corr(eta)`: 相関行列のための LKJ 事前分布です。
+
+### 2-3. 特殊な型のための確率分布
+
+行列や多変量データ、特定のモデル構造に特化した分布です。
+
+* `multi_normal(mean, Sigma)`: 標準的な多変量正規分布。
+* `multi_normal_CF(mean, sd, CF_Omega)`: コレスキー因子（相関行列のコレスキー分解）を利用したパラメータ化による多変量正規分布。
+* `dirichlet(alpha)`: シンプレックス（和が1になるベクトル）のためのディリクレ分布。
+* `lower_tri_normal(mean, sd)`: 下三角行列の要素に対する正規分布。
+* `centered_tri_multi_normal(sigma)`: 中心化された三角行列（識別制約に用いる）のための多変量正規分布。
+* `sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)`: 十分統計量を用いた因子分析用の尤度。大標本において非常に計算効率が高くなります。
+* `normal_mixture(pi_w, mean, sd)`: 複数の正規分布を混合させた正規混合分布。
+* `wishart(n, V)`: ウィシャート分布。
+
+## 3. 変数の型（Dim）について
+
+`parameters` ブロックでは、`Dim()` を使ってパラメータの型と次元を定義します。
+
+* **スカラー**: `Dim()` または `Dim(1)`
+* **ベクトル**: `Dim(N)`
+* **行列**: `Dim(N, M)`
+
+また、引数を使って様々な制約を持たせることができます。
+* `lower = 0, upper = 1`: 値の範囲を指定（分散や確率など）。
+* `random = TRUE`: 階層モデルにおいて、ラプラス近似の対象となるランダム効果として指定します。
+
+さらに、`type` 引数に特定のキーワードを指定することで、構造を持った複雑な型を定義できます。
+* `type = "simplex"`: すべての要素が正で、かつ和が1になるベクトル（確率の割り当てなどに使用）。
+* `type = "centered"`: すべての要素の和がゼロになるベクトル（ANOVA型の主効果などに使用）。
+* `type = "corr_matrix"`: 対角成分が1で正定値性を満たす相関行列。
+* `type = "CF_corr"`: 相関行列のコレスキー因子（相関行列そのものより計算効率が良い場合があります）。
+* `type = "lower_tri"`: 下三角行列。
+* `type = "centered_tri"`: 列ごとの和がゼロになるよう制約された下三角行列（因子分析の識別制約などに利用）。
+
+## 4. 数学関数について
+
+AD（自動微分）の計算において、オーバーフローやアンダーフローを防ぐための数値的に安定したユーティリティ関数が多数用意されています。
+
+**リンク関数・逆リンク関数:**
+* `logit(x)`: ロジット変換 `log(x/(1-x))` を計算します。
+* `inv_logit(x)`: 逆ロジット（ロジスティック）変換 `1/(1+exp(-x))` を計算します。
+
+**数値的安定化のための関数:**
+* `log_sum_exp(x)`: Log-sum-exp トリックを用いて `log(sum(exp(x)))` を安全に計算します。
+* `log1p_exp(x)`: `log(1 + exp(x))` を安定して計算します。
+* `log1m_exp(x)`: `x < 0` に対して `log(1 - exp(x))` を安定して計算します。
+* `log_softmax(x)`: softmax 関数の対数を計算します。
+* `fabs(x)`: `abs(x)` の平滑化バージョンで、ゼロ付近での微分可能性を保証します。
+
+**行列・ベクトルの変換:**
+制約のないベクトルを、特定の構造を持つ行列に変換する際に役立ちます。
+* `centered(x)`: 長さ K-1 のベクトルを、和がゼロになる長さ K のベクトルに変換します。
+* `to_lower_tri(x, M, D)`: ベクトル `x` から M x D の下三角行列を作成します。
+* `to_centered_matrix(x, R, C)`: 各列の和がゼロになる R x C の行列を作成します。
+* `to_centered_tri(x, R, C)`: 因子分析の識別制約などに用いる、列ごとの和がゼロになる下三角要素を持つ行列を作成します。
+
+**ADのための線形代数:**
+* `log_det_chol(L)`: コレスキー分解の因子 `L` から共分散行列の対数行列式を計算します。
+* `quad_form_chol(x, L)`: コレスキー因子 `L` を用いて二次形式を計算します。
+* `distance(x, y)`: 安定性のための小さな epsilon を加えて、2つのベクトル間のユークリッド距離を計算します。
+
+## 5. 複雑なモデルの例
+
+BayesRTMB の表現力を示す例として、多次元尺度法（MDS）のモデルを記述してみます。
+データには、Rに標準で組み込まれているヨーロッパの主要都市間の距離データセット `eurodist` を使用します。
+
+```{r eval=FALSE}
+# データを準備
+data(stations)
+
+Y <- stations |> as.matrix()
+data_mds <- list(Y = Y/1000)
+
+code_mds <- rtmb_code(
+  setup = {
+    N <- nrow(Y)  # 都市の数
+    D <- 2        # 推定する潜在空間の次元（今回は2次元マップを作成）
+  },
+  parameters ={
+    # 座標の原点と回転の不定性をなくすために "centered_tri" 制約を使用
+    X = Dim(c(N, D), type = "centered_tri")
+    tau = Dim(lower = 0)
+    sigma = Dim(lower = 0)
+  },
+  model = {
+    # 尤度
+    for (i in 1:(N - 1)) {
+      for (j in (i + 1):N) {
+        d_ij <- distance(X[i, ], X[j, ])
+        Y[i, j] ~ normal(d_ij, sigma)
+      }
+    }
+    # 事前分布　"centered_tri"専用の事前分布を使う
+    X ~ centered_tri_multi_normal(tau)
+    tau ~ exponential(1)
+    sigma ~ exponential(1)
+  }
+)
+
+vb_mds <- mdl_mds$variational(iter=5000,parallel=TRUE)
+vb_mds$plot_elbo()
+vb_mds
+
+opt_mds <- mdl_mds$optimize(num_estimate = 4)
+opt_mds
+
+fit_mds <- mdl_mds$sample(parallel=TRUE)
+
+# 符号の不定性でrhatが悪くなる可能性がある
+fit_mds
+
+# rotateメソッドを使って、事後分布を回転させる
+fit_mds$rotate(target = "X")
+
+# 回転後の変数は"_rot"と名前が付く
+fit_mds$summary("X_rot")
+
+# 回転後のXを使ってプロット
+X <- fit_mds$draws("X_rot") |> apply(3,mean) |> array(dim=c(ncol(Y),2))
+X |> plot(type="n")
+text(X,labels = colnames(Y))
+```
+
+### 5-2 初期値を計算してモデルオブジェクトを作成
+
+古典的MDSの結果を、QR分解を用いて下側三角行列に回転して初期値を得る
+
+```{r}
+#1. cmdscale() で中心化された初期座標を計算し、QR分解行列で回転
+init_X_raw <- cmdscale(Y/1000, k = 2)
+X_head <- init_X_raw[1:D, ]
+qr_res <- qr(t(X_head))
+Q <- qr.Q(qr_res)
+init_X <- init_X_raw %*% Q
+
+# モデルオブジェクトの作成
+mdl_mds <- rtmb_model(data = data_mds,
+                      code = code_mds,
+                      par_names = list(X = colnames(Y)),
+                      init = list(X = init_X))
+
+```
+
+初期値を与えると推定はMAPでも簡単に得られる
+
+```{r}
+opt_mds <- mdl_mds$optimize(num_estimate = 4)
+opt_mds
+
+opt_mds$par$X |> plot(type="n")
+text(opt_mds$par$X,labels = colnames(Y))
+```
+
+### 5-3 MCMCによる推定
+
+```{r result = "hide}
+fit_mds <- mdl_mds$sample()
+```
+
+```{r}
+fit_mds
+```
+
+
+初期値が適切であればMCMCでもうまくいきますが、ときに符号の不定性が解決されず、多峰な事後分布が得られる時があります。
+その時に使えるのが`rotate`メソッドです。これを使うと事後的に事後分布を一般化プロクラステス回転させることができて、事後分布がきれいに単峰になります。
+
+```{r}
+# rotateメソッドを使って、事後分布を回転させる
+fit_mds$rotate(target = "X")
+
+# 回転後の変数は"_rot"と名前が付く
+fit_mds$summary("X_rot")
+```
+
+```{r}
+# 回転後のXを使ってプロット
+X <- fit_mds$EAP("X_rot")
+
+X |> plot(type="n")
+X |> text(labels = colnames(Y))
+```
+
+
+このモデルでは、`centered_tri` という特殊な制約を利用することで、MDS などの潜在空間モデルで起こりがちな「座標の回転や平行移動の不定性」を自動的に排除しています。また、`distance` 関数を用いて潜在空間上の距離を安全に計算しています。

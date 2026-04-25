@@ -73,7 +73,7 @@ of specific variable names. Default is "parameters".}
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A named list of EAP estimates structured for use as `init`.
+A named list of EAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
 }
 }
 \if{html}{\out{<hr>}}
@@ -109,7 +109,7 @@ of specific variable names. Default is "parameters".}
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A named list of MAP estimates structured for use as `init`.
+A named list of MAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
 }
 }
 \if{html}{\out{<hr>}}

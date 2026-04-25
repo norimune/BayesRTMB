@@ -26,7 +26,7 @@ RTMB_Fit_Base <- R6::R6Class(
     #'        of specific variable names. Default is "parameters".
     #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
     #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
-    #' @return A named list of EAP estimates structured for use as `init`.
+    #' @return A named list of EAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
     EAP = function(pars = "parameters", chains = NULL, best_chains = NULL) {
       inc_tran <- TRUE
       inc_gen <- TRUE
@@ -84,6 +84,14 @@ RTMB_Fit_Base <- R6::R6Class(
           res[[v]] <- val
         }
       }
+
+      # Extract single variable if specifically requested
+      if (length(pars) == 1 && !(pars %in% c("parameters", "all"))) {
+        if (pars %in% names(res)) {
+          return(res[[pars]])
+        }
+      }
+
       return(res)
     },
 
@@ -97,7 +105,7 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param type Character string specifying the type of MAP estimate.
     #'        "marginal" (default) calculates the peak of the marginal posterior density for each parameter.
     #'        "joint" returns the parameter values from the iteration with the highest log-posterior.
-    #' @return A named list of MAP estimates structured for use as `init`.
+    #' @return A named list of MAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
     MAP = function(pars = "parameters", chains = NULL, best_chains = NULL, type = c("marginal", "joint")) {
       type <- match.arg(type)
 
@@ -176,6 +184,14 @@ RTMB_Fit_Base <- R6::R6Class(
           res[[v]] <- val
         }
       }
+
+      # Extract single variable if specifically requested
+      if (length(pars) == 1 && !(pars %in% c("parameters", "all"))) {
+        if (pars %in% names(res)) {
+          return(res[[pars]])
+        }
+      }
+
       return(res)
     },
 

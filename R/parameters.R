@@ -22,7 +22,7 @@
 #' \strong{Constrained Vectors:}
 #' \itemize{
 #'   \item \code{"simplex"}: A vector where all elements are >= 0 and sum(x) = 1.
-#'   \item \code{"sum_to_zero"}: A vector of length K where sum(x) = 0. (Estimated using K-1 degrees of freedom).
+#'   \item \code{"centered"}: A vector of length K where sum(x) = 0. (Estimated using K-1 degrees of freedom).
 #' }
 #'
 #' \strong{Correlation and Covariance Matrices:}
@@ -63,7 +63,7 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
 
   bounds_type <- "none"
   if (type %in% c("ordered", "positive_ordered", "simplex", "corr_matrix",
-                  "cov_matrix", "CF_corr", "CF_cov", "sum_to_zero",
+                  "cov_matrix", "CF_corr", "CF_cov", "centered",
                   "centered_matrix", "lower_tri", "lower_tri_stz",
                   "centered_tri", "positive_centered_tri",
                   "positive_lower_tri")) {
@@ -99,7 +99,7 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
         calc_unc_length <- calc_unc_length + min(i, C)
       }
     }
-  } else if (bounds_type %in% c("simplex", "sum_to_zero")) {
+  } else if (bounds_type %in% c("simplex", "centered")) {
     calc_unc_length <- calc_length - 1
   } else if (bounds_type == "centered_matrix") {
     R <- dim[1]
@@ -275,7 +275,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
         stick_len <- stick_len - val_orig[k]
       }
       para_unc[[name]] <- y
-    } else if (b_type == "sum_to_zero") {
+    } else if (b_type == "centered") {
       K <- p$length
       Q <- matrix(0, nrow = K, ncol = K - 1)
       for (j in 1:(K - 1)) {
@@ -443,7 +443,7 @@ to_constrained <- function(para_unc_list, par_list) {
       x_last <- cumprod(1 - z)[K - 1]
       para[[name]] <- c(x_first, x_last)
 
-    } else if (b_type == "sum_to_zero") {
+    } else if (b_type == "centered") {
       K <- p$length
       Q <- matrix(0, nrow = K, ncol = K - 1)
       for (j in 1:(K - 1)) {
@@ -618,7 +618,7 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
           lj <- lj + (K - k - 1) * log(1 - z[k])
         }
       }
-    } else if (b_type %in% c("sum_to_zero", "centered_matrix", "centered_tri")) {
+    } else if (b_type %in% c("centered", "centered_matrix", "centered_tri")) {
       diff_dim <- p$length - p$unc_length
       lj <- lj + (diff_dim / 2) * log(2 * pi)
     } else if (b_type == "positive_centered_tri") {
