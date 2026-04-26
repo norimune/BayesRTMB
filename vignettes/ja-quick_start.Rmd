@@ -1,7 +1,7 @@
 ---
 title: "BayesRTMB クイックスタート"
-description: "BayesRTMB の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。"
-output: html_document
+description: "BayesRTMB の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通してパッケージの使い方の紹介します。"
+output: rmarkdown::html_vignette
 vignette: >
   %\VignetteIndexEntry{BayesRTMB 日本語クイックスタート}
   %\VignetteEncoding{UTF-8}

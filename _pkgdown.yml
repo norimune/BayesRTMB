@@ -22,7 +22,7 @@ navbar:
       - text: クイックスタート
         href: articles/ja-quick_start.html
       - text: モデルコードの書き方
-        hrer: articles/ja-writing_models
+        hrer: articles/ja-writing_models.html
       - text: "-------"
       - text: すべての記事
         href: articles/index.html
@@ -43,7 +43,7 @@ articles:
   - introduction
 
 - title: 日本語
-  desc: BayesRTMB の概要と使い方を日本語でまとめた記事です。
+  desc: BayesRTMB の概要と使い方をまとめた記事です。
   contents:
   - ja-introduction
   - ja-quick_start
