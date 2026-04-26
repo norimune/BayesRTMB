@@ -2,12 +2,19 @@
 
 ## BayesRTMB とは？
 
-**BayesRTMB** は、RTMB を自動微分エンジンとして用いる R パッケージです。
-Stan に近い感覚でモデルを書きつつ、R
+**BayesRTMB** は、RTMB を自動微分エンジンとして用いる ベイズ推定用のR
+パッケージです。 Stan に近い感覚でモデルを書きつつ、R
 の中でそのままベイズ推定を進められます。
 
 このページでは、BayesRTMB
 の位置づけと、最初に押さえておくとよい全体像をまとめます。
+
+### 記事へのリンク
+
+以下のような記事があります。 -
+**[日本語トップ](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)** -
+**[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)** -
+**[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-wriging_models.md)**
 
 ### BayesRTMB でできること
 
@@ -209,11 +216,12 @@ BayesRTMB
 の全体像がつかめたら、以下の順番でドキュメントを参照して具体的な使い方を深めていくことをおすすめします。
 
 1.  **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
-    二項モデル、回帰モデル、階層モデルの 3 つの具体例を通して、`setup`
-    や `transform`
-    などの各ブロックの役割と、実践的な分析フローを学びます。
-2.  **Reference (リファレンス)**
-    各関数の詳細な仕様を確認できます。特に自分でモデルを構築する際は、以下のページが役立ちます。
+    二項モデル、回帰モデル、階層モデル、GLMM、混合分布モデルなどの
+    具体例を通して、`setup` や `transform`
+    などの各ブロックの役割と、実践的な分析方法を学びます。
+2.  **[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
+    各関数の詳細な仕様を確認できます。 3.**その他リファレンス**
+    特に自分でモデルを構築する際は、以下のページが役立ちます。
     - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md):
       各ブロックの記述ルールと仕様
     - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md):

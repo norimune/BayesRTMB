@@ -77,11 +77,16 @@
 <div class="section level2">
 <h2 id="bayesrtmb-とは">BayesRTMB とは？<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A8%E3%81%AF"></a>
 </h2>
-<p><strong>BayesRTMB</strong> は、RTMB を自動微分エンジンとして用いる R
-パッケージです。 Stan に近い感覚でモデルを書きつつ、R
+<p><strong>BayesRTMB</strong> は、RTMB を自動微分エンジンとして用いる
+ベイズ推定用のR パッケージです。 Stan に近い感覚でモデルを書きつつ、R
 の中でそのままベイズ推定を進められます。</p>
 <p>このページでは、BayesRTMB
 の位置づけと、最初に押さえておくとよい全体像をまとめます。</p>
+<div class="section level3">
+<h3 id="記事へのリンク">記事へのリンク<a class="anchor" aria-label="anchor" href="#%E8%A8%98%E4%BA%8B%E3%81%B8%E3%81%AE%E3%83%AA%E3%83%B3%E3%82%AF"></a>
+</h3>
+<p>以下のような記事があります。 - <strong><a href="ja-introduction.html">日本語トップ</a></strong> - <strong><a href="ja-quick_start.html">クイックスタート</a></strong> - <strong><a href="ja-wriging_models.html">コードの書き方</a></strong></p>
+</div>
 <div class="section level3">
 <h3 id="bayesrtmb-でできること">BayesRTMB でできること<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A7%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8"></a>
 </h3>
@@ -273,12 +278,13 @@ Rtools44）。</li>
 <ol style="list-style-type: decimal">
 <li>
 <strong><a href="ja-quick_start.html">クイックスタート</a></strong>
-二項モデル、回帰モデル、階層モデルの 3
-つの具体例を通して、<code>setup</code> や <code>transform</code>
-などの各ブロックの役割と、実践的な分析フローを学びます。</li>
+二項モデル、回帰モデル、階層モデル、GLMM、混合分布モデルなどの
+具体例を通して、<code>setup</code> や <code>transform</code>
+などの各ブロックの役割と、実践的な分析方法を学びます。</li>
 <li>
-<strong>Reference (リファレンス)</strong>
-各関数の詳細な仕様を確認できます。特に自分でモデルを構築する際は、以下のページが役立ちます。
+<strong><a href="ja-writing_models.html">コードの書き方</a></strong>
+各関数の詳細な仕様を確認できます。 3.<strong>その他リファレンス</strong>
+特に自分でモデルを構築する際は、以下のページが役立ちます。
 <ul>
 <li>
 <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>: 各ブロックの記述ルールと仕様</li>

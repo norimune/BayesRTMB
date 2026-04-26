@@ -12,7 +12,7 @@ BayesRTMB の英語記事です。
 
 ### 日本語
 
-BayesRTMB の概要と使い方を日本語でまとめた記事です。
+BayesRTMB の概要と使い方をまとめた記事です。
 
 - [BayesRTMB
   の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):
@@ -23,7 +23,9 @@ BayesRTMB の概要と使い方を日本語でまとめた記事です。
   クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
 
   BayesRTMB
-  の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。
+  の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通してパッケージの使い方の紹介します。
 
 - [コードの書き方 (How to write
   code)](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):
+
+  model codeの書き方について解説します
