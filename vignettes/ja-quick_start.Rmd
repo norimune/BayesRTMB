@@ -729,7 +729,7 @@ code_mix <- rtmb_code(
 ```
 
 ## モデルの用意
-```{r eval = FALE}
+```{r eval = FALSE}
 mdl_mix <- rtmb_model(data_mix, code_mix)
 ```
 
