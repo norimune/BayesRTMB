@@ -903,8 +903,16 @@ RTMB_Model <- R6::R6Class(
           if (any(vals <= 1e-8)) {
             cat("Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.\n")
           } else {
+            if (laplace) {
+              lj_all <- calc_log_jacobian(unc_est_list, self$par_list, only_random = FALSE)
+              lj_ran <- calc_log_jacobian(unc_est_list, self$par_list, only_random = TRUE)
+              lj_missing <- lj_all - lj_ran
+            } else {
+              lj_missing <- calc_log_jacobian(unc_est_list, self$par_list, only_random = FALSE)
+            }
+
             log_det_cov <- sum(log(vals))
-            log_ml <- - opt$objective + (D / 2) * log(2 * pi) + 0.5 * log_det_cov - self$prior_correction
+            log_ml <- - opt$objective + lj_missing + (D / 2) * log(2 * pi) + 0.5 * log_det_cov - self$prior_correction
           }
         }
       }
