@@ -82,7 +82,8 @@ Calculate Expected A Posteriori (EAP) estimates from posterior samples.
 
 #### Returns
 
-A named list of EAP estimates structured for use as \`init\`.
+A named list of EAP estimates structured for use as \`init\`, or a
+single array/vector if a single parameter is specified.
 
 ------------------------------------------------------------------------
 
@@ -127,7 +128,8 @@ Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
 
 #### Returns
 
-A named list of MAP estimates structured for use as \`init\`.
+A named list of MAP estimates structured for use as \`init\`, or a
+single array/vector if a single parameter is specified.
 
 ------------------------------------------------------------------------
 

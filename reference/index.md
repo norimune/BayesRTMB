@@ -4,6 +4,8 @@
 
 - [`ADVI_method()`](https://norimune.github.io/BayesRTMB/reference/ADVI_method.md)
   : Automatic Differentiation Variational Inference (ADVI)
+- [`BigFive`](https://norimune.github.io/BayesRTMB/reference/BigFive.md)
+  : Big Five Personality Traits Data
 - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) :
   Define parameter dimensions and types
 - [`MAP_Fit`](https://norimune.github.io/BayesRTMB/reference/MAP_Fit.md)
@@ -18,10 +20,14 @@
   VB fit object
 - [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
   : Calculate Bayes factor from log marginal likelihoods
+- [`beverage`](https://norimune.github.io/BayesRTMB/reference/beverage.md)
+  : Beverage Preference Data
 - [`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
   : Calculate Conditional Effects
 - [`conditional_effects(`*`<mcmc_fit>`*`)`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.mcmc_fit.md)
   : Calculate conditional effects for MCMC fit objects
+- [`discussion`](https://norimune.github.io/BayesRTMB/reference/discussion.md)
+  : Group Discussion Simulation Data
 - [`distance()`](https://norimune.github.io/BayesRTMB/reference/distance.md)
   : Euclidean distance
 - [`distributions`](https://norimune.github.io/BayesRTMB/reference/distributions.md)
@@ -103,6 +109,8 @@
   : RTMB-based IRT (Item Response Theory) Wrapper
 - [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
   : RTMB-based Linear Regression wrapper function
+- [`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
+  : Guidelines for Writing RTMB-Compatible Code
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)

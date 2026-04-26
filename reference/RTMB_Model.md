@@ -73,8 +73,9 @@ hints.
 **Writing AD-Compatible Code (Important):** To ensure the model is
 differentiable, you must follow specific syntax rules when writing code
 within `rtmb_code`. Avoid discrete branching (`if`, `ifelse`) based on
-parameters and use numerically stable functions. See `rtmb_syntax` for a
-detailed guide on Automatic Differentiation requirements.
+parameters and use numerically stable functions. See
+[`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
+for a detailed guide on Automatic Differentiation requirements.
 
 **Initial Values (`init`):** Initial parameter values can be specified
 as a flat numeric vector or a named list. If a partial list is provided,
@@ -160,7 +161,7 @@ map_basic$summary()
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 46.99
-#> Approx. Log Marginal Likelihood (Laplace): -52.63
+#> Approx. Log Marginal Likelihood (Laplace): -53.43
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
@@ -226,7 +227,7 @@ map_named$summary()
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 46.99
-#> Approx. Log Marginal Likelihood (Laplace): -52.63
+#> Approx. Log Marginal Likelihood (Laplace): -53.43
 #> 
 #> Point Estimates and 95% Wald CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 

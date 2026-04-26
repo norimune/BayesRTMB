@@ -201,6 +201,8 @@ fit_test <- mdl_test$sample()
 
 - [`ADVI_method()`](https://norimune.github.io/BayesRTMB/reference/ADVI_method.md)
   : Automatic Differentiation Variational Inference (ADVI)
+- [`BigFive`](https://norimune.github.io/BayesRTMB/reference/BigFive.md)
+  : Big Five Personality Traits Data
 - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) :
   Define parameter dimensions and types
 - [`MAP_Fit`](https://norimune.github.io/BayesRTMB/reference/MAP_Fit.md)
@@ -215,10 +217,14 @@ fit_test <- mdl_test$sample()
   VB fit object
 - [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
   : Calculate Bayes factor from log marginal likelihoods
+- [`beverage`](https://norimune.github.io/BayesRTMB/reference/beverage.md)
+  : Beverage Preference Data
 - [`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
   : Calculate Conditional Effects
 - [`conditional_effects(`*`<mcmc_fit>`*`)`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.mcmc_fit.md)
   : Calculate conditional effects for MCMC fit objects
+- [`discussion`](https://norimune.github.io/BayesRTMB/reference/discussion.md)
+  : Group Discussion Simulation Data
 - [`distance()`](https://norimune.github.io/BayesRTMB/reference/distance.md)
   : Euclidean distance
 - [`distributions`](https://norimune.github.io/BayesRTMB/reference/distributions.md)
@@ -300,6 +306,8 @@ fit_test <- mdl_test$sample()
   : RTMB-based IRT (Item Response Theory) Wrapper
 - [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
   : RTMB-based Linear Regression wrapper function
+- [`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
+  : Guidelines for Writing RTMB-Compatible Code
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
@@ -351,7 +359,10 @@ BayesRTMB の概要と使い方を日本語でまとめた記事です。
   BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。
 
 - [BayesRTMB
-  日本語クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
+  クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
 
   BayesRTMB
   の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。
+
+- [コードの書き方 (How to write
+  code)](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):

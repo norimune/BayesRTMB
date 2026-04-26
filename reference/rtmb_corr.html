@@ -26,6 +26,7 @@ If there are 2 observed variables, it automatically switches to estimate the sca
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
     <li><a class="dropdown-item" href="../articles/ja-quick_start.html">クイックスタート</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>モデルコードの書き方</h6></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -87,8 +88,98 @@ If there are 2 observed variables, it automatically switches to estimate the sca
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="va">inst</span><span class="op">/</span><span class="va">examples</span><span class="op">/</span><span class="va">ex_corr.R</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'inst' not found</span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span>  <span class="co"># Simulate bivariate normal data with a true correlation of 0.5</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">50</span></span></span>
+<span class="r-in"><span>  <span class="va">rho</span> <span class="op">&lt;-</span> <span class="fl">0.5</span></span></span>
+<span class="r-in"><span>  <span class="va">cov_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="va">rho</span>, <span class="va">rho</span>, <span class="fl">1</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/ns-load.html" class="external-link">requireNamespace</a></span><span class="op">(</span><span class="st">"MASS"</span>, quietly <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="va">data_corr</span> <span class="op">&lt;-</span> <span class="fu">MASS</span><span class="fu">::</span><span class="fu"><a href="https://rdrr.io/pkg/MASS/man/mvrnorm.html" class="external-link">mvrnorm</a></span><span class="op">(</span><span class="va">N</span>, mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span>, Sigma <span class="op">=</span> <span class="va">cov_mat</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">data_corr</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"X1"</span>, <span class="st">"X2"</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>    <span class="va">fit_corr</span> <span class="op">&lt;-</span> <span class="fu">rtmb_corr</span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_corr</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>    <span class="va">mcmc_corr</span> <span class="op">&lt;-</span> <span class="va">fit_corr</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>    <span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"corr"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_corr</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 700 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 900 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 700 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 900 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Calculating marginal likelihood for the full model...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -140.625 (Error = 0.0144, ESS = 243.1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> --- Preparing and Sampling Null Model (corr) ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Auto-completed target: corr ~ lkj_corr(prior_lkj_eta)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Null model created. Fixed parameters:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   corr -&gt; 0 (Dimensions: 1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Prior correction applied: -1.386294</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 700 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 900 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1100 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1200 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1300 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1500 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 100 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 300 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 500 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 700 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 900 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1100 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1200 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1300 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1500 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> --- Calculating marginal likelihood for the null model ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -146.075 (Error = 0.0107, ESS = 375.4)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bayes Factor (BF12) : 232.7278 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : 5.4499 (Approx. Error = 0.0179)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Interpretation      : Decisive evidence for Model 1 </span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

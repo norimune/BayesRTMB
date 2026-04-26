@@ -95,7 +95,7 @@ rtmb_glmer(
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 95.45
-#> Approx. Log Marginal Likelihood (Laplace): -97.06
+#> Approx. Log Marginal Likelihood (Laplace): -96.31
 #> 
 #> Point Estimates and 95% Wald CI:
 #>    variable  Estimate  Std. Error  Lower 95%  Upper 95% 
@@ -148,7 +148,7 @@ rtmb_glmer(
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 3193.13
-#> Approx. Log Marginal Likelihood (Laplace): -3193.44
+#> Approx. Log Marginal Likelihood (Laplace): -3193.34
 #> Note: Random effects are stored in $random_effects
 #> 
 #> Point Estimates and 95% Wald CI:
@@ -222,7 +222,7 @@ rtmb_glmer(
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 101.68
-#> Approx. Log Marginal Likelihood (Laplace): 31.76
+#> Approx. Log Marginal Likelihood (Laplace): -125.78
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 

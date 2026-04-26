@@ -5,7 +5,7 @@ Centered triangular multivariate normal log-probability density function
 ## Usage
 
 ``` r
-centered_tri_multi_normal_lpdf(x, sigma = 1)
+centered_tri_multi_normal_lpdf(x, sigma)
 ```
 
 ## Arguments

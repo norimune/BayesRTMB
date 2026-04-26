@@ -5,7 +5,8 @@ articles:
   introduction: introduction.html
   ja-introduction: ja-introduction.html
   ja-quick_start: ja-quick_start.html
-last_built: 2026-04-24T10:55Z
+  ja-writing_models: ja-writing_models.html
+last_built: 2026-04-26T14:50Z
 urls:
   reference: https://norimune.github.io/BayesRTMB/reference
   article: https://norimune.github.io/BayesRTMB/articles

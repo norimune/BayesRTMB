@@ -12,8 +12,7 @@ two ways:
 
 - **Sampling Syntax (Recommended):** `y ~ normal(mu, sigma)`
 
-- **Explicit Function Call:**
-  `target <- target + normal_lpdf(y, mu, sigma)`
+- **Explicit Function Call:** `lp <- lp + normal_lpdf(y, mu, sigma)`
 
 **Continuous Distributions (LPDF):**
 

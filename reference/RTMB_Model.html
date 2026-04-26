@@ -32,6 +32,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling."></head><body>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
     <li><a class="dropdown-item" href="../articles/ja-quick_start.html">クイックスタート</a></li>
+    <li><h6 class="dropdown-header" data-toc-skip>モデルコードの書き方</h6></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -116,7 +117,7 @@ translated into user-friendly hints.</p>
 To ensure the model is differentiable, you must follow specific syntax rules
 when writing code within <code>rtmb_code</code>. Avoid discrete branching (<code>if</code>, <code>ifelse</code>)
 based on parameters and use numerically stable functions.
-See <code>rtmb_syntax</code> for a detailed guide on Automatic Differentiation requirements.</p>
+See <code><a href="rtmb_syntax.html">rtmb_syntax</a></code> for a detailed guide on Automatic Differentiation requirements.</p>
 <p><strong>Initial Values (<code>init</code>):</strong>
 Initial parameter values can be specified as a flat numeric vector or a named list.
 If a partial list is provided, the unspecified parameters are automatically initialized
@@ -188,7 +189,7 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 46.99</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -52.63</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -53.43</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
@@ -254,7 +255,7 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 46.99</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -52.63</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -53.43</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
