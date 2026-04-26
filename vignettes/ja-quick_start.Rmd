@@ -442,7 +442,7 @@ vb_hlm <- mdl_hlm$variational(
   iter = 7000,
   parallel = TRUE,
   #init = list(alpha = init_hlm[1], beta = init_hlm[-1]),
-  method = "fullrank",
+  method = "meanfield",
   laplace = TRUE
 )
 ```
