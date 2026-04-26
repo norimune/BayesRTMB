@@ -962,7 +962,7 @@ RTMB_Model <- R6::R6Class(
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL) {
 
-      if (!is.null(init)) init <- as.numeric(init)
+      #if (!is.null(init)) init <- as.numeric(init)
       set.seed(seed)
       orig_pl <- self$par_list
 

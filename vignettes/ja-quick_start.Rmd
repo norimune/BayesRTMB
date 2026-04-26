@@ -1,5 +1,5 @@
 ---
-title: "BayesRTMB 日本語クイックスタート"
+title: "BayesRTMB クイックスタート"
 description: "BayesRTMB の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通して日本語で紹介します。"
 output: html_document
 vignette: >
@@ -64,7 +64,7 @@ model_code <- rtmb_code(
 mdl <- rtmb_model(data = data_list, code = model_code)
 ```
 
-```{text}
+```text
 ## Pre-checking model code...
 ## Checking RTMB setup...
 ```
@@ -80,7 +80,7 @@ fit_MAP <- mdl$optimize()
 fit_MAP
 ```
 
-```{text}
+```text
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -105,7 +105,7 @@ fit_MAP <- mdl$optimize(se_sampling = TRUE)
 fit_MAP
 ```
 
-```{text}
+```text
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -129,7 +129,7 @@ MAP 推定では、近似対数周辺尤度 `log_ml` が計算されます。
 fit_MAP$log_ml
 ```
 
-```{text}
+```text
 ## [1] -2.328722
 ```
 
@@ -151,7 +151,7 @@ fit_mcmc <- mdl$sample(sampling = 1000,
 fit_mcmc
 ```
 
-```{text}
+```text
 ## variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
 ## lp        -3.34  0.76  -2.86  -5.43  -2.80      1569      1843  1.00 
 ## theta      0.58  0.14   0.62   0.30   0.84      1300      1594  1.00 
@@ -170,7 +170,7 @@ fit_mcmc$bridgesampling()
 fit_mcmc$log_ml
 ```
 
-```{text}
+```text
 ## [1] -2.401682
 ## attr(,"error")
 ## [1] 0.001049984
@@ -192,13 +192,14 @@ fit_mcmc$log_ml
 という流れになっています。
 
 ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えています。ここではパッケージに入っているdataである討論データを使います。
-討論の満足度を目的変数、討論中の発言量、討論パフォーマンス、会話スキル、条件（討論目的）についてのデータです。ここでは発言量データを使います。
+討論の満足度を目的変数、討論中の発言量、討論パフォーマンス、会話スキル、条件（討論目的）についてのデータです。ここでは発言量、パフォーマンス、会話スキルのデータを使います。
 
 ```{r eval=FALSE}
 data(discussion)
 
 Y <- discussion$satisfaction
-X <- discussion$talk
+X_names <- c("talk","performance","skill")
+X <- subset(discussion, select = X_names)
 
 data_reg <- list(Y = Y, X = X)
 
@@ -213,7 +214,7 @@ code_reg <- rtmb_code(
     sigma   = Dim(lower=0)
   },
   transform = {
-    mu = alpha + beta * X
+    mu = alpha + beta[1] * X[,1] + beta[2] * X[,2] + beta[3] * X[,3]
   },
   model = {
     Y ~ normal(mu, sigma)
@@ -233,7 +234,7 @@ code_reg <- rtmb_code(
 ```{r eval=FALSE}
 mdl_reg <- rtmb_model(data = data_reg, 
                       code = code_reg,
-                      init = list(alpha = 0, beta = 0))
+                      init = list(alpha = 0, beta = c(0,0,0)))
 ```
 
 
@@ -246,40 +247,37 @@ mcmc_reg <- mdl_reg$sample()
 mcmc_reg
 ```
 
-```{text}
+```text
 ## variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-## lp        -421.40  1.26  -420.49  -424.74  -419.97      1046      1593  1.01 
-## alpha        2.50  0.17     2.51     2.16     2.84       887      1272  1.00 
-## beta         0.31  0.06     0.31     0.20     0.42       877      1145  1.00 
-## sigma        0.95  0.04     0.95     0.88     1.03      1109      1574  1.00 
-## mu[1]        3.43  0.05     3.43     3.32     3.54      3925      2803  1.00 
-## mu[2]        3.12  0.08     3.11     2.97     3.27      1215      1784  1.00 
-## mu[3]        3.43  0.05     3.43     3.32     3.54      3925      2803  1.00 
-## mu[4]        3.43  0.05     3.43     3.32     3.54      3925      2803  1.00 
-## mu[5]        2.81  0.12     2.81     2.57     3.05       940      1388  1.00 
-## mu[6]        2.81  0.12     2.81     2.57     3.05       940      1388  1.00 
+## lp        -411.42  1.70  -410.51  -415.77  -409.27      1099      1125  1.00 
+## alpha        1.51  0.24     1.52     1.03     1.98       805       842  1.01 
+## beta[1]      0.27  0.05     0.26     0.17     0.37       765      1223  1.00 
+## beta[2]      0.15  0.03     0.15     0.09     0.21       958      1107  1.01 
+## beta[3]      0.19  0.07     0.18     0.06     0.33      1004      1156  1.00 
+## sigma        0.90  0.04     0.90     0.83     0.98       984      1196  1.00 
+## mu[1]        2.96  0.10     2.96     2.76     3.16      1070      1095  1.00 
+## mu[2]        3.08  0.11     3.07     2.86     3.30      1254      2031  1.00 
+## mu[3]        2.96  0.10     2.96     2.76     3.16      1070      1095  1.00 
+## mu[4]        3.35  0.10     3.34     3.16     3.54      1489      2198  1.00 
 ```
 
 
 ### bayes_factor
 
 `bayes_factor()` を使うと、推定したモデルと帰無モデルの周辺尤度を比較し、**ベイズファクター**を計算できます。
-`null_model = "beta"` のように指定すると、その係数を 0 に固定した帰無モデルを内部で作成して比較します。
+`null_model = "beta[1]"` のように指定すると、その係数を 0 に固定した帰無モデルを内部で作成して比較します。
 
 係数の有無をベイズ的に評価したいときに便利です。
 
 ```{r  eval=FALSE}
-bf_result <- mcmc_reg$bayes_factor(null_model = "beta")
-```
-
-```{r eval=FALSE}
+bf_result <- mcmc_reg$bayes_factor(null_model = "beta[talk]")
 bf_result
 ```
 
-```{text}
-## Bayes Factor (BF12) : 13726.88 
-## Log Bayes Factor    : 9.5271 (Approx. Error = 0.0026)
-## Interpretation      : Decisive evidence for Model 1
+```text
+## Bayes Factor (BF12) : 1047.097 
+## Log Bayes Factor    : 6.9538 (Approx. Error = 0.0051)
+## Interpretation      : Decisive evidence for Model 1 
 ```
 
 
@@ -296,7 +294,7 @@ bf_result
 data(discussion)
 
 Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill","condition")
+X_names <- c("talk","performance","skill")
 X <- subset(discussion, select = X_names)
 group <- discussion$group
 
@@ -357,28 +355,70 @@ opt_hlm <- mdl_hlm$optimize(laplace = TRUE)
 opt_hlm
 ```
 
-```{text}
+```text
 ## Call:
 ## MAP Estimation via RTMB
 ## 
-## Negative Log-Posterior: 400.84
-## Approx. Log Marginal Likelihood (Laplace): -414.33
+## Negative Log-Posterior: 399.48
+## Approx. Log Marginal Likelihood (Laplace): -411.83
 ## Note: Random effects are stored in $random_effects
 ## 
 ## Point Estimates and 95% Wald CI:
 ##          variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## alpha               1.44973     0.25737    0.94530    1.95416 
-## beta[talk]          0.20198     0.05541    0.09337    0.31059 
-## beta[performance]   0.16316     0.03681    0.09101    0.23531 
-## beta[skill]         0.22706     0.05966    0.11014    0.34399 
-## beta[condition]     0.26315     0.13546   -0.00234    0.52864 
-## tau                 0.47179     0.06468    0.36061    0.61723 
-## sigma               0.74663     0.03740    0.67680    0.82366 
-## mu[1,1]             2.97028     0.34776    2.28868    3.65188 
-## mu[2,1]             3.22243     0.35444    2.52775    3.91711 
-## mu[3,1]             2.97028     0.34776    2.28868    3.65188 
+## alpha               1.52450     0.25732    1.02015    2.02884 
+## beta[talk]          0.23487     0.05323    0.13054    0.33920 
+## beta[performance]   0.15451     0.03713    0.08175    0.22728 
+## beta[skill]         0.22613     0.05990    0.10874    0.34352 
+## tau                 0.48512     0.06507    0.37298    0.63098 
+## sigma               0.74762     0.03752    0.67759    0.82488 
+## mu[1,1]             2.92366     0.34519    2.24711    3.60022 
+## mu[2,1]             3.14105     0.34856    2.45788    3.82422 
+## mu[3,1]             2.92366     0.34519    2.24711    3.60022 
+## mu[4,1]             3.09284     0.34706    2.41263    3.77306 
 ```
 
+事前分布の違いはありますが、laplace近似の推定は最尤推定のlme4とほぼ同じ結果が出ます。
+
+```{r eval = FALSE}
+library(lme4)
+result <- 
+  lmer(satisfaction ~ talk + performance + skill + (1|group), 
+       data = discussion, REML = FALSE)
+
+result |> summary()
+```
+
+```text
+## Linear mixed model fit by maximum likelihood  ['lmerMod']
+## Formula: satisfaction ~ talk + performance + skill + (1 | group)
+##    Data: discussion
+## 
+##       AIC       BIC    logLik -2*log(L)  df.resid 
+##     771.1     793.4    -379.6     759.1       294 
+## 
+## Scaled residuals: 
+##      Min       1Q   Median       3Q      Max 
+## -3.15138 -0.51022  0.03797  0.54144  2.87725 
+## 
+## Random effects:
+##  Groups   Name        Variance Std.Dev.
+##  group    (Intercept) 0.2357   0.4855  
+##  Residual             0.5601   0.7484  
+## Number of obs: 300, groups:  group, 100
+## 
+## Fixed effects:
+##             Estimate Std. Error t value
+## (Intercept)  1.52449    0.25735   5.924
+## talk         0.23485    0.05286   4.443
+## performance  0.15451    0.03714   4.160
+## skill        0.22616    0.05960   3.795
+## 
+## Correlation of Fixed Effects:
+##             (Intr) talk   prfrmn
+## talk        -0.516              
+## performance -0.632 -0.056       
+## skill       -0.387 -0.138 -0.020
+```
 
 
 ランダム効果の推定結果は `random_effects` に別途保存されます。
@@ -397,24 +437,21 @@ opt_hlm$random_effects$Estimate |> hist()
 
 ```{r  eval=FALSE}
 mcmc_hlm <- mdl_hlm$sample(parallel = TRUE)
-```
-
-```{r eval=FALSE}
 mcmc_hlm$summary()
 ```
 
-```{text}
+```text
 ##          variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-## lp                 -507.20  12.05  -505.33  -532.54  -484.83       833      1976  1.01 
-## alpha                 1.46   0.26     1.49     0.95     1.98      2114      2797  1.00 
-## beta[talk]            0.20   0.06     0.21     0.09     0.31      2548      3162  1.00 
-## beta[performance]     0.16   0.04     0.15     0.09     0.24      2137      2759  1.00 
-## beta[skill]           0.23   0.06     0.23     0.10     0.35      4325      2866  1.00 
-## beta[condition]       0.26   0.14     0.30    -0.01     0.54      2201      2549  1.00 
-## tau                   0.48   0.07     0.49     0.35     0.62      1247      2118  1.00 
-## sigma                 0.76   0.04     0.75     0.69     0.84      2056      2805  1.00 
-## r[1]                 -0.13   0.70    -0.33    -1.50     1.31      5519      3060  1.00 
-## r[2]                 -0.45   0.68    -0.47    -1.81     0.87      4506      2612  1.00 
+## lp                 -503.48  11.43  -502.73  -527.43  -482.45       845      1883  1.00 
+## alpha                 1.53   0.26     1.50     1.02     2.04      1885      2572  1.00 
+## beta[talk]            0.24   0.06     0.23     0.13     0.34      3292      3346  1.00 
+## beta[performance]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 
+## beta[skill]           0.23   0.06     0.21     0.10     0.34      4128      3016  1.00 
+## tau                   0.50   0.07     0.50     0.36     0.63      1532      1885  1.00 
+## sigma                 0.76   0.04     0.76     0.69     0.84      2123      3211  1.00 
+## r[1]                  0.02   0.66     0.00    -1.28     1.27      6016      2961  1.00 
+## r[2]                 -0.56   0.66    -0.47    -1.86     0.73      5403      2966  1.00 
+## r[3]                 -0.75   0.68    -0.77    -2.07     0.58      5041      3202  1.00 
 ```
 
 
@@ -422,7 +459,7 @@ MCMCでもlaplace近似を実行できます。推定結果は変わりません
 ただ、WAICなどの予測指標を使うとき、階層化するときとしないときの比較が難しいので、laplace近似が自動でできると便利なときもあります。
 
 ```{r eval=FALSE}
-mcmc_hlm <- mdl_hlm$sample(laplace = TRUE)
+mcmc_hlm_l <- mdl_hlm$sample(laplace = TRUE, parallel = TRUE)
 ```
 
 
@@ -432,19 +469,59 @@ mcmc_hlm <- mdl_hlm$sample(laplace = TRUE)
 変分ベイズ法も並列化が可能です。
 ただし、複雑なモデルになると収束判断が難しいので、`plot_elbo()`メソッドで収束しているか確認するのが重要です。変分ベイズ法は初期値依存があるので、大雑把にでも初期値を与えておくと収束が安定します。
 
-また、ADVIでもlaplace近似が使えます。さらにmethodを`fullrank`にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的にはMAPと同様の結果がでるはずです。ただし、laplace近似を実行すると計算が遅くなります。
+また、ADVIでもlaplace近似が使えます。ただし、laplace近似を実行すると計算が遅くなります。
+`meanfield`は平均場近似といって、事後分布がすべて独立であるという仮定で推定します。信頼区間がやや狭めに推定されますが、点推定値を得るのには十分使えます。
 
-```{r  eval=FALSE}
-#result <- lm(satisfaction ~ talk+performance+skill+condition, data = discussion)
-#init_hlm <- result$coefficients
-
+```{r eval=FALSE}
 vb_hlm <- mdl_hlm$variational(
   iter = 7000,
   parallel = TRUE,
-  #init = list(alpha = init_hlm[1], beta = init_hlm[-1]),
   method = "meanfield",
   laplace = TRUE
 )
+
+vb_hlm$summary(digits=5)
+```
+
+```text
+##          variable        mean       sd         map        q2.5       q97.5 
+## lp                 -403.59863  2.68487  -401.72373  -410.58114  -400.88726 
+## alpha                 1.52112  0.06460     1.52966     1.39289     1.65062 
+## beta[talk]            0.23008  0.02011     0.22903     0.18939     0.26960 
+## beta[performance]     0.15445  0.01236     0.15815     0.12902     0.17917 
+## beta[skill]           0.22121  0.02962     0.23026     0.16046     0.27926 
+## tau                   0.52022  0.06577     0.50972     0.40743     0.65876 
+## sigma                 0.76221  0.03666     0.75816     0.69228     0.83982 
+## mu[1,1]               2.91530  0.04257     2.91892     2.83138     3.00157 
+## mu[2,1]               3.12764  0.06905     3.15095     2.99470     3.26365 
+## mu[3,1]               2.91530  0.04257     2.91892     2.83138     3.00157 
+```
+
+さらにmethodを`fullrank`にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的には、`laplace=TRUE`, `method = "fullrank"` と指定しておけば、MAPと同様の結果がでるはずです。
+
+```{r eval = FALSE}
+vb_hlm <- mdl_hlm$variational(
+  iter = 7000,
+  parallel = TRUE,
+  method = "fullrank",
+  laplace = TRUE
+)
+
+vb_hlm$summary(digits=5)
+```
+
+```text
+##          variable        mean       sd         map        q2.5       q97.5 
+## lp                 -403.97866  2.20926  -402.90991  -409.23611  -401.18538 
+## alpha                 1.53770  0.25051     1.56744     1.01054     2.02055 
+## beta[talk]            0.24155  0.05547     0.23247     0.13522     0.35168 
+## beta[performance]     0.15541  0.03070     0.14594     0.09867     0.21363 
+## beta[skill]           0.22281  0.06458     0.24644     0.09070     0.34811 
+## tau                   0.51825  0.07037     0.52741     0.39687     0.66168 
+## sigma                 0.75946  0.05066     0.76286     0.66550     0.85404 
+## mu[1,1]               2.94047  0.07042     2.92289     2.80572     3.08573 
+## mu[2,1]               3.14453  0.09346     3.14312     2.96019     3.32846 
+## mu[3,1]               2.94047  0.07042     2.92289     2.80572     3.08573 
 ```
 
 収束が悪い推定結果がある場合、bestなものだけを見ることができます。
@@ -457,14 +534,86 @@ vb_hlm$plot_elbo(ests="best")
 vb_hlm$summary()
 ```
 
+![ELBOのプロット](plot_elbo.png)
+
+## モデル比較
+
+対数周辺尤度を計算することで、モデル比較ができます。
+
+先ほどの回帰分析の結果と階層線形モデルの比較をしてみましょう。
+変量効果を推定することによってどれほどモデルは改善したのでしょう。
+
+MAP推定でも対数周辺尤度を計算できるので、近似的にモデル比較ができます。
+
+```{r eval = FALSE}
+opt_reg <- mdl_reg$optimize()
+opt_reg$log_ml
+opt_hlm$log_ml
+```
+
+```text
+## > opt_reg$log_ml
+## [1] -419.6358
+## > opt_hlm$log_ml
+## [1] -411.8348
+```
+
+ただし、MAP推定の対数周辺尤度はあくまで近似値なので、より正確にするにはMCMC推定の結果をbridgesamplingで計算する方がいいです。特に、MAPは変量効果があるときにラプラス近似を使うので、対数周辺尤度はラプラス近似を使わないMCMCと少し値が変わります。
+
+```{r eval = FALSE}
+mcmc_reg$bridgesampling()
+mcmc_hlm$bridgesampling()
+```
+
+```text
+## > mcmc_reg$bridgesampling()
+## Bridge Sampling Converged: LogML = -419.608 (Error = 0.0039, ESS = 830.6)
+## [1] -419.6081
+## attr(,"error")
+## [1] 0.003854939
+## attr(,"ess")
+## [1] 830.623
+## > mcmc_hlm$bridgesampling()
+## Bridge Sampling Converged: LogML = -412.675 (Error = 0.0401, ESS = 760.2)
+## [1] -412.6746
+## attr(,"error")
+## [1] 0.04009978
+## attr(,"ess")
+## [1] 760.1723
+```
+
+ラプラス近似を使ったMCMCは、MAPの結果に近いです。
+
+```{r eval = FALSE}
+mcmc_hlm_l$bridgesampling()
+```
+
+```text
+## > mcmc_hlm_l$bridgesampling()
+## Bridge Sampling Converged: LogML = -411.770 (Error = 0.0053, ESS = 994.9)
+## [1] -411.7704
+## attr(,"error")
+## [1] 0.005318097
+## attr(,"ess")
+## [1] 994.8858
+```
+
 # GLMM
 
 一般化線形混合モデル(GLMM)も可能です。
 
+討論満足度は5件法で測定されているため、順序データとして扱えます。
+そこで、順序ロジスティック分布を仮定した、マルチレベル分析を実行してみます。
 
 ```{r eval=FALSE}
+data(discussion)
 
-K <- Y |> unique() |> length()
+Y <- discussion$satisfaction
+X_names <- c("talk","performance","skill")
+X <- subset(discussion, select = X_names)
+group <- discussion$group
+
+data_glmm <- list(Y = Y, X = X, gruop = group)
 
 code_glmm <- rtmb_code(
   setup = {
@@ -474,133 +623,163 @@ code_glmm <- rtmb_code(
     K <- length(unique(Y))
   },
   parameters = {
+    alpha   = Dim(K-1, type = "ordered") #順序制約のあるベクトル
     beta    = Dim(P)
     tau     = Dim(lower=0)
-    gamma   = Dim(K-1, type = "ordered") #順序制約のあるベクトル
     r       = Dim(G, random = TRUE)
   },
   transform = {
     mu = X %*% beta + r[gruop] * tau
   },
   model = {
-    Y ~ ordered_logistic(mu, gamma)
+    Y ~ ordered_logistic(mu, alpha) #順序ロジスティック分布も実装されている
     r ~ normal(0, 1)
+    alpha ~ normal(0, 2.5)
     beta  ~ normal(0, 10)
     tau   ~ exponential(1/10)
-    gamma ~ normal(0, 2.5)
   }
 )
-
-
 ```
 
-## 
-```{r eval=FALSE}
-mdl_glmm <- rtmb_model(data_hlm, code_glmm,
-                        par_names = list(beta = X_names))
 
-opt_glmm <- mdl_glmm$optimize(num_estimate = 4)
+## モデルの読み込み
+```{r eval=FALSE}
+mdl_glmm <- rtmb_model(data_glmm, code_glmm,
+                       par_names = list(beta = X_names))
+```
+
+## ラプラス近似によるGLMM
+変量効果を積分消去した推定で、glmmもMAP推定が可能です。
+
+```{r eval=FALSE}
+opt_glmm <- mdl_glmm$optimize()
 opt_glmm
-
-mcmc_glmm <- mdl_glmm$sample(parallel=TRUE)
-mcmc_glmm$print()
 ```
 
+```text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 391.24
+## Approx. Log Marginal Likelihood (Laplace): -397.74
+## Note: Random effects are stored in $random_effects
+## 
+## Point Estimates and 95% Wald CI:
+##          variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## alpha[1]           -0.30770     0.65457   -1.59063    0.97522 
+## alpha[2]            1.48733     0.60548   -0.32034    3.51175 
+## alpha[3]            4.25193     0.63446    1.98068    6.83335 
+## alpha[4]            6.50517     0.70195    3.81621    9.59934 
+## beta[talk]          0.50442     0.13449    0.24082    0.76802 
+## beta[performance]   0.32810     0.09502    0.14186    0.51434 
+## beta[skill]         0.49771     0.15633    0.19131    0.80411 
+## tau                 1.27056     0.21778    0.90803    1.77784 
+## mu[1,1]             2.81917     0.93273    0.99105    4.64730 
+## mu[2,1]             3.31017     0.97502    1.39917    5.22117 
+```
 
+# 混合分布モデル
 
-# 項目反応モデル
+複数の分布が混ざったデータを推定することもできます。
+まずはデータ生成を行います。
 
-```{r eval=FALSE}
-data(BigFive)
+```{r eval = FALSE}
+set.seed(123)
 
-Y <- BigFive
+N <- 300       # サンプルサイズ
+K <- 3         # クラスタの数
 
-data_fa <- list(
-  Y = Y,
-  K = 5 #因子数
-)
+# 真のパラメータ
+theta_true <- c(0.2, 0.5, 0.3) # 各クラスタの混合比率 (和が1)
+mu_true    <- c(-3, 0, 4)      # 各クラスタの平均
+sigma_true <- c(0.5, 1.0, 0.8) # 各クラスタの標準偏差
 
-code_fa <- rtmb_code(
+# 潜在変数 z (各データ点がどのクラスタから生成されたか)
+z <- sample(1:K, size = N, replace = TRUE, prob = theta_true)
+
+# 観測データ Y
+Y <- numeric(N)
+for (i in 1:N) {
+  Y[i] <- rnorm(1, mean = mu_true[z[i]], sd = sigma_true[z[i]])
+}
+
+Y |> hist()
+
+data_mix <- list(Y = Y)
+```
+
+以下がコードになります。
+```{r eval = FALSE}
+code_mix <- rtmb_code(
   setup = {
-    N <- nrow(Y)
-    J <- ncol(Y)
+    K = 3 #クラスタ数
   },
   parameters = {
-    mu     = Dim(J)
-    Lambda = Dim(c(J,K), type="lower_tri")
-    psi    = Dim(J,lower=0)
-    theta  = Dim(c(N,K), random = TRUE)
-  },
-  transform = {
-    h2         <- rowSums(Lambda^2)
-    sd_Y       <- sqrt(h2 + psi^2)
-    Lambda_std <- Lambda / sd_Y
-    list(Lambda_std = Lambda_std) #listにいれたものだけが保存される
+    theta = Dim(K,type="simplex") #総和が1になる正のベクトル 混合率でよく使う
+    mu    = Dim(K)
+    sigma = Dim(K, lower = 0) 
   },
   model = {
-    for(i in 1:N){
-      Y_bar <- mu + Lambda %*% theta[i,]
-      Y[i,] ~ normal(Y_bar, psi)
-    }
-    mu ~ normal(0, 10)
-    psi ~ exponential(10)
-    Lambda ~ lower_tri_normal(0, 1)
-  },
-  generate = {
-    rot_obj <- promax(Lambda_std)
-    list(L_promax = unclass(rot_obj$loadings))
+    mu ~ normal(0, 5)
+    sigma ~ exponential(1)
+    theta ~ dirichlet(rep(1, K)) #ディリクレ分布を事前分布にする
+    Y ~ normal_mixture(theta, mu, sigma) #混合正規分布が用意されている
   }
 )
 ```
 
-```{r eval=FALSE}
-mdl_fa <- rtmb_model(data_fa, code_fa)
+## モデルの用意
+```{r eval = FALE}
+mdl_mix <- rtmb_model(data_mix, code_mix)
 ```
 
-```{r eval=FALSE}
-job::job({
-  mcmc_fa <- mdl_fa$sample(parallel=TRUE)
-})
+## 初期値の設定
+
+混合分布モデルは、そのまま推定するとラベルスイッチングがよく生じます。
+ラベルスイッチングとは、チェインごとでクラスタのラベルづけが変わってしまう現象です。
+MCMCでは避けては通れないですが、初期値を与えると起きにくくなります。
+
+そこで、MAP推定値を使います。ただ、混合分布モデルは初期値依存で局所最適解に陥ることがよくあるので、複数のMAPを走らせます。`num_estimate = 8`とすることで8回走らせることができます。
+
+```{r eval = FALSE}
+opt_mix <- mdl_mix$optimize(num_estimate = 8)
 ```
 
-```{r eval=FALSE}
-opt_fa <- mdl_fa$optimize()
-opt_fa$summary("Lambda_std")
+```text
+## Starting optimization...
+## Optimization run 8/8...
+## 
+## Optimization Diagnostics per estimate:
+##   est1: Objective =     711.49, Code = 0 (Converged)
+##   est2: Objective =     711.49, Code = 0 (Converged)
+##   est3: Objective =     655.84, Code = 0 (Converged)  <-- BEST
+##   est4: Objective =     695.90, Code = 0 (Converged)
+##   est5: Objective =     655.84, Code = 0 (Converged)
+##   est6: Objective =     675.00, Code = 0 (Converged)
+##   est7: Objective =     713.57, Code = 0 (Converged)
+##   est8: Objective =     676.45, Code = 0 (Converged)
 ```
 
+このBestの結果を初期値にしてMCMCを走らせます。
 
-```{r eval=FALSE}
-code_fa <- rtmb_code(
-  setup = {
-    N <- nrow(Y)
-    J <- ncol(Y)
-    Y_bar <- apply(Y,2,mean) #平均値
-    S_Y   <- cov(Y)*(N-1)    #偏差積和行列
-  },
-  parameters = {
-    mu     = Dim(J)
-    Lambda = Dim(c(J,K), type="lower_tri")
-    psi    = Dim(J,lower=0)
-  },
-  transform = {
-    h2         <- rowSums(Lambda^2)
-    sd_Y       <- sqrt(h2 + psi^2)
-    Lambda_std <- Lambda / sd_Y
-    list(Lambda_std = Lambda_std) #listにいれたものだけが保存される
-  },
-  model = {
-    S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mu, psi, Lambda)
-    mu ~ normal(0, 10)
-    psi ~ exponential(10)
-    Lambda ~ lower_tri_normal(0, 1)
-  },
-  generate = {
-    rot_obj <- promax(Lambda_std)
-    list(L_promax = unclass(rot_obj$loadings))
-  }
-)
+```{r eval = FALSE}
+mcmc_mix <- mdl_mix$sample(parallel=TRUE, init = opt_mix$par)
+mcmc_mix
 ```
 
+```text
+## variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
+## lp        -664.57  2.05  -663.46  -669.30  -661.57      1717      2894  1.00 
+## theta[1]     0.29  0.03     0.29     0.24     0.35      3928      2829  1.00 
+## theta[2]     0.18  0.03     0.18     0.13     0.23      3274      2909  1.00 
+## theta[3]     0.53  0.04     0.53     0.46     0.60      2790      2986  1.00 
+## mu[1]        3.93  0.10     3.94     3.72     4.13      3551      2683  1.00 
+## mu[2]       -2.98  0.09    -2.97    -3.15    -2.80      3210      3099  1.00 
+## mu[3]        0.03  0.11     0.02    -0.19     0.23      3506      3255  1.00 
+## sigma[1]     0.77  0.08     0.74     0.62     0.96      2724      2573  1.00 
+## sigma[2]     0.51  0.07     0.49     0.39     0.67      3459      3004  1.00 
+## sigma[3]     1.07  0.12     1.04     0.87     1.33      2758      2518  1.00  
+```
 
 # まとめ
 
