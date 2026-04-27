@@ -3,6 +3,7 @@
 #' An R6 class storing posterior samples and related information
 #' from MCMC estimation.
 #'
+#' @importFrom mvtnorm rmvnorm
 #' @param model An `RTMB_Model` object used for estimation.
 #' @param fit Posterior draws for model parameters.
 #' @param random_fit Posterior draws for random effects, if available.
