@@ -173,9 +173,17 @@ plot_dens(samples)
 # トレースプロット（収束の確認）
 plot_trace(samples)
 
+# 自己相関プロット
+plot_acf(samples)
+
 # フォレストプロット（点推定値と区間の一覧）
 plot_forest(samples)
 ```
+
+![](plot_dens.png)
+![](plot_trace.png)
+![](plot_acf.png)
+![](plot_forest.png)
 
 - **`plot_dens()`**: パラメータごとの事後分布の密度を表示します。
 - **`plot_trace()`**: 各チェインがパラメータ空間をどのように移動したかを表示します。複数のチェインが重なり合って「毛虫」のような状態になっていれば収束が期待できます。
