@@ -375,7 +375,7 @@ opt_fa$summary()
 
 回転後の因子負荷量をソートして表示させる関数、`sort_loadings`を使うと結果が見やすいです。
 
-```{r}
+```{r eval=FALSE}
 opt_fa$generate$L_promax |> sort_loadings()
 ```
 
@@ -408,7 +408,7 @@ opt_fa$generate$L_promax |> sort_loadings()
 因子得点も`score = TRUE`のオプションで出力可能です。
 因子得点もgenerateに出力されます。
 
-```{r}
+```{r eval=FALSE}
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax", score = TRUE)
 
 opt_fa <- mdl_fa$optimize()
@@ -432,7 +432,7 @@ opt_fa$generate$score |> head()
 
 正則化因子分析はMAPではうまく推定できないことがあるので、MCMCかADVIを使うほうがいいでしょう。
 
-```{r}
+```{r eval=FALSE}
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "ssp")
 
 vb_fa <- mdl_fa$variational(iter = 5000, parallel = TRUE)
@@ -455,7 +455,7 @@ vb_fa
 
 MCMCやADVIの結果の出力は、`EAP`と`MAP`があります。正則化の場合は`MAP`だと厳密に0に近づくので、出力がみやすくなります。
 
-```{r}
+```{r eval=FALSE}
 vb_fa$MAP("L") |> sort_loadings()
 ```
 
