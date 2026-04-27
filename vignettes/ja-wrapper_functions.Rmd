@@ -278,7 +278,7 @@ opt_glmer$summary()
 
 正則化を使うときは、弱情報事前分布を使う必要があるので、目的変数のレンジも入力する必要があります。今回は5件法のデータなので1~5を入力します。正則化のモデルはMAPが難しいことが多いので、MCMCを使うのがよいです。
 
-```{r eval=FALES}
+```{r eval=FALSE}
 mdl_glmer <-
   rtmb_glmer(
     satisfaction ~ talk + performance + skill + condition + (1 | group),
