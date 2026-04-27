@@ -139,7 +139,7 @@ An `RTMB_Model` object.
   # Specifying "delta" automatically fixes the parameter to 0 and drops its prior
   bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
 #> Calculating marginal likelihood for the full model...
-#> Bridge Sampling Converged: LogML = -88.383 (Error = 0.0068, ESS = 353.9)
+#> Bridge Sampling Converged: LogML = -88.384 (Error = 0.0070, ESS = 353.9)
 #> 
 #> --- Preparing and Sampling Null Model (delta) ---
 #> Auto-completed target: delta ~ cauchy(0, r)
@@ -185,8 +185,8 @@ An `RTMB_Model` object.
 #> --- Calculating marginal likelihood for the null model ---
 #> Bridge Sampling Converged: LogML = -87.602 (Error = 0.0055, ESS = 335.9)
   print(bf_ttest)
-#> Bayes Factor (BF12) : 0.4579 
-#> Log Bayes Factor    : -0.7811 (Approx. Error = 0.0088)
+#> Bayes Factor (BF12) : 0.4577 
+#> Log Bayes Factor    : -0.7816 (Approx. Error = 0.0089)
 #> Interpretation      : Anecdotal evidence for Model 2 
 # }
 ```

@@ -108,22 +108,22 @@ instead of raw algebraic implementations.</p>
 <span class="r-in"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>N <span class="op">=</span> <span class="va">N</span>, x <span class="op">=</span> <span class="va">x</span>, y <span class="op">=</span> <span class="va">y</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Define the model using rtmb_code</span></span></span>
-<span class="r-in"><span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu">rtmb_code</span><span class="op">(</span><span class="op">{</span></span></span>
-<span class="r-in"><span>  <span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu">rtmb_code</span><span class="op">(</span></span></span>
+<span class="r-in"><span>  setup <span class="op">=</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="co"># Center the predictor variable (executed once)</span></span></span>
 <span class="r-in"><span>    <span class="va">x_centered</span> <span class="op">&lt;-</span> <span class="va">x</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  <span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span>,</span></span>
+<span class="r-in"><span>  parameters <span class="op">=</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="co"># Define parameters and their constraints</span></span></span>
 <span class="r-in"><span>    <span class="va">alpha</span> <span class="op">=</span> <span class="fu"><a href="Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="va">beta</span>  <span class="op">=</span> <span class="fu"><a href="Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span>, lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  <span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span>,</span></span>
+<span class="r-in"><span>  transform <span class="op">=</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="co"># Calculate the linear predictor</span></span></span>
 <span class="r-in"><span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">beta</span> <span class="op">*</span> <span class="va">x_centered</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  <span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span>,</span></span>
+<span class="r-in"><span>  model <span class="op">=</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="co"># Priors</span></span></span>
 <span class="r-in"><span>    <span class="va">alpha</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="va">beta</span>  <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span></span>
@@ -131,30 +131,58 @@ instead of raw algebraic implementations.</p>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="co"># Likelihood (Vectorized)</span></span></span>
 <span class="r-in"><span>    <span class="va">y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span>  <span class="va">generate</span> <span class="op">=</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span>,</span></span>
+<span class="r-in"><span>  generate <span class="op">=</span> <span class="op">{</span></span></span>
 <span class="r-in"><span>    <span class="co"># Calculate generated quantities</span></span></span>
 <span class="r-in"><span>    <span class="va">y_pred</span> <span class="op">&lt;-</span> <span class="va">mu</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="co"># Must return a named list</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>y_pred <span class="op">=</span> <span class="va">y_pred</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span><span class="op">}</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> Unknown block '=' is specified. Valid blocks are setup, data, parameters, transform, model, generate.</span>
+<span class="r-in"><span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Create the model object</span></span></span>
 <span class="r-in"><span><span class="va">mod</span> <span class="op">&lt;-</span> <span class="fu"><a href="RTMB_Model.html">rtmb_model</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_list</span>, code <span class="op">=</span> <span class="va">code</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'code' not found</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Fit the model using MAP estimation</span></span></span>
 <span class="r-in"><span><span class="va">map_res</span> <span class="op">&lt;-</span> <span class="va">mod</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'mod' not found</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Optimization converged. Final objective: 145.34</span>
 <span class="r-in"><span><span class="va">map_res</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>pars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"alpha"</span>, <span class="st">"beta"</span>, <span class="st">"sigma"</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'map_res' not found</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 145.34</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -149.89</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha      2.02788     0.09564    1.84043    2.21532 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> beta       1.44737     0.10530    1.24099    1.65374 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma      0.95544     0.06708    0.83261    1.09639 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># The generated quantity 'y_pred' can also be summarized</span></span></span>
 <span class="r-in"><span><span class="va">map_res</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"y_pred"</span>, max_rows <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> object 'map_res' not found</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 145.34</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -149.89</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y_pred[1]   1.08581          NA         NA         NA </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y_pred[2]   1.56387          NA         NA         NA </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y_pred[3]   4.15305          NA         NA         NA </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y_pred[4]   1.99908          NA         NA         NA </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> y_pred[5]   2.08415          NA         NA         NA </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

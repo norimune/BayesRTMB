@@ -15,13 +15,33 @@ beverage
 A data frame (or matrix) with \[INSERT NUMBER OF ROWS\] rows and
 \[INSERT NUMBER OF COLUMNS\] columns.
 
-- Column1:
+- AJ:
 
-  Description of the first column (e.g., preference score).
+  Apple Juice preference rating
 
-- Column2:
+- BT:
 
-  Description of the second column.
+  Black Tea preference rating
+
+- CF:
+
+  Coffee preference rating
+
+- CL:
+
+  Cola preference rating
+
+- GT:
+
+  Green Tea preference rating
+
+- OJ:
+
+  Orange Juice preference rating
+
+- OT:
+
+  Oolong Tea preference rating
 
 ## Source
 

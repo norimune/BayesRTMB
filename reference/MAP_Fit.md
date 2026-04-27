@@ -324,8 +324,8 @@ Compute generated quantities from the MAP estimate.
 
 - `code`:
 
-  An \`rtmb_code( ... )\` or \` ... \` block containing the logic to be
-  calculated using the MAP estimate.
+  An \`rtmb_code({ ... })\` or \`{ ... }\` block containing the logic to
+  be calculated using the MAP estimate.
 
 #### Returns
 

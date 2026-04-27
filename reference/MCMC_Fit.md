@@ -469,8 +469,8 @@ Compute generated quantities from posterior draws.
 
 - `code`:
 
-  An \`rtmb_code( ... )\` or \` ... \` block containing the logic to be
-  calculated using posterior samples.
+  An \`rtmb_code({ ... })\` or \`{ ... }\` block containing the logic to
+  be calculated using posterior samples.
 
 #### Returns
 
