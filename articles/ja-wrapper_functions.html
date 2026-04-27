@@ -41,8 +41,8 @@
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
     <li><a class="dropdown-item" href="../articles/ja-quick_start.html">クイックスタート</a></li>
-    <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-wrapper_functions.html">ラッパー関数の使い方</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -262,7 +262,72 @@ Informative Prior）</strong>を自動構成することを推奨しています
 ## b[satisfaction]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
 ## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 </code></pre>
+<div class="section level4">
+<h4 id="利用可能な分布family">利用可能な分布（family）<a class="anchor" aria-label="anchor" href="#%E5%88%A9%E7%94%A8%E5%8F%AF%E8%83%BD%E3%81%AA%E5%88%86%E5%B8%83family"></a>
+</h4>
+<p><code>rtmb_glm</code> および <code>rtmb_glmer</code>
+では、以下の分布を指定できます。各分布には標準的なリンク関数が内部で設定されています。</p>
+<table class="table">
+<colgroup>
+<col width="33%">
+<col width="33%">
+<col width="33%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">family</th>
+<th align="left">リンク関数</th>
+<th align="left">概要</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left"><code>gaussian</code></td>
+<td align="left">恒等 (identity)</td>
+<td align="left">正規分布。標準的な回帰分析に。</td>
+</tr>
+<tr class="even">
+<td align="left"><code>lognormal</code></td>
+<td align="left">対数 (log)</td>
+<td align="left">対数正規分布。正の値をとるデータの分析に。</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>student_t</code></td>
+<td align="left">恒等 (identity)</td>
+<td align="left">t 分布。外れ値の影響を抑えたい場合に。</td>
+</tr>
+<tr class="even">
+<td align="left"><code>gamma</code></td>
+<td align="left">対数 (log)</td>
+<td align="left">ガンマ分布。正の値で歪みのあるデータの分析に。</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>bernoulli</code></td>
+<td align="left">ロジット (logit)</td>
+<td align="left">ベルヌーイ分布。0/1 の 2 値データの分析に。</td>
+</tr>
+<tr class="even">
+<td align="left"><code>binomial</code></td>
+<td align="left">ロジット (logit)</td>
+<td align="left">二項分布。成功回数/試行回数のデータの分析に。</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>poisson</code></td>
+<td align="left">対数 (log)</td>
+<td align="left">ポアソン分布。カウントデータの分析に。</td>
+</tr>
+<tr class="even">
+<td align="left"><code>neg_binomial</code></td>
+<td align="left">対数 (log)</td>
+<td align="left">負の二項分布。過分散のあるカウントデータの分析に。</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>ordered</code></td>
+<td align="left">ロジット (logit)</td>
+<td align="left">順序ロジスティック回帰。順序カテゴリカルデータの分析に。</td>
+</tr>
+</tbody>
+</table>
 <hr>
+</div>
 </div>
 <div class="section level2">
 <h2 id="rtmb_glmer一般化線形混合モデル">4. rtmb_glmer（一般化線形混合モデル）<a class="anchor" aria-label="anchor" href="#rtmb_glmer%E4%B8%80%E8%88%AC%E5%8C%96%E7%B7%9A%E5%BD%A2%E6%B7%B7%E5%90%88%E3%83%A2%E3%83%87%E3%83%AB"></a>
@@ -292,7 +357,33 @@ Informative Prior）</strong>を自動構成することを推奨しています
 <span><span class="co">## sigma         0.77389     0.03867    0.70170    0.85351 </span></span>
 <span><span class="co">## sd[Int]       0.51833     0.06587    0.40406    0.66492 </span></span>
 <span><span class="co">## Intercept_c   3.43322     0.06846    3.29904    3.56740 </span></span></code></pre>
+<div class="section level3">
+<h3 id="正則化">正則化<a class="anchor" aria-label="anchor" href="#%E6%AD%A3%E5%89%87%E5%8C%96"></a>
+</h3>
+<p><code>rtmb_lm</code>, <code>rtmb_glm</code>,
+<code>rtmb_glmer</code>では、正則化を使うことができます。正則化は、多すぎるパラメータについて0に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。</p>
+<p><code>BayesRTMB</code>パッケージでは、<code>penalty</code>オプションで馬蹄事前分布を使う<code>rhs</code>とspike
+and slab
+priorを使う<code>ssp</code>が選べます。<code>rhs</code>は推定がしやすい反面、効果の小さい係数が完全に0にはなりません。<code>ssp</code>は推定がやや重いですが、完全に0に縮小させることができます。</p>
+<p>正則化を使うときは、弱情報事前分布を使う必要があるので、目的変数のレンジも入力する必要があります。今回は5件法のデータなので1~5を入力します。正則化のモデルはMAPが難しいことが多いので、MCMCを使うのがよいです。</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span></span>
+<span>  <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
+<span>    <span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">performance</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="va">condition</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span>    penalty <span class="op">=</span> <span class="st">"ssp"</span>,</span>
+<span>    y_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span></span>
+<span>  <span class="op">)</span></span>
+<span></span>
+<span><span class="va">mcmc_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">mcmc_glmer</span></span></code></pre></div>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"b[condition]"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="float">
+<img src="ssp_posterior_dist.png" alt="縮小された事後分布"><div class="figcaption">縮小された事後分布</div>
+</div>
 <hr>
+</div>
 </div>
 <div class="section level2">
 <h2 id="rtmb_corr相関行列の推定">5. rtmb_corr（相関行列の推定）<a class="anchor" aria-label="anchor" href="#rtmb_corr%E7%9B%B8%E9%96%A2%E8%A1%8C%E5%88%97%E3%81%AE%E6%8E%A8%E5%AE%9A"></a>
@@ -304,7 +395,7 @@ Informative Prior）</strong>を自動構成することを推奨しています
 </h4>
 <p>2つの変数（例：外向性を示す項目 BF1 と
 BF6）の間の相関を推定し、無相関（<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r = 0</annotation></semantics></math>）を帰無仮説としたベイズファクターを計算します。</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># BF1 と BF6 の相関</span></span>
@@ -318,7 +409,7 @@ BF6）の間の相関を推定し、無相関（<math display="inline" xmlns="ht
 <span><span class="co">## mean[BF6]     2.71  0.09     2.73     2.54     2.89      2978      2872  1.00 </span></span>
 <span><span class="co">## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 </span></span>
 <span><span class="co">## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 </span></span></code></pre>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 相関 = 0 のモデル（null_model = "corr"）と比較</span></span>
 <span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"corr"</span><span class="op">)</span></span>
 <span><span class="va">bf_corr</span></span></code></pre></div>
@@ -330,7 +421,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 <h4 id="相関行列の推定">相関行列の推定<a class="anchor" aria-label="anchor" href="#%E7%9B%B8%E9%96%A2%E8%A1%8C%E5%88%97%E3%81%AE%E6%8E%A8%E5%AE%9A"></a>
 </h4>
 <p>複数の変数を一括して指定すると、相関行列全体を推定します。</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 5つの変数の相関行列を推定</span></span>
 <span><span class="va">mdl_corr_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">opt_corr_mat</span> <span class="op">&lt;-</span> <span class="va">mdl_corr_mat</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -368,7 +459,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 回転後の因子負荷量は<code>_promax</code>のように回転名が後ろにつきます。
 回転後の因子負荷量はgenerateに入るので、MAPでは標準では標準誤差が計算されません。
 <code>se_sampling =  TRUE</code>としておくことで標準誤差も計算されます。</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 3因子モデル、プロマックス回転を指定</span></span>
 <span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span><span class="op">)</span></span>
 <span></span>
@@ -394,7 +485,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 <span><span class="co">## L_promax[BF9,1]   -0.08225     0.07363   -0.23533    0.05242 </span></span>
 <span><span class="co">## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 </span></span></code></pre>
 <p>回転後の因子負荷量をソートして表示させる関数、<code>sort_loadings</code>を使うと結果が見やすいです。</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_fa</span><span class="op">$</span><span class="va">generate</span><span class="op">$</span><span class="va">L_promax</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V1   .867 -.117 -.179  .089  .057</span></span>
@@ -423,7 +514,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 </h3>
 <p>因子得点も<code>score = TRUE</code>のオプションで出力可能です。
 因子得点もgenerateに出力されます。</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span>, score <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">opt_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -440,10 +531,11 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 <div class="section level3">
 <h3 id="正則化因子分析">正則化因子分析<a class="anchor" aria-label="anchor" href="#%E6%AD%A3%E5%89%87%E5%8C%96%E5%9B%A0%E5%AD%90%E5%88%86%E6%9E%90"></a>
 </h3>
-<p>回転（rotation）や、スパースな負荷量を推定するための Spike-and-Slab
-Prior（SSP）もサポートしています。</p>
-<p>正則化因子分析はMAPではうまく推定できないことがあるので、MCMCかADVIを使うほうがいいでしょう。</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<p>スパースな負荷量を推定するための Spike-and-Slab
+Prior（SSP）を用いた正則化因子分析もサポートしています。</p>
+<p>正則化は、多すぎるパラメータについて0に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。因子分析に適用すると、回転の自由度を消すことができ、一意な解を得ることができます。</p>
+<p>正則化因子分析はMAPではうまく推定できないことがあるので、MCMCかADVIを使うほうがいいでしょう。ここではADVI（自動微分変分ベイズ法）による結果を紹介します。</p>
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"ssp"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">vb_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span>iter <span class="op">=</span> <span class="fl">5000</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -460,7 +552,7 @@ Prior（SSP）もサポートしています。</p>
 <span><span class="co">## L[BF8,1]      0.01   0.05      0.00     -0.05      0.11 </span></span>
 <span><span class="co">## L[BF9,1]      0.01   0.04      0.00     -0.03      0.08 </span></span></code></pre>
 <p>MCMCやADVIの結果の出力は、<code>EAP</code>と<code>MAP</code>があります。正則化の場合は<code>MAP</code>だと厳密に0に近づくので、出力がみやすくなります。</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_fa</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="st">"L"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V7  -.823  .000 -.001  .001  .010</span></span>
