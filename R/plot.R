@@ -12,6 +12,7 @@
 #' @return No return value. This function is called for its side effect
 #'   of plotting.
 #'
+#' @importFrom graphics plot.new title
 #' @export
 plot_dens <- function(x, mono = FALSE) {
   if (is.null(dim(x))) {

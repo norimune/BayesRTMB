@@ -254,7 +254,7 @@ Compute generated quantities from the MAP estimate.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.}
+\item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic to be calculated using the MAP estimate.}
 }
 \if{html}{\out{</div>}}
 }

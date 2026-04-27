@@ -7,9 +7,13 @@
 \format{
 A data frame (or matrix) with [INSERT NUMBER OF ROWS] rows and [INSERT NUMBER OF COLUMNS] columns.
 \describe{
-  \item{Column1}{Description of the first column (e.g., preference score).}
-  \item{Column2}{Description of the second column.}
-  % Add other columns as necessary
+  \item{AJ}{Apple Juice preference rating}
+  \item{BT}{Black Tea preference rating}
+  \item{CF}{Coffee preference rating}
+  \item{CL}{Cola preference rating}
+  \item{GT}{Green Tea preference rating}
+  \item{OJ}{Orange Juice preference rating}
+  \item{OT}{Oolong Tea preference rating}
 }
 }
 \source{

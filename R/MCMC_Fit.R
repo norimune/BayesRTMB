@@ -801,7 +801,7 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Compute generated quantities from posterior draws.
-    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+    #' @param code An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
     #' to be calculated using posterior samples.
     #' @return The `MCMC_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.

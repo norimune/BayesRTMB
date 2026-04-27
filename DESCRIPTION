@@ -13,7 +13,6 @@ Depends:
 Imports: 
     R6,
     MASS,
-    mvtnorm,
     future,
     future.apply,
     progressr,

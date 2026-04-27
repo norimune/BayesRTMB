@@ -360,7 +360,7 @@ Compute generated quantities from posterior draws.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{code}}{An `rtmb_code({ ... })` or `{ ... }` block containing the logic
+\item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
 to be calculated using posterior samples.}
 }
 \if{html}{\out{</div>}}

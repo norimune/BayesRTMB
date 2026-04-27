@@ -489,21 +489,21 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
 #' data_list <- list(N = N, x = x, y = y)
 #'
 #' # Define the model using rtmb_code
-#' code <- rtmb_code({
+#' code <- rtmb_code(
 #'   setup = {
 #'     # Center the predictor variable (executed once)
 #'     x_centered <- x - mean(x)
-#'   }
+#'   },
 #'   parameters = {
 #'     # Define parameters and their constraints
 #'     alpha = Dim(1)
 #'     beta  = Dim(1)
 #'     sigma = Dim(1, lower = 0)
-#'   }
+#'   },
 #'   transform = {
 #'     # Calculate the linear predictor
 #'     mu <- alpha + beta * x_centered
-#'   }
+#'   },
 #'   model = {
 #'     # Priors
 #'     alpha ~ normal(0, 10)
@@ -512,7 +512,7 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
 #'
 #'     # Likelihood (Vectorized)
 #'     y ~ normal(mu, sigma)
-#'   }
+#'   },
 #'   generate = {
 #'     # Calculate generated quantities
 #'     y_pred <- mu
@@ -520,7 +520,7 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
 #'     # Must return a named list
 #'     list(y_pred = y_pred)
 #'   }
-#' })
+#' )
 #'
 #' # Create the model object
 #' mod <- rtmb_model(data = data_list, code = code)

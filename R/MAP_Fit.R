@@ -221,7 +221,7 @@ MAP_Fit <- R6::R6Class(
     },
 
     #' @description Compute generated quantities from the MAP estimate.
-    #' @param code An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.
+    #' @param code An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic to be calculated using the MAP estimate.
     #' @return The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.
     generated_quantities = function(code) {
       raw_code <- substitute(code)

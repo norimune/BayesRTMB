@@ -32,4 +32,8 @@ Useful links:
 * [https://github.com/norimune/BayesRTMB](https://github.com/norimune/BayesRTMB)
 * Report bugs at [https://github.com/norimune/BayesRTMB/issues](https://github.com/norimune/BayesRTMB/issues)
 }
+\author{
+\strong{Maintainer}: Hiroshi Shimizu \email{simizu706@gmail.com}
+
+}
 \keyword{internal}
