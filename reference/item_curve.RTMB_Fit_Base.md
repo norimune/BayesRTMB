@@ -27,3 +27,14 @@ item_curve(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...)
 - ...:
 
   Additional arguments.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+  map_fit <- fit$optimize()
+  ic <- item_curve(map_fit)
+  plot(ic)
+} # }
+```

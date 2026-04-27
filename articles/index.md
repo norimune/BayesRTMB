@@ -50,3 +50,5 @@ BayesRTMB の概要と使い方をまとめた記事です。
 - [コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):
 
   model codeの書き方について解説します
+
+- [RTMBの仕組みと推定のアルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md):

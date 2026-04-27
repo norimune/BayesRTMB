@@ -32,6 +32,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
     <li><a class="dropdown-item" href="../articles/ja-quick_start.html">クイックスタート</a></li>
     <li><a class="dropdown-item" href="../articles/ja-wrapper_functions.html">ラッパー関数の使い方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -95,7 +96,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span>  <span class="co"># \donttest{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span>  <span class="co"># --- 1. Binary Data (e.g., correct/incorrect answers) ---</span></span></span>
 <span class="r-in"><span>  <span class="co"># Simulate binary response data for 100 persons and 5 items</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
@@ -107,36 +108,10 @@ Missing values (NA) in the data are automatically removed internally for efficie
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Fit a 2-Parameter Logistic (2PL) model</span></span></span>
 <span class="r-in"><span>  <span class="va">fit_2pl</span> <span class="op">&lt;-</span> <span class="fu">rtmb_irt</span><span class="op">(</span>data <span class="op">=</span> <span class="va">bin_data</span>, model <span class="op">=</span> <span class="st">"2PL"</span>, type <span class="op">=</span> <span class="st">"binary"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Maximum A Posteriori (MAP) estimation</span></span></span>
 <span class="r-in"><span>  <span class="va">map_2pl</span> <span class="op">&lt;-</span> <span class="va">fit_2pl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Optimization converged. Final objective: 348.19</span>
 <span class="r-in"><span>  <span class="va">map_2pl</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 348.19</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -351.42</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Note: Random effects are stored in $random_effects</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item1]   0.50626     0.19539    0.23760    1.07868 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item2]   0.53070     0.20473    0.24916    1.13036 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item3]   0.53650     0.20799    0.25095    1.14698 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item4]   0.68479     0.26912    0.31698    1.47936 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item5]   0.53477     0.20714    0.25030    1.14253 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item1]  -0.81807     0.49804   -1.79421    0.15808 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item2]  -0.94996     0.50981   -1.94917    0.04926 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item3]  -0.86002     0.48909   -1.81862    0.09857 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item4]  -0.70531     0.39355   -1.47665    0.06604 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item5]  -0.86159     0.48990   -1.82177    0.09859 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># --- 2. Ordered Data (e.g., Likert scale) ---</span></span></span>
 <span class="r-in"><span>  <span class="co"># Simulate ordered response data (categories 1 to 5) with a true latent structure</span></span></span>
@@ -176,71 +151,10 @@ Missing values (NA) in the data are automatically removed internally for efficie
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Fit a Graded Response Model (2PL for ordered data)</span></span></span>
 <span class="r-in"><span>  <span class="va">fit_ord</span> <span class="op">&lt;-</span> <span class="fu">rtmb_irt</span><span class="op">(</span>data <span class="op">=</span> <span class="va">ord_data</span>, model <span class="op">=</span> <span class="st">"2PL"</span>, type <span class="op">=</span> <span class="st">"ordered"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">fit_ord</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> === RTMB Model Code ===</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> rtmb_code(</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   setup = {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     obs_data &lt;- which(!is.na(Y), arr.ind = TRUE)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     person_idx &lt;- as.integer(obs_data[, "row"])</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     item_idx &lt;- as.integer(obs_data[, "col"])</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     Y_obs &lt;- Y[obs_data]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     N_persons &lt;- nrow(Y)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     N_items &lt;- ncol(Y)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     N_obs &lt;- length(Y_obs)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     if (min(Y_obs) == 0) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       Y_obs &lt;- Y_obs + 1</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     K_cat &lt;- max(Y_obs)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   }, </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   parameters = {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     theta &lt;- Dim(N_persons, random = TRUE)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     b &lt;- Dim(c(N_items, K_cat - 1), type = "ordered")</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     a &lt;- Dim(N_items, lower = 0)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   }, </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   model = {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     # Likelihood</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     for (i in 1:N_obs) {</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       p &lt;- person_idx[i]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       j &lt;- item_idx[i]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       y &lt;- Y_obs[i]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       eta &lt;- a[j] * theta[p]</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       y ~ ordered_logistic(eta, b[j, ])</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     # Priors</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     a ~ lognormal(prior_a_log_mean, prior_a_log_sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     for (j in 1:N_items) b[j, ] ~ normal(prior_b_mean, prior_b_sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     theta ~ normal(0, prior_theta_sd)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>   }</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> )</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">map_ord</span> <span class="op">&lt;-</span> <span class="va">fit_ord</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Optimization converged. Final objective: 690.99</span>
 <span class="r-in"><span>  <span class="va">map_ord</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 690.99</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -731.73</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Note: Random effects are stored in $random_effects</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            variable  Estimate  Std. Error  Lower 95%   Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item1]              0.96615     0.26759    0.56143     1.66264 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item2]              1.18876     0.31684    0.70506     2.00432 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item3]              0.75313     0.20830    0.43797     1.29505 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item4]              1.00441     0.24271    0.62550     1.61287 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item5]              1.02515     0.26812    0.61399     1.71162 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item1,Threshold1]  -1.69598     0.30728   -2.29823    -1.09373 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item2,Threshold1]  -1.62229     0.32430   -2.29823  5924.72682 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item3,Threshold1]  -1.51011     0.24906   -2.29809  6011.05137 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item4,Threshold1]  -1.11941     0.20116   -2.20051  6012.61580 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item5,Threshold1]  -1.11941     0.20116   -2.20051         Inf </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Note: For complex models like the Graded Response Model, the Wald CI from optimize()</span></span></span>
 <span class="r-in"><span>  <span class="co"># may become extremely wide due to parameter transformations.</span></span></span>
@@ -248,42 +162,8 @@ Missing values (NA) in the data are automatically removed internally for efficie
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># MCMC sampling for the ordered model (chains and iterations reduced)</span></span></span>
 <span class="r-in"><span>  <span class="va">mcmc_ord</span> <span class="op">&lt;-</span> <span class="va">fit_ord</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 100 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 300 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 500 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 700 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 900 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 100 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 300 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 500 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 700 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 900 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
 <span class="r-in"><span>  <span class="va">mcmc_ord</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>            variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp                   -815.26  11.12  -816.85  -839.59  -794.88       200       451  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item1]                1.12   0.30     1.03     0.60     1.74       410       515  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item2]                1.40   0.35     1.31     0.77     2.15       285       484  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item3]                0.77   0.21     0.72     0.40     1.22       509       692  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item4]                1.17   0.28     1.23     0.67     1.70       359       726  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item5]                1.15   0.32     1.02     0.61     1.81       237       757  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item1,Threshold1]    -1.97   0.25    -1.93    -2.45    -1.49       323       544  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item2,Threshold1]    -1.72   0.22    -1.80    -2.17    -1.29       406       690  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item3,Threshold1]    -1.47   0.20    -1.47    -1.86    -1.07       380       690  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item4,Threshold1]    -1.17   0.19    -1.21    -1.55    -0.80       534       840  1.00 </span>
-<span class="r-in"><span> <span class="co"># }</span></span></span>
+<span class="r-in"><span> <span class="op">}</span> <span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

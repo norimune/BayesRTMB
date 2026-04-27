@@ -8,10 +8,6 @@ Functions for defining and fitting custom models.
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
   : Create an RTMB_Model Object
-- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
-  : Safe RTMB model construction (with error message translation)
-- [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) :
-  Define parameter dimensions and types
 
 ## Wrapper Functions
 
@@ -145,12 +141,18 @@ Functions used within rtmb_code for stability and transformations.
 
 ## Other Objects and Internals
 
+- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
+  : Safe RTMB model construction (with error message translation)
+- [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) :
+  Define parameter dimensions and types
+- [`validate_data()`](https://norimune.github.io/BayesRTMB/reference/validate_data.md)
+  : Pre-validation of data and parameters
+- [`generate_random_init()`](https://norimune.github.io/BayesRTMB/reference/generate_random_init.md)
+  : Generate Random Initial Values
 - [`ADVI_method()`](https://norimune.github.io/BayesRTMB/reference/ADVI_method.md)
   : Automatic Differentiation Variational Inference (ADVI)
 - [`BigFive`](https://norimune.github.io/BayesRTMB/reference/BigFive.md)
   : Big Five Personality Traits Data
-- [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) :
-  Define parameter dimensions and types
 - [`MAP_Fit`](https://norimune.github.io/BayesRTMB/reference/MAP_Fit.md)
   : MAP fit object
 - [`MCMC_Fit`](https://norimune.github.io/BayesRTMB/reference/MCMC_Fit.md)
@@ -177,8 +179,6 @@ Functions used within rtmb_code for stability and transformations.
   : Probability Distributions for RTMB Models
 - [`fabs()`](https://norimune.github.io/BayesRTMB/reference/fabs.md) :
   Smooth absolute value function
-- [`generate_random_init()`](https://norimune.github.io/BayesRTMB/reference/generate_random_init.md)
-  : Generate Random Initial Values
 - [`inv_logit()`](https://norimune.github.io/BayesRTMB/reference/inv_logit.md)
   : Inverse logit function
 - [`item_curve(`*`<RTMB_Fit_Base>`*`)`](https://norimune.github.io/BayesRTMB/reference/item_curve.RTMB_Fit_Base.md)
@@ -258,8 +258,6 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
   : Common Features and Arguments of RTMB Wrapper Functions
-- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
-  : Safe RTMB model construction (with error message translation)
 - [`softmax()`](https://norimune.github.io/BayesRTMB/reference/softmax.md)
   : Softmax function
 - [`sort_loadings()`](https://norimune.github.io/BayesRTMB/reference/sort_loadings.md)
@@ -280,5 +278,3 @@ Functions used within rtmb_code for stability and transformations.
   : Vector to lower triangular matrix (RTMB compatible)
 - [`transform_code()`](https://norimune.github.io/BayesRTMB/reference/transform_code.md)
   : Transformed Code Wrapper for RTMB
-- [`validate_data()`](https://norimune.github.io/BayesRTMB/reference/validate_data.md)
-  : Pre-validation of data and parameters
