@@ -34,6 +34,8 @@ navbar:
         href: articles/ja-wrapper_functions.html
       - text: モデルコードの書き方
         href: articles/ja-writing_models.html
+      - text: RTMBの仕組みとアルゴリズム
+        href: articles/ja-rtmb_internals.html
       - text: "-------"
       - text: すべての記事
         href: articles/index.html
