@@ -21,10 +21,10 @@ navbar:
         href: articles/ja-introduction.html
       - text: クイックスタート
         href: articles/ja-quick_start.html
-      - text: モデルコードの書き方
-        href: articles/ja-writing_models.html
       - text: ラッパー関数の使い方
         href: articles/ja-wrapper_functions.html
+      - text: モデルコードの書き方
+        href: articles/ja-writing_models.html
       - text: "-------"
       - text: すべての記事
         href: articles/index.html
@@ -49,5 +49,5 @@ articles:
   contents:
   - ja-introduction
   - ja-quick_start
-  - ja-writing_models
   - ja-wrapper_functions
+　- ja-writing_models
