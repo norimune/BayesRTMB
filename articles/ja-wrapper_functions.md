@@ -29,8 +29,12 @@ set.seed(123)
 y1 <- rnorm(30, mean = 0, sd = 1)
 y2 <- rnorm(30, mean = 1, sd = 1)
 
-# モデルの作成
+# ベクトルを直接渡す方法
 mdl_ttest <- rtmb_ttest(y1, y2)
+
+# フォーミュラ形式で渡す方法（データフレームがある場合）
+# df <- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))
+# mdl_ttest <- rtmb_ttest(Y ~ group, data = df)
 
 # MCMCによる推定
 fit_ttest <- mdl_ttest$sample()

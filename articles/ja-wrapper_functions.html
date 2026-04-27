@@ -98,8 +98,12 @@
 <span><span class="va">y1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">30</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">30</span>, mean <span class="op">=</span> <span class="fl">1</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># モデルの作成</span></span>
+<span><span class="co"># ベクトルを直接渡す方法</span></span>
 <span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># フォーミュラ形式で渡す方法（データフレームがある場合）</span></span>
+<span><span class="co"># df &lt;- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))</span></span>
+<span><span class="co"># mdl_ttest &lt;- rtmb_ttest(Y ~ group, data = df)</span></span>
 <span></span>
 <span><span class="co"># MCMCによる推定</span></span>
 <span><span class="va">fit_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>

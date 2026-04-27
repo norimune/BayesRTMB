@@ -110,8 +110,21 @@ mdl <- rtmb_model(data = dat, code = code)
 事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。
 
 ``` r
-fit_map <- mdl$optimize()
-fit_map$summary()
+opt_fit <- mdl$optimize()
+opt_fit$summary()
+```
+
+``` text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 9.13
+## Approx. Log Marginal Likelihood (Laplace): -11.14
+## 
+## Point Estimates and 95% Wald CI:
+## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## mu         5.29839     0.17416    4.95704    5.63974 
+## sigma      0.42624     0.12240    0.24279    0.74830 
 ```
 
 #### 2. MCMC 推定 (`sample`)
@@ -121,8 +134,21 @@ NUTS (No-U-Turn Sampler)
 を指定すると複数チェーンの並列計算が可能です（デフォルトは `FALSE`）。
 
 ``` r
-fit_mcmc <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, parallel = FALSE)
-fit_mcmc$summary()
+mcmc_fit <-
+  mdl$sample(
+    sampling = 1000,
+    warmup = 1000,
+    chains = 4,
+    parallel = FALSE
+  )
+mcmc_fit$summary()
+```
+
+``` text
+## variable    mean    sd     map    q2.5  q97.5  ess_bulk  ess_tail  rhat 
+## lp        -11.15  1.24  -10.19  -14.63  -9.97       923       830  1.01 
+## mu          5.29  0.30    5.32    4.68   5.87      1122       495  1.00 
+## sigma       0.65  0.31    0.48    0.32   1.41      1072      1404  1.00
 ```
 
 #### 3. 変分推論 (`variational`)
@@ -131,12 +157,19 @@ ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求
 では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。
 
 ``` r
-fit_vb <- mdl$variational(
+vb_fit <- mdl$variational(
   method = "meanfield",
   iter = 3000,
   num_estimate = 4
 )
-fit_vb$summary()
+vb_fit$summary()
+```
+
+``` text
+## variable    mean    sd     map    q2.5   q97.5 
+## lp        -12.85  2.08  -12.33  -17.10  -10.21 
+## mu          5.31  0.39    5.32    4.54    6.07 
+## sigma       1.12  0.57    0.86    0.40    2.63 
 ```
 
 ### ランダム効果 (Random effect) を含むモデル
@@ -145,15 +178,29 @@ fit_vb$summary()
 として宣言できます。
 
 ``` r
-code_hier <- rtmb_code(
+data(discussion)
+
+Y <- discussion$satisfaction
+group <- discussion$group
+G <- length(unique(group))
+
+data_icc <- list(Y = Y,group = group, G = G)
+
+code_icc <- rtmb_code(
   parameters = {
-    mu_global    = Dim(1)
-    sigma_global = Dim(1, lower = 0)
-    alpha        = Dim(J, random = TRUE)
+    mu    <- Dim()
+    sigma <- Dim(lower = 0)
+    tau   <- Dim(lower=0)
+    r     <- Dim(G, random = TRUE)
   },
   model = {
-    alpha        ~ normal(mu_global, sigma_global)
-    # ... likelihood ...
+    Y ~ normal(mu + r[group] * tau, sigma)
+    r ~ normal(0, 1)
+    tau ~ exponential(1)
+    sigma   ~ exponential(1)
+  },
+  generate = {
+    icc = tau / (tau + sigma)
   }
 )
 ```
@@ -161,15 +208,45 @@ code_hier <- rtmb_code(
 このようなモデルでは、Laplace
 近似を使ってランダム効果を周辺化（積分消去）できます。MAP 推定
 ([`optimize()`](https://rdrr.io/r/stats/optimize.html)) ではデフォルトで
-`laplace = TRUE` となり、自動的に適用されます。MCMC
-([`sample()`](https://rdrr.io/r/base/sample.html))
+`laplace = TRUE` となり、自動的に適用されます。
+生成量の信頼区間は、`se_sampling=TRUE`とすることで計算できます。
+
+``` r
+mdl_icc <- rtmb_model(data_icc, code_icc)
+
+
+opt_icc <- mdl_icc$optimize(laplace = TRUE, se_sampling = TRUE)
+opt_icc
+```
+
+``` text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 407.96
+## Approx. Log Marginal Likelihood (Laplace): -413.73
+## Note: Random effects are stored in $random_effects
+## 
+## Point Estimates and 95% Wald CI:
+## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## mu         3.43333     0.07387    3.28647    3.58483 
+## sigma      0.79705     0.04187    0.72217    0.88498 
+## tau        0.58599     0.06962    0.46731    0.73489 
+## icc        0.42370     0.03414    0.35876    0.49122 
+```
+
+MCMC ([`sample()`](https://rdrr.io/r/base/sample.html))
 でも指定は可能ですが、基本的にはデフォルトの `laplace = FALSE`
 で問題ありません。
 
 ``` r
-fit_map_laplace  <- mdl$optimize(laplace = TRUE)
-fit_mcmc_laplace <- mdl$sample(sampling = 1000, warmup = 1000, chains = 4, laplace = FALSE)
+mcmc_icc <- mdl_icc$sample()
+
+# plot_dens()で事後分布を描画できる
+mcmc_icc$draws("icc") |> plot_dens()
 ```
+
+![](icc_plot.png)
 
 ### ラッパー関数で素早く分析する
 
@@ -181,15 +258,28 @@ BayesRTMB
 を使います。
 
 ``` r
-fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
+data(discussion)
+fit_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
 
 # MAP推定
 map_lm <- fit_lm$optimize()
 map_lm$summary()
+```
 
-# MCMC推定
-mcmc_lm <- fit_lm$sample(sampling = 1000, warmup = 1000, chains = 4)
-mcmc_lm$summary()
+``` text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 416.94
+## Approx. Log Marginal Likelihood (Laplace): -425.12
+## 
+## Point Estimates and 95% Wald CI:
+##    variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## Intercept     2.14693     0.20761    1.74001    2.55384 
+## b[talk]       0.28612     0.05434    0.17961    0.39264 
+## b[skill]      0.20106     0.06604    0.07162    0.33050 
+## sigma         0.92284     0.03725    0.85265    0.99880 
+## Intercept_c   3.43324     0.05333    3.32871    3.53777 
 ```
 
 一般化線形混合モデルには
@@ -204,12 +294,19 @@ mcmc_lm$summary()
 に固定したいパラメータ名」を指定するだけで、自動的に帰無モデルの推定とベイズファクターの計算が行われます。
 
 ``` r
-mdl_ttest <- rtmb_ttest(y1, y2, r = 0.707)
+data(discussion)
+mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
 # 効果量(delta)を0に固定した帰無モデルとの比較
 bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
-print(bf_ttest)
+bf_ttest
+```
+
+``` text
+## Bayes Factor (BF12) : 21.51 
+## Log Bayes Factor    : 3.0685 (Approx. Error = 0.0021)
+## Interpretation      : Strong evidence for Model 1 
 ```
 
 ### 次のステップ

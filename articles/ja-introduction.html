@@ -192,8 +192,18 @@ Rtools44）。</li>
 </h4>
 <p>事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">fit_map</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">opt_fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">opt_fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Call:</span></span>
+<span><span class="co">## MAP Estimation via RTMB</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Negative Log-Posterior: 9.13</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -11.14</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
+<span><span class="co">## variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
+<span><span class="co">## mu         5.29839     0.17416    4.95704    5.63974 </span></span>
+<span><span class="co">## sigma      0.42624     0.12240    0.24279    0.74830 </span></span></code></pre>
 </div>
 <div class="section level4">
 <h4 id="mcmc-推定-sample">2. MCMC 推定 (<code>sample</code>)<a class="anchor" aria-label="anchor" href="#mcmc-%E6%8E%A8%E5%AE%9A-sample"></a>
@@ -202,22 +212,36 @@ Rtools44）。</li>
 アルゴリズムを用いて、事後分布全体から正確なサンプルを抽出する最も標準的なベイズ推論のアプローチです。<code>parallel = TRUE</code>
 を指定すると複数チェーンの並列計算が可能です（デフォルトは
 <code>FALSE</code>）。</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, parallel <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
-<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mcmc_fit</span> <span class="op">&lt;-</span></span>
+<span>  <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
+<span>    sampling <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>    warmup <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>    chains <span class="op">=</span> <span class="fl">4</span>,</span>
+<span>    parallel <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  <span class="op">)</span></span>
+<span><span class="va">mcmc_fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## variable    mean    sd     map    q2.5  q97.5  ess_bulk  ess_tail  rhat </span></span>
+<span><span class="co">## lp        -11.15  1.24  -10.19  -14.63  -9.97       923       830  1.01 </span></span>
+<span><span class="co">## mu          5.29  0.30    5.32    4.68   5.87      1122       495  1.00 </span></span>
+<span><span class="co">## sigma       0.65  0.31    0.48    0.32   1.41      1072      1404  1.00</span></span></code></pre>
 </div>
 <div class="section level4">
 <h4 id="変分推論-variational">3. 変分推論 (<code>variational</code>)<a class="anchor" aria-label="anchor" href="#%E5%A4%89%E5%88%86%E6%8E%A8%E8%AB%96-variational"></a>
 </h4>
 <p>ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求めます。MCMC
 では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">vb_fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"meanfield"</span>,</span>
 <span>  iter <span class="op">=</span> <span class="fl">3000</span>,</span>
 <span>  num_estimate <span class="op">=</span> <span class="fl">4</span></span>
 <span><span class="op">)</span></span>
-<span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">vb_fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## variable    mean    sd     map    q2.5   q97.5 </span></span>
+<span><span class="co">## lp        -12.85  2.08  -12.33  -17.10  -10.21 </span></span>
+<span><span class="co">## mu          5.31  0.39    5.32    4.54    6.07 </span></span>
+<span><span class="co">## sigma       1.12  0.57    0.86    0.40    2.63 </span></span></code></pre>
 </div>
 </div>
 <div class="section level3">
@@ -225,27 +249,65 @@ Rtools44）。</li>
 </h3>
 <p>階層モデルなどを構築する場合、パラメータを <code>random = TRUE</code>
 として宣言できます。</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">code_hier</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">group</span></span>
+<span><span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">group</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">data_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>,group <span class="op">=</span> <span class="va">group</span>, G <span class="op">=</span> <span class="va">G</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">code_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu_global</span>    <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="va">sigma_global</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span>, lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span>    <span class="va">alpha</span>        <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">J</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>    <span class="va">mu</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">tau</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower<span class="op">=</span><span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">r</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">G</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  model <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">alpha</span>        <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu_global</span>, <span class="va">sigma_global</span><span class="op">)</span></span>
-<span>    <span class="co"># ... likelihood ...</span></span>
+<span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span> <span class="op">+</span> <span class="va">r</span><span class="op">[</span><span class="va">group</span><span class="op">]</span> <span class="op">*</span> <span class="va">tau</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span>    <span class="va">r</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">tau</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span>   <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  generate <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">icc</span> <span class="op">=</span> <span class="va">tau</span> <span class="op">/</span> <span class="op">(</span><span class="va">tau</span> <span class="op">+</span> <span class="va">sigma</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>このようなモデルでは、Laplace
 近似を使ってランダム効果を周辺化（積分消去）できます。MAP 推定
 (<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>) ではデフォルトで <code>laplace = TRUE</code>
-となり、自動的に適用されます。MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>)
+となり、自動的に適用されます。
+生成量の信頼区間は、<code>se_sampling=TRUE</code>とすることで計算できます。</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_icc</span>, <span class="va">code_icc</span><span class="op">)</span></span>
+<span></span>
+<span></span>
+<span><span class="va">opt_icc</span> <span class="op">&lt;-</span> <span class="va">mdl_icc</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span>, se_sampling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">opt_icc</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Call:</span></span>
+<span><span class="co">## MAP Estimation via RTMB</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Negative Log-Posterior: 407.96</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -413.73</span></span>
+<span><span class="co">## Note: Random effects are stored in $random_effects</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
+<span><span class="co">## variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
+<span><span class="co">## mu         3.43333     0.07387    3.28647    3.58483 </span></span>
+<span><span class="co">## sigma      0.79705     0.04187    0.72217    0.88498 </span></span>
+<span><span class="co">## tau        0.58599     0.06962    0.46731    0.73489 </span></span>
+<span><span class="co">## icc        0.42370     0.03414    0.35876    0.49122 </span></span></code></pre>
+<p>MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>)
 でも指定は可能ですが、基本的にはデフォルトの
 <code>laplace = FALSE</code> で問題ありません。</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_map_laplace</span>  <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">fit_mcmc_laplace</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span>, laplace <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mcmc_icc</span> <span class="op">&lt;-</span> <span class="va">mdl_icc</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># plot_dens()で事後分布を描画できる</span></span>
+<span><span class="va">mcmc_icc</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"icc"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><img src="icc_plot.png"></p>
 </div>
 <div class="section level3">
 <h3 id="ラッパー関数で素早く分析する">ラッパー関数で素早く分析する<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%83%E3%83%91%E3%83%BC%E9%96%A2%E6%95%B0%E3%81%A7%E7%B4%A0%E6%97%A9%E3%81%8F%E5%88%86%E6%9E%90%E3%81%99%E3%82%8B"></a>
@@ -253,29 +315,43 @@ Rtools44）。</li>
 <p>BayesRTMB
 には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。</p>
 <p>たとえば線形回帰であれば <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> を使います。</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">wt</span> <span class="op">+</span> <span class="va">cyl</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># MAP推定</span></span>
 <span><span class="va">map_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">map_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># MCMC推定</span></span>
-<span><span class="va">mcmc_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">1000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span><span class="va">mcmc_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">map_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Call:</span></span>
+<span><span class="co">## MAP Estimation via RTMB</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Negative Log-Posterior: 416.94</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -425.12</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
+<span><span class="co">##    variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
+<span><span class="co">## Intercept     2.14693     0.20761    1.74001    2.55384 </span></span>
+<span><span class="co">## b[talk]       0.28612     0.05434    0.17961    0.39264 </span></span>
+<span><span class="co">## b[skill]      0.20106     0.06604    0.07162    0.33050 </span></span>
+<span><span class="co">## sigma         0.92284     0.03725    0.85265    0.99880 </span></span>
+<span><span class="co">## Intercept_c   3.43324     0.05333    3.32871    3.53777 </span></span></code></pre>
 <p>一般化線形混合モデルには <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>、因子分析には
 <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> など、分析目的に応じた関数が利用できます。</p>
 <p>また、<code><a href="../reference/rtmb_ttest.html">rtmb_ttest()</a></code> を使うと、ベイジアン t
 検定が簡単に実行できます。<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> メソッドで
 <code>null_model</code> 引数に「0
 に固定したいパラメータ名」を指定するだけで、自動的に帰無モデルの推定とベイズファクターの計算が行われます。</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">condition</span>, data <span class="op">=</span> <span class="va">discussion</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
 <span><span class="va">mcmc_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 効果量(delta)を0に固定した帰無モデルとの比較</span></span>
 <span><span class="va">bf_ttest</span> <span class="op">&lt;-</span> <span class="va">mcmc_ttest</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"delta"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_ttest</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">bf_ttest</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Bayes Factor (BF12) : 21.51 </span></span>
+<span><span class="co">## Log Bayes Factor    : 3.0685 (Approx. Error = 0.0021)</span></span>
+<span><span class="co">## Interpretation      : Strong evidence for Model 1 </span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="次のステップ">次のステップ<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97"></a>
