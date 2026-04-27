@@ -89,13 +89,14 @@
 <div class="section level2">
 <h2 id="このページで扱う流れ">このページで扱う流れ<a class="anchor" aria-label="anchor" href="#%E3%81%93%E3%81%AE%E3%83%9A%E3%83%BC%E3%82%B8%E3%81%A7%E6%89%B1%E3%81%86%E6%B5%81%E3%82%8C"></a>
 </h2>
-<p>BayesRTMB の基本的な使い方は、ほぼ次の 3 段階にまとまります。</p>
+<p>BayesRTMB の基本的な使い方は、次のような4段階です。</p>
 <ol style="list-style-type: decimal">
 <li><strong>データを用意する</strong></li>
 <li><strong><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> でモデルを書く</strong></li>
 <li><strong><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
-でモデルオブジェクトを作り、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>・<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>・<code>variational()</code>
-を使う</strong></li>
+でモデルオブジェクトを作る</strong></li>
+<li><strong><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>・<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>・<code>variational()</code>
+を使って推定をする</strong></li>
 </ol>
 <hr>
 </div>
@@ -181,8 +182,8 @@
 </h4>
 <p>MAP 推定では、近似対数周辺尤度 <code>log_ml</code> が計算されます。
 これは <strong>Laplace
-近似</strong>にもとづく量で、モデル比較の参考になります。</p>
-<p>ただし、事後分布が強く歪んでいる場合や多峰的な場合には、注意が必要です。</p>
+近似</strong>にもとづくモデルの予測の評価指標で、モデル比較の参考になります。</p>
+<p>ただし、事後分布が強く歪んでいる場合や多峰的な場合には、近似がうまくいかないので注意が必要です。</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_MAP</span><span class="op">$</span><span class="va">log_ml</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## [1] -2.328722</span></span></code></pre>
@@ -268,7 +269,7 @@ MCMCサンプルの自己相関をプロットします。</li>
 <h2 id="回帰分析モデル">回帰分析モデル<a class="anchor" aria-label="anchor" href="#%E5%9B%9E%E5%B8%B0%E5%88%86%E6%9E%90%E3%83%A2%E3%83%87%E3%83%AB"></a>
 </h2>
 <p>次に、回帰分析を例に <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
-の各ブロックの役割を確認します。 この例では、</p>
+の各ブロックの役割を解説します。 この例では、</p>
 <ul>
 <li>
 <code>setup</code> でデータの次元を整理し、</li>
@@ -285,7 +286,8 @@ MCMCサンプルの自己相関をプロットします。</li>
 といったラッパー関数を使うことで、自分でコードを書かなくてもモデルを自動生成して推定できます。詳しくは
 <a href="ja-wrapper_functions.html">ラッパー関数の使い方</a>
 を参照してください。</p>
-<p>ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えるモデルを構築します。データはこのパッケージに入っているdataである討論データを使います。
+<p>ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えるモデルを構築します。</p>
+<p>データはこのパッケージに入っているdataである討論データを使います。
 討論の満足度を目的変数、討論中の発言量、討論パフォーマンス、会話スキル、条件（討論目的）についてのデータです。ここでは発言量、パフォーマンス、会話スキルのデータを使います。</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
@@ -334,7 +336,7 @@ MCMCサンプルの自己相関をプロットします。</li>
 <h3 id="mcmcで推定-1">MCMCで推定<a class="anchor" aria-label="anchor" href="#mcmc%E3%81%A7%E6%8E%A8%E5%AE%9A-1"></a>
 </h3>
 <p>回帰モデルでも <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>
-を使えば事後分布全体を評価できます。</p>
+を使えば事後分布を正確に推定できます。</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_reg</span> <span class="op">&lt;-</span> <span class="va">mdl_reg</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">mcmc_reg</span></span></code></pre></div>
@@ -356,7 +358,7 @@ MCMCサンプルの自己相関をプロットします。</li>
 を使うと、推定したモデルと帰無モデルの周辺尤度を比較し、<strong>ベイズファクター</strong>を計算できます。
 <code>null_model = "beta[1]"</code> のように指定すると、その係数を 0
 に固定した帰無モデルを内部で作成して比較します。</p>
-<p>係数の有無をベイズ的に評価したいときに便利です。</p>
+<p>係数の予測に対する寄与をベイズ的に評価したいときに便利です。</p>
 <div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf_result</span> <span class="op">&lt;-</span> <span class="va">mcmc_reg</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"beta[1]"</span><span class="op">)</span></span>
 <span><span class="va">bf_result</span></span></code></pre></div>
@@ -370,9 +372,10 @@ MCMCサンプルの自己相関をプロットします。</li>
 <div class="section level2">
 <h2 id="階層線形モデル">階層線形モデル<a class="anchor" aria-label="anchor" href="#%E9%9A%8E%E5%B1%A4%E7%B7%9A%E5%BD%A2%E3%83%A2%E3%83%87%E3%83%AB"></a>
 </h2>
-<p>階層モデルの例として今回も <code>discussion</code> データを用います。
-ここでは集団ごとのランダム効果を導入し、個体差を表現します。</p>
-<p>階層モデルでは、推定の安定性を高めるために、説明変数の中心化や適切な初期値の指定が有効になることがあります。</p>
+<p>あるパラメータの集団差をさらにモデリングしたいとき階層線形モデルが役立ちます。データの確率モデルに含まれるパラメータが、さらに確率モデルを持つとき、階層モデルと呼びます。</p>
+<p>階層モデルの分析例として今回も <code>discussion</code>
+データを用います。
+ここでは集団ごとの切片のランダム効果を導入し、集団差を表現します。</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
@@ -463,7 +466,7 @@ MCMCサンプルの自己相関をプロットします。</li>
 <span><span class="co">## mu[4,1]             3.09284     0.34706    2.41263    3.77306 </span></span></code></pre>
 <p>事前分布の違いはありますが、laplace近似の推定は最尤推定のlme4とほぼ同じ結果が出ます。（※注：<code>lme4</code>
 は <code>BayesRTMB</code>
-の実行には不要です。以下のコードは比較のための参考であり、ご自身で実行する場合は
+の実行には不要ですが、以下のコードは比較のための参考として利用してください。もしご自身の環境で実行する場合は
 <code>lme4</code> を別途インストールしておく必要があります）</p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/" class="external-link">lme4</a></span><span class="op">)</span></span>
@@ -516,7 +519,7 @@ MCMCサンプルの自己相関をプロットします。</li>
 <p>階層モデルでも <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>
 によってMCMC推定で安定して推定可能です。
 チェイン数が多い場合やモデルが重い場合は、<code>parallel = TRUE</code>
-を指定して並列計算することもできます。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります(下ではFALSEにしています)。</p>
+を指定して並列計算することもできます。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります。</p>
 <p>収束診断を確認しながら、必要なら <code>warmup</code> や
 <code>sampling</code> を増やしていきます。</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
@@ -606,7 +609,7 @@ MCMCサンプルの自己相関をプロットします。</li>
 <p>対数周辺尤度を計算することで、モデル比較ができます。</p>
 <p>先ほどの回帰分析の結果と階層線形モデルの比較をしてみましょう。
 変量効果を推定することによってどれほどモデルは改善したのでしょう。</p>
-<p>MAP推定でも対数周辺尤度を計算できるので、近似的にモデル比較ができます。</p>
+<p>上で解説したようにMAP推定でも対数周辺尤度を計算できるので、近似的にモデル比較ができます。</p>
 <div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_reg</span> <span class="op">&lt;-</span> <span class="va">mdl_reg</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">opt_reg</span><span class="op">$</span><span class="va">log_ml</span></span>
