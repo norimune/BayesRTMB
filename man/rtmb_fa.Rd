@@ -63,13 +63,13 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
   map_fa2$summary()
 
   # Post-hoc rotation using the fa_rotate() method
-  # You can also apply any rotation method from the GPArotation package (e.g., "oblimin")
+  # You can also apply other rotation methods (e.g., "varimax" from the stats package)
   # to the unrotated loading matrix ("L") after estimation.
-  map_fa2$fa_rotate(target = "L", rotate = "oblimin")
+  map_fa2$fa_rotate(target = "L", rotate = "varimax")
 
   # The post-hoc rotated loadings are automatically stored with the method's
-  # suffix (e.g., "L_oblimin")
-  map_fa2$summary("L_oblimin")
+  # suffix (e.g., "L_varimax")
+  map_fa2$summary("L_varimax")
 
 
 

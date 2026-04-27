@@ -6,6 +6,7 @@ Authors@R: person("Hiroshi", "Shimizu", email = "simizu706@gmail.com", role = c(
 Description: Provides tools for Markov chain Monte Carlo (MCMC) and Maximum A Posteriori (MAP) estimation utilizing the 'RTMB' package.
 License: MIT + file LICENSE
 Encoding: UTF-8
+Language: en-US
 LazyData: true
 Depends: 
     R (>= 4.1.0),
