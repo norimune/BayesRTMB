@@ -84,7 +84,9 @@
 ブロックを使って自由にモデルを定義できますが、
 一般的な統計分析（t検定、回帰分析、因子分析など）を素早く実行するための<strong>ラッパー関数</strong>も用意されています。</p>
 <p>これらの関数は、<code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> や <code><a href="https://rdrr.io/pkg/lme4/man/glmer.html" class="external-link">lme4::glmer()</a></code>
-といった標準的な R の関数に近い文法でモデルを指定でき、 かつ BayesRTMB
+といった標準的な R の関数に近い文法でモデルを指定でき（※
+<code>lme4</code> パッケージ自体のインストールは不要です）、</p>
+<p>かつ BayesRTMB
 の強力な推定機能（MCMC、MAP、ADVI）をそのまま利用できます。</p>
 <p>このページでは、主要なラッパー関数の使い方を順に紹介します。</p>
 <hr>

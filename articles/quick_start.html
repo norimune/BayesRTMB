@@ -486,7 +486,10 @@ overall picture via MAP first.</p>
 <span><span class="co">## mu[4,1]             3.09284     0.34706    2.41263    3.77306 </span></span></code></pre>
 <p>Despite differences in priors, the Laplace approximation results are
 almost identical to maximum likelihood estimation using
-<code>lme4</code>.</p>
+<code>lme4</code>. <em>(Note: <code>lme4</code> is not a dependency of
+<code>BayesRTMB</code>. The following code is for comparison purposes
+only and requires <code>lme4</code> to be installed manually if you wish
+to run it.)</em></p>
 <div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/" class="external-link">lme4</a></span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> </span>

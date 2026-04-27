@@ -6,9 +6,9 @@ statistical analyses (like t-tests, regressions, and factor analysis).
 
 These functions allow you to specify models with a syntax similar to
 standard R functions like [`lm()`](https://rdrr.io/r/stats/lm.html) and
-[`lme4::glmer()`](https://rdrr.io/pkg/lme4/man/glmer.html), while fully
-utilizing the powerful estimation features of BayesRTMB (MCMC, MAP,
-ADVI).
+[`lme4::glmer()`](https://rdrr.io/pkg/lme4/man/glmer.html) (though
+`lme4` itself is not required to run `BayesRTMB`), while fully utilizing
+the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
 
 This page introduces the usage of the main wrapper functions.
 

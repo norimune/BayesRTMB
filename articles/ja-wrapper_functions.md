@@ -6,7 +6,10 @@ BayesRTMB では、`rtmb_code`
 
 これらの関数は、[`lm()`](https://rdrr.io/r/stats/lm.html) や
 [`lme4::glmer()`](https://rdrr.io/pkg/lme4/man/glmer.html)
-といった標準的な R の関数に近い文法でモデルを指定でき、 かつ BayesRTMB
+といった標準的な R の関数に近い文法でモデルを指定でき（※ `lme4`
+パッケージ自体のインストールは不要です）、
+
+かつ BayesRTMB
 の強力な推定機能（MCMC、MAP、ADVI）をそのまま利用できます。
 
 このページでは、主要なラッパー関数の使い方を順に紹介します。

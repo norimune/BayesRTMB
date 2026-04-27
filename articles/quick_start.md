@@ -458,7 +458,10 @@ opt_hlm
 ```
 
 Despite differences in priors, the Laplace approximation results are
-almost identical to maximum likelihood estimation using `lme4`.
+almost identical to maximum likelihood estimation using `lme4`. *(Note:
+`lme4` is not a dependency of `BayesRTMB`. The following code is for
+comparison purposes only and requires `lme4` to be installed manually if
+you wish to run it.)*
 
 ``` r
 library(lme4)
