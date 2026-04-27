@@ -19,7 +19,7 @@
 #' @source
 #' Adachi, K. (2000). A Random Effect Model in Metric Multidimensional Unfolding.
 #' \emph{The Japanese Journal of Behaviormetrics}, 27(1), 12-23.
-#' \url{https://doi.org/10.2333/jbhmk.27.12}
+#' \doi{10.2333/jbhmk.27.12}
 #'
 #' @keywords datasets
 "beverage"
