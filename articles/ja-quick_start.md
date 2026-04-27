@@ -191,7 +191,9 @@ plot_forest(samples)
 - **[`plot_dens()`](https://norimune.github.io/BayesRTMB/reference/plot_dens.md)**:
   パラメータごとの事後分布の密度を表示します。
 - **[`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)**:
-  各チェインがパラメータ空間をどのように移動したかを表示します。複数のチェインが重なり合って「毛虫」のような状態になっていれば収束が期待できます。
+  各チェインがパラメータ空間をどのように移動したかを表示します。複数のチェインが重なり合っている状態になっていれば収束が期待できます。
+- **[`plot_acf()`](https://norimune.github.io/BayesRTMB/reference/plot_acf.md)**:
+  MCMCサンプルの自己相関をプロットします。
 - **[`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)**:
   パラメータの点推定値（中央値）と 95% 確信区間を横並びで表示します。
 
