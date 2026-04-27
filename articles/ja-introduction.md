@@ -11,10 +11,12 @@
 
 ### 記事へのリンク
 
-以下のような記事があります。 -
-**[日本語トップ](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)** -
-**[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)** -
-**[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-wriging_models.md)**
+以下のような記事があります。
+
+- **[日本語トップ](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)**
+- **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
+- **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**
+- **[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
 
 ### BayesRTMB でできること
 

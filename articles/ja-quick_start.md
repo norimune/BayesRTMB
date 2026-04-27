@@ -197,7 +197,13 @@ fit_mcmc$log_ml
 
 という流れになっています。
 
-ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えています。ここではパッケージに入っているdataである討論データを使います。
+なお、回帰分析や一般化線形（混合）モデルなどの標準的な分析であれば、`rtmb_lm`
+や `rtmb_glmer`
+といったラッパー関数を使うことで、自分でコードを書かなくてもモデルを自動生成して推定できます。詳しくは
+[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)
+を参照してください。
+
+ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えるモデルを構築します。データはこのパッケージに入っているdataである討論データを使います。
 討論の満足度を目的変数、討論中の発言量、討論パフォーマンス、会話スキル、条件（討論目的）についてのデータです。ここでは発言量、パフォーマンス、会話スキルのデータを使います。
 
 ``` r
@@ -278,7 +284,7 @@ mcmc_reg
 係数の有無をベイズ的に評価したいときに便利です。
 
 ``` r
-bf_result <- mcmc_reg$bayes_factor(null_model = "beta[talk]")
+bf_result <- mcmc_reg$bayes_factor(null_model = "beta[1]")
 bf_result
 ```
 
@@ -305,12 +311,12 @@ X_names <- c("talk","performance","skill")
 X <- subset(discussion, select = X_names)
 group <- discussion$group
 
-data_hlm <- list(Y = Y, X = X, gruop = group)
+data_hlm <- list(Y = Y, X = X, group = group)
 
 code_hlm <- rtmb_code(
   setup = {
     N <- length(Y)
-    G <- length(unique(gruop))
+    G <- length(unique(group))
     P <- ncol(X)
   },
   parameters = {
@@ -321,7 +327,7 @@ code_hlm <- rtmb_code(
     r       = Dim(G, random = TRUE)
   },
   transform = {
-    mu = alpha + X %*% beta + r[gruop] * tau
+    mu = alpha + X %*% beta + r[group] * tau
   },
   model = {
     Y ~ normal(mu, sigma)
@@ -634,12 +640,12 @@ X_names <- c("talk","performance","skill")
 X <- subset(discussion, select = X_names)
 group <- discussion$group
 
-data_glmm <- list(Y = Y, X = X, gruop = group)
+data_glmm <- list(Y = Y, X = X, group = group)
 
 code_glmm <- rtmb_code(
   setup = {
     N <- length(Y)
-    G <- length(unique(gruop))
+    G <- length(unique(group))
     P <- ncol(X)
     K <- length(unique(Y))
   },
@@ -650,7 +656,7 @@ code_glmm <- rtmb_code(
     r       = Dim(G, random = TRUE)
   },
   transform = {
-    mu = X %*% beta + r[gruop] * tau
+    mu = X %*% beta + r[group] * tau
   },
   model = {
     Y ~ ordered_logistic(mu, alpha) #順序ロジスティック分布も実装されている
@@ -819,5 +825,5 @@ mcmc_mix
 
 最初は MAP でモデルの動作を確認し、その後に MCMC や ADVI
 を試す流れがわかりやすいです。
-より詳しく確認したい場合は、日本語紹介ページと Reference
-をあわせて見ると全体像をつかみやすくなります。
+より詳しく確認したい場合は、[日本語紹介ページ](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)
+と Reference をあわせて見ると全体像をつかみやすくなります。
