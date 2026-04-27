@@ -1,0 +1,271 @@
+# Writing Model Codes
+
+This page explains how to describe models using the `rtmb_code` block,
+which is the core of BayesRTMB, and details the available probability
+distributions and mathematical functions.
+
+## 1. Overview of the Structure and Role of rtmb_code
+
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+is a function that allows you to define Bayesian models using an
+intuitive syntax similar to Stan. A model is described by dividing it
+into several “blocks” according to their purposes.
+
+``` r
+library(BayesRTMB)
+
+code <- rtmb_code(
+  setup = {
+    # Data preprocessing and constant definitions
+  },
+  parameters = {
+    # Declaration of parameters to be estimated
+  },
+  transform = {
+    # Calculation of derived variables using parameters and data
+  },
+  model = {
+    # Definition of priors and likelihoods
+  },
+  generate = {
+    # Calculation of posterior predictions and generated quantities
+  }
+)
+```
+
+### 1-1. parameters block
+
+This block is for declaring the parameters you want to estimate in the
+model. You use the
+[`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md)
+function to specify the dimension and constraints (e.g., lower and upper
+bounds) of the variables.
+
+**Example Code:**
+
+``` r
+parameters = {
+  # Scalar parameter (with lower bound of 0)
+  sigma = Dim(lower = 0)
+  
+  # Vector parameter (length N)
+  mu = Dim(N)
+  
+  # Matrix parameter (N rows, M columns)
+  X = Dim(N, M)
+}
+```
+
+Here we are defining generic continuous parameters, but by using the
+`type` argument you can define parameters (types) with more complex
+structures, such as “correlation matrices” or “sum-to-zero vectors” (see
+“3. About Parameter Types (Dim)” below for details).
+
+### 1-2. model block
+
+This is the heart of the model where you define priors and the
+likelihood (the data generating process). Similar to Stan, using the `~`
+(tilde) sampling syntax is recommended.
+
+``` r
+model = {
+  # Priors
+  mu ~ normal(0, 10)
+  sigma ~ exponential(1)
+
+  # Likelihood
+  Y ~ normal(mu, sigma)
+}
+```
+
+Internally, the log-density of the specified probability distribution is
+automatically added to the model’s total log-posterior probability.
+Instead of the sampling syntax, you can also explicitly call functions
+like `lp <- lp + normal_lpdf(Y, mu, sigma)`. In this case, `lp` is a
+reserved word, so you must always use `lp` when you want to add log
+probabilities.
+
+### 1-3. setup block
+
+This block is executed exactly once before the model computations begin.
+It is primarily used to extract data sizes (number of rows/columns) as
+variables from the `data` list passed from R, and to create constants
+required for computations.
+
+**Example Code:**
+
+``` r
+setup = {
+  N <- length(Y)  # Get the sample size of the observed data
+  P <- ncol(X)    # Get the number of columns in the design matrix (number of predictors)
+}
+```
+
+### 1-4. transform block
+
+This block is for creating derived variables (such as the mean `mu` or
+linear predictors) necessary for likelihood calculations from parameters
+and data. The variables created here can be used directly within the
+`model` block.
+
+> \[!IMPORTANT\] The derived variables calculated here are automatically
+> saved inside the model object. Not only can you obtain samples of
+> their posterior distributions after estimation, but when you run MAP
+> estimation (`optimize`), standard errors and 95% confidence intervals
+> for these derived variables are also automatically calculated and
+> output using the delta method.
+
+### 1-5. generate block
+
+This block is used for creating predictive distributions for Posterior
+Predictive Checks (PPC) and for generating new quantities of interest
+calculated from estimated parameters.
+
+> \[!IMPORTANT\] Computations written in the `generate` block are not
+> included in the likelihood evaluation (Automatic Differentiation
+> calculations) and can be executed post-hoc after the estimation is
+> fully complete. Therefore, no matter how computationally heavy the
+> operations written here are, they will not negatively affect the
+> estimation speed (MAP or MCMC). Also, if you forgot to write something
+> during model definition or later decide you want to compute another
+> quantity, you can calculate these retroactively by calling the
+> `mdl$generated_quantities(new_generate_code)` method on the estimated
+> model object.
+
+## 2. Available Probability Distributions
+
+In BayesRTMB, you can use many probability distributions within the
+`model` block. Most univariate distributions are vectorized, meaning if
+`Y` and `mu` are vectors, a single statement efficiently calculates the
+sum of log-densities for all elements.
+
+### 2-1. Common Probability Density and Mass Functions
+
+**Continuous Probability Distributions (LPDF)**
+
+| Function                      | Description                 |
+|:------------------------------|:----------------------------|
+| `normal(mean, sd)`            | Normal distribution.        |
+| `lognormal(meanlog, sdlog)`   | Log-normal distribution.    |
+| `exponential(rate)`           | Exponential distribution.   |
+| `cauchy(location, scale)`     | Cauchy distribution.        |
+| `student_t(df, mu, sigma)`    | Student’s t-distribution.   |
+| `gamma(shape, rate)`          | Gamma distribution.         |
+| `inverse_gamma(shape, scale)` | Inverse-gamma distribution. |
+| `beta(a, b)`                  | Beta distribution.          |
+
+**Discrete Probability Distributions (LPMF)**
+
+| Function                   | Description                                                      |
+|:---------------------------|:-----------------------------------------------------------------|
+| `bernoulli(prob)`          | Bernoulli distribution (binary data).                            |
+| `binomial(size, prob)`     | Binomial distribution.                                           |
+| `poisson(mean)`            | Poisson distribution (count data).                               |
+| `neg_binomial_2(mu, size)` | Negative binomial distribution (mean-variance parameterization). |
+
+### 2-2. Advanced Probability Distributions
+
+Distributions are also provided to improve computational stability or
+for specific modeling purposes.
+
+| Function                                             | Description                                                                                                                |
+|:-----------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|
+| `bernoulli_logit(eta)` / `binomial_logit(size, eta)` | Functions that take the linear predictor (`eta`) on the logit scale directly instead of probabilities. Numerically stable. |
+| `ordered_logistic(eta, cutpoints)`                   | Used for ordinal categorical data, such as in ordered logistic regression.                                                 |
+| `lkj_corr(eta)`                                      | LKJ prior distribution for correlation matrices.                                                                           |
+
+### 2-3. Probability Distributions for Special Types
+
+Distributions tailored for matrices, multivariate data, and specific
+model structures.
+
+| Function                                                       | Description                                                                                                        |
+|:---------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------|
+| `multi_normal(mean, Sigma)`                                    | Standard multivariate normal distribution.                                                                         |
+| `multi_normal_CF(mean, sd, CF_Omega)`                          | Multivariate normal distribution using a Cholesky factor parameterization.                                         |
+| `dirichlet(alpha)`                                             | Dirichlet distribution for a simplex (a vector summing to 1).                                                      |
+| `lower_tri_normal(mean, sd)`                                   | Normal distribution over the elements of a lower triangular matrix.                                                |
+| `centered_tri_multi_normal(sigma)`                             | Multivariate normal distribution for a centered triangular matrix (used for identifiability constraints).          |
+| `sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)` | Likelihood for factor analysis using sufficient statistics. Extremely computationally efficient for large samples. |
+| `normal_mixture(pi_w, mean, sd)`                               | Normal mixture distribution combining multiple normal distributions.                                               |
+| `wishart(n, V)`                                                | Wishart distribution.                                                                                              |
+
+## 3. About Parameter Types (Dim)
+
+In the `parameters` block, you define the types and dimensions of
+parameters using
+[`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md).
+
+- **Scalar**:
+  [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) or
+  `Dim(1)`
+- **Vector**: `Dim(N)`
+- **Matrix**: `Dim(N, M)`
+
+You can also enforce various constraints using arguments: \*
+`lower = 0, upper = 1`: Specifies the range of values (e.g., for
+variances or probabilities). \* `random = TRUE`: Designates the
+parameter as a random effect subject to Laplace approximation in
+hierarchical models.
+
+Furthermore, by specifying a specific keyword in the `type` argument,
+you can define complex types with specific structures.
+
+| `type` Specification    | Description                                                                                                                   |
+|:------------------------|:------------------------------------------------------------------------------------------------------------------------------|
+| `type = "simplex"`      | A vector where all elements are positive and sum to 1 (used for probability assignments, etc.).                               |
+| `type = "centered"`     | A vector where the sum of all elements is zero (used for main effects in ANOVA-type models, etc.).                            |
+| `type = "corr_matrix"`  | A correlation matrix with 1s on the diagonal satisfying positive definiteness.                                                |
+| `type = "CF_corr"`      | The Cholesky factor of a correlation matrix (sometimes more computationally efficient than the correlation matrix itself).    |
+| `type = "lower_tri"`    | A lower triangular matrix.                                                                                                    |
+| `type = "centered_tri"` | A lower triangular matrix constrained so the column sums are zero (useful for identification constraints in factor analysis). |
+
+## 4. About Mathematical Functions
+
+Numerous numerically stable utility functions are available to prevent
+overflow and underflow during Automatic Differentiation (AD)
+calculations.
+
+**Link and Inverse Link Functions**
+
+| Function       | Description                                                           |
+|:---------------|:----------------------------------------------------------------------|
+| `logit(x)`     | Computes the logit transformation `log(x/(1-x))`.                     |
+| `inv_logit(x)` | Computes the inverse logit (logistic) transformation `1/(1+exp(-x))`. |
+
+**Functions for Numerical Stabilization**
+
+| Function         | Description                                                                 |
+|:-----------------|:----------------------------------------------------------------------------|
+| `log_sum_exp(x)` | Safely computes `log(sum(exp(x)))` using the log-sum-exp trick.             |
+| `log1p_exp(x)`   | Stably computes `log(1 + exp(x))`.                                          |
+| `log1m_exp(x)`   | Stably computes `log(1 - exp(x))` for `x < 0`.                              |
+| `log_softmax(x)` | Computes the logarithm of the softmax function.                             |
+| `fabs(x)`        | A smoothed version of `abs(x)` that guarantees differentiability near zero. |
+
+**Matrix and Vector Transformations**
+
+These are useful when transforming an unconstrained vector into a matrix
+with a specific structure.
+
+| Function                      | Description                                                                                                                         |
+|:------------------------------|:------------------------------------------------------------------------------------------------------------------------------------|
+| `centered(x)`                 | Transforms a vector of length K-1 into a vector of length K that sums to zero.                                                      |
+| `to_lower_tri(x, M, D)`       | Creates an M x D lower triangular matrix from the vector `x`.                                                                       |
+| `to_centered_matrix(x, R, C)` | Creates an R x C matrix where the sum of each column is zero.                                                                       |
+| `to_centered_tri(x, R, C)`    | Creates a matrix with lower triangular elements whose column sums are zero, used for identification constraints in factor analysis. |
+
+**Linear Algebra for AD**
+
+| Function               | Description                                                                                          |
+|:-----------------------|:-----------------------------------------------------------------------------------------------------|
+| `log_det_chol(L)`      | Computes the log-determinant of a covariance matrix from its Cholesky factor `L`.                    |
+| `quad_form_chol(x, L)` | Computes a quadratic form using the Cholesky factor `L`.                                             |
+| `distance(x, y)`       | Computes the Euclidean distance between two vectors, adding a small epsilon for numerical stability. |
+
+## Conclusion
+
+Rather than writing a complex model from the beginning, it’s better to
+start estimating with simple models first. The error messages are still
+under development, and we plan to make them more user-friendly in the
+future.

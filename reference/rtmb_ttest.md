@@ -8,27 +8,36 @@ and calculation of Bayes factors.
 
 ``` r
 rtmb_ttest(
-  y1,
-  y2,
+  x,
+  y = NULL,
+  data = NULL,
   r = 0.707,
   y_range = NULL,
   use_weak_info = FALSE,
   prior = list(mean_sd = 10, sd_rate = 0.1),
   weak_info_prior = list(sd_ratio = 0.5),
   init = NULL,
-  null = NULL
+  null = NULL,
+  y1 = NULL,
+  y2 = NULL
 )
 ```
 
 ## Arguments
 
-- y1:
+- x:
 
-  Numeric vector of responses for group 1.
+  Numeric vector of responses for group 1, or a formula (e.g., \`y ~
+  group\`).
 
-- y2:
+- y:
 
-  Numeric vector of responses for group 2.
+  Numeric vector of responses for group 2. Required if \`x\` is not a
+  formula.
+
+- data:
+
+  Data frame containing the variables in the formula.
 
 - r:
 
@@ -61,6 +70,14 @@ rtmb_ttest(
 
   Character string specifying the target parameter for the null model
   (e.g., "delta" or "delta ~ cauchy(0, r)").
+
+- y1:
+
+  Deprecated. Use \`x\` instead.
+
+- y2:
+
+  Deprecated. Use \`y\` instead.
 
 ## Value
 
@@ -122,7 +139,7 @@ An `RTMB_Model` object.
   # Specifying "delta" automatically fixes the parameter to 0 and drops its prior
   bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
 #> Calculating marginal likelihood for the full model...
-#> Bridge Sampling Converged: LogML = -88.384 (Error = 0.0070, ESS = 353.9)
+#> Bridge Sampling Converged: LogML = -88.383 (Error = 0.0068, ESS = 353.9)
 #> 
 #> --- Preparing and Sampling Null Model (delta) ---
 #> Auto-completed target: delta ~ cauchy(0, r)
@@ -168,8 +185,8 @@ An `RTMB_Model` object.
 #> --- Calculating marginal likelihood for the null model ---
 #> Bridge Sampling Converged: LogML = -87.602 (Error = 0.0055, ESS = 335.9)
   print(bf_ttest)
-#> Bayes Factor (BF12) : 0.4577 
-#> Log Bayes Factor    : -0.7816 (Approx. Error = 0.0089)
+#> Bayes Factor (BF12) : 0.4579 
+#> Log Bayes Factor    : -0.7811 (Approx. Error = 0.0088)
 #> Interpretation      : Anecdotal evidence for Model 2 
 # }
 ```

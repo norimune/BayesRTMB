@@ -5,14 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>ラッパー関数の使い方 • BayesRTMB</title>
+<title>Wrapper Functions • BayesRTMB</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="ラッパー関数の使い方">
-<meta name="description" content="BayesRTMB に用意されている便利なラッパー関数（rtmb_lm, rtmb_glmer, rtmb_ttest など）の使い方を解説します。">
-<meta property="og:description" content="BayesRTMB に用意されている便利なラッパー関数（rtmb_lm, rtmb_glmer, rtmb_ttest など）の使い方を解説します。">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Wrapper Functions">
+<meta name="description" content="A guide on how to use the convenient wrapper functions available in BayesRTMB (e.g., rtmb_lm, rtmb_glmer, rtmb_ttest).">
+<meta property="og:description" content="A guide on how to use the convenient wrapper functions available in BayesRTMB (e.g., rtmb_lm, rtmb_glmer, rtmb_ttest).">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -70,46 +70,49 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>ラッパー関数の使い方</h1>
+      <h1>Wrapper Functions</h1>
             
       
-      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/vignettes/ja-wrapper_functions.Rmd" class="external-link"><code>vignettes/ja-wrapper_functions.Rmd</code></a></small>
-      <div class="d-none name"><code>ja-wrapper_functions.Rmd</code></div>
+      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/vignettes/wrapper_functions.Rmd" class="external-link"><code>vignettes/wrapper_functions.Rmd</code></a></small>
+      <div class="d-none name"><code>wrapper_functions.Rmd</code></div>
     </div>
 
     
     
-<p>BayesRTMB では、<code>rtmb_code</code>
-ブロックを使って自由にモデルを定義できますが、
-一般的な統計分析（t検定、回帰分析、因子分析など）を素早く実行するための<strong>ラッパー関数</strong>も用意されています。</p>
-<p>これらの関数は、<code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> や <code><a href="https://rdrr.io/pkg/lme4/man/glmer.html" class="external-link">lme4::glmer()</a></code>
-といった標準的な R の関数に近い文法でモデルを指定でき、 かつ BayesRTMB
-の強力な推定機能（MCMC、MAP、ADVI）をそのまま利用できます。</p>
-<p>このページでは、主要なラッパー関数の使い方を順に紹介します。</p>
+<p>In BayesRTMB, you can freely define models using the
+<code>rtmb_code</code> block, but we also provide <strong>wrapper
+functions</strong> to quickly execute common statistical analyses (like
+t-tests, regressions, and factor analysis).</p>
+<p>These functions allow you to specify models with a syntax similar to
+standard R functions like <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> and
+<code><a href="https://rdrr.io/pkg/lme4/man/glmer.html" class="external-link">lme4::glmer()</a></code>, while fully utilizing the powerful
+estimation features of BayesRTMB (MCMC, MAP, ADVI).</p>
+<p>This page introduces the usage of the main wrapper functions.</p>
 <hr>
 <div class="section level2">
-<h2 id="rtmb_ttestベイズ的t検定">1. rtmb_ttest（ベイズ的t検定）<a class="anchor" aria-label="anchor" href="#rtmb_ttest%E3%83%99%E3%82%A4%E3%82%BA%E7%9A%84t%E6%A4%9C%E5%AE%9A"></a>
+<h2 id="rtmb_ttest-bayesian-t-test">1. rtmb_ttest (Bayesian t-test)<a class="anchor" aria-label="anchor" href="#rtmb_ttest-bayesian-t-test"></a>
 </h2>
-<p>2 群の平均値の差を検討するための関数です。 BayesRTMB の
-<code>rtmb_ttest</code> は、標準的な t
-検定に加えて、<strong>効果量（delta）の推定</strong>と<strong>ベイズファクターの計算</strong>が簡単に行えるよう設計されています。</p>
-<p>まず、サンプルデータを生成して分析してみましょう。</p>
+<p>This function is for examining the difference in means between two
+groups. <code>rtmb_ttest</code> is designed to easily perform
+<strong>effect size (delta) estimation</strong> and <strong>Bayes factor
+calculation</strong>, in addition to standard t-tests.</p>
+<p>First, let’s generate some sample data and analyze it.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># データの生成（2群）</span></span>
+<span><span class="co"># Data generation (2 groups)</span></span>
 <span><span class="va">y1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">30</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">y2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">30</span>, mean <span class="op">=</span> <span class="fl">1</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ベクトルを直接渡す方法</span></span>
+<span><span class="co"># Method passing vectors directly</span></span>
 <span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># フォーミュラ形式で渡す方法（データフレームがある場合）</span></span>
+<span><span class="co"># Method using formula format (when you have a dataframe)</span></span>
 <span><span class="co"># df &lt;- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))</span></span>
 <span><span class="co"># mdl_ttest &lt;- rtmb_ttest(Y ~ group, data = df)</span></span>
 <span></span>
-<span><span class="co"># MCMCによる推定</span></span>
+<span><span class="co"># MCMC estimation</span></span>
 <span><span class="va">fit_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_ttest</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span></span>
@@ -121,13 +124,14 @@
 <span><span class="co">## mean0      -0.00  0.17   -0.01   -0.34    0.34      2645      2468  1.00 </span></span>
 <span><span class="co">## mean1       1.14  0.17    1.14    0.80    1.49      2507      2364  1.00 </span></span></code></pre>
 <div class="section level4">
-<h4 id="生成されたコードの確認">生成されたコードの確認<a class="anchor" aria-label="anchor" href="#%E7%94%9F%E6%88%90%E3%81%95%E3%82%8C%E3%81%9F%E3%82%B3%E3%83%BC%E3%83%89%E3%81%AE%E7%A2%BA%E8%AA%8D"></a>
+<h4 id="checking-the-generated-code">Checking the Generated Code<a class="anchor" aria-label="anchor" href="#checking-the-generated-code"></a>
 </h4>
-<p>ラッパー関数が内部でどのような <code>rtmb_code</code>
-を生成したかは、モデルオブジェクトの <code>print_code()</code>
-メソッドで確認できます。これにより、ラッパー関数をベースにしつつ、必要に応じて独自のモデルへ拡張する際の参考にできます。</p>
+<p>You can check what <code>rtmb_code</code> the wrapper function
+generated internally by using the <code>print_code()</code> method on
+the model object. This can be used as a reference if you want to extend
+the wrapper’s model into your own custom model.</p>
 <div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 内部で生成された RTMB コードを表示</span></span>
+<code class="sourceCode R"><span><span class="co"># Display the internally generated RTMB code</span></span>
 <span><span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## === RTMB Model Code ===</span></span>
 <span><span class="co">## </span></span>
@@ -153,13 +157,13 @@
 <span><span class="co">## )</span></span></code></pre>
 </div>
 <div class="section level4">
-<h4 id="ベイズファクターの計算">ベイズファクターの計算<a class="anchor" aria-label="anchor" href="#%E3%83%99%E3%82%A4%E3%82%BA%E3%83%95%E3%82%A1%E3%82%AF%E3%82%BF%E3%83%BC%E3%81%AE%E8%A8%88%E7%AE%97"></a>
+<h4 id="calculating-the-bayes-factor">Calculating the Bayes Factor<a class="anchor" aria-label="anchor" href="#calculating-the-bayes-factor"></a>
 </h4>
-<p><code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> メソッドを使うことで、効果量
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\delta = 0</annotation></semantics></math>
-とする帰無モデルとの比較（ベイズファクター）を算出できます。</p>
+<p>By using the <code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> method, you can compute a
+comparison (Bayes factor) against a null model where the effect size is
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\delta = 0</annotation></semantics></math>.</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 効果量 delta = 0 のモデルと比較</span></span>
+<code class="sourceCode R"><span><span class="co"># Compare with the model where effect size delta = 0</span></span>
 <span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_ttest</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"delta"</span><span class="op">)</span></span>
 <span><span class="va">bf</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Bayes Factor (BF12) : 4777.563 </span></span>
@@ -169,18 +173,19 @@
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_lm線形回帰分析">2. rtmb_lm（線形回帰分析）<a class="anchor" aria-label="anchor" href="#rtmb_lm%E7%B7%9A%E5%BD%A2%E5%9B%9E%E5%B8%B0%E5%88%86%E6%9E%90"></a>
+<h2 id="rtmb_lm-linear-regression-analysis">2. rtmb_lm (Linear Regression Analysis)<a class="anchor" aria-label="anchor" href="#rtmb_lm-linear-regression-analysis"></a>
 </h2>
-<p>標準的な <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> と同様のフォーマットで線形回帰を行えます。
-ここでは、パッケージに同梱されている <code>discussion</code>
-データ（議論の満足度に関するシミュレーションデータ）を使用します。</p>
+<p>You can perform linear regression with a format identical to standard
+<code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>. Here, we use the <code>discussion</code> data
+included in the package (simulated data regarding discussion
+satisfaction).</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># satisfaction を talk と skill で予測するモデル</span></span>
+<span><span class="co"># Model predicting satisfaction using talk and skill</span></span>
 <span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># MAP推定で素早く確認</span></span>
+<span><span class="co"># Quick check via MAP estimation</span></span>
 <span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
@@ -197,14 +202,17 @@
 <span><span class="co">## sigma         0.92284     0.03725    0.85265    0.99880 </span></span>
 <span><span class="co">## Intercept_c   3.43324     0.05333    3.32871    3.53777 </span></span></code></pre>
 <div class="section level4">
-<h4 id="弱情報事前分布の推奨設定">弱情報事前分布の推奨設定<a class="anchor" aria-label="anchor" href="#%E5%BC%B1%E6%83%85%E5%A0%B1%E4%BA%8B%E5%89%8D%E5%88%86%E5%B8%83%E3%81%AE%E6%8E%A8%E5%A5%A8%E8%A8%AD%E5%AE%9A"></a>
+<h4 id="recommended-settings-for-weakly-informative-priors">Recommended Settings for Weakly Informative Priors<a class="anchor" aria-label="anchor" href="#recommended-settings-for-weakly-informative-priors"></a>
 </h4>
-<p>ベイズファクターの算出（<code>Bridge Sampling</code>や<code>bayes_factor</code>メソッド）を行う場合、事前分布の設定が結果に影響を与えます。BayesRTMB
-では、<code>use_weak_info = TRUE</code> に設定し、<code>y_range</code>
-に目的変数の理論的な最小値・最大値を指定することで、適切な<strong>弱情報事前分布（Weakly
-Informative Prior）</strong>を自動構成することを推奨しています。</p>
+<p>When calculating Bayes factors (using <code>Bridge Sampling</code> or
+the <code>bayes_factor</code> method), the choice of priors strongly
+influences the results. BayesRTMB recommends automatically configuring
+appropriate <strong>Weakly Informative Priors</strong> by setting
+<code>use_weak_info = TRUE</code> and specifying the theoretical minimum
+and maximum values of the objective variable in
+<code>y_range</code>.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 弱情報事前分布を使用してモデルを作成（満足度が 1〜5 の範囲の場合）</span></span>
+<code class="sourceCode R"><span><span class="co"># Create a model using weakly informative priors (assuming satisfaction ranges from 1 to 5)</span></span>
 <span><span class="va">mdl_lm_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, </span>
 <span>                       data <span class="op">=</span> <span class="va">discussion</span>, </span>
 <span>                       use_weak_info <span class="op">=</span> <span class="cn">TRUE</span>, </span>
@@ -250,14 +258,14 @@ Informative Prior）</strong>を自動構成することを推奨しています
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_glm一般化線形モデル">3. rtmb_glm（一般化線形モデル）<a class="anchor" aria-label="anchor" href="#rtmb_glm%E4%B8%80%E8%88%AC%E5%8C%96%E7%B7%9A%E5%BD%A2%E3%83%A2%E3%83%87%E3%83%AB"></a>
+<h2 id="rtmb_glm-generalized-linear-models">3. rtmb_glm (Generalized Linear Models)<a class="anchor" aria-label="anchor" href="#rtmb_glm-generalized-linear-models"></a>
 </h2>
-<p><code>family</code>
-引数を指定することで、ロジスティック回帰やポアソン回帰などを行えます。
-例として、実験条件（condition: 0 or
-1）を予測するロジスティック回帰を実行します。</p>
+<p>By specifying the <code>family</code> argument, you can perform
+logistic regression, Poisson regression, etc. As an example, we will
+execute a logistic regression predicting the experimental condition
+(condition: 0 or 1).</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># ロジスティック回帰 (family = "bernoulli")</span></span>
+<code class="sourceCode R"><span><span class="co"># Logistic regression (family = "bernoulli")</span></span>
 <span><span class="va">mdl_glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glm.html">rtmb_glm</a></span><span class="op">(</span><span class="va">condition</span> <span class="op">~</span> <span class="va">satisfaction</span> <span class="op">+</span> <span class="va">skill</span>, </span>
 <span>                    data <span class="op">=</span> <span class="va">discussion</span>, </span>
 <span>                    family <span class="op">=</span> <span class="st">"bernoulli"</span><span class="op">)</span></span>
@@ -271,10 +279,11 @@ Informative Prior）</strong>を自動構成することを推奨しています
 ## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 </code></pre>
 <div class="section level4">
-<h4 id="利用可能な分布family">利用可能な分布（family）<a class="anchor" aria-label="anchor" href="#%E5%88%A9%E7%94%A8%E5%8F%AF%E8%83%BD%E3%81%AA%E5%88%86%E5%B8%83family"></a>
+<h4 id="available-distributions-family">Available Distributions (<code>family</code>)<a class="anchor" aria-label="anchor" href="#available-distributions-family"></a>
 </h4>
-<p><code>rtmb_glm</code> および <code>rtmb_glmer</code>
-では、以下の分布を指定できます。各分布には標準的なリンク関数が内部で設定されています。</p>
+<p>In <code>rtmb_glm</code> and <code>rtmb_glmer</code>, the following
+distributions can be specified. Standard link functions are configured
+internally for each distribution.</p>
 <table class="table">
 <colgroup>
 <col width="33%">
@@ -282,55 +291,61 @@ Informative Prior）</strong>を自動構成することを推奨しています
 <col width="33%">
 </colgroup>
 <thead><tr class="header">
-<th align="left">family</th>
-<th align="left">リンク関数</th>
-<th align="left">概要</th>
+<th align="left"><code>family</code></th>
+<th align="left">Link Function</th>
+<th align="left">Description</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
 <td align="left"><code>gaussian</code></td>
-<td align="left">恒等 (identity)</td>
-<td align="left">正規分布。標準的な回帰分析に。</td>
+<td align="left">identity</td>
+<td align="left">Normal distribution. For standard regression
+analysis.</td>
 </tr>
 <tr class="even">
 <td align="left"><code>lognormal</code></td>
-<td align="left">対数 (log)</td>
-<td align="left">対数正規分布。正の値をとるデータの分析に。</td>
+<td align="left">log</td>
+<td align="left">Log-normal distribution. For data that takes positive
+values.</td>
 </tr>
 <tr class="odd">
 <td align="left"><code>student_t</code></td>
-<td align="left">恒等 (identity)</td>
-<td align="left">t 分布。外れ値の影響を抑えたい場合に。</td>
+<td align="left">identity</td>
+<td align="left">t-distribution. Useful when you want to suppress the
+impact of outliers.</td>
 </tr>
 <tr class="even">
 <td align="left"><code>gamma</code></td>
-<td align="left">対数 (log)</td>
-<td align="left">ガンマ分布。正の値で歪みのあるデータの分析に。</td>
+<td align="left">log</td>
+<td align="left">Gamma distribution. For positive, skewed data.</td>
 </tr>
 <tr class="odd">
 <td align="left"><code>bernoulli</code></td>
-<td align="left">ロジット (logit)</td>
-<td align="left">ベルヌーイ分布。0/1 の 2 値データの分析に。</td>
+<td align="left">logit</td>
+<td align="left">Bernoulli distribution. For binary 0/1 data.</td>
 </tr>
 <tr class="even">
 <td align="left"><code>binomial</code></td>
-<td align="left">ロジット (logit)</td>
-<td align="left">二項分布。成功回数/試行回数のデータの分析に。</td>
+<td align="left">logit</td>
+<td align="left">Binomial distribution. For data representing counts of
+success/trials.</td>
 </tr>
 <tr class="odd">
 <td align="left"><code>poisson</code></td>
-<td align="left">対数 (log)</td>
-<td align="left">ポアソン分布。カウントデータの分析に。</td>
+<td align="left">log</td>
+<td align="left">Poisson distribution. For count data.</td>
 </tr>
 <tr class="even">
 <td align="left"><code>neg_binomial</code></td>
-<td align="left">対数 (log)</td>
-<td align="left">負の二項分布。過分散のあるカウントデータの分析に。</td>
+<td align="left">log</td>
+<td align="left">Negative binomial distribution. For overdispersed count
+data.</td>
 </tr>
 <tr class="odd">
 <td align="left"><code>ordered</code></td>
-<td align="left">ロジット (logit)</td>
-<td align="left">順序ロジスティック回帰。順序カテゴリカルデータの分析に。</td>
+<td align="left">logit</td>
+<td align="left">Ordered logistic regression. For ordinal categorical
+data.</td>
 </tr>
 </tbody>
 </table>
@@ -338,17 +353,19 @@ Informative Prior）</strong>を自動構成することを推奨しています
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_glmer一般化線形混合モデル">4. rtmb_glmer（一般化線形混合モデル）<a class="anchor" aria-label="anchor" href="#rtmb_glmer%E4%B8%80%E8%88%AC%E5%8C%96%E7%B7%9A%E5%BD%A2%E6%B7%B7%E5%90%88%E3%83%A2%E3%83%87%E3%83%AB"></a>
+<h2 id="rtmb_glmer-generalized-linear-mixed-models">4. rtmb_glmer (Generalized Linear Mixed Models)<a class="anchor" aria-label="anchor" href="#rtmb_glmer-generalized-linear-mixed-models"></a>
 </h2>
-<p><code>lme4</code> パッケージのような <code>(1 | group)</code>
-という記法を使って、ランダム効果（変量効果）を含むモデルを扱えます。
-個人の満足度が属するグループ（group）によって変動することを考慮したモデルを立ててみます。</p>
+<p>You can handle models including random effects (varying effects)
+using the <code>(1 | group)</code> notation, similar to the
+<code>lme4</code> package. Let’s build a model taking into account that
+individual satisfaction varies depending on the group they belong
+to.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># ランダム切片モデル</span></span>
+<code class="sourceCode R"><span><span class="co"># Random intercept model</span></span>
 <span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, </span>
 <span>                        data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ランダム効果を含む場合は Laplace 近似を有効にした optimize() が高速です</span></span>
+<span><span class="co"># When including random effects, optimize() with Laplace approximation is fast</span></span>
 <span><span class="va">opt_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">opt_glmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
@@ -366,14 +383,24 @@ Informative Prior）</strong>を自動構成することを推奨しています
 <span><span class="co">## sd[Int]       0.51833     0.06587    0.40406    0.66492 </span></span>
 <span><span class="co">## Intercept_c   3.43322     0.06846    3.29904    3.56740 </span></span></code></pre>
 <div class="section level3">
-<h3 id="正則化">正則化<a class="anchor" aria-label="anchor" href="#%E6%AD%A3%E5%89%87%E5%8C%96"></a>
+<h3 id="regularization">Regularization<a class="anchor" aria-label="anchor" href="#regularization"></a>
 </h3>
-<p><code>rtmb_lm</code>, <code>rtmb_glm</code>,
-<code>rtmb_glmer</code>では、正則化を使うことができます。正則化は、多すぎるパラメータについて0に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。</p>
-<p><code>BayesRTMB</code>パッケージでは、<code>penalty</code>オプションで馬蹄事前分布を使う<code>rhs</code>とspike
-and slab
-priorを使う<code>ssp</code>が選べます。<code>rhs</code>は推定がしやすい反面、効果の小さい係数が完全に0にはなりません。<code>ssp</code>は推定がやや重いですが、完全に0に縮小させることができます。</p>
-<p>正則化を使うときは、弱情報事前分布を使う必要があるので、目的変数のレンジも入力する必要があります。今回は5件法のデータなので1~5を入力します。正則化のモデルはMAPが難しいことが多いので、MCMCを使うのがよいです。</p>
+<p>In <code>rtmb_lm</code>, <code>rtmb_glm</code>, and
+<code>rtmb_glmer</code>, you can use regularization. Regularization is a
+method that shrinks the coefficients of excessive parameters towards 0,
+allowing for the construction of more parsimonious models with high
+predictive power.</p>
+<p>In the <code>BayesRTMB</code> package, you can select the horseshoe
+prior (<code>rhs</code>) or the spike-and-slab prior (<code>ssp</code>)
+using the <code>penalty</code> option. <code>rhs</code> is relatively
+easier to estimate, but coefficients with small effects do not shrink
+exactly to 0. <code>ssp</code> is somewhat heavier to estimate, but it
+can shrink coefficients completely to 0.</p>
+<p>When using regularization, you must also use weakly informative
+priors, which means you need to input the range of the objective
+variable. Since our data uses a 5-point scale, we input
+<code>c(1, 5)</code>. MAP estimation often struggles with regularized
+models, so it’s better to use MCMC.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
@@ -388,25 +415,29 @@ priorを使う<code>ssp</code>が選べます。<code>rhs</code>は推定がし�
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"b[condition]"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
-<img src="ssp_posterior_dist.png" alt="縮小された事後分布"><div class="figcaption">縮小された事後分布</div>
+<img src="ssp_posterior_dist.png" alt="Shrunk Posterior Distribution"><div class="figcaption">Shrunk Posterior Distribution</div>
 </div>
 <hr>
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_corr相関行列の推定">5. rtmb_corr（相関行列の推定）<a class="anchor" aria-label="anchor" href="#rtmb_corr%E7%9B%B8%E9%96%A2%E8%A1%8C%E5%88%97%E3%81%AE%E6%8E%A8%E5%AE%9A"></a>
+<h2 id="rtmb_corr-correlation-matrix-estimation">5. rtmb_corr (Correlation Matrix Estimation)<a class="anchor" aria-label="anchor" href="#rtmb_corr-correlation-matrix-estimation"></a>
 </h2>
-<p>変数の間の相関関係を推定するための関数です。
-ここでは性格五因子（BigFive）のデータの一部を使って、2変数の場合と行列全体の場合を紹介します。</p>
+<p>This function is for estimating the correlation relationships between
+variables. Here, we will introduce both a 2-variable case and a full
+correlation matrix case using a portion of the Big Five personality
+data.</p>
 <div class="section level4">
-<h4 id="変数の相関とベイズファクター">2変数の相関とベイズファクター<a class="anchor" aria-label="anchor" href="#%E5%A4%89%E6%95%B0%E3%81%AE%E7%9B%B8%E9%96%A2%E3%81%A8%E3%83%99%E3%82%A4%E3%82%BA%E3%83%95%E3%82%A1%E3%82%AF%E3%82%BF%E3%83%BC"></a>
+<h4 id="variable-correlation-and-bayes-factor">2-Variable Correlation and Bayes Factor<a class="anchor" aria-label="anchor" href="#variable-correlation-and-bayes-factor"></a>
 </h4>
-<p>2つの変数（例：外向性を示す項目 BF1 と
-BF6）の間の相関を推定し、無相関（<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r = 0</annotation></semantics></math>）を帰無仮説としたベイズファクターを計算します。</p>
+<p>We estimate the correlation between two variables (e.g., extraversion
+items BF1 and BF6), and calculate a Bayes factor testing the null
+hypothesis of zero correlation
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r = 0</annotation></semantics></math>).</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># BF1 と BF6 の相関</span></span>
+<span><span class="co"># Correlation between BF1 and BF6</span></span>
 <span><span class="va">mdl_corr2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BF1"</span>, <span class="st">"BF6"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">mcmc_corr2</span> <span class="op">&lt;-</span> <span class="va">mdl_corr2</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -418,7 +449,7 @@ BF6）の間の相関を推定し、無相関（<math display="inline" xmlns="ht
 <span><span class="co">## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 </span></span>
 <span><span class="co">## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 </span></span></code></pre>
 <div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 相関 = 0 のモデル（null_model = "corr"）と比較</span></span>
+<code class="sourceCode R"><span><span class="co"># Compare against the zero-correlation model (null_model = "corr")</span></span>
 <span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"corr"</span><span class="op">)</span></span>
 <span><span class="va">bf_corr</span></span></code></pre></div>
 <pre class="text"><code>Bayes Factor (BF12) : 6.839475e+15 
@@ -426,11 +457,12 @@ Log Bayes Factor    : 36.4615 (Approx. Error = 0.0043)
 Interpretation      : Decisive evidence for Model 1 </code></pre>
 </div>
 <div class="section level4">
-<h4 id="相関行列の推定">相関行列の推定<a class="anchor" aria-label="anchor" href="#%E7%9B%B8%E9%96%A2%E8%A1%8C%E5%88%97%E3%81%AE%E6%8E%A8%E5%AE%9A"></a>
+<h4 id="correlation-matrix-estimation">Correlation Matrix Estimation<a class="anchor" aria-label="anchor" href="#correlation-matrix-estimation"></a>
 </h4>
-<p>複数の変数を一括して指定すると、相関行列全体を推定します。</p>
+<p>If you specify multiple variables at once, the entire correlation
+matrix is estimated.</p>
 <div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 5つの変数の相関行列を推定</span></span>
+<code class="sourceCode R"><span><span class="co"># Estimate the correlation matrix of 5 variables</span></span>
 <span><span class="va">mdl_corr_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">opt_corr_mat</span> <span class="op">&lt;-</span> <span class="va">mdl_corr_mat</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">opt_corr_mat</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -456,23 +488,27 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_fa探索的因子分析">6. rtmb_fa（探索的因子分析）<a class="anchor" aria-label="anchor" href="#rtmb_fa%E6%8E%A2%E7%B4%A2%E7%9A%84%E5%9B%A0%E5%AD%90%E5%88%86%E6%9E%90"></a>
+<h2 id="rtmb_fa-exploratory-factor-analysis">6. rtmb_fa (Exploratory Factor Analysis)<a class="anchor" aria-label="anchor" href="#rtmb_fa-exploratory-factor-analysis"></a>
 </h2>
-<p>観測変数の背後にある共通因子を推定します。</p>
+<p>Estimates the common latent factors behind observed variables.</p>
 <div class="section level3">
-<h3 id="因子軸の回転">因子軸の回転<a class="anchor" aria-label="anchor" href="#%E5%9B%A0%E5%AD%90%E8%BB%B8%E3%81%AE%E5%9B%9E%E8%BB%A2"></a>
+<h3 id="factor-rotation">Factor Rotation<a class="anchor" aria-label="anchor" href="#factor-rotation"></a>
 </h3>
-<p>因子分析はMCMCだとやや時間がかかるので、MAP推定が早くて使いやすいです。
-<code>rotate</code>オプションで、因子の回転が実行できます。
-回転後の因子負荷量は<code>_promax</code>のように回転名が後ろにつきます。
-回転後の因子負荷量はgenerateに入るので、MAPでは標準では標準誤差が計算されません。
-<code>se_sampling =  TRUE</code>としておくことで標準誤差も計算されます。</p>
+<p>Factor analysis can be slightly time-consuming with MCMC, making MAP
+estimation faster and easier to use. Factor rotation can be performed
+via the <code>rotate</code> option. The rotated factor loadings will
+have the rotation name appended, like <code>_promax</code>. Because the
+rotated factor loadings are placed in the <code>generate</code> block,
+MAP does not calculate standard errors for them by default. By
+specifying <code>se_sampling = TRUE</code>, you can compute their
+standard errors as well.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 3因子モデル、プロマックス回転を指定</span></span>
+<code class="sourceCode R"><span><span class="co"># 3-factor model, specifying Promax rotation</span></span>
 <span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">opt_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>se_sampling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="co"># 因子負荷量 (L) などを確認</span></span>
+<span></span>
+<span><span class="co"># Check the factor loadings (L), etc.</span></span>
 <span><span class="va">opt_fa</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
@@ -492,7 +528,8 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 <span><span class="co">## L_promax[BF8,1]   -0.07429     0.05917   -0.16758    0.06246 </span></span>
 <span><span class="co">## L_promax[BF9,1]   -0.08225     0.07363   -0.23533    0.05242 </span></span>
 <span><span class="co">## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 </span></span></code></pre>
-<p>回転後の因子負荷量をソートして表示させる関数、<code>sort_loadings</code>を使うと結果が見やすいです。</p>
+<p>The <code><a href="../reference/sort_loadings.html">sort_loadings()</a></code> function is useful to sort and
+display the rotated factor loadings nicely.</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_fa</span><span class="op">$</span><span class="va">generate</span><span class="op">$</span><span class="va">L_promax</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
@@ -518,10 +555,11 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 <span><span class="co">## V10  .031 -.120  .047  .317  .712</span></span></code></pre>
 </div>
 <div class="section level3">
-<h3 id="因子得点">因子得点<a class="anchor" aria-label="anchor" href="#%E5%9B%A0%E5%AD%90%E5%BE%97%E7%82%B9"></a>
+<h3 id="factor-scores">Factor Scores<a class="anchor" aria-label="anchor" href="#factor-scores"></a>
 </h3>
-<p>因子得点も<code>score = TRUE</code>のオプションで出力可能です。
-因子得点もgenerateに出力されます。</p>
+<p>Factor scores can also be output by using the
+<code>score = TRUE</code> option. These scores are additionally pushed
+to the <code>generate</code> output.</p>
 <div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span>, score <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
@@ -537,12 +575,18 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 <span><span class="co">## [6,]  0.20824541 -0.38166057 -1.12921376  0.8736080 -0.5483280</span></span></code></pre>
 </div>
 <div class="section level3">
-<h3 id="正則化因子分析">正則化因子分析<a class="anchor" aria-label="anchor" href="#%E6%AD%A3%E5%89%87%E5%8C%96%E5%9B%A0%E5%AD%90%E5%88%86%E6%9E%90"></a>
+<h3 id="regularized-factor-analysis">Regularized Factor Analysis<a class="anchor" aria-label="anchor" href="#regularized-factor-analysis"></a>
 </h3>
-<p>スパースな負荷量を推定するための Spike-and-Slab
-Prior（SSP）を用いた正則化因子分析もサポートしています。</p>
-<p>正則化は、多すぎるパラメータについて0に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。因子分析に適用すると、回転の自由度を消すことができ、一意な解を得ることができます。</p>
-<p>正則化因子分析はMAPではうまく推定できないことがあるので、MCMCかADVIを使うほうがいいでしょう。ここではADVI（自動微分変分ベイズ法）による結果を紹介します。</p>
+<p>It also supports regularized factor analysis using a Spike-and-Slab
+Prior (SSP) for estimating sparse factor loadings.</p>
+<p>Regularization shrinks the effects of unnecessary parameters toward
+zero, facilitating the construction of more parsimonious and predictive
+models. When applied to factor analysis, it can remove rotational
+indeterminacy, yielding a unique solution.</p>
+<p>Since regularized factor analysis can sometimes be difficult to
+estimate via MAP, it is usually better to use MCMC or ADVI. Here, we
+present the results from ADVI (Automatic Differentiation Variational
+Inference).</p>
 <div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"ssp"</span><span class="op">)</span></span>
 <span></span>
@@ -559,7 +603,10 @@ Prior（SSP）を用いた正則化因子分析もサポートしています。
 <span><span class="co">## L[BF7,1]     -0.82   0.04     -0.82     -0.88     -0.73 </span></span>
 <span><span class="co">## L[BF8,1]      0.01   0.05      0.00     -0.05      0.11 </span></span>
 <span><span class="co">## L[BF9,1]      0.01   0.04      0.00     -0.03      0.08 </span></span></code></pre>
-<p>MCMCやADVIの結果の出力は、<code>EAP</code>と<code>MAP</code>があります。正則化の場合は<code>MAP</code>だと厳密に0に近づくので、出力がみやすくなります。</p>
+<p>The output summary of MCMC or ADVI allows access via <code>EAP</code>
+or <code>MAP</code>. With regularization, the <code>MAP</code> summary
+makes the output easier to read as the shrunk parameters will rigorously
+collapse to 0.</p>
 <div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_fa</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="st">"L"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
@@ -587,35 +634,35 @@ Prior（SSP）を用いた正則化因子分析もサポートしています。
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_irt項目反応理論">7. rtmb_irt（項目反応理論）<a class="anchor" aria-label="anchor" href="#rtmb_irt%E9%A0%85%E7%9B%AE%E5%8F%8D%E5%BF%9C%E7%90%86%E8%AB%96"></a>
+<h2 id="rtmb_irt-item-response-theory">7. rtmb_irt (Item Response Theory)<a class="anchor" aria-label="anchor" href="#rtmb_irt-item-response-theory"></a>
 </h2>
-<p><code><a href="../reference/rtmb_irt.html">rtmb_irt()</a></code>
-は、テストデータやアンケートデータの解析に適した項目反応理論（IRT）のモデルを構築します。
-現在は以下のモデルをサポートしています。</p>
+<p><code><a href="../reference/rtmb_irt.html">rtmb_irt()</a></code> constructs Item Response Theory (IRT) models
+suitable for analyzing test data or questionnaire surveys. Currently,
+the following models are supported:</p>
 <ul>
 <li>
-<strong>1PL / 2PL / 3PL モデル</strong>:
-2値データ（正解/不正解）の分析。</li>
+<strong>1PL / 2PL / 3PL Models</strong>: Analysis of binary data
+(correct/incorrect).</li>
 <li>
-<strong>Graded Response Model (GRM)</strong>:
-多値データ（リッカート尺度など）の分析。</li>
+<strong>Graded Response Model (GRM)</strong>: Analysis of polytomous
+data (e.g., Likert scales).</li>
 </ul>
-<p>IRTモデルは計算負荷が高いため、大規模なデータでは
-<code>variational()</code> による高速な近似や、
-<code>optimize(laplace = TRUE)</code>
-による能力値の周辺化を活用するのが効果的です。</p>
+<p>Because IRT models are computationally demanding, it is highly
+effective to utilize the fast approximation via
+<code>variational()</code> or marginalize the ability parameters using
+<code>optimize(laplace = TRUE)</code> when handling large datasets.</p>
 <hr>
 </div>
 <div class="section level2">
-<h2 id="まとめ">まとめ<a class="anchor" aria-label="anchor" href="#%E3%81%BE%E3%81%A8%E3%82%81"></a>
+<h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
-<p>BayesRTMB のラッパー関数を使うことで、 -
-複雑なモデルコードを書かずに、慣れ親しんだ文法で高度な分析ができる -
-同じモデルオブジェクトから MAP, MCMC, VB を自由に切り替えられる -
-ベイズファクターの算出もスムーズに行える
-といったメリットが得られます。</p>
-<p>よりカスタマイズされたモデルが必要な場合は、<a href="ja-quick_start.html">クイックスタート</a>を参考に
-<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> を使ったモデル構築に挑戦してみてください。</p>
+<p>By leveraging the wrapper functions in BayesRTMB, you gain the
+following benefits: - Perform sophisticated analyses using familiar
+syntax without writing complex model codes from scratch. - Seamlessly
+switch between MAP, MCMC, and VB estimations using the same model
+object. - Calculate Bayes factors smoothly.</p>
+<p>If you require a more customized model, check out the <a href="quick_start.html">Quick Start</a> and try building your own using
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

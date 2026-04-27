@@ -40,11 +40,11 @@ Y <- 6
 data_list <- list(Trial = Trial, Y = Y)
 
 model_code <- rtmb_code(
-  parameters={
-    theta=Dim(lower=0, upper=1)
+  parameters = {
+    theta <- Dim(lower = 0, upper = 1)
   },
-  model={
-    Y~binomial(Trial,theta)
+  model = {
+    Y ~ binomial(Trial, theta)
     theta ~ beta(1, 1)
   }
 )
@@ -144,11 +144,12 @@ fit_MAP$log_ml
 `chains = 4`, `thin = 1` です。
 
 ``` r
-fit_mcmc <- mdl$sample(sampling = 1000,
-                       warmup   = 1000,
-                       chains   = 4,
-                       thin     = 1
-                       )
+fit_mcmc <- mdl$sample(
+  sampling = 1000,
+  warmup = 1000,
+  chains = 4,
+  thin = 1
+)
 ```
 
 ``` r
@@ -246,7 +247,7 @@ fit_mcmc$log_ml
 data(discussion)
 
 Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill")
+X_names <- c("talk", "performance", "skill")
 X <- subset(discussion, select = X_names)
 
 data_reg <- list(Y = Y, X = X)
@@ -257,18 +258,18 @@ code_reg <- rtmb_code(
     P <- ncol(X)
   },
   parameters = {
-    alpha   = Dim()
-    beta    = Dim(P)
-    sigma   = Dim(lower=0)
+    alpha <- Dim()
+    beta <- Dim(P)
+    sigma <- Dim(lower = 0)
   },
   transform = {
-    mu = alpha + beta[1] * X[,1] + beta[2] * X[,2] + beta[3] * X[,3]
+    mu <- alpha + beta[1] * X[, 1] + beta[2] * X[, 2] + beta[3] * X[, 3]
   },
   model = {
     Y ~ normal(mu, sigma)
     alpha ~ normal(0, 100)
-    beta  ~ normal(0, 10)
-    sigma ~ exponential(1/10)
+    beta ~ normal(0, 10)
+    sigma ~ exponential(1 / 10)
   }
 )
 ```
@@ -281,9 +282,11 @@ code_reg <- rtmb_code(
 一部のパラメータだけ指定した場合は、残りを自動で補うこともできます。
 
 ``` r
-mdl_reg <- rtmb_model(data = data_reg, 
-                      code = code_reg,
-                      init = list(alpha = 0, beta = c(0,0,0)))
+mdl_reg <- rtmb_model(
+  data = data_reg,
+  code = code_reg,
+  init = list(alpha = 0, beta = c(0, 0, 0))
+)
 ```
 
 ### MCMCで推定
@@ -343,7 +346,7 @@ bf_result
 data(discussion)
 
 Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill")
+X_names <- c("talk", "performance", "skill")
 X <- subset(discussion, select = X_names)
 group <- discussion$group
 
@@ -356,22 +359,22 @@ code_hlm <- rtmb_code(
     P <- ncol(X)
   },
   parameters = {
-    alpha   = Dim()
-    beta    = Dim(P)
-    tau     = Dim(lower=0)
-    sigma   = Dim(lower=0)
-    r       = Dim(G, random = TRUE)
+    alpha <- Dim()
+    beta <- Dim(P)
+    tau <- Dim(lower = 0)
+    sigma <- Dim(lower = 0)
+    r <- Dim(G, random = TRUE)
   },
   transform = {
-    mu = alpha + X %*% beta + r[group] * tau
+    mu <- alpha + X %*% beta + r[group] * tau
   },
   model = {
     Y ~ normal(mu, sigma)
     r ~ normal(0, 1)
     alpha ~ normal(0, 100)
-    beta  ~ normal(0, 10)
-    tau   ~ exponential(1/10)
-    sigma ~ exponential(1/10)
+    beta ~ normal(0, 10)
+    tau ~ exponential(1 / 10)
+    sigma ~ exponential(1 / 10)
   }
 )
 ```
@@ -438,9 +441,10 @@ opt_hlm
 
 ``` r
 library(lme4)
-result <- 
-  lmer(satisfaction ~ talk + performance + skill + (1|group), 
-       data = discussion, REML = FALSE)
+result <-
+  lmer(satisfaction ~ talk + performance + skill + (1 | group),
+    data = discussion, REML = FALSE
+  )
 
 result |> summary()
 ```
@@ -540,7 +544,7 @@ vb_hlm <- mdl_hlm$variational(
   laplace = TRUE
 )
 
-vb_hlm$summary(digits=5)
+vb_hlm$summary(digits = 5)
 ```
 
 ``` text
@@ -568,7 +572,7 @@ vb_hlm <- mdl_hlm$variational(
   laplace = TRUE
 )
 
-vb_hlm$summary(digits=5)
+vb_hlm$summary(digits = 5)
 ```
 
 ``` text
@@ -590,7 +594,7 @@ vb_hlm$summary(digits=5)
 右上がりになっている場合はまだ収束していない可能性があります。
 
 ``` r
-vb_hlm$plot_elbo(ests="best")
+vb_hlm$plot_elbo(ests = "best")
 
 vb_hlm$summary()
 ```
@@ -672,7 +676,7 @@ mcmc_hlm_l$bridgesampling()
 data(discussion)
 
 Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill")
+X_names <- c("talk", "performance", "skill")
 X <- subset(discussion, select = X_names)
 group <- discussion$group
 
@@ -686,20 +690,20 @@ code_glmm <- rtmb_code(
     K <- length(unique(Y))
   },
   parameters = {
-    alpha   = Dim(K-1, type = "ordered") #順序制約のあるベクトル
-    beta    = Dim(P)
-    tau     = Dim(lower=0)
-    r       = Dim(G, random = TRUE)
+    alpha <- Dim(K - 1, type = "ordered") # 順序制約のあるベクトル
+    beta <- Dim(P)
+    tau <- Dim(lower = 0)
+    r <- Dim(G, random = TRUE)
   },
   transform = {
-    mu = X %*% beta + r[group] * tau
+    mu <- X %*% beta + r[group] * tau
   },
   model = {
-    Y ~ ordered_logistic(mu, alpha) #順序ロジスティック分布も実装されている
+    Y ~ ordered_logistic(mu, alpha) # 順序ロジスティック分布も実装されている
     r ~ normal(0, 1)
     alpha ~ normal(0, 2.5)
-    beta  ~ normal(0, 10)
-    tau   ~ exponential(1/10)
+    beta ~ normal(0, 10)
+    tau ~ exponential(1 / 10)
   }
 )
 ```
@@ -708,7 +712,8 @@ code_glmm <- rtmb_code(
 
 ``` r
 mdl_glmm <- rtmb_model(data_glmm, code_glmm,
-                       par_names = list(beta = X_names))
+  par_names = list(beta = X_names)
+)
 ```
 
 ### ラプラス近似によるGLMM
@@ -750,12 +755,12 @@ opt_glmm
 ``` r
 set.seed(123)
 
-N <- 300       # サンプルサイズ
-K <- 3         # クラスタの数
+N <- 300 # サンプルサイズ
+K <- 3 # クラスタの数
 
 # 真のパラメータ
 theta_true <- c(0.2, 0.5, 0.3) # 各クラスタの混合比率 (和が1)
-mu_true    <- c(-3, 0, 4)      # 各クラスタの平均
+mu_true <- c(-3, 0, 4) # 各クラスタの平均
 sigma_true <- c(0.5, 1.0, 0.8) # 各クラスタの標準偏差
 
 # 潜在変数 z (各データ点がどのクラスタから生成されたか)
@@ -777,18 +782,18 @@ data_mix <- list(Y = Y)
 ``` r
 code_mix <- rtmb_code(
   setup = {
-    K = 3 #クラスタ数
+    K <- 3 # クラスタ数
   },
   parameters = {
-    theta = Dim(K,type="simplex") #総和が1になる正のベクトル 混合率でよく使う
-    mu    = Dim(K)
-    sigma = Dim(K, lower = 0) 
+    theta <- Dim(K, type = "simplex") # 総和が1になる正のベクトル 混合率でよく使う
+    mu <- Dim(K)
+    sigma <- Dim(K, lower = 0)
   },
   model = {
     mu ~ normal(0, 5)
     sigma ~ exponential(1)
-    theta ~ dirichlet(rep(1, K)) #ディリクレ分布を事前分布にする
-    Y ~ normal_mixture(theta, mu, sigma) #混合正規分布が用意されている
+    theta ~ dirichlet(rep(1, K)) # ディリクレ分布を事前分布にする
+    Y ~ normal_mixture(theta, mu, sigma) # 混合正規分布が用意されている
   }
 )
 ```
@@ -829,7 +834,7 @@ opt_mix <- mdl_mix$optimize(num_estimate = 8)
 このBestの結果を初期値にしてMCMCを走らせます。
 
 ``` r
-mcmc_mix <- mdl_mix$sample(parallel=TRUE, init = opt_mix$par)
+mcmc_mix <- mdl_mix$sample(parallel = TRUE, init = opt_mix$par)
 mcmc_mix
 ```
 

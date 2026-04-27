@@ -10,6 +10,23 @@ BayesRTMB の英語記事です。
   An overview of the concepts, basic usage, and main inference methods
   in BayesRTMB.
 
+- [BayesRTMB Quick
+  Start](https://norimune.github.io/BayesRTMB/articles/quick_start.md):
+
+  An introduction to using BayesRTMB through examples of binomial,
+  regression, and hierarchical models.
+
+- [Wrapper
+  Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md):
+
+  A guide on how to use the convenient wrapper functions available in
+  BayesRTMB (e.g., rtmb_lm, rtmb_glmer, rtmb_ttest).
+
+- [Writing Model
+  Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md):
+
+  A guide on how to write model codes in BayesRTMB.
+
 ### 日本語
 
 BayesRTMB の概要と使い方をまとめた記事です。

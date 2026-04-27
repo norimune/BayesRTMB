@@ -7,7 +7,10 @@ articles:
   ja-quick_start: ja-quick_start.html
   ja-wrapper_functions: ja-wrapper_functions.html
   ja-writing_models: ja-writing_models.html
-last_built: 2026-04-27T08:36Z
+  quick_start: quick_start.html
+  wrapper_functions: wrapper_functions.html
+  writing_models: writing_models.html
+last_built: 2026-04-27T09:11Z
 urls:
   reference: https://norimune.github.io/BayesRTMB/reference
   article: https://norimune.github.io/BayesRTMB/articles
