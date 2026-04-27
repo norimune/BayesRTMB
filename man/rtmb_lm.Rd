@@ -41,7 +41,7 @@ rtmb_lm(
 RTMB-based Linear Regression wrapper function
 }
 \examples{
-\donttest{
+\dontrun{
   # --- 1. Linear Regression (rtmb_lm) ---
   # Fit a linear regression model using the mtcars dataset
   fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)

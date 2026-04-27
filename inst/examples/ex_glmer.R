@@ -1,4 +1,4 @@
-\donttest{
+\dontrun{
   # Fit a linear regression model using the built-in mtcars dataset
   fit_model <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
 

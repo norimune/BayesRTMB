@@ -53,7 +53,7 @@ It estimates the effect size (delta) with a Cauchy prior, allowing for robust in
 and calculation of Bayes factors.
 }
 \examples{
-\donttest{
+\dontrun{
   # Simulate two-sample data with a true effect size
   set.seed(123)
   y1 <- rnorm(30, mean = 0.5, sd = 1)

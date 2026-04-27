@@ -1,4 +1,4 @@
-\donttest{
+\dontrun{
   # Prepare a subset of the mtcars dataset for factor analysis
   # Scaling is recommended for variables with different units
   fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])

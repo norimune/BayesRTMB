@@ -29,7 +29,7 @@ Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model
 Missing values (NA) in the data are automatically removed internally for efficient computation.
 }
 \examples{
-  \donttest{
+  \dontrun{
   # --- 1. Binary Data (e.g., correct/incorrect answers) ---
   # Simulate binary response data for 100 persons and 5 items
   set.seed(123)

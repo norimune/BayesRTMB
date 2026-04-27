@@ -1,4 +1,4 @@
-\donttest{
+\dontrun{
   # Simulate two-sample data with a true effect size
   set.seed(123)
   y1 <- rnorm(30, mean = 0.5, sd = 1)

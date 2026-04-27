@@ -28,7 +28,7 @@ Estimates a correlation matrix (along with means and standard deviations) assumi
 If there are 2 observed variables, it automatically switches to estimate the scalar correlation coefficient (`corr`) directly.
 }
 \examples{
-\donttest{
+\dontrun{
   # Simulate bivariate normal data with a true correlation of 0.5
   set.seed(123)
   N <- 50

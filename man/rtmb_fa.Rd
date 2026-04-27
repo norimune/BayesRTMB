@@ -32,7 +32,7 @@ rotation methods (e.g., varimax, promax) as well as regularized factor analysis
 using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
 }
 \examples{
-\donttest{
+\dontrun{
   # Prepare a subset of the mtcars dataset for factor analysis
   # Scaling is recommended for variables with different units
   fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])

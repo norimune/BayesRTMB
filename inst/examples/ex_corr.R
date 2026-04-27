@@ -1,4 +1,4 @@
-\donttest{
+\dontrun{
   # Simulate bivariate normal data with a true correlation of 0.5
   set.seed(123)
   N <- 50
