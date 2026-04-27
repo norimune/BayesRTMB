@@ -3,7 +3,6 @@
 #' An R6 class storing posterior samples and related information
 #' from MCMC estimation.
 #'
-#' @importFrom mvtnorm rmvnorm
 #' @param model An `RTMB_Model` object used for estimation.
 #' @param fit Posterior draws for model parameters.
 #' @param random_fit Posterior draws for random effects, if available.
@@ -53,6 +52,24 @@
 #' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
 #' @field null_fit An \code{MCMC_Fit} object containing the fitted null model. This is automatically cached when calculating a Bayes factor using a target string.
 #'
+
+#' @keywords internal
+#' @noRd
+dmvnorm_log <- function(x, mean, sigma) {
+  if (is.vector(x)) {
+    x <- matrix(x, nrow = 1)
+  }
+  k <- ncol(x)
+  U <- chol(sigma)
+  log_det <- 2 * sum(log(diag(U)))
+  
+  x_centered <- sweep(x, 2, mean, "-")
+  y_t <- forwardsolve(t(U), t(x_centered))
+  mahalanobis_dist <- colSums(y_t^2)
+  
+  -(k / 2) * log(2 * pi) - 0.5 * log_det - 0.5 * mahalanobis_dist
+}
+
 MCMC_Fit <- R6::R6Class(
   classname = "mcmc_fit",
   inherit = RTMB_Fit_Base,
@@ -483,7 +500,7 @@ MCMC_Fit <- R6::R6Class(
 
       if (method == "normal") {
         z_propose <- MASS::mvrnorm(M2, meanz, covz)
-        log_propose <- function(z) mvtnorm::dmvnorm(z, meanz, covz, log = TRUE)
+        log_propose <- function(z) dmvnorm_log(z, meanz, covz)
 
         # Reuse pre-calculated lp_post
         log_L1 <- lp_post - log_propose(z_post)

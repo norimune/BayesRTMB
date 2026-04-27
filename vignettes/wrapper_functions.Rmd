@@ -19,7 +19,8 @@ knitr::opts_chunk$set(echo = TRUE)
 
 In BayesRTMB, you can freely define models using the `rtmb_code` block, but we also provide **wrapper functions** to quickly execute common statistical analyses (like t-tests, regressions, and factor analysis).
 
-These functions allow you to specify models with a syntax similar to standard R functions like `lm()` and `lme4::glmer()`, while fully utilizing the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
+These functions allow you to specify models with a syntax similar to standard R functions like `lm()` and `lme4::glmer()` (though `lme4` itself is not required to run `BayesRTMB`), while fully utilizing the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
+
 
 This page introduces the usage of the main wrapper functions.
 
