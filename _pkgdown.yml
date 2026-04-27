@@ -65,6 +65,7 @@ articles:
   - ja-quick_start
   - ja-wrapper_functions
   - ja-writing_models
+  - ja-rtmb_internals
 
 reference:
 - title: "Core Modeling"
