@@ -179,9 +179,14 @@ plot_dens(samples)
 # トレースプロット（収束の確認）
 plot_trace(samples)
 
+# 自己相関プロット
+plot_acf(samples)
+
 # フォレストプロット（点推定値と区間の一覧）
 plot_forest(samples)
 ```
+
+![](plot_dens.png)![](plot_trace.png)![](plot_acf.png)![](plot_forest.png)
 
 - **[`plot_dens()`](https://norimune.github.io/BayesRTMB/reference/plot_dens.md)**:
   パラメータごとの事後分布の密度を表示します。

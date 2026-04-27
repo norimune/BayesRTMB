@@ -131,16 +131,16 @@ rtmb_fa(
   # The summary prioritizes rotated loadings (L_promax), standard deviations, and factor correlations
   mcmc_fa2$summary()
 #>         variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp                -229.18  4.20  -227.13  -238.52  -222.22       138       491  1.01 
-#> L_promax[mpg,1]     -0.82  0.09    -0.84    -0.95    -0.60       171       367  1.02 
-#> L_promax[disp,1]     0.85  0.09     0.87     0.66     0.96       316       671  1.00 
-#> L_promax[hp,1]       0.46  0.15     0.43     0.17     0.75       193       303  1.00 
-#> L_promax[drat,1]    -0.79  0.14    -0.84    -0.96    -0.55       314       501  1.01 
-#> L_promax[wt,1]       1.04  0.11     1.05     0.97     1.13       314       373  1.00 
-#> L_promax[qsec,1]     0.18  0.13     0.19     0.06     0.30       252       372  1.00 
-#> L_promax[mpg,2]      0.16  0.13     0.13    -0.04     0.40       182       318  1.01 
-#> L_promax[disp,2]    -0.16  0.13    -0.13    -0.39     0.00       405       515  1.00 
-#> L_promax[hp,2]      -0.61  0.16    -0.64    -0.88    -0.32       119       183  1.00 
+#> lp                -227.96  3.58  -226.95  -235.74  -222.00       293       448  1.00 
+#> L_promax[mpg,1]     -0.83  0.08    -0.88    -0.94    -0.64       168       450  1.00 
+#> L_promax[disp,1]     0.85  0.08     0.90     0.67     0.95       420       509  1.00 
+#> L_promax[hp,1]       0.48  0.13     0.44     0.23     0.75       370       508  1.00 
+#> L_promax[drat,1]    -0.80  0.12    -0.84    -0.95    -0.59       229       516  1.01 
+#> L_promax[wt,1]       1.04  0.08     1.04     0.96     1.12       429       422  1.00 
+#> L_promax[qsec,1]     0.19  0.10     0.20     0.07     0.30       290       586  1.00 
+#> L_promax[mpg,2]      0.15  0.11     0.12    -0.03     0.39       164       283  1.01 
+#> L_promax[disp,2]    -0.16  0.12    -0.11    -0.39    -0.01       408       523  1.00 
+#> L_promax[hp,2]      -0.59  0.13    -0.62    -0.82    -0.32       299       328  1.01 
 
   # Setting 'se_sampling = TRUE' enables the calculation of standard errors and 95% CIs
   # for transformed and generated quantities, such as factor scores and post-hoc rotations.
@@ -148,7 +148,7 @@ rtmb_fa(
   map_fa2 <- fit_fa2$optimize(se_sampling = TRUE)
 #> Starting optimization...
 #> 
-#> Optimization Not Converged. Final objective: 206.84
+#> Optimization Not Converged. Final objective: 206.78
 #> Using simulation-based error propagation (1000 samples)...
 #> Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.
   map_fa2$summary()
@@ -156,21 +156,21 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 206.84
+#> Negative Log-Posterior: 206.78
 #> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> Point Estimates and 95% Wald CI:
 #>         variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_promax[mpg,1]   -0.85656     0.05041   -0.93313   -0.73666 
-#> L_promax[disp,1]   0.87762     0.05448    0.74601    0.95369 
-#> L_promax[hp,1]     0.51364     0.10800    0.28935    0.70872 
-#> L_promax[drat,1]  -0.83326     0.07880   -0.94593   -0.64532 
-#> L_promax[wt,1]     1.05053     0.03082    0.97418    1.09498 
-#> L_promax[qsec,1]   0.16628     0.05156    0.05959    0.26541 
-#> L_promax[mpg,2]    0.12929     0.06937    0.01103    0.27812 
-#> L_promax[disp,2]  -0.13700     0.07851   -0.30132   -0.00501 
-#> L_promax[hp,2]    -0.54735     0.10266   -0.74170   -0.34034 
-#> L_promax[drat,2]  -0.20049     0.09154   -0.36486   -0.01029 
+#> L_promax[mpg,1]   -0.85647     0.04621   -0.93477   -0.75366 
+#> L_promax[disp,1]   0.87871     0.04679    0.76788    0.94732 
+#> L_promax[hp,1]     0.51456     0.09755    0.30031    0.68477 
+#> L_promax[drat,1]  -0.83115     0.07836   -0.94316   -0.64304 
+#> L_promax[wt,1]     1.04979     0.02314    1.00526    1.09132 
+#> L_promax[qsec,1]   0.16682     0.04273    0.08290    0.24876 
+#> L_promax[mpg,2]    0.12989     0.06393    0.00826    0.26269 
+#> L_promax[disp,2]  -0.13529     0.06980   -0.28572   -0.01886 
+#> L_promax[hp,2]    -0.54786     0.08622   -0.71670   -0.37776 
+#> L_promax[drat,2]  -0.20078     0.09414   -0.36294   -0.00617 
 #> 
 
   # Post-hoc rotation using the fa_rotate() method
@@ -186,7 +186,7 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 206.84
+#> Negative Log-Posterior: 206.78
 #> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> No matching parameters found.
@@ -202,10 +202,7 @@ rtmb_fa(
   map_ssp <- fit_ssp$optimize()
 #> Starting optimization...
 #> 
-#> Optimization Not Converged. Final objective: 200.46
-#> Warning: NaNs produced
-#> Warning: NaNs produced
-#> Warning: NaNs produced
+#> Optimization Not Converged. Final objective: 200.63
 #> Warning: NaNs produced
 #> Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.
   map_ssp$summary()
@@ -213,21 +210,21 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 200.46
+#> Negative Log-Posterior: 200.63
 #> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L[mpg,1]    0.85547     0.84701   -0.80464    2.51558 
-#> L[disp,1]  -0.87536     0.03640   -0.94671   -0.80402 
-#> L[hp,1]    -0.58043     0.07427   -0.72600   -0.43486 
-#> L[drat,1]   0.75694     0.07182    0.61617    0.89771 
-#> L[wt,1]    -0.97698     0.00396   -0.98474   -0.96922 
-#> L[qsec,1]   0.00000     0.00265   -0.00519    0.00519 
-#> L[mpg,2]    0.27650     0.82368   -1.33788    1.89088 
-#> L[disp,2]  -0.29397     0.06620   -0.42372   -0.16422 
-#> L[hp,2]    -0.64401     0.06263   -0.76677   -0.52125 
-#> L[drat,2]  -0.00000     0.00024   -0.00047    0.00047 
+#> L[mpg,1]    0.84702     0.04356    0.76164    0.93240 
+#> L[disp,1]  -0.86781     0.03878   -0.94383   -0.79179 
+#> L[hp,1]    -0.56928     0.07895   -0.72401   -0.41454 
+#> L[drat,1]   0.74432     0.07470    0.59791    0.89074 
+#> L[wt,1]    -0.97506          NA         NA         NA 
+#> L[qsec,1]  -0.00000     0.00009   -0.00017    0.00017 
+#> L[mpg,2]    0.28159     0.08246    0.11997    0.44320 
+#> L[disp,2]  -0.29473     0.07467   -0.44109   -0.14837 
+#> L[hp,2]    -0.64908     0.07537   -0.79680   -0.50135 
+#> L[drat,2]   0.00007     0.01085   -0.02119    0.02133 
 #> 
 
   # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
@@ -268,16 +265,16 @@ rtmb_fa(
   # Summary of unrotated loadings (may show poor convergence / large SE due to switching)
   mcmc_ssp$summary("L")
 #>  variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
-#> L[mpg,1]    0.27  0.34   0.02  -0.07   0.94        10       183  1.16 
-#> L[disp,1]  -0.29  0.35  -0.01  -0.96   0.08        11       130  1.16 
-#> L[hp,1]    -0.60  0.19  -0.62  -0.96  -0.21       250       525  1.01 
-#> L[drat,1]   0.08  0.34  -0.00  -0.40   0.83        10       131  1.15 
-#> L[wt,1]    -0.04  0.50   0.26  -1.03   0.51        10        52  1.15 
-#> L[qsec,1]   0.77  0.42   0.99  -0.31   1.14        12       189  1.12 
-#> L[mpg,2]   -0.70  0.42  -0.93  -1.08   0.31        10       160  1.14 
-#> L[disp,2]   0.72  0.43   0.95  -0.31   1.11        11       219  1.12 
-#> L[hp,2]     0.33  0.51   0.64  -0.79   0.86        10       240  1.14 
-#> L[drat,2]  -0.61  0.29  -0.76  -0.97   0.01         9        97  1.16 
+#> L[mpg,1]    0.35  0.41   0.02  -0.28   0.95         9        85  1.59 
+#> L[disp,1]  -0.36  0.42  -0.02  -0.97   0.34        10        96  1.63 
+#> L[hp,1]    -0.38  0.49  -0.61  -0.94   0.84         9        62  1.16 
+#> L[drat,1]   0.24  0.39  -0.01  -0.36   0.86         3       307  1.63 
+#> L[wt,1]    -0.30  0.56  -1.00  -1.08   0.46         3       193  1.72 
+#> L[qsec,1]   0.30  0.75   0.97  -1.01   1.09         3       211  1.88 
+#> L[mpg,2]   -0.28  0.68  -0.92  -1.07   0.97         3        49  1.89 
+#> L[disp,2]   0.29  0.71   0.94  -0.99   1.10         3        46  1.88 
+#> L[hp,2]    -0.06  0.67   0.64  -1.23   0.83         3        81  1.87 
+#> L[drat,2]  -0.31  0.54  -0.76  -0.93   0.84         3       152  1.84 
   mcmc_ssp$draws("L[mpg,1]") |> plot_dens()
 
 
@@ -291,16 +288,16 @@ rtmb_fa(
   # Summary of the rotated loadings (L_rot) with stabilized estimates
   mcmc_ssp$summary("L_rot")
 #>      variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
-#> L_rot[mpg,1]    0.12  0.11   0.10  -0.10   0.36       551       616  1.00 
-#> L_rot[disp,1]  -0.13  0.10  -0.11  -0.37   0.07       468       483  1.00 
-#> L_rot[hp,1]    -0.62  0.14  -0.58  -0.95  -0.40       464       554  1.00 
-#> L_rot[drat,1]  -0.09  0.14  -0.07  -0.42   0.14       414       705  1.00 
-#> L_rot[wt,1]     0.20  0.15   0.15  -0.00   0.57       468       614  1.00 
-#> L_rot[qsec,1]   1.00  0.13   0.99   0.78   1.36       185       282  1.02 
-#> L_rot[mpg,2]   -0.91  0.07  -0.91  -1.08  -0.75       301       449  1.01 
-#> L_rot[disp,2]   0.94  0.08   0.93   0.79   1.11       286       536  1.01 
-#> L_rot[hp,2]     0.59  0.14   0.60   0.22   0.80       410       467  1.01 
-#> L_rot[drat,2]  -0.74  0.12  -0.74  -0.96  -0.47       727       844  1.00 
+#> L_rot[mpg,1]    0.00  0.12   0.01  -0.24   0.25       375       581  1.00 
+#> L_rot[disp,1]   0.00  0.12  -0.00  -0.26   0.24       282       351  1.01 
+#> L_rot[hp,1]     0.60  0.21   0.49   0.30   1.13        43        66  1.04 
+#> L_rot[drat,1]   0.20  0.15   0.17  -0.05   0.53       277       549  1.01 
+#> L_rot[wt,1]    -0.35  0.16  -0.27  -0.74  -0.12       181       313  1.01 
+#> L_rot[qsec,1]  -1.01  0.18  -0.98  -1.50  -0.73        67       204  1.04 
+#> L_rot[mpg,2]    0.91  0.08   0.92   0.75   1.07        55       369  1.05 
+#> L_rot[disp,2]  -0.94  0.08  -0.94  -1.10  -0.80        41       368  1.06 
+#> L_rot[hp,2]    -0.63  0.15  -0.69  -0.85  -0.28       191       468  1.01 
+#> L_rot[drat,2]   0.72  0.11   0.75   0.45   0.92       344       413  1.01 
   mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
 
 # }
