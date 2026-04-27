@@ -177,6 +177,12 @@ Functions used within rtmb_code for stability and transformations.
   : Euclidean distance
 - [`distributions`](https://norimune.github.io/BayesRTMB/reference/distributions.md)
   : Probability Distributions for RTMB Models
+- [`ess_basic()`](https://norimune.github.io/BayesRTMB/reference/ess_basic.md)
+  : Basic Effective Sample Size for a single chain or pooled chains
+- [`ess_bulk()`](https://norimune.github.io/BayesRTMB/reference/ess_bulk.md)
+  : Calculate Bulk Effective Sample Size
+- [`ess_tail95()`](https://norimune.github.io/BayesRTMB/reference/ess_tail95.md)
+  : Calculate Tail Effective Sample Size (at 2.5% and 97.5% quantiles)
 - [`fabs()`](https://norimune.github.io/BayesRTMB/reference/fabs.md) :
   Smooth absolute value function
 - [`inv_logit()`](https://norimune.github.io/BayesRTMB/reference/inv_logit.md)
@@ -205,6 +211,8 @@ Functions used within rtmb_code for stability and transformations.
   : Log-sum-exp function
 - [`logit()`](https://norimune.github.io/BayesRTMB/reference/logit.md) :
   Logit function
+- [`map_est()`](https://norimune.github.io/BayesRTMB/reference/map_est.md)
+  : Maximum A Posteriori (MAP) Estimate
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
   : Mathematical and Matrix Utility Functions for RTMB Models
 - [`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
@@ -235,6 +243,10 @@ Functions used within rtmb_code for stability and transformations.
   : Quadratic form using a Cholesky factor
 - [`quad_form_diag()`](https://norimune.github.io/BayesRTMB/reference/quad_form_diag.md)
   : Quadratic form with a diagonal matrix
+- [`quantile95()`](https://norimune.github.io/BayesRTMB/reference/quantile95.md)
+  : Calculate 95% Quantiles
+- [`r_hat()`](https://norimune.github.io/BayesRTMB/reference/r_hat.md) :
+  Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)

@@ -43,6 +43,9 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/distance.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/distributions.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/env_to_ordered_list.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/ess_basic.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/ess_bulk.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/ess_tail95.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/exponential_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fa_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fabs.html</loc></url>
@@ -71,6 +74,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/logit_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lognormal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lower_tri_normal_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/map_est.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/math_functions.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/model_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_CF_lpdf.html</loc></url>
@@ -97,6 +101,8 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quad_form_chol.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quad_form_diag.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/quantile95.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/r_hat.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_corr.html</loc></url>
