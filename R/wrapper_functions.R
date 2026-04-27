@@ -64,7 +64,6 @@ NULL
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @param null Character string specifying the target parameter for the null model.
-#' @import reformulas
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
@@ -76,8 +75,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        init = NULL, null = NULL) {
 
   regularization <- match.arg(penalty)
-  if (!requireNamespace("reformulas", quietly = TRUE)) stop("The 'reformulas' package is required to parse the formula.")
-  has_random <- !is.null(reformulas::findbars(formula))
+  has_random <- !is.null(findbars(formula))
 
   default_prior <- eval(formals(rtmb_glmer)$prior)
   prior <- modifyList(default_prior, prior)
@@ -96,17 +94,36 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   if (has_random) {
-    parsed <- lme4::lFormula(formula, data = data, control = lme4::lmerControl(check.nobs.vs.nlev = "ignore", check.nobs.vs.nRE  = "ignore"))
-    Y <- model.response(parsed$fr)
-    X <- parsed$X
-    reTrms <- parsed$reTrms
+    all_vars_form <- subbars(formula)
+    fixed_form <- nobars(formula)
+    bars <- findbars(formula)
 
-    if (length(reTrms$Ztlist) > 1) stop("Currently, only a single grouping variable is supported.")
+    if (length(bars) > 1) stop("Currently, only a single grouping variable is supported.")
 
-    Zt <- as.matrix(reTrms$Ztlist[[1]])
-    group_idx <- as.integer(reTrms$flist[[1]])
-    offset <- model.offset(parsed$fr)
-    ranef_names <- parsed$reTrms$cnms[[1]]
+    mf <- model.frame(all_vars_form, data = data)
+    Y <- model.response(mf)
+    X <- model.matrix(fixed_form, mf)
+    offset <- model.offset(mf)
+
+    bar <- bars[[1]]
+    re_form <- as.formula(paste("~", deparse(bar[[2]])))
+    group_var <- deparse(bar[[3]])
+
+    Z_mf <- model.matrix(re_form, mf)
+    flist <- as.factor(mf[[group_var]])
+    group_idx <- as.integer(flist)
+
+    num_groups <- length(levels(flist))
+    num_ranef <- ncol(Z_mf)
+    N <- nrow(mf)
+
+    Zt <- matrix(0, nrow = num_groups * num_ranef, ncol = N)
+    for (i in 1:N) {
+      g <- group_idx[i]
+      Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i] <- Z_mf[i, ]
+    }
+
+    ranef_names <- colnames(Z_mf)
     ranef_names[ranef_names == "(Intercept)"] <- "Int"
   } else {
     mf <- model.frame(formula, data)
@@ -192,7 +209,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   } else if (is.null(init)) {
     tryCatch({
-      fixed_formula <- if (requireNamespace("reformulas", quietly = TRUE)) reformulas::nobars(formula) else suppressWarnings(reformulas::nobars(formula))
+      fixed_formula <- nobars(formula)
       glm_fam <- switch(family, "gaussian" = gaussian(), "student_t" = gaussian(), "lognormal" = gaussian(link="log"), "bernoulli" = binomial(), "binomial" = binomial(), "poisson" = poisson(), "neg_binomial" = poisson(), "gamma" = Gamma(link="log"), gaussian())
       init_fit <- suppressWarnings(glm(fixed_formula, data = data, family = glm_fam))
       init_coef <- unname(coef(init_fit))

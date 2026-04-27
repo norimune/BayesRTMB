@@ -307,7 +307,7 @@ VB_Fit <- R6::R6Class(
         }
 
         if (ncol(mat_all) >= 2 && all(apply(mat_all, 2, function(z) sum(is.finite(z)) > 1))) {
-          rhat_val <- posterior::rhat(mat_all)
+          rhat_val <- r_hat(mat_all)
         } else {
           rhat_val <- NA_real_
         }

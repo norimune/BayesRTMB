@@ -470,7 +470,7 @@ MCMC_Fit <- R6::R6Class(
 
       if (isTRUE(use_neff)) {
         n_eff <- tryCatch({
-          posterior::ess_basic(lp_post)
+          ess_basic(lp_post)
         }, error = function(e) M1)
         if (is.na(n_eff) || n_eff <= 0) n_eff <- M1
       } else {
