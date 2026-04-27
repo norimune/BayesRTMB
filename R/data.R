@@ -86,13 +86,3 @@
 #' @keywords datasets
 "discussion"
 
-
-#' Stations Data
-#'
-#' @description
-#' A dataset representing distances or other relational metrics between stations.
-#'
-#' @format A data frame or matrix containing relational data between stations.
-#'
-#' @keywords datasets
-"stations"
