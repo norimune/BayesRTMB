@@ -175,15 +175,15 @@ rtmb_fa(
 #> 
 
   # Post-hoc rotation using the fa_rotate() method
-  # You can also apply any rotation method from the GPArotation package (e.g., "oblimin")
+  # You can also apply other rotation methods (e.g., "varimax" from the stats package)
   # to the unrotated loading matrix ("L") after estimation.
-  map_fa2$fa_rotate(target = "L", rotate = "oblimin")
-#> Applying oblimin rotation to L (Saving to generate as _oblimin)...
-#> Error in get(as.character(FUN), mode = "function", envir = envir): object 'oblimin' of mode 'function' was not found
+  map_fa2$fa_rotate(target = "L", rotate = "varimax")
+#> Applying varimax rotation to L (Saving to generate as _varimax)...
+#> Generated quantities updated.
 
   # The post-hoc rotated loadings are automatically stored with the method's
-  # suffix (e.g., "L_oblimin")
-  map_fa2$summary("L_oblimin")
+  # suffix (e.g., "L_varimax")
+  map_fa2$summary("L_varimax")
 #> 
 #> Call:
 #> MAP Estimation via RTMB
@@ -191,7 +191,19 @@ rtmb_fa(
 #> Negative Log-Posterior: 206.78
 #> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
-#> No matching parameters found.
+#> Point Estimates and 95% Wald CI:
+#>       variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> L_varimax[1,1]  -0.84980     0.03677   -0.90360   -0.76584 
+#> L_varimax[2,1]   0.87226     0.03698    0.78687    0.92453 
+#> L_varimax[3,1]   0.60243     0.08102    0.41832    0.73143 
+#> L_varimax[4,1]  -0.76077     0.07113   -0.86058   -0.59232 
+#> L_varimax[5,1]   0.97265     0.00780    0.95131    0.98105 
+#> L_varimax[6,1]  -0.04762     0.05857   -0.14518    0.08657 
+#> L_varimax[1,2]   0.35956     0.04780    0.27515    0.46284 
+#> L_varimax[2,2]  -0.37088     0.07056   -0.51152   -0.24068 
+#> L_varimax[3,2]  -0.67677     0.06603   -0.79230   -0.53657 
+#> L_varimax[4,2]   0.02841     0.09049   -0.14012    0.20315 
+#> 
 
 
 
