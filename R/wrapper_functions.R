@@ -1212,8 +1212,9 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
 #' It estimates the effect size (delta) with a Cauchy prior, allowing for robust inference
 #' and calculation of Bayes factors.
 #'
-#' @param y1 Numeric vector of responses for group 1.
-#' @param y2 Numeric vector of responses for group 2.
+#' @param x Numeric vector of responses for group 1, or a formula (e.g., `y ~ group`).
+#' @param y Numeric vector of responses for group 2. Required if `x` is not a formula.
+#' @param data Data frame containing the variables in the formula.
 #' @param r Numeric; Cauchy prior scale for the effect size (delta). Default is 0.707.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param use_weak_info Logical; whether to explicitly use weakly informative priors.
@@ -1221,15 +1222,42 @@ rtmb_corr <- function(data, prior = list(lkj_eta = 1.0, mu_sd = 10, sigma_rate =
 #' @param weak_info_prior List of hyperparameters for the weakly informative priors.
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
+#' @param y1 Deprecated. Use `x` instead.
+#' @param y2 Deprecated. Use `y` instead.
 #' @return An \code{RTMB_Model} object.
 #' @example inst/examples/ex_ttest.R
 #' @export
-rtmb_ttest <- function(y1, y2, r = 0.707,
+rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        y_range = NULL,
                        use_weak_info = FALSE,
                        prior = list(mean_sd = 10, sd_rate = 0.1),
                        weak_info_prior = list(sd_ratio = 0.5),
-                       init = NULL, null = NULL) {
+                       init = NULL, null = NULL,
+                       y1 = NULL, y2 = NULL) {
+
+  if (!is.null(y1)) x <- y1
+  if (!is.null(y2)) y <- y2
+
+  if (inherits(x, "formula")) {
+    if (is.null(data)) {
+      mf <- model.frame(x, parent.frame())
+    } else {
+      mf <- model.frame(x, data)
+    }
+    response <- mf[[1]]
+    group <- as.factor(mf[[2]])
+    
+    if (length(levels(group)) != 2) {
+      stop("The grouping variable must have exactly 2 levels.")
+    }
+    
+    Y1 <- as.numeric(na.omit(response[group == levels(group)[1]]))
+    Y2 <- as.numeric(na.omit(response[group == levels(group)[2]]))
+  } else {
+    if (is.null(y)) stop("y must be provided if x is not a formula.")
+    Y1 <- as.numeric(na.omit(x))
+    Y2 <- as.numeric(na.omit(y))
+  }
 
   if (!is.null(y_range)) {
     use_weak_info <- TRUE
@@ -1253,8 +1281,6 @@ rtmb_ttest <- function(y1, y2, r = 0.707,
     weak_info_prior <- default_weak_prior
   }
 
-  Y1 <- as.numeric(na.omit(y1))
-  Y2 <- as.numeric(na.omit(y2))
 
   dat <- list(Y1 = Y1, Y2 = Y2, r = r)
   tmp_env <- list2env(dat, parent = environment())
