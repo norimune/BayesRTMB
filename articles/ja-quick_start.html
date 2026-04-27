@@ -198,8 +198,39 @@
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat </span></span>
-<span><span class="co">## lp        -3.34  0.76  -2.86  -5.43  -2.80      1569      1843  1.00 </span></span>
-<span><span class="co">## theta      0.58  0.14   0.62   0.30   0.84      1300      1594  1.00 </span></span></code></pre>
+<span><span class="co">## lp        -3.33  0.74  -2.86  -5.43  -2.80      1712      1744  1.00 </span></span>
+<span><span class="co">## theta      0.59  0.14   0.62   0.32   0.84      1609      1577  1.00 </span></span></code></pre>
+<div class="section level4">
+<h4 id="推論結果の可視化">推論結果の可視化<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E8%AB%96%E7%B5%90%E6%9E%9C%E3%81%AE%E5%8F%AF%E8%A6%96%E5%8C%96"></a>
+</h4>
+<p>MCMC で得られた事後分布の形状や収束状況を確認するために、BayesRTMB
+にはいくつかの可視化関数が用意されています。</p>
+<p>これらの関数は、モデルオブジェクトの <code>$draws()</code>
+メソッドで抽出したサンプルを渡すことで利用できます。</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 事後サンプルを抽出</span></span>
+<span><span class="va">samples</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"theta"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># 事後密度のプロット</span></span>
+<span><span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># トレースプロット（収束の確認）</span></span>
+<span><span class="fu"><a href="../reference/plot_trace.html">plot_trace</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># フォレストプロット（点推定値と区間の一覧）</span></span>
+<span><span class="fu"><a href="../reference/plot_forest.html">plot_forest</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span></code></pre></div>
+<ul>
+<li>
+<strong><code><a href="../reference/plot_dens.html">plot_dens()</a></code></strong>:
+パラメータごとの事後分布の密度を表示します。</li>
+<li>
+<strong><code><a href="../reference/plot_trace.html">plot_trace()</a></code></strong>:
+各チェインがパラメータ空間をどのように移動したかを表示します。複数のチェインが重なり合って「毛虫」のような状態になっていれば収束が期待できます。</li>
+<li>
+<strong><code><a href="../reference/plot_forest.html">plot_forest()</a></code></strong>:
+パラメータの点推定値（中央値）と 95% 確信区間を横並びで表示します。</li>
+</ul>
+</div>
 <div class="section level4">
 <h4 id="bridgesamplingメソッドで対数周辺尤度の計算">bridgesamplingメソッドで対数周辺尤度の計算<a class="anchor" aria-label="anchor" href="#bridgesampling%E3%83%A1%E3%82%BD%E3%83%83%E3%83%89%E3%81%A7%E5%AF%BE%E6%95%B0%E5%91%A8%E8%BE%BA%E5%B0%A4%E5%BA%A6%E3%81%AE%E8%A8%88%E7%AE%97"></a>
 </h4>
@@ -208,7 +239,7 @@
 出力には推定誤差も付くため、誤差が大きい場合はサンプル数を増やして精度を上げます。</p>
 <p>一度計算した結果は <code>fit_mcmc$log_ml</code>
 に保存されるため、同じオブジェクトで後から再利用できます。</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="va">log_ml</span></span></code></pre></div>
@@ -243,7 +274,7 @@
 を参照してください。</p>
 <p>ここでは、切片と回帰係数に正規分布、残差標準偏差に指数分布を事前分布として与えるモデルを構築します。データはこのパッケージに入っているdataである討論データを使います。
 討論の満足度を目的変数、討論中の発言量、討論パフォーマンス、会話スキル、条件（討論目的）についてのデータです。ここでは発言量、パフォーマンス、会話スキルのデータを使います。</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
@@ -279,7 +310,7 @@
 を指定して初期値を与えることができます。
 初期値を明示しておくと、複雑なモデルで推定が安定しやすくなることがあります。
 一部のパラメータだけ指定した場合は、残りを自動で補うこともできます。</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_reg</span>, </span>
 <span>                      code <span class="op">=</span> <span class="va">code_reg</span>,</span>
 <span>                      init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>alpha <span class="op">=</span> <span class="fl">0</span>, beta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">0</span>,<span class="fl">0</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
@@ -289,7 +320,7 @@
 </h3>
 <p>回帰モデルでも <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>
 を使えば事後分布全体を評価できます。</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_reg</span> <span class="op">&lt;-</span> <span class="va">mdl_reg</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">mcmc_reg</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span></span>
@@ -311,7 +342,7 @@
 <code>null_model = "beta[1]"</code> のように指定すると、その係数を 0
 に固定した帰無モデルを内部で作成して比較します。</p>
 <p>係数の有無をベイズ的に評価したいときに便利です。</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf_result</span> <span class="op">&lt;-</span> <span class="va">mcmc_reg</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"beta[1]"</span><span class="op">)</span></span>
 <span><span class="va">bf_result</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Bayes Factor (BF12) : 1047.097 </span></span>
@@ -327,7 +358,7 @@
 <p>階層モデルの例として今回も <code>discussion</code> データを用います。
 ここでは集団ごとのランダム効果を導入し、個体差を表現します。</p>
 <p>階層モデルでは、推定の安定性を高めるために、説明変数の中心化や適切な初期値の指定が有効になることがあります。</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
@@ -376,7 +407,7 @@
 で<code>tau</code>を<code>sigma</code>より優先表示するように指定しています。
 出力の可読性を高めたい場合は、この 2
 つをあらかじめ設定しておくと便利です。</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_hlm</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span></span>
 <span>    data <span class="op">=</span> <span class="va">data_hlm</span>,</span>
@@ -393,7 +424,7 @@
 近似</strong>で積分消去しながら固定効果を推定できます。
 階層モデルでは計算をかなり軽くできることが多く、まず MAP
 で全体像を確認したいときに有用です。</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">opt_hlm</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
@@ -416,7 +447,7 @@
 <span><span class="co">## mu[3,1]             2.92366     0.34519    2.24711    3.60022 </span></span>
 <span><span class="co">## mu[4,1]             3.09284     0.34706    2.41263    3.77306 </span></span></code></pre>
 <p>事前分布の違いはありますが、laplace近似の推定は最尤推定のlme4とほぼ同じ結果が出ます。</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/" class="external-link">lme4</a></span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> </span>
 <span>  <span class="fu"><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lmer</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">performance</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">group</span><span class="op">)</span>, </span>
@@ -454,7 +485,7 @@
 <span><span class="co">## skill       -0.387 -0.138 -0.020</span></span></code></pre>
 <p>ランダム効果の推定結果は <code>random_effects</code>
 に別途保存されます。</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_hlm</span><span class="op">$</span><span class="va">random_effects</span><span class="op">$</span><span class="va">Estimate</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
 <img src="random_effect.png" alt="ランダム効果"><div class="figcaption">ランダム効果</div>
@@ -469,7 +500,7 @@
 を指定して並列計算することもできます。1回目は並列化のためのワーカー立ち上げに時間がかかりますが、2回目以降は高速に立ち上がります(下ではFALSEにしています)。</p>
 <p>収束診断を確認しながら、必要なら <code>warmup</code> や
 <code>sampling</code> を増やしていきます。</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">mcmc_hlm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##          variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span></span>
@@ -485,7 +516,7 @@
 <span><span class="co">## r[3]                 -0.75   0.68    -0.77    -2.07     0.58      5041      3202  1.00 </span></span></code></pre>
 <p>MCMCでもlaplace近似を実行できます。推定結果は変わりませんが、MCMCの自己相関は下がりやすいので、収束は安定します。ただ、推定時間は長くなるので、一長一短です。MCMCで十分収束するなら、laplace近似を特別使う必要はないかも知れません。
 ただ、WAICなどの予測指標を使うとき、階層化するときとしないときの比較が難しいので、laplace近似が自動でできると便利なときもあります。</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_hlm_l</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -496,7 +527,7 @@
 ただし、複雑なモデルになると収束判断が難しいので、<code>plot_elbo()</code>メソッドで収束しているか確認するのが重要です。変分ベイズ法は初期値依存があるので、大雑把にでも初期値を与えておくと収束が安定します。</p>
 <p>また、ADVIでもlaplace近似が使えます。ただし、laplace近似を実行すると計算が遅くなります。
 <code>meanfield</code>は平均場近似といって、事後分布がすべて独立であるという仮定で推定します。信頼区間がやや狭めに推定されますが、点推定値を得るのには十分使えます。</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  iter <span class="op">=</span> <span class="fl">7000</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -519,7 +550,7 @@
 <p>さらにmethodを<code>fullrank</code>にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的には、<code>laplace=TRUE</code>,
 <code>method = "fullrank"</code>
 と指定しておけば、MAPと同様の結果がでるはずです。</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  iter <span class="op">=</span> <span class="fl">7000</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -542,7 +573,7 @@
 <p>収束が悪い推定結果がある場合、bestなものだけを見ることができます。
 これで過去1000回分のELBOの推定が真横にランダムに並んでいれば大丈夫です。
 右上がりになっている場合はまだ収束していない可能性があります。</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_hlm</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span>ests<span class="op">=</span><span class="st">"best"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">vb_hlm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -557,7 +588,7 @@
 <p>先ほどの回帰分析の結果と階層線形モデルの比較をしてみましょう。
 変量効果を推定することによってどれほどモデルは改善したのでしょう。</p>
 <p>MAP推定でも対数周辺尤度を計算できるので、近似的にモデル比較ができます。</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_reg</span> <span class="op">&lt;-</span> <span class="va">mdl_reg</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">opt_reg</span><span class="op">$</span><span class="va">log_ml</span></span>
 <span><span class="va">opt_hlm</span><span class="op">$</span><span class="va">log_ml</span></span></code></pre></div>
@@ -566,7 +597,7 @@
 <span><span class="co">## &gt; opt_hlm$log_ml</span></span>
 <span><span class="co">## [1] -411.8348</span></span></code></pre>
 <p>ただし、MAP推定の対数周辺尤度はあくまで近似値なので、より正確にするにはMCMC推定の結果をbridgesamplingで計算する方がいいです。特に、MAPは変量効果があるときにラプラス近似を使うので、対数周辺尤度はラプラス近似を使わないMCMCと少し値が変わります。</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_reg</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">mcmc_hlm</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## &gt; mcmc_reg$bridgesampling()</span></span>
@@ -584,7 +615,7 @@
 <span><span class="co">## attr(,"ess")</span></span>
 <span><span class="co">## [1] 760.1723</span></span></code></pre>
 <p>ラプラス近似を使ったMCMCは、MAPの結果に近いです。</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_hlm_l</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## &gt; mcmc_hlm_l$bridgesampling()</span></span>
 <span><span class="co">## Bridge Sampling Converged: LogML = -411.770 (Error = 0.0053, ESS = 994.9)</span></span>
@@ -601,7 +632,7 @@
 <p>一般化線形混合モデル(GLMM)も可能です。</p>
 <p>討論満足度は5件法で測定されているため、順序データとして扱えます。
 そこで、順序ロジスティック分布を仮定した、マルチレベル分析を実行してみます。</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
@@ -638,7 +669,7 @@
 <div class="section level3">
 <h3 id="モデルの読み込み">モデルの読み込み<a class="anchor" aria-label="anchor" href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E8%AA%AD%E3%81%BF%E8%BE%BC%E3%81%BF"></a>
 </h3>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_glmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_glmm</span>, <span class="va">code_glmm</span>,</span>
 <span>                       par_names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>beta <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -646,7 +677,7 @@
 <h3 id="ラプラス近似によるglmm">ラプラス近似によるGLMM<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%97%E3%83%A9%E3%82%B9%E8%BF%91%E4%BC%BC%E3%81%AB%E3%82%88%E3%82%8Bglmm"></a>
 </h3>
 <p>変量効果を積分消去した推定で、glmmもMAP推定が可能です。</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_glmm</span> <span class="op">&lt;-</span> <span class="va">mdl_glmm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">opt_glmm</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
@@ -675,7 +706,7 @@
 </h2>
 <p>複数の分布が混ざったデータを推定することもできます。
 まずはデータ生成を行います。</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">300</span>       <span class="co"># サンプルサイズ</span></span>
@@ -699,7 +730,7 @@
 <span></span>
 <span><span class="va">data_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span><span class="op">)</span></span></code></pre></div>
 <p>以下がコードになります。</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">K</span> <span class="op">=</span> <span class="fl">3</span> <span class="co">#クラスタ数</span></span>
@@ -719,7 +750,7 @@
 <div class="section level3">
 <h3 id="モデルの用意">モデルの用意<a class="anchor" aria-label="anchor" href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%81%AE%E7%94%A8%E6%84%8F"></a>
 </h3>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_mix</span>, <span class="va">code_mix</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -729,7 +760,7 @@
 ラベルスイッチングとは、チェインごとでクラスタのラベルづけが変わってしまう現象です。
 MCMCでは避けては通れないですが、初期値を与えると起きにくくなります。</p>
 <p>そこで、MAP推定値を使います。ただ、混合分布モデルは初期値依存で局所最適解に陥ることがよくあるので、複数のMAPを走らせます。<code>num_estimate = 8</code>とすることで8回走らせることができます。</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Starting optimization...</span></span>
 <span><span class="co">## Optimization run 8/8...</span></span>
@@ -744,7 +775,7 @@ MCMCでは避けては通れないですが、初期値を与えると起きに�
 <span><span class="co">##   est7: Objective =     713.57, Code = 0 (Converged)</span></span>
 <span><span class="co">##   est8: Objective =     676.45, Code = 0 (Converged)</span></span></code></pre>
 <p>このBestの結果を初期値にしてMCMCを走らせます。</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel<span class="op">=</span><span class="cn">TRUE</span>, init <span class="op">=</span> <span class="va">opt_mix</span><span class="op">$</span><span class="va">par</span><span class="op">)</span></span>
 <span><span class="va">mcmc_mix</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span></span>

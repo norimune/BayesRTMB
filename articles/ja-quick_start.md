@@ -157,9 +157,38 @@ fit_mcmc
 
 ``` text
 ## variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
-## lp        -3.34  0.76  -2.86  -5.43  -2.80      1569      1843  1.00 
-## theta      0.58  0.14   0.62   0.30   0.84      1300      1594  1.00 
+## lp        -3.33  0.74  -2.86  -5.43  -2.80      1712      1744  1.00 
+## theta      0.59  0.14   0.62   0.32   0.84      1609      1577  1.00 
 ```
+
+#### 推論結果の可視化
+
+MCMC で得られた事後分布の形状や収束状況を確認するために、BayesRTMB
+にはいくつかの可視化関数が用意されています。
+
+これらの関数は、モデルオブジェクトの `$draws()`
+メソッドで抽出したサンプルを渡すことで利用できます。
+
+``` r
+# 事後サンプルを抽出
+samples <- fit_mcmc$draws("theta")
+
+# 事後密度のプロット
+plot_dens(samples)
+
+# トレースプロット（収束の確認）
+plot_trace(samples)
+
+# フォレストプロット（点推定値と区間の一覧）
+plot_forest(samples)
+```
+
+- **[`plot_dens()`](https://norimune.github.io/BayesRTMB/reference/plot_dens.md)**:
+  パラメータごとの事後分布の密度を表示します。
+- **[`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)**:
+  各チェインがパラメータ空間をどのように移動したかを表示します。複数のチェインが重なり合って「毛虫」のような状態になっていれば収束が期待できます。
+- **[`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)**:
+  パラメータの点推定値（中央値）と 95% 確信区間を横並びで表示します。
 
 #### bridgesamplingメソッドで対数周辺尤度の計算
 
