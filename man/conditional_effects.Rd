@@ -16,3 +16,11 @@ conditional_effects(fit, effect, ...)
 \description{
 Calculate Conditional Effects
 }
+\examples{
+\dontrun{
+  fit <- rtmb_lm(mpg ~ wt + hp, data = mtcars)
+  mcmc_fit <- fit$sample(sampling = 500, warmup = 500)
+  ce <- conditional_effects(mcmc_fit, effect = "wt")
+  plot(ce)
+}
+}

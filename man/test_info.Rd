@@ -14,3 +14,11 @@ test_info(x, ...)
 \description{
 Calculate Test Information Function
 }
+\examples{
+\dontrun{
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+  map_fit <- fit$optimize()
+  ti <- test_info(map_fit)
+  plot(ti)
+}
+}

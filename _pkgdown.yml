@@ -73,8 +73,6 @@ reference:
   contents:
   - rtmb_code
   - rtmb_model
-  - safe_rtmb_model
-  - Dim
 
 - title: "Wrapper Functions"
   desc: "Functions for quick, standard analyses."
@@ -149,4 +147,9 @@ reference:
 
 - title: "Other Objects and Internals"
   contents:
+  - safe_rtmb_model
+  - Dim
+  - validate_data
+  - generate_random_init
+  - ADVI_method
   - matches(".*")

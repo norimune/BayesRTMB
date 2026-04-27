@@ -2,6 +2,13 @@
 #' @param fit Model fit object.
 #' @param effect Name of the variable to visualize the effect.
 #' @param ... Additional arguments.
+#' @examples
+#' \dontrun{
+#'   fit <- rtmb_lm(mpg ~ wt + hp, data = mtcars)
+#'   mcmc_fit <- fit$sample(sampling = 500, warmup = 500)
+#'   ce <- conditional_effects(mcmc_fit, effect = "wt")
+#'   plot(ce)
+#' }
 #' @export
 conditional_effects <- function(fit, effect, ...) {
   UseMethod("conditional_effects")
@@ -227,12 +234,26 @@ print.ce_rtmb <- function(x, ...) {
 #' Calculate Item Information Function
 #' @param x An object of class RTMB_Fit_Base
 #' @param ... Additional arguments.
+#' @examples
+#' \dontrun{
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+#'   map_fit <- fit$optimize()
+#'   ii <- item_info(map_fit)
+#'   plot(ii)
+#' }
 #' @export
 item_info <- function(x, ...) UseMethod("item_info")
 
 #' Calculate Test Information Function
 #' @param x An object of class RTMB_Fit_Base
 #' @param ... Additional arguments.
+#' @examples
+#' \dontrun{
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+#'   map_fit <- fit$optimize()
+#'   ti <- test_info(map_fit)
+#'   plot(ti)
+#' }
 #' @export
 test_info <- function(x, ...) UseMethod("test_info")
 
@@ -408,6 +429,13 @@ item_curve <- function(x, ...) UseMethod("item_curve")
 #' @param theta_seq Sequence of trait values (ability) to evaluate.
 #' @param items Index or item names to restrict the calculation to specific items (optional).
 #' @param ... Additional arguments.
+#' @examples
+#' \dontrun{
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+#'   map_fit <- fit$optimize()
+#'   ic <- item_curve(map_fit)
+#'   plot(ic)
+#' }
 #' @export
 item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
   est <- if (!is.null(x$par)) x$par else x$EAP()
@@ -613,6 +641,16 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 #' @param logml1 Log marginal likelihood of Model 1 (e.g., target model)
 #' @param logml2 Log marginal likelihood of Model 2 (e.g., reference/null model)
 #' @return An object containing Bayes factor, log Bayes factor, estimation error, and interpretation
+#' @examples
+#' \dontrun{
+#'   # Compare two models using Bayes Factor
+#'   fit1 <- rtmb_lm(mpg ~ wt, data = mtcars)
+#'   fit2 <- rtmb_lm(mpg ~ wt + hp, data = mtcars)
+#'   mcmc1 <- fit1$sample(sampling = 500, warmup = 500)
+#'   mcmc2 <- fit2$sample(sampling = 500, warmup = 500)
+#'   bf <- bayes_factor(mcmc1, mcmc2)
+#'   print(bf)
+#' }
 #' @export
 bayes_factor <- function(logml1, logml2) {
   # Strip attributes (error, ess) and calculate as pure numbers
