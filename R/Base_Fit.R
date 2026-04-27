@@ -308,7 +308,7 @@ RTMB_Fit_Base <- R6::R6Class(
         rot_fn <- getFromNamespace(rotate, "GPArotation")
         fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
       } else {
-        stop("Rotation function not found: ", rotate)
+        stop("Rotation function not found: ", rotate, ". If this is from GPArotation, please install it using install.packages('GPArotation').")
       }
 
       target_map <- self$get_point_estimate(target)

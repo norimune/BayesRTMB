@@ -1,3 +1,20 @@
+#' @keywords internal
+#' @noRd
+dmvnorm_log <- function(x, mean, sigma) {
+  if (is.vector(x)) {
+    x <- matrix(x, nrow = 1)
+  }
+  k <- ncol(x)
+  U <- chol(sigma)
+  log_det <- 2 * sum(log(diag(U)))
+  
+  x_centered <- sweep(x, 2, mean, "-")
+  y_t <- forwardsolve(t(U), t(x_centered))
+  mahalanobis_dist <- colSums(y_t^2)
+  
+  -(k / 2) * log(2 * pi) - 0.5 * log_det - 0.5 * mahalanobis_dist
+}
+
 #' MCMC fit object
 #'
 #' An R6 class storing posterior samples and related information
@@ -53,22 +70,6 @@
 #' @field null_fit An \code{MCMC_Fit} object containing the fitted null model. This is automatically cached when calculating a Bayes factor using a target string.
 #'
 
-#' @keywords internal
-#' @noRd
-dmvnorm_log <- function(x, mean, sigma) {
-  if (is.vector(x)) {
-    x <- matrix(x, nrow = 1)
-  }
-  k <- ncol(x)
-  U <- chol(sigma)
-  log_det <- 2 * sum(log(diag(U)))
-  
-  x_centered <- sweep(x, 2, mean, "-")
-  y_t <- forwardsolve(t(U), t(x_centered))
-  mahalanobis_dist <- colSums(y_t^2)
-  
-  -(k / 2) * log(2 * pi) - 0.5 * log_det - 0.5 * mahalanobis_dist
-}
 
 MCMC_Fit <- R6::R6Class(
   classname = "mcmc_fit",

@@ -833,7 +833,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         rot_fn <- getFromNamespace(rotate, "GPArotation")
         fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
       } else {
-        stop("Rotation function not found: ", rotate)
+        stop("Rotation function not found: ", rotate, ". If this is from GPArotation, please install it using install.packages('GPArotation').")
       }
 
       dummy_L <- matrix(rnorm(J * K), J, K)

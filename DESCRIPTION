@@ -16,12 +16,12 @@ Imports:
     MASS,
     future,
     future.apply,
-    progressr,
-    GPArotation
+    progressr
 RoxygenNote: 7.3.3
 URL: https://github.com/norimune/BayesRTMB, https://norimune.github.io/BayesRTMB/
 BugReports: https://github.com/norimune/BayesRTMB/issues
 Suggests: 
     knitr,
-    rmarkdown
+    rmarkdown,
+    GPArotation
 VignetteBuilder: knitr
