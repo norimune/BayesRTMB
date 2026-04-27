@@ -1,12 +1,12 @@
 ---
-title: "ラッパー関数の使い方"
-description: "BayesRTMB に用意されている便利なラッパー関数（rtmb_lm, rtmb_glmer, rtmb_ttest など）の使い方を解説します。"
+title: "Wrapper Functions"
+description: "A guide on how to use the convenient wrapper functions available in BayesRTMB (e.g., rtmb_lm, rtmb_glmer, rtmb_ttest)."
 output: 
   rmarkdown::html_vignette:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{ラッパー関数の使い方}
+  %\VignetteIndexEntry{Wrapper Functions}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options: 
@@ -17,39 +17,36 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-BayesRTMB では、`rtmb_code` ブロックを使って自由にモデルを定義できますが、
-一般的な統計分析（t検定、回帰分析、因子分析など）を素早く実行するための**ラッパー関数**も用意されています。
+In BayesRTMB, you can freely define models using the `rtmb_code` block, but we also provide **wrapper functions** to quickly execute common statistical analyses (like t-tests, regressions, and factor analysis).
 
-これらの関数は、`lm()` や `lme4::glmer()` といった標準的な R の関数に近い文法でモデルを指定でき、
-かつ BayesRTMB の強力な推定機能（MCMC、MAP、ADVI）をそのまま利用できます。
+These functions allow you to specify models with a syntax similar to standard R functions like `lm()` and `lme4::glmer()`, while fully utilizing the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
 
-このページでは、主要なラッパー関数の使い方を順に紹介します。
+This page introduces the usage of the main wrapper functions.
 
 ---
 
-# 1. rtmb_ttest（ベイズ的t検定）
+# 1. rtmb_ttest (Bayesian t-test)
 
-2 群の平均値の差を検討するための関数です。
-BayesRTMB の `rtmb_ttest` は、標準的な t 検定に加えて、**効果量（delta）の推定**と**ベイズファクターの計算**が簡単に行えるよう設計されています。
+This function is for examining the difference in means between two groups. `rtmb_ttest` is designed to easily perform **effect size (delta) estimation** and **Bayes factor calculation**, in addition to standard t-tests.
 
-まず、サンプルデータを生成して分析してみましょう。
+First, let's generate some sample data and analyze it.
 
 ```{r eval=FALSE}
 library(BayesRTMB)
 set.seed(123)
 
-# データの生成（2群）
+# Data generation (2 groups)
 y1 <- rnorm(30, mean = 0, sd = 1)
 y2 <- rnorm(30, mean = 1, sd = 1)
 
-# ベクトルを直接渡す方法
+# Method passing vectors directly
 mdl_ttest <- rtmb_ttest(y1, y2)
 
-# フォーミュラ形式で渡す方法（データフレームがある場合）
+# Method using formula format (when you have a dataframe)
 # df <- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))
 # mdl_ttest <- rtmb_ttest(Y ~ group, data = df)
 
-# MCMCによる推定
+# MCMC estimation
 fit_ttest <- mdl_ttest$sample()
 fit_ttest$summary()
 ```
@@ -65,12 +62,12 @@ fit_ttest$summary()
 ## mean1       1.14  0.17    1.14    0.80    1.49      2507      2364  1.00 
 ```
 
-### 生成されたコードの確認
+### Checking the Generated Code
 
-ラッパー関数が内部でどのような `rtmb_code` を生成したかは、モデルオブジェクトの `print_code()` メソッドで確認できます。これにより、ラッパー関数をベースにしつつ、必要に応じて独自のモデルへ拡張する際の参考にできます。
+You can check what `rtmb_code` the wrapper function generated internally by using the `print_code()` method on the model object. This can be used as a reference if you want to extend the wrapper's model into your own custom model.
 
 ```{r eval=FALSE}
-# 内部で生成された RTMB コードを表示
+# Display the internally generated RTMB code
 mdl_ttest$print_code()
 ```
 
@@ -99,12 +96,12 @@ mdl_ttest$print_code()
 ## )
 ```
 
-### ベイズファクターの計算
+### Calculating the Bayes Factor
 
-`bayes_factor()` メソッドを使うことで、効果量 $\delta = 0$ とする帰無モデルとの比較（ベイズファクター）を算出できます。
+By using the `bayes_factor()` method, you can compute a comparison (Bayes factor) against a null model where the effect size is $\delta = 0$.
 
 ```{r eval=FALSE}
-# 効果量 delta = 0 のモデルと比較
+# Compare with the model where effect size delta = 0
 bf <- fit_ttest$bayes_factor(null_model = "delta")
 bf
 ```
@@ -117,18 +114,18 @@ bf
 
 ---
 
-# 2. rtmb_lm（線形回帰分析）
+# 2. rtmb_lm (Linear Regression Analysis)
 
-標準的な `lm()` と同様のフォーマットで線形回帰を行えます。
-ここでは、パッケージに同梱されている `discussion` データ（議論の満足度に関するシミュレーションデータ）を使用します。
+You can perform linear regression with a format identical to standard `lm()`.
+Here, we use the `discussion` data included in the package (simulated data regarding discussion satisfaction).
 
 ```{r eval=FALSE}
 data(discussion)
 
-# satisfaction を talk と skill で予測するモデル
+# Model predicting satisfaction using talk and skill
 mdl_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
 
-# MAP推定で素早く確認
+# Quick check via MAP estimation
 fit_lm <- mdl_lm$optimize()
 fit_lm$summary()
 ```
@@ -149,12 +146,12 @@ fit_lm$summary()
 ## Intercept_c   3.43324     0.05333    3.32871    3.53777 
 ```
 
-### 弱情報事前分布の推奨設定
+### Recommended Settings for Weakly Informative Priors
 
-ベイズファクターの算出（`Bridge Sampling`や`bayes_factor`メソッド）を行う場合、事前分布の設定が結果に影響を与えます。BayesRTMB では、`use_weak_info = TRUE` に設定し、`y_range` に目的変数の理論的な最小値・最大値を指定することで、適切な**弱情報事前分布（Weakly Informative Prior）**を自動構成することを推奨しています。
+When calculating Bayes factors (using `Bridge Sampling` or the `bayes_factor` method), the choice of priors strongly influences the results. BayesRTMB recommends automatically configuring appropriate **Weakly Informative Priors** by setting `use_weak_info = TRUE` and specifying the theoretical minimum and maximum values of the objective variable in `y_range`.
 
 ```{r eval=FALSE}
-# 弱情報事前分布を使用してモデルを作成（満足度が 1〜5 の範囲の場合）
+# Create a model using weakly informative priors (assuming satisfaction ranges from 1 to 5)
 mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill, 
                        data = discussion, 
                        use_weak_info = TRUE, 
@@ -203,13 +200,13 @@ mdl_lm_weak$print_code()
 
 ---
 
-# 3. rtmb_glm（一般化線形モデル）
+# 3. rtmb_glm (Generalized Linear Models)
 
-`family` 引数を指定することで、ロジスティック回帰やポアソン回帰などを行えます。
-例として、実験条件（condition: 0 or 1）を予測するロジスティック回帰を実行します。
+By specifying the `family` argument, you can perform logistic regression, Poisson regression, etc.
+As an example, we will execute a logistic regression predicting the experimental condition (condition: 0 or 1).
 
 ```{r eval=FALSE}
-# ロジスティック回帰 (family = "bernoulli")
+# Logistic regression (family = "bernoulli")
 mdl_glm <- rtmb_glm(condition ~ satisfaction + skill, 
                     data = discussion, 
                     family = "bernoulli")
@@ -227,36 +224,35 @@ fit_glm$summary()
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 
 ```
 
-### 利用可能な分布（family）
+### Available Distributions (`family`)
 
-`rtmb_glm` および `rtmb_glmer` では、以下の分布を指定できます。各分布には標準的なリンク関数が内部で設定されています。
+In `rtmb_glm` and `rtmb_glmer`, the following distributions can be specified. Standard link functions are configured internally for each distribution.
 
-| family | リンク関数 | 概要 |
+| `family` | Link Function | Description |
 | :--- | :--- | :--- |
-| `gaussian` | 恒等 (identity) | 正規分布。標準的な回帰分析に。 |
-| `lognormal` | 対数 (log) | 対数正規分布。正の値をとるデータの分析に。 |
-| `student_t` | 恒等 (identity) | t 分布。外れ値の影響を抑えたい場合に。 |
-| `gamma` | 対数 (log) | ガンマ分布。正の値で歪みのあるデータの分析に。 |
-| `bernoulli` | ロジット (logit) | ベルヌーイ分布。0/1 の 2 値データの分析に。 |
-| `binomial` | ロジット (logit) | 二項分布。成功回数/試行回数のデータの分析に。 |
-| `poisson` | 対数 (log) | ポアソン分布。カウントデータの分析に。 |
-| `neg_binomial`| 対数 (log) | 負の二項分布。過分散のあるカウントデータの分析に。 |
-| `ordered` | ロジット (logit) | 順序ロジスティック回帰。順序カテゴリカルデータの分析に。 |
+| `gaussian` | identity | Normal distribution. For standard regression analysis. |
+| `lognormal` | log | Log-normal distribution. For data that takes positive values. |
+| `student_t` | identity | t-distribution. Useful when you want to suppress the impact of outliers. |
+| `gamma` | log | Gamma distribution. For positive, skewed data. |
+| `bernoulli` | logit | Bernoulli distribution. For binary 0/1 data. |
+| `binomial` | logit | Binomial distribution. For data representing counts of success/trials. |
+| `poisson` | log | Poisson distribution. For count data. |
+| `neg_binomial`| log | Negative binomial distribution. For overdispersed count data. |
+| `ordered` | logit | Ordered logistic regression. For ordinal categorical data. |
 
 
 ---
 
-# 4. rtmb_glmer（一般化線形混合モデル）
+# 4. rtmb_glmer (Generalized Linear Mixed Models)
 
-`lme4` パッケージのような `(1 | group)` という記法を使って、ランダム効果（変量効果）を含むモデルを扱えます。
-個人の満足度が属するグループ（group）によって変動することを考慮したモデルを立ててみます。
+You can handle models including random effects (varying effects) using the `(1 | group)` notation, similar to the `lme4` package. Let's build a model taking into account that individual satisfaction varies depending on the group they belong to.
 
 ```{r eval=FALSE}
-# ランダム切片モデル
+# Random intercept model
 mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group), 
                         data = discussion)
 
-# ランダム効果を含む場合は Laplace 近似を有効にした optimize() が高速です
+# When including random effects, optimize() with Laplace approximation is fast
 opt_glmer <- mdl_glmer$optimize(laplace = TRUE)
 opt_glmer$summary()
 ```
@@ -278,12 +274,13 @@ opt_glmer$summary()
 ## Intercept_c   3.43322     0.06846    3.29904    3.56740 
 ```
 
-## 正則化
-`rtmb_lm`, `rtmb_glm`, `rtmb_glmer`では、正則化を使うことができます。正則化は、多すぎるパラメータについて0に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。
+## Regularization
 
-`BayesRTMB`パッケージでは、`penalty`オプションで馬蹄事前分布を使う`rhs`とspike and slab priorを使う`ssp`が選べます。`rhs`は推定がしやすい反面、効果の小さい係数が完全に0にはなりません。`ssp`は推定がやや重いですが、完全に0に縮小させることができます。
+In `rtmb_lm`, `rtmb_glm`, and `rtmb_glmer`, you can use regularization. Regularization is a method that shrinks the coefficients of excessive parameters towards 0, allowing for the construction of more parsimonious models with high predictive power.
 
-正則化を使うときは、弱情報事前分布を使う必要があるので、目的変数のレンジも入力する必要があります。今回は5件法のデータなので1~5を入力します。正則化のモデルはMAPが難しいことが多いので、MCMCを使うのがよいです。
+In the `BayesRTMB` package, you can select the horseshoe prior (`rhs`) or the spike-and-slab prior (`ssp`) using the `penalty` option. `rhs` is relatively easier to estimate, but coefficients with small effects do not shrink exactly to 0. `ssp` is somewhat heavier to estimate, but it can shrink coefficients completely to 0.
+
+When using regularization, you must also use weakly informative priors, which means you need to input the range of the objective variable. Since our data uses a 5-point scale, we input `c(1, 5)`. MAP estimation often struggles with regularized models, so it's better to use MCMC.
 
 ```{r eval=FALSE}
 mdl_glmer <-
@@ -302,23 +299,23 @@ mcmc_glmer
 mcmc_glmer$draws("b[condition]") |> plot_dens()
 ```
 
-![縮小された事後分布](ssp_posterior_dist.png)
+![Shrunk Posterior Distribution](ssp_posterior_dist.png)
 
 ---
 
-# 5. rtmb_corr（相関行列の推定）
+# 5. rtmb_corr (Correlation Matrix Estimation)
 
-変数の間の相関関係を推定するための関数です。
-ここでは性格五因子（BigFive）のデータの一部を使って、2変数の場合と行列全体の場合を紹介します。
+This function is for estimating the correlation relationships between variables.
+Here, we will introduce both a 2-variable case and a full correlation matrix case using a portion of the Big Five personality data.
 
-### 2変数の相関とベイズファクター
+### 2-Variable Correlation and Bayes Factor
 
-2つの変数（例：外向性を示す項目 BF1 と BF6）の間の相関を推定し、無相関（$r = 0$）を帰無仮説としたベイズファクターを計算します。
+We estimate the correlation between two variables (e.g., extraversion items BF1 and BF6), and calculate a Bayes factor testing the null hypothesis of zero correlation ($r = 0$).
 
 ```{r eval=FALSE}
 data(BigFive)
 
-# BF1 と BF6 の相関
+# Correlation between BF1 and BF6
 mdl_corr2 <- rtmb_corr(BigFive[, c("BF1", "BF6")])
 mcmc_corr2 <- mdl_corr2$sample()
 mcmc_corr2$summary()
@@ -335,7 +332,7 @@ mcmc_corr2$summary()
 ```
 
 ```{r eval=FALSE}
-# 相関 = 0 のモデル（null_model = "corr"）と比較
+# Compare against the zero-correlation model (null_model = "corr")
 bf_corr <- mcmc_corr2$bayes_factor(null_model = "corr")
 bf_corr
 ```
@@ -346,12 +343,12 @@ Log Bayes Factor    : 36.4615 (Approx. Error = 0.0043)
 Interpretation      : Decisive evidence for Model 1 
 ```
 
-### 相関行列の推定
+### Correlation Matrix Estimation
 
-複数の変数を一括して指定すると、相関行列全体を推定します。
+If you specify multiple variables at once, the entire correlation matrix is estimated.
 
 ```{r eval=FALSE}
-# 5つの変数の相関行列を推定
+# Estimate the correlation matrix of 5 variables
 mdl_corr_mat <- rtmb_corr(BigFive[, 1:5])
 opt_corr_mat <- mdl_corr_mat$optimize()
 opt_corr_mat$summary()
@@ -380,25 +377,24 @@ opt_corr_mat$summary()
 
 ---
 
-# 6. rtmb_fa（探索的因子分析）
+# 6. rtmb_fa (Exploratory Factor Analysis)
 
-観測変数の背後にある共通因子を推定します。
+Estimates the common latent factors behind observed variables.
 
-## 因子軸の回転
+## Factor Rotation
 
-因子分析はMCMCだとやや時間がかかるので、MAP推定が早くて使いやすいです。
-`rotate`オプションで、因子の回転が実行できます。
-回転後の因子負荷量は`_promax`のように回転名が後ろにつきます。
-回転後の因子負荷量はgenerateに入るので、MAPでは標準では標準誤差が計算されません。
-`se_sampling =  TRUE`としておくことで標準誤差も計算されます。
-
+Factor analysis can be slightly time-consuming with MCMC, making MAP estimation faster and easier to use.
+Factor rotation can be performed via the `rotate` option.
+The rotated factor loadings will have the rotation name appended, like `_promax`.
+Because the rotated factor loadings are placed in the `generate` block, MAP does not calculate standard errors for them by default. By specifying `se_sampling = TRUE`, you can compute their standard errors as well.
 
 ```{r eval=FALSE}
-# 3因子モデル、プロマックス回転を指定
+# 3-factor model, specifying Promax rotation
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax")
 
 opt_fa <- mdl_fa$optimize(se_sampling = TRUE)
-# 因子負荷量 (L) などを確認
+
+# Check the factor loadings (L), etc.
 opt_fa$summary()
 ```
 
@@ -423,7 +419,7 @@ opt_fa$summary()
 ## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 
 ```
 
-回転後の因子負荷量をソートして表示させる関数、`sort_loadings`を使うと結果が見やすいです。
+The `sort_loadings()` function is useful to sort and display the rotated factor loadings nicely.
 
 ```{r eval=FALSE}
 opt_fa$generate$L_promax |> sort_loadings()
@@ -453,10 +449,9 @@ opt_fa$generate$L_promax |> sort_loadings()
 ## V10  .031 -.120  .047  .317  .712
 ```
 
-## 因子得点
+## Factor Scores
 
-因子得点も`score = TRUE`のオプションで出力可能です。
-因子得点もgenerateに出力されます。
+Factor scores can also be output by using the `score = TRUE` option. These scores are additionally pushed to the `generate` output.
 
 ```{r eval=FALSE}
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax", score = TRUE)
@@ -476,13 +471,13 @@ opt_fa$generate$score |> head()
 ## [6,]  0.20824541 -0.38166057 -1.12921376  0.8736080 -0.5483280
 ```
 
-## 正則化因子分析
+## Regularized Factor Analysis
 
-スパースな負荷量を推定するための Spike-and-Slab Prior（SSP）を用いた正則化因子分析もサポートしています。
+It also supports regularized factor analysis using a Spike-and-Slab Prior (SSP) for estimating sparse factor loadings.
 
-正則化は、多すぎるパラメータについて0に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。因子分析に適用すると、回転の自由度を消すことができ、一意な解を得ることができます。
+Regularization shrinks the effects of unnecessary parameters toward zero, facilitating the construction of more parsimonious and predictive models. When applied to factor analysis, it can remove rotational indeterminacy, yielding a unique solution.
 
-正則化因子分析はMAPではうまく推定できないことがあるので、MCMCかADVIを使うほうがいいでしょう。ここではADVI（自動微分変分ベイズ法）による結果を紹介します。
+Since regularized factor analysis can sometimes be difficult to estimate via MAP, it is usually better to use MCMC or ADVI. Here, we present the results from ADVI (Automatic Differentiation Variational Inference).
 
 ```{r eval=FALSE}
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "ssp")
@@ -505,7 +500,7 @@ vb_fa
 ## L[BF9,1]      0.01   0.04      0.00     -0.03      0.08 
 ```
 
-MCMCやADVIの結果の出力は、`EAP`と`MAP`があります。正則化の場合は`MAP`だと厳密に0に近づくので、出力がみやすくなります。
+The output summary of MCMC or ADVI allows access via `EAP` or `MAP`. With regularization, the `MAP` summary makes the output easier to read as the shrunk parameters will rigorously collapse to 0.
 
 ```{r eval=FALSE}
 vb_fa$MAP("L") |> sort_loadings()
@@ -537,25 +532,23 @@ vb_fa$MAP("L") |> sort_loadings()
 
 ---
 
-# 7. rtmb_irt（項目反応理論）
+# 7. rtmb_irt (Item Response Theory)
 
-`rtmb_irt()` は、テストデータやアンケートデータの解析に適した項目反応理論（IRT）のモデルを構築します。
-現在は以下のモデルをサポートしています。
+`rtmb_irt()` constructs Item Response Theory (IRT) models suitable for analyzing test data or questionnaire surveys.
+Currently, the following models are supported:
 
-- **1PL / 2PL / 3PL モデル**: 2値データ（正解/不正解）の分析。
-- **Graded Response Model (GRM)**: 多値データ（リッカート尺度など）の分析。
+- **1PL / 2PL / 3PL Models**: Analysis of binary data (correct/incorrect).
+- **Graded Response Model (GRM)**: Analysis of polytomous data (e.g., Likert scales).
 
-IRTモデルは計算負荷が高いため、大規模なデータでは `variational()` による高速な近似や、
-`optimize(laplace = TRUE)` による能力値の周辺化を活用するのが効果的です。
+Because IRT models are computationally demanding, it is highly effective to utilize the fast approximation via `variational()` or marginalize the ability parameters using `optimize(laplace = TRUE)` when handling large datasets.
 
 ---
 
-# まとめ
+# Summary
 
-BayesRTMB のラッパー関数を使うことで、
-- 複雑なモデルコードを書かずに、慣れ親しんだ文法で高度な分析ができる
-- 同じモデルオブジェクトから MAP, MCMC, VB を自由に切り替えられる
-- ベイズファクターの算出もスムーズに行える
-といったメリットが得られます。
+By leveraging the wrapper functions in BayesRTMB, you gain the following benefits:
+- Perform sophisticated analyses using familiar syntax without writing complex model codes from scratch.
+- Seamlessly switch between MAP, MCMC, and VB estimations using the same model object.
+- Calculate Bayes factors smoothly.
 
-よりカスタマイズされたモデルが必要な場合は、[クイックスタート](ja-quick_start.html)を参考に `rtmb_code()` を使ったモデル構築に挑戦してみてください。
+If you require a more customized model, check out the [Quick Start](quick_start.html) and try building your own using `rtmb_code()`.

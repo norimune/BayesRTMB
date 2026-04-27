@@ -5,21 +5,26 @@
 \title{RTMB-based Bayesian two-sample t-test wrapper function}
 \usage{
 rtmb_ttest(
-  y1,
-  y2,
+  x,
+  y = NULL,
+  data = NULL,
   r = 0.707,
   y_range = NULL,
   use_weak_info = FALSE,
   prior = list(mean_sd = 10, sd_rate = 0.1),
   weak_info_prior = list(sd_ratio = 0.5),
   init = NULL,
-  null = NULL
+  null = NULL,
+  y1 = NULL,
+  y2 = NULL
 )
 }
 \arguments{
-\item{y1}{Numeric vector of responses for group 1.}
+\item{x}{Numeric vector of responses for group 1, or a formula (e.g., `y ~ group`).}
 
-\item{y2}{Numeric vector of responses for group 2.}
+\item{y}{Numeric vector of responses for group 2. Required if `x` is not a formula.}
+
+\item{data}{Data frame containing the variables in the formula.}
 
 \item{r}{Numeric; Cauchy prior scale for the effect size (delta). Default is 0.707.}
 
@@ -34,6 +39,10 @@ rtmb_ttest(
 \item{init}{List of initial values.}
 
 \item{null}{Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").}
+
+\item{y1}{Deprecated. Use `x` instead.}
+
+\item{y2}{Deprecated. Use `y` instead.}
 }
 \value{
 An \code{RTMB_Model} object.

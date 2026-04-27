@@ -1,10 +1,9 @@
 Package: BayesRTMB
 Type: Package
-Title: Bayesian Inference using RTMB
+Title: Bayesian Inference Using RTMB
 Version: 0.1.0
-Author: Hiroshi Shimizu
-Maintainer: Hiroshi Shimizu <your-email@example.com>
-Description: A package for MCMC and MAP estimation using RTMB.
+Authors@R: person("Hiroshi", "Shimizu", email = "simizu706@gmail.com", role = c("aut", "cre"))
+Description: Provides tools for Markov chain Monte Carlo (MCMC) and Maximum A Posteriori (MAP) estimation utilizing the 'RTMB' package.
 License: MIT + file LICENSE
 Encoding: UTF-8
 LazyData: true

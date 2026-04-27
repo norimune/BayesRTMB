@@ -6,15 +6,24 @@ template:
 
 navbar:
   structure:
-    left: [reference, articles]
+    left: [intro, reference, articles]
     right: [search, github]
   components:
+    intro:
+      text: Quick Start
+      href: articles/quick_start.html
     articles:
       text: Articles
       menu:
       - text: English
       - text: Introduction
         href: articles/introduction.html
+      - text: Quick Start
+        href: articles/quick_start.html
+      - text: Wrapper Functions
+        href: articles/wrapper_functions.html
+      - text: Writing Model Codes
+        href: articles/writing_models.html
       - text: "-------"
       - text: 日本語
       - text: パッケージ紹介
@@ -43,6 +52,9 @@ articles:
   desc: BayesRTMB の英語記事です。
   contents:
   - introduction
+  - quick_start
+  - wrapper_functions
+  - writing_models
 
 - title: 日本語
   desc: BayesRTMB の概要と使い方をまとめた記事です。
@@ -51,3 +63,87 @@ articles:
   - ja-quick_start
   - ja-wrapper_functions
   - ja-writing_models
+
+reference:
+- title: "Core Modeling"
+  desc: "Functions for defining and fitting custom models."
+  contents:
+  - rtmb_code
+  - rtmb_model
+  - safe_rtmb_model
+  - Dim
+
+- title: "Wrapper Functions"
+  desc: "Functions for quick, standard analyses."
+  contents:
+  - rtmb_lm
+  - rtmb_glm
+  - rtmb_glmer
+  - rtmb_ttest
+  - rtmb_corr
+  - rtmb_fa
+  - rtmb_irt
+
+- title: "Plotting and Diagnostics"
+  desc: "Functions for visualizing MCMC samples and model results."
+  contents:
+  - starts_with("plot_")
+
+- title: "Post-Estimation and Utilities"
+  desc: "Tools for model evaluation and post-processing."
+  contents:
+  - bayes_factor
+  - conditional_effects
+  - item_curve
+  - item_info
+  - test_info
+  - sort_loadings
+  - read_mcmc_csv
+
+- title: "Math and Transformation Functions"
+  desc: "Functions used within rtmb_code for stability and transformations."
+  contents:
+  - logit
+  - inv_logit
+  - log1m
+  - log1m_exp
+  - log1p_exp
+  - log_sum_exp
+  - log_softmax
+  - softmax
+  - log_mix
+  - log_det_chol
+  - quad_form_chol
+  - quad_form_diag
+  - distance
+  - squared_distance
+  - fabs
+  - to_centered_matrix
+  - to_centered_tri
+  - sum_to_zero
+  - stz_basis
+
+- title: "Classes"
+  contents:
+  - RTMB_Fit_Base
+  - MAP_Fit
+  - MCMC_Fit
+  - VB_Fit
+
+- title: "Datasets"
+  contents:
+  - beverage
+  - BigFive
+  - discussion
+
+- title: "Documentation Topics"
+  contents:
+  - distributions
+  - math_functions
+  - model_code
+  - parameters_code
+  - parameter_types
+
+- title: "Other Objects and Internals"
+  contents:
+  - matches(".*")
