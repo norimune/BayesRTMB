@@ -291,7 +291,7 @@ map_lm$summary()
 を使うと、ベイジアン t
 検定が簡単に実行できます。[`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 メソッドで `null_model` 引数に「0
-に固定したいパラメータ名」を指定するだけで、自動的に帰無モデルの推定とベイズファクターの計算が行われます。
+に固定したいパラメータ名」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。
 
 ``` r
 data(discussion)
