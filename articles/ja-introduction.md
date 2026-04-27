@@ -17,6 +17,7 @@
 - **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
 - **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**
 - **[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
+- **[RTMBの仕組みと推定のアルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**
 
 ### BayesRTMB でできること
 

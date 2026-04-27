@@ -47,4 +47,4 @@ A data frame (or matrix) with \[INSERT NUMBER OF ROWS\] rows and
 
 Adachi, K. (2000). A Random Effect Model in Metric Multidimensional
 Unfolding. *The Japanese Journal of Behaviormetrics*, 27(1), 12-23.
-<https://doi.org/10.2333/jbhmk.27.12>
+[doi:10.2333/jbhmk.27.12](https://doi.org/10.2333/jbhmk.27.12)

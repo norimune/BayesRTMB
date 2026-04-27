@@ -1,9 +1,9 @@
 # BayesRTMB
 
 **Language / 言語**: [English
-introduction](https://norimune.github.io/BayesRTMB/articles/introduction.md)
+introduction](https://norimune.github.io/BayesRTMB/articles/introduction.html)
 \|
-[パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)
+[パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
 
 **BayesRTMB** is an R package for fast, flexible, and compile-free
 Bayesian modeling.
