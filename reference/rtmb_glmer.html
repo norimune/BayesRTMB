@@ -149,7 +149,13 @@
 <span class="r-in"><span>  <span class="va">mcmc_glmer</span> <span class="op">&lt;-</span> <span class="va">fit_glmer</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># --- 4. Regularized Regression (Variable Selection) ---</span></span></span>
+<span class="r-in"><span>  <span class="co"># --- 4. Linear Mixed Model (rtmb_lmer) ---</span></span></span>
+<span class="r-in"><span>  <span class="co"># A convenient wrapper for Gaussian mixed models (identical to rtmb_glmer with family="gaussian")</span></span></span>
+<span class="r-in"><span>  <span class="va">fit_lmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="rtmb_lmer.html">rtmb_lmer</a></span><span class="op">(</span><span class="va">mpg</span> <span class="op">~</span> <span class="va">wt</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">cyl</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">mtcars</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">map_lmer</span> <span class="op">&lt;-</span> <span class="va">fit_lmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">map_lmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="co"># --- 5. Regularized Regression (Variable Selection) ---</span></span></span>
 <span class="r-in"><span>  <span class="co"># You can apply regularization to the fixed effects to shrink noise variables towards zero.</span></span></span>
 <span class="r-in"><span>  <span class="co"># Use penalty = "rhs" for the Regularized Horseshoe prior, or "ssp" for the Spike-and-Slab prior.</span></span></span>
 <span class="r-in"><span>  <span class="co"># Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum</span></span></span>

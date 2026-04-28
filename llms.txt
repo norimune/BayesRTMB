@@ -214,6 +214,8 @@ Functions for quick, standard analyses.
   : RTMB-based Linear Regression wrapper function
 - [`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md)
   : RTMB-based GLM wrapper function (no random effects)
+- [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
+  : RTMB-based Linear Mixed Model (LMM) wrapper function
 - [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
   : RTMB-based GLMM wrapper function
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
@@ -461,6 +463,8 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based IRT (Item Response Theory) Wrapper
 - [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
   : RTMB-based Linear Regression wrapper function
+- [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
+  : RTMB-based Linear Mixed Model (LMM) wrapper function
 - [`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
   : Guidelines for Writing RTMB-Compatible Code
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)

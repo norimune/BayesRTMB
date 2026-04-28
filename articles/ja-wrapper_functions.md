@@ -314,6 +314,39 @@ mcmc_glmer$draws("b[condition]") |> plot_dens()
 
 ------------------------------------------------------------------------
 
+## 推定時の共通オプション
+
+すべてのラッパー関数で作成したモデルオブジェクトの推定メソッド（[`sample()`](https://rdrr.io/r/base/sample.html),
+`variational()`）には、以下の共通オプションが用意されています。
+
+#### 並列計算 (parallel)
+
+チェイン数が多い場合やモデルが重い場合は、`parallel = TRUE`
+を指定することで並列計算を行えます。
+
+``` r
+# 並列計算を有効にする
+fit <- mdl$sample(parallel = TRUE)
+```
+
+#### 結果の逐次保存 (save_csv)
+
+計算に時間がかかる場合、結果を CSV
+ファイルとして逐次保存しておくと、不測の事態（PCのフリーズなど）でもそれまでの結果を保持できます。
+
+``` r
+# 結果を "mcmc_out" ディレクトリに保存
+fit <- mdl$sample(
+  save_csv = list(name = "my_analysis", dir = "mcmc_out")
+)
+```
+
+保存された結果は、後で
+[`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
+関数を使ってモデルオブジェクトに読み込むことができます。
+
+------------------------------------------------------------------------
+
 ## 5. rtmb_corr（相関行列の推定）
 
 変数の間の相関関係を推定するための関数です。

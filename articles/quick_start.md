@@ -168,6 +168,33 @@ fit_mcmc
 ## theta      0.59  0.14   0.62   0.32   0.84      1609      1577  1.00 
 ```
 
+#### Saving and Loading MCMC Results (save_csv)
+
+For models that take a long time to compute or when performing
+large-scale sampling, it is useful to save the results to CSV files. By
+specifying the `save_csv` argument during the execution of
+[`sample()`](https://rdrr.io/r/base/sample.html) (or `variational()`),
+the sampling results for each chain will be written to the specified
+directory.
+
+``` r
+# Save results to the "mcmc_out" directory with the name prefix "my_model"
+fit_mcmc <- mdl$sample(
+  save_csv = list(name = "my_model", dir = "mcmc_out")
+)
+```
+
+The saved results can be read back into a model object later using the
+[`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
+function. This allows you to reuse sampling results for plotting and
+summarization even after closing the session or restarting R.
+
+``` r
+# Load saved files
+# (mdl must be a model object created with the same settings)
+fit_mcmc <- read_mcmc_csv(mdl, name = "my_model", dir = "mcmc_out")
+```
+
 #### Visualizing Inference Results
 
 To check the shape of the posterior distribution obtained via MCMC and
