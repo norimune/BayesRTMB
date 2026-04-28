@@ -153,10 +153,11 @@ When calculating Bayes factors (using `Bridge Sampling` or the `bayes_factor` me
 
 ```{r eval=FALSE}
 # Create a model using weakly informative priors (assuming satisfaction ranges from 1 to 5)
-mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill, 
-                       data = discussion, 
-                       use_weak_info = TRUE, 
-                       y_range = c(1, 5))
+mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill,
+  data = discussion,
+  use_weak_info = TRUE,
+  y_range = c(1, 5)
+)
 mdl_lm_weak$print_code()
 ```
 
@@ -208,9 +209,10 @@ As an example, we will execute a logistic regression predicting the experimental
 
 ```{r eval=FALSE}
 # Logistic regression (family = "bernoulli")
-mdl_glm <- rtmb_glm(condition ~ satisfaction + skill, 
-                    data = discussion, 
-                    family = "bernoulli")
+mdl_glm <- rtmb_glm(condition ~ satisfaction + skill,
+  data = discussion,
+  family = "bernoulli"
+)
 
 fit_glm <- mdl_glm$sample()
 fit_glm$summary()
@@ -246,22 +248,17 @@ In `rtmb_glm` and `rtmb_glmer`, the following distributions can be specified. St
 
 # 4. rtmb_glmer (Generalized Linear Mixed Models)
 
-You can handle models including random effects (varying effects) using the `(1 | group)` notation, similar to the `lme4` package.
-
-### Linear Mixed Models (rtmb_lmer)
-
-For mixed models assuming a Gaussian (normal) distribution, `rtmb_lmer` is available and can be used with the same feeling as `lme4::lmer()`. This is a shortcut function that internally calls `rtmb_glmer(family = "gaussian")`.
-
-Let's build a model taking into account that individual satisfaction varies depending on the group they belong to.
+You can handle models including random effects (varying effects) using the `(1 | group)` notation, similar to the `lme4` package. Let's build a model taking into account that individual satisfaction varies depending on the group they belong to.
 
 ```{r eval=FALSE}
-# Create a linear mixed model
-mdl_lmer <- rtmb_lmer(satisfaction ~ talk + (1 | group), 
-                      data = discussion)
+# Random intercept model
+mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group),
+  data = discussion
+)
 
 # When including random effects, optimize() with Laplace approximation is fast
-opt_lmer <- mdl_lmer$optimize(laplace = TRUE)
-opt_lmer$summary()
+opt_glmer <- mdl_glmer$optimize(laplace = TRUE)
+opt_glmer$summary()
 ```
 
 ```text
@@ -279,19 +276,6 @@ opt_lmer$summary()
 ## sigma         0.77389     0.03867    0.70170    0.85351 
 ## sd[Int]       0.51833     0.06587    0.40406    0.66492 
 ## Intercept_c   3.43322     0.06846    3.29904    3.56740 
-```
-
-### Generalized Linear Mixed Models (rtmb_glmer)
-
-By specifying the `family` argument, you can estimate mixed models for binomial, ordered logistic, and other distributions.
-
-```{r eval=FALSE}
-# Ordered logistic mixed model (family = "ordered")
-mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group), 
-                        data = discussion,
-                        family = "ordered")
-
-fit_glmer <- mdl_glmer$optimize(laplace = TRUE)
 ```
 
 ## Regularization
@@ -561,6 +545,17 @@ Currently, the following models are supported:
 - **Graded Response Model (GRM)**: Analysis of polytomous data (e.g., Likert scales).
 
 Because IRT models are computationally demanding, it is highly effective to utilize the fast approximation via `variational()` or marginalize the ability parameters using `optimize(laplace = TRUE)` when handling large datasets.
+
+---
+
+# Summary
+
+By leveraging the wrapper functions in BayesRTMB, you gain the following benefits:
+- Perform sophisticated analyses using familiar syntax without writing complex model codes from scratch.
+- Seamlessly switch between MAP, MCMC, and VB estimations using the same model object.
+- Calculate Bayes factors smoothly.
+
+If you require a more customized model, check out the [Quick Start](quick_start.html) and try building your own using `rtmb_code()`.
 
 ---
 
