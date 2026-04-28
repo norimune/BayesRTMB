@@ -359,17 +359,24 @@ data.</td>
 </h2>
 <p>You can handle models including random effects (varying effects)
 using the <code>(1 | group)</code> notation, similar to the
-<code>lme4</code> package. Let’s build a model taking into account that
-individual satisfaction varies depending on the group they belong
-to.</p>
+<code>lme4</code> package.</p>
+<div class="section level4">
+<h4 id="linear-mixed-models-rtmb_lmer">Linear Mixed Models (rtmb_lmer)<a class="anchor" aria-label="anchor" href="#linear-mixed-models-rtmb_lmer"></a>
+</h4>
+<p>For mixed models assuming a Gaussian (normal) distribution,
+<code>rtmb_lmer</code> is available and can be used with the same
+feeling as <code><a href="https://rdrr.io/pkg/lme4/man/lmer.html" class="external-link">lme4::lmer()</a></code>. This is a shortcut function that
+internally calls <code>rtmb_glmer(family = "gaussian")</code>.</p>
+<p>Let’s build a model taking into account that individual satisfaction
+varies depending on the group they belong to.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Random intercept model</span></span>
-<span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, </span>
-<span>                        data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Create a linear mixed model</span></span>
+<span><span class="va">mdl_lmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lmer.html">rtmb_lmer</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, </span>
+<span>                      data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># When including random effects, optimize() with Laplace approximation is fast</span></span>
-<span><span class="va">opt_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">opt_glmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">opt_lmer</span> <span class="op">&lt;-</span> <span class="va">mdl_lmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">opt_lmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
 <span><span class="co">## </span></span>
@@ -384,6 +391,21 @@ to.</p>
 <span><span class="co">## sigma         0.77389     0.03867    0.70170    0.85351 </span></span>
 <span><span class="co">## sd[Int]       0.51833     0.06587    0.40406    0.66492 </span></span>
 <span><span class="co">## Intercept_c   3.43322     0.06846    3.29904    3.56740 </span></span></code></pre>
+</div>
+<div class="section level4">
+<h4 id="generalized-linear-mixed-models-rtmb_glmer">Generalized Linear Mixed Models (rtmb_glmer)<a class="anchor" aria-label="anchor" href="#generalized-linear-mixed-models-rtmb_glmer"></a>
+</h4>
+<p>By specifying the <code>family</code> argument, you can estimate
+mixed models for binomial, ordered logistic, and other
+distributions.</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Ordered logistic mixed model (family = "ordered")</span></span>
+<span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, </span>
+<span>                        data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span>                        family <span class="op">=</span> <span class="st">"ordered"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+</div>
 <div class="section level3">
 <h3 id="regularization">Regularization<a class="anchor" aria-label="anchor" href="#regularization"></a>
 </h3>
@@ -403,7 +425,7 @@ priors, which means you need to input the range of the objective
 variable. Since our data uses a 5-point scale, we input
 <code>c(1, 5)</code>. MAP estimation often struggles with regularized
 models, so it’s better to use MCMC.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>    <span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">performance</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="va">condition</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
@@ -414,7 +436,7 @@ models, so it’s better to use MCMC.</p>
 <span></span>
 <span><span class="va">mcmc_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">mcmc_glmer</span></span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"b[condition]"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
 <img src="ssp_posterior_dist.png" alt="Shrunk Posterior Distribution"><div class="figcaption">Shrunk Posterior Distribution</div>
@@ -436,7 +458,7 @@ data.</p>
 items BF1 and BF6), and calculate a Bayes factor testing the null
 hypothesis of zero correlation
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r = 0</annotation></semantics></math>).</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Correlation between BF1 and BF6</span></span>
@@ -450,7 +472,7 @@ hypothesis of zero correlation
 <span><span class="co">## mean[BF6]     2.71  0.09     2.73     2.54     2.89      2978      2872  1.00 </span></span>
 <span><span class="co">## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 </span></span>
 <span><span class="co">## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 </span></span></code></pre>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Compare against the zero-correlation model (null_model = "corr")</span></span>
 <span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"corr"</span><span class="op">)</span></span>
 <span><span class="va">bf_corr</span></span></code></pre></div>
@@ -463,7 +485,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 </h4>
 <p>If you specify multiple variables at once, the entire correlation
 matrix is estimated.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Estimate the correlation matrix of 5 variables</span></span>
 <span><span class="va">mdl_corr_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">opt_corr_mat</span> <span class="op">&lt;-</span> <span class="va">mdl_corr_mat</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -504,7 +526,7 @@ rotated factor loadings are placed in the <code>generate</code> block,
 MAP does not calculate standard errors for them by default. By
 specifying <code>se_sampling = TRUE</code>, you can compute their
 standard errors as well.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 3-factor model, specifying Promax rotation</span></span>
 <span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span><span class="op">)</span></span>
 <span></span>
@@ -532,7 +554,7 @@ standard errors as well.</p>
 <span><span class="co">## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 </span></span></code></pre>
 <p>The <code><a href="../reference/sort_loadings.html">sort_loadings()</a></code> function is useful to sort and
 display the rotated factor loadings nicely.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_fa</span><span class="op">$</span><span class="va">generate</span><span class="op">$</span><span class="va">L_promax</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V1   .867 -.117 -.179  .089  .057</span></span>
@@ -562,7 +584,7 @@ display the rotated factor loadings nicely.</p>
 <p>Factor scores can also be output by using the
 <code>score = TRUE</code> option. These scores are additionally pushed
 to the <code>generate</code> output.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span>, score <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">opt_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -589,7 +611,7 @@ indeterminacy, yielding a unique solution.</p>
 estimate via MAP, it is usually better to use MCMC or ADVI. Here, we
 present the results from ADVI (Automatic Differentiation Variational
 Inference).</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"ssp"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">vb_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span>iter <span class="op">=</span> <span class="fl">5000</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -609,7 +631,7 @@ Inference).</p>
 or <code>MAP</code>. With regularization, the <code>MAP</code> summary
 makes the output easier to read as the shrunk parameters will rigorously
 collapse to 0.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_fa</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="st">"L"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V7  -.823  .000 -.001  .001  .010</span></span>
