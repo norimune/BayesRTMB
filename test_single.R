@@ -1,0 +1,5 @@
+pkgload::load_all(".")
+mtcars$cyl_f <- factor(mtcars$cyl)
+fit <- rtmb_glmer(mpg ~ wt + (1|cyl_f), data=mtcars)
+res <- fit$optimize()
+res$summary()

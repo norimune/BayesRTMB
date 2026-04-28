@@ -79,6 +79,7 @@ reference:
   contents:
   - rtmb_lm
   - rtmb_glm
+  - rtmb_lmer
   - rtmb_glmer
   - rtmb_ttest
   - rtmb_corr

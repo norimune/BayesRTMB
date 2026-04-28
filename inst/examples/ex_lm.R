@@ -23,7 +23,13 @@
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_glmer$summary()
 
-  # --- 4. Regularized Regression (Variable Selection) ---
+  # --- 4. Linear Mixed Model (rtmb_lmer) ---
+  # A convenient wrapper for Gaussian mixed models (identical to rtmb_glmer with family="gaussian")
+  fit_lmer <- rtmb_lmer(mpg ~ wt + (1 | cyl), data = mtcars)
+  map_lmer <- fit_lmer$optimize()
+  map_lmer$summary()
+
+  # --- 5. Regularized Regression (Variable Selection) ---
   # You can apply regularization to the fixed effects to shrink noise variables towards zero.
   # Use penalty = "rhs" for the Regularized Horseshoe prior, or "ssp" for the Spike-and-Slab prior.
   # Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum

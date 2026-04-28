@@ -97,7 +97,24 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     all_vars_form <- subbars(formula)
     fixed_form <- nobars(formula)
     bars <- findbars(formula)
+    
+    # Expand bars with * or : using terms() expansion
+    expanded_bars <- list()
+    if (length(bars) > 0) {
+      for (bar in bars) {
+        grp_expr <- bar[[3]]
+        # Use terms() to expand a*b into a, b, a:b
+        term_labels <- attr(terms(as.formula(paste("~", deparse(grp_expr)))), "term.labels")
+        for (label in term_labels) {
+          new_bar <- bar
+          new_bar[[3]] <- parse(text = label)[[1]]
+          expanded_bars[[length(expanded_bars) + 1]] <- new_bar
+        }
+      }
+    }
+    bars <- expanded_bars
     num_bars <- length(bars)
+    suffix <- function(b) if (num_bars > 1) paste0("_", b) else ""
 
     mf <- model.frame(all_vars_form, data = data)
     Y <- model.response(mf)
@@ -109,15 +126,31 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     num_ranef_list <- list()
     num_groups_list <- list()
     ranef_names_list <- list()
+    group_labels_list <- list()
 
     for (b in 1:num_bars) {
       bar <- bars[[b]]
       re_form <- as.formula(paste("~", deparse(bar[[2]])))
-      group_var <- deparse(bar[[3]])
-
+      
       Z_mf <- model.matrix(re_form, mf)
-      flist <- as.factor(mf[[group_var]])
+      
+      # Handle grouping factor (potentially with interactions)
+      group_var_label <- deparse(bar[[3]])
+      vars <- trimws(unlist(strsplit(group_var_label, ":")))
+      
+      if (length(vars) > 1) {
+        flist <- interaction(mf[vars], sep = ":", drop = TRUE)
+      } else {
+        flist <- as.factor(mf[[vars]])
+      }
       group_idx <- as.integer(flist)
+      
+      if (length(group_idx) == 0) {
+        stop("Grouping factor '", group_var_label, "' resulted in an empty vector.")
+      }
+      if (any(is.na(group_idx))) {
+        stop("NA values found in grouping factor '", group_var_label, "'. Check your data.")
+      }
 
       num_groups <- length(levels(flist))
       num_ranef <- ncol(Z_mf)
@@ -128,8 +161,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i] <- Z_mf[i, ]
       }
 
-      dat_ranef[[paste0("Zt_", b)]] <- Zt
-      dat_ranef[[paste0("group_idx_", b)]] <- group_idx
+      dat_ranef[[paste0("Zt", suffix(b))]] <- Zt
+      dat_ranef[[paste0("group_idx", suffix(b))]] <- group_idx
 
       num_ranef_list[[b]] <- num_ranef
       num_groups_list[[b]] <- num_groups
@@ -137,6 +170,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       r_names <- colnames(Z_mf)
       r_names[r_names == "(Intercept)"] <- "Int"
       ranef_names_list[[b]] <- r_names
+      group_labels_list[[b]] <- group_var_label
     }
   } else {
     mf <- model.frame(formula, data)
@@ -148,6 +182,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     num_ranef_list <- list()
     num_groups_list <- list()
     ranef_names_list <- list()
+    group_labels_list <- list()
   }
 
   has_intercept <- "(Intercept)" %in% colnames(X)
@@ -253,11 +288,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   setup_exprs[[2]] <- quote(K <- ncol(X))
   if (has_random) {
     for (b in 1:num_bars) {
-      group_idx_name <- as.name(paste0("group_idx_", b))
-      Zt_name <- as.name(paste0("Zt_", b))
-      Z_mat_name <- as.name(paste0("Z_mat_", b))
-      num_groups_name <- as.name(paste0("num_groups_", b))
-      num_ranef_name <- as.name(paste0("num_ranef_", b))
+      group_idx_name <- as.name(paste0("group_idx", suffix(b)))
+      Zt_name <- as.name(paste0("Zt", suffix(b)))
+      Z_mat_name <- as.name(paste0("Z_mat", suffix(b)))
+      num_groups_name <- as.name(paste0("num_groups", suffix(b)))
+      num_ranef_name <- as.name(paste0("num_ranef", suffix(b)))
 
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_groups_name) <- max(.(group_idx_name)))
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- nrow(.(Zt_name)) / .(num_groups_name))
@@ -347,9 +382,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     for (b in 1:num_bars) {
       num_ranef_val <- num_ranef_list[[b]]
       num_groups_val <- num_groups_list[[b]]
-      sd_name <- as.name(paste0("sd_", b))
-      r_re_name <- as.name(paste0("r_re_", b))
-      CF_corr_name <- as.name(paste0("CF_corr_", b))
+      sd_name <- as.name(paste0("sd", suffix(b)))
+      r_re_name <- as.name(paste0("r_re", suffix(b)))
+      CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
 
       if (num_ranef_val == 1) {
         param_exprs[[length(param_exprs) + 1]] <- bquote(.(sd_name) <- Dim(.(num_ranef_val), lower = 0))
@@ -388,8 +423,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (has_random) {
     for (b in 1:num_bars) {
       if (num_ranef_list[[b]] > 1) {
-        CF_corr_name <- as.name(paste0("CF_corr_", b))
-        corr_name <- as.name(paste0("corr_", b))
+        CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
+        corr_name <- as.name(paste0("corr", suffix(b)))
         tran_exprs[[length(tran_exprs) + 1]] <- bquote(.(corr_name) <- .(CF_corr_name) %*% t(.(CF_corr_name)))
       }
     }
@@ -407,10 +442,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
   if (has_random) {
     for (b in 1:num_bars) {
-      Z_mat_name <- as.name(paste0("Z_mat_", b))
-      r_re_name <- as.name(paste0("r_re_", b))
-      group_idx_name <- as.name(paste0("group_idx_", b))
-      sd_name <- as.name(paste0("sd_", b))
+      Z_mat_name <- as.name(paste0("Z_mat", suffix(b)))
+      r_re_name <- as.name(paste0("r_re", suffix(b)))
+      group_idx_name <- as.name(paste0("group_idx", suffix(b)))
+      sd_name <- as.name(paste0("sd", suffix(b)))
 
       if (num_ranef_list[[b]] > 1) {
         transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (i in 1:N) eta[i] <- eta[i] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name)))
@@ -437,11 +472,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   ll_random_exprs <- list()
   if (has_random) {
     for (b in 1:num_bars) {
-      r_re_name <- as.name(paste0("r_re_", b))
+      r_re_name <- as.name(paste0("r_re", suffix(b)))
       if (num_ranef_list[[b]] > 1) {
-        CF_corr_name <- as.name(paste0("CF_corr_", b))
-        num_ranef_name <- as.name(paste0("num_ranef_", b))
-        num_groups_name <- as.name(paste0("num_groups_", b))
+        CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
+        num_ranef_name <- as.name(paste0("num_ranef", suffix(b)))
+        num_groups_name <- as.name(paste0("num_groups", suffix(b)))
 
         ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(CF_corr_name) ~ lkj_CF_corr(.(prior$lkj_eta)))
         ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(for (j in 1:.(num_groups_name)) .(r_re_name)[j, ] ~ multi_normal_CF(rep(0, .(num_ranef_name)), rep(1, .(num_ranef_name)), .(CF_corr_name)))
@@ -497,7 +532,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   if (has_random) {
     for (b in 1:num_bars) {
-      sd_name <- as.name(paste0("sd_", b))
+      sd_name <- as.name(paste0("sd", suffix(b)))
       if (use_weak_info) {
         prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(tau_rate))
       } else {
@@ -535,8 +570,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
   if (has_random) {
     for (b in 1:num_bars) {
-      par_names_list[[paste0("sd_", b)]] <- ranef_names_list[[b]]
-      if (num_ranef_list[[b]] > 1) par_names_list[[paste0("corr_", b)]] <- ranef_names_list[[b]]
+      r_names <- ranef_names_list[[b]]
+      if (num_bars > 1) {
+        r_names <- paste0(r_names, ":", group_labels_list[[b]])
+      }
+      par_names_list[[paste0("sd", suffix(b))]] <- r_names
+      if (num_ranef_list[[b]] > 1) par_names_list[[paste0("corr", suffix(b))]] <- r_names
     }
   }
 
@@ -546,8 +585,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   view_vars <- c(view_vars, "sigma")
   if (has_random) {
     for (b in 1:num_bars) {
-      view_vars <- c(view_vars, paste0("sd_", b))
-      if (num_ranef_list[[b]] > 1) view_vars <- c(view_vars, paste0("corr_", b))
+      view_vars <- c(view_vars, paste0("sd", suffix(b)))
+      if (num_ranef_list[[b]] > 1) view_vars <- c(view_vars, paste0("corr", suffix(b)))
     }
   }
 
@@ -562,6 +601,32 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   return(obj)
+}
+
+#' RTMB-based Linear Mixed Model (LMM) wrapper function
+#'
+#' @param formula Formula
+#' @param data Data frame
+#' @param prior Prior list
+#' @param init Initial values
+#' @param regularization Regularization method
+#' @param weak_info_prior Weak informative prior parameters
+#' @param use_weak_info Whether to use weak informative priors
+#' @param null Null model parameters
+#' @return RTMB_Model object
+#' @export
+#' @example inst/examples/ex_lm.R
+rtmb_lmer <- function(formula, data, prior = list(), init = NULL,
+                      regularization = "none",
+                      weak_info_prior = list(),
+                      use_weak_info = TRUE,
+                      null = NULL) {
+  rtmb_glmer(formula = formula, data = data, family = "gaussian",
+             prior = prior, init = init,
+             regularization = regularization,
+             weak_info_prior = weak_info_prior,
+             use_weak_info = use_weak_info,
+             null = null)
 }
 
 #' RTMB-based GLM wrapper function (no random effects)
