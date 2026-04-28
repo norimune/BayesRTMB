@@ -154,10 +154,11 @@ Informative Prior）**を自動構成することを推奨しています。
 
 ``` r
 # 弱情報事前分布を使用してモデルを作成（満足度が 1〜5 の範囲の場合）
-mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill, 
-                       data = discussion, 
-                       use_weak_info = TRUE, 
-                       y_range = c(1, 5))
+mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill,
+  data = discussion,
+  use_weak_info = TRUE,
+  y_range = c(1, 5)
+)
 mdl_lm_weak$print_code()
 ```
 
@@ -211,9 +212,10 @@ mdl_lm_weak$print_code()
 
 ``` r
 # ロジスティック回帰 (family = "bernoulli")
-mdl_glm <- rtmb_glm(condition ~ satisfaction + skill, 
-                    data = discussion, 
-                    family = "bernoulli")
+mdl_glm <- rtmb_glm(condition ~ satisfaction + skill,
+  data = discussion,
+  family = "bernoulli"
+)
 
 fit_glm <- mdl_glm$sample()
 fit_glm$summary()
@@ -251,24 +253,17 @@ fit_glm$summary()
 
 `lme4` パッケージのような `(1 | group)`
 という記法を使って、ランダム効果（変量効果）を含むモデルを扱えます。
-
-#### 線形混合モデル (rtmb_lmer)
-
-ガウシアン（正規分布）を仮定した混合モデルの場合、[`lme4::lmer()`](https://rdrr.io/pkg/lme4/man/lmer.html)
-と同じ感覚で使える `rtmb_lmer` が利用可能です。これは内部的に
-`rtmb_glmer(family = "gaussian")`
-を呼び出しているショートカット関数です。
-
 個人の満足度が属するグループ（group）によって変動することを考慮したモデルを立ててみます。
 
 ``` r
-# 線形混合モデルの作成
-mdl_lmer <- rtmb_lmer(satisfaction ~ talk + (1 | group), 
-                      data = discussion)
+# ランダム切片モデル
+mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group),
+  data = discussion
+)
 
 # ランダム効果を含む場合は Laplace 近似を有効にした optimize() が高速です
-opt_lmer <- mdl_lmer$optimize(laplace = TRUE)
-opt_lmer$summary()
+opt_glmer <- mdl_glmer$optimize(laplace = TRUE)
+opt_glmer$summary()
 ```
 
 ``` text
@@ -286,20 +281,6 @@ opt_lmer$summary()
 ## sigma         0.77389     0.03867    0.70170    0.85351 
 ## sd[Int]       0.51833     0.06587    0.40406    0.66492 
 ## Intercept_c   3.43322     0.06846    3.29904    3.56740 
-```
-
-#### 一般化線形混合モデル (rtmb_glmer)
-
-`family`
-引数を指定することで、二項分布や順序ロジスティック分布などの混合モデルを推定できます。
-
-``` r
-# 順序ロジスティック混合モデル (family = "ordered")
-mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group), 
-                        data = discussion,
-                        family = "ordered")
-
-fit_glmer <- mdl_glmer$optimize(laplace = TRUE)
 ```
 
 ### 正則化
