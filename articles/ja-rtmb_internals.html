@@ -120,7 +120,7 @@
 </h3>
 <p>多くの統計モデルでは、パラメータに制約（例：標準偏差は正、確率は0から1の間、相関行列の性質など）があります。しかし、勾配ベースの最適化アルゴリズムや
 HMC (Hamiltonian Monte Carlo) は、<strong>「制約のない実数空間
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>−</mo><mi>∞</mi><mo>,</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">-\infty, \infty</annotation></semantics></math>)」</strong>で最も効率的に動作します。</p>
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>−</mi><mi>∞</mi><mo>,</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">-\infty, \infty</annotation></semantics></math>)」</strong>で最も効率的に動作します。</p>
 <p><code>BayesRTMB</code> は、以下のプロセスを自動的に行います。</p>
 <ol style="list-style-type: decimal">
 <li>
@@ -136,10 +136,10 @@ HMC (Hamiltonian Monte Carlo) は、<strong>「制約のない実数空間
 への写像。
 <ul>
 <li>正数制約:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x = \log(y)</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">x = \log(y)</annotation></semantics></math>
 </li>
 <li>上限下限制約:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mtext mathvariant="normal">logit</mtext><mrow><mo stretchy="true" form="prefix">(</mo><mfrac><mrow><mi>y</mi><mo>−</mo><mtext mathvariant="normal">lower</mtext></mrow><mrow><mtext mathvariant="normal">upper</mtext><mo>−</mo><mtext mathvariant="normal">lower</mtext></mrow></mfrac><mo stretchy="true" form="postfix">)</mo></mrow></mrow><annotation encoding="application/x-tex">x = \text{logit}(\frac{y - \text{lower}}{\text{upper} - \text{lower}})</annotation></semantics></math>
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mtext mathvariant="normal">logit</mtext><mo stretchy="false" form="prefix">(</mo><mfrac><mrow><mi>y</mi><mo>−</mo><mtext mathvariant="normal">lower</mtext></mrow><mrow><mtext mathvariant="normal">upper</mtext><mo>−</mo><mtext mathvariant="normal">lower</mtext></mrow></mfrac><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">x = \text{logit}(\frac{y - \text{lower}}{\text{upper} - \text{lower}})</annotation></semantics></math>
 </li>
 </ul>
 </li>
@@ -153,7 +153,7 @@ HMC (Hamiltonian Monte Carlo) は、<strong>「制約のない実数空間
 <h3 id="ヤコビアンjacobianの調整">ヤコビアン（Jacobian）の調整<a class="anchor" aria-label="anchor" href="#%E3%83%A4%E3%82%B3%E3%83%93%E3%82%A2%E3%83%B3jacobian%E3%81%AE%E8%AA%BF%E6%95%B4"></a>
 </h3>
 <p>変数変換を行った場合、変換後の空間での確率密度を正しく保つために、変換の<strong>ヤコビアンの行列式の絶対値の対数</strong>を加算する必要があります。</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo>log</mo><msub><mi>p</mi><mi>X</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>x</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>=</mo><mo>log</mo><msub><mi>p</mi><mi>Y</mi></msub><mrow><mo stretchy="true" form="prefix">(</mo><mi>y</mi><mo stretchy="true" form="postfix">)</mo></mrow><mo>+</mo><mo>log</mo><mrow><mo stretchy="true" form="prefix">|</mo><mfrac><mrow><mi>d</mi><mi>y</mi></mrow><mrow><mi>d</mi><mi>x</mi></mrow></mfrac><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex"> \log p_X(x) = \log p_Y(y) + \log \left| \frac{dy}{dx} \right| </annotation></semantics></math></p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><msub><mi>p</mi><mi>X</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><msub><mi>p</mi><mi>Y</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mrow><mo stretchy="true" form="prefix">|</mo><mfrac><mrow><mi>d</mi><mi>y</mi></mrow><mrow><mi>d</mi><mi>x</mi></mrow></mfrac><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex"> \log p_X(x) = \log p_Y(y) + \log \left| \frac{dy}{dx} \right| </annotation></semantics></math></p>
 <p><code>BayesRTMB</code> は、<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
 を作成する際にこのヤコビアン調整を自動的にモデルの対数密度に加算します。これにより、ユーザーはヤコビアンを意識することなく、Stanと同じように正しい事後分布からのサンプリングが可能になります。</p>
 <hr>

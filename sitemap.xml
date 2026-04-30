@@ -98,6 +98,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/positive_lower_tri_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.bayes_factor.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.ce_rtmb.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/print.ce_simple.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quad_form_chol.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quad_form_diag.html</loc></url>
@@ -116,6 +117,8 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/simple_effects.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/simple_effects.mcmc_fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/softmax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sort_loadings.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/squared_distance.html</loc></url>
@@ -124,6 +127,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sufficient_multi_normal_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sufficient_multi_normal_fa_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sum_to_zero.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/summary.ce_rtmb.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/test_info.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/to_centered_matrix.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/to_centered_tri.html</loc></url>

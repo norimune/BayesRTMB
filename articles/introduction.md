@@ -50,6 +50,7 @@ BayesRTMB offers the following advantages:
 You can install the development version from GitHub:
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
 ```
@@ -68,6 +69,7 @@ mandatory** for compiling the code on Windows environments.
     your system by running the following code:
 
 ``` r
+
 # If TRUE is returned, your environment is successfully set up for compilation.
 pkgbuild::check_build_tools(debug = TRUE)
 ```
@@ -86,6 +88,7 @@ As an example, let’s look at a simple normal distribution model
 estimating the mean `mu` and standard deviation `sigma`.
 
 ``` r
+
 # 1. Data preparation
 Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
 dat <- list(Y = Y)
@@ -120,6 +123,7 @@ quickly checking if there are errors in your model description or what
 the rough results will be.
 
 ``` r
+
 opt_fit <- mdl$optimize()
 opt_fit$summary()
 ```
@@ -145,6 +149,7 @@ Sampler) algorithm. Specifying `parallel = TRUE` enables parallel
 computation of multiple chains (default is `FALSE`).
 
 ``` r
+
 mcmc_fit <-
   mdl$sample(
     sampling = 1000,
@@ -172,6 +177,7 @@ tends to be underestimated, it is mainly suited for quickly obtaining
 point estimates or a rough shape of the distribution.
 
 ``` r
+
 vb_fit <- mdl$variational(
   method = "meanfield",
   iter = 3000,
@@ -193,6 +199,7 @@ When building hierarchical models, you can declare parameters as
 `random = TRUE`.
 
 ``` r
+
 data(discussion)
 
 Y <- discussion$satisfaction
@@ -228,6 +235,7 @@ intervals for generated quantities can be computed by setting
 `se_sampling=TRUE`.
 
 ``` r
+
 mdl_icc <- rtmb_model(data_icc, code_icc)
 
 opt_icc <- mdl_icc$optimize(laplace = TRUE, se_sampling = TRUE)
@@ -255,6 +263,7 @@ While you can specify it for MCMC
 default `laplace = FALSE` is fine.
 
 ``` r
+
 mcmc_icc <- mdl_icc$sample()
 
 # You can draw the posterior distribution with plot_dens()
@@ -273,6 +282,7 @@ For instance, you can use
 for linear regression.
 
 ``` r
+
 data(discussion)
 fit_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
 
@@ -312,6 +322,7 @@ method, the estimation of the null model and the calculation of the
 Bayes factor are done automatically.
 
 ``` r
+
 data(discussion)
 mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()

@@ -6,9 +6,9 @@ statistical analyses (like t-tests, regressions, and factor analysis).
 
 These functions allow you to specify models with a syntax similar to
 standard R functions like [`lm()`](https://rdrr.io/r/stats/lm.html) and
-[`lme4::glmer()`](https://rdrr.io/pkg/lme4/man/glmer.html) (though
-`lme4` itself is not required to run `BayesRTMB`), while fully utilizing
-the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
+`lme4::glmer()` (though `lme4` itself is not required to run
+`BayesRTMB`), while fully utilizing the powerful estimation features of
+BayesRTMB (MCMC, MAP, ADVI).
 
 This page introduces the usage of the main wrapper functions.
 
@@ -24,6 +24,7 @@ t-tests.
 First, let’s generate some sample data and analyze it.
 
 ``` r
+
 library(BayesRTMB)
 set.seed(123)
 
@@ -62,6 +63,7 @@ as a reference if you want to extend the wrapper’s model into your own
 custom model.
 
 ``` r
+
 # Display the internally generated RTMB code
 mdl_ttest$print_code()
 ```
@@ -96,9 +98,10 @@ mdl_ttest$print_code()
 By using the
 [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 method, you can compute a comparison (Bayes factor) against a null model
-where the effect size is $\delta = 0$.
+where the effect size is $`\delta = 0`$.
 
 ``` r
+
 # Compare with the model where effect size delta = 0
 bf <- fit_ttest$bayes_factor(null_model = "delta")
 bf
@@ -120,6 +123,7 @@ data included in the package (simulated data regarding discussion
 satisfaction).
 
 ``` r
+
 data(discussion)
 
 # Model predicting satisfaction using talk and skill
@@ -156,6 +160,7 @@ specifying the theoretical minimum and maximum values of the objective
 variable in `y_range`.
 
 ``` r
+
 # Create a model using weakly informative priors (assuming satisfaction ranges from 1 to 5)
 mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill,
   data = discussion,
@@ -214,6 +219,7 @@ logistic regression predicting the experimental condition (condition: 0
 or 1).
 
 ``` r
+
 # Logistic regression (family = "bernoulli")
 mdl_glm <- rtmb_glm(condition ~ satisfaction + skill,
   data = discussion,
@@ -239,17 +245,17 @@ In `rtmb_glm` and `rtmb_glmer`, the following distributions can be
 specified. Standard link functions are configured internally for each
 distribution.
 
-| `family`       | Link Function | Description                                                              |
-|:---------------|:--------------|:-------------------------------------------------------------------------|
-| `gaussian`     | identity      | Normal distribution. For standard regression analysis.                   |
-| `lognormal`    | log           | Log-normal distribution. For data that takes positive values.            |
-| `student_t`    | identity      | t-distribution. Useful when you want to suppress the impact of outliers. |
-| `gamma`        | log           | Gamma distribution. For positive, skewed data.                           |
-| `bernoulli`    | logit         | Bernoulli distribution. For binary 0/1 data.                             |
-| `binomial`     | logit         | Binomial distribution. For data representing counts of success/trials.   |
-| `poisson`      | log           | Poisson distribution. For count data.                                    |
-| `neg_binomial` | log           | Negative binomial distribution. For overdispersed count data.            |
-| `ordered`      | logit         | Ordered logistic regression. For ordinal categorical data.               |
+| `family` | Link Function | Description |
+|:---|:---|:---|
+| `gaussian` | identity | Normal distribution. For standard regression analysis. |
+| `lognormal` | log | Log-normal distribution. For data that takes positive values. |
+| `student_t` | identity | t-distribution. Useful when you want to suppress the impact of outliers. |
+| `gamma` | log | Gamma distribution. For positive, skewed data. |
+| `bernoulli` | logit | Bernoulli distribution. For binary 0/1 data. |
+| `binomial` | logit | Binomial distribution. For data representing counts of success/trials. |
+| `poisson` | log | Poisson distribution. For count data. |
+| `neg_binomial` | log | Negative binomial distribution. For overdispersed count data. |
+| `ordered` | logit | Ordered logistic regression. For ordinal categorical data. |
 
 ------------------------------------------------------------------------
 
@@ -261,6 +267,7 @@ model taking into account that individual satisfaction varies depending
 on the group they belong to.
 
 ``` r
+
 # Random intercept model
 mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group),
   data = discussion
@@ -307,6 +314,7 @@ our data uses a 5-point scale, we input `c(1, 5)`. MAP estimation often
 struggles with regularized models, so it’s better to use MCMC.
 
 ``` r
+
 mdl_glmer <-
   rtmb_glmer(
     satisfaction ~ talk + performance + skill + condition + (1 | group),
@@ -320,6 +328,7 @@ mcmc_glmer
 ```
 
 ``` r
+
 mcmc_glmer$draws("b[condition]") |> plot_dens()
 ```
 
@@ -340,9 +349,10 @@ data.
 
 We estimate the correlation between two variables (e.g., extraversion
 items BF1 and BF6), and calculate a Bayes factor testing the null
-hypothesis of zero correlation ($r = 0$).
+hypothesis of zero correlation ($`r = 0`$).
 
 ``` r
+
 data(BigFive)
 
 # Correlation between BF1 and BF6
@@ -362,6 +372,7 @@ mcmc_corr2$summary()
 ```
 
 ``` r
+
 # Compare against the zero-correlation model (null_model = "corr")
 bf_corr <- mcmc_corr2$bayes_factor(null_model = "corr")
 bf_corr
@@ -379,6 +390,7 @@ If you specify multiple variables at once, the entire correlation matrix
 is estimated.
 
 ``` r
+
 # Estimate the correlation matrix of 5 variables
 mdl_corr_mat <- rtmb_corr(BigFive[, 1:5])
 opt_corr_mat <- mdl_corr_mat$optimize()
@@ -423,6 +435,7 @@ standard errors for them by default. By specifying `se_sampling = TRUE`,
 you can compute their standard errors as well.
 
 ``` r
+
 # 3-factor model, specifying Promax rotation
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax")
 
@@ -459,6 +472,7 @@ function is useful to sort and display the rotated factor loadings
 nicely.
 
 ``` r
+
 opt_fa$generate$L_promax |> sort_loadings()
 ```
 
@@ -492,6 +506,7 @@ Factor scores can also be output by using the `score = TRUE` option.
 These scores are additionally pushed to the `generate` output.
 
 ``` r
+
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax", score = TRUE)
 
 opt_fa <- mdl_fa$optimize()
@@ -524,6 +539,7 @@ via MAP, it is usually better to use MCMC or ADVI. Here, we present the
 results from ADVI (Automatic Differentiation Variational Inference).
 
 ``` r
+
 mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "ssp")
 
 vb_fa <- mdl_fa$variational(iter = 5000, parallel = TRUE)
@@ -549,6 +565,7 @@ With regularization, the `MAP` summary makes the output easier to read
 as the shrunk parameters will rigorously collapse to 0.
 
 ``` r
+
 vb_fa$MAP("L") |> sort_loadings()
 ```
 

@@ -40,6 +40,7 @@ C++ compilation times.
 You can install the development version from GitHub with:
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
 ```
@@ -58,6 +59,7 @@ underlying dependencies.
     your system by running:
 
 ``` r
+
 # If TRUE is returned, your system is ready to build packages.
 pkgbuild::check_build_tools(debug = TRUE)
 ```
@@ -70,6 +72,7 @@ block. Here is a simple example of estimating a mean and standard
 deviation.
 
 ``` r
+
 library(BayesRTMB)
 
 # 1. Prepare data
@@ -109,6 +112,7 @@ using R6 objects. You can easily apply different algorithms to the exact
 same model object.
 
 ``` r
+
 # Maximum a Posteriori (MAP) estimation
 fit_map <- mdl$optimize()
 
@@ -124,6 +128,7 @@ BayesRTMB can utilize RTMB’s **Laplace approximation** to integrate them
 out, significantly speeding up both MAP and NUTS.
 
 ``` r
+
 code_hierarchical <- rtmb_code(
   parameters = {
     mu_global = Dim(1)
@@ -148,6 +153,7 @@ likelihoods for model comparison. You can evaluate the strength of
 evidence for one model over another using Bayes factors.
 
 ``` r
+
 # Assume fit_model1 and fit_model2 are MCMC_Fit objects
 # Compute marginal likelihoods via Bridge Sampling
 bs1 <- fit_model1$bridgesampling()
@@ -164,6 +170,7 @@ The package includes built-in functions to visualize posterior
 distributions and diagnose MCMC performance quickly.
 
 ``` r
+
 # Extract the underlying array of samples
 samples <- fit_mcmc$fit
 
@@ -184,6 +191,7 @@ wrapper functions for common tasks, complete with automated weakly
 informative priors.
 
 ``` r
+
 # Bayesian Two-Sample T-Test
 # Automatically scales priors based on y_range
 mdl_test <- rtmb_ttest(

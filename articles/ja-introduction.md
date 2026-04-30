@@ -40,6 +40,7 @@ BayesRTMB には、次のような特徴があります。
 GitHubから開発版をインストールできます。
 
 ``` r
+
 # install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
 ```
@@ -62,6 +63,7 @@ BayesRTMB は裏側の計算エンジンとして `RTMB` や `TMB`
     がシステムに正しく認識されているかを確認できます。
 
 ``` r
+
 # 実行結果として TRUE が返ってくれば、コンパイル環境の構築は成功です。
 pkgbuild::check_build_tools(debug = TRUE)
 ```
@@ -80,6 +82,7 @@ BayesRTMB の基本的な分析は、次の 3 段階で進みます。
 を推定する単純な正規分布モデルをとりあげます。
 
 ``` r
+
 # 1. データの準備
 Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
 dat <- list(Y = Y)
@@ -111,6 +114,7 @@ mdl <- rtmb_model(data = dat, code = code)
 事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。
 
 ``` r
+
 opt_fit <- mdl$optimize()
 opt_fit$summary()
 ```
@@ -135,6 +139,7 @@ NUTS (No-U-Turn Sampler)
 を指定すると複数チェーンの並列計算が可能です（デフォルトは `FALSE`）。
 
 ``` r
+
 mcmc_fit <-
   mdl$sample(
     sampling = 1000,
@@ -158,6 +163,7 @@ ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求
 では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。
 
 ``` r
+
 vb_fit <- mdl$variational(
   method = "meanfield",
   iter = 3000,
@@ -179,6 +185,7 @@ vb_fit$summary()
 として宣言できます。
 
 ``` r
+
 data(discussion)
 
 Y <- discussion$satisfaction
@@ -213,6 +220,7 @@ code_icc <- rtmb_code(
 生成量の信頼区間は、`se_sampling=TRUE`とすることで計算できます。
 
 ``` r
+
 mdl_icc <- rtmb_model(data_icc, code_icc)
 
 
@@ -241,6 +249,7 @@ MCMC ([`sample()`](https://rdrr.io/r/base/sample.html))
 `laplace = FALSE` で問題ありません。
 
 ``` r
+
 mcmc_icc <- mdl_icc$sample()
 
 # plot_dens()で事後分布を描画できる
@@ -259,6 +268,7 @@ BayesRTMB
 を使います。
 
 ``` r
+
 data(discussion)
 fit_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
 
@@ -295,6 +305,7 @@ map_lm$summary()
 に固定したいパラメータ名」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。
 
 ``` r
+
 data(discussion)
 mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()

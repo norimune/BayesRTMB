@@ -6,7 +6,14 @@ Calculate conditional effects for MCMC fit objects
 
 ``` r
 # S3 method for class 'mcmc_fit'
-conditional_effects(fit, effect, resolution = 100, prob = 0.95, ...)
+conditional_effects(
+  fit,
+  effect,
+  resolution = 100,
+  prob = 0.95,
+  sd_multiplier = 1,
+  ...
+)
 ```
 
 ## Arguments
@@ -28,6 +35,14 @@ conditional_effects(fit, effect, resolution = 100, prob = 0.95, ...)
 
   Probability for the credible interval (default is 0.95).
 
+- sd_multiplier:
+
+  Multiplier for SD for continuous moderators.
+
 - ...:
 
   Additional arguments.
+
+## Value
+
+A \`ce_rtmb\` object.

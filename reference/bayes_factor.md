@@ -5,18 +5,23 @@ Calculate Bayes factor from log marginal likelihoods
 ## Usage
 
 ``` r
-bayes_factor(logml1, logml2)
+bayes_factor(logml1, logml2, error_threshold = 0.2)
 ```
 
 ## Arguments
 
 - logml1:
 
-  Log marginal likelihood of Model 1 (e.g., target model)
+  Log marginal likelihood of Model 1, or a fitted model object (e.g.,
+  \`mcmc_fit\`, \`map_fit\`, \`advi_fit\`).
 
 - logml2:
 
-  Log marginal likelihood of Model 2 (e.g., reference/null model)
+  Log marginal likelihood of Model 2, or a fitted model object.
+
+- error_threshold:
+
+  Numeric; threshold for the approximate error warning. Default is 0.2.
 
 ## Value
 

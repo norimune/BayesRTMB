@@ -36,6 +36,7 @@ using the simplest binomial model. Here, we deal with a situation where
 6 successes were observed out of 10 trials.
 
 ``` r
+
 library(BayesRTMB)
 Trial <- 10
 Y <- 6
@@ -67,6 +68,7 @@ subsequently run [`optimize()`](https://rdrr.io/r/stats/optimize.html),
 the created model object.
 
 ``` r
+
 mdl <- rtmb_model(data = data_list, code = model_code)
 ```
 
@@ -84,6 +86,7 @@ run it without additional options and check the output for estimates and
 interval estimation.
 
 ``` r
+
 fit_MAP <- mdl$optimize()
 fit_MAP
 ```
@@ -111,6 +114,7 @@ This is useful when you also want to see the confidence intervals for
 derived quantities.
 
 ``` r
+
 fit_MAP <- mdl$optimize(se_sampling = TRUE)
 fit_MAP
 ```
@@ -137,6 +141,7 @@ However, caution is needed if the posterior distribution is strongly
 skewed or multimodal.
 
 ``` r
+
 fit_MAP$log_ml
 ```
 
@@ -151,6 +156,7 @@ using NUTS. The default values are `sampling = 1000`, `warmup = 1000`,
 `chains = 4`, and `thin = 1`.
 
 ``` r
+
 fit_mcmc <- mdl$sample(sampling = 1000,
                        warmup   = 1000,
                        chains   = 4,
@@ -159,6 +165,7 @@ fit_mcmc <- mdl$sample(sampling = 1000,
 ```
 
 ``` r
+
 fit_mcmc
 ```
 
@@ -178,6 +185,7 @@ the sampling results for each chain will be written to the specified
 directory.
 
 ``` r
+
 # Save results to the "mcmc_out" directory with the name prefix "my_model"
 fit_mcmc <- mdl$sample(
   save_csv = list(name = "my_model", dir = "mcmc_out")
@@ -190,6 +198,7 @@ function. This allows you to reuse sampling results for plotting and
 summarization even after closing the session or restarting R.
 
 ``` r
+
 # Load saved files
 # (mdl must be a model object created with the same settings)
 fit_mcmc <- read_mcmc_csv(mdl, name = "my_model", dir = "mcmc_out")
@@ -205,6 +214,7 @@ These functions can be used by passing the samples extracted with the
 `$draws()` method from the model object.
 
 ``` r
+
 # Extract posterior samples
 samples <- fit_mcmc$draws("theta")
 
@@ -245,6 +255,7 @@ Once calculated, the result is saved in `fit_mcmc$log_ml`, allowing it
 to be reused later on the same object.
 
 ``` r
+
 fit_mcmc$bridgesampling()
 
 fit_mcmc$log_ml
@@ -286,6 +297,7 @@ talk, discussion performance, conversation skills, and condition
 and conversation skills.
 
 ``` r
+
 data(discussion)
 
 Y <- discussion$satisfaction
@@ -326,6 +338,7 @@ you specify only some parameters, the rest can be automatically filled
 in.
 
 ``` r
+
 mdl_reg <- rtmb_model(data = data_reg, 
                       code = code_reg,
                       init = list(alpha = 0, beta = c(0,0,0)))
@@ -337,6 +350,7 @@ For regression models as well, you can evaluate the entire posterior
 distribution using [`sample()`](https://rdrr.io/r/base/sample.html).
 
 ``` r
+
 mcmc_reg <- mdl_reg$sample()
 mcmc_reg
 ```
@@ -368,6 +382,7 @@ This is useful when you want to evaluate the presence or absence of an
 effect using a Bayesian approach.
 
 ``` r
+
 bf_result <- mcmc_reg$bayes_factor(null_model = "beta[1]")
 bf_result
 ```
@@ -391,6 +406,7 @@ appropriate initial values can often be effective in improving the
 stability of the estimation.
 
 ``` r
+
 data(discussion)
 
 Y <- discussion$satisfaction
@@ -440,6 +456,7 @@ and `view` to ensure `tau` is displayed above `sigma`. Setting these two
 options in advance is convenient for improving output readability.
 
 ``` r
+
 mdl_hlm <-
   rtmb_model(
     data = data_hlm,
@@ -458,6 +475,7 @@ significantly reduces computation time in hierarchical models and is
 useful for quickly grasping the overall picture via MAP first.
 
 ``` r
+
 opt_hlm <- mdl_hlm$optimize(laplace = TRUE)
 opt_hlm
 ```
@@ -491,6 +509,7 @@ comparison purposes only and requires `lme4` to be installed manually if
 you wish to run it.)*
 
 ``` r
+
 library(lme4)
 result <- 
   lmer(satisfaction ~ talk + performance + skill + (1|group), 
@@ -535,6 +554,7 @@ The estimation results for the random effects are saved separately in
 `random_effects`.
 
 ``` r
+
 opt_hlm$random_effects$Estimate |> hist()
 ```
 
@@ -555,6 +575,7 @@ You can increase `warmup` and `sampling` as needed while checking
 convergence diagnostics.
 
 ``` r
+
 mcmc_hlm <- mdl_hlm$sample(parallel = TRUE)
 mcmc_hlm$summary()
 ```
@@ -583,6 +604,7 @@ automatically since comparing models with and without hierarchies using
 predictive metrics like WAIC can be difficult.
 
 ``` r
+
 mcmc_hlm_l <- mdl_hlm$sample(laplace = TRUE, parallel = TRUE)
 ```
 
@@ -603,6 +625,7 @@ intervals are estimated somewhat narrowly, it is perfectly adequate for
 obtaining point estimates.
 
 ``` r
+
 vb_hlm <- mdl_hlm$variational(
   iter = 7000,
   parallel = TRUE,
@@ -634,6 +657,7 @@ distribution is not independent. Theoretically, specifying
 MAP.
 
 ``` r
+
 vb_hlm <- mdl_hlm$variational(
   iter = 7000,
   parallel = TRUE,
@@ -664,6 +688,7 @@ align horizontally in a random manner, it’s fine. If it’s sloping
 upwards, it might not have converged yet.
 
 ``` r
+
 vb_hlm$plot_elbo(ests="best")
 
 vb_hlm$summary()
@@ -686,6 +711,7 @@ Since MAP estimation can also calculate log marginal likelihoods,
 approximate model comparisons can be made.
 
 ``` r
+
 opt_reg <- mdl_reg$optimize()
 opt_reg$log_ml
 opt_hlm$log_ml
@@ -706,6 +732,7 @@ log marginal likelihood will differ slightly from MCMC without Laplace
 approximation.
 
 ``` r
+
 mcmc_reg$bridgesampling()
 mcmc_hlm$bridgesampling()
 ```
@@ -730,6 +757,7 @@ mcmc_hlm$bridgesampling()
 MCMC with the Laplace approximation yields results closer to MAP.
 
 ``` r
+
 mcmc_hlm_l$bridgesampling()
 ```
 
@@ -752,6 +780,7 @@ treated as ordinal data. Therefore, let’s run a multilevel analysis
 assuming an ordered logistic distribution.
 
 ``` r
+
 data(discussion)
 
 Y <- discussion$satisfaction
@@ -790,6 +819,7 @@ code_glmm <- rtmb_code(
 ### Loading the Model
 
 ``` r
+
 mdl_glmm <- rtmb_model(data_glmm, code_glmm,
                        par_names = list(beta = X_names))
 ```
@@ -800,6 +830,7 @@ Even for GLMMs, MAP estimation is possible by integrating out the random
 effects.
 
 ``` r
+
 opt_glmm <- mdl_glmm$optimize()
 opt_glmm
 ```
@@ -832,6 +863,7 @@ You can also estimate data that is a mixture of multiple distributions.
 First, let’s generate the data.
 
 ``` r
+
 set.seed(123)
 
 N <- 300       # Sample size
@@ -859,6 +891,7 @@ data_mix <- list(Y = Y)
 Here is the code.
 
 ``` r
+
 code_mix <- rtmb_code(
   setup = {
     K = 3 # Number of clusters
@@ -880,6 +913,7 @@ code_mix <- rtmb_code(
 ### Model Preparation
 
 ``` r
+
 mdl_mix <- rtmb_model(data_mix, code_mix)
 ```
 
@@ -896,6 +930,7 @@ run multiple MAP estimations. Setting `num_estimate = 8` runs it 8
 times.
 
 ``` r
+
 opt_mix <- mdl_mix$optimize(num_estimate = 8)
 ```
 
@@ -917,6 +952,7 @@ opt_mix <- mdl_mix$optimize(num_estimate = 8)
 We run MCMC using this “Best” result as the initial value.
 
 ``` r
+
 mcmc_mix <- mdl_mix$sample(parallel=TRUE, init = opt_mix$par)
 mcmc_mix
 ```

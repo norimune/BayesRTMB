@@ -56,7 +56,7 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">bayes_factor</span><span class="op">(</span><span class="va">logml1</span>, <span class="va">logml2</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">bayes_factor</span><span class="op">(</span><span class="va">logml1</span>, <span class="va">logml2</span>, error_threshold <span class="op">=</span> <span class="fl">0.2</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -64,11 +64,15 @@
 
 
 <dl><dt id="arg-logml-">logml1<a class="anchor" aria-label="anchor" href="#arg-logml-"></a></dt>
-<dd><p>Log marginal likelihood of Model 1 (e.g., target model)</p></dd>
+<dd><p>Log marginal likelihood of Model 1, or a fitted model object (e.g., `mcmc_fit`, `map_fit`, `advi_fit`).</p></dd>
 
 
 <dt id="arg-logml-">logml2<a class="anchor" aria-label="anchor" href="#arg-logml-"></a></dt>
-<dd><p>Log marginal likelihood of Model 2 (e.g., reference/null model)</p></dd>
+<dd><p>Log marginal likelihood of Model 2, or a fitted model object.</p></dd>
+
+
+<dt id="arg-error-threshold">error_threshold<a class="anchor" aria-label="anchor" href="#arg-error-threshold"></a></dt>
+<dd><p>Numeric; threshold for the approximate error warning. Default is 0.2.</p></dd>
 
 </dl></div>
     <div class="section level2">

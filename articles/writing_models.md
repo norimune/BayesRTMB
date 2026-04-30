@@ -12,6 +12,7 @@ intuitive syntax similar to Stan. A model is described by dividing it
 into several “blocks” according to their purposes.
 
 ``` r
+
 library(BayesRTMB)
 
 code <- rtmb_code(
@@ -44,6 +45,7 @@ bounds) of the variables.
 **Example Code:**
 
 ``` r
+
 parameters = {
   # Scalar parameter (with lower bound of 0)
   sigma = Dim(lower = 0)
@@ -68,6 +70,7 @@ likelihood (the data generating process). Similar to Stan, using the `~`
 (tilde) sampling syntax is recommended.
 
 ``` r
+
 model = {
   # Priors
   mu ~ normal(0, 10)
@@ -95,6 +98,7 @@ required for computations.
 **Example Code:**
 
 ``` r
+
 setup = {
   N <- length(Y)  # Get the sample size of the observed data
   P <- ncol(X)    # Get the number of columns in the design matrix (number of predictors)
@@ -156,11 +160,11 @@ sum of log-densities for all elements.
 
 **Discrete Probability Distributions (LPMF)**
 
-| Function                   | Description                                                      |
-|:---------------------------|:-----------------------------------------------------------------|
-| `bernoulli(prob)`          | Bernoulli distribution (binary data).                            |
-| `binomial(size, prob)`     | Binomial distribution.                                           |
-| `poisson(mean)`            | Poisson distribution (count data).                               |
+| Function | Description |
+|:---|:---|
+| `bernoulli(prob)` | Bernoulli distribution (binary data). |
+| `binomial(size, prob)` | Binomial distribution. |
+| `poisson(mean)` | Poisson distribution (count data). |
 | `neg_binomial_2(mu, size)` | Negative binomial distribution (mean-variance parameterization). |
 
 ### 2-2. Advanced Probability Distributions
@@ -168,27 +172,27 @@ sum of log-densities for all elements.
 Distributions are also provided to improve computational stability or
 for specific modeling purposes.
 
-| Function                                             | Description                                                                                                                |
-|:-----------------------------------------------------|:---------------------------------------------------------------------------------------------------------------------------|
+| Function | Description |
+|:---|:---|
 | `bernoulli_logit(eta)` / `binomial_logit(size, eta)` | Functions that take the linear predictor (`eta`) on the logit scale directly instead of probabilities. Numerically stable. |
-| `ordered_logistic(eta, cutpoints)`                   | Used for ordinal categorical data, such as in ordered logistic regression.                                                 |
-| `lkj_corr(eta)`                                      | LKJ prior distribution for correlation matrices.                                                                           |
+| `ordered_logistic(eta, cutpoints)` | Used for ordinal categorical data, such as in ordered logistic regression. |
+| `lkj_corr(eta)` | LKJ prior distribution for correlation matrices. |
 
 ### 2-3. Probability Distributions for Special Types
 
 Distributions tailored for matrices, multivariate data, and specific
 model structures.
 
-| Function                                                       | Description                                                                                                        |
-|:---------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------------------|
-| `multi_normal(mean, Sigma)`                                    | Standard multivariate normal distribution.                                                                         |
-| `multi_normal_CF(mean, sd, CF_Omega)`                          | Multivariate normal distribution using a Cholesky factor parameterization.                                         |
-| `dirichlet(alpha)`                                             | Dirichlet distribution for a simplex (a vector summing to 1).                                                      |
-| `lower_tri_normal(mean, sd)`                                   | Normal distribution over the elements of a lower triangular matrix.                                                |
-| `centered_tri_multi_normal(sigma)`                             | Multivariate normal distribution for a centered triangular matrix (used for identifiability constraints).          |
+| Function | Description |
+|:---|:---|
+| `multi_normal(mean, Sigma)` | Standard multivariate normal distribution. |
+| `multi_normal_CF(mean, sd, CF_Omega)` | Multivariate normal distribution using a Cholesky factor parameterization. |
+| `dirichlet(alpha)` | Dirichlet distribution for a simplex (a vector summing to 1). |
+| `lower_tri_normal(mean, sd)` | Normal distribution over the elements of a lower triangular matrix. |
+| `centered_tri_multi_normal(sigma)` | Multivariate normal distribution for a centered triangular matrix (used for identifiability constraints). |
 | `sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)` | Likelihood for factor analysis using sufficient statistics. Extremely computationally efficient for large samples. |
-| `normal_mixture(pi_w, mean, sd)`                               | Normal mixture distribution combining multiple normal distributions.                                               |
-| `wishart(n, V)`                                                | Wishart distribution.                                                                                              |
+| `normal_mixture(pi_w, mean, sd)` | Normal mixture distribution combining multiple normal distributions. |
+| `wishart(n, V)` | Wishart distribution. |
 
 ## 3. About Parameter Types (Dim)
 
@@ -211,13 +215,13 @@ hierarchical models.
 Furthermore, by specifying a specific keyword in the `type` argument,
 you can define complex types with specific structures.
 
-| `type` Specification    | Description                                                                                                                   |
-|:------------------------|:------------------------------------------------------------------------------------------------------------------------------|
-| `type = "simplex"`      | A vector where all elements are positive and sum to 1 (used for probability assignments, etc.).                               |
-| `type = "centered"`     | A vector where the sum of all elements is zero (used for main effects in ANOVA-type models, etc.).                            |
-| `type = "corr_matrix"`  | A correlation matrix with 1s on the diagonal satisfying positive definiteness.                                                |
-| `type = "CF_corr"`      | The Cholesky factor of a correlation matrix (sometimes more computationally efficient than the correlation matrix itself).    |
-| `type = "lower_tri"`    | A lower triangular matrix.                                                                                                    |
+| `type` Specification | Description |
+|:---|:---|
+| `type = "simplex"` | A vector where all elements are positive and sum to 1 (used for probability assignments, etc.). |
+| `type = "centered"` | A vector where the sum of all elements is zero (used for main effects in ANOVA-type models, etc.). |
+| `type = "corr_matrix"` | A correlation matrix with 1s on the diagonal satisfying positive definiteness. |
+| `type = "CF_corr"` | The Cholesky factor of a correlation matrix (sometimes more computationally efficient than the correlation matrix itself). |
+| `type = "lower_tri"` | A lower triangular matrix. |
 | `type = "centered_tri"` | A lower triangular matrix constrained so the column sums are zero (useful for identification constraints in factor analysis). |
 
 ## 4. About Mathematical Functions
@@ -228,40 +232,40 @@ calculations.
 
 **Link and Inverse Link Functions**
 
-| Function       | Description                                                           |
-|:---------------|:----------------------------------------------------------------------|
-| `logit(x)`     | Computes the logit transformation `log(x/(1-x))`.                     |
+| Function | Description |
+|:---|:---|
+| `logit(x)` | Computes the logit transformation `log(x/(1-x))`. |
 | `inv_logit(x)` | Computes the inverse logit (logistic) transformation `1/(1+exp(-x))`. |
 
 **Functions for Numerical Stabilization**
 
-| Function         | Description                                                                 |
-|:-----------------|:----------------------------------------------------------------------------|
-| `log_sum_exp(x)` | Safely computes `log(sum(exp(x)))` using the log-sum-exp trick.             |
-| `log1p_exp(x)`   | Stably computes `log(1 + exp(x))`.                                          |
-| `log1m_exp(x)`   | Stably computes `log(1 - exp(x))` for `x < 0`.                              |
-| `log_softmax(x)` | Computes the logarithm of the softmax function.                             |
-| `fabs(x)`        | A smoothed version of `abs(x)` that guarantees differentiability near zero. |
+| Function | Description |
+|:---|:---|
+| `log_sum_exp(x)` | Safely computes `log(sum(exp(x)))` using the log-sum-exp trick. |
+| `log1p_exp(x)` | Stably computes `log(1 + exp(x))`. |
+| `log1m_exp(x)` | Stably computes `log(1 - exp(x))` for `x < 0`. |
+| `log_softmax(x)` | Computes the logarithm of the softmax function. |
+| `fabs(x)` | A smoothed version of `abs(x)` that guarantees differentiability near zero. |
 
 **Matrix and Vector Transformations**
 
 These are useful when transforming an unconstrained vector into a matrix
 with a specific structure.
 
-| Function                      | Description                                                                                                                         |
-|:------------------------------|:------------------------------------------------------------------------------------------------------------------------------------|
-| `centered(x)`                 | Transforms a vector of length K-1 into a vector of length K that sums to zero.                                                      |
-| `to_lower_tri(x, M, D)`       | Creates an M x D lower triangular matrix from the vector `x`.                                                                       |
-| `to_centered_matrix(x, R, C)` | Creates an R x C matrix where the sum of each column is zero.                                                                       |
-| `to_centered_tri(x, R, C)`    | Creates a matrix with lower triangular elements whose column sums are zero, used for identification constraints in factor analysis. |
+| Function | Description |
+|:---|:---|
+| `centered(x)` | Transforms a vector of length K-1 into a vector of length K that sums to zero. |
+| `to_lower_tri(x, M, D)` | Creates an M x D lower triangular matrix from the vector `x`. |
+| `to_centered_matrix(x, R, C)` | Creates an R x C matrix where the sum of each column is zero. |
+| `to_centered_tri(x, R, C)` | Creates a matrix with lower triangular elements whose column sums are zero, used for identification constraints in factor analysis. |
 
 **Linear Algebra for AD**
 
-| Function               | Description                                                                                          |
-|:-----------------------|:-----------------------------------------------------------------------------------------------------|
-| `log_det_chol(L)`      | Computes the log-determinant of a covariance matrix from its Cholesky factor `L`.                    |
-| `quad_form_chol(x, L)` | Computes a quadratic form using the Cholesky factor `L`.                                             |
-| `distance(x, y)`       | Computes the Euclidean distance between two vectors, adding a small epsilon for numerical stability. |
+| Function | Description |
+|:---|:---|
+| `log_det_chol(L)` | Computes the log-determinant of a covariance matrix from its Cholesky factor `L`. |
+| `quad_form_chol(x, L)` | Computes a quadratic form using the Cholesky factor `L`. |
+| `distance(x, y)` | Computes the Euclidean distance between two vectors, adding a small epsilon for numerical stability. |
 
 ## Conclusion
 

@@ -239,6 +239,8 @@ Functions used within rtmb_code for stability and transformations.
   : Print method for bayes_factor objects
 - [`print(`*`<ce_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.ce_rtmb.md)
   : Print method for ce_rtmb class (automatically calls plot)
+- [`print(`*`<ce_simple>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.ce_simple.md)
+  : Print method for ce_simple
 - [`print(`*`<summary_BayesRTMB>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.md)
   : print for summary_BayesRTMB class
 - [`quad_form_chol()`](https://norimune.github.io/BayesRTMB/reference/quad_form_chol.md)
@@ -274,6 +276,10 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
   : Common Features and Arguments of RTMB Wrapper Functions
+- [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
+  : Calculate Simple Effects
+- [`simple_effects(`*`<mcmc_fit>`*`)`](https://norimune.github.io/BayesRTMB/reference/simple_effects.mcmc_fit.md)
+  : Simple effects for MCMC fit objects
 - [`softmax()`](https://norimune.github.io/BayesRTMB/reference/softmax.md)
   : Softmax function
 - [`sort_loadings()`](https://norimune.github.io/BayesRTMB/reference/sort_loadings.md)
@@ -284,6 +290,8 @@ Functions used within rtmb_code for stability and transformations.
   : stz basis function
 - [`sum_to_zero()`](https://norimune.github.io/BayesRTMB/reference/sum_to_zero.md)
   : Sum-to-zero transformation
+- [`summary(`*`<ce_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/summary.ce_rtmb.md)
+  : Summary method for ce_rtmb class
 - [`test_info()`](https://norimune.github.io/BayesRTMB/reference/test_info.md)
   : Calculate Test Information Function
 - [`to_centered_matrix()`](https://norimune.github.io/BayesRTMB/reference/to_centered_matrix.md)
