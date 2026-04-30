@@ -4,23 +4,30 @@
 \alias{conditional_effects}
 \title{Calculate Conditional Effects}
 \usage{
-conditional_effects(fit, effect, ...)
+conditional_effects(fit, effect, sd_multiplier = 1, ...)
 }
 \arguments{
-\item{fit}{Model fit object.}
+\item{fit}{Model fit object (e.g., `mcmc_fit`).}
 
-\item{effect}{Name of the variable to visualize the effect.}
+\item{effect}{Name of the variable to visualize (e.g., "X1" or "X1:X2").}
+
+\item{sd_multiplier}{Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).}
 
 \item{...}{Additional arguments.}
 }
+\value{
+An object of class `ce_rtmb` containing the predicted values and their credible intervals.
+}
 \description{
-Calculate Conditional Effects
+Calculate and visualize the predicted values (marginal effects) of a variable,
+potentially conditional on the levels of another variable (interaction).
 }
 \examples{
 \dontrun{
-  fit <- rtmb_lm(mpg ~ wt + hp, data = mtcars)
-  mcmc_fit <- fit$sample(sampling = 500, warmup = 500)
-  ce <- conditional_effects(mcmc_fit, effect = "wt")
+  fit <- rtmb_lm(mpg ~ wt * hp, data = mtcars)
+  mcmc_fit <- fit$sample()
+  ce <- conditional_effects(mcmc_fit, effect = "wt:hp")
   plot(ce)
+  summary(ce)
 }
 }

@@ -4,7 +4,14 @@
 \alias{conditional_effects.mcmc_fit}
 \title{Calculate conditional effects for MCMC fit objects}
 \usage{
-\method{conditional_effects}{mcmc_fit}(fit, effect, resolution = 100, prob = 0.95, ...)
+\method{conditional_effects}{mcmc_fit}(
+  fit,
+  effect,
+  resolution = 100,
+  prob = 0.95,
+  sd_multiplier = 1,
+  ...
+)
 }
 \arguments{
 \item{fit}{An object of class `MCMC_Fit`.}
@@ -15,7 +22,12 @@
 
 \item{prob}{Probability for the credible interval (default is 0.95).}
 
+\item{sd_multiplier}{Multiplier for SD for continuous moderators.}
+
 \item{...}{Additional arguments.}
+}
+\value{
+A `ce_rtmb` object.
 }
 \description{
 Calculate conditional effects for MCMC fit objects

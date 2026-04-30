@@ -4,12 +4,14 @@
 \alias{bayes_factor}
 \title{Calculate Bayes factor from log marginal likelihoods}
 \usage{
-bayes_factor(logml1, logml2)
+bayes_factor(logml1, logml2, error_threshold = 0.2)
 }
 \arguments{
-\item{logml1}{Log marginal likelihood of Model 1 (e.g., target model)}
+\item{logml1}{Log marginal likelihood of Model 1, or a fitted model object (e.g., `mcmc_fit`, `map_fit`, `advi_fit`).}
 
-\item{logml2}{Log marginal likelihood of Model 2 (e.g., reference/null model)}
+\item{logml2}{Log marginal likelihood of Model 2, or a fitted model object.}
+
+\item{error_threshold}{Numeric; threshold for the approximate error warning. Default is 0.2.}
 }
 \value{
 An object containing Bayes factor, log Bayes factor, estimation error, and interpretation

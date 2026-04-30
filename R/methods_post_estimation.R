@@ -1,16 +1,26 @@
 #' Calculate Conditional Effects
-#' @param fit Model fit object.
-#' @param effect Name of the variable to visualize the effect.
+#'
+#' @description
+#' Calculate and visualize the predicted values (marginal effects) of a variable,
+#' potentially conditional on the levels of another variable (interaction).
+#'
+#' @param fit Model fit object (e.g., `mcmc_fit`).
+#' @param effect Name of the variable to visualize (e.g., "X1" or "X1:X2").
+#' @param sd_multiplier Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).
 #' @param ... Additional arguments.
+#'
+#' @return An object of class `ce_rtmb` containing the predicted values and their credible intervals.
+#'
 #' @examples
 #' \dontrun{
-#'   fit <- rtmb_lm(mpg ~ wt + hp, data = mtcars)
-#'   mcmc_fit <- fit$sample(sampling = 500, warmup = 500)
-#'   ce <- conditional_effects(mcmc_fit, effect = "wt")
+#'   fit <- rtmb_lm(mpg ~ wt * hp, data = mtcars)
+#'   mcmc_fit <- fit$sample()
+#'   ce <- conditional_effects(mcmc_fit, effect = "wt:hp")
 #'   plot(ce)
+#'   summary(ce)
 #' }
 #' @export
-conditional_effects <- function(fit, effect, ...) {
+conditional_effects <- function(fit, effect, sd_multiplier = 1, ...) {
   UseMethod("conditional_effects")
 }
 
@@ -20,9 +30,12 @@ conditional_effects <- function(fit, effect, ...) {
 #' @param effect Name of the explanatory variable to visualize (e.g., "X1" or "X1:X2").
 #' @param resolution Grid resolution to calculate for continuous variables (default is 100).
 #' @param prob Probability for the credible interval (default is 0.95).
+#' @param sd_multiplier Multiplier for SD for continuous moderators.
 #' @param ... Additional arguments.
+#'
+#' @return A `ce_rtmb` object.
 #' @export
-conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, ...) {
+conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, sd_multiplier = 1, ...) {
   model_obj <- fit$model
   if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
     stop("This model object does not contain a formula or the original data.")
@@ -71,9 +84,9 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
 
     # If the second variable is continuous and has many unique values, restrict to 3 representative points (Mean-1SD, Mean, Mean+1SD)
     if (is.numeric(val2) && length(unique(val2)) > 5) {
-      seq2 <- c(mean(val2, na.rm=TRUE) - sd(val2, na.rm=TRUE),
+      seq2 <- c(mean(val2, na.rm=TRUE) - sd_multiplier * sd(val2, na.rm=TRUE),
                 mean(val2, na.rm=TRUE),
-                mean(val2, na.rm=TRUE) + sd(val2, na.rm=TRUE))
+                mean(val2, na.rm=TRUE) + sd_multiplier * sd(val2, na.rm=TRUE))
       seq2 <- round(seq2, 2) # Round for better display
     } else {
       seq2 <- sort(unique(val2))
@@ -302,14 +315,26 @@ summary.ce_rtmb <- function(object, ...) {
 #'
 #' @description
 #' Calculate the effect of a focal variable at different levels of a moderator.
-#' For categorical focal variables, it calculates pairwise differences.
-#' For continuous focal variables, it calculates the slope (simple slope).
+#' For categorical focal variables, it calculates pairwise differences (contrasts).
+#' For continuous focal variables, it calculates the slope (simple slopes).
 #'
 #' @param fit Model fit object (mcmc_fit).
 #' @param effect Character string of the interaction (e.g., "A:B"). The first variable is the focal variable.
+#' @param sd_multiplier Multiplier for SD for continuous moderators (default is 1).
 #' @param ... Additional arguments.
+#'
+#' @return A `ce_simple` object (data frame) containing the estimated effects and their credible intervals.
+#'
+#' @examples
+#' \dontrun{
+#'   fit <- rtmb_lm(len ~ supp * dose, data = ToothGrowth)
+#'   mcmc_fit <- fit$sample()
+#'   # Effect of supplement at each dose level
+#'   se <- simple_effects(mcmc_fit, effect = "supp:dose")
+#'   print(se)
+#' }
 #' @export
-simple_effects <- function(fit, effect, ...) {
+simple_effects <- function(fit, effect, sd_multiplier = 1, ...) {
   UseMethod("simple_effects")
 }
 
@@ -318,9 +343,10 @@ simple_effects <- function(fit, effect, ...) {
 #' @param fit An object of class `MCMC_Fit`.
 #' @param effect Interaction term (e.g., "A:B").
 #' @param prob Probability for credible intervals.
+#' @param sd_multiplier Multiplier for SD for continuous moderators.
 #' @param ... Additional arguments.
 #' @export
-simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, ...) {
+simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
   eff_vars <- strsplit(effect, ":")[[1]]
   if (length(eff_vars) != 2) {
     stop("simple_effects requires an interaction of exactly two variables (e.g., 'A:B').")
@@ -331,7 +357,7 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, ...) {
   
   # 1. Reuse conditional_effects logic to get predicted values
   # We use a higher resolution for moderators if continuous
-  ce <- conditional_effects(fit, effect = effect, resolution = 10, ...)
+  ce <- conditional_effects(fit, effect = effect, resolution = 10, sd_multiplier = sd_multiplier, ...)
   df <- ce$data
   
   # Identify levels/values of the moderator
