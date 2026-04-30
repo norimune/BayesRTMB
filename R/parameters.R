@@ -222,6 +222,11 @@ unconstrained_vector_to_list <- function(vec, par_list) {
     len <- p$unc_length
     if (len > 0) {
       val <- vec[idx:(idx + len - 1)]
+      # Restore matrix dimensions for multi-dimensional parameters
+      # whose unc_length matches prod(dim) (e.g., ordered, positive_ordered matrices)
+      if (length(p$dim) > 1 && prod(p$dim) == len) {
+        dim(val) <- p$dim
+      }
       res[[name]] <- val
       idx <- idx + len
     } else {
@@ -247,23 +252,45 @@ to_unconstrained <- function(para_orig_list, par_list) {
       prob <- (val_orig - p$lower) / (p$upper - p$lower)
       para_unc[[name]] <- log(prob / (1 - prob))
     } else if (b_type == "ordered") {
-      y <- numeric(p$length)
-      y[1] <- val_orig[1]
-      if (p$length > 1) {
-        for (i in 2:p$length) {
-          y[i] <- log(val_orig[i] - val_orig[i-1])
+      if (is.matrix(val_orig)) {
+        y <- val_orig
+        y[, 1] <- val_orig[, 1]
+        if (ncol(val_orig) > 1) {
+          for (k in 2:ncol(val_orig)) {
+            y[, k] <- log(val_orig[, k] - val_orig[, k - 1])
+          }
         }
+        para_unc[[name]] <- y
+      } else {
+        y <- numeric(p$length)
+        y[1] <- val_orig[1]
+        if (p$length > 1) {
+          for (i in 2:p$length) {
+            y[i] <- log(val_orig[i] - val_orig[i-1])
+          }
+        }
+        para_unc[[name]] <- y
       }
-      para_unc[[name]] <- y
     } else if (b_type == "positive_ordered") {
-      y <- numeric(p$length)
-      y[1] <- log(val_orig[1])
-      if (p$length > 1) {
-        for (i in 2:p$length) {
-          y[i] <- log(val_orig[i] - val_orig[i-1])
+      if (is.matrix(val_orig)) {
+        y <- val_orig
+        y[, 1] <- log(val_orig[, 1])
+        if (ncol(val_orig) > 1) {
+          for (k in 2:ncol(val_orig)) {
+            y[, k] <- log(val_orig[, k] - val_orig[, k - 1])
+          }
         }
+        para_unc[[name]] <- y
+      } else {
+        y <- numeric(p$length)
+        y[1] <- log(val_orig[1])
+        if (p$length > 1) {
+          for (i in 2:p$length) {
+            y[i] <- log(val_orig[i] - val_orig[i-1])
+          }
+        }
+        para_unc[[name]] <- y
       }
-      para_unc[[name]] <- y
     } else if (b_type == "simplex") {
       K <- p$length
       y <- numeric(K - 1)
@@ -427,12 +454,34 @@ to_constrained <- function(para_unc_list, par_list) {
       para[[name]] <- p$lower + (p$upper - p$lower) * prob
     } else if (b_type == "ordered") {
       if (p$length > 1) {
-        para[[name]] <- val_unc[1] + cumsum(c(ad_zero, exp(val_unc[-1])))
+        if (is.matrix(val_unc)) {
+          res <- val_unc
+          res[, 1] <- val_unc[, 1]
+          if (ncol(val_unc) > 1) {
+            for (k in 2:ncol(val_unc)) {
+              res[, k] <- res[, k - 1] + exp(val_unc[, k])
+            }
+          }
+          para[[name]] <- res
+        } else {
+          para[[name]] <- val_unc[1] + cumsum(c(ad_zero, exp(val_unc[-1])))
+        }
       } else {
         para[[name]] <- val_unc
       }
     } else if (b_type == "positive_ordered") {
-      para[[name]] <- cumsum(exp(val_unc))
+      if (is.matrix(val_unc)) {
+        res <- val_unc
+        res[, 1] <- exp(val_unc[, 1])
+        if (ncol(val_unc) > 1) {
+          for (k in 2:ncol(val_unc)) {
+            res[, k] <- res[, k - 1] + exp(val_unc[, k])
+          }
+        }
+        para[[name]] <- res
+      } else {
+        para[[name]] <- cumsum(exp(val_unc))
+      }
     } else if (b_type == "simplex") {
       K <- p$length
       z <- 1 / (1 + exp(-(val_unc - log(1 / (K - seq_len(K - 1))))))
@@ -605,7 +654,11 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
       lj <- lj + sum(log(p$upper - p$lower) - val_unc - 2 * log(1 + exp(-val_unc)))
     } else if (b_type == "ordered") {
       if (p$length > 1) {
-        lj <- lj + sum(val_unc[2:p$length])
+        if (is.matrix(val_unc)) {
+          lj <- lj + sum(val_unc[, -1])
+        } else {
+          lj <- lj + sum(val_unc[2:p$length])
+        }
       }
     } else if (b_type == "positive_ordered") {
       lj <- lj + sum(val_unc)

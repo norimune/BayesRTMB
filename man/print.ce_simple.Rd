@@ -4,7 +4,7 @@
 \alias{print.ce_simple}
 \title{Print method for ce_simple}
 \usage{
-\method{print}{ce_simple}(x, ...)
+\method{print}{ce_simple}(x, digits = 3, ...)
 }
 \description{
 Print method for ce_simple

@@ -549,9 +549,17 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
 #' Print method for ce_simple
 #' @method print ce_simple
 #' @export
-print.ce_simple <- function(x, ...) {
+print.ce_simple <- function(x, digits = 3, ...) {
   cat("--- Simple Effects Analysis ---\n")
-  print.data.frame(x, row.names = FALSE)
+  
+  df <- as.data.frame(x)
+  # Format numeric columns
+  num_cols <- sapply(df, is.numeric)
+  df[num_cols] <- lapply(df[num_cols], function(v) {
+    sprintf(paste0("%.", digits, "f"), v)
+  })
+  
+  print.data.frame(df, row.names = FALSE, quote = FALSE)
   cat("\n")
   invisible(x)
 }
