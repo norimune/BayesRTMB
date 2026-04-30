@@ -700,15 +700,27 @@ MCMC_Fit <- R6::R6Class(
       }
 
       # 4. Assignment of interpretation
-      if (bf > 100) evidence <- "Decisive evidence for Model 1"
-      else if (bf > 10) evidence <- "Strong evidence for Model 1"
-      else if (bf > 3) evidence <- "Substantial evidence for Model 1"
-      else if (bf > 1) evidence <- "Anecdotal evidence for Model 1"
-      else if (bf == 1) evidence <- "No evidence"
-      else if (bf >= 1/3) evidence <- "Anecdotal evidence for Model 2"
-      else if (bf >= 1/10) evidence <- "Substantial evidence for Model 2"
-      else if (bf >= 1/100) evidence <- "Strong evidence for Model 2"
-      else evidence <- "Decisive evidence for Model 2"
+      if (is.na(bf) || is.nan(bf)) {
+        evidence <- "Indeterminate"
+      } else if (bf > 100) {
+        evidence <- "Decisive evidence for Model 1"
+      } else if (bf > 10) {
+        evidence <- "Strong evidence for Model 1"
+      } else if (bf > 3) {
+        evidence <- "Substantial evidence for Model 1"
+      } else if (bf > 1) {
+        evidence <- "Anecdotal evidence for Model 1"
+      } else if (bf == 1) {
+        evidence <- "No evidence"
+      } else if (bf >= 1/3) {
+        evidence <- "Anecdotal evidence for Model 2"
+      } else if (bf >= 1/10) {
+        evidence <- "Substantial evidence for Model 2"
+      } else if (bf >= 1/100) {
+        evidence <- "Strong evidence for Model 2"
+      } else {
+        evidence <- "Decisive evidence for Model 2"
+      }
 
       res <- list(
         BF12 = bf,

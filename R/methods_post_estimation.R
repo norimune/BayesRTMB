@@ -31,6 +31,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   form <- model_obj$formula
   raw_data <- model_obj$raw_data
   fam <- model_obj$family
+  X_mean <- model_obj$data$X_mean # For back-transforming Intercept_c if needed
 
   # Check for interaction and split
   eff_vars <- strsplit(effect, ":")[[1]]
@@ -93,12 +94,62 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   rhs <- delete.response(terms(form))
   X_new <- model.matrix(rhs, data = newdata)
 
-  # 4. Obtain posterior samples (fixed effects only)
-  beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
+  # 4. Obtain posterior samples (fixed effects)
+  # Handle both wrapper functions (b, Intercept_c) and custom models (beta)
+  all_pars <- dimnames(fit$draws(inc_transform=TRUE, inc_generate=FALSE))[[3]]
+  
+  if (any(grepl("^beta(\\[|$)", all_pars))) {
+    beta_samples <- fit$draws(pars = "beta", inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
+  } else if (any(grepl("^b(\\[|$)", all_pars))) {
+    b_samps <- fit$draws(pars = "b", inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
+    
+    # Try to get Intercept (transformed) or Intercept_c
+    if ("Intercept" %in% all_pars) {
+      int_samps <- fit$draws(pars = "Intercept", inc_transform = TRUE)
+    } else if ("Intercept_c" %in% all_pars) {
+      # Back-calculate Intercept from Intercept_c if X_mean is available
+      ic_samps <- fit$draws(pars = "Intercept_c")
+      if (!is.null(X_mean)) {
+        b_mat <- matrix(b_samps, nrow = dim(b_samps)[1] * dim(b_samps)[2], ncol = dim(b_samps)[3])
+        int_val <- as.numeric(ic_samps) - (b_mat %*% as.numeric(X_mean))
+        int_samps <- array(int_val, dim = c(dim(b_samps)[1], dim(b_samps)[2], 1))
+      } else {
+        int_samps <- ic_samps
+      }
+    } else {
+      int_samps <- NULL
+    }
+    
+    # Combine Intercept and b to match model.matrix output (Intercept first)
+    if (!is.null(int_samps)) {
+      I <- dim(b_samps)[1]; C <- dim(b_samps)[2]; P <- dim(b_samps)[3]
+      beta_samples <- array(NA, dim = c(I, C, P + 1))
+      beta_samples[,,1] <- int_samps
+      beta_samples[,,2:(P+1)] <- b_samps
+    } else {
+      beta_samples <- b_samps
+    }
+  } else {
+    stop("Could not find fixed effect parameters (b or beta) in the fit object.")
+  }
+
   I <- dim(beta_samples)[1]
   C <- dim(beta_samples)[2]
   P <- dim(beta_samples)[3]
   beta_flat <- matrix(beta_samples, nrow = I * C, ncol = P)
+
+  # Check dimension compatibility
+  if (ncol(X_new) != ncol(beta_flat)) {
+    # If mismatch, try to adjust X_new (e.g., if Intercept is missing in beta but present in X_new)
+    if (ncol(X_new) == ncol(beta_flat) + 1 && colnames(X_new)[1] == "(Intercept)") {
+      X_new <- X_new[, -1, drop = FALSE]
+    } else if (ncol(beta_flat) == ncol(X_new) + 1) {
+       # Maybe beta has intercept but X_new doesn't (rare but possible)
+       X_new <- cbind(1, X_new)
+    } else {
+      stop(sprintf("Dimension mismatch: Design matrix has %d columns, but fixed effects have %d parameters.", ncol(X_new), ncol(beta_flat)))
+    }
+  }
 
   # 5. Calculate linear predictor
   eta <- X_new %*% t(beta_flat)
@@ -158,11 +209,14 @@ plot.ce_rtmb <- function(x, ...) {
       polygon(c(x_val, rev(x_val)), c(y_low, rev(y_up)), col = col_ribbon, border = NA)
       lines(x_val, y_est, col = col_line, lwd = 2)
     } else {
-      x_num <- as.numeric(as.factor(x_val))
+      x_fct <- as.factor(x_val)
+      x_num <- as.numeric(x_fct)
+      lvls <- levels(x_fct)
+      
       plot(x_num, y_est, type = "n", ylim = range(c(y_low, y_up)),
-           xlim = c(min(x_num) - 0.5, max(x_num) + 0.5), xaxt = "n",
+           xlim = c(0.5, length(lvls) + 0.5), xaxt = "n",
            xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1), ...)
-      axis(1, at = x_num, labels = as.character(x_val))
+      axis(1, at = 1:length(lvls), labels = lvls)
       segments(x0 = x_num, y0 = y_low, x1 = x_num, y1 = y_up, col = col_line, lwd = 2)
       points(x_num, y_est, col = col_line, pch = 16, cex = 1.5)
     }
@@ -194,12 +248,13 @@ plot.ce_rtmb <- function(x, ...) {
     } else {
       x_fct <- as.factor(x_val)
       x_num <- as.numeric(x_fct)
+      lvls <- levels(x_fct)
 
       plot(x_num, y_est, type = "n", ylim = range(c(y_low, y_up)),
-           xlim = c(min(x_num) - 0.5, max(x_num) + 0.5), xaxt = "n",
+           xlim = c(0.5, length(lvls) + 0.5), xaxt = "n",
            xlab = eff1, ylab = "Predicted value",
            main = paste("Conditional effect of", eff1, "by", eff2), ...)
-      axis(1, at = unique(x_num), labels = levels(x_fct))
+      axis(1, at = 1:length(lvls), labels = lvls)
 
       # Shift X-axis slightly to avoid overlapping error bars
       offset_step <- 0.1
@@ -227,6 +282,167 @@ plot.ce_rtmb <- function(x, ...) {
 #' @export
 print.ce_rtmb <- function(x, ...) {
   plot(x, ...)
+  invisible(x)
+}
+
+#' Summary method for ce_rtmb class
+#' @method summary ce_rtmb
+#' @param object An object of class ce_rtmb
+#' @param ... Additional arguments.
+#' @export
+summary.ce_rtmb <- function(object, ...) {
+  return(object$data)
+}
+
+
+#' Calculate Simple Effects
+#'
+#' @description
+#' Calculate the effect of a focal variable at different levels of a moderator.
+#' For categorical focal variables, it calculates pairwise differences.
+#' For continuous focal variables, it calculates the slope (simple slope).
+#'
+#' @param fit Model fit object (mcmc_fit).
+#' @param effect Character string of the interaction (e.g., "A:B"). The first variable is the focal variable.
+#' @param ... Additional arguments.
+#' @export
+simple_effects <- function(fit, effect, ...) {
+  UseMethod("simple_effects")
+}
+
+#' Simple effects for MCMC fit objects
+#' @method simple_effects mcmc_fit
+#' @param fit An object of class `MCMC_Fit`.
+#' @param effect Interaction term (e.g., "A:B").
+#' @param prob Probability for credible intervals.
+#' @param ... Additional arguments.
+#' @export
+simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, ...) {
+  eff_vars <- strsplit(effect, ":")[[1]]
+  if (length(eff_vars) != 2) {
+    stop("simple_effects requires an interaction of exactly two variables (e.g., 'A:B').")
+  }
+  
+  focal <- eff_vars[1]
+  mod <- eff_vars[2]
+  
+  # 1. Reuse conditional_effects logic to get predicted values
+  # We use a higher resolution for moderators if continuous
+  ce <- conditional_effects(fit, effect = effect, resolution = 10, ...)
+  df <- ce$data
+  
+  # Identify levels/values of the moderator
+  mod_vals <- unique(df[[mod]])
+  
+  res_list <- list()
+  
+  if (ce$is_numeric) {
+    # Simple Slopes for continuous focal variable
+    for (mv in mod_vals) {
+      sub_df <- df[df[[mod]] == mv, ]
+      # Slope is (y2 - y1) / (x2 - x1)
+      # Since conditional_effects returns means, we need to go back to samples or use the summary
+      # Better: re-calculate differences for each posterior sample
+    }
+    # For now, let's focus on categorical focal variables as they are most common for "simple effects"
+    stop("Simple slopes for continuous variables are not yet implemented in simple_effects. Please use conditional_effects for visualization.")
+    
+  } else {
+    # Pairwise differences for categorical focal variable
+    focal_lvls <- unique(df[[focal]])
+    if (length(focal_lvls) < 2) stop("Focal variable must have at least 2 levels.")
+    
+    # We need the posterior samples of the predicted values to calculate the differences
+    # (re-running the core logic of conditional_effects but keeping samples)
+    
+    # [Internal Helper] Get predicted samples
+    get_pred_samples <- function(fit, newdata) {
+      model_obj <- fit$model
+      form <- model_obj$formula
+      X_mean <- model_obj$data$X_mean
+      rhs <- delete.response(terms(form))
+      X_new <- model.matrix(rhs, data = newdata)
+      
+      all_pars <- dimnames(fit$draws(inc_transform=TRUE))[[3]]
+      if (any(grepl("^beta(\\[|$)", all_pars))) {
+        beta_samples <- fit$draws(pars = "beta")
+      } else {
+        b_samps <- fit$draws(pars = "b")
+        if ("Intercept" %in% all_pars) {
+          int_samps <- fit$draws(pars = "Intercept", inc_transform = TRUE)
+        } else if ("Intercept_c" %in% all_pars) {
+          ic_samps <- fit$draws(pars = "Intercept_c")
+          b_mat <- matrix(b_samps, nrow = dim(b_samps)[1] * dim(b_samps)[2], ncol = dim(b_samps)[3])
+          int_val <- as.numeric(ic_samps) - (b_mat %*% as.numeric(X_mean))
+          int_samps <- array(int_val, dim = c(dim(b_samps)[1], dim(b_samps)[2], 1))
+        } else {
+          int_samps <- NULL
+        }
+        if (!is.null(int_samps)) {
+          I <- dim(b_samps)[1]; C <- dim(b_samps)[2]; P <- dim(b_samps)[3]
+          beta_samples <- array(NA, dim = c(I, C, P + 1))
+          beta_samples[,,1] <- int_samps
+          beta_samples[,,2:(P+1)] <- b_samps
+        } else {
+          beta_samples <- b_samps
+        }
+      }
+      
+      I <- dim(beta_samples)[1]; C <- dim(beta_samples)[2]; P <- dim(beta_samples)[3]
+      beta_flat <- matrix(beta_samples, nrow = I * C, ncol = P)
+      
+      if (ncol(X_new) == ncol(beta_flat) + 1 && colnames(X_new)[1] == "(Intercept)") {
+        X_new <- X_new[, -1, drop = FALSE]
+      }
+      
+      eta <- X_new %*% t(beta_flat)
+      inv_link <- switch(model_obj$family %||% "gaussian",
+                         "gaussian" = function(x) x, "poisson" = exp, "bernoulli" = plogis, function(x) x)
+      return(inv_link(eta))
+    }
+    
+    # Calculate differences for each level of moderator
+    results <- data.frame()
+    
+    for (mv in mod_vals) {
+      sub_newdata <- df[df[[mod]] == mv, names(df) %in% names(fit$model$raw_data)]
+      # Ensure focal levels are in consistent order
+      sub_newdata <- sub_newdata[order(sub_newdata[[focal]]), ]
+      
+      pred_samples <- get_pred_samples(fit, sub_newdata) # (N_levels x N_samples)
+      
+      # All pairwise differences
+      lvls <- sub_newdata[[focal]]
+      for (i in 1:(length(lvls)-1)) {
+        for (j in (i+1):length(lvls)) {
+          diff_samples <- pred_samples[j, ] - pred_samples[i, ]
+          
+          res_row <- data.frame(
+            moderator = mod,
+            mod_value = mv,
+            contrast = paste(lvls[j], "-", lvls[i]),
+            estimate = mean(diff_samples),
+            lower = quantile(diff_samples, (1-prob)/2),
+            upper = quantile(diff_samples, 1-(1-prob)/2)
+          )
+          results <- rbind(results, res_row)
+        }
+      }
+    }
+    
+    names(results)[2] <- mod
+    class(results) <- c("ce_simple", "data.frame")
+    return(results)
+  }
+}
+
+#' Print method for ce_simple
+#' @method print ce_simple
+#' @export
+print.ce_simple <- function(x, ...) {
+  cat("--- Simple Effects Analysis ---\n")
+  print.data.frame(x, row.names = FALSE)
+  cat("\n")
   invisible(x)
 }
 
@@ -638,8 +854,9 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 }
 #' Calculate Bayes factor from log marginal likelihoods
 #'
-#' @param logml1 Log marginal likelihood of Model 1 (e.g., target model)
-#' @param logml2 Log marginal likelihood of Model 2 (e.g., reference/null model)
+#' @param logml1 Log marginal likelihood of Model 1, or a fitted model object (e.g., `mcmc_fit`, `map_fit`, `advi_fit`).
+#' @param logml2 Log marginal likelihood of Model 2, or a fitted model object.
+#' @param error_threshold Numeric; threshold for the approximate error warning. Default is 0.2.
 #' @return An object containing Bayes factor, log Bayes factor, estimation error, and interpretation
 #' @examples
 #' \dontrun{
@@ -652,38 +869,83 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 #'   print(bf)
 #' }
 #' @export
-bayes_factor <- function(logml1, logml2) {
+bayes_factor <- function(logml1, logml2, error_threshold = 0.2) {
+  # Helper function to extract or calculate log marginal likelihood
+  get_lml <- function(x, name = "Model") {
+    if (inherits(x, "mcmc_fit")) {
+      if (is.null(x$log_ml)) {
+        cat(sprintf("Calculating marginal likelihood for %s...\n", name))
+        x$log_ml <- x$bridgesampling()
+      }
+      return(x$log_ml)
+    } else if (inherits(x, "map_fit")) {
+      return(x$log_ml)
+    } else if (inherits(x, "advi_fit")) {
+      # Use the best ELBO as an approximation of log marginal likelihood
+      return(max(x$ELBO, na.rm = TRUE))
+    } else if (is.numeric(x)) {
+      return(x)
+    } else {
+      stop(sprintf("Unsupported object type for %s. Must be numeric or a fit object.", name))
+    }
+  }
+
+  val1_obj <- get_lml(logml1, "Model 1")
+  val2_obj <- get_lml(logml2, "Model 2")
+
   # Strip attributes (error, ess) and calculate as pure numbers
-  val1 <- as.numeric(logml1)
-  val2 <- as.numeric(logml2)
+  val1 <- as.numeric(val1_obj)
+  val2 <- as.numeric(val2_obj)
 
   # Calculate log Bayes factor and Bayes factor
   log_bf <- val1 - val2
   bf <- exp(log_bf)
 
   # Error propagation (calculate if logml1 and logml2 contain "error" attribute)
-  err1 <- attr(logml1, "error")
-  err2 <- attr(logml2, "error")
+  err1 <- attr(val1_obj, "error")
+  err2 <- attr(val2_obj, "error")
 
   has_error <- !is.null(err1) && !is.null(err2) && !is.na(err1) && !is.na(err2)
 
   if (has_error) {
     # Standard error assuming the two MCMC samplings are independent
     log_bf_err <- sqrt(err1^2 + err2^2)
+    if (log_bf_err > error_threshold) {
+      warning(
+        sprintf(
+          "The estimation error of the log Bayes factor (%.3f) exceeds the threshold (%g). Interpretation of the results may be unstable.\n",
+          log_bf_err, error_threshold
+        ),
+        "Consider increasing the number of MCMC samples or ESS to improve precision.\n",
+        call. = FALSE, immediate. = TRUE
+      )
+    }
   } else {
     log_bf_err <- NA_real_
   }
 
   # Interpretation of evidence strength based on Jeffreys (1961) / Kass & Raftery (1995)
-  if (bf > 100) evidence <- "Decisive evidence for Model 1"
-  else if (bf > 10) evidence <- "Strong evidence for Model 1"
-  else if (bf > 3) evidence <- "Substantial evidence for Model 1"
-  else if (bf > 1) evidence <- "Anecdotal evidence for Model 1"
-  else if (bf == 1) evidence <- "No evidence"
-  else if (bf >= 1/3) evidence <- "Anecdotal evidence for Model 2"
-  else if (bf >= 1/10) evidence <- "Substantial evidence for Model 2"
-  else if (bf >= 1/100) evidence <- "Strong evidence for Model 2"
-  else evidence <- "Decisive evidence for Model 2"
+  if (is.na(bf) || is.nan(bf)) {
+    evidence <- "Indeterminate"
+  } else if (bf > 100) {
+    evidence <- "Decisive evidence for Model 1"
+  } else if (bf > 10) {
+    evidence <- "Strong evidence for Model 1"
+  } else if (bf > 3) {
+    evidence <- "Substantial evidence for Model 1"
+  } else if (bf > 1) {
+    evidence <- "Anecdotal evidence for Model 1"
+  } else if (bf == 1) {
+    evidence <- "No evidence"
+  } else if (bf >= 1/3) {
+    evidence <- "Anecdotal evidence for Model 2"
+  } else if (bf >= 1/10) {
+    evidence <- "Substantial evidence for Model 2"
+  } else if (bf >= 1/100) {
+    evidence <- "Strong evidence for Model 2"
+  } else {
+    evidence <- "Decisive evidence for Model 2"
+  }
 
   res <- list(
     BF12 = bf,
