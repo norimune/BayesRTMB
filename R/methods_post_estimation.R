@@ -591,9 +591,10 @@ test_info <- function(x, ...) UseMethod("test_info")
 #' @param ... Additional arguments.
 #' @export
 item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
-  # MAP_Fit uses $par, MCMC/VB use EAP()
   est <- if (!is.null(x$par)) x$par else x$EAP()
   b <- est$b
+
+
 
   # Fix: Refer to the correct item names (par_names) saved during model construction instead of names(b)
   par_names_b <- x$model$par_names$b
@@ -643,8 +644,8 @@ item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100),
 
     } else if (type == "ordered") {
       P_star <- matrix(0, nrow = length(theta_seq), ncol = K_cat + 1)
-      P_star[, 1] <- 1.0
-      P_star[, K_cat + 1] <- 0.0
+      P_star[, 1] <- 0.0 # P(Y <= 0) = 0
+      P_star[, K_cat + 1] <- 1.0 # P(Y <= K) = 1
 
       for (k in 1:(K_cat - 1)) {
         P_star[, k + 1] <- plogis(b[j, k] - a[j] * theta_seq)
@@ -652,7 +653,7 @@ item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100),
 
       item_info_j <- rep(0, length(theta_seq))
       for (k in 1:K_cat) {
-        Pk <- P_star[, k] - P_star[, k + 1]
+        Pk <- P_star[, k + 1] - P_star[, k] # P(Y = k) = P(Y <= k) - P(Y <= k-1)
 
         dP_star_k   <- -a[j] * P_star[, k] * (1 - P_star[, k])
         dP_star_kp1 <- -a[j] * P_star[, k + 1] * (1 - P_star[, k + 1])
@@ -660,7 +661,7 @@ item_info.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100),
         if (k == 1) dP_star_k <- rep(0, length(theta_seq))
         if (k == K_cat) dP_star_kp1 <- rep(0, length(theta_seq))
 
-        dPk <- dP_star_k - dP_star_kp1
+        dPk <- dP_star_kp1 - dP_star_k
 
         Pk_safe <- pmax(Pk, 1e-10)
         item_info_j <- item_info_j + (dPk^2) / Pk_safe
@@ -766,6 +767,8 @@ item_curve <- function(x, ...) UseMethod("item_curve")
 item_curve.RTMB_Fit_Base <- function(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...) {
   est <- if (!is.null(x$par)) x$par else x$EAP()
   b <- est$b
+
+
 
   par_names_b <- x$model$par_names$b
 
