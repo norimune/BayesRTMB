@@ -92,7 +92,10 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
 
   # 3. Create design matrix
   rhs <- delete.response(terms(form))
-  X_new <- model.matrix(rhs, data = newdata)
+  # Ensure all factor levels are known to model.matrix
+  mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
+  xlev <- .getXlevels(terms(rhs), mf_raw)
+  X_new <- model.matrix(rhs, data = newdata, xlev = xlev)
 
   # 4. Obtain posterior samples (fixed effects)
   # Handle both wrapper functions (b, Intercept_c) and custom models (beta)
@@ -338,14 +341,95 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, ...) {
   
   if (ce$is_numeric) {
     # Simple Slopes for continuous focal variable
-    for (mv in mod_vals) {
-      sub_df <- df[df[[mod]] == mv, ]
-      # Slope is (y2 - y1) / (x2 - x1)
-      # Since conditional_effects returns means, we need to go back to samples or use the summary
-      # Better: re-calculate differences for each posterior sample
+    eps <- 1e-4
+    results <- data.frame()
+    
+    # [Internal Helper] Get predicted samples (shared with categorical logic)
+    get_pred_samples <- function(fit, newdata) {
+      model_obj <- fit$model
+      form <- model_obj$formula
+      raw_data <- model_obj$raw_data
+      X_mean <- model_obj$data$X_mean
+      rhs <- delete.response(terms(form))
+      
+      # Ensure all factor levels are known to model.matrix
+      mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
+      xlev <- .getXlevels(terms(rhs), mf_raw)
+      X_new <- model.matrix(rhs, data = newdata, xlev = xlev)
+      
+      all_pars <- dimnames(fit$draws(inc_transform=TRUE))[[3]]
+      if (any(grepl("^beta(\\[|$)", all_pars))) {
+        beta_samples <- fit$draws(pars = "beta")
+      } else {
+        b_samps <- fit$draws(pars = "b")
+        if ("Intercept" %in% all_pars) {
+          int_samps <- fit$draws(pars = "Intercept", inc_transform = TRUE)
+        } else if ("Intercept_c" %in% all_pars) {
+          ic_samps <- fit$draws(pars = "Intercept_c")
+          b_mat <- matrix(b_samps, nrow = dim(b_samps)[1] * dim(b_samps)[2], ncol = dim(b_samps)[3])
+          int_val <- as.numeric(ic_samps) - (b_mat %*% as.numeric(X_mean))
+          int_samps <- array(int_val, dim = c(dim(b_samps)[1], dim(b_samps)[2], 1))
+        } else {
+          int_samps <- NULL
+        }
+        if (!is.null(int_samps)) {
+          I <- dim(b_samps)[1]; C <- dim(b_samps)[2]; P <- dim(b_samps)[3]
+          beta_samples <- array(NA, dim = c(I, C, P + 1))
+          beta_samples[,,1] <- int_samps
+          beta_samples[,,2:(P+1)] <- b_samps
+        } else {
+          beta_samples <- b_samps
+        }
+      }
+      
+      I <- dim(beta_samples)[1]; C <- dim(beta_samples)[2]; P <- dim(beta_samples)[3]
+      beta_flat <- matrix(beta_samples, nrow = I * C, ncol = P)
+      
+      if (ncol(X_new) == ncol(beta_flat) + 1 && colnames(X_new)[1] == "(Intercept)") {
+        X_new <- X_new[, -1, drop = FALSE]
+      }
+      
+      eta <- X_new %*% t(beta_flat)
+      inv_link <- switch(model_obj$family %||% "gaussian",
+                         "gaussian" = function(x) x, "poisson" = exp, "bernoulli" = plogis, function(x) x)
+      return(inv_link(eta))
     }
-    # For now, let's focus on categorical focal variables as they are most common for "simple effects"
-    stop("Simple slopes for continuous variables are not yet implemented in simple_effects. Please use conditional_effects for visualization.")
+
+    for (mv in mod_vals) {
+      # Use the mean of the focal variable as the point of evaluation for the slope
+      f_val <- mean(df[[focal]], na.rm=TRUE)
+      
+      # Create newdata for x and x + eps
+      # We take one row of original data as template to keep other variables at their baseline
+      template_data <- fit$model$raw_data[1, , drop=FALSE]
+      # Set moderator value
+      template_data[[mod]] <- mv
+      
+      sub_newdata1 <- template_data
+      sub_newdata1[[focal]] <- f_val
+      sub_newdata2 <- template_data
+      sub_newdata2[[focal]] <- f_val + eps
+      
+      combined_newdata <- rbind(sub_newdata1, sub_newdata2)
+      pred_samples <- get_pred_samples(fit, combined_newdata)
+      
+      # Slope = (y2 - y1) / eps
+      slope_samples <- (pred_samples[2, ] - pred_samples[1, ]) / eps
+      
+      res_row <- data.frame(
+        moderator = mod,
+        mod_value = mv,
+        term = paste("Slope of", focal),
+        estimate = mean(slope_samples),
+        lower = quantile(slope_samples, (1-prob)/2),
+        upper = quantile(slope_samples, 1-(1-prob)/2)
+      )
+      results <- rbind(results, res_row)
+    }
+    
+    names(results)[2] <- mod
+    class(results) <- c("ce_simple", "data.frame")
+    return(results)
     
   } else {
     # Pairwise differences for categorical focal variable
@@ -420,7 +504,7 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, ...) {
           res_row <- data.frame(
             moderator = mod,
             mod_value = mv,
-            contrast = paste(lvls[j], "-", lvls[i]),
+            term = paste(lvls[j], "-", lvls[i]),
             estimate = mean(diff_samples),
             lower = quantile(diff_samples, (1-prob)/2),
             upper = quantile(diff_samples, 1-(1-prob)/2)
