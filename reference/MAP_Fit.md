@@ -34,9 +34,9 @@ estimation.
   Parameter vector on the unconstrained scale (raw unconstrained
   values).
 
-- `se_method`:
+- `ci_method`:
 
-  Method used for SE/CI estimation ("wald", "profile", or "sampling").
+  Method used for CI estimation ("wald", "profile", or "sampling").
 
 - `objective`:
 
@@ -198,7 +198,7 @@ Create a new \`MAP_Fit\` object.
       generate = NULL,
       se_samples = NULL,
       par_unc = NULL,
-      se_method = "wald"
+      ci_method = "wald"
     )
 
 #### Arguments
@@ -268,9 +268,9 @@ Create a new \`MAP_Fit\` object.
 
   Parameter vector on the unconstrained scale (raw values).
 
-- `se_method`:
+- `ci_method`:
 
-  Method used for SE/CI estimation ("wald", "profile", or "sampling").
+  Method used for CI estimation ("wald", "profile", or "sampling").
 
 ------------------------------------------------------------------------
 
