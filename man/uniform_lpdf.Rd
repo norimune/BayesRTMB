@@ -4,7 +4,7 @@
 \alias{uniform_lpdf}
 \title{Uniform log-probability density function}
 \usage{
-uniform_lpdf(x, a, b, sum = TRUE)
+uniform_lpdf(x, a, b)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

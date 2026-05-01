@@ -4,7 +4,7 @@
 \alias{lkj_corr_lpdf}
 \title{LKJ correlation log-probability density function}
 \usage{
-lkj_corr_lpdf(Omega, eta = 1, sum = TRUE)
+lkj_corr_lpdf(Omega, eta = 1)
 }
 \arguments{
 \item{Omega}{Correlation matrix.}

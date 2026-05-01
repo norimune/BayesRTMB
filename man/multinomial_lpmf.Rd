@@ -4,7 +4,7 @@
 \alias{multinomial_lpmf}
 \title{Multinomial log-probability mass function}
 \usage{
-multinomial_lpmf(x, size, prob, sum = TRUE)
+multinomial_lpmf(x, size, prob)
 }
 \arguments{
 \item{x}{Vector of counts.}

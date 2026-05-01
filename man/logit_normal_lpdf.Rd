@@ -4,7 +4,7 @@
 \alias{logit_normal_lpdf}
 \title{Logit-Normal log-probability density function}
 \usage{
-logit_normal_lpdf(x, mu, sd, sum = TRUE)
+logit_normal_lpdf(x, mu, sd)
 }
 \arguments{
 \item{x}{Vector of quantiles (must be strictly between 0 and 1).}

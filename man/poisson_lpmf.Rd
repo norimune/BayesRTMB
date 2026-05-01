@@ -4,7 +4,7 @@
 \alias{poisson_lpmf}
 \title{Poisson log-probability mass function}
 \usage{
-poisson_lpmf(x, mean, sum = TRUE)
+poisson_lpmf(x, mean)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

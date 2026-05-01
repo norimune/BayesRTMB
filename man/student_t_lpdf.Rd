@@ -4,7 +4,7 @@
 \alias{student_t_lpdf}
 \title{Student-t log-probability density function}
 \usage{
-student_t_lpdf(x, df, mu = 0, sigma = 1, sum = TRUE)
+student_t_lpdf(x, df, mu = 0, sigma = 1)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

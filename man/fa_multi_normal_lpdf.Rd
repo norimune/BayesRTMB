@@ -4,7 +4,7 @@
 \alias{fa_multi_normal_lpdf}
 \title{Factor analysis multivariate normal log-probability density function}
 \usage{
-fa_multi_normal_lpdf(x, mu, Lambda, psi, sum = TRUE)
+fa_multi_normal_lpdf(x, mu, Lambda, psi)
 }
 \arguments{
 \item{x}{Vector or matrix of quantiles.}

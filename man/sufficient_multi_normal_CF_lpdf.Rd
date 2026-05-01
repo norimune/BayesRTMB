@@ -4,15 +4,7 @@
 \alias{sufficient_multi_normal_CF_lpdf}
 \title{Sufficient statistics multivariate normal log-probability density function}
 \usage{
-sufficient_multi_normal_CF_lpdf(
-  S_mat,
-  N,
-  y_bar,
-  mean,
-  sd,
-  CF_Omega,
-  sum = TRUE
-)
+sufficient_multi_normal_CF_lpdf(S_mat, N, y_bar, mean, sd, CF_Omega)
 }
 \arguments{
 \item{S_mat}{Deviation sum of squares matrix.}

@@ -4,7 +4,7 @@
 \alias{ordered_logistic_lpmf}
 \title{Ordered logistic log-probability mass function}
 \usage{
-ordered_logistic_lpmf(x, eta, cutpoints, sum = TRUE)
+ordered_logistic_lpmf(x, eta, cutpoints)
 }
 \arguments{
 \item{x}{Vector of ordered categorical outcomes.}

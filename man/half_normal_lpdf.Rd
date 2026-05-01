@@ -4,7 +4,7 @@
 \alias{half_normal_lpdf}
 \title{Half-Normal log-probability density function}
 \usage{
-half_normal_lpdf(x, sd, sum = TRUE)
+half_normal_lpdf(x, sd)
 }
 \arguments{
 \item{x}{Vector of quantiles (must be non-negative).}

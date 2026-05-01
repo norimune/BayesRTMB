@@ -4,7 +4,7 @@
 \alias{lkj_CF_corr_lpdf}
 \title{LKJ correlation log-probability density function for Cholesky factors}
 \usage{
-lkj_CF_corr_lpdf(CF_Omega, eta = 1, sum = TRUE)
+lkj_CF_corr_lpdf(CF_Omega, eta = 1)
 }
 \arguments{
 \item{CF_Omega}{Cholesky factor of a correlation matrix.}

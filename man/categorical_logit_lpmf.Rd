@@ -4,7 +4,7 @@
 \alias{categorical_logit_lpmf}
 \title{Categorical log-probability mass function with logit parameterization}
 \usage{
-categorical_logit_lpmf(x, eta, sum = TRUE)
+categorical_logit_lpmf(x, eta)
 }
 \arguments{
 \item{x}{Integer or integer vector. The observed category index.}

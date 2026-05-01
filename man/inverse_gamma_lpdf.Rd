@@ -4,7 +4,7 @@
 \alias{inverse_gamma_lpdf}
 \title{Inverse-gamma log-probability density function}
 \usage{
-inverse_gamma_lpdf(x, shape, scale, sum = TRUE)
+inverse_gamma_lpdf(x, shape, scale)
 }
 \arguments{
 \item{x}{Vector of quantiles.}
