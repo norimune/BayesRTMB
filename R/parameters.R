@@ -179,14 +179,7 @@ generate_flat_names <- function(base_name, dims, names_def = NULL) {
   }
 }
 
-stz_basis <- function(K) {
-  Q <- matrix(0, nrow = K, ncol = K - 1)
-  for (j in 1:(K - 1)) {
-    Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-    Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-  }
-  return(Q)
-}
+
 
 # Function to restore a flat vector in constrained space to a list
 constrained_vector_to_list <- function(vec, par_list) {
@@ -304,21 +297,14 @@ to_unconstrained <- function(para_orig_list, par_list) {
       para_unc[[name]] <- y
     } else if (b_type == "centered") {
       K <- p$length
-      Q <- matrix(0, nrow = K, ncol = K - 1)
-      for (j in 1:(K - 1)) {
-        Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-        Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-      }
+      Q <- stz_basis(K)
       para_unc[[name]] <- as.numeric(crossprod(Q, val_orig))
 
     } else if (b_type == "centered_matrix") {
       R <- p$dim[1]
       C <- p$dim[2]
-      Q <- matrix(0, nrow = R, ncol = R - 1)
-      for (j in 1:(R - 1)) {
-        Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-        Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-      }
+      Q <- stz_basis(R)
+
       Y <- crossprod(Q, val_orig)
       para_unc[[name]] <- as.numeric(Y)
 
@@ -494,21 +480,14 @@ to_constrained <- function(para_unc_list, par_list) {
 
     } else if (b_type == "centered") {
       K <- p$length
-      Q <- matrix(0, nrow = K, ncol = K - 1)
-      for (j in 1:(K - 1)) {
-        Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-        Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-      }
+      Q <- stz_basis(K)
       para[[name]] <- as.numeric(Q %*% val_unc)
 
     } else if (b_type == "centered_matrix") {
       R <- p$dim[1]
       C <- p$dim[2]
-      Q <- matrix(0, nrow = R, ncol = R - 1)
-      for (j in 1:(R - 1)) {
-        Q[1:j, j] <- 1 / sqrt(j * (j + 1))
-        Q[j + 1, j] <- -j / sqrt(j * (j + 1))
-      }
+      Q <- stz_basis(R)
+
       mat_unc <- matrix(val_unc, nrow = R - 1, ncol = C)
       para[[name]] <- Q %*% mat_unc
 

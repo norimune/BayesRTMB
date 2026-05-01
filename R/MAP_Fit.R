@@ -214,6 +214,10 @@ MAP_Fit <- R6::R6Class(
         return(x)
       })
 
+      if ("DF" %in% colnames(df_combined)) {
+        df_combined$DF <- ifelse(is.infinite(df_combined$DF), "Inf", as.character(round(df_combined$DF)))
+      }
+
       out_df <- data.frame(variable = rownames(df_combined), df_combined, check.names = FALSE, stringsAsFactors = FALSE)
       rownames(out_df) <- NULL
 
