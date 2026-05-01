@@ -5,7 +5,7 @@ Lognormal log-probability density function
 ## Usage
 
 ``` r
-lognormal_lpdf(x, meanlog, sdlog)
+lognormal_lpdf(x, meanlog, sdlog, sum = TRUE)
 ```
 
 ## Arguments

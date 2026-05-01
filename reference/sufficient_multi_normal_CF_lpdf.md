@@ -6,7 +6,15 @@ function
 ## Usage
 
 ``` r
-sufficient_multi_normal_CF_lpdf(S_mat, N, y_bar, mean, sd, CF_Omega)
+sufficient_multi_normal_CF_lpdf(
+  S_mat,
+  N,
+  y_bar,
+  mean,
+  sd,
+  CF_Omega,
+  sum = TRUE
+)
 ```
 
 ## Arguments

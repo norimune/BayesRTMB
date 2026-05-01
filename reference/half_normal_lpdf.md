@@ -5,7 +5,7 @@ Half-Normal log-probability density function
 ## Usage
 
 ``` r
-half_normal_lpdf(x, sd)
+half_normal_lpdf(x, sd, sum = TRUE)
 ```
 
 ## Arguments

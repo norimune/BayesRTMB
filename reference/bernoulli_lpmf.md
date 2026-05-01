@@ -5,7 +5,7 @@ Bernoulli log-probability mass function
 ## Usage
 
 ``` r
-bernoulli_lpmf(x, prob)
+bernoulli_lpmf(x, prob, sum = TRUE)
 ```
 
 ## Arguments

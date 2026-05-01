@@ -338,7 +338,69 @@ Shrunk Posterior Distribution
 
 ------------------------------------------------------------------------
 
-## 5. rtmb_corr (Correlation Matrix Estimation)
+## 5. Post-Estimation Analysis (Interaction & Visualization)
+
+After fitting a regression model (LM, GLM, GLMER), you can use
+[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+and
+[`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
+to analyze and visualize the results. These methods are currently
+available for models fitted using MCMC
+([`sample()`](https://rdrr.io/r/base/sample.html)).
+
+#### Visualization with `conditional_effects()`
+
+The
+[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+function is used to visualize the predicted values of a model. It is
+particularly powerful for understanding interaction effects.
+
+``` r
+
+# Linear regression with interaction between talk and condition
+mdl_int <- rtmb_lm(satisfaction ~ talk * performance, data = discussion)
+fit_int <- mdl_int$sample()
+
+# Visualize the interaction effect
+# For continuous moderators, it automatically shows Mean ± 1SD
+ce <- conditional_effects(fit_int, effect = "talk:performance")
+plot(ce)
+```
+
+#### Simple Effects Analysis with `simple_effects()`
+
+While
+[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+provides a visual overview,
+[`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
+allows you to statistically examine the effect of a focal variable at
+specific levels of a moderator.
+
+- **Simple Slopes**: When the focal variable is continuous.
+- **Pairwise Contrasts**: When the focal variable is categorical.
+
+``` r
+
+# Calculate simple slopes of 'talk' for each level of 'condition'
+se <- simple_effects(fit_int, effect = "talk:performance")
+print(se)
+```
+
+``` text
+## --- Simple Effects Analysis ---
+##    moderator performance          term estimate  lower upper
+##  performance       2.930 Slope of talk    0.038 -0.118 0.191
+##  performance       4.690 Slope of talk    0.266  0.161 0.369
+##  performance       6.450 Slope of talk    0.494  0.354 0.631
+```
+
+By default, for continuous moderators, it evaluates the effect at the
+Mean and Mean ± 1SD. You can change this behavior by specifying the
+`sd_multiplier` argument.
+
+------------------------------------------------------------------------
+
+## 6. rtmb_corr (Correlation Matrix Estimation)
 
 This function is for estimating the correlation relationships between
 variables. Here, we will introduce both a 2-variable case and a full
@@ -420,7 +482,7 @@ opt_corr_mat$summary()
 
 ------------------------------------------------------------------------
 
-## 6. rtmb_fa (Exploratory Factor Analysis)
+## 7. rtmb_fa (Exploratory Factor Analysis)
 
 Estimates the common latent factors behind observed variables.
 
@@ -595,7 +657,7 @@ vb_fa$MAP("L") |> sort_loadings()
 
 ------------------------------------------------------------------------
 
-## 7. rtmb_irt (Item Response Theory)
+## 8. rtmb_irt (Item Response Theory)
 
 [`rtmb_irt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_irt.md)
 constructs Item Response Theory (IRT) models suitable for analyzing test
@@ -612,20 +674,80 @@ to utilize the fast approximation via `variational()` or marginalize the
 ability parameters using `optimize(laplace = TRUE)` when handling large
 datasets.
 
-------------------------------------------------------------------------
+#### Analysis Example (Graded Response Model)
 
-## Summary
+Using the `BigFive` personality data (polytomous), we will fit a Graded
+Response Model (GRM). Here, we analyze four items related to
+“Agreeableness”.
 
-By leveraging the wrapper functions in BayesRTMB, you gain the following
-benefits: - Perform sophisticated analyses using familiar syntax without
-writing complex model codes from scratch. - Seamlessly switch between
-MAP, MCMC, and VB estimations using the same model object. - Calculate
-Bayes factors smoothly.
+``` r
 
-If you require a more customized model, check out the [Quick
-Start](https://norimune.github.io/BayesRTMB/articles/quick_start.md) and
-try building your own using
-[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md).
+data(BigFive)
+# Select items 2, 7, 12, 17 (Agreeableness)
+dat_irt <- BigFive[, c("BF2", "BF7", "BF12", "BF17")]
+
+# Fit a 2PL Graded Response Model (Ordered Logistic)
+mdl_irt <- rtmb_irt(dat_irt, model = "2PL", type = "ordered")
+
+# Fast estimation using MAP with Laplace approximation for latent traits
+opt_irt <- mdl_irt$optimize(se_sampling = TRUE)
+opt_irt
+```
+
+``` text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 855.97
+## Approx. Log Marginal Likelihood (Laplace): -862.01
+## Note: Random effects are stored in $random_effects
+## 
+## Point Estimates and 95% Wald CI:
+##           variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## a[BF2]               2.59656     0.39595    1.90122    3.46560 
+## a[BF7]               2.54272     0.35182    1.95367    3.32212 
+## a[BF12]              2.53327     0.39717    1.93398    3.53325 
+## a[BF17]              1.92822     0.27020    1.46972    2.50115 
+## b[BF2,Threshold1]   -5.52251     0.72815   -6.91884   -4.06858 
+## b[BF7,Threshold1]   -5.34943     0.64569   -6.63549   -4.19742 
+## b[BF12,Threshold1]  -5.29023     0.65049   -6.54949   -4.01624 
+## b[BF17,Threshold1]  -4.31129     0.50114   -5.32272   -3.36251 
+## b[BF2,Threshold2]   -2.68286     0.42440   -3.41160   -1.76330 
+## b[BF7,Threshold2]   -2.72371     0.39514   -3.49773   -1.93475 
+```
+
+#### Visualizing Item Response Curves
+
+You can visualize the category response curves (CRCs) for each item
+using the
+[`item_curve()`](https://norimune.github.io/BayesRTMB/reference/item_curve.md)
+function. This helps in understanding how the probability of choosing
+each category changes with the latent trait ($`\theta`$).
+
+``` r
+
+# Calculate item curves
+ic <- item_curve(opt_irt)
+
+# Plot curves (shows category probabilities for each item)
+plot(ic)
+```
+
+#### Item and Test Information
+
+Information functions help evaluate the precision of measurement across
+different levels of the latent trait.
+
+``` r
+
+# Item Information Function: shows which items provide the most information
+ii <- item_info(opt_irt)
+plot(ii)
+
+# Test Information Function: total information of the test/scale
+ti <- test_info(opt_irt)
+plot(ti)
+```
 
 ------------------------------------------------------------------------
 

@@ -5,7 +5,7 @@ Uniform log-probability density function
 ## Usage
 
 ``` r
-uniform_lpdf(x, a, b)
+uniform_lpdf(x, a, b, sum = TRUE)
 ```
 
 ## Arguments

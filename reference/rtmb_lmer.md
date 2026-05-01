@@ -8,11 +8,15 @@ RTMB-based Linear Mixed Model (LMM) wrapper function
 rtmb_lmer(
   formula,
   data,
-  prior = list(),
+  laplace = TRUE,
+  penalty = c("none", "rhs", "ssp"),
+  y_range = NULL,
+  use_weak_info = FALSE,
+  prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1,
+    lkj_eta = 1),
+  weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2,
+    slab_df = 4, ssp_ratio = 0.25),
   init = NULL,
-  regularization = "none",
-  weak_info_prior = list(),
-  use_weak_info = TRUE,
   null = NULL
 )
 ```
@@ -27,29 +31,29 @@ rtmb_lmer(
 
   Data frame
 
+- use_weak_info:
+
+  Whether to use weak informative priors
+
 - prior:
 
   Prior list
-
-- init:
-
-  Initial values
-
-- regularization:
-
-  Regularization method
 
 - weak_info_prior:
 
   Weak informative prior parameters
 
-- use_weak_info:
+- init:
 
-  Whether to use weak informative priors
+  Initial values
 
 - null:
 
   Null model parameters
+
+- regularization:
+
+  Regularization method
 
 ## Value
 

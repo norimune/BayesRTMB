@@ -5,7 +5,7 @@ Multivariate normal log-probability density function
 ## Usage
 
 ``` r
-multi_normal_lpdf(x, mean, Sigma)
+multi_normal_lpdf(x, mean, Sigma, sum = TRUE)
 ```
 
 ## Arguments

@@ -5,7 +5,7 @@ Negative binomial log-probability mass function
 ## Usage
 
 ``` r
-neg_binomial_lpmf(x, size, prob)
+neg_binomial_lpmf(x, size, prob, sum = TRUE)
 ```
 
 ## Arguments

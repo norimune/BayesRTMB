@@ -5,7 +5,7 @@ Dirichlet log-probability density function
 ## Usage
 
 ``` r
-dirichlet_lpdf(x, alpha)
+dirichlet_lpdf(x, alpha, sum = TRUE)
 ```
 
 ## Arguments

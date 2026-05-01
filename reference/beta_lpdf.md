@@ -5,7 +5,7 @@ Beta log-probability density function
 ## Usage
 
 ``` r
-beta_lpdf(x, a, b)
+beta_lpdf(x, a, b, sum = TRUE)
 ```
 
 ## Arguments

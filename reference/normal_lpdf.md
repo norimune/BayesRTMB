@@ -5,7 +5,7 @@ Normal log-probability density function
 ## Usage
 
 ``` r
-normal_lpdf(x, mean, sd)
+normal_lpdf(x, mean, sd, sum = TRUE)
 ```
 
 ## Arguments

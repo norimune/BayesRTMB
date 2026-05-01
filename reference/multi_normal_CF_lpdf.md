@@ -6,7 +6,7 @@ Cholesky factor of correlation matrix
 ## Usage
 
 ``` r
-multi_normal_CF_lpdf(x, mean, sd, CF_Omega)
+multi_normal_CF_lpdf(x, mean, sd, CF_Omega, sum = TRUE)
 ```
 
 ## Arguments

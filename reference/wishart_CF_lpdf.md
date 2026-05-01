@@ -6,7 +6,7 @@ factor of correlation matrix
 ## Usage
 
 ``` r
-wishart_CF_lpdf(X, n, sd, CF_Omega)
+wishart_CF_lpdf(X, n, sd, CF_Omega, sum = TRUE)
 ```
 
 ## Arguments

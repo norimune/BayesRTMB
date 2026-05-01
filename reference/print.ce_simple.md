@@ -6,5 +6,5 @@ Print method for ce_simple
 
 ``` r
 # S3 method for class 'ce_simple'
-print(x, ...)
+print(x, digits = 3, ...)
 ```

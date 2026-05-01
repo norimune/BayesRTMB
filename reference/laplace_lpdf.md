@@ -5,7 +5,7 @@ Laplace log-probability density function
 ## Usage
 
 ``` r
-laplace_lpdf(x, location = 0, scale = 1)
+laplace_lpdf(x, location = 0, scale = 1, sum = TRUE)
 ```
 
 ## Arguments

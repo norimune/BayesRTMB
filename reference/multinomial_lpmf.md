@@ -5,7 +5,7 @@ Multinomial log-probability mass function
 ## Usage
 
 ``` r
-multinomial_lpmf(x, size, prob)
+multinomial_lpmf(x, size, prob, sum = TRUE)
 ```
 
 ## Arguments

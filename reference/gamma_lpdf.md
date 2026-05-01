@@ -5,7 +5,7 @@ Gamma log-probability density function
 ## Usage
 
 ``` r
-gamma_lpdf(x, shape, rate)
+gamma_lpdf(x, shape, rate, sum = TRUE)
 ```
 
 ## Arguments

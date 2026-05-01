@@ -5,7 +5,7 @@ Poisson log-probability mass function
 ## Usage
 
 ``` r
-poisson_lpmf(x, mean)
+poisson_lpmf(x, mean, sum = TRUE)
 ```
 
 ## Arguments

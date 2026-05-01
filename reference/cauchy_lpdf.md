@@ -5,7 +5,7 @@ Cauchy log-probability density function
 ## Usage
 
 ``` r
-cauchy_lpdf(x, location, scale)
+cauchy_lpdf(x, location, scale, sum = TRUE)
 ```
 
 ## Arguments

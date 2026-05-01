@@ -6,7 +6,7 @@ log-probability density function
 ## Usage
 
 ``` r
-sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, psi, Lambda)
+sufficient_multi_normal_fa_lpdf(S_mat, N, y_bar, mu, psi, Lambda, sum = TRUE)
 ```
 
 ## Arguments

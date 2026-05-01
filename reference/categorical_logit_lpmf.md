@@ -5,7 +5,7 @@ Categorical log-probability mass function with logit parameterization
 ## Usage
 
 ``` r
-categorical_logit_lpmf(x, eta)
+categorical_logit_lpmf(x, eta, sum = TRUE)
 ```
 
 ## Arguments

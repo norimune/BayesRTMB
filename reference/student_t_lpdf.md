@@ -5,7 +5,7 @@ Student-t log-probability density function
 ## Usage
 
 ``` r
-student_t_lpdf(x, df, mu = 0, sigma = 1)
+student_t_lpdf(x, df, mu = 0, sigma = 1, sum = TRUE)
 ```
 
 ## Arguments

@@ -5,7 +5,7 @@ Binomial log-probability mass function
 ## Usage
 
 ``` r
-binomial_lpmf(x, size, prob)
+binomial_lpmf(x, size, prob, sum = TRUE)
 ```
 
 ## Arguments

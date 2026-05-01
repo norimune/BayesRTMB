@@ -426,7 +426,59 @@ models, so it’s better to use MCMC.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_corr-correlation-matrix-estimation">5. rtmb_corr (Correlation Matrix Estimation)<a class="anchor" aria-label="anchor" href="#rtmb_corr-correlation-matrix-estimation"></a>
+<h2 id="post-estimation-analysis-interaction-visualization">5. Post-Estimation Analysis (Interaction &amp; Visualization)<a class="anchor" aria-label="anchor" href="#post-estimation-analysis-interaction-visualization"></a>
+</h2>
+<p>After fitting a regression model (LM, GLM, GLMER), you can use
+<code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> and <code><a href="../reference/simple_effects.html">simple_effects()</a></code> to
+analyze and visualize the results. These methods are currently available
+for models fitted using MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>).</p>
+<div class="section level4">
+<h4 id="visualization-with-conditional_effects">Visualization with <code>conditional_effects()</code><a class="anchor" aria-label="anchor" href="#visualization-with-conditional_effects"></a>
+</h4>
+<p>The <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> function is used to visualize
+the predicted values of a model. It is particularly powerful for
+understanding interaction effects.</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Linear regression with interaction between talk and condition</span></span>
+<span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">performance</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<span><span class="va">fit_int</span> <span class="op">&lt;-</span> <span class="va">mdl_int</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Visualize the interaction effect</span></span>
+<span><span class="co"># For continuous moderators, it automatically shows Mean ± 1SD</span></span>
+<span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/conditional_effects.html">conditional_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:performance"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ce</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="simple-effects-analysis-with-simple_effects">Simple Effects Analysis with <code>simple_effects()</code><a class="anchor" aria-label="anchor" href="#simple-effects-analysis-with-simple_effects"></a>
+</h4>
+<p>While <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> provides a visual overview,
+<code><a href="../reference/simple_effects.html">simple_effects()</a></code> allows you to statistically examine the
+effect of a focal variable at specific levels of a moderator.</p>
+<ul>
+<li>
+<strong>Simple Slopes</strong>: When the focal variable is
+continuous.</li>
+<li>
+<strong>Pairwise Contrasts</strong>: When the focal variable is
+categorical.</li>
+</ul>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Calculate simple slopes of 'talk' for each level of 'condition'</span></span>
+<span><span class="va">se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:performance"</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## --- Simple Effects Analysis ---</span></span>
+<span><span class="co">##    moderator performance          term estimate  lower upper</span></span>
+<span><span class="co">##  performance       2.930 Slope of talk    0.038 -0.118 0.191</span></span>
+<span><span class="co">##  performance       4.690 Slope of talk    0.266  0.161 0.369</span></span>
+<span><span class="co">##  performance       6.450 Slope of talk    0.494  0.354 0.631</span></span></code></pre>
+<p>By default, for continuous moderators, it evaluates the effect at the
+Mean and Mean ± 1SD. You can change this behavior by specifying the
+<code>sd_multiplier</code> argument.</p>
+<hr>
+</div>
+</div>
+<div class="section level2">
+<h2 id="rtmb_corr-correlation-matrix-estimation">6. rtmb_corr (Correlation Matrix Estimation)<a class="anchor" aria-label="anchor" href="#rtmb_corr-correlation-matrix-estimation"></a>
 </h2>
 <p>This function is for estimating the correlation relationships between
 variables. Here, we will introduce both a 2-variable case and a full
@@ -439,7 +491,7 @@ data.</p>
 items BF1 and BF6), and calculate a Bayes factor testing the null
 hypothesis of zero correlation
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r = 0</annotation></semantics></math>).</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Correlation between BF1 and BF6</span></span>
@@ -453,7 +505,7 @@ hypothesis of zero correlation
 <span><span class="co">## mean[BF6]     2.71  0.09     2.73     2.54     2.89      2978      2872  1.00 </span></span>
 <span><span class="co">## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 </span></span>
 <span><span class="co">## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 </span></span></code></pre>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Compare against the zero-correlation model (null_model = "corr")</span></span>
 <span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"corr"</span><span class="op">)</span></span>
 <span><span class="va">bf_corr</span></span></code></pre></div>
@@ -466,7 +518,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 </h4>
 <p>If you specify multiple variables at once, the entire correlation
 matrix is estimated.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Estimate the correlation matrix of 5 variables</span></span>
 <span><span class="va">mdl_corr_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">opt_corr_mat</span> <span class="op">&lt;-</span> <span class="va">mdl_corr_mat</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -493,7 +545,7 @@ matrix is estimated.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_fa-exploratory-factor-analysis">6. rtmb_fa (Exploratory Factor Analysis)<a class="anchor" aria-label="anchor" href="#rtmb_fa-exploratory-factor-analysis"></a>
+<h2 id="rtmb_fa-exploratory-factor-analysis">7. rtmb_fa (Exploratory Factor Analysis)<a class="anchor" aria-label="anchor" href="#rtmb_fa-exploratory-factor-analysis"></a>
 </h2>
 <p>Estimates the common latent factors behind observed variables.</p>
 <div class="section level3">
@@ -507,7 +559,7 @@ rotated factor loadings are placed in the <code>generate</code> block,
 MAP does not calculate standard errors for them by default. By
 specifying <code>se_sampling = TRUE</code>, you can compute their
 standard errors as well.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 3-factor model, specifying Promax rotation</span></span>
 <span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span><span class="op">)</span></span>
 <span></span>
@@ -535,7 +587,7 @@ standard errors as well.</p>
 <span><span class="co">## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 </span></span></code></pre>
 <p>The <code><a href="../reference/sort_loadings.html">sort_loadings()</a></code> function is useful to sort and
 display the rotated factor loadings nicely.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_fa</span><span class="op">$</span><span class="va">generate</span><span class="op">$</span><span class="va">L_promax</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V1   .867 -.117 -.179  .089  .057</span></span>
@@ -565,7 +617,7 @@ display the rotated factor loadings nicely.</p>
 <p>Factor scores can also be output by using the
 <code>score = TRUE</code> option. These scores are additionally pushed
 to the <code>generate</code> output.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span>, score <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">opt_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -592,7 +644,7 @@ indeterminacy, yielding a unique solution.</p>
 estimate via MAP, it is usually better to use MCMC or ADVI. Here, we
 present the results from ADVI (Automatic Differentiation Variational
 Inference).</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"ssp"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">vb_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span>iter <span class="op">=</span> <span class="fl">5000</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -612,7 +664,7 @@ Inference).</p>
 or <code>MAP</code>. With regularization, the <code>MAP</code> summary
 makes the output easier to read as the shrunk parameters will rigorously
 collapse to 0.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_fa</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="st">"L"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V7  -.823  .000 -.001  .001  .010</span></span>
@@ -639,7 +691,7 @@ collapse to 0.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="rtmb_irt-item-response-theory">7. rtmb_irt (Item Response Theory)<a class="anchor" aria-label="anchor" href="#rtmb_irt-item-response-theory"></a>
+<h2 id="rtmb_irt-item-response-theory">8. rtmb_irt (Item Response Theory)<a class="anchor" aria-label="anchor" href="#rtmb_irt-item-response-theory"></a>
 </h2>
 <p><code><a href="../reference/rtmb_irt.html">rtmb_irt()</a></code> constructs Item Response Theory (IRT) models
 suitable for analyzing test data or questionnaire surveys. Currently,
@@ -656,22 +708,76 @@ data (e.g., Likert scales).</li>
 effective to utilize the fast approximation via
 <code>variational()</code> or marginalize the ability parameters using
 <code>optimize(laplace = TRUE)</code> when handling large datasets.</p>
+<div class="section level4">
+<h4 id="analysis-example-graded-response-model">Analysis Example (Graded Response Model)<a class="anchor" aria-label="anchor" href="#analysis-example-graded-response-model"></a>
+</h4>
+<p>Using the <code>BigFive</code> personality data (polytomous), we will
+fit a Graded Response Model (GRM). Here, we analyze four items related
+to “Agreeableness”.</p>
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
+<span><span class="co"># Select items 2, 7, 12, 17 (Agreeableness)</span></span>
+<span><span class="va">dat_irt</span> <span class="op">&lt;-</span> <span class="va">BigFive</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BF2"</span>, <span class="st">"BF7"</span>, <span class="st">"BF12"</span>, <span class="st">"BF17"</span><span class="op">)</span><span class="op">]</span></span>
+<span></span>
+<span><span class="co"># Fit a 2PL Graded Response Model (Ordered Logistic)</span></span>
+<span><span class="va">mdl_irt</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_irt.html">rtmb_irt</a></span><span class="op">(</span><span class="va">dat_irt</span>, model <span class="op">=</span> <span class="st">"2PL"</span>, type <span class="op">=</span> <span class="st">"ordered"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Fast estimation using MAP with Laplace approximation for latent traits</span></span>
+<span><span class="va">opt_irt</span> <span class="op">&lt;-</span> <span class="va">mdl_irt</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>se_sampling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">opt_irt</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Call:</span></span>
+<span><span class="co">## MAP Estimation via RTMB</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Negative Log-Posterior: 855.97</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -862.01</span></span>
+<span><span class="co">## Note: Random effects are stored in $random_effects</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
+<span><span class="co">##           variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
+<span><span class="co">## a[BF2]               2.59656     0.39595    1.90122    3.46560 </span></span>
+<span><span class="co">## a[BF7]               2.54272     0.35182    1.95367    3.32212 </span></span>
+<span><span class="co">## a[BF12]              2.53327     0.39717    1.93398    3.53325 </span></span>
+<span><span class="co">## a[BF17]              1.92822     0.27020    1.46972    2.50115 </span></span>
+<span><span class="co">## b[BF2,Threshold1]   -5.52251     0.72815   -6.91884   -4.06858 </span></span>
+<span><span class="co">## b[BF7,Threshold1]   -5.34943     0.64569   -6.63549   -4.19742 </span></span>
+<span><span class="co">## b[BF12,Threshold1]  -5.29023     0.65049   -6.54949   -4.01624 </span></span>
+<span><span class="co">## b[BF17,Threshold1]  -4.31129     0.50114   -5.32272   -3.36251 </span></span>
+<span><span class="co">## b[BF2,Threshold2]   -2.68286     0.42440   -3.41160   -1.76330 </span></span>
+<span><span class="co">## b[BF7,Threshold2]   -2.72371     0.39514   -3.49773   -1.93475 </span></span></code></pre>
+</div>
+<div class="section level4">
+<h4 id="visualizing-item-response-curves">Visualizing Item Response Curves<a class="anchor" aria-label="anchor" href="#visualizing-item-response-curves"></a>
+</h4>
+<p>You can visualize the category response curves (CRCs) for each item
+using the <code><a href="../reference/item_curve.html">item_curve()</a></code> function. This helps in
+understanding how the probability of choosing each category changes with
+the latent trait
+(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math>).</p>
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Calculate item curves</span></span>
+<span><span class="va">ic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/item_curve.html">item_curve</a></span><span class="op">(</span><span class="va">opt_irt</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Plot curves (shows category probabilities for each item)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ic</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="item-and-test-information">Item and Test Information<a class="anchor" aria-label="anchor" href="#item-and-test-information"></a>
+</h4>
+<p>Information functions help evaluate the precision of measurement
+across different levels of the latent trait.</p>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Item Information Function: shows which items provide the most information</span></span>
+<span><span class="va">ii</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/item_info.html">item_info</a></span><span class="op">(</span><span class="va">opt_irt</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ii</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Test Information Function: total information of the test/scale</span></span>
+<span><span class="va">ti</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/test_info.html">test_info</a></span><span class="op">(</span><span class="va">opt_irt</span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ti</span><span class="op">)</span></span></code></pre></div>
 <hr>
+</div>
 </div>
 <div class="section level2">
 <h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
-</h2>
-<p>By leveraging the wrapper functions in BayesRTMB, you gain the
-following benefits: - Perform sophisticated analyses using familiar
-syntax without writing complex model codes from scratch. - Seamlessly
-switch between MAP, MCMC, and VB estimations using the same model
-object. - Calculate Bayes factors smoothly.</p>
-<p>If you require a more customized model, check out the <a href="quick_start.html">Quick Start</a> and try building your own using
-<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>.</p>
-<hr>
-</div>
-<div class="section level2">
-<h2 id="summary-1">Summary<a class="anchor" aria-label="anchor" href="#summary-1"></a>
 </h2>
 <p>By leveraging the wrapper functions in BayesRTMB, you gain the
 following benefits: - Perform sophisticated analyses using familiar

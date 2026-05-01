@@ -5,7 +5,7 @@ Logit-Normal log-probability density function
 ## Usage
 
 ``` r
-logit_normal_lpdf(x, mu, sd)
+logit_normal_lpdf(x, mu, sd, sum = TRUE)
 ```
 
 ## Arguments

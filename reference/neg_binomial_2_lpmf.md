@@ -6,7 +6,7 @@ parameterization)
 ## Usage
 
 ``` r
-neg_binomial_2_lpmf(x, mu, size)
+neg_binomial_2_lpmf(x, mu, size, sum = TRUE)
 ```
 
 ## Arguments

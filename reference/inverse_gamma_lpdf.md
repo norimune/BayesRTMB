@@ -5,7 +5,7 @@ Inverse-gamma log-probability density function
 ## Usage
 
 ``` r
-inverse_gamma_lpdf(x, shape, scale)
+inverse_gamma_lpdf(x, shape, scale, sum = TRUE)
 ```
 
 ## Arguments

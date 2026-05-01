@@ -5,7 +5,7 @@ Weibull log-probability density function
 ## Usage
 
 ``` r
-weibull_lpdf(x, shape, scale)
+weibull_lpdf(x, shape, scale, sum = TRUE)
 ```
 
 ## Arguments

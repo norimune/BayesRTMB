@@ -5,7 +5,7 @@ Exponential log-probability density function
 ## Usage
 
 ``` r
-exponential_lpdf(x, rate)
+exponential_lpdf(x, rate, sum = TRUE)
 ```
 
 ## Arguments

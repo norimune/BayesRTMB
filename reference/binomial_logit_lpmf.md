@@ -5,7 +5,7 @@ Binomial log-probability mass function with logit parameterization
 ## Usage
 
 ``` r
-binomial_logit_lpmf(x, size, eta)
+binomial_logit_lpmf(x, size, eta, sum = TRUE)
 ```
 
 ## Arguments

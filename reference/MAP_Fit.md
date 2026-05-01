@@ -88,6 +88,8 @@ estimation.
 
 - [`MAP_Fit$new()`](#method-map_fit-new)
 
+- [`MAP_Fit$ranef()`](#method-map_fit-ranef)
+
 - [`MAP_Fit$summary()`](#method-map_fit-summary)
 
 - [`MAP_Fit$print()`](#method-map_fit-print)
@@ -251,13 +253,27 @@ Create a new \`MAP_Fit\` object.
 
 ------------------------------------------------------------------------
 
+### Method `ranef()`
+
+Return random effect estimates as a named list.
+
+#### Usage
+
+    MAP_Fit$ranef()
+
+#### Returns
+
+A named list of random effect estimates.
+
+------------------------------------------------------------------------
+
 ### Method [`summary()`](https://rdrr.io/r/base/summary.html)
 
 Summarize MAP estimates.
 
 #### Usage
 
-    MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5)
+    MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE)
 
 #### Arguments
 
@@ -273,6 +289,11 @@ Summarize MAP estimates.
 - `digits`:
 
   Number of digits to print.
+
+- `ranef`:
+
+  Logical; whether to also display random effect estimates. Default is
+  FALSE.
 
 #### Returns
 

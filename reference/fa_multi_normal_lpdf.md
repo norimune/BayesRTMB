@@ -5,7 +5,7 @@ Woodbury matrix identity is used for efficient computation.
 ## Usage
 
 ``` r
-fa_multi_normal_lpdf(x, mu, Lambda, psi)
+fa_multi_normal_lpdf(x, mu, Lambda, psi, sum = TRUE)
 ```
 
 ## Arguments

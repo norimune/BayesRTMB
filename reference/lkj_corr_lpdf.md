@@ -5,7 +5,7 @@ LKJ correlation log-probability density function
 ## Usage
 
 ``` r
-lkj_corr_lpdf(Omega, eta = 1)
+lkj_corr_lpdf(Omega, eta = 1, sum = TRUE)
 ```
 
 ## Arguments

@@ -5,7 +5,7 @@ Categorical log-probability mass function
 ## Usage
 
 ``` r
-categorical_lpmf(x, prob)
+categorical_lpmf(x, prob, sum = TRUE)
 ```
 
 ## Arguments

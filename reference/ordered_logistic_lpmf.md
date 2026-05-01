@@ -5,7 +5,7 @@ Ordered logistic log-probability mass function
 ## Usage
 
 ``` r
-ordered_logistic_lpmf(x, eta, cutpoints)
+ordered_logistic_lpmf(x, eta, cutpoints, sum = TRUE)
 ```
 
 ## Arguments

@@ -5,7 +5,7 @@ Bernoulli log-probability mass function with logit parameterization
 ## Usage
 
 ``` r
-bernoulli_logit_lpmf(x, eta)
+bernoulli_logit_lpmf(x, eta, sum = TRUE)
 ```
 
 ## Arguments
