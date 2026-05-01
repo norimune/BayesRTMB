@@ -18,10 +18,14 @@
 #' @param transform List of transformed parameters maintaining their original dimensions.
 #' @param generate List of generated quantities maintaining their original dimensions.
 #' @param se_samples List of simulated samples for standard error estimation.
+#' @param par_unc Parameter vector on the unconstrained scale.
+#' @param se_method Method used for SE/CI estimation.
 #'
 #' @field model The `RTMB_Model` object used for estimation.
-#' @field par_vec Parameter vector on the unconstrained scale.
+#' @field par_vec Parameter vector on the unconstrained scale (constrained values unlisted).
 #' @field par Parameter list on the constrained scale.
+#' @field par_unc Parameter vector on the unconstrained scale (raw unconstrained values).
+#' @field se_method Method used for SE/CI estimation ("wald", "profile", or "sampling").
 #' @field objective RTMB objective function object.
 #' @field log_ml Log marginal likelihood or related model criterion.
 #' @field convergence Optimizer convergence code.
@@ -56,6 +60,8 @@ MAP_Fit <- R6::R6Class(
     transform      = NULL,
     generate       = NULL,
     se_samples     = NULL,
+    par_unc        = NULL,
+    se_method      = NULL,
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -85,23 +91,25 @@ MAP_Fit <- R6::R6Class(
 
     #' @description Create a new `MAP_Fit` object.
     #' @param model The `RTMB_Model` object used for estimation.
-    #' @param par_vec Parameter vector on the unconstrained scale.
+    #' @param par_vec Parameter vector on the unconstrained scale (constrained values unlisted).
     #' @param par Parameter list on the constrained scale.
-    #' @param objective RTMB objective function object.
-    #' @param log_ml Log marginal likelihood or related model criterion.
+    #' @param objective The objective function value at the optimum.
+    #' @param log_ml Log marginal likelihood.
     #' @param convergence Optimizer convergence code.
-    #' @param sd_rep Standard deviation report object.
-    #' @param df_fixed Summary table for fixed-effect parameters.
-    #' @param random_effects Random effect estimates.
-    #' @param df_transform Summary table for transformed parameter estimates.
-    #' @param df_generate Summary table for generated quantity estimates.
-    #' @param opt_history A vector of optimize objective history.
+    #' @param sd_rep The `sdreport` object from TMB.
+    #' @param df_fixed Data frame of fixed effects estimates and CIs.
+    #' @param random_effects Data frame of random effects estimates and CIs.
+    #' @param df_transform Data frame of transformed parameters.
+    #' @param df_generate Data frame of generated quantities.
+    #' @param opt_history Data frame of optimization history.
     #' @param transform List of transformed parameters maintaining their original dimensions.
     #' @param generate List of generated quantities maintaining their original dimensions.
     #' @param se_samples List of simulated samples for standard error estimation.
+    #' @param par_unc Parameter vector on the unconstrained scale (raw values).
+    #' @param se_method Method used for SE/CI estimation ("wald", "profile", or "sampling").
     initialize = function(model,par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
-                          transform = NULL, generate = NULL, se_samples = NULL) {
+                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, se_method = "wald") {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -117,6 +125,8 @@ MAP_Fit <- R6::R6Class(
       self$transform <- transform
       self$generate <- generate
       self$se_samples <- se_samples
+      self$par_unc <- par_unc
+      self$se_method <- se_method
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -206,7 +216,10 @@ MAP_Fit <- R6::R6Class(
         df_combined <- df_combined[c(priority_idx, other_idx), , drop = FALSE]
       }
 
-      cat("\nPoint Estimates and 95% Wald CI:\n")
+      cat(sprintf("\nPoint Estimates and 95%% %s CI:\n", 
+                  if(identical(self$se_method, "profile")) "Profile Likelihood"
+                  else if(identical(self$se_method, "sampling")) "Sampling-based"
+                  else "Wald"))
 
       num_cols <- sapply(df_combined, is.numeric)
       df_combined[num_cols] <- lapply(df_combined[num_cols], function(x) {

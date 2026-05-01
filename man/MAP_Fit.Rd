@@ -20,9 +20,13 @@ An R6 class storing optimization results from maximum a posteriori
 \describe{
 \item{\code{model}}{The `RTMB_Model` object used for estimation.}
 
-\item{\code{par_vec}}{Parameter vector on the unconstrained scale.}
+\item{\code{par_vec}}{Parameter vector on the unconstrained scale (constrained values unlisted).}
 
 \item{\code{par}}{Parameter list on the constrained scale.}
+
+\item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw unconstrained values).}
+
+\item{\code{se_method}}{Method used for SE/CI estimation ("wald", "profile", or "sampling").}
 
 \item{\code{objective}}{RTMB objective function object.}
 
@@ -153,7 +157,9 @@ Create a new `MAP_Fit` object.
   opt_history = NULL,
   transform = NULL,
   generate = NULL,
-  se_samples = NULL
+  se_samples = NULL,
+  par_unc = NULL,
+  se_method = "wald"
 )}\if{html}{\out{</div>}}
 }
 
@@ -162,33 +168,37 @@ Create a new `MAP_Fit` object.
 \describe{
 \item{\code{model}}{The `RTMB_Model` object used for estimation.}
 
-\item{\code{par_vec}}{Parameter vector on the unconstrained scale.}
+\item{\code{par_vec}}{Parameter vector on the unconstrained scale (constrained values unlisted).}
 
 \item{\code{par}}{Parameter list on the constrained scale.}
 
-\item{\code{objective}}{RTMB objective function object.}
+\item{\code{objective}}{The objective function value at the optimum.}
 
-\item{\code{log_ml}}{Log marginal likelihood or related model criterion.}
+\item{\code{log_ml}}{Log marginal likelihood.}
 
 \item{\code{convergence}}{Optimizer convergence code.}
 
-\item{\code{sd_rep}}{Standard deviation report object.}
+\item{\code{sd_rep}}{The `sdreport` object from TMB.}
 
-\item{\code{df_fixed}}{Summary table for fixed-effect parameters.}
+\item{\code{df_fixed}}{Data frame of fixed effects estimates and CIs.}
 
-\item{\code{random_effects}}{Random effect estimates.}
+\item{\code{random_effects}}{Data frame of random effects estimates and CIs.}
 
-\item{\code{df_transform}}{Summary table for transformed parameter estimates.}
+\item{\code{df_transform}}{Data frame of transformed parameters.}
 
-\item{\code{df_generate}}{Summary table for generated quantity estimates.}
+\item{\code{df_generate}}{Data frame of generated quantities.}
 
-\item{\code{opt_history}}{A vector of optimize objective history.}
+\item{\code{opt_history}}{Data frame of optimization history.}
 
 \item{\code{transform}}{List of transformed parameters maintaining their original dimensions.}
 
 \item{\code{generate}}{List of generated quantities maintaining their original dimensions.}
 
 \item{\code{se_samples}}{List of simulated samples for standard error estimation.}
+
+\item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw values).}
+
+\item{\code{se_method}}{Method used for SE/CI estimation ("wald", "profile", or "sampling").}
 }
 \if{html}{\out{</div>}}
 }
