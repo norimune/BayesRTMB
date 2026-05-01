@@ -5,7 +5,7 @@ Wishart log-probability density function
 ## Usage
 
 ``` r
-wishart_lpdf(X, n, V, sum = TRUE)
+wishart_lpdf(X, n, V)
 ```
 
 ## Arguments

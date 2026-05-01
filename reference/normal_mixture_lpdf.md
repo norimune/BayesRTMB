@@ -5,7 +5,7 @@ Normal Mixture log-probability density function
 ## Usage
 
 ``` r
-normal_mixture_lpdf(x, pi_w, mean, sd)
+normal_mixture_lpdf(x, pi_w, mean, sd, sum = TRUE)
 ```
 
 ## Arguments

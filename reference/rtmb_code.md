@@ -115,8 +115,6 @@ map_res <- mod$optimize()
 #> Starting optimization...
 #> 
 #> Optimization converged. Final objective: 145.34
-#> Auto-detected n_obs: 103
-#> Using residual DF: 100 (n_obs=103, n_params=3)
 map_res$summary(pars = c("alpha", "beta", "sigma"))
 #> 
 #> Call:
@@ -127,9 +125,9 @@ map_res$summary(pars = c("alpha", "beta", "sigma"))
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> alpha      2.02792     0.09563    1.83818    2.21765 
-#> beta       1.44745     0.10529    1.23855    1.65635 
-#> sigma      0.95638     0.06715    0.83203    1.09932 
+#> alpha      2.02788     0.09564    1.84043    2.21532 
+#> beta       1.44737     0.10530    1.24099    1.65374 
+#> sigma      0.95640     0.06715    0.83344    1.09749 
 #> 
 
 # The generated quantity 'y_pred' can also be summarized
@@ -143,11 +141,11 @@ map_res$summary("y_pred", max_rows = 5)
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> y_pred[1]   1.08580          NA         NA         NA 
-#> y_pred[2]   1.56389          NA         NA         NA 
-#> y_pred[3]   4.15321          NA         NA         NA 
-#> y_pred[4]   1.99912          NA         NA         NA 
-#> y_pred[5]   2.08420          NA         NA         NA 
+#> y_pred[1]   1.08581          NA         NA         NA 
+#> y_pred[2]   1.56387          NA         NA         NA 
+#> y_pred[3]   4.15305          NA         NA         NA 
+#> y_pred[4]   1.99908          NA         NA         NA 
+#> y_pred[5]   2.08415          NA         NA         NA 
 #> 
 # }
 ```
