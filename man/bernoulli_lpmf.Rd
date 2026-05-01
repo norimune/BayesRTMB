@@ -4,7 +4,7 @@
 \alias{bernoulli_lpmf}
 \title{Bernoulli log-probability mass function}
 \usage{
-bernoulli_lpmf(x, prob)
+bernoulli_lpmf(x, prob, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of binary outcomes (0 or 1).}

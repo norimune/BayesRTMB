@@ -4,7 +4,7 @@
 \alias{laplace_lpdf}
 \title{Laplace log-probability density function}
 \usage{
-laplace_lpdf(x, location = 0, scale = 1)
+laplace_lpdf(x, location = 0, scale = 1, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

@@ -4,7 +4,7 @@
 \alias{normal_mixture_lpdf}
 \title{Normal Mixture log-probability density function}
 \usage{
-normal_mixture_lpdf(x, pi_w, mean, sd)
+normal_mixture_lpdf(x, pi_w, mean, sd, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles (observations).}

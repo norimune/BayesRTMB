@@ -4,7 +4,7 @@
 \alias{gamma_lpdf}
 \title{Gamma log-probability density function}
 \usage{
-gamma_lpdf(x, shape, rate)
+gamma_lpdf(x, shape, rate, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

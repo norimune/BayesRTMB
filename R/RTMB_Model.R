@@ -1761,6 +1761,25 @@ RTMB_Model <- R6::R6Class(
       return(invisible(self))
     },
 
+    #' @description Print the internal log-probability function.
+    #' @return The object itself, invisibly.
+    print_log_prob = function() {
+      if (is.null(self$log_prob)) {
+        cat("log_prob is not available.\n")
+        return(invisible(self))
+      }
+
+      # Extract the internal function from the error-handling wrapper if it exists
+      fn <- self$log_prob
+      if (exists("comp_model", envir = environment(fn))) {
+        fn <- get("comp_model", envir = environment(fn))
+      }
+
+      cat("=== RTMB Model: log_prob (Internal Function) ===\n")
+      print(fn)
+      return(invisible(self))
+    },
+
     #' @description Create a null model by fixing specified parameters to a given value.
     #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]") to automatically extract the prior from the model code.
     #' @param value Numeric value to fix parameters to. Default is 0.

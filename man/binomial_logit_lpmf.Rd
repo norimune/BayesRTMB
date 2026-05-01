@@ -4,7 +4,7 @@
 \alias{binomial_logit_lpmf}
 \title{Binomial log-probability mass function with logit parameterization}
 \usage{
-binomial_logit_lpmf(x, size, eta)
+binomial_logit_lpmf(x, size, eta, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles (number of successes).}

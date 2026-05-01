@@ -4,7 +4,7 @@
 \alias{multi_normal_CF_lpdf}
 \title{Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix}
 \usage{
-multi_normal_CF_lpdf(x, mean, sd, CF_Omega)
+multi_normal_CF_lpdf(x, mean, sd, CF_Omega, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector or matrix of quantiles.}

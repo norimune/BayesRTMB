@@ -4,7 +4,7 @@
 \alias{normal_lpdf}
 \title{Normal log-probability density function}
 \usage{
-normal_lpdf(x, mean, sd)
+normal_lpdf(x, mean, sd, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}
@@ -12,9 +12,11 @@ normal_lpdf(x, mean, sd)
 \item{mean}{Vector of means.}
 
 \item{sd}{Vector of standard deviations.}
+
+\item{sum}{Logical; if TRUE (default), returns the sum of log-densities. If FALSE, returns element-wise log-densities.}
 }
 \value{
-The sum of the log-density.
+The sum of the log-density (scalar) or a vector of log-densities.
 }
 \description{
 Normal log-probability density function

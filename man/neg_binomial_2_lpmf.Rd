@@ -4,7 +4,7 @@
 \alias{neg_binomial_2_lpmf}
 \title{Negative binomial log-probability mass function (alternative parameterization)}
 \usage{
-neg_binomial_2_lpmf(x, mu, size)
+neg_binomial_2_lpmf(x, mu, size, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}
