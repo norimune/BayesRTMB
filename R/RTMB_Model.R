@@ -361,8 +361,9 @@ RTMB_Model <- R6::R6Class(
     #' @param method Character; The method for "optim" (e.g. "BFGS", "L-BFGS-B"). Default is "BFGS".
     #' @param map Optional list specifying parameters to fix. Default is NULL.
     #' @param se Logical; whether to estimate standard errors and confidence intervals. Default is TRUE.
-    #' @param se_method Character; The method for CI/SE estimation: "wald" (Wald CI), "profile" (Profile Likelihood), or "sampling" (Simulation-based). Default is "wald".
-    #' @param se_sampling Logical; Alias for se_method = "sampling" (for backward compatibility).
+    #' @param ci_method Character; The method for CI estimation: "wald" (Wald CI), "profile" (Profile Likelihood), or "sampling" (Simulation-based). Default is "wald".
+    #' @param se_method Alias for `ci_method` (for backward compatibility).
+    #' @param se_sampling Logical; Alias for `ci_method = "sampling"` (for backward compatibility).
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
     #' @param seed Integer; random seed for sampling.
     #' @param auto_df Logical; whether to automatically estimate degrees of freedom. Default is FALSE.
@@ -372,13 +373,14 @@ RTMB_Model <- R6::R6Class(
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL, 
-                        se = TRUE, se_method = c("wald", "profile", "sampling"),
-                        se_sampling = FALSE, num_samples = 1000, seed = 123,
+                        se = TRUE, ci_method = c("wald", "profile", "sampling"),
+                        se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
                         auto_df = FALSE, df_t = Inf, n_obs = NULL, df_vars = NULL) {
 
-      se_method <- match.arg(se_method)
-      if (isTRUE(se_sampling) && se_method == "profile") se_method <- "sampling" # Backward compatibility
-      if (se_method == "sampling") se_sampling <- TRUE
+      if (!is.null(se_method)) ci_method <- se_method
+      ci_method <- match.arg(ci_method)
+      if (isTRUE(se_sampling) && ci_method == "wald") ci_method <- "sampling" # Backward compatibility
+      if (ci_method == "sampling") se_sampling <- TRUE
       cat("Starting optimization...\n")
 
       if (auto_df && is.null(n_obs)) {
@@ -556,7 +558,7 @@ RTMB_Model <- R6::R6Class(
       
       # --- Profile Likelihood CI Calculation ---
       profile_cis_full <- matrix(NA, nrow = L_u_total, ncol = 2)
-      if (se && se_method == "profile") {
+      if (se && ci_method == "profile") {
         cat("Estimating confidence intervals via Profile Likelihood...\n")
         num_pars <- length(opt$par)
         for (i in 1:num_pars) {
@@ -1247,7 +1249,7 @@ RTMB_Model <- R6::R6Class(
         generate       = gq_list,
         se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
         par_unc        = unc_est_vec,
-        se_method      = se_method
+        ci_method      = ci_method
       )
 
       return(res_obj)

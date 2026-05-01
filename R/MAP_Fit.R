@@ -61,7 +61,7 @@ MAP_Fit <- R6::R6Class(
     generate       = NULL,
     se_samples     = NULL,
     par_unc        = NULL,
-    se_method      = NULL,
+    ci_method      = NULL,
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -106,10 +106,10 @@ MAP_Fit <- R6::R6Class(
     #' @param generate List of generated quantities maintaining their original dimensions.
     #' @param se_samples List of simulated samples for standard error estimation.
     #' @param par_unc Parameter vector on the unconstrained scale (raw values).
-    #' @param se_method Method used for SE/CI estimation ("wald", "profile", or "sampling").
+    #' @param ci_method Method used for CI estimation ("wald", "profile", or "sampling").
     initialize = function(model,par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
-                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, se_method = "wald") {
+                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, ci_method = "wald") {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -126,7 +126,7 @@ MAP_Fit <- R6::R6Class(
       self$generate <- generate
       self$se_samples <- se_samples
       self$par_unc <- par_unc
-      self$se_method <- se_method
+      self$ci_method <- ci_method
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -216,10 +216,12 @@ MAP_Fit <- R6::R6Class(
         df_combined <- df_combined[c(priority_idx, other_idx), , drop = FALSE]
       }
 
-      cat(sprintf("\nPoint Estimates and 95%% %s CI:\n", 
-                  if(identical(self$se_method, "profile")) "Profile Likelihood"
-                  else if(identical(self$se_method, "sampling")) "Sampling-based"
-                  else "Wald"))
+      ci_label <- "95% Wald CI"
+      if (!is.null(self$ci_method)) {
+        if (self$ci_method == "profile") ci_label <- "95% Profile Likelihood CI"
+        if (self$ci_method == "sampling") ci_label <- "95% Sampling-based CI"
+      }
+      cat(sprintf("\nPoint Estimates and %s:\n", ci_label))
 
       num_cols <- sapply(df_combined, is.numeric)
       df_combined[num_cols] <- lapply(df_combined[num_cols], function(x) {
