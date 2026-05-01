@@ -353,6 +353,10 @@ RTMB_Model <- R6::R6Class(
     #' @param se_sampling Logical; whether to use sampling from the multivariate normal distribution of unconstrained parameters to estimate standard errors and 95% CIs. Default is FALSE.
     #' @param num_samples Integer; number of samples to draw when se_sampling is TRUE. Default is 1000.
     #' @param seed Integer; random seed for se_sampling.
+    #' @param se Logical; whether to estimate standard errors. Default is TRUE.
+    #' @param auto_df Logical; whether to automatically estimate degrees of freedom. Default is FALSE.
+    #' @param df_t Numeric; degrees of freedom for the t-distribution. Default is Inf.
+    #' @param n_obs Integer; number of observations. Default is NULL.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL,
@@ -1129,7 +1133,7 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Random seed.
     #' @param delta Target acceptance rate for HMC/NUTS. Default is 0.8.
     #' @param max_treedepth Maximum tree depth for HMC/NUTS. Default is 10.
-    #' @param parallel Logical; whether to run chains in parallel. Default is TRUE.
+    #' @param parallel Logical; whether to run chains in parallel. Default is FALSE.
     #' @param laplace Logical; whether to use Laplace approximation. Default is FALSE.
     #' @param init Optional initial values for parameters.
     #' @param init_jitter sd of randomize initial values for parameters.
@@ -1420,14 +1424,14 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).
-    #' @param iter Integer; fixed number of iterations for the optimization. Default is 10000.
-    #' @param tol_rel_obj Numeric; relative tolerance for the ELBO change to determine convergence. Default is 0.001.
+    #' @param iter Integer; fixed number of iterations for the optimization. Default is 3000.
+    #' @param tol_rel_obj Numeric; relative tolerance for the ELBO change to determine convergence. Default is 0.005.
     #' @param window_size Integer; window size for median smoothing in the convergence check. Default is 100.
     #' @param num_samples Integer; number of posterior samples to generate from the fitted variational distribution. Default is 1000.
     #' @param num_estimate Integer; number of times to run the VB estimation (treated as chains). Default is 4.
     #' @param alpha Numeric; learning rate for the Adam optimizer. Default is 0.01.
-    #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is TRUE.
-    #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 100.
+    #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is FALSE.
+    #' @param print_freq Integer; iterations interval for progress output. Set to 0 to disable. Default is 1000.
     #' @param method Character; method of Variational Inference. Default is "meanfield".
     #' @param parallel Logical; whether to run estimations in parallel. Default is FALSE.
     #' @param seed Integer; random seed for reproducibility.
