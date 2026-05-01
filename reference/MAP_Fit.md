@@ -86,6 +86,14 @@ estimation.
 
   List of simulated samples for standard error estimation.
 
+- `laplace`:
+
+  Logical; whether Laplace approximation was used.
+
+- `map`:
+
+  List; the parameter mapping used.
+
 ## Methods
 
 ### Public methods
@@ -105,6 +113,10 @@ estimation.
 - [`MAP_Fit$print()`](#method-map_fit-print)
 
 - [`MAP_Fit$generated_quantities()`](#method-map_fit-generated_quantities)
+
+- [`MAP_Fit$profile()`](#method-map_fit-profile)
+
+- [`MAP_Fit$plot_density()`](#method-map_fit-plot_density)
 
 - [`MAP_Fit$clone()`](#method-map_fit-clone)
 
@@ -198,7 +210,9 @@ Create a new \`MAP_Fit\` object.
       generate = NULL,
       se_samples = NULL,
       par_unc = NULL,
-      ci_method = "wald"
+      ci_method = "wald",
+      laplace = TRUE,
+      map = NULL
     )
 
 #### Arguments
@@ -270,7 +284,15 @@ Create a new \`MAP_Fit\` object.
 
 - `ci_method`:
 
-  Method used for CI estimation ("wald", "profile", or "sampling").
+  Method used for CI estimation ("wald" or "sampling").
+
+- `laplace`:
+
+  Logical; whether Laplace approximation was used.
+
+- `map`:
+
+  List; the parameter mapping used.
 
 ------------------------------------------------------------------------
 
@@ -373,6 +395,87 @@ Compute generated quantities from the MAP estimate.
 
 The \`MAP_Fit\` object itself (invisibly). Results are added or updated
 in the \`generate\` list and \`df_generate\`.
+
+------------------------------------------------------------------------
+
+### Method [`profile()`](https://rdrr.io/r/stats/profile.html)
+
+Calculate Profile Likelihood confidence intervals for specific
+parameters.
+
+#### Usage
+
+    MAP_Fit$profile(
+      pars = NULL,
+      level = 0.95,
+      trace = FALSE,
+      digits = 5,
+      plot = FALSE,
+      quiet = FALSE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Character vector of parameter names to profile. If NULL, all fixed
+  parameters are profiled.
+
+- `level`:
+
+  Confidence level (default is 0.95).
+
+- `trace`:
+
+  Logical; whether to print profiling progress. Default is FALSE.
+
+- `digits`:
+
+  Integer; number of decimal places to print. Default is 5.
+
+- `plot`:
+
+  Logical; whether to plot the profile likelihood curves. Default is
+  FALSE.
+
+- `quiet`:
+
+  Logical; whether to suppress text output. Default is FALSE.
+
+- `...`:
+
+  Additional arguments passed to TMB::tmbprofile (e.g., ytol).
+
+#### Returns
+
+A data frame containing the profile-based confidence intervals, with the
+raw profile objects stored in the "profiles" attribute.
+
+------------------------------------------------------------------------
+
+### Method `plot_density()`
+
+Plot the posterior density for specific parameters based on Profile
+Likelihood.
+
+#### Usage
+
+    MAP_Fit$plot_density(pars = NULL, level = 0.999, ...)
+
+#### Arguments
+
+- `pars`:
+
+  Character vector of parameter names to plot.
+
+- `level`:
+
+  Confidence level for the range to plot (default is 0.999).
+
+- `...`:
+
+  Additional arguments passed to profile() (e.g. ytol).
 
 ------------------------------------------------------------------------
 
