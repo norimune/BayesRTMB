@@ -4,7 +4,7 @@
 \alias{dirichlet_lpdf}
 \title{Dirichlet log-probability density function}
 \usage{
-dirichlet_lpdf(x, alpha)
+dirichlet_lpdf(x, alpha, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector or matrix of simplexes.}

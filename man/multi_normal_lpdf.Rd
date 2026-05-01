@@ -4,7 +4,7 @@
 \alias{multi_normal_lpdf}
 \title{Multivariate normal log-probability density function}
 \usage{
-multi_normal_lpdf(x, mean, Sigma)
+multi_normal_lpdf(x, mean, Sigma, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector or matrix of quantiles.}

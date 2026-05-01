@@ -4,7 +4,7 @@
 \alias{cauchy_lpdf}
 \title{Cauchy log-probability density function}
 \usage{
-cauchy_lpdf(x, location, scale)
+cauchy_lpdf(x, location, scale, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

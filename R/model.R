@@ -8,6 +8,20 @@
 #' @importFrom utils capture.output getFromNamespace modifyList read.csv
 NULL
 
+# Internal environment for tracking observations during log_prob execution
+.tracking_env <- new.env(parent = emptyenv())
+.tracking_env$active <- FALSE
+.tracking_env$log_lik <- list()
+
+#' Internal function to register observations during likelihood calculation
+#' @keywords internal
+register_obs <- function(ll) {
+  if (isTRUE(.tracking_env$active)) {
+    .tracking_env$log_lik[[length(.tracking_env$log_lik) + 1]] <- as.numeric(ll)
+  }
+  return(sum(ll))
+}
+
 
 #' Catch and Translate RTMB Errors into User-Friendly Messages
 #'
@@ -649,13 +663,19 @@ model_code <- function(expr, env = parent.frame()) {
           func_call <- as.name(actual_name)
         }
 
+        # Wrap the likelihood call in register_obs with sum = FALSE
+        # Result: lp <- lp + BayesRTMB:::register_obs(dist_fn(target, args, sum = FALSE))
+        dist_args_with_sum <- c(dist_args, list(sum = FALSE))
+        ll_call <- as.call(c(func_call, target, dist_args_with_sum))
+        reg_call <- call(":::", as.name("BayesRTMB"), as.name("register_obs"))
+        
         new_call <- as.call(c(
           as.name("<-"),
           as.name("lp"),
           as.call(c(
             as.name("+"),
             as.name("lp"),
-            as.call(c(func_call, target, dist_args))
+            as.call(c(reg_call, ll_call))
           ))
         ))
         return(new_call)

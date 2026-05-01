@@ -120,18 +120,34 @@ MAP_Fit <- R6::R6Class(
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
-      if (!is.null(self$random_effects)) self$random_effects <- lapply(self$random_effects, Re)
+      if (!is.null(self$random_effects) && !is.data.frame(self$random_effects)) {
+        self$random_effects <- lapply(self$random_effects, Re)
+      }
       if (!is.null(self$transform)) self$transform <- lapply(self$transform, Re)
       if (!is.null(self$generate)) self$generate <- lapply(self$generate, Re)
       class(self) <- c(class(self), "RTMB_Fit_Base")
+    },
+
+    #' @description Return random effect estimates as a named list.
+    #' @return A named list of random effect estimates.
+    ranef = function() {
+      if (is.null(self$random_effects)) {
+        message("No random effects found in this model.")
+        return(NULL)
+      }
+      
+      # Extract only the parameters that are marked as random
+      random_names <- names(self$model$par_list)[sapply(self$model$par_list, function(x) isTRUE(x$random))]
+      return(self$par[random_names])
     },
 
     #' @description Summarize MAP estimates.
     #' @param pars Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.
     #' @param max_rows Maximum number of rows to print in summaries. Default is 10.
     #' @param digits Number of digits to print.
+    #' @param ranef Logical; whether to also display random effect estimates. Default is FALSE.
     #' @return A summary object, typically a data frame.
-    summary = function(pars = NULL, max_rows = 10, digits = 5) {
+    summary = function(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE) {
       cat("\nCall:\nMAP Estimation via RTMB\n")
       cat(sprintf("\nNegative Log-Posterior: %.2f\n", self$objective))
 
@@ -141,12 +157,15 @@ MAP_Fit <- R6::R6Class(
         cat("Approx. Log Marginal Likelihood (Laplace): NA\n")
       }
 
-      if (!is.null(self$random_effects)) {
-        cat("Note: Random effects are stored in $random_effects\n")
+      if (!is.null(self$random_effects) && !isTRUE(ranef)) {
+        cat("Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)\n")
       }
 
       all_dfs <- list()
       if (!is.null(self$df_fixed) && nrow(self$df_fixed) > 0) all_dfs$fixed <- self$df_fixed
+      if (isTRUE(ranef) && is.data.frame(self$random_effects) && nrow(self$random_effects) > 0) {
+        all_dfs$random <- self$random_effects
+      }
       if (!is.null(self$df_transform) && nrow(self$df_transform) > 0) all_dfs$transform <- self$df_transform
       if (!is.null(self$df_generate) && nrow(self$df_generate) > 0) all_dfs$generate <- self$df_generate
 

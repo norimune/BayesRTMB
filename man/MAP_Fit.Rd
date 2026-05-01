@@ -57,6 +57,7 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-EAP}{\code{MAP_Fit$EAP()}}
 \item \href{#method-map_fit-MAP}{\code{MAP_Fit$MAP()}}
 \item \href{#method-map_fit-new}{\code{MAP_Fit$new()}}
+\item \href{#method-map_fit-ranef}{\code{MAP_Fit$ranef()}}
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
@@ -193,12 +194,25 @@ Create a new `MAP_Fit` object.
 }
 }
 \if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-ranef"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-ranef}{}}}
+\subsection{Method \code{ranef()}}{
+Return random effect estimates as a named list.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$ranef()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+A named list of random effect estimates.
+}
+}
+\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-map_fit-summary"></a>}}
 \if{latex}{\out{\hypertarget{method-map_fit-summary}{}}}
 \subsection{Method \code{summary()}}{
 Summarize MAP estimates.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -209,6 +223,8 @@ Summarize MAP estimates.
 \item{\code{max_rows}}{Maximum number of rows to print in summaries. Default is 10.}
 
 \item{\code{digits}}{Number of digits to print.}
+
+\item{\code{ranef}}{Logical; whether to also display random effect estimates. Default is FALSE.}
 }
 \if{html}{\out{</div>}}
 }

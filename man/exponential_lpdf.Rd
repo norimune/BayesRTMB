@@ -4,7 +4,7 @@
 \alias{exponential_lpdf}
 \title{Exponential log-probability density function}
 \usage{
-exponential_lpdf(x, rate)
+exponential_lpdf(x, rate, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

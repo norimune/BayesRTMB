@@ -4,7 +4,7 @@
 \alias{categorical_lpmf}
 \title{Categorical log-probability mass function}
 \usage{
-categorical_lpmf(x, prob)
+categorical_lpmf(x, prob, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of categorical outcomes.}

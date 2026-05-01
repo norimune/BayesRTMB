@@ -4,7 +4,7 @@
 \alias{beta_lpdf}
 \title{Beta log-probability density function}
 \usage{
-beta_lpdf(x, a, b)
+beta_lpdf(x, a, b, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

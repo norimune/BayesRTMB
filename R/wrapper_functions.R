@@ -97,7 +97,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     all_vars_form <- subbars(formula)
     fixed_form <- nobars(formula)
     bars <- findbars(formula)
-    
+
     # Expand bars with * or : using terms() expansion
     expanded_bars <- list()
     if (length(bars) > 0) {
@@ -131,20 +131,20 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     for (b in 1:num_bars) {
       bar <- bars[[b]]
       re_form <- as.formula(paste("~", deparse(bar[[2]])))
-      
+
       Z_mf <- model.matrix(re_form, mf)
-      
+
       # Handle grouping factor (potentially with interactions)
       group_var_label <- deparse(bar[[3]])
       vars <- trimws(unlist(strsplit(group_var_label, ":")))
-      
+
       if (length(vars) > 1) {
         flist <- interaction(mf[vars], sep = ":", drop = TRUE)
       } else {
         flist <- as.factor(mf[[vars]])
       }
       group_idx <- as.integer(flist)
-      
+
       if (length(group_idx) == 0) {
         stop("Grouping factor '", group_var_label, "' resulted in an empty vector.")
       }
@@ -616,16 +616,21 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
-rtmb_lmer <- function(formula, data, prior = list(), init = NULL,
-                      regularization = "none",
-                      weak_info_prior = list(),
-                      use_weak_info = TRUE,
-                      null = NULL) {
+rtmb_lmer <- function(formula, data, laplace = TRUE,
+                      penalty = c("none", "rhs", "ssp"),
+                      y_range = NULL,
+                      use_weak_info = FALSE,
+                      prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, lkj_eta = 1.0),
+                      weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
+                      init = NULL, null = NULL) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
-             prior = prior, init = init,
-             regularization = regularization,
-             weak_info_prior = weak_info_prior,
+             laplace = laplace,
+             penalty = penalty,
+             y_range = y_range,
              use_weak_info = use_weak_info,
+             prior = prior,
+             weak_info_prior = weak_info_prior,
+             init = init,
              null = null)
 }
 
@@ -650,13 +655,12 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                      prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0),
                      weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                      init = NULL, null = NULL) {
-  regularization <- match.arg(penalty)
   rtmb_glmer(
     formula = formula,
     data = data,
     family = family,
     laplace = FALSE,
-    penalty = regularization,
+    penalty = penalty,
     y_range = y_range,
     use_weak_info = use_weak_info,
     prior = prior,
@@ -683,18 +687,17 @@ rtmb_lm <- function(formula, data,
                     penalty = c("none", "rhs", "ssp"),
                     y_range = NULL,
                     use_weak_info = FALSE,
-                    prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0),
+                    prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1),
                     weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                     init = NULL, null = NULL) {
 
-  regularization <- match.arg(penalty)
   rtmb_glm(
     formula = formula,
     data = data,
     family = "gaussian",
+    penalty = penalty,
     y_range = y_range,
     use_weak_info = use_weak_info,
-    penalty = regularization,
     prior = prior,
     weak_info_prior = weak_info_prior,
     init = init,
@@ -1385,11 +1388,11 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     }
     response <- mf[[1]]
     group <- as.factor(mf[[2]])
-    
+
     if (length(levels(group)) != 2) {
       stop("The grouping variable must have exactly 2 levels.")
     }
-    
+
     Y1 <- as.numeric(na.omit(response[group == levels(group)[1]]))
     Y2 <- as.numeric(na.omit(response[group == levels(group)[2]]))
   } else {

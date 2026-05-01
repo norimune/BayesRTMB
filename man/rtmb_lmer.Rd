@@ -7,11 +7,15 @@
 rtmb_lmer(
   formula,
   data,
-  prior = list(),
+  laplace = TRUE,
+  penalty = c("none", "rhs", "ssp"),
+  y_range = NULL,
+  use_weak_info = FALSE,
+  prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1,
+    lkj_eta = 1),
+  weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2,
+    slab_df = 4, ssp_ratio = 0.25),
   init = NULL,
-  regularization = "none",
-  weak_info_prior = list(),
-  use_weak_info = TRUE,
   null = NULL
 )
 }
@@ -20,17 +24,17 @@ rtmb_lmer(
 
 \item{data}{Data frame}
 
+\item{use_weak_info}{Whether to use weak informative priors}
+
 \item{prior}{Prior list}
-
-\item{init}{Initial values}
-
-\item{regularization}{Regularization method}
 
 \item{weak_info_prior}{Weak informative prior parameters}
 
-\item{use_weak_info}{Whether to use weak informative priors}
+\item{init}{Initial values}
 
 \item{null}{Null model parameters}
+
+\item{regularization}{Regularization method}
 }
 \value{
 RTMB_Model object

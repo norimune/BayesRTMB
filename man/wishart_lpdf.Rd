@@ -4,7 +4,7 @@
 \alias{wishart_lpdf}
 \title{Wishart log-probability density function}
 \usage{
-wishart_lpdf(X, n, V)
+wishart_lpdf(X, n, V, sum = TRUE)
 }
 \arguments{
 \item{X}{Symmetric positive-definite matrix (scatter matrix).}

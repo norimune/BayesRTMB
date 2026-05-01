@@ -4,7 +4,7 @@
 \alias{normal_lpdf}
 \title{Normal log-probability density function}
 \usage{
-normal_lpdf(x, mean, sd)
+normal_lpdf(x, mean, sd, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}

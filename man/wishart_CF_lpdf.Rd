@@ -4,7 +4,7 @@
 \alias{wishart_CF_lpdf}
 \title{Wishart log-probability density function parameterized by Cholesky factor of correlation matrix}
 \usage{
-wishart_CF_lpdf(X, n, sd, CF_Omega)
+wishart_CF_lpdf(X, n, sd, CF_Omega, sum = TRUE)
 }
 \arguments{
 \item{X}{Symmetric positive-definite matrix (scatter matrix).}

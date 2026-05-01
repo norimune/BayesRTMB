@@ -4,7 +4,7 @@
 \alias{weibull_lpdf}
 \title{Weibull log-probability density function}
 \usage{
-weibull_lpdf(x, shape, scale)
+weibull_lpdf(x, shape, scale, sum = TRUE)
 }
 \arguments{
 \item{x}{Vector of quantiles.}
