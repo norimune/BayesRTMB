@@ -561,7 +561,7 @@ RTMB_Model <- R6::R6Class(
         num_pars <- length(opt$par)
         for (i in 1:num_pars) {
           p_name <- names(opt$par)[i]
-          cat(sprintf("  Profiling parameter %d/%d (%s)...\r", i, num_pars, p_name))
+          cat(sprintf("  Profiling parameter %d/%d (%s)...       \r", i, num_pars, p_name))
           prof <- tryCatch(suppressWarnings(TMB::tmbprofile(ad_obj, i, trace = FALSE)), error = function(e) NULL)
           if (!is.null(prof)) {
              ci <- tryCatch(suppressWarnings(confint(prof, level = 0.95)), error = function(e) NULL)
