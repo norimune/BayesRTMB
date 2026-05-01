@@ -1780,6 +1780,44 @@ RTMB_Model <- R6::R6Class(
       return(invisible(self))
     },
 
+    #' @description Print the internal transformation function.
+    #' @return The object itself, invisibly.
+    print_transform = function() {
+      if (is.null(self$transform)) {
+        cat("transform is not available.\n")
+        return(invisible(self))
+      }
+
+      # Extract the internal function from the error-handling wrapper if it exists
+      fn <- self$transform
+      if (exists("comp_transform", envir = environment(fn))) {
+        fn <- get("comp_transform", envir = environment(fn))
+      }
+
+      cat("=== RTMB Model: transform (Internal Function) ===\n")
+      print(fn)
+      return(invisible(self))
+    },
+
+    #' @description Print the internal generation function.
+    #' @return The object itself, invisibly.
+    print_generate = function() {
+      if (is.null(self$generate)) {
+        cat("generate is not available.\n")
+        return(invisible(self))
+      }
+
+      # Extract the internal function from the error-handling wrapper if it exists
+      fn <- self$generate
+      if (exists("comp_generate", envir = environment(fn))) {
+        fn <- get("comp_generate", envir = environment(fn))
+      }
+
+      cat("=== RTMB Model: generate (Internal Function) ===\n")
+      print(fn)
+      return(invisible(self))
+    },
+
     #' @description Create a null model by fixing specified parameters to a given value.
     #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]") to automatically extract the prior from the model code.
     #' @param value Numeric value to fix parameters to. Default is 0.
