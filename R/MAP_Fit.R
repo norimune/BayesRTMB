@@ -3,29 +3,11 @@
 #' An R6 class storing optimization results from maximum a posteriori
 #' (MAP) estimation.
 #
-#' @param model The `RTMB_Model` object used for estimation.
-#' @param par_vec Parameter vector on the unconstrained scale.
-#' @param par Parameter list on the constrained scale.
-#' @param objective RTMB objective function object.
-#' @param log_ml Log marginal likelihood or related model criterion, if available.
-#' @param convergence Optimizer convergence code.
-#' @param sd_rep Standard deviation report object.
-#' @param df_fixed Summary table for fixed-effect parameters.
-#' @param random_effects Random effect estimates, if available.
-#' @param df_transform Summary table for transformed parameter estimates, if available.
-#' @param df_generate Summary table for generated quantity estimates, if available.
-#' @param opt_history A vector of optimize objective history.
-#' @param transform List of transformed parameters maintaining their original dimensions.
-#' @param generate List of generated quantities maintaining their original dimensions.
-#' @param se_samples List of simulated samples for standard error estimation.
-#' @param par_unc Parameter vector on the unconstrained scale.
-#' @param se_method Method used for SE/CI estimation.
-#'
 #' @field model The `RTMB_Model` object used for estimation.
 #' @field par_vec Parameter vector on the unconstrained scale (constrained values unlisted).
 #' @field par Parameter list on the constrained scale.
 #' @field par_unc Parameter vector on the unconstrained scale (raw unconstrained values).
-#' @field se_method Method used for SE/CI estimation ("wald", "profile", or "sampling").
+#' @field ci_method Method used for CI estimation ("wald", "profile", or "sampling").
 #' @field objective RTMB objective function object.
 #' @field log_ml Log marginal likelihood or related model criterion.
 #' @field convergence Optimizer convergence code.

@@ -26,7 +26,7 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw unconstrained values).}
 
-\item{\code{se_method}}{Method used for SE/CI estimation ("wald", "profile", or "sampling").}
+\item{\code{ci_method}}{Method used for CI estimation ("wald", "profile", or "sampling").}
 
 \item{\code{objective}}{RTMB objective function object.}
 
@@ -159,7 +159,7 @@ Create a new `MAP_Fit` object.
   generate = NULL,
   se_samples = NULL,
   par_unc = NULL,
-  se_method = "wald"
+  ci_method = "wald"
 )}\if{html}{\out{</div>}}
 }
 
@@ -198,7 +198,7 @@ Create a new `MAP_Fit` object.
 
 \item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw values).}
 
-\item{\code{se_method}}{Method used for SE/CI estimation ("wald", "profile", or "sampling").}
+\item{\code{ci_method}}{Method used for CI estimation ("wald", "profile", or "sampling").}
 }
 \if{html}{\out{</div>}}
 }
