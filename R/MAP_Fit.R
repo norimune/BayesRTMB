@@ -20,6 +20,8 @@
 #' @field transform List of transformed parameters maintaining their original dimensions.
 #' @field generate List of generated quantities maintaining their original dimensions.
 #' @field se_samples List of simulated samples for standard error estimation.
+#' @field laplace Logical; whether Laplace approximation was used.
+#' @field map List; the parameter mapping used.
 #'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
@@ -44,6 +46,8 @@ MAP_Fit <- R6::R6Class(
     se_samples     = NULL,
     par_unc        = NULL,
     ci_method      = NULL,
+    laplace        = NULL,
+    map            = NULL,
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -88,10 +92,13 @@ MAP_Fit <- R6::R6Class(
     #' @param generate List of generated quantities maintaining their original dimensions.
     #' @param se_samples List of simulated samples for standard error estimation.
     #' @param par_unc Parameter vector on the unconstrained scale (raw values).
-    #' @param ci_method Method used for CI estimation ("wald", "profile", or "sampling").
-    initialize = function(model,par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
+    #' @param ci_method Method used for CI estimation ("wald" or "sampling").
+    #' @param laplace Logical; whether Laplace approximation was used.
+    #' @param map List; the parameter mapping used.
+    initialize = function(model, par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
-                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, ci_method = "wald") {
+                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, 
+                          ci_method = "wald", laplace = TRUE, map = NULL) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -109,6 +116,8 @@ MAP_Fit <- R6::R6Class(
       self$se_samples <- se_samples
       self$par_unc <- par_unc
       self$ci_method <- ci_method
+      self$laplace <- laplace
+      self$map <- map
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -363,6 +372,216 @@ MAP_Fit <- R6::R6Class(
 
       cat("Generated quantities updated.\n")
       invisible(self)
+    },
+
+    #' @description Calculate Profile Likelihood confidence intervals for specific parameters.
+    #' @param pars Character vector of parameter names to profile. If NULL, all fixed parameters are profiled.
+    #' @param level Confidence level (default is 0.95).
+    #' @param trace Logical; whether to print profiling progress. Default is FALSE.
+    #' @param digits Integer; number of decimal places to print. Default is 5.
+    #' @param show_plot Logical; whether to plot the profile likelihood curves. Default is FALSE.
+    #' @param quiet Logical; whether to suppress text output. Default is FALSE.
+    #' @param ... Additional arguments passed to TMB::tmbprofile (e.g., ytol).
+    #' @return A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.
+    profile = function(pars = NULL, level = 0.95, trace = FALSE, digits = 5, show_plot = FALSE, quiet = FALSE, ...) {
+      if (!quiet) cat("Estimating confidence intervals via Profile Likelihood...\n")
+      
+      # 1. Re-build ad_obj using optimized values and no jacobian adjustment
+      ad_setup <- self$model$build_ad_obj(init = self$par, laplace = self$laplace, 
+                                          map = self$map, jacobian_target = "none")
+      ad_obj <- ad_setup$ad_obj
+      
+      # Sync internal state
+      ad_obj$fn(ad_obj$par)
+      
+      # 2. Identify indices
+      all_fixed_names <- rownames(self$df_fixed)
+      if (is.null(all_fixed_names)) {
+        stop("No fixed parameters found to profile.")
+      }
+      
+      if (is.null(pars)) {
+        target_indices <- seq_along(all_fixed_names)
+        target_names <- all_fixed_names
+      } else {
+        target_indices <- integer(0)
+        target_names <- character(0)
+        
+        for (p in pars) {
+          idx <- which(all_fixed_names == p)
+          if (length(idx) == 0) {
+            idx <- grep(paste0("^", p, "(\\[|$)"), all_fixed_names)
+          }
+          if (length(idx) > 0) {
+            target_indices <- c(target_indices, idx)
+            target_names <- c(target_names, all_fixed_names[idx])
+          } else {
+            warning(sprintf("Parameter '%s' not found in estimated fixed effects.", p), call. = FALSE)
+          }
+        }
+        target_indices <- unique(target_indices)
+        target_names <- unique(target_names)
+      }
+      
+      if (length(target_indices) == 0) {
+        stop("No valid parameters selected for profiling.", call. = FALSE)
+      }
+      
+      res_mat <- matrix(NA, nrow = length(target_indices), ncol = 2)
+      low_label <- sprintf("Lower %g%%", (1 - level)/2 * 100)
+      up_label <- sprintf("Upper %g%%", (1 - (1 - level)/2) * 100)
+      colnames(res_mat) <- c(low_label, up_label)
+      rownames(res_mat) <- target_names
+      
+      prof_list <- list()
+      
+      # 3. Profile
+      for (i in seq_along(target_indices)) {
+        idx <- target_indices[i]
+        p_name <- target_names[i]
+        if (!quiet) {
+          cat(sprintf("  Profiling %d/%d (%s)...                                                                \r", i, length(target_indices), p_name))
+          utils::flush.console()
+        }
+        
+        args_list <- list(...)
+        if (!"ytol" %in% names(args_list)) {
+          args_list$ytol <- stats::qchisq(level, df = 1) / 2 + 2
+        }
+        args_list$obj <- ad_obj
+        args_list$name <- idx
+        args_list$trace <- trace
+        
+        prof <- tryCatch(suppressWarnings(do.call(TMB::tmbprofile, args_list)), error = function(e) NULL)
+        if (!is.null(prof)) {
+          prof_list[[p_name]] <- prof
+          if (show_plot) {
+            plot(prof, main = paste("Profile Likelihood:", p_name))
+          }
+          ci <- tryCatch(suppressWarnings(confint(prof, level = level)), error = function(e) NULL)
+          if (!is.null(ci)) {
+            res_mat[i, ] <- ci
+          }
+        }
+      }
+      if (!quiet) cat("\nDone.\n")
+      
+      # 4. Summary
+      res_df <- data.frame(
+        Parameter = target_names,
+        Estimate = format(round(self$df_fixed[target_names, "Estimate"], digits), nsmall = digits),
+        check.names = FALSE,
+        stringsAsFactors = FALSE
+      )
+      res_df[[low_label]] <- format(round(res_mat[, 1], digits), nsmall = digits)
+      res_df[[up_label]] <- format(round(res_mat[, 2], digits), nsmall = digits)
+      
+      rownames(res_df) <- NULL
+      
+      if (!quiet) {
+        cat("\nProfile Likelihood Confidence Intervals:\n")
+        print(res_df, digits = digits)
+        cat("\n")
+      }
+      
+      attr(res_df, "profiles") <- prof_list
+      return(invisible(res_df))
+    },
+
+    #' @description Plot the posterior density for specific parameters based on Profile Likelihood.
+    #' @param pars Character vector of parameter names to plot.
+    #' @param level Confidence level for the range to plot (default is 0.999).
+    #' @param ... Additional arguments passed to profile() (e.g. ytol).
+    plot_density = function(pars = NULL, level = 0.999, ...) {
+      # 1. Get profile data
+      # Use show_plot = FALSE to avoid deviance plots
+      res_ci <- self$profile(pars = pars, level = level, show_plot = FALSE, quiet = TRUE, ...)
+      profiles <- attr(res_ci, "profiles")
+      
+      if (length(profiles) == 0) return(invisible(NULL))
+      
+      ad_setup <- self$model$build_ad_obj(init = self$par, laplace = self$laplace, 
+                                          map = self$map, jacobian_target = "none")
+      ad_obj <- ad_setup$ad_obj
+      
+      n_pars <- length(profiles)
+      if (n_pars > 1) {
+        old_par <- graphics::par(mfrow = grDevices::n2mfrow(n_pars))
+        on.exit(graphics::par(old_par))
+      }
+      
+      for (p_name in names(profiles)) {
+        prof <- profiles[[p_name]]
+        u_vals <- prof[[1]]
+        deviance <- prof$value
+        lik <- exp(-0.5 * deviance)
+        
+        c_vals <- numeric(length(u_vals))
+        dens <- numeric(length(u_vals))
+        
+        all_fixed_names <- rownames(self$df_fixed)
+        idx_in_active <- which(all_fixed_names == p_name)
+        
+        all_indices <- seq_along(ad_obj$env$last.par)
+        fixed_indices <- if (is.null(ad_obj$env$random)) all_indices else all_indices[-ad_obj$env$random]
+        idx_full <- fixed_indices[idx_in_active]
+        
+        opt_unc_list <- to_unconstrained(self$par, self$model$par_list)
+        
+        for (j in seq_along(u_vals)) {
+          eps <- 1e-5
+          calc_c <- function(u) {
+            tmp_unc_list <- opt_unc_list
+            curr_idx <- 0
+            for (name in names(tmp_unc_list)) {
+              L <- length(tmp_unc_list[[name]])
+              if (idx_full > curr_idx && idx_full <= curr_idx + L) {
+                tmp_unc_list[[name]][idx_full - curr_idx] <- u
+                break
+              }
+              curr_idx <- curr_idx + L
+            }
+            tmp_con <- to_constrained(tmp_unc_list, self$model$par_list)
+            curr_idx_c <- 0
+            for (name in names(tmp_con)) {
+              L_c <- length(tmp_con[[name]])
+              if (idx_full > curr_idx_c && idx_full <= curr_idx_c + L_c) {
+                return(as.numeric(tmp_con[[name]])[idx_full - curr_idx_c])
+              }
+              curr_idx_c <- curr_idx_c + L_c
+            }
+            return(NA)
+          }
+          
+          phi <- calc_c(u_vals[j])
+          phi_plus <- calc_c(u_vals[j] + eps)
+          dphi_du <- (phi_plus - phi) / eps
+          
+          c_vals[j] <- phi
+          dens[j] <- lik[j] / abs(dphi_du)
+        }
+        
+        valid <- !is.na(c_vals) & !is.na(dens) & !is.infinite(dens)
+        c_vals <- c_vals[valid]; dens <- dens[valid]
+        
+        if (length(c_vals) < 2) {
+          warning(sprintf("Not enough valid points for '%s'.", p_name))
+          next
+        }
+        
+        dx <- diff(c_vals); mid_dens <- (dens[-1] + dens[-length(dens)]) / 2
+        area <- sum(dx * mid_dens)
+        if (!is.na(area) && area > 0) dens <- dens / area
+        
+        graphics::plot(c_vals, dens, type = "l", lwd = 2, col = "#2c3e50",
+                       xlab = p_name, ylab = "Posterior Density",
+                       main = paste("Posterior Distribution:", p_name))
+        graphics::grid()
+        graphics::polygon(c(c_vals, rev(c_vals)), c(dens, rep(0, length(dens))),
+                          col = "#3498db33", border = NA)
+        graphics::abline(v = self$df_fixed[p_name, "Estimate"], col = "#e74c3c", lty = 2, lwd = 1.5)
+      }
+      return(invisible(NULL))
     }
   )
 )

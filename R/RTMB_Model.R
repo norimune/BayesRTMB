@@ -361,7 +361,7 @@ RTMB_Model <- R6::R6Class(
     #' @param method Character; The method for "optim" (e.g. "BFGS", "L-BFGS-B"). Default is "BFGS".
     #' @param map Optional list specifying parameters to fix. Default is NULL.
     #' @param se Logical; whether to estimate standard errors and confidence intervals. Default is TRUE.
-    #' @param ci_method Character; The method for CI estimation: "wald" (Wald CI), "profile" (Profile Likelihood), or "sampling" (Simulation-based). Default is "wald".
+    #' @param ci_method Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based). Default is "wald". Note: Profile Likelihood is now available via the `$profile()` method of the returned fit object.
     #' @param se_method Alias for `ci_method` (for backward compatibility).
     #' @param se_sampling Logical; Alias for `ci_method = "sampling"` (for backward compatibility).
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
@@ -373,7 +373,7 @@ RTMB_Model <- R6::R6Class(
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL, 
-                        se = TRUE, ci_method = c("wald", "profile", "sampling"),
+                        se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
                         auto_df = FALSE, df_t = Inf, n_obs = NULL, df_vars = NULL) {
 
@@ -556,25 +556,7 @@ RTMB_Model <- R6::R6Class(
         }
       }
       
-      # --- Profile Likelihood CI Calculation ---
-      profile_cis_full <- matrix(NA, nrow = L_u_total, ncol = 2)
-      if (se && ci_method == "profile") {
-        cat("Estimating confidence intervals via Profile Likelihood...\n")
-        num_pars <- length(opt$par)
-        for (i in 1:num_pars) {
-          p_name <- names(opt$par)[i]
-          cat(sprintf("  Profiling parameter %d/%d (%s)...                                                                \r", i, num_pars, p_name))
-          utils::flush.console()
-          prof <- tryCatch(suppressWarnings(TMB::tmbprofile(ad_obj, i, trace = FALSE)), error = function(e) NULL)
-          if (!is.null(prof)) {
-             ci <- tryCatch(suppressWarnings(confint(prof, level = 0.95)), error = function(e) NULL)
-             if (!is.null(ci)) {
-               profile_cis_full[idx_fix_active[i], ] <- ci
-             }
-          }
-        }
-        cat("\n")
-      }
+      # Profile Likelihood CI calculation is now moved to $profile() method of MAP_Fit
 
       # --- Use optimization results for point estimates to prevent sdreport's Delta method bias ---
       unc_est_vec[idx_fix_active] <- opt$par
@@ -971,24 +953,10 @@ RTMB_Model <- R6::R6Class(
             c_low <- rep(NA, L_c)
             c_up  <- rep(NA, L_c)
           } else {
-            # Use Profile Likelihood if available, otherwise Wald/t
-            if (any(!is.na(profile_cis_full[u_indices, ]))) {
-              u_low <- profile_cis_full[u_indices, 1]
-              u_up  <- profile_cis_full[u_indices, 2]
-              # Fill NAs with Wald if profiling failed for some elements
-              na_idx <- which(is.na(u_low))
-              if (length(na_idx) > 0) {
-                u_dfs <- est_dfs_all[u_indices[na_idx]]
-                u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
-                u_low[na_idx] <- u_val[na_idx] - u_q_95 * u_se[na_idx]
-                u_up[na_idx]  <- u_val[na_idx] + u_q_95 * u_se[na_idx]
-              }
-            } else {
               u_dfs <- est_dfs_all[u_indices]
               u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
               u_low <- u_val - u_q_95 * u_se
               u_up  <- u_val + u_q_95 * u_se
-            }
             c_low <- transform_single(u_low)
             c_up  <- transform_single(u_up)
 
@@ -1249,7 +1217,9 @@ RTMB_Model <- R6::R6Class(
         generate       = gq_list,
         se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
         par_unc        = unc_est_vec,
-        ci_method      = ci_method
+        ci_method      = ci_method,
+        laplace        = laplace,
+        map            = target_map
       )
 
       return(res_obj)
