@@ -22,11 +22,21 @@ estimation.
 
 - `par_vec`:
 
-  Parameter vector on the unconstrained scale.
+  Parameter vector on the unconstrained scale (constrained values
+  unlisted).
 
 - `par`:
 
   Parameter list on the constrained scale.
+
+- `par_unc`:
+
+  Parameter vector on the unconstrained scale (raw unconstrained
+  values).
+
+- `se_method`:
+
+  Method used for SE/CI estimation ("wald", "profile", or "sampling").
 
 - `objective`:
 
@@ -186,7 +196,9 @@ Create a new \`MAP_Fit\` object.
       opt_history = NULL,
       transform = NULL,
       generate = NULL,
-      se_samples = NULL
+      se_samples = NULL,
+      par_unc = NULL,
+      se_method = "wald"
     )
 
 #### Arguments
@@ -197,7 +209,8 @@ Create a new \`MAP_Fit\` object.
 
 - `par_vec`:
 
-  Parameter vector on the unconstrained scale.
+  Parameter vector on the unconstrained scale (constrained values
+  unlisted).
 
 - `par`:
 
@@ -205,11 +218,11 @@ Create a new \`MAP_Fit\` object.
 
 - `objective`:
 
-  RTMB objective function object.
+  The objective function value at the optimum.
 
 - `log_ml`:
 
-  Log marginal likelihood or related model criterion.
+  Log marginal likelihood.
 
 - `convergence`:
 
@@ -217,27 +230,27 @@ Create a new \`MAP_Fit\` object.
 
 - `sd_rep`:
 
-  Standard deviation report object.
+  The \`sdreport\` object from TMB.
 
 - `df_fixed`:
 
-  Summary table for fixed-effect parameters.
+  Data frame of fixed effects estimates and CIs.
 
 - `random_effects`:
 
-  Random effect estimates.
+  Data frame of random effects estimates and CIs.
 
 - `df_transform`:
 
-  Summary table for transformed parameter estimates.
+  Data frame of transformed parameters.
 
 - `df_generate`:
 
-  Summary table for generated quantity estimates.
+  Data frame of generated quantities.
 
 - `opt_history`:
 
-  A vector of optimize objective history.
+  Data frame of optimization history.
 
 - `transform`:
 
@@ -250,6 +263,14 @@ Create a new \`MAP_Fit\` object.
 - `se_samples`:
 
   List of simulated samples for standard error estimation.
+
+- `par_unc`:
+
+  Parameter vector on the unconstrained scale (raw values).
+
+- `se_method`:
+
+  Method used for SE/CI estimation ("wald", "profile", or "sampling").
 
 ------------------------------------------------------------------------
 

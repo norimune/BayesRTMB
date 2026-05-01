@@ -141,11 +141,11 @@ map_res$summary("y_pred", max_rows = 5)
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> y_pred[1]   1.08581          NA         NA         NA 
-#> y_pred[2]   1.56387          NA         NA         NA 
-#> y_pred[3]   4.15305          NA         NA         NA 
-#> y_pred[4]   1.99908          NA         NA         NA 
-#> y_pred[5]   2.08415          NA         NA         NA 
+#> y_pred[1]   1.08581     0.11766    0.85521    1.31641 
+#> y_pred[2]   1.56387     0.10142    1.36510    1.76265 
+#> y_pred[3]   4.15305     0.18179    3.79674    4.50936 
+#> y_pred[4]   1.99908     0.09566    1.81159    2.18656 
+#> y_pred[5]   2.08415     0.09572    1.89654    2.27177 
 #> 
 # }
 ```

@@ -74,11 +74,19 @@ MAP fit object"></head><body>
 
 
 <dt><code>par_vec</code></dt>
-<dd><p>Parameter vector on the unconstrained scale.</p></dd>
+<dd><p>Parameter vector on the unconstrained scale (constrained values unlisted).</p></dd>
 
 
 <dt><code>par</code></dt>
 <dd><p>Parameter list on the constrained scale.</p></dd>
+
+
+<dt><code>par_unc</code></dt>
+<dd><p>Parameter vector on the unconstrained scale (raw unconstrained values).</p></dd>
+
+
+<dt><code>se_method</code></dt>
+<dd><p>Method used for SE/CI estimation ("wald", "profile", or "sampling").</p></dd>
 
 
 <dt><code>objective</code></dt>
@@ -227,7 +235,9 @@ MAP fit object"></head><body>
 <span>  opt_history <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  transform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  generate <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  se_samples <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  se_samples <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  par_unc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  se_method <span class="op">=</span> <span class="st">"wald"</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -238,7 +248,7 @@ MAP fit object"></head><body>
 
 
 <dt><code>par_vec</code></dt>
-<dd><p>Parameter vector on the unconstrained scale.</p></dd>
+<dd><p>Parameter vector on the unconstrained scale (constrained values unlisted).</p></dd>
 
 
 <dt><code>par</code></dt>
@@ -246,11 +256,11 @@ MAP fit object"></head><body>
 
 
 <dt><code>objective</code></dt>
-<dd><p>RTMB objective function object.</p></dd>
+<dd><p>The objective function value at the optimum.</p></dd>
 
 
 <dt><code>log_ml</code></dt>
-<dd><p>Log marginal likelihood or related model criterion.</p></dd>
+<dd><p>Log marginal likelihood.</p></dd>
 
 
 <dt><code>convergence</code></dt>
@@ -258,27 +268,27 @@ MAP fit object"></head><body>
 
 
 <dt><code>sd_rep</code></dt>
-<dd><p>Standard deviation report object.</p></dd>
+<dd><p>The `sdreport` object from TMB.</p></dd>
 
 
 <dt><code>df_fixed</code></dt>
-<dd><p>Summary table for fixed-effect parameters.</p></dd>
+<dd><p>Data frame of fixed effects estimates and CIs.</p></dd>
 
 
 <dt><code>random_effects</code></dt>
-<dd><p>Random effect estimates.</p></dd>
+<dd><p>Data frame of random effects estimates and CIs.</p></dd>
 
 
 <dt><code>df_transform</code></dt>
-<dd><p>Summary table for transformed parameter estimates.</p></dd>
+<dd><p>Data frame of transformed parameters.</p></dd>
 
 
 <dt><code>df_generate</code></dt>
-<dd><p>Summary table for generated quantity estimates.</p></dd>
+<dd><p>Data frame of generated quantities.</p></dd>
 
 
 <dt><code>opt_history</code></dt>
-<dd><p>A vector of optimize objective history.</p></dd>
+<dd><p>Data frame of optimization history.</p></dd>
 
 
 <dt><code>transform</code></dt>
@@ -291,6 +301,14 @@ MAP fit object"></head><body>
 
 <dt><code>se_samples</code></dt>
 <dd><p>List of simulated samples for standard error estimation.</p></dd>
+
+
+<dt><code>par_unc</code></dt>
+<dd><p>Parameter vector on the unconstrained scale (raw values).</p></dd>
+
+
+<dt><code>se_method</code></dt>
+<dd><p>Method used for SE/CI estimation ("wald", "profile", or "sampling").</p></dd>
 
 
 </dl><p></p></div>
