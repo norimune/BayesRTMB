@@ -726,14 +726,17 @@ generate_random_init <- function(pl_full, par_list, range = 2) {
   }
 
   con_list <- to_constrained(unc_list, par_list)
-  random_pool <- unlist(con_list, use.names = FALSE)
 
-  init_final <- pl_full$init
-  idx_na <- is.na(init_final)
-  if (any(idx_na)) {
-    init_final[idx_na] <- random_pool[idx_na]
+  # Group-wise NA checking instead of element-wise NA checking to preserve structures
+  init_list <- constrained_vector_to_list(pl_full$init, par_list)
+  for (name in names(par_list)) {
+    # If ANY element in the parameter block is NA, we replace the ENTIRE block with random values
+    if (any(is.na(init_list[[name]]))) {
+      init_list[[name]] <- con_list[[name]]
+    }
   }
-  return(init_final)
+
+  return(unlist(init_list, use.names = FALSE))
 }
 
 parse_parameters <- function(par_list, par_names = NULL) {

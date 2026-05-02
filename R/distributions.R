@@ -398,7 +398,9 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
     return(max_val + log(exp(v - max_val) + exp(-max_val)))
   }
   log1m_exp <- function(v) {
-    return(log(1 - exp(v) + 1e-11))
+    # Robust implementation to avoid NaN when v >= 0 due to numerical precision
+    v <- pmin(v, -1e-7)
+    return(log(-expm1(v)))
   }
 
   if (length(eta) == 1 && N > 1) {

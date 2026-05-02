@@ -70,7 +70,6 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
 \item \href{#method-map_fit-profile}{\code{MAP_Fit$profile()}}
-\item \href{#method-map_fit-plot_density}{\code{MAP_Fit$plot_density()}}
 \item \href{#method-map_fit-clone}{\code{MAP_Fit$clone()}}
 }
 }
@@ -311,8 +310,9 @@ Calculate Profile Likelihood confidence intervals for specific parameters.
   level = 0.95,
   trace = FALSE,
   digits = 5,
-  plot = FALSE,
+  show_plot = FALSE,
   quiet = FALSE,
+  jacobian = "none",
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -328,9 +328,11 @@ Calculate Profile Likelihood confidence intervals for specific parameters.
 
 \item{\code{digits}}{Integer; number of decimal places to print. Default is 5.}
 
-\item{\code{plot}}{Logical; whether to plot the profile likelihood curves. Default is FALSE.}
+\item{\code{show_plot}}{Logical; whether to plot the profile likelihood curves. Default is FALSE.}
 
 \item{\code{quiet}}{Logical; whether to suppress text output. Default is FALSE.}
+
+\item{\code{jacobian}}{Character; "none" (default), "random", or "all". Whether to include Jacobian adjustments for transformations.}
 
 \item{\code{...}}{Additional arguments passed to TMB::tmbprofile (e.g., ytol).}
 }
@@ -338,27 +340,6 @@ Calculate Profile Likelihood confidence intervals for specific parameters.
 }
 \subsection{Returns}{
 A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-map_fit-plot_density"></a>}}
-\if{latex}{\out{\hypertarget{method-map_fit-plot_density}{}}}
-\subsection{Method \code{plot_density()}}{
-Plot the posterior density for specific parameters based on Profile Likelihood.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$plot_density(pars = NULL, level = 0.999, ...)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector of parameter names to plot.}
-
-\item{\code{level}}{Confidence level for the range to plot (default is 0.999).}
-
-\item{\code{...}}{Additional arguments passed to profile() (e.g. ytol).}
-}
-\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}

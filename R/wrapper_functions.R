@@ -51,46 +51,109 @@
 #' @family wrappers
 NULL
 
+
+#' Specify a uniform or manual prior
+#'
+#' @param Int_sd Standard deviation for the intercept prior (Normal). Default is NULL (flat).
+#' @param beta_sd Standard deviation for the coefficients prior (Normal). Default is NULL (flat).
+#' @param sigma_rate Rate for the residual standard deviation prior (Exponential). Default is NULL (flat).
+#' @param tau_rate Rate for the random effects standard deviation prior (Exponential). Default is NULL (flat).
+#' @param ... Optional hyperparameters
+#' @return A list with class "rtmb_prior"
+#' @export
+prior_uniform <- function(Int_sd = NULL, beta_sd = NULL, sigma_rate = NULL, tau_rate = NULL, ...) {
+  res <- list(type = "uniform", Int_sd = Int_sd, beta_sd = beta_sd, sigma_rate = sigma_rate, tau_rate = tau_rate, ...)
+  class(res) <- "rtmb_prior"
+  return(res)
+}
+
+#' Specify a weakly informative prior
+#'
+#' @param sd_ratio Ratio of the prior standard deviation to the half-range of the response variable. Default is 0.5.
+#' @param max_beta Maximum expected effect size. Default is 1.0.
+#' @param ... Optional hyperparameters for other distributions.
+#' @return A list with class "rtmb_prior"
+#' @export
+prior_weak <- function(sd_ratio = 0.5, max_beta = 1.0, ...) {
+  res <- list(type = "weak", sd_ratio = sd_ratio, max_beta = max_beta, ...)
+  class(res) <- "rtmb_prior"
+  return(res)
+}
+
+#' Specify a Spike-and-Slab prior for variable selection
+#'
+#' @param ssp_ratio Prior probability of inclusion for each variable. Default is 0.25.
+#' @param max_beta Maximum expected effect size. Default is 1.0.
+#' @param ... Optional hyperparameters for other distributions.
+#' @return A list with class "rtmb_prior"
+#' @export
+prior_ssp <- function(ssp_ratio = 0.25, max_beta = 1.0, ...) {
+  res <- list(type = "ssp", ssp_ratio = ssp_ratio, max_beta = max_beta, ...)
+  class(res) <- "rtmb_prior"
+  return(res)
+}
+
+#' Specify a Regularized Horseshoe prior for continuous shrinkage
+#'
+#' @param expected_vars Expected number of non-zero variables. Default is 3.
+#' @param slab_scale Scale parameter for the slab distribution. Default is 2.0.
+#' @param slab_df Degrees of freedom for the slab distribution. Default is 4.0.
+#' @param ... Optional hyperparameters for other distributions.
+#' @return A list with class "rtmb_prior"
+#' @export
+prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
+  res <- list(type = "rhs", expected_vars = expected_vars, slab_scale = slab_scale, slab_df = slab_df, ...)
+  class(res) <- "rtmb_prior"
+  return(res)
+}
+
 #' RTMB-based GLMM wrapper function
 #'
 #' @param formula lme4-style formula (e.g., Y ~ X + (1 | GID))
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
-#' @param penalty Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
-#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
-#' @param use_weak_info Logical; whether to explicitly use weakly informative priors (requires y_range for continuous models).
-#' @param prior List of hyperparameters for the default fixed priors.
-#' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
+#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).
+#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @param null Character string specifying the target parameter for the null model.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
-                       penalty = c("none", "rhs", "ssp"),
+                       prior = prior_uniform(),
                        y_range = NULL,
-                       use_weak_info = FALSE,
-                       prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0),
-                       weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                        init = NULL, null = NULL) {
 
-  regularization <- match.arg(penalty)
+  if (is.null(prior)) {
+    prior <- prior_uniform()
+  }
+
+  if (!inherits(prior, "rtmb_prior")) {
+    stop("prior must be an object of class 'rtmb_prior'. Use prior_weak(), prior_rhs(), or prior_ssp().")
+  }
+
+  prior_type <- prior$type
+  regularization <- if (prior_type %in% c("rhs", "ssp")) prior_type else "none"
+  use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
   has_random <- !is.null(findbars(formula))
 
-  default_prior <- eval(formals(rtmb_glmer)$prior)
+  default_prior <- list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0)
   prior <- modifyList(default_prior, prior)
-  default_weak_prior <- eval(formals(rtmb_glmer)$weak_info_prior)
-  weak_info_prior <- modifyList(default_weak_prior, weak_info_prior)
 
-  if (!is.null(y_range) || regularization %in% c("rhs", "ssp")) {
-    use_weak_info <- TRUE
+  if (use_weak_info) {
+    if (is.null(prior$max_beta)) prior$max_beta <- 1.0
+    if (is.null(prior$sd_ratio)) prior$sd_ratio <- 0.5
+    if (is.null(prior$expected_vars)) prior$expected_vars <- 3
+    if (is.null(prior$slab_scale)) prior$slab_scale <- 2.0
+    if (is.null(prior$slab_df)) prior$slab_df <- 4.0
+    if (is.null(prior$ssp_ratio)) prior$ssp_ratio <- 0.25
   }
 
   families_requiring_yrange <- c("gaussian", "lognormal", "student_t")
   is_continuous <- family %in% families_requiring_yrange
 
   if (use_weak_info && is_continuous && is.null(y_range)) {
-    stop("Specifying 'y_range' is required when using weakly informative priors (or regularization) with family = '", family, "'.")
+    stop(sprintf("Specifying 'y_range' is required when using prior_%s() with family = '%s'.", prior_type, family))
   }
 
   if (has_random) {
@@ -213,7 +276,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (regularization == "ssp" && is.null(init) && K_tmp > 0) {
     rhs_mod <- NULL
     suppressMessages(capture.output({
-      rhs_mod <- rtmb_glmer(formula, data, family, laplace, penalty = "rhs", y_range = y_range, use_weak_info = use_weak_info, prior = prior, weak_info_prior = weak_info_prior, init = NULL)
+      rhs_prior_obj <- prior_rhs(expected_vars = prior$expected_vars, slab_scale = prior$slab_scale, slab_df = prior$slab_df)
+      rhs_mod <- rtmb_glmer(formula, data, family, laplace, prior = rhs_prior_obj, y_range = y_range, init = NULL)
     }))
 
     jac_target <- if (laplace) "random" else "none"
@@ -266,7 +330,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       init_coef[is.na(init_coef)] <- 0
 
       init <- list()
-      if (has_intercept) init$Intercept_c <- init_coef[1]
+      if (has_intercept) {
+        if (prior_type %in% c("flat", "uniform")) {
+          init$Intercept <- init_coef[1]
+        } else {
+          init$Intercept_c <- init_coef[1]
+        }
+      }
 
       if (regularization == "none" && K_tmp > 0) {
         if (has_intercept) init$b <- init_coef[-1]
@@ -309,7 +379,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (use_weak_info) {
     if (family %in% c("bernoulli", "binomial", "ordered")) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- pi / sqrt(3))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- base_scale * weak_info_prior$max_beta)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- base_scale * .(prior$max_beta))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
     } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- 1.0)
@@ -317,7 +387,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
     } else {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- half_d_y * weak_info_prior$sd_ratio)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(prior$sd_ratio))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
@@ -328,29 +398,25 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (K_tmp > 0) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(beta_prior_sd <- weak_info_prior$max_beta * base_scale / X_sd)
-      if (has_intercept) {
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- .(prior$max_beta) * base_scale / X_sd)
+      if (has_intercept && !prior_type %in% c("flat", "uniform")) {
         setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
       }
 
       if (regularization == "rhs") {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(p0 <- min(weak_info_prior$expected_vars, K - 1))
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(p0 <- min(.(prior$expected_vars), K - 1))
         setup_exprs[[length(setup_exprs) + 1]] <- quote(if (p0 < 1) p0 <- 1)
         setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- (p0 / (K - p0)) * (base_scale / sqrt(N)))
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_df <- weak_info_prior$slab_df / 2.0)
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_scale2 <- (weak_info_prior$slab_df * weak_info_prior$slab_scale^2) / 2.0)
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_df <- .(prior$slab_df) / 2.0)
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_scale2 <- (.(prior$slab_df) * .(prior$slab_scale)^2) / 2.0)
       } else if (regularization == "ssp") {
         setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- base_scale / X_sd)
       }
     }
   } else {
     # Minimal calculations for fixed prior distributions
-    if (K_tmp > 0) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
-      if (has_intercept) {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
-      }
-    }
+    # No centering or scaling for flat/uniform priors
+    NULL
   }
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
@@ -360,7 +426,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # --- Parameters AST ---
   param_exprs <- list()
-  if (has_intercept) param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
+  if (has_intercept) {
+    if (prior_type %in% c("flat", "uniform")) {
+      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept <- Dim(1))
+    } else {
+      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
+    }
+  }
   if (K > 0) {
     if (regularization == "none") {
       param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
@@ -417,8 +489,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   }
   if (has_intercept) {
-    if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
-    else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
+    if (!prior_type %in% c("flat", "uniform")) {
+      if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
+      else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
+    }
   }
   if (has_random) {
     for (b in 1:num_bars) {
@@ -434,12 +508,18 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   # --- Model AST ---
   transform_exprs <- list()
   if (has_intercept) {
-    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(Intercept_c + X_c %*% b))
-    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(Intercept_c, N))
+    if (prior_type %in% c("flat", "uniform")) {
+      if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept + X %*% b)
+      else transform_exprs[[1]] <- quote(eta <- rep(Intercept, N))
+    } else {
+      if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept_c + X_c %*% b)
+      else transform_exprs[[1]] <- quote(eta <- rep(Intercept_c, N))
+    }
   } else {
-    if (K > 0) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- as.vector(X %*% b))
-    else transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- rep(0, N))
+    if (K > 0) transform_exprs[[1]] <- quote(eta <- X %*% b)
+    else transform_exprs[[1]] <- quote(eta <- rep(0, N))
   }
+
   if (has_random) {
     for (b in 1:num_bars) {
       Z_mat_name <- as.name(paste0("Z_mat", suffix(b)))
@@ -487,56 +567,74 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   prior_exprs <- list()
-  if (family %in% c("gaussian", "lognormal", "student_t")) {
-    if (use_weak_info) {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
-    } else {
+  if (prior_type %in% c("weak", "rhs", "ssp")) {
+    if (family %in% c("gaussian", "lognormal", "student_t")) {
+      if (use_weak_info && prior_type == "weak") {
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+      } else if (!is.null(prior$sigma_rate)) {
+        prior_exprs[[length(prior_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
+      }
+    }
+
+    if (family == "student_t" && !is.null(prior$nu_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(nu ~ exponential(.(prior$nu_rate)))
+    if (family == "gamma" && !is.null(prior$shape_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(shape ~ exponential(.(prior$shape_rate)))
+    if (family == "neg_binomial" && !is.null(prior$phi_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(phi ~ exponential(.(prior$phi_rate)))
+    if (family == "ordered" && !is.null(prior$cutpoint_sd)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
+
+    if (has_intercept) {
+      if (use_weak_info && prior_type == "weak") {
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
+      } else if (!is.null(prior$Intercept_sd)) {
+        prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept_c ~ normal(0, .(prior$Intercept_sd)))
+      }
+    }
+
+    if (K > 0) {
+      if (regularization == "none") {
+        if (use_weak_info && prior_type == "weak") {
+          prior_exprs[[length(prior_exprs) + 1]] <- quote(b ~ normal(0, beta_prior_sd))
+        } else if (!is.null(prior$b_sd)) {
+          prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
+        }
+      } else if (regularization == "rhs") {
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(z ~ normal(0, 1))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(w_lambda ~ gamma(0.5, 0.5))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(lambda ~ half_normal(1 / sqrt(w_lambda)))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(w_tau ~ gamma(0.5, 0.5))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(tau_hs ~ half_normal(tau0 / sqrt(w_tau)))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(c2 ~ inverse_gamma(half_slab_df, half_slab_scale2))
+      } else if (regularization == "ssp") {
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(beta_raw ~ laplace(0, 0.5))
+        prior_exprs[[length(prior_exprs) + 1]] <- bquote(mu_r <- log(.(prior$ssp_ratio) / (1 - .(prior$ssp_ratio))))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(r ~ logit_normal(mu_r, 3))
+        prior_exprs[[length(prior_exprs) + 1]] <- quote(tau ~ exponential(1 / tau_scale))
+      }
+    }
+
+    if (has_random) {
+      for (b in 1:num_bars) {
+        sd_name <- as.name(paste0("sd", suffix(b)))
+        if (use_weak_info && prior_type == "weak") {
+          prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(tau_rate))
+        } else if (!is.null(prior$sd_rate)) {
+          prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(.(prior$sd_rate)))
+        }
+      }
+    }
+  } else if (prior_type == "uniform") {
+    if (!is.null(prior$sigma_rate)) {
       prior_exprs[[length(prior_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
     }
-  }
-
-  if (family == "student_t") prior_exprs[[length(prior_exprs) + 1]] <- bquote(nu ~ exponential(.(prior$nu_rate)))
-  if (family == "gamma") prior_exprs[[length(prior_exprs) + 1]] <- bquote(shape ~ exponential(.(prior$shape_rate)))
-  if (family == "neg_binomial") prior_exprs[[length(prior_exprs) + 1]] <- bquote(phi ~ exponential(.(prior$phi_rate)))
-  if (family == "ordered") prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
-
-  if (has_intercept) {
-    if (use_weak_info) {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
-    } else {
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept_c ~ normal(0, .(prior$Intercept_sd)))
+    if (has_intercept && !is.null(prior$Int_sd)) {
+      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept ~ normal(0, .(prior$Int_sd)))
     }
-  }
-
-  if (K > 0) {
-    if (regularization == "none") {
-      if (use_weak_info) {
-        prior_exprs[[length(prior_exprs) + 1]] <- quote(b ~ normal(0, beta_prior_sd))
-      } else {
-        prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
-      }
-    } else if (regularization == "rhs") {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(z ~ normal(0, 1))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(w_lambda ~ gamma(0.5, 0.5))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(lambda ~ half_normal(1 / sqrt(w_lambda)))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(w_tau ~ gamma(0.5, 0.5))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(tau_hs ~ half_normal(tau0 / sqrt(w_tau)))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(c2 ~ inverse_gamma(half_slab_df, half_slab_scale2))
-    } else if (regularization == "ssp") {
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(beta_raw ~ laplace(0, 0.5))
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(mu_r <- log(.(weak_info_prior$ssp_ratio) / (1 - .(weak_info_prior$ssp_ratio))))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(r ~ logit_normal(mu_r, 3))
-      prior_exprs[[length(prior_exprs) + 1]] <- quote(tau ~ exponential(1 / tau_scale))
+    if (K > 0 && !is.null(prior$beta_sd)) {
+      prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$beta_sd)))
     }
-  }
-
-  if (has_random) {
-    for (b in 1:num_bars) {
-      sd_name <- as.name(paste0("sd", suffix(b)))
-      if (use_weak_info) {
-        prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(tau_rate))
-      } else {
-        prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(.(prior$sd_rate)))
+    if (has_random && !is.null(prior$tau_rate)) {
+      for (b in 1:num_bars) {
+        sd_name <- as.name(paste0("sd", suffix(b)))
+        prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(.(prior$tau_rate)))
       }
     }
   }
@@ -607,29 +705,22 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #'
 #' @param formula Formula
 #' @param data Data frame
-#' @param prior Prior list
+#' @param laplace Logical; whether to marginalize random effects using Laplace approximation
+#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Default is NULL (flat prior).
+#' @param y_range Theoretical minimum and maximum values of the response variable
 #' @param init Initial values
-#' @param regularization Regularization method
-#' @param weak_info_prior Weak informative prior parameters
-#' @param use_weak_info Whether to use weak informative priors
 #' @param null Null model parameters
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
 rtmb_lmer <- function(formula, data, laplace = TRUE,
-                      penalty = c("none", "rhs", "ssp"),
+                      prior = prior_uniform(),
                       y_range = NULL,
-                      use_weak_info = FALSE,
-                      prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, lkj_eta = 1.0),
-                      weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                       init = NULL, null = NULL) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
-             penalty = penalty,
-             y_range = y_range,
-             use_weak_info = use_weak_info,
              prior = prior,
-             weak_info_prior = weak_info_prior,
+             y_range = y_range,
              init = init,
              null = null)
 }
@@ -639,32 +730,23 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param formula Formula
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
-#' @param penalty Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
+#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
-#' @param use_weak_info Logical; whether to explicitly use weakly informative priors (requires y_range for continuous models).
-#' @param prior List of hyperparameters for the default fixed priors.
-#' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values
 #' @param null Character string specifying the target parameter for the null model.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
-                     penalty = c("none", "rhs", "ssp"),
+                     prior = prior_uniform(),
                      y_range = NULL,
-                     use_weak_info = FALSE,
-                     prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0),
-                     weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                      init = NULL, null = NULL) {
   rtmb_glmer(
     formula = formula,
     data = data,
     family = family,
     laplace = FALSE,
-    penalty = penalty,
-    y_range = y_range,
-    use_weak_info = use_weak_info,
     prior = prior,
-    weak_info_prior = weak_info_prior,
+    y_range = y_range,
     init = init,
     null = null
   )
@@ -674,32 +756,23 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #'
 #' @param formula Formula (e.g., Y ~ X1 + X2)
 #' @param data Data frame
-#' @param penalty Type of regularization for fixed effects: "none", "rhs" (Regularized Horseshoe), or "ssp" (Spike and Slab Prior). Default is "none".
+#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
-#' @param use_weak_info Logical; whether to explicitly use weakly informative priors.
-#' @param prior List of hyperparameters for the default fixed priors.
-#' @param weak_info_prior List of hyperparameters for the weakly informative priors and regularization.
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
-                    penalty = c("none", "rhs", "ssp"),
+                    prior = prior_uniform(),
                     y_range = NULL,
-                    use_weak_info = FALSE,
-                    prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1),
-                    weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ssp_ratio = 0.25),
                     init = NULL, null = NULL) {
 
   rtmb_glm(
     formula = formula,
     data = data,
     family = "gaussian",
-    penalty = penalty,
-    y_range = y_range,
-    use_weak_info = use_weak_info,
     prior = prior,
-    weak_info_prior = weak_info_prior,
+    y_range = y_range,
     init = init,
     null = null
   )
@@ -748,8 +821,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   setup_ast <- quote({
     N <- nrow(Y)
     J <- ncol(Y)
-    Y_bar <- apply(Y, 2, mean)
-    S_Y <- cov(Y) * (N - 1)
+    
+    # Check for missing values and calculate sufficient statistics accordingly
+    if (any(is.na(Y))) {
+      warning("Missing values (NAs) detected in the data. Using pairwise complete observations for sufficient statistics. Results may be approximate.")
+      Y_bar <- apply(Y, 2, mean, na.rm = TRUE)
+      S_Y <- cov(Y, use = "pairwise.complete.obs") * (N - 1)
+    } else {
+      Y_bar <- apply(Y, 2, mean)
+      S_Y <- cov(Y) * (N - 1)
+    }
   })
 
   if (is_ssp) {

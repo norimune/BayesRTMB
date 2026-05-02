@@ -381,14 +381,15 @@ MAP_Fit <- R6::R6Class(
     #' @param digits Integer; number of decimal places to print. Default is 5.
     #' @param show_plot Logical; whether to plot the profile likelihood curves. Default is FALSE.
     #' @param quiet Logical; whether to suppress text output. Default is FALSE.
+    #' @param jacobian Character; "none" (default), "random", or "all". Whether to include Jacobian adjustments for transformations.
     #' @param ... Additional arguments passed to TMB::tmbprofile (e.g., ytol).
     #' @return A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.
-    profile = function(pars = NULL, level = 0.95, trace = FALSE, digits = 5, show_plot = FALSE, quiet = FALSE, ...) {
+    profile = function(pars = NULL, level = 0.95, trace = FALSE, digits = 5, show_plot = FALSE, quiet = FALSE, jacobian = "none", ...) {
       if (!quiet) cat("Estimating confidence intervals via Profile Likelihood...\n")
       
-      # 1. Re-build ad_obj using optimized values and no jacobian adjustment
+      # 1. Re-build ad_obj using optimized values and specific jacobian adjustment
       ad_setup <- self$model$build_ad_obj(init = self$par, laplace = self$laplace, 
-                                          map = self$map, jacobian_target = "none")
+                                          map = self$map, jacobian_target = jacobian)
       ad_obj <- ad_setup$ad_obj
       
       # Sync internal state
@@ -432,7 +433,35 @@ MAP_Fit <- R6::R6Class(
       up_label <- sprintf("Upper %g%%", (1 - (1 - level)/2) * 100)
       colnames(res_mat) <- c(low_label, up_label)
       rownames(res_mat) <- target_names
-      
+
+      # Reconstruct idx_fix_active to map between active parameters and full unconstrained vector
+      idx_ran <- ad_obj$env$random
+      if (is.null(idx_ran)) idx_ran <- integer(0)
+      idx_fix_active <- integer(0)
+      factor_levels_seen <- list()
+      idx_curr <- 1
+      for (name in names(self$model$par_list)) {
+        L_u <- self$model$par_list[[name]]$unc_length
+        if (L_u > 0) {
+          map_f <- if (!is.null(self$map[[name]])) self$map[[name]] else NULL
+          for (j in 1:L_u) {
+            pos_last <- idx_curr + j - 1
+            if (pos_last %in% idx_ran) next
+            if (!is.null(map_f) && is.na(map_f[j])) next
+            if (!is.null(map_f)) {
+              lvl <- as.character(map_f[j])
+              if (!(lvl %in% names(factor_levels_seen))) {
+                factor_levels_seen[[lvl]] <- TRUE
+                idx_fix_active <- c(idx_fix_active, pos_last)
+              }
+            } else {
+              idx_fix_active <- c(idx_fix_active, pos_last)
+            }
+          }
+          idx_curr <- idx_curr + L_u
+        }
+      }
+
       prof_list <- list()
       
       # 3. Profile
@@ -460,7 +489,27 @@ MAP_Fit <- R6::R6Class(
           }
           ci <- tryCatch(suppressWarnings(confint(prof, level = level)), error = function(e) NULL)
           if (!is.null(ci)) {
-            res_mat[i, ] <- ci
+            # Transform CIs back to constrained scale
+            transform_val <- function(u) {
+              if (is.na(u)) return(NA)
+              u_full <- self$par_unc
+              u_full[idx_fix_active[idx]] <- u
+
+              c_list <- to_constrained(unconstrained_vector_to_list(u_full, self$model$par_list), self$model$par_list)
+
+              # Parse p_name (e.g. "b[1]" -> name="b", index=1)
+              p_base <- gsub("\\[.*\\]$", "", p_name)
+              p_idx_match <- regexec("\\[([0-9]+)\\]$", p_name)
+              p_sub <- regmatches(p_name, p_idx_match)[[1]]
+              p_idx <- if (length(p_sub) > 1) as.numeric(p_sub[2]) else NA
+
+              val <- as.numeric(c_list[[p_base]])
+              if (is.na(p_idx)) return(val[1])
+              return(val[p_idx])
+            }
+            low_c <- transform_val(ci[1])
+            up_c <- transform_val(ci[2])
+            res_mat[i, ] <- c(min(low_c, up_c, na.rm = TRUE), max(low_c, up_c, na.rm = TRUE))
           }
         }
       }
@@ -486,102 +535,6 @@ MAP_Fit <- R6::R6Class(
       
       attr(res_df, "profiles") <- prof_list
       return(invisible(res_df))
-    },
-
-    #' @description Plot the posterior density for specific parameters based on Profile Likelihood.
-    #' @param pars Character vector of parameter names to plot.
-    #' @param level Confidence level for the range to plot (default is 0.999).
-    #' @param ... Additional arguments passed to profile() (e.g. ytol).
-    plot_density = function(pars = NULL, level = 0.999, ...) {
-      # 1. Get profile data
-      # Use show_plot = FALSE to avoid deviance plots
-      res_ci <- self$profile(pars = pars, level = level, show_plot = FALSE, quiet = TRUE, ...)
-      profiles <- attr(res_ci, "profiles")
-      
-      if (length(profiles) == 0) return(invisible(NULL))
-      
-      ad_setup <- self$model$build_ad_obj(init = self$par, laplace = self$laplace, 
-                                          map = self$map, jacobian_target = "none")
-      ad_obj <- ad_setup$ad_obj
-      
-      n_pars <- length(profiles)
-      if (n_pars > 1) {
-        old_par <- graphics::par(mfrow = grDevices::n2mfrow(n_pars))
-        on.exit(graphics::par(old_par))
-      }
-      
-      for (p_name in names(profiles)) {
-        prof <- profiles[[p_name]]
-        u_vals <- prof[[1]]
-        deviance <- prof$value
-        lik <- exp(-0.5 * deviance)
-        
-        c_vals <- numeric(length(u_vals))
-        dens <- numeric(length(u_vals))
-        
-        all_fixed_names <- rownames(self$df_fixed)
-        idx_in_active <- which(all_fixed_names == p_name)
-        
-        all_indices <- seq_along(ad_obj$env$last.par)
-        fixed_indices <- if (is.null(ad_obj$env$random)) all_indices else all_indices[-ad_obj$env$random]
-        idx_full <- fixed_indices[idx_in_active]
-        
-        opt_unc_list <- to_unconstrained(self$par, self$model$par_list)
-        
-        for (j in seq_along(u_vals)) {
-          eps <- 1e-5
-          calc_c <- function(u) {
-            tmp_unc_list <- opt_unc_list
-            curr_idx <- 0
-            for (name in names(tmp_unc_list)) {
-              L <- length(tmp_unc_list[[name]])
-              if (idx_full > curr_idx && idx_full <= curr_idx + L) {
-                tmp_unc_list[[name]][idx_full - curr_idx] <- u
-                break
-              }
-              curr_idx <- curr_idx + L
-            }
-            tmp_con <- to_constrained(tmp_unc_list, self$model$par_list)
-            curr_idx_c <- 0
-            for (name in names(tmp_con)) {
-              L_c <- length(tmp_con[[name]])
-              if (idx_full > curr_idx_c && idx_full <= curr_idx_c + L_c) {
-                return(as.numeric(tmp_con[[name]])[idx_full - curr_idx_c])
-              }
-              curr_idx_c <- curr_idx_c + L_c
-            }
-            return(NA)
-          }
-          
-          phi <- calc_c(u_vals[j])
-          phi_plus <- calc_c(u_vals[j] + eps)
-          dphi_du <- (phi_plus - phi) / eps
-          
-          c_vals[j] <- phi
-          dens[j] <- lik[j] / abs(dphi_du)
-        }
-        
-        valid <- !is.na(c_vals) & !is.na(dens) & !is.infinite(dens)
-        c_vals <- c_vals[valid]; dens <- dens[valid]
-        
-        if (length(c_vals) < 2) {
-          warning(sprintf("Not enough valid points for '%s'.", p_name))
-          next
-        }
-        
-        dx <- diff(c_vals); mid_dens <- (dens[-1] + dens[-length(dens)]) / 2
-        area <- sum(dx * mid_dens)
-        if (!is.na(area) && area > 0) dens <- dens / area
-        
-        graphics::plot(c_vals, dens, type = "l", lwd = 2, col = "#2c3e50",
-                       xlab = p_name, ylab = "Posterior Density",
-                       main = paste("Posterior Distribution:", p_name))
-        graphics::grid()
-        graphics::polygon(c(c_vals, rev(c_vals)), c(dens, rep(0, length(dens))),
-                          col = "#3498db33", border = NA)
-        graphics::abline(v = self$df_fixed[p_name, "Estimate"], col = "#e74c3c", lty = 2, lwd = 1.5)
-      }
-      return(invisible(NULL))
     }
   )
 )

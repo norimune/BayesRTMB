@@ -79,6 +79,7 @@ RTMB_Model <- R6::R6Class(
 
       # Changed to go through prepare_init
       init_vec <- self$prepare_init(self$init)
+      self$init <- init_vec
       test_para <- constrained_vector_to_list(init_vec, self$par_list)
 
       test_val <- tryCatch({
@@ -215,16 +216,33 @@ RTMB_Model <- R6::R6Class(
     #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
     calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL) {
       cat("Estimating Satterthwaite degrees of freedom...\n")
-      
+
       par <- if (!is.null(opt_par)) opt_par else ad_obj$par
       P <- length(par)
       total_len <- if (!is.null(L_u_total)) L_u_total else P
       df_full <- rep(Inf, total_len)
-      
+
       # Step 1: Compute Hessian at optimum via Jacobian of analytical gradient
-      # For marginal likelihood (Laplace), numDeriv on the gradient is most reliable
-      H0 <- tryCatch(numDeriv::jacobian(ad_obj$gr, par), error = function(e) NULL)
-      
+      # For marginal likelihood (Laplace), numerical differentiation on the gradient is most reliable
+
+      # Simple numerical Jacobian to avoid external package dependencies (e.g., numDeriv)
+      simple_jacobian <- function(f, x, h = 1e-4) {
+        p <- length(x)
+        f0 <- f(x)
+        res <- matrix(0, nrow = length(f0), ncol = p)
+        for (i in 1:p) {
+          h_i <- max(abs(x[i]), 1) * h
+          x_plus <- x
+          x_minus <- x
+          x_plus[i] <- x[i] + h_i
+          x_minus[i] <- x[i] - h_i
+          res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
+        }
+        return(res)
+      }
+
+      H0 <- tryCatch(simple_jacobian(ad_obj$gr, par), error = function(e) NULL)
+
       if (is.null(H0) || any(!is.finite(H0))) {
         warning("Hessian computation failed. Using normal approximation.")
         return(df_full)
@@ -233,54 +251,53 @@ RTMB_Model <- R6::R6Class(
         tryCatch(MASS::ginv(H0), error = function(e2) NULL)
       })
       if (is.null(V)) return(df_full)
-      
+
       # Step 2: Compute dV_ii/dtheta_k via central differences of the Hessian
       # Optimized: Compute dH/dtheta_k once per k and vectorize diag(V dH V)
       # Improved: Smaller eps base for better sensitivity to 3rd derivatives
       eps <- 1e-5 * pmax(abs(par), 0.1)
       grad_V_diag <- matrix(0, nrow = P, ncol = P) # grad_V_diag[k, i] = dV_ii / dtheta_k
-      
+
       for (k in 1:P) {
         par_plus <- par_minus <- par
         par_plus[k]  <- par[k] + eps[k]
         par_minus[k] <- par[k] - eps[k]
-        
-        H_plus  <- tryCatch(numDeriv::jacobian(ad_obj$gr, par_plus),  error = function(e) NULL)
-        H_minus <- tryCatch(numDeriv::jacobian(ad_obj$gr, par_minus), error = function(e) NULL)
-        
+
+        H_plus  <- tryCatch(simple_jacobian(ad_obj$gr, par_plus),  error = function(e) NULL)
+        H_minus <- tryCatch(simple_jacobian(ad_obj$gr, par_minus), error = function(e) NULL)
+
         if (is.null(H_plus) || is.null(H_minus)) next
-        
+
         # Third derivative approximation: dH/dtheta_k
         dH_k <- (H_plus - H_minus) / (2 * eps[k])
-        
+
         # dV/dtheta_k = -V %*% dH_k %*% V
         # Diagonal elements: diag(dV/dtheta_k) = -rowSums((V %*% dH_k) * V)
         grad_V_diag[k, ] <- -rowSums((V %*% dH_k) * V)
       }
-      
+
       df_par <- rep(Inf, P)
       for (i in 1:P) {
         grad_vi <- grad_V_diag[, i]
         if (all(abs(grad_vi) < 1e-30)) next
-        
+
         # Var(V_ii) = grad(V_ii)^T %*% V %*% grad(V_ii)
         var_vi <- as.numeric(t(grad_vi) %*% V %*% grad_vi)
         if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V[i, i] > 0) {
           df_par[i] <- 2 * (V[i, i]^2) / var_vi
-          if (!is.null(max_df)) df_par[i] <- pmin(df_par[i], max_df)
         }
       }
-      
+
       df_par[!is.finite(df_par)] <- Inf
       df_par <- pmax(df_par, 2.1)
-      
+
       # Map to full parameter vector
       if (!is.null(idx_fix_active) && length(idx_fix_active) == P) {
         df_full[idx_fix_active] <- df_par
       } else if (P == total_len) {
         df_full <- df_par
       }
-      
+
       finite_dfs <- df_par[is.finite(df_par)]
       if (length(finite_dfs) > 0) {
         cat(sprintf("  Estimated DF range: %.1f - %.1f\n", min(finite_dfs), max(finite_dfs)))
@@ -366,16 +383,14 @@ RTMB_Model <- R6::R6Class(
     #' @param se_sampling Logical; Alias for `ci_method = "sampling"` (for backward compatibility).
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
     #' @param seed Integer; random seed for sampling.
-    #' @param auto_df Logical; whether to automatically estimate degrees of freedom. Default is FALSE.
-    #' @param df_t Numeric; degrees of freedom for the t-distribution. Default is Inf.
-    #' @param n_obs Integer or "auto"; number of observations. If "auto", it is automatically detected from the model code. Default is NULL.
-    #' @param df_vars Character vector; parameter names to count for degrees of freedom calculation. Default is NULL.
+    #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary. 
+    #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
-                        optimizer = "nlminb", method = "BFGS", map = NULL, 
+                        optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        auto_df = FALSE, df_t = Inf, n_obs = NULL, df_vars = NULL) {
+                        df = NULL) {
 
       if (!is.null(se_method)) ci_method <- se_method
       ci_method <- match.arg(ci_method)
@@ -383,36 +398,9 @@ RTMB_Model <- R6::R6Class(
       if (ci_method == "sampling") se_sampling <- TRUE
       cat("Starting optimization...\n")
 
-      if (auto_df && is.null(n_obs)) {
-        n_obs <- "auto"
-      }
-
-      if (!is.null(n_obs) && is.character(n_obs) && n_obs == "auto") {
-        n_obs <- self$get_n_obs()
-        if (!is.null(n_obs) && !is.na(n_obs)) {
-          cat(sprintf("Automatically detected n_obs: %d\n", n_obs))
-        } else {
-          cat("Warning: Automatic n_obs detection failed.\n")
-          n_obs <- NULL
-        }
-      }
-
-      # Calculate custom DF if df_vars is provided
-      if (!is.null(df_vars)) {
-        if (is.null(n_obs)) {
-          n_obs <- self$get_n_obs() # Try to auto-detect if not already done
-          if (!is.null(n_obs)) cat(sprintf("Automatically detected n_obs for df calculation: %d\n", n_obs))
-        }
-        if (!is.null(n_obs)) {
-          n_df_params <- sum(sapply(df_vars, function(v) {
-            if (!is.null(self$par_list[[v]])) self$par_list[[v]]$unc_length else 0
-          }))
-          df_t <- max(n_obs - n_df_params, 2.1)
-          cat(sprintf("Using t-distribution for CIs with DF = %.1f (n_obs=%d, n_params=%d)\n", df_t, as.integer(n_obs), as.integer(n_df_params)))
-        } else {
-          warning("df_vars specified but n_obs is unknown. Using normal distribution (DF=Inf).")
-        }
-      }
+      if (is.null(df)) df <- Inf
+      auto_df <- identical(df, "auto")
+      df_t <- if (is.numeric(df)) df else Inf
 
       opt_results <- list()
       obj_vals <- numeric(num_estimate)
@@ -555,7 +543,7 @@ RTMB_Model <- R6::R6Class(
           idx_curr <- idx_curr + L_u
         }
       }
-      
+
       # Profile Likelihood CI calculation is now moved to $profile() method of MAP_Fit
 
       # --- Use optimization results for point estimates to prevent sdreport's Delta method bias ---
@@ -577,7 +565,10 @@ RTMB_Model <- R6::R6Class(
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
         # Extract standard errors directly from the diagonal of the cov.fixed matrix without using summary
         se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
-
+        if (!isTRUE(sd_rep$pdHess) || any(is.na(se_fix)) || any(is.nan(se_fix))) {
+          fallback_needed <- TRUE
+          cat("Warning: sdreport produced NAs or non-positive-definite Hessian. Falling back to ginv().\n")
+        }
         # Safety check: Ensure the number of calculated indices perfectly matches the TMB output size
         if (length(idx_fix_active) == length(se_fix)) {
 
@@ -894,6 +885,7 @@ RTMB_Model <- R6::R6Class(
         } else if (auto_df) {
           n_limit <- if (is.null(n_obs)) self$get_n_obs() else n_obs
           est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, max_df = n_limit)
+          ad_obj$fn(opt$par)
         } else if (!is.null(n_obs)) {
           # Count total estimated parameters (both fixed and random)
           n_params <- sum(sapply(self$par_list, function(x) x$unc_length))
@@ -978,7 +970,7 @@ RTMB_Model <- R6::R6Class(
       # Map unconstrained DFs back to parameter list structure
       df_list_con <- list()
       # Determine if we should include DF in the output
-      show_df <- auto_df || any(!is.infinite(df_t)) || !is.null(n_obs)
+      show_df <- auto_df || !is.infinite(df_t)
 
       if (exists("est_dfs_all")) {
         # est_dfs_all is on unconstrained scale. For summary, we map it to constrained parameters.
@@ -1152,15 +1144,16 @@ RTMB_Model <- R6::R6Class(
           # Welch-Satterthwaite approximation for derived quantities
           # df_y = (sum w_k)^2 / sum(w_k^2 / df_k) where w_k is variance contribution
           derived_dfs <- rep(Inf, L_out)
-          for (j in 1:L_out) {
-            w <- (J[j, ] * unc_se_vec)^2
-            sum_w <- sum(w, na.rm = TRUE)
-            if (sum_w > 1e-12) {
-              denom <- sum(w^2 / pmax(est_dfs_all, 2.1), na.rm = TRUE)
-              if (denom > 1e-15) {
-                val_df <- (sum_w^2) / denom
-                if (!is.null(n_obs)) val_df <- pmin(val_df, n_obs)
-                derived_dfs[j] <- val_df
+          if (exists("J")) {
+            for (j in 1:L_out) {
+              w <- (J[j, ] * unc_se_vec)^2
+              sum_w <- sum(w, na.rm = TRUE)
+              if (sum_w > 1e-12) {
+                denom <- sum(w^2 / pmax(est_dfs_all, 2.1), na.rm = TRUE)
+                if (denom > 1e-15) {
+                  val_df <- (sum_w^2) / denom
+                  derived_dfs[j] <- val_df
+                }
               }
             }
           }
