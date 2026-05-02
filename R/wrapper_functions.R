@@ -54,15 +54,15 @@ NULL
 
 #' Specify a uniform or manual prior
 #'
-#' @param Int_sd Standard deviation for the intercept prior (Normal). Default is NULL (flat).
-#' @param beta_sd Standard deviation for the coefficients prior (Normal). Default is NULL (flat).
+#' @param Intercept_sd Standard deviation for the intercept prior (Normal). Default is NULL (flat).
+#' @param b_sd Standard deviation for the coefficients prior (Normal). Default is NULL (flat).
 #' @param sigma_rate Rate for the residual standard deviation prior (Exponential). Default is NULL (flat).
 #' @param tau_rate Rate for the random effects standard deviation prior (Exponential). Default is NULL (flat).
 #' @param ... Optional hyperparameters
 #' @return A list with class "rtmb_prior"
 #' @export
-prior_uniform <- function(Int_sd = NULL, beta_sd = NULL, sigma_rate = NULL, tau_rate = NULL, ...) {
-  res <- list(type = "uniform", Int_sd = Int_sd, beta_sd = beta_sd, sigma_rate = sigma_rate, tau_rate = tau_rate, ...)
+prior_uniform <- function(Intercept_sd = NULL, b_sd = NULL, sigma_rate = NULL, tau_rate = NULL, ...) {
+  res <- list(type = "uniform", Intercept_sd = Intercept_sd, b_sd = b_sd, sigma_rate = sigma_rate, tau_rate = tau_rate, ...)
   class(res) <- "rtmb_prior"
   return(res)
 }
@@ -126,6 +126,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   if (is.null(prior)) {
     prior <- prior_uniform()
+  }
+
+  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
+      is.null(prior$Intercept_sd) && is.null(prior$b_sd) &&
+      is.null(prior$sigma_rate) && is.null(prior$tau_rate)) {
+    prior <- prior_weak()
   }
 
   if (!inherits(prior, "rtmb_prior")) {
@@ -625,11 +632,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (!is.null(prior$sigma_rate)) {
       prior_exprs[[length(prior_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
     }
-    if (has_intercept && !is.null(prior$Int_sd)) {
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept ~ normal(0, .(prior$Int_sd)))
+    if (has_intercept && !is.null(prior$Intercept_sd)) {
+      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept ~ normal(0, .(prior$Intercept_sd)))
     }
-    if (K > 0 && !is.null(prior$beta_sd)) {
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$beta_sd)))
+    if (K > 0 && !is.null(prior$b_sd)) {
+      prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
     }
     if (has_random && !is.null(prior$tau_rate)) {
       for (b in 1:num_bars) {
