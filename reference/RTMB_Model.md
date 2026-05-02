@@ -165,10 +165,10 @@ map_basic$summary()
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> mu[1]     -0.12319     0.09499   -0.30936    0.06298 
-#> mu[2]      2.15919     0.10806    1.94741    2.37098 
+#> mu[1]     -0.12318     0.09499   -0.30935    0.06299 
+#> mu[2]      2.15920     0.10806    1.94742    2.37099 
 #> mu[3]     -1.11887     0.09722   -1.30942   -0.92832 
-#> sigma      0.44555     0.04045    0.37293    0.53232 
+#> sigma      0.44555     0.04045    0.37292    0.53232 
 #> 
 
 # Perform MCMC sampling using the named model (chains/iters reduced for speed)
@@ -198,11 +198,11 @@ mcmc_basic <- mod_basic$sample(sampling = 500, warmup = 500, chains = 2)
 #> chain 2: iter 1000 sampling 
 mcmc_basic$summary()
 #> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp        -49.82  1.45  -48.75  -53.40  -48.06       414       670  1.00 
-#> mu[1]      -0.12  0.10   -0.12   -0.31    0.07      1091       690  1.00 
-#> mu[2]       2.16  0.11    2.17    1.95    2.39      1036       620  1.00 
-#> mu[3]      -1.12  0.10   -1.11   -1.31   -0.91       819       587  1.00 
-#> sigma       0.47  0.05    0.45    0.39    0.56       818       753  1.00 
+#> lp        -49.87  1.41  -48.90  -53.20  -48.03       489       780  1.00 
+#> mu[1]      -0.12  0.10   -0.10   -0.32    0.08       653       668  1.01 
+#> mu[2]       2.15  0.12    2.18    1.92    2.39       852       743  1.00 
+#> mu[3]      -1.11  0.10   -1.10   -1.31   -0.91      1274       770  1.00 
+#> sigma       0.47  0.04    0.46    0.39    0.56       913       663  1.00 
 
 # --- 2. Optional: Adding Custom Parameter Names and initial values ---
 # You can optionally use 'par_names' to assign meaningful labels
@@ -264,10 +264,10 @@ mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
 #> chain 2: iter 1000 sampling 
 mcmc_named$summary()
 #>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp               -49.84  1.40  -48.85  -53.22  -48.09       312       697  1.01 
-#> mu[Control]       -0.12  0.10   -0.10   -0.32    0.07      1000       630  1.00 
-#> mu[Treatment_A]    2.16  0.11    2.15    1.94    2.38      1108       361  1.00 
-#> mu[Treatment_B]   -1.12  0.10   -1.12   -1.33   -0.92       923       406  1.00 
-#> sigma              0.47  0.04    0.46    0.40    0.56       836       752  1.01 
+#> lp               -49.88  1.53  -48.87  -53.77  -48.04       403       487  1.01 
+#> mu[Control]       -0.12  0.10   -0.13   -0.32    0.08       948       710  1.00 
+#> mu[Treatment_A]    2.16  0.12    2.18    1.94    2.38      1113       611  1.00 
+#> mu[Treatment_B]   -1.12  0.10   -1.10   -1.34   -0.90       835       298  1.00 
+#> sigma              0.47  0.04    0.45    0.39    0.57      1071       509  1.01 
 # }
 ```

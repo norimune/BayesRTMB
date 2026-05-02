@@ -9,13 +9,8 @@ rtmb_lmer(
   formula,
   data,
   laplace = TRUE,
-  penalty = c("none", "rhs", "ssp"),
+  prior = prior_uniform(),
   y_range = NULL,
-  use_weak_info = FALSE,
-  prior = list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1,
-    lkj_eta = 1),
-  weak_info_prior = list(max_beta = 1, sd_ratio = 0.5, expected_vars = 3, slab_scale = 2,
-    slab_df = 4, ssp_ratio = 0.25),
   init = NULL,
   null = NULL
 )
@@ -31,17 +26,19 @@ rtmb_lmer(
 
   Data frame
 
-- use_weak_info:
+- laplace:
 
-  Whether to use weak informative priors
+  Logical; whether to marginalize random effects using Laplace
+  approximation
 
 - prior:
 
-  Prior list
+  An object of class "rtmb_prior" specifying the prior distribution.
+  Default is NULL (flat prior).
 
-- weak_info_prior:
+- y_range:
 
-  Weak informative prior parameters
+  Theoretical minimum and maximum values of the response variable
 
 - init:
 
@@ -50,10 +47,6 @@ rtmb_lmer(
 - null:
 
   Null model parameters
-
-- regularization:
-
-  Regularization method
 
 ## Value
 

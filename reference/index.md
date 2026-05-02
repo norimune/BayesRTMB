@@ -243,6 +243,14 @@ Functions used within rtmb_code for stability and transformations.
   : Print method for ce_simple
 - [`print(`*`<summary_BayesRTMB>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.md)
   : print for summary_BayesRTMB class
+- [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md)
+  : Specify a Regularized Horseshoe prior for continuous shrinkage
+- [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md)
+  : Specify a Spike-and-Slab prior for variable selection
+- [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
+  : Specify a uniform or manual prior
+- [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md)
+  : Specify a weakly informative prior
 - [`quad_form_chol()`](https://norimune.github.io/BayesRTMB/reference/quad_form_chol.md)
   : Quadratic form using a Cholesky factor
 - [`quad_form_diag()`](https://norimune.github.io/BayesRTMB/reference/quad_form_diag.md)

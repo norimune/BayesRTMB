@@ -116,8 +116,6 @@ estimation.
 
 - [`MAP_Fit$profile()`](#method-map_fit-profile)
 
-- [`MAP_Fit$plot_density()`](#method-map_fit-plot_density)
-
 - [`MAP_Fit$clone()`](#method-map_fit-clone)
 
 Inherited methods
@@ -410,8 +408,9 @@ parameters.
       level = 0.95,
       trace = FALSE,
       digits = 5,
-      plot = FALSE,
+      show_plot = FALSE,
       quiet = FALSE,
+      jacobian = "none",
       ...
     )
 
@@ -434,7 +433,7 @@ parameters.
 
   Integer; number of decimal places to print. Default is 5.
 
-- `plot`:
+- `show_plot`:
 
   Logical; whether to plot the profile likelihood curves. Default is
   FALSE.
@@ -442,6 +441,11 @@ parameters.
 - `quiet`:
 
   Logical; whether to suppress text output. Default is FALSE.
+
+- `jacobian`:
+
+  Character; "none" (default), "random", or "all". Whether to include
+  Jacobian adjustments for transformations.
 
 - `...`:
 
@@ -451,31 +455,6 @@ parameters.
 
 A data frame containing the profile-based confidence intervals, with the
 raw profile objects stored in the "profiles" attribute.
-
-------------------------------------------------------------------------
-
-### Method `plot_density()`
-
-Plot the posterior density for specific parameters based on Profile
-Likelihood.
-
-#### Usage
-
-    MAP_Fit$plot_density(pars = NULL, level = 0.999, ...)
-
-#### Arguments
-
-- `pars`:
-
-  Character vector of parameter names to plot.
-
-- `level`:
-
-  Confidence level for the range to plot (default is 0.999).
-
-- `...`:
-
-  Additional arguments passed to profile() (e.g. ytol).
 
 ------------------------------------------------------------------------
 
