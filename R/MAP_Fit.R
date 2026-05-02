@@ -497,15 +497,19 @@ MAP_Fit <- R6::R6Class(
 
               c_list <- to_constrained(unconstrained_vector_to_list(u_full, self$model$par_list), self$model$par_list)
 
-              # Parse p_name (e.g. "b[1]" -> name="b", index=1)
+              # Extract the specific value for p_name
               p_base <- gsub("\\[.*\\]$", "", p_name)
-              p_idx_match <- regexec("\\[([0-9]+)\\]$", p_name)
-              p_sub <- regmatches(p_name, p_idx_match)[[1]]
-              p_idx <- if (length(p_sub) > 1) as.numeric(p_sub[2]) else NA
-
-              val <- as.numeric(c_list[[p_base]])
-              if (is.na(p_idx)) return(val[1])
-              return(val[p_idx])
+              p_val <- as.numeric(c_list[[p_base]])
+              
+              # Find the index of p_name within the flattened names of p_base
+              p_info <- self$model$par_list[[p_base]]
+              p_names_def <- self$model$par_names[[p_base]]
+              all_p_names <- generate_flat_names(p_base, p_info$dim, p_names_def)
+              
+              p_idx <- which(all_p_names == p_name)
+              if (length(p_idx) == 0) p_idx <- 1
+              
+              return(p_val[p_idx])
             }
             low_c <- transform_val(ci[1])
             up_c <- transform_val(ci[2])

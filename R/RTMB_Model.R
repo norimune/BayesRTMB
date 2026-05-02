@@ -714,13 +714,8 @@ RTMB_Model <- R6::R6Class(
         if (any(!is.infinite(df_t))) {
           active_dfs <- rep(df_t[1], length(idx_fix_active))
         } else if (auto_df) {
-          n_limit <- if (is.null(n_obs)) self$get_n_obs() else n_obs
-          est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, max_df = n_limit)
+          est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
           active_dfs <- est_dfs_all[idx_fix_active]
-        } else if (!is.null(n_obs)) {
-          n_params <- sum(sapply(self$par_list, function(x) x$unc_length))
-          residual_df <- max(n_obs - n_params, 2.1)
-          active_dfs <- rep(residual_df, length(idx_fix_active))
         } else {
           active_dfs <- rep(Inf, length(idx_fix_active))
         }
@@ -883,15 +878,8 @@ RTMB_Model <- R6::R6Class(
         if (any(!is.infinite(df_t))) {
           est_dfs_all <- rep(df_t[1], L_u_total)
         } else if (auto_df) {
-          n_limit <- if (is.null(n_obs)) self$get_n_obs() else n_obs
-          est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, max_df = n_limit)
+          est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
           ad_obj$fn(opt$par)
-        } else if (!is.null(n_obs)) {
-          # Count total estimated parameters (both fixed and random)
-          n_params <- sum(sapply(self$par_list, function(x) x$unc_length))
-          residual_df <- max(n_obs - n_params, 2.1)
-          est_dfs_all <- rep(residual_df, L_u_total)
-          cat(sprintf("Using residual DF: %d (n_obs=%d, n_params=%d)\n", round(residual_df), n_obs, n_params))
         } else {
           est_dfs_all <- rep(Inf, L_u_total)
         }
