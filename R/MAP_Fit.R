@@ -178,9 +178,15 @@ MAP_Fit <- R6::R6Class(
       df_combined <- do.call(rbind, unname(all_dfs))
 
       if (!is.null(pars)) {
-        base_names <- gsub("\\[.*\\]$", "", rownames(df_combined))
-        keep_idx <- rownames(df_combined) %in% pars | base_names %in% pars
-        df_combined <- df_combined[keep_idx, , drop = FALSE]
+        var_names <- rownames(df_combined)
+        base_names <- gsub("\\[.*\\]$", "", var_names)
+        
+        ordered_idx <- integer(0)
+        for (p in pars) {
+          match_idx <- which(var_names == p | base_names == p)
+          ordered_idx <- c(ordered_idx, match_idx)
+        }
+        df_combined <- df_combined[unique(ordered_idx), , drop = FALSE]
       }
 
       if (nrow(df_combined) == 0) {
@@ -188,7 +194,7 @@ MAP_Fit <- R6::R6Class(
         return(invisible(df_combined))
       }
 
-      if (nrow(df_combined) > 0) {
+      if (nrow(df_combined) > 0 && is.null(pars)) {
         var_names <- rownames(df_combined)
         base_names <- gsub("\\[.*\\]$", "", var_names)
 

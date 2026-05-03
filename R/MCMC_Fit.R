@@ -245,11 +245,16 @@ MCMC_Fit <- R6::R6Class(
 
         } else if (is.character(pars)) {
           base_names <- gsub("\\[.*\\]$", "", param_names)
-          matched <- which(param_names %in% pars | base_names %in% pars)
-          if (length(matched) == 0) {
+          
+          ordered_idx <- integer(0)
+          for (p in pars) {
+            match_idx <- which(param_names == p | base_names == p)
+            ordered_idx <- c(ordered_idx, match_idx)
+          }
+          target_idx <- unique(ordered_idx)
+          if (length(target_idx) == 0) {
             stop("The variable name specified in 'pars' was not found.", call. = FALSE)
           }
-          target_idx <- matched
 
         } else {
           stop("'pars' must be either numeric or character.", call. = FALSE)
@@ -285,7 +290,7 @@ MCMC_Fit <- R6::R6Class(
       target_idx <- 1:P
 
       # --- Priority sorting by lp and model$view ---
-      if (length(target_idx) > 0) {
+      if (length(target_idx) > 0 && is.null(pars)) {
         current_names <- param_names[target_idx]
         base_names <- gsub("\\[.*\\]$", "", current_names)
 
