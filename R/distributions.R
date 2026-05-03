@@ -941,3 +941,42 @@ sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
 
   return(sum(lp))
 }
+
+#' Gaussian Process Log-Density (Squared Exponential Kernel)
+#'
+#' @description
+#' Calculates the log-density of a Gaussian Process with a Squared Exponential (RBF) kernel.
+#'
+#' @param y Observation vector (N).
+#' @param x Coordinate vector or matrix (N x D).
+#' @param mean Mean vector (scalar or length N).
+#' @param magnitude Signal standard deviation (alpha).
+#' @param smoothing Length-scale (rho).
+#' @param noise Measurement noise standard deviation (sigma).
+#' @param sum Logical; whether to return the sum of log-densities.
+#' @return Log-density value.
+#' @export
+gaussian_process_lpdf <- function(y, x, mean = 0, magnitude = 1, smoothing = 1, noise = 0.01, sum = TRUE) {
+  N <- length(y)
+  X <- if(is.matrix(x)) x else as.matrix(x)
+
+  # Construct covariance matrix K
+  K <- matrix(0, N, N)
+  for (i in 1:N) {
+    for (j in i:N) {
+      # Squared Euclidean distance
+      d2 <- sum((X[i, ] - X[j, ])^2)
+
+      # Squared Exponential kernel
+      val <- magnitude^2 * exp(-d2 / (2 * smoothing^2))
+      K[i, j] <- val
+      if (i != j) K[j, i] <- val # Symmetry
+    }
+  }
+
+  # Add measurement noise and a small jitter for numerical stability
+  diag(K) <- diag(K) + noise^2 + 1e-8
+
+  # Evaluate as Multivariate Normal
+  return(multi_normal_lpdf(y, mean = mean, Sigma = K, sum = sum))
+}

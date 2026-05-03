@@ -123,6 +123,16 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
     if (bounds_type == "lower_tri_stz") calc_unc_length <- calc_unc_length - 1
   }
 
+  # Support for multi-dimensional arrays of structured parameters (e.g., P x P x K)
+  if (length(dim) > 2) {
+    if (bounds_type %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov", 
+                           "lower_tri", "lower_tri_stz", "positive_lower_tri",
+                           "centered_matrix", "centered_tri", "positive_centered_tri")) {
+      K <- prod(dim[3:length(dim)])
+      calc_unc_length <- calc_unc_length * K
+    }
+  }
+
   list(
     dim        = dim,
     length     = calc_length,
@@ -190,14 +200,10 @@ constrained_vector_to_list <- function(vec, par_list) {
     len <- p$length
     val <- vec[idx:(idx + len - 1)]
 
-    if (length(p$dim) > 1 && !(p$bounds %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov", "lower_tri", "lower_tri_stz"))) {
+    if (length(p$dim) > 1 && !(p$bounds %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov", "lower_tri", "lower_tri_stz", "positive_lower_tri"))) {
       dim(val) <- p$dim
-    } else if (p$bounds %in% c("corr_matrix", "cov_matrix")) {
-      dim(val) <- c(p$dim[1], p$dim[1])
-    } else if (p$bounds %in% c("CF_corr", "CF_cov", "lower_tri", "lower_tri_stz", "positive_lower_tri")) {
-      R <- p$dim[1]
-      C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
-      dim(val) <- c(R, C)
+    } else if (p$bounds %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov", "lower_tri", "lower_tri_stz", "positive_lower_tri")) {
+      dim(val) <- p$dim
     }
 
     res[[name]] <- val
@@ -348,53 +354,68 @@ to_unconstrained <- function(para_orig_list, par_list) {
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
-      L <- if (b_type == "corr_matrix") t(chol(val_orig + diag(1e-8, R))) else val_orig
-      z <- numeric(p$unc_length)
+      K <- if (length(p$dim) > 2) prod(p$dim[3:length(p$dim)]) else 1
+      z_all <- numeric(p$unc_length)
       idx <- 1
-      if (R >= 2) {
-        for (i in 2:R) {
-          prod_term <- 1
-          max_j <- min(i - 1, C - 1)
-          if (max_j > 0) {
-            for (j in 1:max_j) {
-              z_val <- L[i, j] / sqrt(prod_term)
-              z_val <- min(max(z_val, -0.999999), 0.999999)
-              z[idx] <- z_val
-              prod_term <- prod_term * (1 - z_val^2)
-              idx <- idx + 1
+      
+      for (k in 1:K) {
+        val_slice <- if (K > 1) val_orig[, , k] else val_orig
+        L <- if (b_type == "corr_matrix") t(chol(val_slice + diag(1e-8, R))) else val_slice
+        if (R >= 2) {
+          for (i in 2:R) {
+            prod_term <- 1
+            max_j <- min(i - 1, C - 1)
+            if (max_j > 0) {
+              for (j in 1:max_j) {
+                z_val <- L[i, j] / sqrt(prod_term)
+                z_val <- min(max(z_val, -0.999999), 0.999999)
+                z_all[idx] <- z_val
+                prod_term <- prod_term * (1 - z_val^2)
+                idx <- idx + 1
+              }
             }
           }
         }
       }
-      para_unc[[name]] <- atanh(z)
+      para_unc[[name]] <- atanh(z_all)
+      
     } else if (b_type %in% c("cov_matrix", "CF_cov")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
-      L <- if (b_type == "cov_matrix") t(chol(val_orig + diag(1e-8, R))) else val_orig
+      K <- if (length(p$dim) > 2) prod(p$dim[3:length(p$dim)]) else 1
       y <- numeric(p$unc_length)
       idx <- 1
-      for (i in 1:R) {
-        max_j <- min(i, C)
-        for (j in 1:max_j) {
-          if (i == j) {
-            y[idx] <- log(L[i, j])
-          } else {
-            y[idx] <- L[i, j]
+      
+      for (k in 1:K) {
+        val_slice <- if (K > 1) val_orig[, , k] else val_orig
+        L <- if (b_type == "cov_matrix") t(chol(val_slice + diag(1e-8, R))) else val_slice
+        for (i in 1:R) {
+          max_j <- min(i, C)
+          for (j in 1:max_j) {
+            if (i == j) {
+              y[idx] <- log(L[i, j])
+            } else {
+              y[idx] <- L[i, j]
+            }
+            idx <- idx + 1
           }
-          idx <- idx + 1
         }
       }
       para_unc[[name]] <- y
     } else if (b_type %in% c("lower_tri", "positive_lower_tri")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
+      K <- if (length(p$dim) > 2) prod(p$dim[3:length(p$dim)]) else 1
       y <- numeric(p$unc_length)
       idx <- 1
-      for (i in 1:R) {
-        max_j <- min(i, C)
-        for (j in 1:max_j) {
-          y[idx] <- val_orig[i, j]
-          idx <- idx + 1
+      for (k in 1:K) {
+        val_slice <- if (K > 1) val_orig[, , k] else val_orig
+        for (i in 1:R) {
+          max_j <- min(i, C)
+          for (j in 1:max_j) {
+            y[idx] <- val_slice[i, j]
+            idx <- idx + 1
+          }
         }
       }
       para_unc[[name]] <- y
@@ -535,45 +556,102 @@ to_constrained <- function(para_unc_list, par_list) {
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
-      z <- tanh(val_unc)
-      L <- matrix(ad_zero, nrow = R, ncol = C)
-      L[1, 1] <- 1
-      idx <- 1
-      if (R >= 2) {
-        for (i in 2:R) {
-          prod_term <- 1
-          max_j <- min(i - 1, C - 1)
-          if (max_j > 0) {
-            for (j in 1:max_j) {
-              L[i, j] <- z[idx] * sqrt(prod_term)
-              prod_term <- prod_term * (1 - z[idx]^2)
-              idx <- idx + 1
+      K <- if (length(p$dim) > 2) prod(p$dim[3:length(p$dim)]) else 1
+      z_all <- tanh(val_unc)
+      
+      if (K > 1) {
+        res_array <- array(ad_zero, dim = p$dim)
+        unc_per_slice <- length(val_unc) / K
+        for (k in 1:K) {
+          z <- z_all[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
+          L <- matrix(ad_zero, nrow = R, ncol = C)
+          L[1, 1] <- 1
+          idx <- 1
+          if (R >= 2) {
+            for (i in 2:R) {
+              prod_term <- 1
+              max_j <- min(i - 1, C - 1)
+              if (max_j > 0) {
+                for (j in 1:max_j) {
+                  L[i, j] <- z[idx] * sqrt(prod_term)
+                  prod_term <- prod_term * (1 - z[idx]^2)
+                  idx <- idx + 1
+                }
+              }
+              last_j <- min(i, C)
+              if (last_j > max_j) {
+                L[i, last_j] <- sqrt(abs(prod_term))
+              }
             }
           }
-          last_j <- min(i, C)
-          if (last_j > max_j) {
-            L[i, last_j] <- sqrt(abs(prod_term))
+          if (b_type == "corr_matrix") res_array[,,k] <- L %*% t(L)
+          else res_array[,,k] <- L
+        }
+        para[[name]] <- res_array
+      } else {
+        z <- z_all
+        L <- matrix(ad_zero, nrow = R, ncol = C)
+        L[1, 1] <- 1
+        idx <- 1
+        if (R >= 2) {
+          for (i in 2:R) {
+            prod_term <- 1
+            max_j <- min(i - 1, C - 1)
+            if (max_j > 0) {
+              for (j in 1:max_j) {
+                L[i, j] <- z[idx] * sqrt(prod_term)
+                prod_term <- prod_term * (1 - z[idx]^2)
+                idx <- idx + 1
+              }
+            }
+            last_j <- min(i, C)
+            if (last_j > max_j) {
+              L[i, last_j] <- sqrt(abs(prod_term))
+            }
           }
         }
+        if (b_type == "corr_matrix") para[[name]] <- L %*% t(L)
+        else para[[name]] <- L
       }
-      if (b_type == "corr_matrix") para[[name]] <- L %*% t(L)
-      else para[[name]] <- L
 
     } else if (b_type %in% c("cov_matrix", "CF_cov")) {
       R <- p$dim[1]
       C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]
-      L <- matrix(ad_zero, nrow = R, ncol = C)
-      idx <- 1
-      for (i in 1:R) {
-        max_j <- min(i, C)
-        for (j in 1:max_j) {
-          if (i == j) L[i, j] <- exp(val_unc[idx])
-          else L[i, j] <- val_unc[idx]
-          idx <- idx + 1
+      K <- if (length(p$dim) > 2) prod(p$dim[3:length(p$dim)]) else 1
+      
+      if (K > 1) {
+        res_array <- array(ad_zero, dim = p$dim)
+        unc_per_slice <- length(val_unc) / K
+        for (k in 1:K) {
+          v_u <- val_unc[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
+          L <- matrix(ad_zero, nrow = R, ncol = C)
+          idx <- 1
+          for (i in 1:R) {
+            max_j <- min(i, C)
+            for (j in 1:max_j) {
+              if (i == j) L[i, j] <- exp(v_u[idx])
+              else L[i, j] <- v_u[idx]
+              idx <- idx + 1
+            }
+          }
+          if (b_type == "cov_matrix") res_array[,,k] <- L %*% t(L)
+          else res_array[,,k] <- L
         }
+        para[[name]] <- res_array
+      } else {
+        L <- matrix(ad_zero, nrow = R, ncol = C)
+        idx <- 1
+        for (i in 1:R) {
+          max_j <- min(i, C)
+          for (j in 1:max_j) {
+            if (i == j) L[i, j] <- exp(val_unc[idx])
+            else L[i, j] <- val_unc[idx]
+            idx <- idx + 1
+          }
+        }
+        if (b_type == "cov_matrix") para[[name]] <- L %*% t(L)
+        else para[[name]] <- L
       }
-      if (b_type == "cov_matrix") para[[name]] <- L %*% t(L)
-      else para[[name]] <- L
 
     } else if (b_type %in% c("lower_tri", "positive_lower_tri")) {
       R <- p$dim[1]

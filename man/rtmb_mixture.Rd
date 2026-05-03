@@ -5,35 +5,32 @@
 \title{Fit a Mixture Model}
 \usage{
 rtmb_mixture(
-  data,
+  formula,
   k,
-  prob_formula = ~1,
+  data = NULL,
+  covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
   prior = prior_uniform(),
   multivariate = NULL,
   ...
 )
 }
 \arguments{
-\item{data}{A vector, matrix, or data frame containing the observed data.}
+\item{formula}{A formula (e.g., \code{y ~ x1 + x2}) for latent class regression, or a data object (matrix/vector) for a basic mixture.}
 
 \item{k}{Integer; the number of mixture components (clusters).}
 
-\item{prob_formula}{A formula for the latent class membership (e.g., \code{~ x1 + x2}).
-Default is \code{~ 1} (constant proportions).}
+\item{data}{A data frame (required if formula is used).}
 
 \item{prior}{An \code{rtmb_prior} object. Default is \code{prior_uniform()}.}
 
-\item{multivariate}{Logical; whether to treat the data as multivariate.
-Automatically set to TRUE if data is a matrix or has multiple columns.}
+\item{multivariate}{Logical; whether to treat the data as multivariate.}
 
-\item{...}{Additional arguments.}
+\item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
 \value{
 An \code{RTMB_Model} object.
 }
 \description{
-Fits a mixture model where the data is assumed to be generated
-from a combination of several probability distributions. It supports both
-univariate and multivariate mixtures, and allows latent class membership to be
-predicted by covariates (Latent Class Regression).
+Fits a mixture model using the RTMB engine. Supports a formula interface
+(response ~ covariates) for latent class regression.
 }
