@@ -518,7 +518,7 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega, sum = TRUE) {
   const <- -0.5 * (K * log(2 * pi) + log_det)
 
   if (is.matrix(x)) {
-    resid_t <- t(x) - mean
+    resid_t <- if (is.matrix(mean)) t(x - mean) else t(x) - mean
     z <- solve(L_Sigma, resid_t)
     if (sum) {
       quad_form <- sum(z^2)
@@ -562,7 +562,7 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
 
   if (is.matrix(x)) {
     n <- nrow(x)
-    resid_t <- t(x) - mean
+    resid_t <- if (is.matrix(mean)) t(x - mean) else t(x) - mean
     z <- solve(L, resid_t)
     if (sum) {
       quad_form <- sum(z^2)

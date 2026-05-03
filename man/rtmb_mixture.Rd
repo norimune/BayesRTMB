@@ -2,37 +2,37 @@
 % Please edit documentation in R/wrapper_functions.R
 \name{rtmb_mixture}
 \alias{rtmb_mixture}
-\title{Fit a Mixture Model}
+\title{Mixture Model Wrapper for RTMB}
 \usage{
 rtmb_mixture(
   formula,
-  k,
+  k = 2,
   data = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-  prior = prior_uniform(),
-  multivariate = NULL,
+  prior_type = c("uniform", "weakly_informative"),
   ...
 )
 }
 \arguments{
-\item{formula}{A formula (e.g., \code{y ~ x1 + x2}) for latent class regression, or a data object (matrix/vector) for a basic mixture.}
+\item{formula}{A formula specifying the response variable(s). For multivariate, use \code{cbind(y1, y2) ~ 1}.}
 
-\item{k}{Integer; the number of mixture components (clusters).}
+\item{k}{Number of mixture components.}
 
-\item{data}{A data frame (required if formula is used).}
+\item{data}{A data frame containing the variables in the model.}
 
-\item{covariance}{Character string specifying the covariance structure: "diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr".}
+\item{covariance}{Covariance structure: "diagonal" (default), "diagonal_equal", "full", "full_equal", or "full_equal_corr".}
 
-\item{prior}{An \code{rtmb_prior} object. Default is \code{prior_uniform()}.}
-
-\item{multivariate}{Logical; whether to treat the data as multivariate.}
+\item{prior_type}{Prior type: "uniform" (default) or "weakly_informative".}
 
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
+
+\item{prob_formula}{Optional formula for latent class regression (covariates for probabilities).}
 }
 \value{
-An \code{RTMB_Model} object.
+A \code{RTMB_Model} object.
 }
 \description{
-Fits a mixture model using the RTMB engine. Supports a formula interface
-(response ~ covariates) for latent class regression.
+Provides a user-friendly interface for fitting Gaussian mixture models
+with optional covariates on class membership probabilities and various
+covariance structures.
 }

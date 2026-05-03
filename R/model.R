@@ -104,8 +104,10 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
         if (identical(expr[[1]], as.name("<-")) || identical(expr[[1]], as.name("="))) {
           if (is.name(expr[[2]])) vars <- c(vars, as.character(expr[[2]]))
         } else if (identical(expr[[1]], as.name("{"))) {
-          for (i in 2:length(expr)) {
-            vars <- c(vars, extract_assigned_vars(expr[[i]]))
+          if (length(expr) > 1) {
+            for (i in 2:length(expr)) {
+              vars <- c(vars, extract_assigned_vars(expr[[i]]))
+            }
           }
         }
       }
@@ -442,9 +444,11 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
       }
     }
 
-    for (i in 2:length(expr)) {
-      if (!identical(expr[[i]], quote(expr=))) {
-        expr[[i]] <- inject_namespace(expr[[i]], pkg)
+    if (length(expr) > 1) {
+      for (i in 2:length(expr)) {
+        if (!identical(expr[[i]], quote(expr=))) {
+          expr[[i]] <- inject_namespace(expr[[i]], pkg)
+        }
       }
     }
   }
@@ -711,6 +715,20 @@ transform_code <- function(expr, env = parent.frame()) {
     expr_elements <- as.list(raw_expr)[-1]
   } else {
     expr_elements <- list(raw_expr)
+  }
+
+  if (length(expr_elements) == 0) {
+    body_list <- c(
+      list(as.name("{")),
+      quote(RTMB::getAll(dat, par)),
+      list(quote(return(list())))
+    )
+    body_expr <- as.call(body_list)
+    args <- as.pairlist(alist(dat = , par = ))
+    fn_expr <- call("function", args, body_expr)
+    fn <- eval(fn_expr, envir = env)
+    attr(fn, "raw_expr") <- raw_expr
+    return(fn)
   }
 
   last_elem <- expr_elements[[length(expr_elements)]]
