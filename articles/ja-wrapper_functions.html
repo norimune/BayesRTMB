@@ -374,48 +374,21 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">300</span> <span class="co"># サンプルサイズ</span></span>
-<span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fl">3</span> <span class="co"># クラスタの数</span></span>
-<span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 1. 共変量の生成</span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="va">X1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>       <span class="co"># 連続変数</span></span>
-<span><span class="va">X2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="va">N</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>  <span class="co"># 二値変数（0 or 1）</span></span>
-<span></span>
-<span><span class="co"># デザイン行列（切片を含む N x 3 行列）</span></span>
+<span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">300</span></span>
+<span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
+<span><span class="va">X1</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="fl">0</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span> </span>
+<span><span class="va">X2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="va">N</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span></span>
 <span><span class="va">X_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span>Intercept <span class="op">=</span> <span class="fl">1</span>, <span class="va">X1</span>, <span class="va">X2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 2. 所属確率のための真の回帰係数 (多項ロジスティック)</span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># クラス1はベースラインとするため、係数はすべて0として扱います。</span></span>
-<span><span class="co"># クラス2とクラス3の係数（切片, X1に対する係数, X2に対する係数）を設定します。</span></span>
+<span><span class="va">beta2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1.2</span>, <span class="op">-</span><span class="fl">0.8</span><span class="op">)</span></span>
+<span><span class="va">beta3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.2</span>, <span class="op">-</span><span class="fl">1.5</span>, <span class="fl">1.0</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">beta2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1.2</span>, <span class="op">-</span><span class="fl">0.8</span><span class="op">)</span>  <span class="co"># クラス2になりやすさを決める係数</span></span>
-<span><span class="va">beta3</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">0.2</span>, <span class="op">-</span><span class="fl">1.5</span>, <span class="fl">1.0</span><span class="op">)</span> <span class="co"># クラス3になりやすさを決める係数</span></span>
-<span></span>
-<span><span class="co"># 係数行列 (3変数 × 2クラス)</span></span>
 <span><span class="va">beta_true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">beta2</span>, <span class="va">beta3</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 3. 各データ点の所属確率の計算</span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 線形予測子 eta を計算 (N x 2)</span></span>
 <span><span class="va">eta</span> <span class="op">&lt;-</span> <span class="va">X_mat</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta_true</span></span>
-<span></span>
-<span><span class="co"># 指数関数をとり、分母を計算</span></span>
-<span><span class="va">exp_eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span><span class="op">)</span></span>
-<span><span class="va">denom</span> <span class="op">&lt;-</span> <span class="fl">1</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/base/colSums.html" class="external-link">rowSums</a></span><span class="op">(</span><span class="va">exp_eta</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 各クラスの所属確率 pi を計算 (N x 3 行列)</span></span>
-<span><span class="co"># クラス1確率は 1/denom、クラス2,3確率は exp_eta/denom</span></span>
-<span><span class="va">pi_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="va">denom</span>, <span class="va">exp_eta</span> <span class="op">/</span> <span class="va">denom</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 4. 潜在変数 z のサンプリングと観測データ Y の生成</span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 真のパラメータ (Yを生成するための平均と標準偏差)</span></span>
+<span><span class="va">pi_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/array.html" class="external-link">array</a></span><span class="op">(</span><span class="cn">NA</span>,dim<span class="op">=</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N</span>,<span class="va">K</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N</span><span class="op">)</span><span class="op">{</span></span>
+<span>  <span class="va">pi_mat</span><span class="op">[</span><span class="va">i</span>,<span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/softmax.html">softmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="va">eta</span><span class="op">[</span><span class="va">i</span>,<span class="op">]</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
 <span><span class="va">mu_true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">3</span>, <span class="fl">0</span>, <span class="fl">4</span><span class="op">)</span> </span>
 <span><span class="va">sigma_true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0.5</span>, <span class="fl">1.0</span>, <span class="fl">0.8</span><span class="op">)</span> </span>
 <span></span>
@@ -423,51 +396,15 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span></span>
 <span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
-<span>  <span class="co"># 各データ点固有の確率 pi_mat[i, ] に基づいてクラスをサンプリング</span></span>
 <span>  <span class="va">z</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="va">K</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="va">pi_mat</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span><span class="op">)</span></span>
-<span>  </span>
-<span>  <span class="co"># サンプリングされたクラスのパラメータを使ってYを生成</span></span>
 <span>  <span class="va">Y</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, mean <span class="op">=</span> <span class="va">mu_true</span><span class="op">[</span><span class="va">z</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span>, sd <span class="op">=</span> <span class="va">sigma_true</span><span class="op">[</span><span class="va">z</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
 <span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 5. データの確認</span></span>
-<span><span class="co"># ---------------------------------------------------------</span></span>
-<span><span class="co"># 解析用にデータフレームにまとめる</span></span>
-<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, X1 <span class="op">=</span> <span class="va">X1</span>, X2 <span class="op">=</span> <span class="va">X2</span>, true_z <span class="op">=</span> <span class="va">z</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># X1の値と割り当てられたクラスの関係をざっくり確認</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">dat</span><span class="op">$</span><span class="va">X2</span>, <span class="va">dat</span><span class="op">$</span><span class="va">Y</span>, col <span class="op">=</span> <span class="va">dat</span><span class="op">$</span><span class="va">true_z</span>, pch <span class="op">=</span> <span class="fl">16</span>, </span>
-<span>     xlab <span class="op">=</span> <span class="st">"Covariate X1"</span>, ylab <span class="op">=</span> <span class="st">"Observed Y"</span>,</span>
-<span>     main <span class="op">=</span> <span class="st">"Mixture Data driven by Covariate X1"</span><span class="op">)</span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/graphics/legend.html" class="external-link">legend</a></span><span class="op">(</span><span class="st">"topleft"</span>, legend <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste</a></span><span class="op">(</span><span class="st">"Cluster"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">3</span><span class="op">)</span>, col <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">3</span>, pch <span class="op">=</span> <span class="fl">16</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, X1 <span class="op">=</span> <span class="va">X1</span>, X2 <span class="op">=</span> <span class="va">X2</span>, true_z <span class="op">=</span> <span class="va">z</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 3つのクラスタを持つ混合正規分布モデル</span></span>
-<span><span class="va">mdl_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_mixture.html">rtmb_mixture</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">X1</span> <span class="op">+</span> <span class="va">X2</span>, data <span class="op">=</span> <span class="va">dat</span>, k <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
-<span><span class="va">mdl_mix</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">opt_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">8</span>, df<span class="op">=</span><span class="st">"auto"</span><span class="op">)</span></span>
-<span><span class="va">opt_mix</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">30</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">mcmc_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>init <span class="op">=</span> <span class="va">opt_mix</span><span class="op">$</span><span class="va">par</span><span class="op">)</span></span>
-<span><span class="va">mcmc_mix</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span>max_rows<span class="op">=</span><span class="fl">30</span><span class="op">)</span></span>
-<span></span>
-<span></span>
-<span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va">flexmix</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Yの平均や分散はクラスタごとに推定し、</span></span>
-<span><span class="co"># クラスタへの所属確率を X1 と X2 で予測する (k=3)</span></span>
-<span><span class="va">fit_flex</span> <span class="op">&lt;-</span> <span class="fu">flexmix</span><span class="op">(</span></span>
-<span>  <span class="va">Y</span> <span class="op">~</span> <span class="fl">1</span>, </span>
-<span>  concomitant <span class="op">=</span> <span class="fu">FLXPmultinom</span><span class="op">(</span><span class="op">~</span> <span class="va">X1</span> <span class="op">+</span> <span class="va">X2</span><span class="op">)</span>, <span class="co"># 所属確率（多項ロジスティック）の式</span></span>
-<span>  k <span class="op">=</span> <span class="fl">3</span>, </span>
-<span>  data <span class="op">=</span> <span class="va">dat</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="va">fit_flex</span><span class="op">)</span></span>
-<span><span class="va">fit_flex</span></span>
-<span></span>
-<span><span class="co"># コンコミタントモデル（所属確率の予測モデル）の係数を抽出</span></span>
-<span><span class="fu">parameters</span><span class="op">(</span><span class="va">fit_flex</span>, which <span class="op">=</span> <span class="st">"concomitant"</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mdl_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_mixture.html">rtmb_mixture</a></span><span class="op">(</span><span class="va">Y</span> <span class="op">~</span> <span class="va">X1</span> <span class="op">+</span> <span class="va">X2</span>, data <span class="op">=</span> <span class="va">dat</span>, k <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span>
+<span><span class="va">opt_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">opt_mix</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <hr>
 </div>
 <div class="section level2">

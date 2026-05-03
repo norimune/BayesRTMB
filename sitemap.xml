@@ -71,6 +71,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/log_mix.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/log_softmax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/log_sum_exp.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/log_sum_exp_matrix.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/logit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/logit_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lognormal_lpdf.html</loc></url>
@@ -111,6 +112,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quantile95.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/r_hat.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ML_corr.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_corr.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_fa.html</loc></url>
@@ -119,6 +121,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_irt.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_lm.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.html</loc></url>

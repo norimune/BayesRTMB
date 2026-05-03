@@ -1,18 +1,18 @@
-# Fit a Mixture Model
+# Mixture Model Wrapper for RTMB
 
-Fits a mixture model using the RTMB engine. Supports a formula interface
-(response ~ covariates) for latent class regression.
+Provides a user-friendly interface for fitting Gaussian mixture models
+with optional covariates on class membership probabilities and various
+covariance structures.
 
 ## Usage
 
 ``` r
 rtmb_mixture(
   formula,
-  k,
+  k = 2,
   data = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-  prior = prior_uniform(),
-  multivariate = NULL,
+  prior_type = c("uniform", "weakly_informative"),
   ...
 )
 ```
@@ -21,30 +21,35 @@ rtmb_mixture(
 
 - formula:
 
-  A formula (e.g., `y ~ x1 + x2`) for latent class regression, or a data
-  object (matrix/vector) for a basic mixture.
+  A formula specifying the response variable(s). For multivariate, use
+  `cbind(y1, y2) ~ 1`.
 
 - k:
 
-  Integer; the number of mixture components (clusters).
+  Number of mixture components.
 
 - data:
 
-  A data frame (required if formula is used).
+  A data frame containing the variables in the model.
 
-- prior:
+- covariance:
 
-  An `rtmb_prior` object. Default is
-  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md).
+  Covariance structure: "diagonal" (default), "diagonal_equal", "full",
+  "full_equal", or "full_equal_corr".
 
-- multivariate:
+- prior_type:
 
-  Logical; whether to treat the data as multivariate.
+  Prior type: "uniform" (default) or "weakly_informative".
 
 - ...:
 
   Additional arguments passed to `rtmb_model`.
 
+- prob_formula:
+
+  Optional formula for latent class regression (covariates for
+  probabilities).
+
 ## Value
 
-An `RTMB_Model` object.
+A `RTMB_Model` object.

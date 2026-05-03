@@ -418,6 +418,8 @@ Functions used within rtmb_code for stability and transformations.
   : Log-softmax function
 - [`log_sum_exp()`](https://norimune.github.io/BayesRTMB/reference/log_sum_exp.md)
   : Log-sum-exp function
+- [`log_sum_exp_matrix()`](https://norimune.github.io/BayesRTMB/reference/log_sum_exp_matrix.md)
+  : Log-sum-exp function for matrices (row-wise)
 - [`logit()`](https://norimune.github.io/BayesRTMB/reference/logit.md) :
   Logit function
 - [`map_est()`](https://norimune.github.io/BayesRTMB/reference/map_est.md)
@@ -468,6 +470,8 @@ Functions used within rtmb_code for stability and transformations.
   Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
+- [`rtmb_ML_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ML_corr.md)
+  : Multilevel Correlation Analysis (Kenny's Model)
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
@@ -485,8 +489,10 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Linear Regression wrapper function
 - [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
   : RTMB-based Linear Mixed Model (LMM) wrapper function
+- [`rtmb_lrt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.md)
+  : Fit a Latent Rank Theory (LRT) Model
 - [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md)
-  : Fit a Mixture Model
+  : Mixture Model Wrapper for RTMB
 - [`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
   : Guidelines for Writing RTMB-Compatible Code
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)

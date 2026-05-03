@@ -303,48 +303,21 @@ Y |> hist()
 
 set.seed(123)
 
-N <- 300 # サンプルサイズ
-K <- 3 # クラスタの数
-
-# ---------------------------------------------------------
-# 1. 共変量の生成
-# ---------------------------------------------------------
-X1 <- rnorm(N, mean = 0, sd = 1)       # 連続変数
-X2 <- rbinom(N, size = 1, prob = 0.5)  # 二値変数（0 or 1）
-
-# デザイン行列（切片を含む N x 3 行列）
+N <- 300
+K <- 3
+X1 <- rnorm(N, mean = 0, sd = 1) 
+X2 <- rbinom(N, size = 1, prob = 0.5)
 X_mat <- cbind(Intercept = 1, X1, X2)
 
-# ---------------------------------------------------------
-# 2. 所属確率のための真の回帰係数 (多項ロジスティック)
-# ---------------------------------------------------------
-# クラス1はベースラインとするため、係数はすべて0として扱います。
-# クラス2とクラス3の係数（切片, X1に対する係数, X2に対する係数）を設定します。
+beta2 <- c(0.5, 1.2, -0.8)
+beta3 <- c(-0.2, -1.5, 1.0)
 
-beta2 <- c(0.5, 1.2, -0.8)  # クラス2になりやすさを決める係数
-beta3 <- c(-0.2, -1.5, 1.0) # クラス3になりやすさを決める係数
-
-# 係数行列 (3変数 × 2クラス)
 beta_true <- cbind(beta2, beta3)
-
-# ---------------------------------------------------------
-# 3. 各データ点の所属確率の計算
-# ---------------------------------------------------------
-# 線形予測子 eta を計算 (N x 2)
 eta <- X_mat %*% beta_true
-
-# 指数関数をとり、分母を計算
-exp_eta <- exp(eta)
-denom <- 1 + rowSums(exp_eta)
-
-# 各クラスの所属確率 pi を計算 (N x 3 行列)
-# クラス1確率は 1/denom、クラス2,3確率は exp_eta/denom
-pi_mat <- cbind(1 / denom, exp_eta / denom)
-
-# ---------------------------------------------------------
-# 4. 潜在変数 z のサンプリングと観測データ Y の生成
-# ---------------------------------------------------------
-# 真のパラメータ (Yを生成するための平均と標準偏差)
+pi_mat <- array(NA,dim=c(N,K))
+for(i in 1:N){
+  pi_mat[i,] <- softmax(c(0,eta[i,]))
+}
 mu_true <- c(-3, 0, 4) 
 sigma_true <- c(0.5, 1.0, 0.8) 
 
@@ -352,54 +325,18 @@ z <- numeric(N)
 Y <- numeric(N)
 
 for (i in 1:N) {
-  # 各データ点固有の確率 pi_mat[i, ] に基づいてクラスをサンプリング
   z[i] <- sample(1:K, size = 1, prob = pi_mat[i, ])
-  
-  # サンプリングされたクラスのパラメータを使ってYを生成
   Y[i] <- rnorm(1, mean = mu_true[z[i]], sd = sigma_true[z[i]])
 }
 
-# ---------------------------------------------------------
-# 5. データの確認
-# ---------------------------------------------------------
-# 解析用にデータフレームにまとめる
 dat <- data.frame(Y = Y, X1 = X1, X2 = X2, true_z = z)
-
-# X1の値と割り当てられたクラスの関係をざっくり確認
-plot(dat$X2, dat$Y, col = dat$true_z, pch = 16, 
-     xlab = "Covariate X1", ylab = "Observed Y",
-     main = "Mixture Data driven by Covariate X1")
-legend("topleft", legend = paste("Cluster", 1:3), col = 1:3, pch = 16)
 ```
 
 ``` r
 
-# 3つのクラスタを持つ混合正規分布モデル
 mdl_mix <- rtmb_mixture(Y ~ X1 + X2, data = dat, k = 3)
-mdl_mix$print_code()
-opt_mix <- mdl_mix$optimize(num_estimate = 8, df="auto")
-opt_mix$print(max_rows=30)
-
-mcmc_mix <- mdl_mix$sample(init = opt_mix$par)
-mcmc_mix$print(max_rows=30)
-
-
-library(flexmix)
-
-# Yの平均や分散はクラスタごとに推定し、
-# クラスタへの所属確率を X1 と X2 で予測する (k=3)
-fit_flex <- flexmix(
-  Y ~ 1, 
-  concomitant = FLXPmultinom(~ X1 + X2), # 所属確率（多項ロジスティック）の式
-  k = 3, 
-  data = dat
-)
-
-summary(fit_flex)
-fit_flex
-
-# コンコミタントモデル（所属確率の予測モデル）の係数を抽出
-parameters(fit_flex, which = "concomitant")
+opt_mix <- mdl_mix$optimize(num_estimate = 8)
+opt_mix$print()
 ```
 
 ------------------------------------------------------------------------
