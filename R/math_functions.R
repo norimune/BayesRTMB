@@ -86,12 +86,27 @@ squared_distance <- function(x, y, eps = 1e-8) {
 #' @export
 log_sum_exp <- function(x, y = NULL) {
   if (is.null(y)) {
+    # Check if x is a matrix
+    if (is.matrix(x)) {
+      return(log_sum_exp_matrix(x))
+    }
     max_val <- max(x)
     return(max_val + log(sum(exp(x - max_val))))
   } else {
     max_val <- (x + y + abs(x - y)) / 2
     return(max_val + log(exp(x - max_val) + exp(y - max_val)))
   }
+}
+
+#' Log-sum-exp function for matrices (row-wise)
+#'
+#' @param M A numeric matrix or advector matrix.
+#' @return A numeric vector of row-wise log-sum-exp.
+#' @export
+log_sum_exp_matrix <- function(M) {
+  # This function hides 'apply' from the BayesRTMB parser
+  max_val <- apply(M, 1, max)
+  return(max_val + log(rowSums(exp(M - max_val))))
 }
 
 #' Log of one minus x

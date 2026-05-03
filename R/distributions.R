@@ -514,14 +514,14 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega, sum = TRUE) {
   N <- if (is.matrix(x)) nrow(x) else 1
   K <- ncol(L_Sigma)
 
-  log_det <- 2 * base::sum(log(diag(L_Sigma)))
+  log_det <- 2 * sum(log(diag(L_Sigma)))
   const <- -0.5 * (K * log(2 * pi) + log_det)
 
   if (is.matrix(x)) {
     resid_t <- t(x) - mean
     z <- solve(L_Sigma, resid_t)
     if (sum) {
-      quad_form <- base::sum(z^2)
+      quad_form <- sum(z^2)
       return(N * const - 0.5 * quad_form)
     } else {
       quad_per_obs <- colSums(z^2)
@@ -529,7 +529,7 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega, sum = TRUE) {
     }
   } else {
     z <- solve(L_Sigma, x - mean)
-    quad_form <- base::sum(z^2)
+    quad_form <- sum(z^2)
     return(const - 0.5 * quad_form)
   }
 }
@@ -544,11 +544,11 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega, sum = TRUE) {
 multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
 
   log_det_chol <- function(L) {
-    return(2 * base::sum(log(diag(L))))
+    return(2 * sum(log(diag(L))))
   }
   quad_form_chol <- function(x, L) {
     z <- solve(L, x)
-    return(base::sum(z^2))
+    return(sum(z^2))
   }
 
   K <- nrow(Sigma)
@@ -565,7 +565,7 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
     resid_t <- t(x) - mean
     z <- solve(L, resid_t)
     if (sum) {
-      quad_form <- base::sum(z^2)
+      quad_form <- sum(z^2)
       return(n * const - 0.5 * quad_form)
     } else {
       quad_per_obs <- colSums(z^2)
@@ -616,7 +616,7 @@ normal_mixture_lpdf <- function(x, pi_w, mean, sd, sum = TRUE) {
 mixture_lpdf <- function(x, pi_w, lpdf_list, sum = TRUE) {
   N <- if (is.matrix(x)) nrow(x) else length(x)
   K <- length(lpdf_list)
-  
+
   # log_pi: N x K matrix
   if (is.matrix(pi_w)) {
     log_pi <- log(pi_w)
@@ -816,7 +816,7 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi, sum = TRUE) {
   Lambda_scaled <- Lambda * inv_psi
   M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)
   L_M <- chol(M)
-  log_det_Sigma <- base::sum(log(psi)) + 2 * base::sum(log(diag(L_M)))
+  log_det_Sigma <- sum(log(psi)) + 2 * sum(log(diag(L_M)))
   const <- -0.5 * (P * 1.83787706640935 + log_det_Sigma)
 
   if (is.matrix(x)) {
@@ -827,8 +827,8 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi, sum = TRUE) {
     theta_T <- solve(M, t(z_lambda))
 
     if (sum) {
-      term1 <- base::sum(y_c * z_scaled)
-      term2 <- base::sum(z_lambda * t(theta_T))
+      term1 <- sum(y_c * z_scaled)
+      term2 <- sum(z_lambda * t(theta_T))
       return(N * const - 0.5 * (term1 - term2))
     } else {
       term1_per_obs <- rowSums(y_c * z_scaled)
@@ -839,12 +839,12 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi, sum = TRUE) {
   } else {
     # Vector case (single sample)
     y_c <- x - mu
-    term1 <- base::sum((y_c^2) * inv_psi)
+    term1 <- sum((y_c^2) * inv_psi)
 
     z_scaled <- y_c * inv_psi
     z_lambda <- as.vector(t(Lambda) %*% z_scaled)
     theta <- solve(M, z_lambda)
-    term2 <- base::sum(z_lambda * theta)
+    term2 <- sum(z_lambda * theta)
 
     return(const - 0.5 * (term1 - term2))
   }

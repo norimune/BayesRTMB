@@ -301,7 +301,10 @@ beta3 <- c(-0.2, -1.5, 1.0)
 
 beta_true <- cbind(beta2, beta3)
 eta <- X_mat %*% beta_true
-pi_mat <- softmax(c(0,eta))
+pi_mat <- array(NA,dim=c(N,K))
+for(i in 1:N){
+  pi_mat[i,] <- softmax(c(0,eta[i,]))
+}
 mu_true <- c(-3, 0, 4) 
 sigma_true <- c(0.5, 1.0, 0.8) 
 

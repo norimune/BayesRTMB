@@ -301,8 +301,13 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
 
   for (v_name in names(evaluated_par_list)) {
     p <- evaluated_par_list[[v_name]]
-    if (!is.null(p$type) && p$type %in% c("CF_cov", "CF_corr")) {
-      if (length(p$dim) < 2 || p$dim[1] != p$dim[2]) {
+    if (!is.null(p$type) && p$type %in% c("CF_cov", "CF_corr", "cov_matrix", "corr_matrix")) {
+      if (length(p$dim) == 3) {
+        if (p$dim[2] != p$dim[3]) {
+          stop(sprintf("[Parameter definition error] Variable '%s' is specified as type = '%s', but its matrix slices do not have square dimensions (Specified dimension: %s).",
+                       v_name, p$type, paste(p$dim, collapse = " x ")), call. = FALSE)
+        }
+      } else if (length(p$dim) < 2 || p$dim[1] != p$dim[2]) {
         stop(sprintf("[Parameter definition error] Variable '%s' is specified as type = '%s', but it does not have square matrix dimensions (Specified dimension: %s).",
                      v_name, p$type, paste(p$dim, collapse = " x ")), call. = FALSE)
       }

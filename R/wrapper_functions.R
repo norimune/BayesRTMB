@@ -1587,162 +1587,187 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   return(obj)
 }
 
-#' Fit a Mixture Model
+#' Mixture Model Wrapper for RTMB
 #'
 #' @description
-#' Fits a mixture model using the RTMB engine. Supports a formula interface
-#' (response ~ covariates) for latent class regression.
+#' Provides a user-friendly interface for fitting Gaussian mixture models
+#' with optional covariates on class membership probabilities and various
+#' covariance structures.
 #'
-#' @param formula A formula (e.g., \code{y ~ x1 + x2}) for latent class regression, or a data object (matrix/vector) for a basic mixture.
-#' @param k Integer; the number of mixture components (clusters).
-#' @param data A data frame (required if formula is used).
-#' @param prior An \code{rtmb_prior} object. Default is \code{prior_uniform()}.
-#' @param multivariate Logical; whether to treat the data as multivariate.
+#' @param formula A formula specifying the response variable(s). For multivariate, use \code{cbind(y1, y2) ~ 1}.
+#' @param k Number of mixture components.
+#' @param data A data frame containing the variables in the model.
+#' @param covariance Covariance structure: "diagonal" (default), "diagonal_equal", "full", "full_equal", or "full_equal_corr".
+#' @param prob_formula Optional formula for latent class regression (covariates for probabilities).
+#' @param prior_type Prior type: "uniform" (default) or "weakly_informative".
 #' @param ... Additional arguments passed to \code{rtmb_model}.
-#' @return An \code{RTMB_Model} object.
+#' @return A \code{RTMB_Model} object.
 #' @export
-rtmb_mixture <- function(formula, k, data = NULL,
+rtmb_mixture <- function(formula, k = 2, data = NULL,
                          covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-                         prior = prior_uniform(), multivariate = NULL, ...) {
+                         prior_type = c("uniform", "weakly_informative"), ...) {
 
-  # --- 1. Interface and Data Handling ---
-  covariance <- match.arg(covariance)
-  if (k < 2) stop("k must be 2 or more for a mixture model. For k=1, use rtmb_lm or rtmb_glm.")
-  if (inherits(formula, "formula")) {
-    if (is.null(data)) stop("Data must be provided when using a formula.")
-    mf <- model.frame(formula, data)
-    Y_mat <- model.response(mf)
-    X_prob <- model.matrix(formula, data)
-    if (is.null(multivariate)) multivariate <- (is.matrix(Y_mat) && ncol(Y_mat) > 1)
-  } else {
-    Y_mat <- formula
-    if (is.data.frame(Y_mat) || is.matrix(Y_mat)) {
-      Y_mat <- as.matrix(Y_mat)
-      if (is.null(multivariate)) multivariate <- (ncol(Y_mat) > 1)
+  # NSE for formula: handle case where formula is just a variable name in data
+  formula_expr <- substitute(formula)
+  formula_val <- try(formula, silent = TRUE)
+  
+  if (inherits(formula_val, "try-error") || 
+      (!inherits(formula_val, "formula") && !is.matrix(formula_val) && !is.vector(formula_val))) {
+    # Check if variables in formula_expr are in data
+    if (!is.null(data) && all(all.vars(formula_expr) %in% names(data))) {
+      formula <- as.formula(call("~", formula_expr, 1))
+    } else if (!inherits(formula_val, "try-error")) {
+      formula <- formula_val
     } else {
-      Y_mat <- as.vector(Y_mat)
-      if (is.null(multivariate)) multivariate <- FALSE
+      stop(paste0("Object '", deparse(formula_expr), "' not found."))
     }
-    X_prob <- matrix(1, nrow = if(is.matrix(Y_mat)) nrow(Y_mat) else length(Y_mat), ncol = 1)
-    colnames(X_prob) <- "Intercept"
+  } else {
+    formula <- formula_val
   }
 
-  N_obs <- if (is.matrix(Y_mat)) nrow(Y_mat) else length(Y_mat)
-  P_dim <- if (is.matrix(Y_mat)) ncol(Y_mat) else 1
+  covariance <- match.arg(covariance)
+  prior_type <- match.arg(prior_type)
   K_mix <- k
-  P_prob <- ncol(X_prob)
-  has_cov_prob <- (P_prob > 1)
-  X_means <- colMeans(X_prob)
 
-  # --- 2. Prior Configuration ---
-  prior_type <- if (!is.null(prior$type)) prior$type else "uniform"
-  mu_sd_val    <- if (!is.null(prior$mu_sd)) prior$mu_sd else 10
-  beta_sd_val  <- if (!is.null(prior$b_sd)) prior$b_sd else 5
-  sigma_rate_val <- if (!is.null(prior$sigma_rate)) prior$sigma_rate else 0.1
+  # Parse formulas and prepare data
+  if (is.matrix(formula) || is.vector(formula)) {
+    Y_mat <- as.matrix(formula)
+    X_prob <- NULL
+  } else if (!inherits(formula, "formula")) {
+    # Case where a single variable name is passed
+    var_name <- as.character(formula)
+    if (!is.null(data) && var_name %in% names(data)) {
+      Y_mat <- as.matrix(data[[var_name]])
+    } else {
+      Y_mat <- as.matrix(formula)
+    }
+    X_prob <- NULL
+  } else {
+    mf_y <- model.frame(formula, data = data)
+    Y_mat <- model.response(mf_y)
+    if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
+    
+    # Check if formula has RHS covariates for prob
+    # RHS is formula[[3]] for two-sided formula
+    rhs <- formula[[3]]
+    is_empty_rhs <- (is.numeric(rhs) && rhs == 1) || (is.symbol(rhs) && rhs == "1")
+    
+    if (!is_empty_rhs) {
+      X_prob <- model.matrix(formula, data = data)
+    } else {
+      X_prob <- NULL
+    }
+  }
 
-  # --- 3. Dynamic AST Construction: setup ---
-  setup_exprs <- list(as.name("{"))
-  setup_exprs[[length(setup_exprs) + 1]] <- bquote(N <- .(N_obs))
-  setup_exprs[[length(setup_exprs) + 1]] <- bquote(K <- .(K_mix))
-  if (multivariate) setup_exprs[[length(setup_exprs) + 1]] <- bquote(P <- .(P_dim))
-  setup_exprs[[length(setup_exprs) + 1]] <- bquote(X_means <- .(X_means))
+  Y_mat <- as.matrix(Y_mat)
+  N_obs <- nrow(Y_mat)
+  P_dim <- ncol(Y_mat)
+  
+  if (is.null(colnames(Y_mat))) {
+    colnames(Y_mat) <- paste0("Y", 1:P_dim)
+  }
 
-  if (prior_type != "uniform") {
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(mu_sd <- .(mu_sd_val))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(sigma_rate <- .(sigma_rate_val))
-    if (has_cov_prob) setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_sd <- .(beta_sd_val))
+  multivariate <- P_dim > 1
+  has_cov_prob <- !is.null(X_prob)
+  is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal", "full_equal_corr")
+
+  # --- 1. Dynamic AST Construction: setup ---
+  setup_exprs <- list(
+    as.name("{"),
+    bquote(N <- .(N_obs)),
+    bquote(K <- .(K_mix)),
+    bquote(P <- .(P_dim))
+  )
+  if (has_cov_prob) {
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(X_means <- matrix(.(colMeans(X_prob)), 1, .(ncol(X_prob))))
   }
   setup_ast <- as.call(setup_exprs)
 
-  # --- 4. Dynamic AST Construction: parameters ---
+  # --- 2. Dynamic AST Construction: parameters ---
   param_exprs <- list(as.name("{"))
   if (has_cov_prob) {
-    param_exprs[[length(param_exprs) + 1]] <- bquote(b <- Dim(c(.(P_prob), .(K_mix - 1))))
+    param_exprs[[length(param_exprs) + 1]] <- bquote(b <- Dim(c(.(ncol(X_prob)), K - 1)))
   } else {
     param_exprs[[length(param_exprs) + 1]] <- bquote(theta <- Dim(.(K_mix), type = "simplex"))
   }
 
-  # mu: Means
   if (multivariate) {
-    param_exprs[[length(param_exprs) + 1]] <- quote(mu <- Dim(c(P, K)))
+    param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(c(K, P)))
+    s_dim <- if (is_sigma_equal && covariance != "diagonal_equal") P_dim else c(K_mix, P_dim)
+    if (covariance == "diagonal_equal") s_dim <- P_dim
+    param_exprs[[length(param_exprs) + 1]] <- bquote(sigma <- Dim(.(s_dim), lower = 0))
   } else {
-    param_exprs[[length(param_exprs) + 1]] <- quote(mu <- Dim(K))
+    param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(K))
+    s_dim <- if (is_sigma_equal) NULL else K_mix
+    param_exprs[[length(param_exprs) + 1]] <- if (is.null(s_dim)) quote(sigma <- Dim(lower = 0)) else bquote(sigma <- Dim(.(s_dim), lower = 0))
   }
 
-  # sigma: Standard deviations
-  is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal")
-  if (multivariate) {
-    if (is_sigma_equal) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(P, lower = 0))
-    else param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(c(P, K), lower = 0))
-  } else {
-    if (is_sigma_equal) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
-    else param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(K, lower = 0))
-  }
-
-  # L_corr: Cholesky factor of correlation matrix
   if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
     if (covariance == "full") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(L_corr <- Dim(c(P, P, K), type = "CF_corr"))
+      param_exprs[[length(param_exprs) + 1]] <- quote(L_corr <- Dim(c(K, P, P), type = "CF_corr"))
     } else {
       param_exprs[[length(param_exprs) + 1]] <- quote(L_corr <- Dim(c(P, P), type = "CF_corr"))
     }
   }
   param_ast <- as.call(param_exprs)
 
-  # --- 5. Dynamic AST Construction: model ---
+  # --- 3. Dynamic AST Construction: model ---
   model_exprs <- list(as.name("{"))
+  model_exprs[[length(model_exprs) + 1]] <- quote(lp <- mu[1] * 0)
+  model_exprs[[length(model_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
 
-  # Common: Pre-calculate log densities for each cluster (O(NK) instead of O(N^2K))
-  model_exprs[[length(model_exprs) + 1]] <- quote(log_dens_mat <- matrix(0, N, K))
-
-  # Loop for densities
   is_diag <- covariance %in% c("diagonal", "diagonal_equal")
-  is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal")
-  is_corr_equal <- covariance %in% c("full_equal", "full_equal_corr")
-
-  # Standard deviation vector/scalar for cluster k
-  s_k_expr <- if (is_sigma_equal) quote(sigma) else quote(sigma[, k])
+  s_k_expr <- if (is_sigma_equal) quote(sigma) else quote(sigma[k, ])
   if (!multivariate && !is_sigma_equal) s_k_expr <- quote(sigma[k])
 
   dist_body <- if (multivariate) {
     if (is_diag) {
-      bquote(log_dens_mat[, k] <- multi_normal_lpdf(Y, mean = mu[, k], Sigma = diag(.(s_k_expr)^2), sum = FALSE))
+      bquote({
+        ld <- Y[1] * 0
+        s_vec <- .(s_k_expr)
+        m_vec <- mu[k, ]
+        for (p in 1:P) {
+          ld <- ld + normal_lpdf(Y[, p], m_vec[p], s_vec[p], sum = FALSE)
+        }
+        log_dens_mat[, k] <- ld
+      })
     } else {
-      L_corr_k_expr <- if (is_corr_equal) quote(L_corr) else quote(L_corr[,,k])
-      bquote(log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = mu[, k], sd = .(s_k_expr), CF_Omega = .(L_corr_k_expr), sum = FALSE))
+      L_corr_k_expr <- if (covariance == "full") quote(matrix(L_corr[k, , ], P, P)) else quote(L_corr)
+      bquote({
+        log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = mu[k, ], sd = .(s_k_expr), CF_Omega = .(L_corr_k_expr), sum = FALSE)
+      })
     }
   } else {
-    bquote(log_dens_mat[, k] <- normal_lpdf(Y, mu[k], .(s_k_expr), sum = FALSE))
+    bquote({
+      log_dens_mat[, k] <- normal_lpdf(Y, mu[k], .(s_k_expr), sum = FALSE)
+    })
   }
-  
+
   model_exprs[[length(model_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
 
-  # Component mixing weights and total log-likelihood
   if (has_cov_prob) {
-    model_exprs[[length(model_exprs) + 1]] <- quote(eta_prob <- X_prob_mat %*% b)
-    # Initialize with advector-safe matrix (using zero from parameters)
+    model_exprs[[length(model_exprs) + 1]] <- quote(eta_prob <- X_prob %*% b)
     model_exprs[[length(model_exprs) + 1]] <- quote(log_pi_mat <- matrix(eta_prob[1] * 0, N, K))
-    model_exprs[[length(model_exprs) + 1]] <- quote(
-      for (i in 1:N) {
-        # Use log_softmax for numerical stability
-        log_pi_mat[i, ] <- log_softmax(c(0, eta_prob[i, ]))
-        lp <- lp + log_sum_exp(log_pi_mat[i, ] + log_dens_mat[i, ])
-      }
-    )
+    model_exprs[[length(model_exprs) + 1]] <- quote(for (i in 1:N) {
+      log_pi_mat[i, ] <- log_softmax(c(0, eta_prob[i, ]))
+    })
+    model_exprs[[length(model_exprs) + 1]] <- quote(lp <- lp + sum(log_sum_exp(log_pi_mat + log_dens_mat)))
   } else {
     model_exprs[[length(model_exprs) + 1]] <- quote(log_theta <- log(theta))
-    model_exprs[[length(model_exprs) + 1]] <- quote(
-      for (i in 1:N) {
-        lp <- lp + log_sum_exp(log_theta + log_dens_mat[i, ])
-      }
-    )
+    model_exprs[[length(model_exprs) + 1]] <- quote(lp <- lp + sum(log_sum_exp(t(t(log_dens_mat) + log_theta))))
   }
 
   if (prior_type != "uniform") {
     model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(0, mu_sd))
     model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
     if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
-      model_exprs[[length(model_exprs) + 1]] <- quote(L_corr ~ lkj(1))
+      if (covariance == "full") {
+        model_exprs[[length(model_exprs) + 1]] <- quote(for (k in 1:K) {
+          matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(2)
+        })
+      } else {
+        model_exprs[[length(model_exprs) + 1]] <- quote(L_corr ~ lkj_CF_corr(2))
+      }
     }
     if (has_cov_prob) {
       model_exprs[[length(model_exprs) + 1]] <- quote(b ~ normal(0, beta_sd))
@@ -1752,21 +1777,19 @@ rtmb_mixture <- function(formula, k, data = NULL,
   }
   model_ast <- as.call(model_exprs)
 
-  # --- 6. Dynamic AST Construction: generate ---
+  # --- 4. Dynamic AST Construction: generate ---
   generate_exprs <- list(as.name("{"))
   if (has_cov_prob) {
-    generate_exprs[[length(generate_exprs) + 1]] <- quote(
-      prob_mean <- softmax(c(0, as.vector(X_means %*% b)))
-    )
+    generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- softmax(c(0, X_means %*% b)))
   } else {
     generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- theta)
   }
 
-  if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
+  if (multivariate && !is_diag) {
     if (covariance == "full") {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote({
-        corr <- array(0, dim = c(P, P, K))
-        for (k in 1:K) corr[,,k] <- L_corr[,,k] %*% t(L_corr[,,k])
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- array(mu[1] * 0, dim = c(K, P, P)))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:K) {
+        corr[k, , ] <- matrix(L_corr[k, , ], P, P) %*% t(matrix(L_corr[k, , ], P, P))
       })
     } else {
       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- L_corr %*% t(L_corr))
@@ -1774,7 +1797,6 @@ rtmb_mixture <- function(formula, k, data = NULL,
   }
   generate_ast <- as.call(generate_exprs)
 
-  # --- 7. Finalization ---
   mdl_code <- list(
     setup = setup_ast,
     parameters = param_ast,
@@ -1786,8 +1808,9 @@ rtmb_mixture <- function(formula, k, data = NULL,
 
   v_names <- list()
   if (multivariate) {
-    v_names$mu <- list(colnames(Y_mat), paste0("C", 1:K_mix))
-    v_names$sigma <- if (is_sigma_equal) colnames(Y_mat) else list(colnames(Y_mat), paste0("C", 1:K_mix))
+    v_names$mu <- list(paste0("C", 1:K_mix), colnames(Y_mat))
+    v_names$sigma <- if (is_sigma_equal && covariance != "diagonal_equal") colnames(Y_mat) else list(paste0("C", 1:K_mix), colnames(Y_mat))
+    if (covariance == "diagonal_equal") v_names$sigma <- colnames(Y_mat)
   } else {
     v_names$mu <- paste0("C", 1:K_mix)
     v_names$sigma <- if (is_sigma_equal) "sigma" else paste0("C", 1:K_mix)
@@ -1797,10 +1820,10 @@ rtmb_mixture <- function(formula, k, data = NULL,
     colnames(X_prob)[colnames(X_prob) == "(Intercept)"] <- "Intercept"
     v_names$b <- list(colnames(X_prob), paste0("C", 2:K_mix))
   }
-  if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
+  if (multivariate && !is_diag) {
     if (covariance == "full") {
-      v_names$L_corr <- list(colnames(Y_mat), colnames(Y_mat), paste0("C", 1:K_mix))
-      v_names$corr <- list(colnames(Y_mat), colnames(Y_mat), paste0("C", 1:K_mix))
+      v_names$L_corr <- list(paste0("C", 1:K_mix), colnames(Y_mat), colnames(Y_mat))
+      v_names$corr <- list(paste0("C", 1:K_mix), colnames(Y_mat), colnames(Y_mat))
     } else {
       v_names$L_corr <- list(colnames(Y_mat), colnames(Y_mat))
       v_names$corr <- list(colnames(Y_mat), colnames(Y_mat))
@@ -1808,14 +1831,474 @@ rtmb_mixture <- function(formula, k, data = NULL,
   }
 
   data_list <- list(Y = Y_mat)
-  if (has_cov_prob) data_list$X_prob_mat <- X_prob
+  if (has_cov_prob) data_list$X_prob <- X_prob
 
-  # View order as specified: b, prob_mean, mu, sigma, corr
-  view_order <- if (has_cov_prob) c("b", "prob_mean", "mu", "sigma") else c("prob_mean", "mu", "sigma")
-  if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
-    view_order <- c(view_order, "corr")
+  init_list <- list()
+  if (nrow(Y_mat) >= K_mix) {
+    # Use kmeans for better initial values
+    km <- try(kmeans(Y_mat, centers = K_mix, nstart = 5), silent = TRUE)
+    if (!inherits(km, "try-error")) {
+      if (multivariate) {
+        init_list$mu <- km$centers
+      } else {
+        init_list$mu <- as.vector(km$centers)
+      }
+      # Initial theta / probabilities
+      props <- as.vector(table(factor(km$cluster, levels = 1:K_mix))) / nrow(Y_mat)
+      init_list$theta <- props
+      
+      # Initial b if covariates present
+      if (has_cov_prob) {
+        b_init <- matrix(0, ncol(X_prob), K_mix - 1)
+        for (k in 2:K_mix) {
+          z_k <- as.numeric(km$cluster == k)
+          fit_k <- try(suppressWarnings(glm(z_k ~ X_prob - 1 + offset(rep(qlogis(max(0.01, props[k])), length(z_k))), family = binomial)), silent = TRUE)
+          if (!inherits(fit_k, "try-error")) {
+            b_init[, k-1] <- coef(fit_k)
+          }
+        }
+        init_list$b <- b_init
+      }
+    }
   }
 
-  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, view = view_order)
+  if (is.null(init_list$mu)) {
+    # Fallback to even spread
+    if (multivariate) {
+      mu_init <- matrix(0, K_mix, P_dim)
+      for (p in 1:P_dim) {
+        r_y <- range(Y_mat[, p])
+        mu_init[, p] <- seq(r_y[1], r_y[2], length.out = K_mix + 2)[2:(K_mix + 1)]
+      }
+      init_list$mu <- mu_init
+    } else {
+      r_y <- range(Y_mat)
+      init_list$mu <- seq(r_y[1], r_y[2], length.out = K_mix + 2)[2:(K_mix + 1)]
+    }
+  }
+  
+  if (!is.null(Y_mat)) {
+     init_list$sigma <- if (is_sigma_equal) apply(Y_mat, 2, sd) else matrix(apply(Y_mat, 2, sd), K_mix, P_dim, byrow = TRUE)
+  }
+
+  view_order <- if (has_cov_prob) c("b", "prob_mean", "mu", "sigma") else c("prob_mean", "mu", "sigma")
+  if (multivariate && !is_diag) view_order <- c(view_order, "corr")
+
+  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+  return(mdl)
+}
+
+#' Fit a Latent Rank Theory (LRT) Model
+#'
+#' @description
+#' Fits a Latent Rank Theory model, which is a mixture model with ordered ranks
+#' and Gaussian Process smoothing on the mean profiles.
+#'
+#' @param formula A formula specifying the response variable(s).
+#' @param k Number of ranks (mixture components).
+#' @param data A data frame containing the variables.
+#' @param magnitude Signal standard deviation for the GP prior. If NULL, it is estimated.
+#' @param smoothing Length-scale for the GP prior. If NULL, it is estimated.
+#' @param noise Measurement noise for the GP prior (default is 0.01).
+#' @param prob_formula Optional formula for latent class regression.
+#' @param prior_type Prior type: "weakly_informative" or "uniform".
+#' @param ... Additional arguments passed to \code{rtmb_model}.
+#' @return A \code{RTMB_Model} object.
+#' @export
+rtmb_lrt <- function(formula, k = 3, data = NULL,
+                     covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
+                     magnitude = NULL, smoothing = NULL, noise = 0.01,
+                     prob_smoothing = FALSE,
+                     link = c("ordered", "sequential"),
+                     prior_type = c("weakly_informative", "uniform"), ...) {
+
+  # NSE for formula: handle case where formula is just a variable name in data
+  formula_expr <- substitute(formula)
+  formula_val <- try(formula, silent = TRUE)
+  
+  if (inherits(formula_val, "try-error") || 
+      (!inherits(formula_val, "formula") && !is.matrix(formula_val) && !is.vector(formula_val))) {
+    if (!is.null(data) && all(all.vars(formula_expr) %in% names(data))) {
+      formula <- as.formula(call("~", formula_expr, 1))
+    } else if (!inherits(formula_val, "try-error")) {
+      formula <- formula_val
+    } else {
+      stop(paste0("Object '", deparse(formula_expr), "' not found."))
+    }
+  } else {
+    formula <- formula_val
+  }
+
+  covariance <- match.arg(covariance)
+  prior_type <- match.arg(prior_type)
+  link <- match.arg(link)
+  K_mix <- k
+
+  # Data parsing
+  if (is.matrix(formula) || is.vector(formula)) {
+    Y_mat <- as.matrix(formula)
+    X_prob <- NULL
+  } else if (!inherits(formula, "formula")) {
+    var_name <- as.character(formula)
+    if (!is.null(data) && var_name %in% names(data)) {
+      Y_mat <- as.matrix(data[[var_name]])
+    } else {
+      Y_mat <- as.matrix(formula)
+    }
+    X_prob <- NULL
+  } else {
+    mf_y <- model.frame(formula, data = data)
+    Y_mat <- model.response(mf_y)
+    if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
+    
+    # Check if formula has RHS covariates for prob
+    rhs <- formula[[3]]
+    is_empty_rhs <- (is.numeric(rhs) && rhs == 1) || (is.symbol(rhs) && rhs == "1")
+
+    if (!is_empty_rhs) {
+      X_prob <- model.matrix(formula, data = data)
+      if ("(Intercept)" %in% colnames(X_prob)) {
+        X_prob <- X_prob[, colnames(X_prob) != "(Intercept)", drop = FALSE]
+      }
+      if (ncol(X_prob) == 0) X_prob <- NULL
+    } else {
+      X_prob <- NULL
+    }
+  }
+
+  Y_mat <- as.matrix(Y_mat)
+  N_obs <- nrow(Y_mat)
+  P_dim <- ncol(Y_mat)
+  if (is.null(colnames(Y_mat))) colnames(Y_mat) <- paste0("Y", 1:P_dim)
+  has_cov_prob <- !is.null(X_prob)
+
+  multivariate <- P_dim > 1
+  is_diag <- covariance %in% c("diagonal", "diagonal_equal")
+  is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal", "full_equal_corr")
+
+  # --- 1. Setup ---
+  setup_exprs <- list(
+    as.name("{"),
+    bquote(N <- .(N_obs)),
+    bquote(K <- .(K_mix)),
+    bquote(P <- .(P_dim)),
+    bquote(rank_coords <- 1:.(K_mix))
+  )
+  if (has_cov_prob) {
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(X_means <- matrix(.(colMeans(X_prob)), 1, .(ncol(X_prob))))
+  }
+  setup_ast <- as.call(setup_exprs)
+
+  # --- 2. Parameters ---
+  param_exprs <- list(as.name("{"))
+  param_exprs[[length(param_exprs) + 1]] <- bquote(mu_p <- Dim(c(P, K), type = "ordered"))
+  
+  # Sigma parameterization based on covariance
+  if (is_sigma_equal) {
+    param_exprs[[length(param_exprs) + 1]] <- bquote(sigma <- Dim(P, lower = 0))
+  } else {
+    param_exprs[[length(param_exprs) + 1]] <- bquote(sigma <- Dim(c(K, P), lower = 0))
+  }
+
+  if (multivariate && !is_diag) {
+    if (covariance == "full") {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr <- Dim(c(K, P, P), type = "CF_corr"))
+    } else {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr <- Dim(c(P, P), type = "CF_corr"))
+    }
+  }
+  
+  if (has_cov_prob) {
+    if (link == "ordered") {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(b <- Dim(.(ncol(X_prob))))
+      param_exprs[[length(param_exprs) + 1]] <- bquote(cutpoints <- Dim(.(K_mix - 1), type = "ordered"))
+    } else {
+      # Sequential: Separate b for each step
+      param_exprs[[length(param_exprs) + 1]] <- bquote(b <- Dim(c(.(ncol(X_prob)), .(K_mix - 1))))
+      param_exprs[[length(param_exprs) + 1]] <- bquote(alpha <- Dim(.(K_mix - 1)))
+    }
+  } else {
+    if (prob_smoothing) {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(logit_theta <- Dim(.(K_mix)))
+      param_exprs[[length(param_exprs) + 1]] <- quote(magnitude_theta <- Dim(lower = 0))
+    } else {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(theta <- Dim(.(K_mix), type = "simplex"))
+    }
+  }
+  
+  if (is.null(magnitude)) param_exprs[[length(param_exprs) + 1]] <- quote(magnitude <- Dim(lower = 0))
+  if (is.null(smoothing)) param_exprs[[length(param_exprs) + 1]] <- quote(smoothing <- Dim(lower = 0))
+  param_ast <- as.call(param_exprs)
+
+  # --- 3. Model ---
+  model_exprs <- list(as.name("{"))
+  model_exprs[[length(model_exprs) + 1]] <- quote(mu <- t(mu_p))
+  
+  if (has_cov_prob) {
+    model_exprs[[length(model_exprs) + 1]] <- quote(pi_mat <- matrix(mu[1] * 0, N, K))
+    if (link == "ordered") {
+      model_exprs[[length(model_exprs) + 1]] <- quote(eta <- X_prob %*% b)
+      model_exprs[[length(model_exprs) + 1]] <- quote(for (i in 1:N) {
+        F_prev <- 0
+        for (k in 1:(K-1)) {
+          F_k <- inv_logit(cutpoints[k] - eta[i])
+          pi_mat[i, k] <- F_k - F_prev
+          F_prev <- F_k
+        }
+        pi_mat[i, K] <- 1 - F_prev
+      })
+    } else {
+      # Sequential with Step-specific b
+      model_exprs[[length(model_exprs) + 1]] <- quote(eta_mat <- X_prob %*% b)
+      model_exprs[[length(model_exprs) + 1]] <- quote(for (i in 1:N) {
+        q_cum <- 1
+        for (k in 1:(K-1)) {
+          q_k <- inv_logit(alpha[k] + eta_mat[i, k])
+          pi_mat[i, k] <- q_cum * (1 - q_k)
+          q_cum <- q_cum * q_k
+        }
+        pi_mat[i, K] <- q_cum
+      })
+    }
+    model_exprs[[length(model_exprs) + 1]] <- quote(log_pi_mat <- log(pi_mat + 1e-15))
+  } else if (prob_smoothing) {
+    model_exprs[[length(model_exprs) + 1]] <- quote(theta <- softmax(logit_theta))
+  }
+
+  model_exprs[[length(model_exprs) + 1]] <- quote(lp <- mu[1] * 0)
+  model_exprs[[length(model_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
+
+  # Likelihood Calculation
+  if (is_diag) {
+    dist_body <- bquote({
+      ld <- Y[1] * 0
+      m_vec <- mu[k, ]
+      s_vec <- if (.(is_sigma_equal)) sigma else sigma[k, ]
+      for (p in 1:P) {
+        ld <- ld + normal_lpdf(Y[, p], m_vec[p], s_vec[p], sum = FALSE)
+      }
+      log_dens_mat[, k] <- ld
+    })
+  } else {
+    # Full covariance
+    dist_body <- bquote({
+      m_vec <- mu[k, ]
+      s_vec <- if (.(is_sigma_equal)) sigma else sigma[k, ]
+      L_mat <- if (.(covariance == "full")) matrix(L_corr[k, , ], P, P) else matrix(L_corr, P, P)
+      log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = as.vector(m_vec), sd = as.vector(s_vec), CF_Omega = L_mat, sum = FALSE)
+    })
+  }
+  model_exprs[[length(model_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
+
+  if (has_cov_prob) {
+    model_exprs[[length(model_exprs) + 1]] <- quote(lp <- lp + sum(log_sum_exp(log_pi_mat + log_dens_mat)))
+  } else {
+    model_exprs[[length(model_exprs) + 1]] <- quote(log_theta <- log(theta))
+    model_exprs[[length(model_exprs) + 1]] <- quote(lp <- lp + sum(log_sum_exp(t(t(log_dens_mat) + log_theta))))
+  }
+
+  # GP Prior (Items)
+  gp_mag <- if (is.null(magnitude)) quote(magnitude) else magnitude
+  gp_sm  <- if (is.null(smoothing)) quote(smoothing) else smoothing
+  model_exprs[[length(model_exprs) + 1]] <- bquote({
+    for (p in 1:P) {
+      lp <- lp + gaussian_process_lpdf(mu[, p], x = rank_coords, magnitude = .(gp_mag), smoothing = .(gp_sm), noise = .(noise))
+    }
+  })
+
+  if (prob_smoothing && !has_cov_prob) {
+    model_exprs[[length(model_exprs) + 1]] <- bquote({
+      lp <- lp + gaussian_process_lpdf(logit_theta, x = rank_coords, magnitude = magnitude_theta, smoothing = .(gp_sm), noise = .(noise))
+    })
+  }
+
+  if (prior_type != "uniform") {
+    model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(1))
+    if (is.null(magnitude)) model_exprs[[length(model_exprs) + 1]] <- quote(magnitude ~ exponential(1))
+    if (is.null(smoothing)) model_exprs[[length(model_exprs) + 1]] <- quote(smoothing ~ exponential(1))
+    if (prob_smoothing && !has_cov_prob) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(magnitude_theta ~ exponential(1))
+    }
+    if (has_cov_prob) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(b ~ normal(0, 5))
+      if (link == "ordered") model_exprs[[length(model_exprs) + 1]] <- quote(cutpoints ~ normal(0, 5))
+      else model_exprs[[length(model_exprs) + 1]] <- quote(alpha ~ normal(0, 5))
+    } else if (!prob_smoothing) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(theta ~ dirichlet(rep(1, K)))
+    }
+  }
+  model_ast <- as.call(model_exprs)
+
+  # --- 4. Generate ---
+  generate_exprs <- list(as.name("{"))
+  generate_exprs[[length(generate_exprs) + 1]] <- quote(mu <- t(mu_p))
+  if (has_cov_prob) {
+    if (link == "ordered") {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote({
+        eta_mean <- X_means %*% b
+        F_prev <- 0
+        prob_mean <- numeric(K)
+        for (k in 1:(K-1)) {
+          F_k <- inv_logit(cutpoints[k] - eta_mean)
+          prob_mean[k] <- F_k - F_prev
+          F_prev <- F_k
+        }
+        prob_mean[K] <- 1 - F_prev
+      })
+    } else {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote({
+        eta_mean_mat <- X_means %*% b
+        q_cum <- 1
+        prob_mean <- numeric(K)
+        for (k in 1:(K-1)) {
+          q_k <- inv_logit(alpha[k] + eta_mean_mat[k])
+          prob_mean[k] <- q_cum * (1 - q_k)
+          q_cum <- q_cum * q_k
+        }
+        prob_mean[K] <- q_cum
+      })
+    }
+  } else {
+    if (prob_smoothing) generate_exprs[[length(generate_exprs) + 1]] <- quote(theta <- softmax(logit_theta))
+    generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- theta)
+  }
+  
+  if (!is_diag) {
+    generate_exprs[[length(generate_exprs) + 1]] <- bquote({
+      corr <- if (.(covariance == "full")) array(mu[1] * 0, dim = c(K, P, P)) else matrix(mu[1] * 0, P, P)
+      if (.(covariance == "full")) {
+        for (k in 1:K) {
+          L_mat <- matrix(L_corr[k, , ], P, P)
+          corr[k, , ] <- L_mat %*% t(L_mat)
+        }
+      } else {
+        L_mat <- matrix(L_corr, P, P)
+        corr <- L_mat %*% t(L_mat)
+      }
+    })
+  }
+  generate_ast <- as.call(generate_exprs)
+
+  mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
+  class(mdl_code) <- "rtmb_code"
+
+  v_names <- list(mu = list(paste0("Rank", 1:K_mix), colnames(Y_mat)))
+  v_names$sigma <- if (is_sigma_equal) colnames(Y_mat) else list(paste0("Rank", 1:K_mix), colnames(Y_mat))
+  
+  if (!is_diag) {
+    if (covariance == "full") {
+      v_names$L_corr <- list(paste0("Rank", 1:K_mix), colnames(Y_mat), colnames(Y_mat))
+      v_names$corr <- list(paste0("Rank", 1:K_mix), colnames(Y_mat), colnames(Y_mat))
+    } else {
+      v_names$L_corr <- list(colnames(Y_mat), colnames(Y_mat))
+      v_names$corr <- list(colnames(Y_mat), colnames(Y_mat))
+    }
+  }
+
+  if (has_cov_prob) {
+    if (link == "ordered") {
+      v_names$b <- colnames(X_prob)
+      v_names$cutpoints <- paste0("C", 1:(K_mix - 1))
+    } else {
+      step_labels <- paste0(1:(K_mix - 1), "->", 2:K_mix)
+      v_names$b <- list(colnames(X_prob), step_labels)
+      v_names$alpha <- step_labels
+    }
+  }
+
+  data_list <- list(Y = Y_mat)
+  if (has_cov_prob) data_list$X_prob <- X_prob
+
+  init_list <- list()
+  if (nrow(Y_mat) >= K_mix) {
+    # PCA-based ordering for LRT initial values
+    # We use PC1 to capture the dominant direction of variation
+    pc1 <- try(prcomp(Y_mat, rank. = 1)$x[, 1], silent = TRUE)
+    if (!inherits(pc1, "try-error")) {
+      # Split by quantiles of PC1
+      groups <- cut(pc1, breaks = quantile(pc1, probs = seq(0, 1, length.out = K_mix + 1)), include.lowest = TRUE, labels = FALSE)
+      mu_init_p <- matrix(0, P_dim, K_mix)
+      for (k in 1:K_mix) {
+        idx <- which(groups == k)
+        if (length(idx) > 0) {
+          mu_init_p[, k] <- colMeans(Y_mat[idx, , drop = FALSE])
+        } else {
+          mu_init_p[, k] <- colMeans(Y_mat)
+        }
+      }
+      # Initial mu_p: handle potential NAs from colMeans
+      mu_init_p[is.na(mu_init_p)] <- 0
+      # Ensure it's ordered along the average direction
+      if (mean(mu_init_p[, 1]) > mean(mu_init_p[, K_mix])) {
+        mu_init_p <- mu_init_p[, K_mix:1]
+      }
+      # Add small jitter to ensure strict ordering for AD setup
+      # AND handle any individual items that might be decreasing
+      for (k in 2:K_mix) {
+        for (p in 1:P_dim) {
+          if (mu_init_p[p, k] <= mu_init_p[p, k-1]) {
+            mu_init_p[p, k] <- mu_init_p[p, k-1] + 1e-3
+          }
+        }
+      }
+      init_list$mu_p <- mu_init_p
+      
+      # Initial b and cutpoints if covariates present
+      if (has_cov_prob) {
+        # Proxy regression of ranks on X
+        fit_b <- try(lm(groups ~ X_prob), silent = TRUE)
+        if (!inherits(fit_b, "try-error")) {
+          b_est <- coef(fit_b)
+          # Exclude intercept if it was included (lm usually does)
+          if ("(Intercept)" %in% names(b_est)) b_est <- b_est[names(b_est) != "(Intercept)"]
+          b_est[is.na(b_est)] <- 0
+          
+          if (link == "ordered") {
+            init_list$b <- as.vector(b_est)
+          } else {
+            init_list$b <- matrix(b_est, ncol(X_prob), K_mix - 1)
+          }
+        }
+        
+        # Thresholds from group proportions
+        props <- table(factor(groups, levels = 1:K_mix)) / length(groups)
+        F_k <- cumsum(props)
+        jitter <- (1:(K_mix - 1)) * 1e-4
+        if (link == "ordered") {
+          init_list$cutpoints <- qlogis(pmin(pmax(F_k[1:(K_mix-1)], 0.01), 0.99)) + jitter
+        } else {
+          # Sequential alphas: q_k = P(Z>k|Z>=k)
+          q_vals <- (1 - F_k[1:(K_mix-1)]) / (1 - c(0, F_k)[1:(K_mix-1)])
+          init_list$alpha <- qlogis(pmin(pmax(q_vals, 0.01), 0.99)) + jitter
+        }
+      }
+    }
+  }
+
+  if (is.null(init_list$mu_p)) {
+    mu_init <- matrix(0, P_dim, K_mix)
+    for (p in 1:P_dim) {
+      r_y <- range(Y_mat[, p])
+      mu_init[p, ] <- seq(r_y[1], r_y[2], length.out = K_mix)
+    }
+    init_list$mu_p <- mu_init
+  }
+
+  if (!is.null(Y_mat)) {
+    s_init <- apply(Y_mat, 2, sd)
+    if (is_sigma_equal) {
+      init_list$sigma <- s_init
+    } else {
+      init_list$sigma <- matrix(s_init, K_mix, P_dim, byrow = TRUE)
+    }
+  }
+  
+  view_order <- c("prob_mean", "mu", "sigma")
+  if (has_cov_prob) {
+    view_order <- if (link == "ordered") c("b", "cutpoints", view_order) else c("b", "alpha", view_order)
+  }
+  if (!is_diag) view_order <- c(view_order, "corr")
+  
+  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
   return(mdl)
 }

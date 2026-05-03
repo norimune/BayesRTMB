@@ -21,6 +21,8 @@ rtmb_mixture(
 
 \item{data}{A data frame (required if formula is used).}
 
+\item{covariance}{Character string specifying the covariance structure: "diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr".}
+
 \item{prior}{An \code{rtmb_prior} object. Default is \code{prior_uniform()}.}
 
 \item{multivariate}{Logical; whether to treat the data as multivariate.}
