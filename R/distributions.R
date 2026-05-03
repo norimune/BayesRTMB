@@ -430,7 +430,8 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
     }
     return(lp)
   } else {
-    res <- numeric(N)
+    # Initialize with AD type safety
+    res <- rep(cutpoints[1] * 0, N)
     if (length(idx_1) > 0) {
       res[idx_1] <- -log1p_exp(-(cutpoints[1] - eta_vec[idx_1]))
     }
@@ -586,20 +587,56 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
 #' @return The sum of the log-density.
 #' @keywords internal
 normal_mixture_lpdf <- function(x, pi_w, mean, sd, sum = TRUE) {
-  N <- length(x)
   log_pi <- log(pi_w)
+  K <- length(pi_w)
+  N <- length(x)
 
-  res <- numeric(N)
-  for (i in 1:N) {
-    # Log-likelihood from each cluster
-    log_probs <- log_pi + dnorm(x[i], mean = mean, sd = sd, log = TRUE)
-
-    # Addition using the Log-Sum-Exp trick
-    max_lp <- max(log_probs)
-    res[i] <- max_lp + log(base::sum(exp(log_probs - max_lp)))
+  # Fully vectorized version using matrix operations
+  # log_dens: N x K matrix
+  # Initialize with AD-safe values (using 0 based on log_pi type)
+  log_dens <- matrix(log_pi[1] * 0, N, K)
+  for (k in 1:K) {
+    log_dens[, k] <- dnorm(x, mean = mean[k], sd = sd[k], log = TRUE) + log_pi[k]
   }
-  if(sum) base::sum(res) else res
+
+  # Log-Sum-Exp row-wise
+  max_lp <- apply(log_dens, 1, max)
+  res <- max_lp + log(rowSums(exp(log_dens - max_lp)))
+
+  if(sum) sum(res) else res
 }
+
+#' Generic Mixture log-probability density function
+#'
+#' @param x Vector of quantiles.
+#' @param pi_w Vector or matrix of mixing proportions.
+#' @param lpdf_list A list of log-density vectors (one for each cluster).
+#' @return The sum of the log-density.
+#' @keywords internal
+mixture_lpdf <- function(x, pi_w, lpdf_list, sum = TRUE) {
+  N <- if (is.matrix(x)) nrow(x) else length(x)
+  K <- length(lpdf_list)
+  
+  # log_pi: N x K matrix
+  if (is.matrix(pi_w)) {
+    log_pi <- log(pi_w)
+  } else {
+    log_pi <- matrix(log(pi_w), N, K, byrow = TRUE)
+  }
+
+  # log_dens: N x K matrix
+  log_dens <- matrix(log_pi[1] * 0, N, K)
+  for (k in 1:K) {
+    log_dens[, k] <- lpdf_list[[k]] + log_pi[, k]
+  }
+
+  # Log-Sum-Exp row-wise
+  max_lp <- apply(log_dens, 1, max)
+  res <- max_lp + log(rowSums(exp(log_dens - max_lp)))
+
+  if(sum) sum(res) else res
+}
+
 
 #' Centered / Centered matrix multivariate normal log-probability density function
 #'

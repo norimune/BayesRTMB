@@ -232,31 +232,32 @@ mcmc_icc$draws("icc") |> plot_dens()
 
 BayesRTMB には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。
 
-たとえば線形回帰であれば `rtmb_lm()` を使います。
+たとえばマルチレベルモデルであれば `rtmb_lmer()` を使います。
 
 ```{r eval=FALSE}
 data(discussion)
-fit_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
+mdl_lmer <- rtmb_lm(satisfaction ~ talk + condition + (1 | group), data = discussion)
 
 # MAP推定
-map_lm <- fit_lm$optimize()
-map_lm$summary()
+opt_lmer <- mdl_lmer$optimize(df = "auto")
+opt_lmer$summary()
 ```
 
 ```text
 ## Call:
 ## MAP Estimation via RTMB
 ## 
-## Negative Log-Posterior: 416.94
-## Approx. Log Marginal Likelihood (Laplace): -425.12
+## Negative Log-Posterior: 394.07
+## Approx. Log Marginal Likelihood (Laplace): -402.96
+## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
 ## 
 ## Point Estimates and 95% Wald CI:
-##    variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## Intercept     2.14693     0.20761    1.74001    2.55384 
-## b[talk]       0.28612     0.05434    0.17961    0.39264 
-## b[skill]      0.20106     0.06604    0.07162    0.33050 
-## sigma         0.92284     0.03725    0.85265    0.99880 
-## Intercept_c   3.43324     0.05333    3.32871    3.53777 
+##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF 
+## Intercept      2.58149     0.18124    2.22468    2.93829  274 
+## b[talk]        0.25197     0.05764    0.13852    0.36541  295 
+## b[condition]   0.18183     0.14595   -0.10729    0.47094  114 
+## sigma          0.77760     0.03891    0.70443    0.85838  159 
+## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 
 ```
 
 一般化線形混合モデルには `rtmb_glmer()`、因子分析には `rtmb_fa()` など、分析目的に応じた関数が利用できます。

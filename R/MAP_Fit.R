@@ -521,7 +521,7 @@ MAP_Fit <- R6::R6Class(
       
       # 4. Summary
       res_df <- data.frame(
-        Parameter = target_names,
+        variable = target_names,
         Estimate = format(round(self$df_fixed[target_names, "Estimate"], digits), nsmall = digits),
         check.names = FALSE,
         stringsAsFactors = FALSE
@@ -533,7 +533,10 @@ MAP_Fit <- R6::R6Class(
       
       if (!quiet) {
         cat("\nProfile Likelihood Confidence Intervals:\n")
-        print(res_df, digits = digits)
+        # Format for pretty printing: left align the variable names
+        res_df_print <- res_df
+        res_df_print$variable <- format(res_df_print$variable, justify = "left")
+        print(res_df_print, row.names = FALSE, right = FALSE)
         cat("\n")
       }
       

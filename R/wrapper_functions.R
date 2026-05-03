@@ -828,7 +828,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   setup_ast <- quote({
     N <- nrow(Y)
     J <- ncol(Y)
-    
+
     # Check for missing values and calculate sufficient statistics accordingly
     if (any(is.na(Y))) {
       warning("Missing values (NAs) detected in the data. Using pairwise complete observations for sufficient statistics. Results may be approximate.")
@@ -1585,4 +1585,155 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   }
 
   return(obj)
+}
+
+#' Fit a Mixture Model
+#'
+#' @description
+#' Fits a mixture model where the data is assumed to be generated
+#' from a combination of several probability distributions. It supports both
+#' univariate and multivariate mixtures, and allows latent class membership to be
+#' predicted by covariates (Latent Class Regression).
+#'
+#' @param data A vector, matrix, or data frame containing the observed data.
+#' @param k Integer; the number of mixture components (clusters).
+#' @param prob_formula A formula for the latent class membership (e.g., \code{~ x1 + x2}).
+#'   Default is \code{~ 1} (constant proportions).
+#' @param prior An \code{rtmb_prior} object. Default is \code{prior_uniform()}.
+#' @param multivariate Logical; whether to treat the data as multivariate.
+#'   Automatically set to TRUE if data is a matrix or has multiple columns.
+#' @param ... Additional arguments.
+#' @return An \code{RTMB_Model} object.
+#' @export
+rtmb_mixture <- function(data, k, prob_formula = ~1,
+                         prior = prior_uniform(), multivariate = NULL, ...) {
+
+  # --- 1. Data Preparation ---
+  if (is.data.frame(data) || is.matrix(data)) {
+    Y_mat <- as.matrix(data)
+    if (is.null(multivariate)) multivariate <- (ncol(Y_mat) > 1)
+  } else {
+    Y_mat <- as.vector(data)
+    if (is.null(multivariate)) multivariate <- FALSE
+  }
+
+  N_obs <- if (multivariate) nrow(Y_mat) else length(Y_mat)
+  P_dim <- if (multivariate) ncol(Y_mat) else 1
+  K_mix <- k
+
+  # --- 2. Probability Design Matrix ---
+  data_for_prob <- if (is.data.frame(data)) data else data.frame(ID = 1:N_obs)
+  X_prob <- model.matrix(prob_formula, data_for_prob)
+  P_prob <- ncol(X_prob)
+  has_cov_prob <- (P_prob > 1) || (prob_formula != ~1)
+
+  # --- 3. Priors Preparation ---
+  prior_type <- if (!is.null(prior$type)) prior$type else "uniform"
+  mu_sd_val    <- if (!is.null(prior$mu_sd)) prior$mu_sd else 10
+  beta_sd_val  <- if (!is.null(prior$b_sd)) prior$b_sd else 5
+  sigma_rate_val <- if (!is.null(prior$sigma_rate)) prior$sigma_rate else 0.1
+
+  # --- 4. Dynamic AST Construction: setup ---
+  setup_exprs <- list(as.name("{"))
+  setup_exprs[[length(setup_exprs) + 1]] <- bquote(N <- .(N_obs))
+  setup_exprs[[length(setup_exprs) + 1]] <- bquote(K <- .(K_mix))
+  if (multivariate) {
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(P <- .(P_dim))
+  }
+
+  if (prior_type != "uniform") {
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(mu_sd <- .(mu_sd_val))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(sigma_rate <- .(sigma_rate_val))
+    if (has_cov_prob) {
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_sd <- .(beta_sd_val))
+    }
+  }
+  setup_ast <- as.call(setup_exprs)
+
+  # --- 5. Dynamic AST Construction: parameters ---
+  param_exprs <- list(as.name("{"))
+  if (has_cov_prob) {
+    param_exprs[[length(param_exprs) + 1]] <- bquote(beta_prob <- Dim(c(.(P_prob), .(K_mix - 1))))
+  } else {
+    param_exprs[[length(param_exprs) + 1]] <- bquote(theta <- Dim(.(K_mix), type = "simplex"))
+  }
+
+  if (multivariate) {
+    param_exprs[[length(param_exprs) + 1]] <- quote(mu <- Dim(c(P, K)))
+    param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(c(P, K), lower = 0))
+  } else {
+    param_exprs[[length(param_exprs) + 1]] <- quote(mu <- Dim(K))
+    param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(K, lower = 0))
+  }
+  param_ast <- as.call(param_exprs)
+
+  # --- 6. Dynamic AST Construction: model ---
+  model_exprs <- list(as.name("{"))
+
+  if (has_cov_prob) {
+    model_exprs[[length(model_exprs) + 1]] <- quote(eta_prob <- X_prob_mat %*% beta_prob)
+    model_exprs[[length(model_exprs) + 1]] <- quote(exp_eta <- exp(eta_prob))
+    model_exprs[[length(model_exprs) + 1]] <- quote(denom <- 1 + rowSums(exp_eta))
+    model_exprs[[length(model_exprs) + 1]] <- quote(pi_mat <- cbind(1/denom, exp_eta / denom))
+  } else {
+    model_exprs[[length(model_exprs) + 1]] <- quote(pi_mat <- theta)
+  }
+
+  model_exprs[[length(model_exprs) + 1]] <- quote(log_dens_mat <- matrix(0, N, K))
+
+  # Select univariate vs multivariate distribution expression
+  dist_expr <- if (multivariate) {
+    quote(multi_normal_lpdf(Y, mean = mu[, k], Sigma = diag(sigma[, k]^2), sum = FALSE))
+  } else {
+    quote(normal_lpdf(Y, mu[k], sigma[k], sum = FALSE))
+  }
+
+  # Construct loop body based on whether latent classes have covariates
+  if (has_cov_prob) {
+    loop_body <- bquote(log_dens_mat[, k] <- log(pi_mat[, k]) + .(dist_expr))
+  } else {
+    loop_body <- bquote(log_dens_mat[, k] <- log(pi_mat[k]) + .(dist_expr))
+  }
+  model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) { .(loop_body) })
+
+  # Log-Sum-Exp for numerical stability
+  model_exprs[[length(model_exprs) + 1]] <- quote(
+    for (i in 1:N) {
+      lp <- lp + log_sum_exp(log_dens_mat[i, ])
+    }
+  )
+
+  # Priors (skipped if prior_uniform)
+  if (prior_type != "uniform") {
+    model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(0, mu_sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+    if (has_cov_prob) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(beta_prob ~ normal(0, beta_sd))
+    } else {
+      model_exprs[[length(model_exprs) + 1]] <- quote(theta ~ dirichlet(rep(1, K)))
+    }
+  }
+
+  model_ast <- as.call(model_exprs)
+
+  # --- 7. Finalization ---
+  mdl_code <- list(
+    setup = setup_ast,
+    parameters = param_ast,
+    model = model_ast,
+    env = parent.frame()
+  )
+  class(mdl_code) <- "rtmb_code"
+
+  # Define parameter names for output
+  v_names <- list(mu = paste0("Cluster", 1:K_mix))
+  if (has_cov_prob) v_names$beta_prob <- colnames(X_prob)
+
+  # Collect data
+  data_list <- list(Y = Y_mat)
+  if (has_cov_prob) data_list$X_prob_mat <- X_prob
+
+  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names)
+
+  return(mdl)
 }
