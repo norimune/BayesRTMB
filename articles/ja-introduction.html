@@ -320,27 +320,29 @@ Rtools44）。</li>
 </h3>
 <p>BayesRTMB
 には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。</p>
-<p>たとえば線形回帰であれば <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> を使います。</p>
+<p>たとえばマルチレベルモデルであれば <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code>
+を使います。</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
-<span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<span><span class="va">mdl_lmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">condition</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># MAP推定</span></span>
-<span><span class="va">map_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">map_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">opt_lmer</span> <span class="op">&lt;-</span> <span class="va">mdl_lmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>df <span class="op">=</span> <span class="st">"auto"</span><span class="op">)</span></span>
+<span><span class="va">opt_lmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">## Negative Log-Posterior: 416.94</span></span>
-<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -425.12</span></span>
+<span><span class="co">## Negative Log-Posterior: 394.07</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -402.96</span></span>
+<span><span class="co">## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
-<span><span class="co">##    variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
-<span><span class="co">## Intercept     2.14693     0.20761    1.74001    2.55384 </span></span>
-<span><span class="co">## b[talk]       0.28612     0.05434    0.17961    0.39264 </span></span>
-<span><span class="co">## b[skill]      0.20106     0.06604    0.07162    0.33050 </span></span>
-<span><span class="co">## sigma         0.92284     0.03725    0.85265    0.99880 </span></span>
-<span><span class="co">## Intercept_c   3.43324     0.05333    3.32871    3.53777 </span></span></code></pre>
+<span><span class="co">##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF </span></span>
+<span><span class="co">## Intercept      2.58149     0.18124    2.22468    2.93829  274 </span></span>
+<span><span class="co">## b[talk]        0.25197     0.05764    0.13852    0.36541  295 </span></span>
+<span><span class="co">## b[condition]   0.18183     0.14595   -0.10729    0.47094  114 </span></span>
+<span><span class="co">## sigma          0.77760     0.03891    0.70443    0.85838  159 </span></span>
+<span><span class="co">## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 </span></span></code></pre>
 <p>一般化線形混合モデルには <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>、因子分析には
 <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> など、分析目的に応じた関数が利用できます。</p>
 <p>また、<code><a href="../reference/rtmb_ttest.html">rtmb_ttest()</a></code> を使うと、ベイジアン t

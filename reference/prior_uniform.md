@@ -6,8 +6,8 @@ Specify a uniform or manual prior
 
 ``` r
 prior_uniform(
-  Int_sd = NULL,
-  beta_sd = NULL,
+  Intercept_sd = NULL,
+  b_sd = NULL,
   sigma_rate = NULL,
   tau_rate = NULL,
   ...
@@ -16,12 +16,12 @@ prior_uniform(
 
 ## Arguments
 
-- Int_sd:
+- Intercept_sd:
 
   Standard deviation for the intercept prior (Normal). Default is NULL
   (flat).
 
-- beta_sd:
+- b_sd:
 
   Standard deviation for the coefficients prior (Normal). Default is
   NULL (flat).

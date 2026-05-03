@@ -50,6 +50,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fa_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fabs.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/gamma_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/gaussian_process_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/generate_random_init.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/half_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/index.html</loc></url>
@@ -76,6 +77,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lower_tri_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/map_est.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/math_functions.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/mixture_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/model_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_lpdf.html</loc></url>
@@ -117,6 +119,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_irt.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_lm.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.html</loc></url>

@@ -79,8 +79,8 @@ mdl <- rtmb_model(data = data_list, code = model_code)
 
 [`optimize()`](https://rdrr.io/r/stats/optimize.html) は MAP
 推定を行います。
-事後分布の最頻値に対応する**点推定**を求めたいときに使います。
-まずは追加オプションなしで実行し、推定値と区間推定の出力を確認します。
+事後分布の最頻値に対応する推定値を求めたいときに使います。
+標準偏差と信頼区間は、デフォルトではWald法（正規分布を仮定した方法）を用います。
 
 ``` r
 
@@ -93,38 +93,11 @@ fit_MAP
 ## MAP Estimation via RTMB
 ## 
 ## Negative Log-Posterior: 1.38
-## Approx. Log Marginal Likelihood (Laplace): -0.90
+## Approx. Log Marginal Likelihood (Laplace): -2.33
 ## 
 ## Point Estimates and 95% Wald CI:
 ## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## theta      0.59976     0.15495    0.29720    0.84152 
-```
-
-#### se_samplingオプション
-
-`se_sampling = TRUE`
-を指定すると、推定結果の不確実性を使って、**シミュレーションベースで標準誤差と
-95% 区間**を計算します。
-この方法を使うと、最小値や最大値があるパラメータも正確な95%信頼区間の計算が可能です。
-
-生成量の信頼区間まで含めて見たいときに便利です。
-
-``` r
-
-fit_MAP <- mdl$optimize(se_sampling = TRUE)
-fit_MAP
-```
-
-``` text
-## Call:
-## MAP Estimation via RTMB
-## 
-## Negative Log-Posterior: 1.38
-## Approx. Log Marginal Likelihood (Laplace): -0.90
-## 
-## Point Estimates and 95% Wald CI:
-## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## theta      0.59976     0.14563    0.29416    0.83985 
+## theta      0.60000     0.15492    0.29740    0.84166 
 ```
 
 #### 対数周辺尤度の近似値
@@ -169,35 +142,6 @@ fit_mcmc
 ## variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
 ## lp        -3.33  0.74  -2.86  -5.43  -2.80      1712      1744  1.00 
 ## theta      0.59  0.14   0.62   0.32   0.84      1609      1577  1.00 
-```
-
-#### MCMC結果の保存と読み込み (save_csv)
-
-計算に時間がかかるモデルや大規模なサンプリングを行う場合、結果を CSV
-ファイルとして保存しておくと便利です。
-[`sample()`](https://rdrr.io/r/base/sample.html)（または
-`variational()`）の実行時に `save_csv`
-引数を指定すると、指定したディレクトリにチェインごとのサンプリング結果が書き出されます。
-
-``` r
-
-# 結果を "mcmc_out" ディレクトリに "my_model_chain_X.csv" という名前で保存
-fit_mcmc <- mdl$sample(
-  save_csv = list(name = "my_model", dir = "mcmc_out")
-)
-```
-
-保存された結果は、後で
-[`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
-関数を使ってモデルオブジェクトに読み戻すことができます。これにより、セッションを閉じたり
-R
-を再起動した後でも、サンプリング結果を再利用してプロットや要約を行うことが可能です。
-
-``` r
-
-# 保存されたファイルを読み込む
-# (mdl は同じ設定で作られたモデルオブジェクトである必要があります)
-fit_mcmc <- read_mcmc_csv(mdl, name = "my_model", dir = "mcmc_out")
 ```
 
 #### 推論結果の可視化
@@ -317,10 +261,11 @@ code_reg <- rtmb_code(
 )
 ```
 
-### モデルに初期値を入れる
+### モデルに名前と初期値を入れる
 
 [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
-では `init` を指定して初期値を与えることができます。
+では`par_names`で変数の名前を入れておくと、結果が見やすくなります。たとえば回帰係数betaにそれぞれ対応する説明変数を入れておくと`beta[talk]`などと表示されるようになります。
+また、`init` を指定して初期値を与えることができます。
 初期値を明示しておくと、複雑なモデルで推定が安定しやすくなることがあります。
 一部のパラメータだけ指定した場合は、残りを自動で補うこともできます。
 
@@ -329,14 +274,10 @@ code_reg <- rtmb_code(
 mdl_reg <- rtmb_model(
   data = data_reg,
   code = code_reg,
+  par_names = list(beta = X_names),
   init = list(alpha = 0, beta = c(0, 0, 0))
 )
 ```
-
-### MCMCで推定
-
-回帰モデルでも [`sample()`](https://rdrr.io/r/base/sample.html)
-を使えば事後分布を正確に推定できます。
 
 ``` r
 
@@ -345,31 +286,31 @@ mcmc_reg
 ```
 
 ``` text
-## variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-## lp        -411.42  1.70  -410.51  -415.77  -409.27      1099      1125  1.00 
-## alpha        1.51  0.24     1.52     1.03     1.98       805       842  1.01 
-## beta[1]      0.27  0.05     0.26     0.17     0.37       765      1223  1.00 
-## beta[2]      0.15  0.03     0.15     0.09     0.21       958      1107  1.01 
-## beta[3]      0.19  0.07     0.18     0.06     0.33      1004      1156  1.00 
-## sigma        0.90  0.04     0.90     0.83     0.98       984      1196  1.00 
-## mu[1]        2.96  0.10     2.96     2.76     3.16      1070      1095  1.00 
-## mu[2]        3.08  0.11     3.07     2.86     3.30      1254      2031  1.00 
-## mu[3]        2.96  0.10     2.96     2.76     3.16      1070      1095  1.00 
-## mu[4]        3.35  0.10     3.34     3.16     3.54      1489      2198  1.00 
+##          variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
+## lp                 -411.40  1.68  -410.25  -415.73  -409.27       982       867  1.00 
+## alpha                 1.51  0.25     1.56     1.02     1.97       632       671  1.01 
+## beta[talk]            0.27  0.05     0.27     0.17     0.37       848      1193  1.01 
+## beta[performance]     0.15  0.03     0.15     0.10     0.21       845       965  1.00 
+## beta[skill]           0.19  0.07     0.19     0.07     0.32       874      1124  1.00 
+## sigma                 0.90  0.04     0.90     0.83     0.97       858      1195  1.01 
+## mu[1]                 2.96  0.10     2.96     2.76     3.16       857      1153  1.00 
+## mu[2]                 3.08  0.11     3.09     2.86     3.29      1300      1896  1.00 
+## mu[3]                 2.96  0.10     2.96     2.76     3.16       857      1153  1.00 
+## mu[4]                 3.34  0.09     3.35     3.16     3.53      1467      1625  1.00 
 ```
 
 #### bayes_factor
 
 [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 を使うと、推定したモデルと帰無モデルの周辺尤度を比較し、**ベイズファクター**を計算できます。
-`null_model = "beta[1]"` のように指定すると、その係数を 0
+`null_model = "beta[talk]"` のように指定すると、その係数を 0
 に固定した帰無モデルを内部で作成して比較します。
 
 係数の予測に対する寄与をベイズ的に評価したいときに便利です。
 
 ``` r
 
-bf_result <- mcmc_reg$bayes_factor(null_model = "beta[1]")
+bf_result <- mcmc_reg$bayes_factor(null_model = "beta[talk]")
 bf_result
 ```
 
@@ -426,19 +367,14 @@ code_hlm <- rtmb_code(
 )
 ```
 
-### モデルの設定
-
-`par_names` や `view`
-をモデル作成時に指定しておくと、要約結果の表示がわかりやすくなります。`par_names`
-はパラメータの表示名を付けるために使い、`view` は
-[`summary()`](https://rdrr.io/r/base/summary.html)
+`view`
+をモデル作成時に指定しておくと、要約結果の表示がわかりやすくなります。`view`
+は [`summary()`](https://rdrr.io/r/base/summary.html)
 などで優先的に上に表示したい変数を指定するために使います。
 
-この例では `par_names` を使って回帰係数に変数名を付け、`view` を使って
-[`summary()`](https://rdrr.io/r/base/summary.html)
-で`tau`を`sigma`より優先表示するように指定しています。
-出力の可読性を高めたい場合は、この 2
-つをあらかじめ設定しておくと便利です。
+この例では `view` を使って
+[`summary()`](https://rdrr.io/r/base/summary.html)で`tau`を`sigma`より優先表示するように指定しています。
+出力の可読性を高めたい場合は、`view`であらかじめ設定しておくと便利です。
 
 ``` r
 
@@ -458,10 +394,12 @@ mdl_hlm <-
 階層モデルでは計算をかなり軽くできることが多く、まず MAP
 で全体像を確認したいときに有用です。
 
+また、optimizeでは、デフォルトでは事後分布が正規分布であるという前提で標準誤差や信頼区間を推定しますが、`df`オプションを指定することでt分布による信頼区間も表示できます。さらに、`df="auto"`とすると、サタースウェイトの自由度推定を行います。階層線形モデルなどのマルチレベルモデルではこの方法を用いると説明変数の情報量に応じて自由度が自動推定されます。
+
 ``` r
 
-opt_hlm <- mdl_hlm$optimize(laplace = TRUE)
-opt_hlm
+opt_hlm <- mdl_hlm$optimize(df = "auto")
+opt_hlm$summary(c("alpha","beta","tau","sigma"))
 ```
 
 ``` text
@@ -470,20 +408,16 @@ opt_hlm
 ## 
 ## Negative Log-Posterior: 399.48
 ## Approx. Log Marginal Likelihood (Laplace): -411.83
-## Note: Random effects are stored in $random_effects
+## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
 ## 
 ## Point Estimates and 95% Wald CI:
-##          variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## alpha               1.52450     0.25732    1.02015    2.02884 
-## beta[talk]          0.23487     0.05323    0.13054    0.33920 
-## beta[performance]   0.15451     0.03713    0.08175    0.22728 
-## beta[skill]         0.22613     0.05990    0.10874    0.34352 
-## tau                 0.48512     0.06507    0.37298    0.63098 
-## sigma               0.74762     0.03752    0.67759    0.82488 
-## mu[1,1]             2.92366     0.34519    2.24711    3.60022 
-## mu[2,1]             3.14105     0.34856    2.45788    3.82422 
-## mu[3,1]             2.92366     0.34519    2.24711    3.60022 
-## mu[4,1]             3.09284     0.34706    2.41263    3.77306 
+##          variable  Estimate  Std. Error  Lower 95%  Upper 95%    DF 
+## alpha               1.52450     0.25733    1.01716    2.03185   205 
+## beta[talk]          0.23487     0.05323    0.13013    0.33961   311 
+## beta[performance]   0.15451     0.03713    0.08085    0.22818    99 
+## beta[skill]         0.22613     0.05990    0.10822    0.34405   274 
+## tau                 0.48512     0.06507    0.36576    0.64343    17 
+## sigma               0.74836     0.03755    0.67772    0.82637   148 
 ```
 
 事前分布の違いはありますが、laplace近似の推定は最尤推定のlme4とほぼ同じ結果が出ます。（※注：`lme4`
@@ -534,7 +468,55 @@ result |> summary()
 ## skill       -0.387 -0.138 -0.020
 ```
 
-ランダム効果の推定結果は `random_effects` に別途保存されます。
+#### 信頼区間の設定
+
+optimizeでは、それ以外にもサンプリングによる信頼区間の推定と、尤度プロファイル法による信頼区間の推定が可能です。
+
+``` r
+
+opt_hlm <- mdl_hlm$optimize(df = "auto", ci_method = "sampling")
+opt_hlm$summary(c("alpha","beta","tau","sigma"))
+```
+
+``` text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 399.48
+## Approx. Log Marginal Likelihood (Laplace): -411.83
+## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
+## 
+## Point Estimates and 95% Sampling-based CI:
+##          variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF 
+## alpha               1.52450     0.25672    1.02423    2.04694  205 
+## beta[talk]          0.23487     0.05181    0.13788    0.33975  311 
+## beta[performance]   0.15451     0.03654    0.07911    0.22626   99 
+## beta[skill]         0.22613     0.06036    0.10550    0.34844  274 
+## tau                 0.48512     0.07084    0.36055    0.63918   17 
+## sigma               0.74836     0.03752    0.67921    0.82579  148 
+```
+
+`profile`メソッドを使うと、尤度プロファイル法で信頼区間の計算ができます。これは`lme4`パッケージの[`confint()`](https://rdrr.io/r/stats/confint.html)と同じ機能で、実際同じ結果が出ます(事前分布があるので完全には一致しません)。
+
+``` r
+
+opt_hlm$profile("beta")
+```
+
+``` text
+## Estimating confidence intervals via Profile Likelihood...
+##   Profiling 3/3 (beta[skill])...                                                         ##              
+## Done.
+## 
+## Profile Likelihood Confidence Intervals:
+##  variable          Estimate Lower 2.5% Upper 97.5%
+##  beta[talk]        0.23487  0.13020    0.33950    
+##  beta[performance] 0.15451  0.08107    0.22802    
+##  beta[skill]       0.22613  0.10803    0.34363   
+```
+
+laplace近似で周辺化されたランダム効果の推定結果は `random_effects`
+に別途保存されます。
 
 ``` r
 
@@ -583,84 +565,34 @@ MCMCでもlaplace近似を実行できます。推定結果は変わりません
 mcmc_hlm_l <- mdl_hlm$sample(laplace = TRUE, parallel = TRUE)
 ```
 
-### ADVI
+#### MCMC結果の保存と読み込み (save_csv)
 
-複雑な階層モデルでは、MAPがうまく解を出せず、またMCMCではとても時間がかかることがあります。そういうときに、近似的に解を得たいときには変分ベイズ法が便利です。
-変分ベイズ法も並列化が可能です。
-ただし、複雑なモデルになると収束判断が難しいので、`plot_elbo()`メソッドで収束しているか確認するのが重要です。変分ベイズ法は初期値依存があるので、大雑把にでも初期値を与えておくと収束が安定します。
-
-また、ADVIでもlaplace近似が使えます。ただし、laplace近似を実行すると計算が遅くなります。
-`meanfield`は平均場近似といって、事後分布がすべて独立であるという仮定で推定します。信頼区間がやや狭めに推定されますが、点推定値を得るのには十分使えます。
+計算に時間がかかるモデルや大規模なサンプリングを行う場合、結果を CSV
+ファイルとして保存しておくと便利です。
+[`sample()`](https://rdrr.io/r/base/sample.html)（または
+`variational()`）の実行時に `save_csv`
+引数を指定すると、指定したディレクトリにチェインごとのサンプリング結果が書き出されます。
 
 ``` r
 
-vb_hlm <- mdl_hlm$variational(
-  iter = 7000,
-  parallel = TRUE,
-  method = "meanfield",
-  laplace = TRUE
+# 結果を "mcmc_out" ディレクトリに "my_model_chain_X.csv" という名前で保存
+mcmc_hlm <- mdl_hlm$sample(
+  save_csv = list(name = "my_model", dir = "mcmc_out")
 )
-
-vb_hlm$summary(digits = 5)
 ```
 
-``` text
-##          variable        mean       sd         map        q2.5       q97.5 
-## lp                 -403.59863  2.68487  -401.72373  -410.58114  -400.88726 
-## alpha                 1.52112  0.06460     1.52966     1.39289     1.65062 
-## beta[talk]            0.23008  0.02011     0.22903     0.18939     0.26960 
-## beta[performance]     0.15445  0.01236     0.15815     0.12902     0.17917 
-## beta[skill]           0.22121  0.02962     0.23026     0.16046     0.27926 
-## tau                   0.52022  0.06577     0.50972     0.40743     0.65876 
-## sigma                 0.76221  0.03666     0.75816     0.69228     0.83982 
-## mu[1,1]               2.91530  0.04257     2.91892     2.83138     3.00157 
-## mu[2,1]               3.12764  0.06905     3.15095     2.99470     3.26365 
-## mu[3,1]               2.91530  0.04257     2.91892     2.83138     3.00157 
-```
-
-さらにmethodを`fullrank`にしておけば、事後分布が独立ではない多変量正規分布を仮定して推定ができます。理論的には、`laplace=TRUE`,
-`method = "fullrank"` と指定しておけば、MAPと同様の結果がでるはずです。
+保存された結果は、後で
+[`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
+関数を使ってモデルオブジェクトに読み戻すことができます。これにより、セッションを閉じたり
+R
+を再起動した後でも、サンプリング結果を再利用してプロットや要約を行うことが可能です。
 
 ``` r
 
-vb_hlm <- mdl_hlm$variational(
-  iter = 7000,
-  parallel = TRUE,
-  method = "fullrank",
-  laplace = TRUE
-)
-
-vb_hlm$summary(digits = 5)
+# 保存されたファイルを読み込む
+# (mdl は同じ設定で作られたモデルオブジェクトである必要があります)
+mcmc_hlm_read <- read_mcmc_csv(mdl, name = "my_model", dir = "mcmc_out")
 ```
-
-``` text
-##          variable        mean       sd         map        q2.5       q97.5 
-## lp                 -403.97866  2.20926  -402.90991  -409.23611  -401.18538 
-## alpha                 1.53770  0.25051     1.56744     1.01054     2.02055 
-## beta[talk]            0.24155  0.05547     0.23247     0.13522     0.35168 
-## beta[performance]     0.15541  0.03070     0.14594     0.09867     0.21363 
-## beta[skill]           0.22281  0.06458     0.24644     0.09070     0.34811 
-## tau                   0.51825  0.07037     0.52741     0.39687     0.66168 
-## sigma                 0.75946  0.05066     0.76286     0.66550     0.85404 
-## mu[1,1]               2.94047  0.07042     2.92289     2.80572     3.08573 
-## mu[2,1]               3.14453  0.09346     3.14312     2.96019     3.32846 
-## mu[3,1]               2.94047  0.07042     2.92289     2.80572     3.08573 
-```
-
-収束が悪い推定結果がある場合、bestなものだけを見ることができます。
-これで過去1000回分のELBOの推定が真横にランダムに並んでいれば大丈夫です。
-右上がりになっている場合はまだ収束していない可能性があります。
-
-``` r
-
-vb_hlm$plot_elbo(ests = "best")
-
-vb_hlm$summary()
-```
-
-![ELBOのプロット](plot_elbo.png)
-
-ELBOのプロット
 
 ### モデル比較
 
@@ -900,11 +832,12 @@ opt_mix <- mdl_mix$optimize(num_estimate = 8)
 ##   est8: Objective =     676.45, Code = 0 (Converged)
 ```
 
-このBestの結果を初期値にしてMCMCを走らせます。
+このBestの結果を初期値にしてMCMCを走らせます。すると、ラベルスイッチングが生じにくいです。
+なお、MCMCの初期値には`init_jitter`でchainごとに揺らすことができます。
 
 ``` r
 
-mcmc_mix <- mdl_mix$sample(parallel = TRUE, init = opt_mix$par)
+mcmc_mix <- mdl_mix$sample(init = opt_mix$par, init_jitter = 0.2)
 mcmc_mix
 ```
 
@@ -938,3 +871,20 @@ mcmc_mix
 を試す流れがわかりやすいです。
 より詳しく確認したい場合は、[日本語紹介ページ](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)
 と Reference をあわせて見ると全体像をつかみやすくなります。
+
+### 次のステップ
+
+BayesRTMB
+の全体像がつかめたら、以下の順番でドキュメントを参照して具体的な使い方を深めていくことをおすすめします。
+
+1.  **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**
+    `rtmb_glm`や`rtmb_fa`を用いることで、GLMや因子分析など心理統計でよく用いる分析法を簡単に実行できます。
+2.  **[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
+    各関数の詳細な仕様を確認できます。 3.**その他リファレンス**
+    特に自分でモデルを構築する際は、以下のページが役立ちます。
+    - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md):
+      各ブロックの記述ルールと仕様
+    - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md):
+      パラメータの型と制約（`parameter_types`）
+    - `distributions` / `math_functions`:
+      組み込みの確率分布や、数値計算を安定させる数学関数
