@@ -126,7 +126,6 @@ MAP_Fit <- R6::R6Class(
       }
       if (!is.null(self$transform)) self$transform <- lapply(self$transform, Re)
       if (!is.null(self$generate)) self$generate <- lapply(self$generate, Re)
-      class(self) <- c(class(self), "RTMB_Fit_Base")
     },
 
     #' @description Return random effect estimates as a named list.
@@ -140,6 +139,105 @@ MAP_Fit <- R6::R6Class(
       # Extract only the parameters that are marked as random
       random_names <- names(self$model$par_list)[sapply(self$model$par_list, function(x) isTRUE(x$random))]
       return(self$par[random_names])
+    },
+
+    #' @description Extract samples from the asymptotic posterior distribution.
+    #' @param pars Character or numeric vector specifying the names or indices of parameters to extract.
+    #' @param inc_random Logical; whether to include random effects.
+    #' @param inc_transform Logical; whether to include transformed parameters.
+    #' @param inc_generate Logical; whether to include generated quantities.
+    #' @param ... Ignored.
+    #' @return An array of samples [iterations, 1, parameters].
+    draws = function(pars = NULL, inc_random = FALSE, inc_transform = TRUE, inc_generate = TRUE, ...) {
+      # 1. Determine number of samples
+      num_samples <- 1
+      if (!is.null(self$se_samples)) {
+        num_samples <- nrow(self$se_samples$con[[1]])
+      }
+
+      # 2. Identify candidate base variables
+      all_base_vars <- names(self$model$par_list)
+      if (!inc_random) {
+        random_flags <- sapply(self$model$par_list, function(x) isTRUE(x$random))
+        all_base_vars <- all_base_vars[!random_flags]
+      }
+      
+      if (inc_transform && !is.null(self$transform)) all_base_vars <- c(all_base_vars, names(self$transform))
+      if (inc_generate && !is.null(self$generate)) all_base_vars <- c(all_base_vars, names(self$generate))
+
+      # 3. Narrow down base variables if pars is provided as character
+      target_base_vars <- all_base_vars
+      if (!is.null(pars) && is.character(pars)) {
+        pars_base <- unique(gsub("\\[.*\\]$", "", pars))
+        # We need to include base variables that are directly in pars_base,
+        # but also we don't know if a flat name matches until we expand.
+        # To be safe and efficient, we take the union of all_base_vars and pars_base.
+        target_base_vars <- intersect(all_base_vars, pars_base)
+        if (length(target_base_vars) == 0) target_base_vars <- all_base_vars
+      }
+
+      # 4. Collect and flatten samples for target base variables
+      flat_list <- list()
+      flat_names_vec <- c()
+
+      for (v in target_base_vars) {
+        # Determine group
+        group <- if (v %in% names(self$model$par_list)) "con" 
+                 else if (v %in% names(self$transform)) "tran"
+                 else if (v %in% names(self$generate)) "gq"
+                 else NULL
+        
+        if (is.null(group)) next
+
+        # Get samples matrix [num_samples, length(v)]
+        samps <- if (!is.null(self$se_samples[[group]][[v]])) {
+          self$se_samples[[group]][[v]]
+        } else {
+          val <- if (group == "con") self$par[[v]] else self[[if(group=="gq")"generate" else "transform"]][[v]]
+          matrix(rep(as.numeric(val), each = num_samples), nrow = num_samples)
+        }
+
+        flat_list[[v]] <- samps
+        
+        # Get flat names
+        v_info <- self$model$par_list[[v]]
+        v_dim <- if (!is.null(v_info)) v_info$dim else dim(self[[if(group=="gq")"generate" else "transform"]][[v]])
+        if (is.null(v_dim)) v_dim <- length(as.numeric(self[[if(group=="gq")"generate" else "transform"]][[v]]))
+        v_names_def <- self$model$par_names[[v]]
+        flat_names_vec <- c(flat_names_vec, generate_flat_names(v, v_dim, v_names_def))
+      }
+
+      if (length(flat_list) == 0) stop("No matching parameters found.")
+
+      res_mat <- do.call(cbind, unname(flat_list))
+      colnames(res_mat) <- flat_names_vec
+
+      # 5. Final filtering by pars (handles both base names and flattened names)
+      if (!is.null(pars)) {
+        if (is.numeric(pars)) {
+          target_idx <- pars[pars >= 1 & pars <= ncol(res_mat)]
+        } else if (is.character(pars)) {
+          base_names <- gsub("\\[.*\\]$", "", flat_names_vec)
+          target_idx <- integer(0)
+          for (p in pars) {
+            match_idx <- which(flat_names_vec == p | base_names == p)
+            target_idx <- c(target_idx, match_idx)
+          }
+          target_idx <- unique(target_idx)
+        } else {
+          stop("'pars' must be numeric or character.")
+        }
+        
+        if (length(target_idx) == 0) stop("No matching parameters found in 'pars'.")
+        res_mat <- res_mat[, target_idx, drop = FALSE]
+        flat_names_vec <- flat_names_vec[target_idx]
+      }
+
+      # 6. Convert to array [iterations, chains=1, parameters]
+      res_array <- array(res_mat, dim = c(num_samples, 1, ncol(res_mat)))
+      dimnames(res_array) <- list(iteration = 1:num_samples, chain = 1, variable = flat_names_vec)
+
+      return(res_array)
     },
 
     #' @description Summarize MAP estimates.

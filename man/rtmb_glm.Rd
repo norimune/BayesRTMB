@@ -11,7 +11,8 @@ rtmb_glm(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ rtmb_glm(
 \item{init}{List of initial values}
 
 \item{null}{Character string specifying the target parameter for the null model.}
+
+\item{gmc}{Character vector of variable names for GMC}
 }
 \description{
 RTMB-based GLM wrapper function (no random effects)

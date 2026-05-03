@@ -4,16 +4,16 @@
 \alias{conditional_effects}
 \title{Calculate Conditional Effects}
 \usage{
-conditional_effects(fit, effect, sd_multiplier = 1, ...)
+conditional_effects(fit, effect, ...)
 }
 \arguments{
-\item{fit}{Model fit object (e.g., `mcmc_fit`).}
+\item{fit}{Model fit object (e.g., `mcmc_fit`, `map_fit`).}
 
 \item{effect}{Name of the variable to visualize (e.g., "X1" or "X1:X2").}
 
-\item{sd_multiplier}{Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).}
-
 \item{...}{Additional arguments.}
+
+\item{sd_multiplier}{Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).}
 }
 \value{
 An object of class `ce_rtmb` containing the predicted values and their credible intervals.

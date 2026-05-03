@@ -11,7 +11,9 @@ rtmb_lmer(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL,
+  cwc = NULL
 )
 }
 \arguments{
@@ -28,6 +30,10 @@ rtmb_lmer(
 \item{init}{Initial values}
 
 \item{null}{Null model parameters}
+
+\item{gmc}{Character vector of variable names for GMC}
+
+\item{cwc}{List for CWC}
 }
 \value{
 RTMB_Model object

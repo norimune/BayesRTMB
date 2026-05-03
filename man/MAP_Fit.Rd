@@ -66,6 +66,7 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-MAP}{\code{MAP_Fit$MAP()}}
 \item \href{#method-map_fit-new}{\code{MAP_Fit$new()}}
 \item \href{#method-map_fit-ranef}{\code{MAP_Fit$ranef()}}
+\item \href{#method-map_fit-draws}{\code{MAP_Fit$draws()}}
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
@@ -225,6 +226,40 @@ Return random effect estimates as a named list.
 
 \subsection{Returns}{
 A named list of random effect estimates.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-draws"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-draws}{}}}
+\subsection{Method \code{draws()}}{
+Extract samples from the asymptotic posterior distribution.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$draws(
+  pars = NULL,
+  inc_random = FALSE,
+  inc_transform = TRUE,
+  inc_generate = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract.}
+
+\item{\code{inc_random}}{Logical; whether to include random effects.}
+
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters.}
+
+\item{\code{inc_generate}}{Logical; whether to include generated quantities.}
+
+\item{\code{...}}{Ignored.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+An array of samples [iterations, 1, parameters].
 }
 }
 \if{html}{\out{<hr>}}

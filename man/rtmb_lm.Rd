@@ -10,7 +10,8 @@ rtmb_lm(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ rtmb_lm(
 \item{init}{List of initial values.}
 
 \item{null}{Character string specifying the target parameter for the null model.}
+
+\item{gmc}{Character vector of variable names for GMC}
 }
 \description{
 RTMB-based Linear Regression wrapper function

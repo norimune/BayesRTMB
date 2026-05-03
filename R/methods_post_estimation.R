@@ -4,7 +4,7 @@
 #' Calculate and visualize the predicted values (marginal effects) of a variable,
 #' potentially conditional on the levels of another variable (interaction).
 #'
-#' @param fit Model fit object (e.g., `mcmc_fit`).
+#' @param fit Model fit object (e.g., `mcmc_fit`, `map_fit`).
 #' @param effect Name of the variable to visualize (e.g., "X1" or "X1:X2").
 #' @param sd_multiplier Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).
 #' @param ... Additional arguments.
@@ -20,8 +20,15 @@
 #'   summary(ce)
 #' }
 #' @export
-conditional_effects <- function(fit, effect, sd_multiplier = 1, ...) {
-  UseMethod("conditional_effects")
+conditional_effects <- function(fit, effect, ...) {
+  if (inherits(fit, "mcmc_fit")) {
+    return(conditional_effects.mcmc_fit(fit, effect = effect, ...))
+  } else if (inherits(fit, "map_fit") || inherits(fit, "advi_fit") || inherits(fit, "vb_fit")) {
+    # Reuse mcmc_fit logic since these classes now provide a draws() method
+    return(conditional_effects.mcmc_fit(fit, effect = effect, ...))
+  } else {
+    stop(sprintf("No conditional_effects method for object of class '%s'.", class(fit)[1]))
+  }
 }
 
 #' Calculate conditional effects for MCMC fit objects
