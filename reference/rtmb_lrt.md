@@ -10,13 +10,14 @@ rtmb_lrt(
   formula,
   k = 3,
   data = NULL,
+  rank_coords = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
   magnitude = NULL,
   smoothing = NULL,
   noise = 0.01,
   prob_smoothing = FALSE,
   link = c("ordered", "sequential"),
-  prior_type = c("weakly_informative", "uniform"),
+  prior = prior_uniform(),
   ...
 )
 ```
@@ -47,17 +48,19 @@ rtmb_lrt(
 
   Measurement noise for the GP prior (default is 0.01).
 
-- prior_type:
+- prior:
 
-  Prior type: "weakly_informative" or "uniform".
+  Prior configuration object:
+  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
+  (default),
+  [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md),
+  [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md),
+  or
+  [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md).
 
 - ...:
 
   Additional arguments passed to `rtmb_model`.
-
-- prob_formula:
-
-  Optional formula for latent class regression.
 
 ## Value
 

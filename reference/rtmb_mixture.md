@@ -12,7 +12,7 @@ rtmb_mixture(
   k = 2,
   data = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-  prior_type = c("uniform", "weakly_informative"),
+  prior = prior_uniform(),
   ...
 )
 ```
@@ -37,18 +37,19 @@ rtmb_mixture(
   Covariance structure: "diagonal" (default), "diagonal_equal", "full",
   "full_equal", or "full_equal_corr".
 
-- prior_type:
+- prior:
 
-  Prior type: "uniform" (default) or "weakly_informative".
+  Prior configuration object:
+  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
+  (default),
+  [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md),
+  [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md),
+  or
+  [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md).
 
 - ...:
 
   Additional arguments passed to `rtmb_model`.
-
-- prob_formula:
-
-  Optional formula for latent class regression (covariates for
-  probabilities).
 
 ## Value
 

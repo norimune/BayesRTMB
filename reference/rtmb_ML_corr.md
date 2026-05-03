@@ -11,7 +11,8 @@ rtmb_ML_corr(
   formula,
   ID,
   data = NULL,
-  prior_type = c("weakly_informative", "uniform"),
+  prior = prior_uniform(),
+  y_range = NULL,
   ...
 )
 ```
@@ -20,7 +21,8 @@ rtmb_ML_corr(
 
 - formula:
 
-  A formula or a character vector of variable names.
+  A formula (e.g., `cbind(V1, V2) ~ 1`) or a matrix of response
+  variables.
 
 - ID:
 
@@ -30,9 +32,22 @@ rtmb_ML_corr(
 
   A data frame.
 
-- prior_type:
+- prior:
 
-  Prior type: "weakly_informative" or "uniform".
+  Prior configuration object:
+  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
+  or
+  [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
+  Default is
+  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md).
+
+- y_range:
+
+  Optional numeric vector or matrix defining the theoretical range (min,
+  max) of response variables. Required when using
+  [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
+  Can be a vector of length 2 (applies to all variables) or a
+  matrix/list of length P.
 
 - ...:
 

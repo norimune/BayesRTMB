@@ -24,8 +24,7 @@ Functions for quick, standard analyses.
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
-  : Wrapper for estimating correlation matrix (multivariate normal
-  distribution)
+  : Fit a Correlation Model using RTMB'
 - [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
   : RTMB-based Factor Analysis Wrapper
 - [`rtmb_irt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_irt.md)
@@ -270,8 +269,7 @@ Functions used within rtmb_code for stability and transformations.
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
-  : Wrapper for estimating correlation matrix (multivariate normal
-  distribution)
+  : Fit a Correlation Model using RTMB'
 - [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
   : RTMB-based Factor Analysis Wrapper
 - [`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md)

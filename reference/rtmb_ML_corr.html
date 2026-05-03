@@ -63,7 +63,8 @@ covariance/correlation structures, along with Intraclass Correlation Coefficient
 <span>  <span class="va">formula</span>,</span>
 <span>  <span class="va">ID</span>,</span>
 <span>  data <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  prior_type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"weakly_informative"</span>, <span class="st">"uniform"</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -73,7 +74,7 @@ covariance/correlation structures, along with Intraclass Correlation Coefficient
 
 
 <dl><dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
-<dd><p>A formula or a character vector of variable names.</p></dd>
+<dd><p>A formula (e.g., <code>cbind(V1, V2) ~ 1</code>) or a matrix of response variables.</p></dd>
 
 
 <dt id="arg-id">ID<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
@@ -84,8 +85,13 @@ covariance/correlation structures, along with Intraclass Correlation Coefficient
 <dd><p>A data frame.</p></dd>
 
 
-<dt id="arg-prior-type">prior_type<a class="anchor" aria-label="anchor" href="#arg-prior-type"></a></dt>
-<dd><p>Prior type: "weakly_informative" or "uniform".</p></dd>
+<dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
+<dd><p>Prior configuration object: <code><a href="prior_uniform.html">prior_uniform()</a></code> or <code><a href="prior_weak.html">prior_weak()</a></code>. Default is <code><a href="prior_uniform.html">prior_uniform()</a></code>.</p></dd>
+
+
+<dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
+<dd><p>Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
+Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
