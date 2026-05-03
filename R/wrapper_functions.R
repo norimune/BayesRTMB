@@ -129,12 +129,85 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.
 #' @param init List of initial values (generated automatically based on glm if omitted)
 #' @param null Character string specifying the target parameter for the null model.
+#' @param gmc Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.
+#' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        prior = prior_uniform(),
                        y_range = NULL,
-                       init = NULL, null = NULL) {
+                       init = NULL, null = NULL,
+                       gmc = NULL, cwc = NULL) {
+
+  # --- 0. Data Centering (GMC / CWC) ---
+  if (!is.null(gmc) || !is.null(cwc)) {
+    data_centered <- as.data.frame(data)
+
+    # 1. Grand Mean Centering
+    if (!is.null(gmc)) {
+      target_gmc <- if (identical(gmc, "all")) {
+        names(data_centered)[sapply(data_centered, is.numeric)]
+      } else {
+        gmc
+      }
+      for (v in target_gmc) {
+        if (v %in% names(data_centered)) {
+          data_centered[[v]] <- data_centered[[v]] - mean(data_centered[[v]], na.rm = TRUE)
+        } else {
+          warning(sprintf("Variable '%s' for GMC not found in data.", v))
+        }
+      }
+    }
+
+    # 2. Centering Within Cluster
+    if (!is.null(cwc)) {
+      # Robustly extract cluster and pars
+      if ("pars" %in% names(cwc)) {
+        cluster_var <- cwc$cluster
+        target_pars <- cwc$pars
+      } else if ("cluster" %in% names(cwc)) {
+        cluster_var <- cwc$cluster
+        # Any elements not named "cluster" are considered target_pars
+        target_pars <- unlist(cwc[names(cwc) != "cluster" | names(cwc) == ""])
+      } else if (length(cwc) >= 2) {
+        # Assume first is cluster, rest are pars
+        cluster_var <- cwc[[1]]
+        target_pars <- unlist(cwc[-1])
+      } else {
+        stop("Invalid 'cwc' format. Use list(cluster = ID, pars = c('var1', 'var2')) or list(ID, 'var1').")
+      }
+
+      # Resolve group ID (character or symbol)
+      group_id <- if (is.character(cluster_var)) {
+        data_centered[[cluster_var]]
+      } else {
+        # cluster_var might be a symbol (e.g., group)
+        # Try to evaluate it in the context of data_centered
+        tryCatch(eval(cluster_var, data_centered, parent.frame()),
+                 error = function(e) NULL)
+      }
+
+      if (is.null(group_id)) {
+        # If still NULL, try to deparse and check if it's a column name
+        group_var_name <- deparse(cluster_var)
+        if (group_var_name %in% names(data_centered)) {
+          group_id <- data_centered[[group_var_name]]
+        } else {
+           stop("Cluster variable for CWC not found.")
+        }
+      }
+
+      for (v in target_pars) {
+        if (v %in% names(data_centered)) {
+          group_means <- tapply(data_centered[[v]], group_id, mean, na.rm = TRUE)
+          data_centered[[v]] <- data_centered[[v]] - group_means[as.character(group_id)]
+        } else {
+          warning(sprintf("Variable '%s' for CWC not found in data.", v))
+        }
+      }
+    }
+    data <- data_centered
+  }
 
   if (is.null(prior)) {
     prior <- prior_uniform()
@@ -729,19 +802,23 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param y_range Theoretical minimum and maximum values of the response variable
 #' @param init Initial values
 #' @param null Null model parameters
+#' @param gmc Character vector of variable names for GMC
+#' @param cwc List for CWC
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
 rtmb_lmer <- function(formula, data, laplace = TRUE,
                       prior = prior_uniform(),
                       y_range = NULL,
-                      init = NULL, null = NULL) {
+                      init = NULL, null = NULL,
+                      gmc = NULL, cwc = NULL) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
              y_range = y_range,
              init = init,
-             null = null)
+             null = null,
+             gmc = gmc, cwc = cwc)
 }
 
 #' RTMB-based GLM wrapper function (no random effects)
@@ -753,12 +830,14 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values
 #' @param null Character string specifying the target parameter for the null model.
+#' @param gmc Character vector of variable names for GMC
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
                      prior = prior_uniform(),
                      y_range = NULL,
-                     init = NULL, null = NULL) {
+                     init = NULL, null = NULL,
+                     gmc = NULL) {
   rtmb_glmer(
     formula = formula,
     data = data,
@@ -767,7 +846,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
     prior = prior,
     y_range = y_range,
     init = init,
-    null = null
+    null = null,
+    gmc = gmc
   )
 }
 
@@ -779,12 +859,14 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model.
+#' @param gmc Character vector of variable names for GMC
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
                     prior = prior_uniform(),
                     y_range = NULL,
-                    init = NULL, null = NULL) {
+                    init = NULL, null = NULL,
+                    gmc = NULL) {
 
   rtmb_glm(
     formula = formula,
@@ -793,7 +875,8 @@ rtmb_lm <- function(formula, data,
     prior = prior,
     y_range = y_range,
     init = init,
-    null = null
+    null = null,
+    gmc = gmc
   )
 }
 
