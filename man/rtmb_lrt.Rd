@@ -8,13 +8,14 @@ rtmb_lrt(
   formula,
   k = 3,
   data = NULL,
+  rank_coords = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
   magnitude = NULL,
   smoothing = NULL,
   noise = 0.01,
   prob_smoothing = FALSE,
   link = c("ordered", "sequential"),
-  prior_type = c("weakly_informative", "uniform"),
+  prior = prior_uniform(),
   ...
 )
 }
@@ -31,11 +32,9 @@ rtmb_lrt(
 
 \item{noise}{Measurement noise for the GP prior (default is 0.01).}
 
-\item{prior_type}{Prior type: "weakly_informative" or "uniform".}
+\item{prior}{Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.}
 
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
-
-\item{prob_formula}{Optional formula for latent class regression.}
 }
 \value{
 A \code{RTMB_Model} object.

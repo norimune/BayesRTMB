@@ -51,6 +51,18 @@
 #' @family wrappers
 NULL
 
+# Internal helper to merge priors without removing NULL values
+.merge_prior <- function(default, user) {
+  if (is.null(user)) return(default)
+  res <- user
+  for (name in names(default)) {
+    if (!(name %in% names(user))) {
+      res[[name]] <- default[[name]]
+    }
+  }
+  return(res)
+}
+
 
 #' Specify a uniform or manual prior
 #'
@@ -145,7 +157,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   has_random <- !is.null(findbars(formula))
 
   default_prior <- list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0)
-  prior <- modifyList(default_prior, prior)
+  prior <- .merge_prior(default_prior, prior)
 
   if (use_weak_info) {
     if (is.null(prior$max_beta)) prior$max_beta <- 1.0
@@ -811,7 +823,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   default_prior <- list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25)
   if (!is.null(prior)) {
-    prior <- modifyList(default_prior, prior)
+    prior <- .merge_prior(default_prior, prior)
   } else {
     prior <- default_prior
   }
@@ -1195,7 +1207,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   }
 
   default_prior <- list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1)
-  if (!is.null(prior)) prior <- modifyList(default_prior, prior) else prior <- default_prior
+  if (!is.null(prior)) prior <- .merge_prior(default_prior, prior) else prior <- default_prior
 
   # Remove preprocessing from the wrapper function side and pass only the raw matrix Y
   dat <- list(
@@ -1333,36 +1345,21 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   return(obj)
 }
 
-
-#' Wrapper for estimating correlation matrix (multivariate normal distribution)
-#'
-#' @description
-#' Estimates a correlation matrix (along with means and standard deviations) assuming a multivariate normal distribution from observation data.
-#' If there are 2 observed variables, it automatically switches to estimate the scalar correlation coefficient (`corr`) directly.
-#'
-#' @param data Observation data frame or matrix (N x P).
-#' @param prior List of hyperparameters for prior distributions. Default is \code{list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)}.
-#' @param init List of initial values (optional).
-#' @param null Target when creating a null model (e.g., \code{"corr"}). Optional.
-#' @return An instance of the \code{RTMB_Model} class.
-#' @example inst/examples/ex_corr.R
-#' @export
-#' Fit a Correlation Model using RTMB
-#'
+#' Fit a Correlation Model using RTMB'
 #' @description
 #' Fits a correlation model to estimate means, standard deviations, and correlation structures.
 #' Supports both bivariate and multivariate data.
 #'
 #' @param data A data frame or matrix of response variables.
 #' @param prior Prior configuration object: \code{prior_uniform()} (default) or \code{prior_weak()}.
-#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables. 
+#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #' Required when using \code{prior_weak()}.
 #' @param init Optional list of initial values.
 #' @param null Optional list specifying parameters to fix to null values.
 #' @param ... Additional arguments passed to \code{rtmb_model}.
 #' @return A \code{RTMB_Model} object.
 #' @export
-rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL, 
+rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
                       init = NULL, null = NULL, ...) {
 
   if (is.null(prior)) {
@@ -1388,16 +1385,16 @@ rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
 
   prior_type <- prior$type
   default_prior <- list(Intercept_sd = 10, mu_sd = 10, sigma_rate = 1.0, lkj_eta = 1.0)
-  prior <- modifyList(default_prior, prior)
+  prior <- .merge_prior(default_prior, prior)
   # Ensure mu_sd and Intercept_sd are synced if one is provided in prior_uniform
   if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
   if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
 
   # --- 1. Dynamic AST Construction: setup ---
   setup_exprs <- list(as.name("{"))
-  setup_exprs[[length(setup_exprs) + 1]] <- bquote(N <- .(N))
-  setup_exprs[[length(setup_exprs) + 1]] <- bquote(P <- .(P))
-  
+  setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- N)
+  setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- P)
+
   if (prior_type == "weak") {
     if (is.null(y_range)) {
       stop("y_range is required when using prior_weak().")
@@ -1410,14 +1407,14 @@ rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
     } else {
       y_range_mat <- as.matrix(y_range)
     }
-    
+
     mid_y_val <- (y_range_mat[, 1] + y_range_mat[, 2]) / 2
     alpha_prior_sd_val <- (y_range_mat[, 2] - y_range_mat[, 1]) / 2
     sigma_rate_val <- 1 / (alpha_prior_sd_val * 0.5)
-    
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(mid_y <- .(mid_y_val))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- .(alpha_prior_sd_val))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(sigma_rate_vec <- .(sigma_rate_val))
+
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
   }
   setup_ast <- as.call(setup_exprs)
 
@@ -1425,7 +1422,7 @@ rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
   param_exprs <- list(as.name("{"))
   param_exprs[[length(param_exprs) + 1]] <- bquote(mean <- Dim(.(P)))
   param_exprs[[length(param_exprs) + 1]] <- bquote(sd   <- Dim(.(P), lower = 0))
-  
+
   if (P == 2) {
     param_exprs[[length(param_exprs) + 1]] <- bquote(corr <- Dim(lower = -1, upper = 1))
   } else {
@@ -1435,7 +1432,7 @@ rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
 
   # --- 3. Dynamic AST Construction: model ---
   model_exprs <- list(as.name("{"))
-  
+
   # Priors
   if (prior_type == "weak") {
     model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
@@ -1458,7 +1455,7 @@ rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
   } else {
     model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
   }
-  
+
   model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
   model_ast <- as.call(model_exprs)
 
@@ -1475,6 +1472,11 @@ rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
   dat_list <- list(
     N = N, P = P, Y_bar = colMeans(Y_mat), S_Y = cov(Y_mat) * (N - 1)
   )
+  if (prior_type == "weak") {
+    dat_list$mid_y <- mid_y_val
+    dat_list$alpha_prior_sd <- alpha_prior_sd_val
+    dat_list$sigma_rate_vec <- sigma_rate_val
+  }
 
   v_names <- list(mean = var_names, sd = var_names)
   if (P == 2) {
@@ -1560,14 +1562,14 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
 
   default_prior <- list(mean_sd = 10, sd_rate = 0.1)
   if (!is.null(prior)) {
-    prior <- modifyList(default_prior, prior)
+    prior <- .merge_prior(default_prior, prior)
   } else {
     prior <- default_prior
   }
 
   default_weak_prior <- list(sd_ratio = 0.5)
   if (!is.null(weak_info_prior)) {
-    weak_info_prior <- modifyList(default_weak_prior, weak_info_prior)
+    weak_info_prior <- .merge_prior(default_weak_prior, weak_info_prior)
   } else {
     weak_info_prior <- default_weak_prior
   }
@@ -1678,8 +1680,8 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   # NSE for formula: handle case where formula is just a variable name in data
   formula_expr <- substitute(formula)
   formula_val <- try(formula, silent = TRUE)
-  
-  if (inherits(formula_val, "try-error") || 
+
+  if (inherits(formula_val, "try-error") ||
       (!inherits(formula_val, "formula") && !is.matrix(formula_val) && !is.vector(formula_val))) {
     # Check if variables in formula_expr are in data
     if (!is.null(data) && all(all.vars(formula_expr) %in% names(data))) {
@@ -1700,7 +1702,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
 
   default_prior <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 1, lkj_eta = 1.0, dirichlet_alpha = 1.0)
-  prior <- modifyList(default_prior, prior)
+  prior <- .merge_prior(default_prior, prior)
   # Sync mu_sd and Intercept_sd
   if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
   if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
@@ -1730,12 +1732,12 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     mf_y <- model.frame(formula, data = data)
     Y_mat <- model.response(mf_y)
     if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
-    
+
     # Check if formula has RHS covariates for prob
     # RHS is formula[[3]] for two-sided formula
     rhs <- formula[[3]]
     is_empty_rhs <- (is.numeric(rhs) && rhs == 1) || (is.symbol(rhs) && rhs == "1")
-    
+
     if (!is_empty_rhs) {
       X_prob <- model.matrix(formula, data = data)
     } else {
@@ -1746,7 +1748,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   Y_mat <- as.matrix(Y_mat)
   N_obs <- nrow(Y_mat)
   P_dim <- ncol(Y_mat)
-  
+
   if (is.null(colnames(Y_mat))) {
     colnames(Y_mat) <- paste0("Y", 1:P_dim)
   }
@@ -1759,22 +1761,21 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   # --- 1. Dynamic AST Construction: setup ---
   setup_exprs <- list(
     as.name("{"),
-    bquote(N <- .(N_obs)),
-    bquote(K <- .(K_mix)),
-    bquote(P <- .(P_dim)),
-    bquote(K_prob <- .(K_prob))
+    quote(N <- N),
+    quote(K <- K),
+    quote(P <- P)
   )
   if (has_cov_prob) {
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(X_means <- matrix(.(colMeans(X_prob)), 1, .(ncol(X_prob))))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- K_prob)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(X_means, 1, K_prob))
     if (regularization == "rhs") {
       # RHS setup
-      p0 <- prior$expected_vars
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(tau0 <- .(p0 / (K_prob - p0) / sqrt(N_obs)))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_df <- .(prior$slab_df / 2))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_scale2 <- .(prior$slab_scale^2 / 2))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- tau0)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_df <- half_slab_df)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_scale2 <- half_slab_scale2)
     } else if (regularization == "ssp") {
       # SSP setup
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(tau_scale <- .(prior$max_beta / 1.96))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- tau_scale)
     }
   }
   setup_ast <- as.call(setup_exprs)
@@ -1820,7 +1821,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 
   # --- 3. Dynamic AST Construction: model ---
   model_exprs <- list(as.name("{"))
-  
+
   # Regularization transformations
   if (has_cov_prob) {
     if (regularization == "rhs") {
@@ -1885,7 +1886,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     # Component priors
     model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior$Intercept_sd)))
     model_exprs[[length(model_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
-    
+
     if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
       if (covariance == "full") {
         model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
@@ -1917,7 +1918,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     if (!is.null(prior$sigma_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
     if (has_cov_prob && !is.null(prior$b_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
   }
-  
+
   model_ast <- as.call(model_exprs)
 
   # --- 4. Dynamic AST Construction: generate ---
@@ -1984,8 +1985,20 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     }
   }
 
-  data_list <- list(Y = Y_mat)
-  if (has_cov_prob) data_list$X_prob <- X_prob
+  data_list <- list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim)
+  if (has_cov_prob) {
+    data_list$X_prob <- X_prob
+    data_list$K_prob <- K_prob
+    data_list$X_means <- as.vector(colMeans(X_prob))
+    if (regularization == "rhs") {
+      p0 <- prior$expected_vars
+      data_list$tau0 <- p0 / (K_prob - p0) / sqrt(N_obs)
+      data_list$half_slab_df <- prior$slab_df / 2
+      data_list$half_slab_scale2 <- prior$slab_scale^2 / 2
+    } else if (regularization == "ssp") {
+      data_list$tau_scale <- prior$max_beta / 1.96
+    }
+  }
 
   init_list <- list()
   if (nrow(Y_mat) >= K_mix) {
@@ -2000,7 +2013,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       # Initial theta / probabilities
       props <- as.vector(table(factor(km$cluster, levels = 1:K_mix))) / nrow(Y_mat)
       init_list$theta <- props
-      
+
       # Initial b if covariates present
       if (has_cov_prob) {
         b_init <- matrix(0, ncol(X_prob), K_mix - 1)
@@ -2041,7 +2054,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       init_list$mu <- seq(r_y[1], r_y[2], length.out = K_mix + 2)[2:(K_mix + 1)]
     }
   }
-  
+
   if (!is.null(Y_mat)) {
      init_list$sigma <- if (is_sigma_equal) apply(Y_mat, 2, sd) else matrix(apply(Y_mat, 2, sd), K_mix, P_dim, byrow = TRUE)
   }
@@ -2070,11 +2083,14 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 #' @return A \code{RTMB_Model} object.
 #' @export
 rtmb_lrt <- function(formula, k = 3, data = NULL,
+                     rank_coords = NULL,
                      covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
                      magnitude = NULL, smoothing = NULL, noise = 0.01,
                      prob_smoothing = FALSE,
                      link = c("ordered", "sequential"),
                      prior = prior_uniform(), ...) {
+
+  if (is.null(rank_coords)) rank_coords <- 1:k
 
   if (is.null(prior)) {
     prior <- prior_uniform()
@@ -2087,8 +2103,8 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   # NSE for formula: handle case where formula is just a variable name in data
   formula_expr <- substitute(formula)
   formula_val <- try(formula, silent = TRUE)
-  
-  if (inherits(formula_val, "try-error") || 
+
+  if (inherits(formula_val, "try-error") ||
       (!inherits(formula_val, "formula") && !is.matrix(formula_val) && !is.vector(formula_val))) {
     if (!is.null(data) && all(all.vars(formula_expr) %in% names(data))) {
       formula <- as.formula(call("~", formula_expr, 1))
@@ -2109,7 +2125,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
 
   default_prior <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 1, lkj_eta = 1.0, mag_rate = 1.0, smooth_rate = 1.0, cutpoint_sd = 2.5)
-  prior <- modifyList(default_prior, prior)
+  prior <- .merge_prior(default_prior, prior)
   # Sync mu_sd and Intercept_sd
   if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
   if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
@@ -2138,7 +2154,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     mf_y <- model.frame(formula, data = data)
     Y_mat <- model.response(mf_y)
     if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
-    
+
     # Check if formula has RHS covariates for prob
     rhs <- formula[[3]]
     is_empty_rhs <- (is.numeric(rhs) && rhs == 1) || (is.symbol(rhs) && rhs == "1")
@@ -2168,24 +2184,22 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   # --- 1. Setup ---
   setup_exprs <- list(
     as.name("{"),
-    bquote(N <- .(N_obs)),
-    bquote(K <- .(K_mix)),
-    bquote(P <- .(P_dim)),
-    bquote(K_prob <- .(K_prob)),
-    bquote(rank_coords <- 1:.(K_mix))
+    quote(N <- N),
+    quote(K <- K),
+    quote(P <- P),
+    quote(rank_coords <- rank_coords)
   )
   if (has_cov_prob) {
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(X_means <- matrix(.(colMeans(X_prob)), 1, .(ncol(X_prob))))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- K_prob)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(X_means, 1, K_prob))
     if (regularization == "rhs") {
       # RHS setup
-      p0 <- prior$expected_vars
-      num_b_sets <- if (link == "ordered") 1 else (K_mix - 1)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(tau0 <- .(p0 / (K_prob - p0) / sqrt(N_obs)))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_df <- .(prior$slab_df / 2))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_scale2 <- .(prior$slab_scale^2 / 2))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- tau0)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_df <- half_slab_df)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_scale2 <- half_slab_scale2)
     } else if (regularization == "ssp") {
       # SSP setup
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(tau_scale <- .(prior$max_beta / 1.96))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- tau_scale)
     }
   }
   setup_ast <- as.call(setup_exprs)
@@ -2193,7 +2207,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   # --- 2. Parameters ---
   param_exprs <- list(as.name("{"))
   param_exprs[[length(param_exprs) + 1]] <- bquote(mu_p <- Dim(c(.(P_dim), .(K_mix)), type = "ordered"))
-  
+
   # Sigma parameterization based on covariance
   if (is_sigma_equal) {
     param_exprs[[length(param_exprs) + 1]] <- bquote(sigma <- Dim(.(P_dim), lower = 0))
@@ -2208,7 +2222,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr <- Dim(c(.(P_dim), .(P_dim)), type = "CF_corr"))
     }
   }
-  
+
   if (has_cov_prob) {
     if (link == "ordered") {
       if (regularization == "rhs") {
@@ -2248,14 +2262,14 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       param_exprs[[length(param_exprs) + 1]] <- bquote(theta <- Dim(.(K_mix), type = "simplex"))
     }
   }
-  
+
   if (is.null(magnitude)) param_exprs[[length(param_exprs) + 1]] <- quote(magnitude <- Dim(lower = 0))
   if (is.null(smoothing)) param_exprs[[length(param_exprs) + 1]] <- quote(smoothing <- Dim(lower = 0))
   param_ast <- as.call(param_exprs)
 
   # --- 3. Model ---
   model_exprs <- list(as.name("{"))
-  
+
   # Regularization transformations
   if (has_cov_prob) {
     if (regularization == "rhs") {
@@ -2277,7 +2291,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   }
 
   model_exprs[[length(model_exprs) + 1]] <- quote(mu <- t(mu_p))
-  
+
   if (has_cov_prob) {
     model_exprs[[length(model_exprs) + 1]] <- quote(pi_mat <- matrix(mu[1] * 0, N, K))
     if (link == "ordered") {
@@ -2344,16 +2358,12 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   # GP Prior (Items)
   gp_mag <- if (is.null(magnitude)) quote(magnitude) else magnitude
   gp_sm  <- if (is.null(smoothing)) quote(smoothing) else smoothing
-  model_exprs[[length(model_exprs) + 1]] <- bquote({
-    for (p in 1:P) {
-      lp <- lp + gaussian_process_lpdf(mu[, p], x = rank_coords, magnitude = .(gp_mag), smoothing = .(gp_sm), noise = .(noise))
-    }
+  model_exprs[[length(model_exprs) + 1]] <- bquote(for (p in 1:P) {
+    lp <- lp + gaussian_process_lpdf(mu[, p], x = rank_coords, magnitude = .(gp_mag), smoothing = .(gp_sm), noise = .(noise))
   })
 
   if (prob_smoothing && !has_cov_prob) {
-    model_exprs[[length(model_exprs) + 1]] <- bquote({
-      lp <- lp + gaussian_process_lpdf(logit_theta, x = rank_coords, magnitude = magnitude_theta, smoothing = .(gp_sm), noise = .(noise))
-    })
+    model_exprs[[length(model_exprs) + 1]] <- bquote(lp <- lp + gaussian_process_lpdf(logit_theta, x = rank_coords, magnitude = magnitude_theta, smoothing = .(gp_sm), noise = .(noise)))
   }
 
   # Priors
@@ -2364,7 +2374,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     if (prob_smoothing && !has_cov_prob) {
       model_exprs[[length(model_exprs) + 1]] <- bquote(magnitude_theta ~ exponential(.(prior$mag_rate)))
     }
-    
+
     if (multivariate && !is_diag) {
       if (covariance == "full") {
         model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
@@ -2387,7 +2397,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       } else {
         model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
       }
-      
+
       if (link == "ordered") {
         model_exprs[[length(model_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
       } else {
@@ -2424,48 +2434,42 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       generate_exprs[[length(generate_exprs) + 1]] <- quote(b <- b_raw * r_b * tau_b)
     }
     if (link == "ordered") {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote({
-        eta_mean <- X_means %*% b
-        F_prev <- 0
-        prob_mean <- numeric(K)
-        for (k in 1:(K-1)) {
-          F_k <- inv_logit(cutpoints[k] - eta_mean)
-          prob_mean[k] <- F_k - F_prev
-          F_prev <- F_k
-        }
-        prob_mean[K] <- 1 - F_prev
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_mean <- X_means %*% b)
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(F_prev <- 0)
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- numeric(K))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:(K - 1)) {
+        F_k <- inv_logit(cutpoints[k] - eta_mean)
+        prob_mean[k] <- F_k - F_prev
+        F_prev <- F_k
       })
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean[K] <- 1 - F_prev)
     } else {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote({
-        eta_mean_mat <- X_means %*% b
-        q_cum <- 1
-        prob_mean <- numeric(K)
-        for (k in 1:(K-1)) {
-          q_k <- inv_logit(alpha[k] + eta_mean_mat[k])
-          prob_mean[k] <- q_cum * (1 - q_k)
-          q_cum <- q_cum * q_k
-        }
-        prob_mean[K] <- q_cum
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_mean_mat <- X_means %*% b)
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(q_cum <- 1)
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- numeric(K))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:(K - 1)) {
+        q_k <- inv_logit(alpha[k] + eta_mean_mat[k])
+        prob_mean[k] <- q_cum * (1 - q_k)
+        q_cum <- q_cum * q_k
       })
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean[K] <- q_cum)
     }
   } else {
     if (prob_smoothing) generate_exprs[[length(generate_exprs) + 1]] <- quote(theta <- softmax(logit_theta))
     generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- theta)
   }
-  
+
   if (!is_diag) {
-    generate_exprs[[length(generate_exprs) + 1]] <- bquote({
-      corr <- if (.(covariance == "full")) array(mu[1] * 0, dim = c(K, P, P)) else matrix(mu[1] * 0, P, P)
-      if (.(covariance == "full")) {
-        for (k in 1:K) {
-          L_mat <- matrix(L_corr[k, , ], P, P)
-          corr[k, , ] <- L_mat %*% t(L_mat)
-        }
-      } else {
-        L_mat <- matrix(L_corr, P, P)
-        corr <- L_mat %*% t(L_mat)
-      }
-    })
+    generate_exprs[[length(generate_exprs) + 1]] <- bquote(corr <- if (.(covariance == "full")) array(mu[1] * 0, dim = c(K, P, P)) else matrix(mu[1] * 0, P, P))
+    if (covariance == "full") {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:K) {
+        L_mat <- matrix(L_corr[k, , ], P, P)
+        corr[k, , ] <- L_mat %*% t(L_mat)
+      })
+    } else {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(L_mat <- matrix(L_corr, P, P))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- L_mat %*% t(L_mat))
+    }
   }
   generate_ast <- as.call(generate_exprs)
 
@@ -2474,7 +2478,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 
   v_names <- list(mu = list(paste0("Rank", 1:K_mix), colnames(Y_mat)))
   v_names$sigma <- if (is_sigma_equal) colnames(Y_mat) else list(paste0("Rank", 1:K_mix), colnames(Y_mat))
-  
+
   if (!is_diag) {
     if (covariance == "full") {
       v_names$L_corr <- list(paste0("Rank", 1:K_mix), colnames(Y_mat), colnames(Y_mat))
@@ -2496,8 +2500,20 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     }
   }
 
-  data_list <- list(Y = Y_mat)
-  if (has_cov_prob) data_list$X_prob <- X_prob
+  data_list <- list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim, rank_coords = rank_coords)
+  if (has_cov_prob) {
+    data_list$X_prob <- X_prob
+    data_list$K_prob <- K_prob
+    data_list$X_means <- as.vector(colMeans(X_prob))
+    if (regularization == "rhs") {
+      p0 <- prior$expected_vars
+      data_list$tau0 <- p0 / (K_prob - p0) / sqrt(N_obs)
+      data_list$half_slab_df <- prior$slab_df / 2
+      data_list$half_slab_scale2 <- prior$slab_scale^2 / 2
+    } else if (regularization == "ssp") {
+      data_list$tau_scale <- prior$max_beta / 1.96
+    }
+  }
 
   init_list <- list()
   if (nrow(Y_mat) >= K_mix) {
@@ -2532,7 +2548,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
         }
       }
       init_list$mu_p <- mu_init_p
-      
+
       # Initial b and cutpoints if covariates present
       if (has_cov_prob) {
         # Proxy regression of ranks on X
@@ -2542,7 +2558,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
           # Exclude intercept if it was included (lm usually does)
           if ("(Intercept)" %in% names(b_est)) b_est <- b_est[names(b_est) != "(Intercept)"]
           b_est[is.na(b_est)] <- 0
-          
+
           if (regularization == "rhs") {
             init_list$z_b <- if (link == "ordered") as.vector(b_est) else matrix(b_est, ncol(X_prob), K_mix - 1)
             init_list$w_lambda_b <- if (link == "ordered") rep(1, length(init_list$z_b)) else matrix(1, ncol(X_prob), K_mix - 1)
@@ -2560,7 +2576,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
             }
           }
         }
-        
+
         # Thresholds from group proportions
         props <- table(factor(groups, levels = 1:K_mix)) / length(groups)
         F_k <- cumsum(props)
@@ -2593,13 +2609,13 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       init_list$sigma <- matrix(s_init, K_mix, P_dim, byrow = TRUE)
     }
   }
-  
+
   view_order <- c("prob_mean", "mu", "sigma")
   if (has_cov_prob) {
     view_order <- if (link == "ordered") c("b", "cutpoints", view_order) else c("b", "alpha", view_order)
   }
   if (!is_diag) view_order <- c(view_order, "corr")
-  
+
   mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
   return(mdl)
 }
@@ -2607,26 +2623,26 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #' Multilevel Correlation Analysis (Kenny's Model)
 #'
 #' @description
-#' This function fits a multilevel correlation model to estimate between-group and within-group 
+#' This function fits a multilevel correlation model to estimate between-group and within-group
 #' covariance/correlation structures, along with Intraclass Correlation Coefficients (ICC).
 #'
 #' @param formula A formula (e.g., \code{cbind(V1, V2) ~ 1}) or a matrix of response variables.
 #' @param ID A character string or expression specifying the group ID variable.
 #' @param data A data frame.
 #' @param prior Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.
-#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables. 
+#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param ... Additional arguments passed to \code{rtmb_model}.
 #' @return A \code{RTMB_Model} object.
 #' @export
-rtmb_ML_corr <- function(formula, ID, data = NULL, 
+rtmb_ML_corr <- function(formula, ID, data = NULL,
                          prior = prior_uniform(),
                          y_range = NULL, ...) {
 
   if (is.null(prior)) {
     prior <- prior_uniform()
   }
-  
+
   # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
   if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
       is.null(prior$Intercept_sd) && is.null(prior$b_sd) &&
@@ -2638,8 +2654,10 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
     stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
   }
 
-  default_prior <- list(Intercept_sd = 10, mu_sd = 10, sigma_rate = 1.0, lkj_eta = 1.0)
-  prior <- modifyList(default_prior, prior)
+  # Consolidated default prior settings
+  default_prior_settings <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, lkj_eta = 1.0, sd_ratio = 0.5)
+  prior <- .merge_prior(default_prior_settings, prior)
+
   # Sync mu_sd and Intercept_sd
   if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
   if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
@@ -2647,8 +2665,8 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   # NSE for formula/Y
   formula_expr <- substitute(formula)
   formula_val <- try(formula, silent = TRUE)
-  
-  if (inherits(formula_val, "try-error") || 
+
+  if (inherits(formula_val, "try-error") ||
       (!inherits(formula_val, "formula") && !is.matrix(formula_val) && !is.vector(formula_val))) {
     if (!is.null(data) && all(all.vars(formula_expr) %in% names(data))) {
       formula <- as.formula(call("~", formula_expr, 1))
@@ -2678,7 +2696,7 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   id_expr <- substitute(ID)
   id_val <- if (!is.null(data)) data[[as.character(id_expr)]] else ID
   if (is.null(id_val)) stop("Group ID not found.")
-  
+
   group_factor <- as.factor(id_val)
   group_id <- as.integer(group_factor)
   group_names <- levels(group_factor)
@@ -2688,8 +2706,7 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   use_weak_info <- prior_type %in% c("weak")
   multivariate <- P > 1
 
-  default_prior <- list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, lkj_eta = 1.0, sd_ratio = 0.5)
-  prior <- modifyList(default_prior, prior)
+  # (Consolidated above)
 
   # --- 1. Setup ---
   setup_exprs <- list()
@@ -2697,7 +2714,7 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
     if (is.null(y_range)) {
       stop("Specifying 'y_range' is required when using prior_weak().")
     }
-    
+
     # Process y_range into P x 2 matrix
     if (is.list(y_range)) {
       if (length(y_range) != P) stop(sprintf("y_range list must have length P = %d.", P))
@@ -2709,14 +2726,14 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
     } else {
       stop("Invalid format for y_range. Must be c(min, max), or a matrix/list of length P.")
     }
-    
+
     half_d_y <- (Y_range_mat[, 2] - Y_range_mat[, 1]) / 2
     mid_y_val <- (Y_range_mat[, 2] + Y_range_mat[, 1]) / 2
     base_scale <- half_d_y * prior$sd_ratio
-    
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(mid_y <- .(mid_y_val))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- .(half_d_y))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(sigma_rate_vec <- .(1.0 / base_scale))
+
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
   }
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
@@ -2724,10 +2741,10 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   param_exprs <- list(as.name("{"))
   param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(.(P)))
   param_exprs[[length(param_exprs) + 1]] <- bquote(u <- Dim(c(J, .(P)), random = TRUE))
-  
+
   param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_between <- Dim(.(P), lower = 0))
   param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_within <- Dim(.(P), lower = 0))
-  
+
   if (multivariate) {
     param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr_between <- Dim(c(.(P), .(P)), type = "CF_corr"))
     param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr_within <- Dim(c(.(P), .(P)), type = "CF_corr"))
@@ -2736,7 +2753,7 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
 
   # --- 3. Model ---
   model_exprs <- list(as.name("{"))
-  
+
   # Correlation priors
   if (multivariate) {
     model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior$lkj_eta)))
@@ -2749,7 +2766,7 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   } else {
     model_exprs[[length(model_exprs) + 1]] <- quote(u ~ normal(0, sigma_between))
   }
-  
+
   # Within-group likelihood
   model_exprs[[length(model_exprs) + 1]] <- quote(Y_pred <- u[group_id, ] + rep(mu, each = N))
   if (multivariate) {
@@ -2788,14 +2805,19 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   v_names <- list(mu = colnames(Y_mat), sigma_between = colnames(Y_mat), sigma_within = colnames(Y_mat))
   v_names$u <- list(group_names, colnames(Y_mat))
   v_names$ICC <- colnames(Y_mat)
-  
+
   if (multivariate) {
     v_names$B_corr <- list(colnames(Y_mat), colnames(Y_mat))
     v_names$W_corr <- list(colnames(Y_mat), colnames(Y_mat))
   }
 
   data_list <- list(Y = Y_mat, group_id = group_id, N = N, P = P, J = J)
-  
+  if (use_weak_info) {
+    data_list$mid_y <- mid_y_val
+    data_list$alpha_prior_sd <- half_d_y
+    data_list$sigma_rate_vec <- 1.0 / base_scale
+  }
+
   # Initialization
   init_list <- list(mu = colMeans(Y_mat))
   init_list$sigma_between <- apply(Y_mat, 2, sd) * 0.5
@@ -2805,7 +2827,7 @@ rtmb_ML_corr <- function(formula, ID, data = NULL,
   view_order <- c("ICC")
   if (multivariate) view_order <- c(view_order, "B_corr", "W_corr")
   view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
-  
+
   mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
   return(mdl)
 }

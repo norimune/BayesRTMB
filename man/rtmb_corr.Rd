@@ -2,50 +2,35 @@
 % Please edit documentation in R/wrapper_functions.R
 \name{rtmb_corr}
 \alias{rtmb_corr}
-\title{Wrapper for estimating correlation matrix (multivariate normal distribution)}
+\title{Fit a Correlation Model using RTMB'}
 \usage{
 rtmb_corr(
   data,
-  prior = list(lkj_eta = 1, mu_sd = 10, sigma_rate = 1),
+  prior = prior_uniform(),
+  y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  ...
 )
 }
 \arguments{
-\item{data}{Observation data frame or matrix (N x P).}
+\item{data}{A data frame or matrix of response variables.}
 
-\item{prior}{List of hyperparameters for prior distributions. Default is \code{list(lkj_eta = 1.0, mu_sd = 10, sigma_rate = 1.0)}.}
+\item{prior}{Prior configuration object: \code{prior_uniform()} (default) or \code{prior_weak()}.}
 
-\item{init}{List of initial values (optional).}
+\item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
+Required when using \code{prior_weak()}.}
 
-\item{null}{Target when creating a null model (e.g., \code{"corr"}). Optional.}
+\item{init}{Optional list of initial values.}
+
+\item{null}{Optional list specifying parameters to fix to null values.}
+
+\item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
 \value{
-An instance of the \code{RTMB_Model} class.
+A \code{RTMB_Model} object.
 }
 \description{
-Estimates a correlation matrix (along with means and standard deviations) assuming a multivariate normal distribution from observation data.
-If there are 2 observed variables, it automatically switches to estimate the scalar correlation coefficient (`corr`) directly.
-}
-\examples{
-\dontrun{
-  # Simulate bivariate normal data with a true correlation of 0.5
-  set.seed(123)
-  N <- 50
-  rho <- 0.5
-  cov_mat <- matrix(c(1, rho, rho, 1), nrow = 2)
-
-  if (requireNamespace("MASS", quietly = TRUE)) {
-    data_corr <- MASS::mvrnorm(N, mu = c(0, 0), Sigma = cov_mat)
-    colnames(data_corr) <- c("X1", "X2")
-
-    fit_corr <- rtmb_corr(data = data_corr)
-
-    mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
-    mcmc_corr$summary()
-
-    bf_corr <- mcmc_corr$bayes_factor(null_model = "corr")
-    print(bf_corr)
-  }
-}
+Fits a correlation model to estimate means, standard deviations, and correlation structures.
+Supports both bivariate and multivariate data.
 }

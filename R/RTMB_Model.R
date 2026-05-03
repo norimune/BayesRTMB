@@ -688,6 +688,16 @@ RTMB_Model <- R6::R6Class(
       samps_tran <- list()
       samps_gq <- list()
 
+      # --- Degrees of freedom adjustment ---
+      if (any(!is.infinite(df_t))) {
+        est_dfs_all <- rep(df_t[1], L_u_total)
+      } else if (auto_df) {
+        est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
+        ad_obj$fn(opt$par)
+      } else {
+        est_dfs_all <- rep(Inf, L_u_total)
+      }
+
       # --- SE Sampling Logic ---
       if (se_sampling) {
         cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
@@ -711,14 +721,7 @@ RTMB_Model <- R6::R6Class(
         if (!is.matrix(raw_samples)) raw_samples <- as.matrix(raw_samples)
 
         # --- Multivariate t-distribution (or Satterthwaite) scaling ---
-        if (any(!is.infinite(df_t))) {
-          active_dfs <- rep(df_t[1], length(idx_fix_active))
-        } else if (auto_df) {
-          est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
-          active_dfs <- est_dfs_all[idx_fix_active]
-        } else {
-          active_dfs <- rep(Inf, length(idx_fix_active))
-        }
+        active_dfs <- est_dfs_all[idx_fix_active]
 
         # Transform Normal samples to t-samples while preserving the correlation structure
         # Formula: t = mu + (z * sigma) * sqrt(df / chisq(df))
@@ -874,16 +877,7 @@ RTMB_Model <- R6::R6Class(
         }
 
       } else {
-        # Degrees of freedom adjustment
-        if (any(!is.infinite(df_t))) {
-          est_dfs_all <- rep(df_t[1], L_u_total)
-        } else if (auto_df) {
-          est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
-          ad_obj$fn(opt$par)
-        } else {
-          est_dfs_all <- rep(Inf, L_u_total)
-        }
-
+        # Standard SE calculation (Wald)
         eps_diff <- 1e-5
         u_idx_current <- 1
 
@@ -1043,28 +1037,8 @@ RTMB_Model <- R6::R6Class(
         flat_base <- unlist(base_out, use.names = FALSE)
         L_out <- length(flat_base)
 
-        if (se_sampling) {
-          samps_list <- if (is_generate) samps_gq else samps_tran
-          if (length(samps_list) == 0) {
-            se_out <- rep(NA, L_out)
-            low_out <- rep(NA, L_out)
-            up_out <- rep(NA, L_out)
-          } else {
-            mat_list <- list()
-            for (name in names(base_out)) {
-              if (!is.null(samps_list[[name]])) {
-                mat_list[[name]] <- samps_list[[name]]
-              } else {
-                mat_list[[name]] <- matrix(NA, num_samples, length(base_out[[name]]))
-              }
-            }
-            mat_all <- do.call(cbind, unname(mat_list))
-            se_out <- apply(mat_all, 2, sd, na.rm=TRUE)
-            low_out <- apply(mat_all, 2, quantile, probs=0.025, na.rm=TRUE)
-            up_out <- apply(mat_all, 2, quantile, probs=0.975, na.rm=TRUE)
-          }
-        } else {
-          # Use Delta Method (Jacobian)
+        # 1. Calculate Jacobian for DF and Delta Method
+        if (show_df || !se_sampling) {
           u_base <- unc_est_vec
           L_u <- length(u_base)
 
@@ -1093,7 +1067,31 @@ RTMB_Model <- R6::R6Class(
               J[, i] <- (flat_tmp - flat_base) / eps_diff
             }
           }
+        }
 
+        # 2. Calculate SE and CI
+        if (se_sampling) {
+          samps_list <- if (is_generate) samps_gq else samps_tran
+          if (length(samps_list) == 0) {
+            se_out <- rep(NA, L_out)
+            low_out <- rep(NA, L_out)
+            up_out <- rep(NA, L_out)
+          } else {
+            mat_list <- list()
+            for (name in names(base_out)) {
+              if (!is.null(samps_list[[name]])) {
+                mat_list[[name]] <- samps_list[[name]]
+              } else {
+                mat_list[[name]] <- matrix(NA, num_samples, length(base_out[[name]]))
+              }
+            }
+            mat_all <- do.call(cbind, unname(mat_list))
+            se_out <- apply(mat_all, 2, sd, na.rm=TRUE)
+            low_out <- apply(mat_all, 2, quantile, probs=0.025, na.rm=TRUE)
+            up_out <- apply(mat_all, 2, quantile, probs=0.975, na.rm=TRUE)
+          }
+        } else {
+          # Use Delta Method (Jacobian J calculated above)
           Cov_u_derived <- Cov_u
           if (!all(dim(Cov_u_derived) == c(L_u, L_u))) {
             Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)

@@ -8,18 +8,22 @@ rtmb_ML_corr(
   formula,
   ID,
   data = NULL,
-  prior_type = c("weakly_informative", "uniform"),
+  prior = prior_uniform(),
+  y_range = NULL,
   ...
 )
 }
 \arguments{
-\item{formula}{A formula or a character vector of variable names.}
+\item{formula}{A formula (e.g., \code{cbind(V1, V2) ~ 1}) or a matrix of response variables.}
 
 \item{ID}{A character string or expression specifying the group ID variable.}
 
 \item{data}{A data frame.}
 
-\item{prior_type}{Prior type: "weakly_informative" or "uniform".}
+\item{prior}{Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.}
+
+\item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
+Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.}
 
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
@@ -27,6 +31,6 @@ rtmb_ML_corr(
 A \code{RTMB_Model} object.
 }
 \description{
-This function fits a multilevel correlation model to estimate between-group and within-group 
+This function fits a multilevel correlation model to estimate between-group and within-group
 covariance/correlation structures, along with Intraclass Correlation Coefficients (ICC).
 }

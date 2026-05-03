@@ -9,7 +9,7 @@ rtmb_mixture(
   k = 2,
   data = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-  prior_type = c("uniform", "weakly_informative"),
+  prior = prior_uniform(),
   ...
 )
 }
@@ -22,11 +22,9 @@ rtmb_mixture(
 
 \item{covariance}{Covariance structure: "diagonal" (default), "diagonal_equal", "full", "full_equal", or "full_equal_corr".}
 
-\item{prior_type}{Prior type: "uniform" (default) or "weakly_informative".}
+\item{prior}{Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.}
 
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
-
-\item{prob_formula}{Optional formula for latent class regression (covariates for probabilities).}
 }
 \value{
 A \code{RTMB_Model} object.

@@ -7,6 +7,7 @@
 prior_uniform(
   Intercept_sd = NULL,
   b_sd = NULL,
+  mu_sd = NULL,
   sigma_rate = NULL,
   tau_rate = NULL,
   ...
