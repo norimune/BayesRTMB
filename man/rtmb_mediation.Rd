@@ -10,6 +10,8 @@ rtmb_mediation(
   family = "gaussian",
   prior = prior_uniform(),
   y_range = NULL,
+  view = NULL,
+  classic = FALSE,
   ...
 )
 }
@@ -22,6 +24,12 @@ rtmb_mediation(
 for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "gaussian".}
 
 \item{prior}{An object of class "rtmb_prior" specifying the prior distribution.}
+
+\item{y_range}{Theoretical minimum and maximum values of the response variable.}
+
+\item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 
 \item{...}{Additional arguments passed to the model construction.}
 }

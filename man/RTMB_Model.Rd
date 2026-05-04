@@ -10,7 +10,8 @@ rtmb_model(
   par_names = list(),
   init = NULL,
   view = NULL,
-  null_target = NULL
+  null_target = NULL,
+  silent = FALSE
 )
 }
 \arguments{
@@ -25,8 +26,12 @@ rtmb_model(
 \item{view}{Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).}
 
 \item{null_target}{Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.}
+
+\item{silent}{Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.}
 }
 \value{
+An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
+
 An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 }
 \description{

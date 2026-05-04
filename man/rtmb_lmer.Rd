@@ -36,6 +36,10 @@ rtmb_lmer(
 \item{gmc}{Character vector of variable names for GMC}
 
 \item{cwc}{List for CWC}
+
+\item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 }
 \value{
 RTMB_Model object

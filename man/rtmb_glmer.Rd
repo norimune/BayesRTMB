@@ -39,6 +39,10 @@ rtmb_glmer(
 \item{gmc}{Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.}
 
 \item{cwc}{List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).}
+
+\item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 }
 \description{
 RTMB-based GLMM wrapper function

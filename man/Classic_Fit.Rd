@@ -2,16 +2,20 @@
 % Please edit documentation in R/classic.R
 \name{Classic_Fit}
 \alias{Classic_Fit}
-\title{Classic Fit Class for Frequentist Estimation Results}
+\title{Classic fit object}
 \description{
-An R6 class for storing and summarizing results from a `Classic_Model`.
+An R6 class representing the results of a classical (frequentist) estimation.
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
-\item{\code{model}}{The `Classic_Model` object.}
+\item{\code{model}}{The `Classic_Model` object used for estimation.}
 
-\item{\code{fit}}{The raw fit object (e.g., an `lm` object).}
+\item{\code{fit}}{The result of the estimation (dataframe or lm object).}
+
+\item{\code{par}}{A named list of parameter estimates.}
+
+\item{\code{bootstrap_results}}{A matrix containing bootstrap samples, if applicable.}
 }
 \if{html}{\out{</div>}}
 }
@@ -21,6 +25,7 @@ An R6 class for storing and summarizing results from a `Classic_Model`.
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
 \item \href{#method-Classic_Fit-summary}{\code{Classic_Fit$summary()}}
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
+\item \href{#method-Classic_Fit-.construct_par_list}{\code{Classic_Fit$.construct_par_list()}}
 \item \href{#method-Classic_Fit-clone}{\code{Classic_Fit$clone()}}
 }
 }
@@ -38,7 +43,7 @@ Create a new `Classic_Fit` object.
 \describe{
 \item{\code{model}}{The `Classic_Model` object.}
 
-\item{\code{fit}}{The raw fit object (e.g., an `lm` object).}
+\item{\code{fit}}{The result of the estimation.}
 }
 \if{html}{\out{</div>}}
 }
@@ -49,19 +54,13 @@ Create a new `Classic_Fit` object.
 \subsection{Method \code{summary()}}{
 Display a summary of the estimation results.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$summary(pars = NULL, max_rows = 10, digits = 5, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$summary(digits = 5)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to summarize.}
-
-\item{\code{max_rows}}{Maximum number of rows to print.}
-
 \item{\code{digits}}{Number of digits to print.}
-
-\item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
@@ -70,26 +69,27 @@ Display a summary of the estimation results.
 \if{html}{\out{<a id="method-Classic_Fit-print"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-print}{}}}
 \subsection{Method \code{print()}}{
-Print a brief summary of the fitted object.
+Print the fit results.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$print(pars = NULL, max_rows = 10, digits = 5, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$print()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-.construct_par_list"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-.construct_par_list}{}}}
+\subsection{Method \code{.construct_par_list()}}{
+(Internal) Construct a list of parameters from the fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.construct_par_list(fit)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to summarize.}
-
-\item{\code{max_rows}}{Maximum number of rows to print in summaries.}
-
-\item{\code{digits}}{Number of digits to print.}
-
-\item{\code{...}}{Additional arguments passed to the `summary` method.}
+\item{\code{fit}}{The fit result (dataframe or lm object).}
 }
 \if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-The object itself, invisibly.
 }
 }
 \if{html}{\out{<hr>}}

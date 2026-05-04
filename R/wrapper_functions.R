@@ -131,6 +131,8 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' @param null Character string specifying the target parameter for the null model.
 #' @param gmc Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
+#' @param view Character vector of parameter names to prioritize in summary.
+#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
@@ -766,7 +768,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       if (num_bars > 1) {
         r_names <- paste0(r_names, ":", group_labels_list[[b]])
       }
-      par_names_list[[paste0("sd", suffix(b))]] <- r_names
+      par_names_list[[paste0("sd", suffix(b))]] <- paste0(group_labels_list[[b]], ":", r_names)
       if (num_ranef_list[[b]] > 1) par_names_list[[paste0("corr", suffix(b))]] <- r_names
     }
   }
@@ -807,7 +809,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     
     # Wrap in Classic_Model and return (let user call $estimate())
     mod_type <- if (has_random) "lmer" else "lm"
-    return(Classic_Model$new(type = mod_type, formula = formula, data = data, family = family, view = if (!is.null(view)) view else view_vars, obj = obj))
+    refit_fn <- function(new_data) {
+      rtmb_glmer(formula = formula, data = new_data, family = family,
+                 laplace = laplace, prior = prior, y_range = y_range,
+                 init = init, null = null, gmc = gmc, cwc = cwc,
+                 view = view, classic = TRUE)$estimate()
+    }
+    return(Classic_Model$new(type = mod_type, formula = formula, data = data, family = family, 
+                             view = if (!is.null(view)) view else view_vars, obj = obj, refit_fn = refit_fn))
   }
 
   return(obj)
@@ -824,6 +833,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param null Null model parameters
 #' @param gmc Character vector of variable names for GMC
 #' @param cwc List for CWC
+#' @param view Character vector of parameter names to prioritize in summary.
+#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
@@ -1653,7 +1664,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     mdl_obj <- Classic_Model$new(
       type = "corr",
       formula = formula,
-      data = df_fixed,
+      data = as.data.frame(Y_mat),
       view = c("corr")
     )
     return(mdl_obj)
@@ -3058,6 +3069,9 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #' @param family A single character string or a list of character strings specifying the error distribution
 #'   for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "gaussian".
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
+#' @param y_range Theoretical minimum and maximum values of the response variable.
+#' @param view Character vector of parameter names to prioritize in summary.
+#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @param ... Additional arguments passed to the model construction.
 #'
 #' @details
@@ -3072,7 +3086,14 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #'
 #' @return An `RTMB_Model` object.
 #' @export
-rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, ...) {
+rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, view = NULL, classic = FALSE, ...) {
+  if (classic) {
+    # If classic is TRUE, we return a Classic_Model.
+    # Note: We still need to build the RTMB_Model first to use it in Classic_Model for mediation.
+    # But we can call rtmb_mediation(classic = FALSE) recursively to get the model.
+    # However, to avoid infinite recursion, we just set classic = FALSE here.
+  }
+
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
   n_eq <- length(formula)
 
@@ -3352,9 +3373,17 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   
   # Ensure env is correctly formatted for rtmb_model
   # Using the evaluated objects directly from tmp_env
-  mdl <- BayesRTMB::rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order)
+  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order)
   mdl$formula <- formula
   mdl$raw_data <- data
+  
+  if (classic) {
+    refit_fn <- function(new_data) {
+      rtmb_mediation(formula = formula, data = new_data, family = family, prior = prior, y_range = y_range, view = view, classic = TRUE)$estimate()
+    }
+    return(Classic_Model$new(type = "mediation", formula = formula, data = data, family = family, view = view, obj = mdl, refit_fn = refit_fn))
+  }
+  
   return(mdl)
 }
 

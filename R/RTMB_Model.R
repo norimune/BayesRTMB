@@ -183,28 +183,28 @@ RTMB_Model <- R6::R6Class(
     #' @param par_list_constrained A named list of parameters in their natural space.
     #' @return A named list of parameters in unconstrained space.
     to_unconstrained = function(par_list_constrained) {
-      return(BayesRTMB::to_unconstrained(par_list_constrained, self$par_list))
+      return(to_unconstrained(par_list_constrained, self$par_list))
     },
 
     #' @description Convert a list of unconstrained parameters to constrained (natural) space.
     #' @param par_list_unconstrained A named list of parameters in unconstrained space.
     #' @return A named list of parameters in constrained space.
     to_constrained = function(par_list_unconstrained) {
-      return(BayesRTMB::to_constrained(par_list_unconstrained, self$par_list))
+      return(to_constrained(par_list_unconstrained, self$par_list))
     },
 
     #' @description Convert a flat unconstrained vector to a named list.
     #' @param vec A numeric vector in unconstrained space.
     #' @return A named list of unconstrained parameters.
     unconstrained_vector_to_list = function(vec) {
-      return(BayesRTMB::unconstrained_vector_to_list(vec, self$par_list))
+      return(unconstrained_vector_to_list(vec, self$par_list))
     },
 
     #' @description Convert a flat constrained vector to a named list.
     #' @param vec A numeric vector in constrained space.
     #' @return A named list of constrained parameters.
     constrained_vector_to_list = function(vec) {
-      return(BayesRTMB::constrained_vector_to_list(vec, self$par_list))
+      return(constrained_vector_to_list(vec, self$par_list))
     },
 
     #' @description Calculate Satterthwaite degrees of freedom for parameters.

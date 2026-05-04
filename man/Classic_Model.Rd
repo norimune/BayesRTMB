@@ -6,8 +6,7 @@
 \description{
 An R6 class representing a classical (frequentist) statistical model.
 This class is used when `classic = TRUE` is specified in wrapper functions
-like `rtmb_lm`. It bypasses the RTMB automatic differentiation engine
-and uses standard R functions (e.g., `stats::lm`) for estimation.
+like `rtmb_lm`.
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -23,6 +22,8 @@ and uses standard R functions (e.g., `stats::lm`) for estimation.
 \item{\code{view}}{Parameter names to prioritize in summary display.}
 
 \item{\code{obj}}{Optional underlying model object (e.g., RTMB_Model for lmer).}
+
+\item{\code{refit_fn}}{Optional function to re-fit the model on new data.}
 }
 \if{html}{\out{</div>}}
 }
@@ -31,6 +32,8 @@ and uses standard R functions (e.g., `stats::lm`) for estimation.
 \itemize{
 \item \href{#method-Classic_Model-new}{\code{Classic_Model$new()}}
 \item \href{#method-Classic_Model-estimate}{\code{Classic_Model$estimate()}}
+\item \href{#method-Classic_Model-.resample_data}{\code{Classic_Model$.resample_data()}}
+\item \href{#method-Classic_Model-.perform_fit}{\code{Classic_Model$.perform_fit()}}
 \item \href{#method-Classic_Model-clone}{\code{Classic_Model$clone()}}
 }
 }
@@ -46,14 +49,15 @@ Create a new `Classic_Model` object.
   data,
   family = "gaussian",
   view = NULL,
-  obj = NULL
+  obj = NULL,
+  refit_fn = NULL
 )}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{type}}{Character string specifying the model type (e.g., "lm").}
+\item{\code{type}}{Character string specifying the model type (e.g., "lm", "lmer").}
 
 \item{\code{formula}}{The formula used for the model.}
 
@@ -63,7 +67,9 @@ Create a new `Classic_Model` object.
 
 \item{\code{view}}{Parameter names to prioritize in summary display.}
 
-\item{\code{obj}}{Optional underlying model object.}
+\item{\code{obj}}{Optional underlying model object (e.g., RTMB_Model for lmer).}
+
+\item{\code{refit_fn}}{Optional function to re-fit the model on new data.}
 }
 \if{html}{\out{</div>}}
 }
@@ -74,11 +80,47 @@ Create a new `Classic_Model` object.
 \subsection{Method \code{estimate()}}{
 Perform estimation using classical methods.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Model$estimate()}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Model$estimate(bootstrap = FALSE, n_boot = 1000)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{bootstrap}}{Logical; whether to perform non-parametric bootstrap.}
+
+\item{\code{n_boot}}{Integer; number of bootstrap samples.}
+}
+\if{html}{\out{</div>}}
+}
 \subsection{Returns}{
 A `Classic_Fit` object containing the results.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Model-.resample_data"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Model-.resample_data}{}}}
+\subsection{Method \code{.resample_data()}}{
+(Internal) Resample data for bootstrap.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Model$.resample_data()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Model-.perform_fit"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Model-.perform_fit}{}}}
+\subsection{Method \code{.perform_fit()}}{
+(Internal) Perform a single fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Model$.perform_fit(data)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{data}}{The data to fit.}
+}
+\if{html}{\out{</div>}}
 }
 }
 \if{html}{\out{<hr>}}

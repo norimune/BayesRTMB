@@ -247,8 +247,14 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
 #' mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
 #' mcmc_named$summary()
 #' }
-#' @export
-rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null_target = NULL) {
+#' @param silent Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.
+#'
+#' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
+#'
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null_target = NULL, silent = FALSE) {
+  
+  if (is.null(silent)) silent <- FALSE
+  if (getOption("BayesRTMB.silent", FALSE)) silent <- TRUE
 
   if (!"parameters" %in% names(code)) stop("The 'parameters = { ... }' block is required in code.")
   if (!"model" %in% names(code)) stop("The 'model = { ... }' block is required in code.")
@@ -346,8 +352,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   }
 
   # --- 4. Pre-check (Sandbox execution) ---
-  cat("Pre-checking model code...\n")
-  set.seed(12345)
+  if (!silent) cat("Pre-checking model code...\n")
 
   test_unc_list <- lapply(evaluated_par_list, function(p) {
     rnorm(p$unc_length, mean = 0, sd = 0.1)
@@ -400,6 +405,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   }
 
   # --- 6. Pass to R6 class ---
+  if (!silent) cat("Checking RTMB setup...\n")
   obj <- RTMB_Model$new(
     data       = data,
     par_list   = evaluated_par_list,
