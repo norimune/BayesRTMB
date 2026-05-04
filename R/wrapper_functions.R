@@ -2994,7 +2994,10 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
        f_type <- family_list[[i]]
        if (!(f_type %in% c("bernoulli", "binomial", "poisson"))) {
          range_i <- if (is.list(y_range)) y_range[[y_name]] else y_range
-         if (is.null(range_i)) range_i <- range(Y_val, na.rm = TRUE)
+         if (is.null(range_i)) {
+           stop(paste0("y_range is required for response variable '", y_name, "' when using weakly informative priors. ",
+                       "Please provide y_range as a vector or a named list (e.g., y_range = list(", y_name, " = c(1, 5)))."))
+         }
          data_list[[paste0("half_d_y_", i)]] <- diff(range_i) / 2
          data_list[[paste0("mid_y_", i)]] <- mean(range_i)
        }
@@ -3015,69 +3018,77 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     f_type <- family_list[[i]]
     p_name <- paste0("b", i)
     X_name <- as.name(paste0("X_", i))
-    X_sd_name <- as.name(paste0("X_sd_", i))
-    X_mean_name <- as.name(paste0("X_mean_", i))
-    X_c_name <- as.name(paste0("X_c_", i))
-    b_prior_sd_name <- as.name(paste0(p_name, "_prior_sd"))
-    b_prior_mean_name <- as.name(paste0(p_name, "_prior_mean"))
-    intercept_prior_sd_name <- as.name(paste0("intercept_prior_sd_", i))
-    mid_y_name <- as.name(paste0("mid_y_", i))
     
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_sd_name) <- apply(.(X_name), 2, sd))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_sd_name)[.(X_sd_name) == 0] <- 1)
+    has_b_prior <- prior_type == "weak" || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)
+    has_sigma_prior <- f_type == "gaussian" && (prior_type == "weak" || !is.null(prior$sigma_rate))
 
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name) <- apply(.(X_name), 2, mean))
-    has_intercept <- "Intercept" %in% X_colnames[[i]]
-    if (has_intercept) {
-       idx <- which(X_colnames[[i]] == "Intercept")
-       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name)[.(idx)] <- 0)
-    }
+    if (has_b_prior) {
+      X_sd_name <- as.name(paste0("X_sd_", i))
+      X_mean_name <- as.name(paste0("X_mean_", i))
+      b_prior_sd_name <- as.name(paste0(p_name, "_prior_sd"))
+      b_prior_mean_name <- as.name(paste0(p_name, "_prior_mean"))
+      intercept_prior_sd_name <- as.name(paste0("intercept_prior_sd_", i))
+      
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_sd_name) <- apply(.(X_name), 2, sd))
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_sd_name)[.(X_sd_name) == 0] <- 1)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_mean_name) <- rep(0, ncol(.(X_name))))
 
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_mean_name) <- rep(0, ncol(.(X_name))))
+      if (prior_type == "weak") {
+        X_c_name <- as.name(paste0("X_c_", i))
+        mid_y_name <- as.name(paste0("mid_y_", i))
+        
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name) <- apply(.(X_name), 2, mean))
+        has_intercept <- "Intercept" %in% X_colnames[[i]]
+        if (has_intercept) {
+           idx <- which(X_colnames[[i]] == "Intercept")
+           setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name)[.(idx)] <- 0)
+        }
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_c_name) <- .(X_name) - rep(1, N) %*% t(.(X_mean_name)))
 
-    if (prior_type == "weak") {
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_c_name) <- .(X_name) - rep(1, N) %*% t(.(X_mean_name)))
-
-      base_scale_name <- as.name(paste0("base_scale_", i))
-      if (f_type %in% c("bernoulli", "binomial")) {
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(base_scale_name) <- pi / sqrt(3))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(base_scale_name) * .(prior$max_beta))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- (.(prior$max_beta) * .(base_scale_name)) / .(X_sd_name))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mid_y_name) <- 0)
-      } else if (f_type == "poisson") {
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(base_scale_name) <- 1.0)
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- 1.0)
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- 1.0 / .(X_sd_name))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mid_y_name) <- 0)
+        base_scale_name <- as.name(paste0("base_scale_", i))
+        if (f_type %in% c("bernoulli", "binomial")) {
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(base_scale_name) <- pi / sqrt(3))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(base_scale_name) * .(prior$max_beta))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- (.(prior$max_beta) * .(base_scale_name)) / .(X_sd_name))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mid_y_name) <- 0)
+        } else if (f_type == "poisson") {
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(base_scale_name) <- 1.0)
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- 1.0)
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- 1.0 / .(X_sd_name))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mid_y_name) <- 0)
+        } else {
+          half_d_y_name <- as.name(paste0("half_d_y_", i))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(base_scale_name) <- .(half_d_y_name) * .(prior$sd_ratio))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(half_d_y_name))
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- (.(prior$max_beta) * .(base_scale_name)) / .(X_sd_name))
+          if (has_sigma_prior) {
+            sigma_rate_name <- as.name(paste0("sigma", i, "_rate"))
+            setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(sigma_rate_name) <- 1.0 / .(base_scale_name))
+          }
+        }
+        if (has_intercept) {
+           idx <- which(X_colnames[[i]] == "Intercept")
+           setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_mean_name)[.(idx)] <- .(mid_y_name))
+        }
       } else {
-        half_d_y_name <- as.name(paste0("half_d_y_", i))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(base_scale_name) <- .(half_d_y_name) * .(prior$sd_ratio))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(half_d_y_name))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- (.(prior$max_beta) * .(base_scale_name)) / .(X_sd_name))
-        sigma_rate_name <- as.name(paste0("sigma", i, "_rate"))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(sigma_rate_name) <- 1.0 / .(base_scale_name))
+        # Uniform with explicit SDs
+        b_sd_val <- if (!is.null(prior$b_sd)) prior$b_sd else 10
+        int_sd_val <- if (!is.null(prior$Intercept_sd)) prior$Intercept_sd else 10
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- rep(.(b_sd_val), ncol(.(X_name))))
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(int_sd_val))
       }
+      # Overwrite intercept SD if needed
+      has_intercept <- "Intercept" %in% X_colnames[[i]]
       if (has_intercept) {
          idx <- which(X_colnames[[i]] == "Intercept")
-         setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_mean_name)[.(idx)] <- .(mid_y_name))
-      }
-    } else {
-      # Uniform / Flat
-      b_sd_val <- if (!is.null(prior$b_sd)) prior$b_sd else 10
-      int_sd_val <- if (!is.null(prior$Intercept_sd)) prior$Intercept_sd else 10
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- rep(.(b_sd_val), ncol(.(X_name))))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(int_sd_val))
-      if (f_type == "gaussian") {
-        sigma_rate_val <- if (!is.null(prior$sigma_rate)) prior$sigma_rate else 1
-        sigma_rate_name <- as.name(paste0("sigma", i, "_rate"))
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(sigma_rate_name) <- .(sigma_rate_val))
+         setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name)[.(idx)] <- .(intercept_prior_sd_name))
       }
     }
     
-    # Overwrite intercept SD
-    if (has_intercept) {
-       idx <- which(X_colnames[[i]] == "Intercept")
-       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name)[.(idx)] <- .(intercept_prior_sd_name))
+    if (has_sigma_prior && prior_type != "weak") {
+       sigma_rate_val <- if (!is.null(prior$sigma_rate)) prior$sigma_rate else 1
+       sigma_rate_name <- as.name(paste0("sigma", i, "_rate"))
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(sigma_rate_name) <- .(sigma_rate_val))
     }
   }
 
@@ -3122,21 +3133,21 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
        tran_exprs[[length(tran_exprs) + 1]] <- bquote(.(as.name(p_name)) <- .(as.name(p_c_name)))
        tran_exprs[[length(tran_exprs) + 1]] <- bquote(.(as.name(p_name))[.(idx)] <- .(as.name(p_c_name))[.(idx)] - sum(.(X_mean_name) * .(as.name(p_c_name))))
        
-       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("eta_", i))) <- .(as.name(paste0("X_c_", i))) %*% .(as.name(p_c_name)))
+       lin_pred_expr <- bquote(.(as.name(paste0("X_c_", i))) %*% .(as.name(p_c_name)))
     } else {
        v_names[[p_name]] <- X_colnames[[i]]
        init_list[[p_name]] <- rep(0, P_dim)
-       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("eta_", i))) <- .(as.name(paste0("X_", i))) %*% .(as.name(p_name)))
+       lin_pred_expr <- bquote(.(as.name(paste0("X_", i))) %*% .(as.name(p_name)))
     }
     
     if (f_type == "gaussian") {
       param_exprs[[length(param_exprs) + 1]] <- bquote(.(as.name(s_name)) <- Dim(lower = 0))
       init_list[[s_name]] <- 1.0
-      model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ normal(.(as.name(paste0("eta_", i))), .(as.name(s_name))))
+      model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ normal(.(lin_pred_expr), .(as.name(s_name))))
     } else if (f_type %in% c("binomial", "bernoulli")) {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ bernoulli_logit(.(as.name(paste0("eta_", i)))))
+      model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ bernoulli_logit(.(lin_pred_expr)))
     } else if (f_type == "poisson") {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ poisson_log(.(as.name(paste0("eta_", i)))))
+      model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ poisson_log(.(lin_pred_expr)))
     }
 
     has_b_prior <- prior_type == "weak" || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)

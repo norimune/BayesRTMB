@@ -428,13 +428,13 @@ result |> summary()
 ##             Estimate Std. Error t value
 ## (Intercept)  1.52449    0.25735   5.924
 ## talk         0.23485    0.05286   4.443
-## perf  0.15451    0.03714   4.160
+## perf         0.15451    0.03714   4.160
 ## skill        0.22616    0.05960   3.795
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr) talk   prfrmn
 ## talk        -0.516              
-## perf -0.632 -0.056       
+## perf        -0.632 -0.056       
 ## skill       -0.387 -0.138 -0.020
 ```
 
