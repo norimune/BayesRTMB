@@ -137,7 +137,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        prior = prior_uniform(),
                        y_range = NULL,
                        init = NULL, null = NULL,
-                       gmc = NULL, cwc = NULL) {
+                       gmc = NULL, cwc = NULL,
+                       view = NULL,
+                       classic = FALSE) {
 
   # --- 0. Data Centering (GMC / CWC) ---
   if (!is.null(gmc) || !is.null(cwc)) {
@@ -781,13 +783,31 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = view_vars)
+  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = if (!is.null(view)) view else view_vars)
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
 
   if (!is.null(null)) {
     obj <- obj$null_model(pars = null)
+  }
+
+  if (classic) {
+    # --- 1. Identify Fixed Effects to be integrated (REML) ---
+    fe_params <- c()
+    if (has_intercept) fe_params <- c(fe_params, "Intercept")
+    if (K > 0) fe_params <- c(fe_params, "b")
+    
+    # Temporarily set fixed effects as random in par_list to enable REML when estimate() is called
+    for (p in fe_params) {
+      if (p %in% names(obj$par_list)) {
+        obj$par_list[[p]]$random <- TRUE
+      }
+    }
+    
+    # Wrap in Classic_Model and return (let user call $estimate())
+    mod_type <- if (has_random) "lmer" else "lm"
+    return(Classic_Model$new(type = mod_type, formula = formula, data = data, family = family, view = if (!is.null(view)) view else view_vars, obj = obj))
   }
 
   return(obj)
@@ -811,14 +831,18 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                       prior = prior_uniform(),
                       y_range = NULL,
                       init = NULL, null = NULL,
-                      gmc = NULL, cwc = NULL) {
+                      gmc = NULL, cwc = NULL,
+                      view = NULL,
+                      classic = FALSE) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
              y_range = y_range,
              init = init,
              null = null,
-             gmc = gmc, cwc = cwc)
+             gmc = gmc, cwc = cwc,
+             view = view,
+             classic = classic)
 }
 
 #' RTMB-based GLM wrapper function (no random effects)

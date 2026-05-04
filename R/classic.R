@@ -20,6 +20,8 @@ Classic_Model <- R6::R6Class(
     family = NULL,
     #' @field view Parameter names to prioritize in summary display.
     view = NULL,
+    #' @field obj Optional underlying model object (e.g., RTMB_Model for lmer).
+    obj = NULL,
 
     #' @description Create a new `Classic_Model` object.
     #' @param type Character string specifying the model type (e.g., "lm").
@@ -27,12 +29,14 @@ Classic_Model <- R6::R6Class(
     #' @param data The data used for estimation.
     #' @param family The distribution family.
     #' @param view Parameter names to prioritize in summary display.
-    initialize = function(type, formula, data, family = "gaussian", view = NULL) {
+    #' @param obj Optional underlying model object.
+    initialize = function(type, formula, data, family = "gaussian", view = NULL, obj = NULL) {
       self$type <- type
       self$formula <- formula
       self$data <- data
       self$family <- family
       self$view <- view
+      self$obj <- obj
     },
 
     #' @description Perform estimation using classical methods.
@@ -47,6 +51,122 @@ Classic_Model <- R6::R6Class(
         # Ensure stats is used
         fit <- stats::lm(self$formula, data = self$data)
         return(Classic_Fit$new(self, fit))
+
+      } else if (self$type == "lmer") {
+        # REML estimation using RTMB
+        obj <- self$obj
+        if (is.null(obj)) stop("RTMB model object is missing for lmer estimation.")
+
+        # Identify fixed effects
+        # We assume the wrapper has already prepared the obj with appropriate random flags
+        fe_params <- c()
+        if ("Intercept" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept")
+        if ("Intercept_c" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept_c")
+        if ("b" %in% names(obj$par_list)) fe_params <- c(fe_params, "b")
+        if ("beta_raw" %in% names(obj$par_list)) fe_params <- c(fe_params, "beta_raw")
+
+        # Build and Optimize
+        # Note: In the wrapper, we already set the random flags for fe_params.
+        ad_setup <- obj$build_ad_obj(laplace = TRUE, jacobian_target = "none")
+        ad_obj <- ad_setup$ad_obj
+        
+        cat("Estimating via Restricted Maximum Likelihood (REML) using RTMB...\n")
+        opt <- nlminb(ad_obj$par, ad_obj$fn, ad_obj$gr)
+        
+        # Extract Estimates and SEs
+        sd_rep <- RTMB::sdreport(ad_obj)
+        smry_ran <- summary(sd_rep, select = "random")
+        smry_fix <- summary(sd_rep, select = "fixed")
+        
+        ran_names <- rownames(smry_ran)
+        fe_idx_in_ran <- which(gsub("\\[.*\\]$", "", ran_names) %in% fe_params)
+        
+        # Satterthwaite Degrees of Freedom and Conditional SEs
+        reml_res <- obj$calculate_reml_satterthwaite_df(ad_obj, opt$par, fe_idx_in_ran)
+        fe_dfs <- reml_res$df
+        se_fe <- reml_res$se
+        
+        # Construct Result Data Frame
+        est_fe <- smry_ran[fe_idx_in_ran, "Estimate"]
+        t_fe <- est_fe / se_fe
+        p_fe <- 2 * pt(-abs(t_fe), df = fe_dfs)
+        
+        df_combined <- data.frame(
+          Estimate = est_fe,
+          `Std. Error` = se_fe,
+          `Lower 95%` = est_fe + qt(0.025, df = fe_dfs) * se_fe,
+          `Upper 95%` = est_fe + qt(0.975, df = fe_dfs) * se_fe,
+          `t value` = t_fe,
+          df = fe_dfs,
+          Pr = p_fe,
+          check.names = FALSE
+        )
+        
+        # Rename fixed effects
+        fe_row_names <- ran_names[fe_idx_in_ran]
+        b_counter <- 1
+        # We need access to fixed_names. It should be in obj$par_names$b or similar.
+        fixed_names <- obj$par_names$b %||% obj$par_names$beta_raw
+        
+        for (i in seq_along(fe_row_names)) {
+          nm <- fe_row_names[i]
+          if (nm %in% c("Intercept", "Intercept_c")) {
+            fe_row_names[i] <- "Intercept"
+            next
+          }
+          if (nm == "b" || nm == "beta_raw" || grepl("^b\\[", nm)) {
+            if (!is.null(fixed_names) && b_counter <= length(fixed_names)) {
+              fe_row_names[i] <- paste0("b[", fixed_names[b_counter], "]")
+              b_counter <- b_counter + 1
+            }
+          }
+        }
+        rownames(df_combined) <- fe_row_names
+        
+        # Add Variance Components
+        vc_idx <- which(grepl("sigma|sd|corr", rownames(smry_fix)))
+        if (length(vc_idx) > 0) {
+          vc_names <- rownames(smry_fix)[vc_idx]
+          vc_est_raw <- smry_fix[vc_idx, "Estimate"]
+          vc_est <- ifelse(grepl("sigma|sd", vc_names), exp(vc_est_raw), vc_est_raw)
+          
+          # Improve names using par_names metadata if available
+          new_vc_names <- vc_names
+          if (!is.null(obj$par_names)) {
+            for (i in seq_along(new_vc_names)) {
+              vnm <- new_vc_names[i]
+              if (grepl("^sd(\\d+)?$", vnm)) {
+                idx_str <- gsub("sd", "", vnm)
+                idx <- if (idx_str == "") 1 else as.integer(idx_str)
+                if (!is.null(obj$par_names$sd) && !is.na(idx) && idx <= length(obj$par_names$sd)) {
+                  new_vc_names[i] <- paste0("sd[", obj$par_names$sd[idx], "]")
+                }
+              } else if (grepl("^corr(\\d+)?$", vnm)) {
+                idx_str <- gsub("corr", "", vnm)
+                idx <- if (idx_str == "") 1 else as.integer(idx_str)
+                if (!is.null(obj$par_names$corr) && !is.na(idx) && idx <= length(obj$par_names$corr)) {
+                  new_vc_names[i] <- paste0("corr[", obj$par_names$corr[idx], "]")
+                }
+              }
+            }
+          }
+          
+          df_vc <- data.frame(
+            Estimate = vc_est,
+            `Std. Error` = NA,
+            `Lower 95%` = NA,
+            `Upper 95%` = NA,
+            `t value` = NA,
+            df = NA,
+            Pr = NA,
+            check.names = FALSE
+          )
+          rownames(df_vc) <- new_vc_names
+          df_combined <- rbind(df_combined, df_vc)
+        }
+        
+        return(Classic_Fit$new(self, df_combined))
+
       } else if (self$type == "corr") {
         # For corr, the calculation is already performed and stored in self$data by the wrapper
         return(Classic_Fit$new(self, self$data))
@@ -130,6 +250,10 @@ Classic_Fit <- R6::R6Class(
         
         cat("\nCall:\nClassical Estimation (Frequentist)\n")
         
+      } else if (self$model$type == "lmer") {
+        df_combined <- self$fit
+        cat("\nCall:\nClassical Mixed Model (Frequentist REML via RTMB)\n")
+
       } else if (self$model$type == "corr") {
         df_combined <- self$fit
         cat("\nCall:\nClassical Correlation (Frequentist via Fisher's Z)\n")

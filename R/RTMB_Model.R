@@ -305,6 +305,84 @@ RTMB_Model <- R6::R6Class(
       return(df_full)
     },
 
+    #' @description Calculate Satterthwaite degrees of freedom for integrated fixed effects (REML).
+    #' @param ad_obj An RTMB objective object.
+    #' @param opt_par Numeric vector of optimized variance components.
+    #' @param beta_idx Integer vector; indices of fixed effects within the random effects vector.
+    #' @return A numeric vector of estimated degrees of freedom for the fixed effects.
+    calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx) {
+      cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
+      
+      P <- length(opt_par)
+      n_beta <- length(beta_idx)
+      
+      # Helper to get diagonal of inverse joint Hessian for beta
+      get_beta_vars <- function(theta) {
+        p_full <- ad_obj$env$last.par.best
+        idx_fixed <- ad_obj$env$lfixed()
+        p_full[idx_fixed] <- theta
+        
+        H <- ad_obj$env$spHess(p_full, random = TRUE)
+        # Convert to dense matrix for solve to ensure diagonal extraction works reliably
+        V_full <- solve(as.matrix(H))
+        diag(V_full)[beta_idx]
+      }
+      
+      V_beta_diag_0 <- tryCatch(get_beta_vars(opt_par), error = function(e) return(rep(Inf, n_beta)))
+      if (all(is.infinite(V_beta_diag_0))) return(V_beta_diag_0)
+      
+      # Covariance of variance components (theta)
+      simple_jacobian <- function(f, x, h = 1e-4) {
+        p <- length(x)
+        f0 <- f(x)
+        res <- matrix(0, nrow = length(f0), ncol = p)
+        for (i in 1:p) {
+          h_i <- max(abs(x[i]), 1e-4) * h
+          x_plus <- x_minus <- x
+          x_plus[i] <- x[i] + h_i
+          x_minus[i] <- x[i] - h_i
+          res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
+        }
+        return(res)
+      }
+      
+      H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), error = function(e) NULL)
+      if (is.null(H_theta)) return(rep(Inf, n_beta))
+      
+      V_theta <- tryCatch(solve(H_theta), error = function(e) {
+        tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
+      })
+      if (is.null(V_theta)) return(rep(Inf, n_beta))
+      
+      # Gradient of V_beta_diag with respect to theta
+      eps <- 1e-5 * pmax(abs(opt_par), 0.1)
+      grad_V_beta_diag <- matrix(0, nrow = P, ncol = n_beta)
+      
+      for (k in 1:P) {
+        p_plus <- p_minus <- opt_par
+        p_plus[k] <- opt_par[k] + eps[k]
+        p_minus[k] <- opt_par[k] - eps[k]
+        
+        v_plus <- tryCatch(get_beta_vars(p_plus), error = function(e) NULL)
+        v_minus <- tryCatch(get_beta_vars(p_minus), error = function(e) NULL)
+        
+        if (is.null(v_plus) || is.null(v_minus)) next
+        grad_V_beta_diag[k, ] <- (v_plus - v_minus) / (2 * eps[k])
+      }
+      
+      dfs <- rep(Inf, n_beta)
+      for (i in 1:n_beta) {
+        grad_vi <- grad_V_beta_diag[, i]
+        var_vi <- as.numeric(t(grad_vi) %*% V_theta %*% grad_vi)
+        if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V_beta_diag_0[i] > 0) {
+          dfs[i] <- 2 * (V_beta_diag_0[i]^2) / var_vi
+        }
+      }
+      
+      dfs <- pmax(dfs, 2.1)
+      return(list(df = dfs, se = sqrt(V_beta_diag_0)))
+    },
+
     #' @description Build the RTMB automatic differentiation object.
     #' @param init Optional numeric vector or list of initial values for the parameters. Default is NULL.
     #' @param laplace Logical; whether to use Laplace approximation to marginalize random effects. Default is FALSE.

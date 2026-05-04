@@ -14,7 +14,9 @@ rtmb_glmer(
   init = NULL,
   null = NULL,
   gmc = NULL,
-  cwc = NULL
+  cwc = NULL,
+  view = NULL,
+  classic = FALSE
 )
 }
 \arguments{

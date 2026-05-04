@@ -21,6 +21,8 @@ and uses standard R functions (e.g., `stats::lm`) for estimation.
 \item{\code{family}}{The distribution family.}
 
 \item{\code{view}}{Parameter names to prioritize in summary display.}
+
+\item{\code{obj}}{Optional underlying model object (e.g., RTMB_Model for lmer).}
 }
 \if{html}{\out{</div>}}
 }
@@ -38,7 +40,14 @@ and uses standard R functions (e.g., `stats::lm`) for estimation.
 \subsection{Method \code{new()}}{
 Create a new `Classic_Model` object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Model$new(type, formula, data, family = "gaussian", view = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Model$new(
+  type,
+  formula,
+  data,
+  family = "gaussian",
+  view = NULL,
+  obj = NULL
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -53,6 +62,8 @@ Create a new `Classic_Model` object.
 \item{\code{family}}{The distribution family.}
 
 \item{\code{view}}{Parameter names to prioritize in summary display.}
+
+\item{\code{obj}}{Optional underlying model object.}
 }
 \if{html}{\out{</div>}}
 }
