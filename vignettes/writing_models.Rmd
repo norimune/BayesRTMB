@@ -222,4 +222,3 @@ These are useful when transforming an unconstrained vector into a matrix with a 
 ## Conclusion
 Rather than writing a complex model from the beginning, it's better to start estimating with simple models first. 
 The error messages are still under development, and we plan to make them more user-friendly in the future.
-
