@@ -1,0 +1,254 @@
+﻿---
+title: "BayesRTMB 縺ｮ讎りｦ・
+description: "BayesRTMB 縺ｮ閠・∴譁ｹ縲∝渕譛ｬ逧・↑菴ｿ縺・婿縲∽ｸｻ隕√↑謗ｨ隲匁ｳ輔・豬√ｌ繧堤ｴｹ莉九＠縺ｾ縺吶・
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{BayesRTMB 縺ｮ讎りｦ±
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+# BayesRTMB 縺ｨ縺ｯ・・
+**BayesRTMB** 縺ｯ縲ヽTMB 繧定・蜍募ｾｮ蛻・お繝ｳ繧ｸ繝ｳ縺ｨ縺励※逕ｨ縺・ｋ 繝吶う繧ｺ謗ｨ螳夂畑縺ｮR 繝代ャ繧ｱ繝ｼ繧ｸ縺ｧ縺吶・Stan 縺ｫ霑代＞諢溯ｦ壹〒繝｢繝・Ν繧呈嶌縺阪▽縺､縲ヽ 縺ｮ荳ｭ縺ｧC++縺ｸ縺ｮ繧ｳ繝ｳ繝代う繝ｫ縺ｪ縺励↓縺昴・縺ｾ縺ｾ繝吶う繧ｺ謗ｨ螳壹ｒ騾ｲ繧√ｉ繧後∪縺吶・
+縺薙・繝壹・繧ｸ縺ｧ縺ｯ縲。ayesRTMB 縺ｮ菴咲ｽｮ縺･縺代→縲√ヱ繝・こ繝ｼ繧ｸ繧剃ｽｿ縺・ｸ翫〒縺ｮ蜈ｨ菴灘ワ繧偵∪縺ｨ繧√∪縺吶・
+## 險倅ｺ九∈縺ｮ繝ｪ繝ｳ繧ｯ
+莉･荳九・繧医≧縺ｪ險倅ｺ九′縺ゅｊ縺ｾ縺吶・
+- **[譌･譛ｬ隱槭ヨ繝・・](ja-introduction.html)**
+- **[繧ｯ繧､繝・け繧ｹ繧ｿ繝ｼ繝・(ja-quick_start.html)**
+- **[繝ｩ繝・ヱ繝ｼ髢｢謨ｰ縺ｮ菴ｿ縺・婿](ja-wrapper_functions.html)**
+- **[繧ｳ繝ｼ繝峨・譖ｸ縺肴婿](ja-writing_models.html)**
+- **[RTMB縺ｮ莉慕ｵ・∩縺ｨ謗ｨ螳壹・繧｢繝ｫ繧ｴ繝ｪ繧ｺ繝](ja-rtmb_internals.html)**
+
+## BayesRTMB 縺ｧ縺ｧ縺阪ｋ縺薙→
+
+BayesRTMB 縺ｫ縺ｯ縲∵ｬ｡縺ｮ繧医≧縺ｪ迚ｹ蠕ｴ縺後≠繧翫∪縺吶・
+- **C++ 縺ｮ繧ｳ繝ｳ繝代う繝ｫ縺ｪ縺励〒繝｢繝・Ν繧呈嶌縺代ｋ**
+- **`rtmb_code()` 縺ｫ繧医ｋ繝悶Ο繝・け讒区枚**縺ｧ繝｢繝・Ν繧呈紛逅・＠縺ｦ譖ｸ縺代ｋ
+- **NUTS / ADVI / MAP** 繧貞酔縺倥Δ繝・Ν繧ｪ繝悶ず繧ｧ繧ｯ繝医°繧我ｽｿ縺・・縺代ｉ繧後ｋ
+- **Laplace 霑台ｼｼ**縺ｫ繧医ｊ縲・嚴螻､繝｢繝・Ν縺ｮ random effect 繧貞柑邇・ｈ縺乗桶縺医ｋ
+- **Bridge Sampling** 繧剃ｽｿ縺｣縺溷捉霎ｺ蟆､蠎ｦ繧・Bayes factor 縺ｮ險育ｮ励↓蟇ｾ蠢懊＠縺ｦ縺・ｋ
+- **`rtmb_lm()` 繧・`rtmb_glmer()` 縺ｪ縺ｩ縺ｮ繝ｩ繝・ヱ繝ｼ髢｢謨ｰ**縺ｧ縲∵ｨ呎ｺ也噪縺ｪ蛻・梵繧偵☆縺舌↓蟋九ａ繧峨ｌ繧・
+## 繧､繝ｳ繧ｹ繝医・繝ｫ譁ｹ豕・
+GitHub縺九ｉ髢狗匱迚医ｒ繧､繝ｳ繧ｹ繝医・繝ｫ縺ｧ縺阪∪縺吶・
+```{r eval=FALSE}
+# install.packages("remotes")
+remotes::install_github("norimune/BayesRTMB")
+```
+
+### Windows 繝ｦ繝ｼ繧ｶ繝ｼ縺ｸ縺ｮ驥崎ｦ√↑縺顔衍繧峨○
+
+BayesRTMB 縺ｯ陬丞・縺ｮ險育ｮ励お繝ｳ繧ｸ繝ｳ縺ｨ縺励※ `RTMB` 繧・`TMB` 繧剃ｽｿ逕ｨ縺励※縺翫ｊ縲√％繧後ｉ縺ｯ C++ 縺ｮ繝ｩ繧､繝悶Λ繝ｪ縺ｫ萓晏ｭ倥＠縺ｦ縺・∪縺吶ゅ◎縺ｮ縺溘ａ縲仝indows 迺ｰ蠅・〒繝代ャ繧ｱ繝ｼ繧ｸ繧偵う繝ｳ繧ｹ繝医・繝ｫ縺吶ｋ縺ｫ縺ｯ縲，++ 縺ｮ繧ｳ繝ｼ繝峨ｒ繧ｳ繝ｳ繝代う繝ｫ縺吶ｋ縺溘ａ縺ｮ繝・・繝ｫ縺ｧ縺ゅｋ **Rtools 縺ｮ繧､繝ｳ繧ｹ繝医・繝ｫ縺悟ｿ・・* 縺ｨ縺ｪ繧翫∪縺吶・
+1. 縺碑・霄ｫ縺ｮ R 縺ｮ繝舌・繧ｸ繝ｧ繝ｳ縺ｫ蜷医▲縺・[Rtools](https://cran.r-project.org/bin/windows/Rtools/) 繧偵ム繧ｦ繝ｳ繝ｭ繝ｼ繝峨＠縺ｦ繧､繝ｳ繧ｹ繝医・繝ｫ縺励※縺上□縺輔＞・井ｾ・ R 4.4.x 繧偵♀菴ｿ縺・・蝣ｴ蜷医・ Rtools44・峨・2. 繧､繝ｳ繧ｹ繝医・繝ｫ螳御ｺ・ｾ後ヽStudio 繧貞・襍ｷ蜍輔＠縺ｾ縺吶・3. 莉･荳九・繧ｳ繝ｼ繝峨ｒ螳溯｡後＠縲ヽtools 縺後す繧ｹ繝・Β縺ｫ豁｣縺励￥隱崎ｭ倥＆繧後※縺・ｋ縺九ｒ遒ｺ隱阪〒縺阪∪縺吶・
+```{r eval=FALSE}
+# 螳溯｡檎ｵ先棡縺ｨ縺励※ TRUE 縺瑚ｿ斐▲縺ｦ縺上ｌ縺ｰ縲√さ繝ｳ繝代う繝ｫ迺ｰ蠅・・讒狗ｯ峨・謌仙粥縺ｧ縺吶・pkgbuild::check_build_tools(debug = TRUE)
+```
+
+## 蝓ｺ譛ｬ縺ｮ豬√ｌ
+
+BayesRTMB 縺ｮ蝓ｺ譛ｬ逧・↑蛻・梵縺ｯ縲∵ｬ｡縺ｮ 3 谿ｵ髫弱〒騾ｲ縺ｿ縺ｾ縺吶・
+1. **繝・・繧ｿ**繧堤畑諢上☆繧・2. **`rtmb_code()`** 縺ｧ繝｢繝・Ν繧呈嶌縺・3. **`rtmb_model()`** 縺ｧ繝｢繝・Ν繧ｪ繝悶ず繧ｧ繧ｯ繝医ｒ菴懊ｊ縲∵耳螳壹☆繧・
+萓九→縺励※縲∝ｹｳ蝮・`mu` 縺ｨ讓呎ｺ門￥蟾ｮ `sigma` 繧呈耳螳壹☆繧句腰邏斐↑豁｣隕丞・蟶・Δ繝・Ν繧偵→繧翫≠縺偵∪縺吶・
+```{r eval=FALSE}
+# 1. 繝・・繧ｿ縺ｮ貅門ｙ
+Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
+dat <- list(Y = Y)
+
+# 2. 繝｢繝・Ν縺ｮ螳夂ｾｩ
+code <- rtmb_code(
+  parameters = {
+    mu    = Dim(1)
+    sigma = Dim(1, lower = 0)
+  },
+  model = {
+    mu    ~ normal(0, 10)
+    sigma ~ exponential(0.1)
+    Y     ~ normal(mu, sigma)
+  }
+)
+
+# 3. 繝｢繝・Ν繧ｪ繝悶ず繧ｧ繧ｯ繝医・菴懈・
+mdl <- rtmb_model(data = dat, code = code)
+```
+
+## 謗ｨ螳壽ｳ輔・菴ｿ縺・・縺・
+菴懈・縺励◆ 1 縺､縺ｮ `mdl` 繧ｪ繝悶ず繧ｧ繧ｯ繝医↓蟇ｾ縺励※縲∫岼逧・↓蠢懊§縺ｦ隍・焚縺ｮ謗ｨ螳壹Γ繧ｽ繝・ラ繧貞他縺ｳ蜃ｺ縺吶％縺ｨ縺後〒縺阪∪縺吶・
+### 1. MAP 謗ｨ螳・(`optimize`)
+莠句ｾ悟・蟶・ｒ譛螟ｧ蛹悶☆繧狗せ・井ｺ句ｾ梧怙鬆ｻ蛟､・峨ｒ豎ゅａ縺ｾ縺吶りｨ育ｮ励′髱槫ｸｸ縺ｫ騾溘＞縺溘ａ縲√Δ繝・Ν縺ｮ險倩ｿｰ縺ｫ繧ｨ繝ｩ繝ｼ縺後↑縺・°縲∝､ｧ縺ｾ縺九↑邨先棡縺後←縺・↑繧九°繧堤ｴ譌ｩ縺冗｢ｺ隱阪＠縺溘＞縺ｨ縺阪↓譛驕ｩ縺ｧ縺吶・
+```{r eval=FALSE}
+opt_fit <- mdl$optimize()
+opt_fit$summary()
+```
+
+```text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 9.13
+## Approx. Log Marginal Likelihood (Laplace): -11.14
+## 
+## Point Estimates and 95% Wald CI:
+## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## mu         5.29839     0.17416    4.95704    5.63974 
+## sigma      0.42624     0.12240    0.24279    0.74830 
+```
+
+### 2. MCMC 謗ｨ螳・(`sample`)
+NUTS (No-U-Turn Sampler) 繧｢繝ｫ繧ｴ繝ｪ繧ｺ繝繧堤畑縺・※縲∽ｺ句ｾ悟・蟶・・菴薙°繧画ｭ｣遒ｺ縺ｪ繧ｵ繝ｳ繝励Ν繧呈歓蜃ｺ縺吶ｋ譛繧よｨ呎ｺ也噪縺ｪ繝吶う繧ｺ謗ｨ隲悶・繧｢繝励Ο繝ｼ繝√〒縺吶Ａparallel = TRUE` 繧呈欠螳壹☆繧九→隍・焚繝√ぉ繝ｼ繝ｳ縺ｮ荳ｦ蛻苓ｨ育ｮ励′蜿ｯ閭ｽ縺ｧ縺呻ｼ医ョ繝輔か繝ｫ繝医・ `FALSE`・峨・
+```{r eval=FALSE}
+mcmc_fit <-
+  mdl$sample(
+    sampling = 1000,
+    warmup = 1000,
+    chains = 4,
+    parallel = FALSE
+  )
+mcmc_fit$summary()
+```
+
+```text
+## variable    mean    sd     map    q2.5  q97.5  ess_bulk  ess_tail  rhat 
+## lp        -11.15  1.24  -10.19  -14.63  -9.97       923       830  1.01 
+## mu          5.29  0.30    5.32    4.68   5.87      1122       495  1.00 
+## sigma       0.65  0.31    0.48    0.32   1.41      1072      1404  1.00
+```
+
+### 3. 螟牙・謗ｨ隲・(`variational`)
+ADVI (閾ｪ蜍募ｾｮ蛻・､牙・繝吶う繧ｺ) 繧堤畑縺・※縲∬ｿ台ｼｼ逧・↓莠句ｾ悟・蟶・ｒ豎ゅａ縺ｾ縺吶・CMC 縺ｧ縺ｯ譎る俣縺後°縺九ｊ縺吶℃繧玖､・尅縺ｪ繝｢繝・Ν繧帝ｫ倬溘↓謗ｨ螳壹＠縺溘＞蝣ｴ蜷医↓蜷代＞縺ｦ縺・∪縺吶ゅ◆縺縺励∽ｺ句ｾ悟・蟶・・荳咲｢ｺ螳滓ｧ・域ｨ呎ｺ冶ｪ､蟾ｮ縺ｪ縺ｩ・峨・驕主ｰ剰ｩ穂ｾ｡縺輔ｌ繧・☆縺・◆繧√∽ｸｻ縺ｫ轤ｹ謗ｨ螳壼､繧・､ｧ縺ｾ縺九↑蛻・ｸ・・蠖｢迥ｶ繧堤ｴ譌ｩ縺丞ｾ励◆縺・畑騾斐↓驕ｩ縺励※縺・∪縺吶・
+```{r eval=FALSE}
+vb_fit <- mdl$variational(
+  method = "meanfield",
+  iter = 3000,
+  num_estimate = 4
+)
+vb_fit$summary()
+```
+
+```text
+## variable    mean    sd     map    q2.5   q97.5 
+## lp        -12.85  2.08  -12.33  -17.10  -10.21 
+## mu          5.31  0.39    5.32    4.54    6.07 
+## sigma       1.12  0.57    0.86    0.40    2.63 
+```
+
+## 繝ｩ繝ｳ繝繝蜉ｹ譫・(Random effect) 繧貞性繧繝｢繝・Ν
+
+髫主ｱ､繝｢繝・Ν縺ｪ縺ｩ繧呈ｧ狗ｯ峨☆繧句ｴ蜷医√ヱ繝ｩ繝｡繝ｼ繧ｿ繧・`random = TRUE` 縺ｨ縺励※螳｣險縺ｧ縺阪∪縺吶・
+```{r eval=FALSE}
+data(discussion)
+
+Y <- discussion$satisfaction
+group <- discussion$group
+G <- length(unique(group))
+
+data_icc <- list(Y = Y,group = group, G = G)
+
+code_icc <- rtmb_code(
+  parameters = {
+    mu    <- Dim()
+    sigma <- Dim(lower = 0)
+    tau   <- Dim(lower=0)
+    r     <- Dim(G, random = TRUE)
+  },
+  model = {
+    Y ~ normal(mu + r[group] * tau, sigma)
+    r ~ normal(0, 1)
+    tau ~ exponential(1)
+    sigma   ~ exponential(1)
+  },
+  generate = {
+    icc = tau / (tau + sigma)
+  }
+)
+```
+
+
+
+縺薙・繧医≧縺ｪ繝｢繝・Ν縺ｧ縺ｯ縲´aplace 霑台ｼｼ繧剃ｽｿ縺｣縺ｦ繝ｩ繝ｳ繝繝蜉ｹ譫懊ｒ蜻ｨ霎ｺ蛹厄ｼ育ｩ榊・豸亥悉・峨〒縺阪∪縺吶・AP 謗ｨ螳・(`optimize()`) 縺ｧ縺ｯ繝・ヵ繧ｩ繝ｫ繝医〒 `laplace = TRUE` 縺ｨ縺ｪ繧翫∬・蜍慕噪縺ｫ驕ｩ逕ｨ縺輔ｌ縺ｾ縺吶・逕滓・驥上・菫｡鬆ｼ蛹ｺ髢薙・縲～se_sampling=TRUE`縺ｨ縺吶ｋ縺薙→縺ｧ險育ｮ励〒縺阪∪縺吶・
+```{r eval = FALSE}
+mdl_icc <- rtmb_model(data_icc, code_icc)
+
+
+opt_icc <- mdl_icc$optimize(laplace = TRUE, se_sampling = TRUE)
+opt_icc
+```
+
+```text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 407.96
+## Approx. Log Marginal Likelihood (Laplace): -413.73
+## Note: Random effects are stored in $random_effects
+## 
+## Point Estimates and 95% Wald CI:
+## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## mu         3.43333     0.07387    3.28647    3.58483 
+## sigma      0.79705     0.04187    0.72217    0.88498 
+## tau        0.58599     0.06962    0.46731    0.73489 
+## icc        0.42370     0.03414    0.35876    0.49122 
+```
+
+MCMC (`sample()`) 縺ｧ繧よ欠螳壹・蜿ｯ閭ｽ縺ｧ縺吶′縲｀CMC縺ｮ蝣ｴ蜷医・螟蛾㍼蜉ｹ譫懊′蝠城｡後↑縺乗耳螳壹〒縺阪ｋ縺溘ａ縲∝渕譛ｬ逧・↓縺ｯ繝・ヵ繧ｩ繝ｫ繝医・ `laplace = FALSE` 縺ｧ蝠城｡後≠繧翫∪縺帙ｓ縲・
+```{r eval=FALSE}
+mcmc_icc <- mdl_icc$sample()
+
+# plot_dens()縺ｧ莠句ｾ悟・蟶・ｒ謠冗判縺ｧ縺阪ｋ
+mcmc_icc$draws("icc") |> plot_dens()
+```
+
+![](icc_plot.png)
+
+## 繝ｩ繝・ヱ繝ｼ髢｢謨ｰ縺ｧ邁｡蜊倥↓蛻・梵縺吶ｋ
+
+BayesRTMB 縺ｫ縺ｯ縲∵ｨ呎ｺ也噪縺ｪ蛻・梵繧剃ｸ縺九ｉ繝｢繝・Ν螳夂ｾｩ縺励↑縺上※繧らｰ｡蜊倥↓螳溯｡後〒縺阪ｋ繝ｩ繝・ヱ繝ｼ髢｢謨ｰ縺檎畑諢上＆繧後※縺・∪縺吶・
+縺溘→縺医・繝槭Ν繝√Ξ繝吶Ν繝｢繝・Ν縺ｧ縺ゅｌ縺ｰ `rtmb_lmer()` 繧剃ｽｿ縺・∪縺吶・
+```{r eval=FALSE}
+data(discussion)
+mdl_lmer <- rtmb_lm(satisfaction ~ talk + condition + (1 | group), data = discussion)
+
+# MAP謗ｨ螳・opt_lmer <- mdl_lmer$optimize(df = "auto")
+opt_lmer$summary()
+```
+
+```text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 394.07
+## Approx. Log Marginal Likelihood (Laplace): -402.96
+## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
+## 
+## Point Estimates and 95% Wald CI:
+##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF 
+## Intercept      2.58149     0.18124    2.22468    2.93829  274 
+## b[talk]        0.25197     0.05764    0.13852    0.36541  295 
+## b[condition]   0.18183     0.14595   -0.10729    0.47094  114 
+## sigma          0.77760     0.03891    0.70443    0.85838  159 
+## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 
+```
+
+荳闊ｬ蛹也ｷ壼ｽ｢豺ｷ蜷医Δ繝・Ν縺ｫ縺ｯ `rtmb_glmer()`縲∝屏蟄仙・譫舌↓縺ｯ `rtmb_fa()` 縺ｪ縺ｩ縲∝・譫千岼逧・↓蠢懊§縺滄未謨ｰ縺悟茜逕ｨ縺ｧ縺阪∪縺吶・
+縺ｾ縺溘～rtmb_ttest()` 繧剃ｽｿ縺・→縲√・繧､繧ｸ繧｢繝ｳ t 讀懷ｮ壹′邁｡蜊倥↓螳溯｡後〒縺阪∪縺吶Ａbayes_factor()` 繝｡繧ｽ繝・ラ縺ｧ `null_model` 蠑墓焚縺ｫ縲・ 縺ｫ蝗ｺ螳壹＠縺溘＞繝代Λ繝｡繝ｼ繧ｿ蜷阪阪ｒ謖・ｮ壹☆繧九□縺代〒縲∬・蜍慕噪縺ｫ豈碑ｼ・Δ繝・Ν縺ｮ謗ｨ螳壹→繝吶う繧ｺ繝輔ぃ繧ｯ繧ｿ繝ｼ縺ｮ險育ｮ励′陦後ｏ繧後∪縺吶・
+```{r eval=FALSE}
+data(discussion)
+mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
+mcmc_ttest <- mdl_ttest$sample()
+
+# 蜉ｹ譫憺㍼(delta)繧・縺ｫ蝗ｺ螳壹＠縺溷ｸｰ辟｡繝｢繝・Ν縺ｨ縺ｮ豈碑ｼ・bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+bf_ttest
+```
+
+```text
+## Bayes Factor (BF12) : 21.51 
+## Log Bayes Factor    : 3.0685 (Approx. Error = 0.0021)
+## Interpretation      : Strong evidence for Model 1 
+```
+
+## 谺｡縺ｮ繧ｹ繝・ャ繝・
+BayesRTMB 縺ｮ蜈ｨ菴灘ワ縺後▽縺九ａ縺溘ｉ縲∽ｻ･荳九・鬆・分縺ｧ繝峨く繝･繝｡繝ｳ繝医ｒ蜿ら・縺励※蜈ｷ菴鍋噪縺ｪ菴ｿ縺・婿繧呈ｷｱ繧√※縺・￥縺薙→繧偵♀縺吶☆繧√＠縺ｾ縺吶・
+1. **[繧ｯ繧､繝・け繧ｹ繧ｿ繝ｼ繝・(ja-quick_start.html)**
+   莠碁・Δ繝・Ν縲∝屓蟶ｰ繝｢繝・Ν縲・嚴螻､繝｢繝・Ν縲；LMM縲∵ｷｷ蜷亥・蟶・Δ繝・Ν縺ｪ縺ｩ縺ｮ 蜈ｷ菴謎ｾ九ｒ騾壹＠縺ｦ縲～setup` 繧・`transform` 縺ｪ縺ｩ縺ｮ蜷・ヶ繝ｭ繝・け縺ｮ蠖ｹ蜑ｲ縺ｨ縲∝ｮ溯ｷｵ逧・↑蛻・梵譁ｹ豕輔ｒ蟄ｦ縺ｳ縺ｾ縺吶・2. **[繧ｳ繝ｼ繝峨・譖ｸ縺肴婿](ja-writing_models.html)**
+   蜷・未謨ｰ縺ｮ隧ｳ邏ｰ縺ｪ莉墓ｧ倥ｒ遒ｺ隱阪〒縺阪∪縺吶・3.**縺昴・莉悶Μ繝輔ぃ繝ｬ繝ｳ繧ｹ**
+   迚ｹ縺ｫ閾ｪ蛻・〒繝｢繝・Ν繧呈ｧ狗ｯ峨☆繧矩圀縺ｯ縲∽ｻ･荳九・繝壹・繧ｸ縺悟ｽｹ遶九■縺ｾ縺吶・   - `rtmb_code()`: 蜷・ヶ繝ｭ繝・け縺ｮ險倩ｿｰ繝ｫ繝ｼ繝ｫ縺ｨ莉墓ｧ・   - `Dim()`: 繝代Λ繝｡繝ｼ繧ｿ縺ｮ蝙九→蛻ｶ邏・ｼ・parameter_types`・・   - `distributions` / `math_functions`: 邨・∩霎ｼ縺ｿ縺ｮ遒ｺ邇・・蟶・ｄ縲∵焚蛟､險育ｮ励ｒ螳牙ｮ壹＆縺帙ｋ謨ｰ蟄ｦ髢｢謨ｰ
