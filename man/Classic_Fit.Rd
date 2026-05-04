@@ -60,7 +60,7 @@ Display a summary of the estimation results.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{digits}}{Number of digits to print.}
+\item{\code{digits}}{Number of digits to print for estimates.}
 }
 \if{html}{\out{</div>}}
 }

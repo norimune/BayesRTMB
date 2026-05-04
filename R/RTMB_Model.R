@@ -118,7 +118,7 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      cat("Checking RTMB setup...\n")
+      if (!getOption("BayesRTMB.silent", FALSE)) cat("Checking RTMB setup...\n")
       test_ad <- self$build_ad_obj(init = init_vec, laplace = FALSE, jacobian_target = "all")
       test_gr <- tryCatch(test_ad$ad_obj$gr(test_ad$ad_obj$par), error = function(e) e)
       if (inherits(test_gr, "error")) {

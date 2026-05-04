@@ -255,6 +255,9 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   
   if (is.null(silent)) silent <- FALSE
   if (getOption("BayesRTMB.silent", FALSE)) silent <- TRUE
+  
+  old_silent <- options(BayesRTMB.silent = silent)
+  on.exit(options(old_silent), add = TRUE)
 
   if (!"parameters" %in% names(code)) stop("The 'parameters = { ... }' block is required in code.")
   if (!"model" %in% names(code)) stop("The 'model = { ... }' block is required in code.")

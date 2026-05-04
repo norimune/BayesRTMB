@@ -376,7 +376,7 @@ Classic_Fit <- R6::R6Class(
     },
 
     #' @description Display a summary of the estimation results.
-    #' @param digits Number of digits to print.
+    #' @param digits Number of digits to print for estimates.
     summary = function(digits = 5) {
       cat("\nCall:\n")
       cat(paste("Classical estimation via", self$model$type), "\n")
@@ -385,15 +385,78 @@ Classic_Fit <- R6::R6Class(
       }
       cat("\nPoint Estimates and Confidence Intervals:\n")
       
-      if (is.data.frame(self$fit)) {
-        df_print <- self$fit
+      if (is.data.frame(self$fit) || inherits(self$fit, "lm")) {
+        # Convert lm to dataframe if needed
+        if (inherits(self$fit, "lm")) {
+          s_lm <- summary(self$fit)
+          df_print <- as.data.frame(s_lm$coefficients)
+          colnames(df_print) <- c("Estimate", "Std. Error", "t value", "Pr")
+          df_print$df <- self$fit$df.residual
+          ci <- confint(self$fit)
+          df_print$`Lower 95%` <- ci[, 1]
+          df_print$`Upper 95%` <- ci[, 2]
+          rownames(df_print)[rownames(df_print) == "(Intercept)"] <- "Intercept"
+        } else {
+          df_print <- self$fit
+        }
+        
+        # 1. Round main numeric columns
+        cols_to_round <- setdiff(names(df_print), c("Pr", "df"))
+        for (col in cols_to_round) {
+          if (is.numeric(df_print[[col]])) {
+            df_print[[col]] <- round(df_print[[col]], digits)
+          }
+        }
+        
+        # 2. Round df to 1 decimal place
+        if ("df" %in% names(df_print)) {
+          df_print$df <- round(df_print$df, 1)
+        }
+        
+        # 3. Format Pr
         if (!is.null(df_print$Pr)) {
+          # Standard significance symbols
           sig <- symnum(df_print$Pr, corr = FALSE, na = FALSE,
                         cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
                         symbols = c("***", "**", "*", ".", " "))
+          
+          # Format Pr values (e.g., .000, .012)
+          formatted_pr <- sapply(df_print$Pr, function(p) {
+            if (is.na(p)) return("")
+            if (is.character(p)) return(p) # Already formatted
+            if (p < 0.001) return(".000")
+            res <- format(round(p, 3), nsmall = 3)
+            if (startsWith(res, "0")) return(substring(res, 2)) # Remove leading zero
+            return(res)
+          })
+          
+          df_print$Pr <- formatted_pr
           df_print$sig <- as.character(sig)
         }
-        print(round(df_print[ , !names(df_print) %in% "sig", drop=FALSE], digits))
+        
+        # 4. Reorder columns for consistency
+        desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "t value", "df", "Pr")
+        current_names <- names(df_print)
+        
+        # Filter existing columns
+        order_to_use <- intersect(desired_order, current_names)
+        other_names <- setdiff(current_names, c(desired_order, "sig"))
+        
+        # Construct final selection
+        final_cols <- c(order_to_use, other_names)
+        if ("sig" %in% current_names) {
+          final_cols <- c(final_cols, "sig")
+        }
+        
+        df_final <- df_print[, final_cols, drop = FALSE]
+        
+        # Rename sig to blank just before printing
+        if ("sig" %in% names(df_final)) {
+           names(df_final)[names(df_final) == "sig"] <- ""
+        }
+        
+        # Print the data frame cleanly
+        print(df_final, quote = FALSE, right = TRUE)
       } else {
         print(self$fit)
       }

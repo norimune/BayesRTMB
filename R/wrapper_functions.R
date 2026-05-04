@@ -785,7 +785,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, view = if (!is.null(view)) view else view_vars)
+  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, 
+                    view = if (!is.null(view)) view else view_vars, silent = classic)
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
@@ -3373,7 +3374,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   
   # Ensure env is correctly formatted for rtmb_model
   # Using the evaluated objects directly from tmp_env
-  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order)
+  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order, silent = classic)
   mdl$formula <- formula
   mdl$raw_data <- data
   
