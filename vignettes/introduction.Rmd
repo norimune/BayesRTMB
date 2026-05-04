@@ -164,10 +164,10 @@ vb_fit$summary()
 When building hierarchical models, you can declare parameters as `random = TRUE`.
 
 ```{r eval=FALSE}
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-group <- discussion$group
+Y <- debate$sat
+group <- debate$group
 G <- length(unique(group))
 
 data_icc <- list(Y = Y,group = group, G = G)
@@ -235,8 +235,8 @@ BayesRTMB provides wrapper functions that allow you to easily execute standard a
 For instance, you can use `rtmb_lm()` for linear regression.
 
 ```{r eval=FALSE}
-data(discussion)
-fit_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
+data(debate)
+fit_lm <- rtmb_lm(sat ~ talk + skill, data = debate)
 
 # MAP estimation
 map_lm <- fit_lm$optimize()
@@ -264,8 +264,8 @@ Functions tailored to analysis goals are available, such as `rtmb_glmer()` for g
 Also, using `rtmb_ttest()`, a Bayesian t-test can be performed easily. By simply specifying the "parameter name to fix at 0" in the `null_model` argument of the `bayes_factor()` method, the estimation of the null model and the calculation of the Bayes factor are done automatically.
 
 ```{r eval=FALSE}
-data(discussion)
-mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
+data(debate)
+mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
 # Comparison with the null model where effect size (delta) is fixed at 0
@@ -292,3 +292,4 @@ Once you have grasped the overall picture of BayesRTMB, we recommend referencing
    - `rtmb_code()`: Description rules and specifications of each block
    - `Dim()`: Parameter types and constraints (`parameter_types`)
    - `distributions` / `math_functions`: Built-in probability distributions and mathematical functions that stabilize numerical calculations.
+
