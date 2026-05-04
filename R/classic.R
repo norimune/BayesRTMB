@@ -12,6 +12,7 @@
 #' @field view Parameter names to prioritize in summary display.
 #' @field obj Optional underlying model object (e.g., RTMB_Model for lmer).
 #' @field refit_fn Optional function to re-fit the model on new data.
+#' @field extra Optional list of additional parameters for specific model types.
 #'
 #' @export
 Classic_Model <- R6::R6Class(
@@ -24,6 +25,7 @@ Classic_Model <- R6::R6Class(
     view = NULL,
     obj = NULL,
     refit_fn = NULL,
+    extra = list(),
 
     #' @description Create a new `Classic_Model` object.
     #' @param type Character string specifying the model type (e.g., "lm", "lmer").
@@ -33,7 +35,8 @@ Classic_Model <- R6::R6Class(
     #' @param view Parameter names to prioritize in summary display.
     #' @param obj Optional underlying model object (e.g., RTMB_Model for lmer).
     #' @param refit_fn Optional function to re-fit the model on new data.
-    initialize = function(type, formula, data, family = "gaussian", view = NULL, obj = NULL, refit_fn = NULL) {
+    #' @param extra Optional list of additional parameters for specific model types.
+    initialize = function(type, formula, data, family = "gaussian", view = NULL, obj = NULL, refit_fn = NULL, extra = list()) {
       self$type <- type
       self$formula <- formula
       self$data <- data
@@ -41,6 +44,7 @@ Classic_Model <- R6::R6Class(
       self$view <- view
       self$obj <- obj
       self$refit_fn <- refit_fn
+      self$extra <- extra
     },
 
     #' @description Perform estimation using classical methods.
@@ -267,21 +271,46 @@ Classic_Model <- R6::R6Class(
         return(df_combined)
         
       } else if (self$type == "corr") {
-        cor_mat <- cor(data, use = "pairwise.complete.obs")
-        P <- ncol(data); var_names <- colnames(data)
+        P_y <- if (!is.null(self$extra$P_y)) self$extra$P_y else ncol(data)
+        P_x <- if (!is.null(self$extra$P_x)) self$extra$P_x else 0
+        P <- ncol(data)
+        var_names <- colnames(data)
+        target_names <- var_names[1:P_y]
         N <- nrow(data)
+        
         df_list <- list()
-        for (i in 1:(P-1)) {
-          for (j in (i+1):P) {
+        full_cor_mat <- cor(data, use = "pairwise.complete.obs")
+        
+        if (P_x > 0) {
+           # Partial correlation derivation
+           R_yy <- full_cor_mat[1:P_y, 1:P_y, drop = FALSE]
+           R_yx <- full_cor_mat[1:P_y, (P_y+1):P, drop = FALSE]
+           R_xx <- full_cor_mat[(P_y+1):P, (P_y+1):P, drop = FALSE]
+           
+           # Solve for partial covariance
+           P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx)
+           # Convert to correlation
+           D <- diag(1 / sqrt(diag(P_cov)))
+           cor_mat <- D %*% P_cov %*% D
+           N_eff <- N - P_x
+        } else {
+           cor_mat <- full_cor_mat
+           N_eff <- N
+        }
+        
+        if (P_y < 2) stop("Correlation requires at least 2 target variables.")
+        
+        for (i in 1:(P_y-1)) {
+          for (j in (i+1):P_y) {
             r <- cor_mat[i, j]
             z <- 0.5 * log((1 + r) / (1 - r))
-            se_z <- 1 / sqrt(N - 3)
+            se_z <- 1 / sqrt(N_eff - 3)
             ci_lower_z <- z - 1.96 * se_z
             ci_upper_z <- z + 1.96 * se_z
             ci_lower <- (exp(2 * ci_lower_z) - 1) / (exp(2 * ci_lower_z) + 1)
             ci_upper <- (exp(2 * ci_upper_z) - 1) / (exp(2 * ci_upper_z) + 1)
             
-            df_val <- N - 2
+            df_val <- N_eff - 2
             t_val <- r * sqrt(df_val / (1 - r^2))
             p_val <- 2 * pt(-abs(t_val), df = df_val)
             
@@ -303,7 +332,7 @@ Classic_Model <- R6::R6Class(
       } else if (self$type == "mediation") {
         obj <- self$obj
         obj$data <- data
-        ad_setup <- obj$build_ad_obj(jacobian_target = "none")
+        ad_setup <- obj$build_ad_obj(jacobian_target = "none", include_generate = TRUE)
         ad_obj <- ad_setup$ad_obj
         opt <- nlminb(ad_obj$par, ad_obj$fn, ad_obj$gr)
         sd_rep <- RTMB::sdreport(ad_obj)
@@ -327,7 +356,7 @@ Classic_Model <- R6::R6Class(
               for (j in seq_along(idx)) {
                 if (j <= length(labels)) {
                   label <- labels[j]
-                  new_names[idx[j]] <- if (label == "Intercept") p else paste0(p, "[", label, "]")
+                  new_names[idx[j]] <- paste0(p, "[", label, "]")
                 }
               }
             }
@@ -336,12 +365,45 @@ Classic_Model <- R6::R6Class(
         rownames(df_res) <- new_names
         
         df_res$df <- nrow(data) - 1
+        if (!is.null(self$extra$df_map)) {
+          df_map <- self$extra$df_map
+          for (p in names(df_map)) {
+            idx <- which(grepl(paste0("^", p, "($|\\[|\\.)"), rownames(df_res)))
+            if (length(idx) > 0) df_res$df[idx] <- df_map[[p]]
+          }
+        }
+        
         df_res$`t value` <- df_res$Estimate / df_res$`Std. Error`
         df_res$Pr <- 2 * pt(-abs(df_res$`t value`), df = df_res$df)
         df_res$`Lower 95%` <- df_res$Estimate + qt(0.025, df = df_res$df) * df_res$`Std. Error`
         df_res$`Upper 95%` <- df_res$Estimate + qt(0.975, df = df_res$df) * df_res$`Std. Error`
         
-        return(df_res[order(rownames(df_res)), ])
+        # Reorder based on self$view if present
+        if (!is.null(self$view)) {
+          v_order <- self$view
+          row_names <- rownames(df_res)
+          new_idx <- integer(0)
+          
+          # Helper to match parameter names (with or without [labels])
+          for (v in v_order) {
+            # Match "b1" or "b1[perf]"
+            matches <- which(row_names == v | grepl(paste0("^", v, "\\["), row_names))
+            # Filter out already added indices
+            matches <- setdiff(matches, new_idx)
+            if (length(matches) > 0) {
+              new_idx <- c(new_idx, matches)
+            }
+          }
+          # Add any remaining variables (not in view_order) at the end
+          remaining_idx <- setdiff(seq_len(nrow(df_res)), new_idx)
+          if (length(remaining_idx) > 0) {
+            new_idx <- c(new_idx, remaining_idx[order(row_names[remaining_idx])])
+          }
+          df_res <- df_res[new_idx, ]
+        } else {
+          df_res <- df_res[order(rownames(df_res)), ]
+        }
+        return(df_res)
       }
     }
   )

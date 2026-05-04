@@ -1512,6 +1512,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' @return A \code{RTMB_Model} or \code{Classic_Model} object.
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
+                      covariates = NULL,
                       prior = prior_uniform(), y_range = NULL,
                       init = NULL, null = NULL, classic = FALSE, ...) {
   
@@ -1529,15 +1530,80 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   # Handle if Y_mat is a formula
   if (inherits(Y_mat, "formula")) {
     formula <- Y_mat
-    mf_y <- model.frame(formula, data = data)
-    Y_mat <- model.response(mf_y)
-    if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
+    lhs_expr <- formula[[2]]
+    
+    # 1. Try to evaluate LHS directly (handles cbind(y1, y2) or Y_df)
+    Y_mat <- try(eval(lhs_expr, data, parent.frame()), silent = TRUE)
+    
+    # 2. If eval(lhs) failed, try a safer model.frame call
+    if (inherits(Y_mat, "try-error") || is.null(Y_mat)) {
+      resp_formula <- bquote(.(lhs_expr) ~ 1)
+      mf_y <- try(model.frame(resp_formula, data = data, na.action = na.pass), silent = TRUE)
+      if (!inherits(mf_y, "try-error")) {
+         Y_mat <- model.response(mf_y)
+         if (is.null(Y_mat)) Y_mat <- mf_y[, 1, drop = FALSE]
+      } else {
+         # Last resort: check if it's a name in data
+         id_name <- as.character(lhs_expr)
+         if (!is.null(data) && id_name %in% names(data)) {
+            Y_mat <- data[[id_name]]
+         }
+      }
+    }
+
+    # Final check if it's a list (not df)
+    if (is.list(Y_mat) && !is.data.frame(Y_mat)) {
+       Y_mat <- do.call(cbind, Y_mat)
+    }
+    
+    # If formula has RHS, extract covariates
+    if (length(formula) == 3 && is.null(covariates)) {
+       rhs_expr <- formula[[3]]
+       cov_formula <- bquote(~ .(rhs_expr))
+       mf_x <- try(model.frame(cov_formula, data = data, na.action = na.pass), silent = TRUE)
+       if (inherits(mf_x, "try-error")) {
+          # Try to subset data to only RHS variables to avoid errors from other complex columns
+          rhs_vars <- all.vars(rhs_expr)
+          data_sub <- if (!is.null(data)) data[, intersect(rhs_vars, names(data)), drop = FALSE] else data
+          mf_x <- model.frame(cov_formula, data = data_sub, na.action = na.pass)
+       }
+       covariates <- model.matrix(attr(mf_x, "terms"), mf_x)
+       # Remove intercept
+       if ("(Intercept)" %in% colnames(covariates)) {
+         covariates <- covariates[, colnames(covariates) != "(Intercept)", drop = FALSE]
+       }
+    }
   } else {
     formula <- NULL
     # If Y_mat is a character vector of names, subset from data
     if (is.character(Y_mat) && length(Y_mat) > 1 && !is.null(data)) {
       Y_mat <- data[, Y_mat, drop = FALSE]
     }
+    # Handle list of vectors
+    if (is.list(Y_mat) && !is.data.frame(Y_mat)) {
+       Y_mat <- do.call(cbind, Y_mat)
+    }
+  }
+
+  # Handle covariates (if provided separately or extracted from formula)
+  X_mat <- NULL
+  if (!is.null(covariates)) {
+     if (is.matrix(covariates) || is.data.frame(covariates)) {
+        X_mat <- as.matrix(covariates)
+     } else if (inherits(covariates, "formula")) {
+        mf_x <- model.frame(covariates, data = data, na.action = na.pass)
+        X_mat <- model.matrix(covariates, mf_x)
+        if ("(Intercept)" %in% colnames(X_mat)) {
+          X_mat <- X_mat[, colnames(X_mat) != "(Intercept)", drop = FALSE]
+        }
+     } else if (is.character(covariates) && !is.null(data)) {
+        X_mat <- as.matrix(data[, covariates, drop = FALSE])
+     }
+  }
+
+  if (!is.null(X_mat)) {
+    # Ensure numeric
+    X_mat <- X_mat[, sapply(as.data.frame(X_mat), is.numeric), drop = FALSE]
   }
 
   # Parse ID (NSE support for ID = group)
@@ -1581,6 +1647,22 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   Y_mat <- Y_mat[, num_cols, drop = FALSE]
   Y_mat <- as.matrix(Y_mat)
 
+  P_y <- ncol(Y_mat)
+  target_names <- colnames(Y_mat)
+  if (is.null(target_names)) target_names <- paste0("Y", 1:P_y)
+
+  # Combine with covariates for Joint MVN
+  if (!is.null(X_mat)) {
+     P_x <- ncol(X_mat)
+     control_names <- colnames(X_mat)
+     if (is.null(control_names)) control_names <- paste0("X", 1:P_x)
+     Y_mat <- cbind(Y_mat, X_mat)
+     colnames(Y_mat) <- c(target_names, control_names)
+  } else {
+     P_x <- 0
+     control_names <- NULL
+  }
+
   N <- nrow(Y_mat)
   P <- ncol(Y_mat)
   if (P < 1) stop("No numeric columns found for correlation analysis.")
@@ -1595,78 +1677,12 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
       stop("Classic mode (frequentist) for multilevel correlation is not supported. Please use classic = FALSE.")
     }
     
-    # Calculate means and standard deviations
-    means <- colMeans(Y_mat, na.rm = TRUE)
-    sds <- apply(Y_mat, 2, sd, na.rm = TRUE)
-    
-    # Calculate correlation matrix
-    cor_mat <- cor(Y_mat, use = "pairwise.complete.obs")
-    
-    # Create fixed effects data frame
-    df_list <- list()
-    
-    # Add correlations
-    if (P == 2) {
-       r <- cor_mat[1, 2]
-       z <- 0.5 * log((1 + r) / (1 - r))
-       se_z <- 1 / sqrt(N - 3)
-       ci_lower_z <- z - 1.96 * se_z
-       ci_upper_z <- z + 1.96 * se_z
-       ci_lower <- (exp(2 * ci_lower_z) - 1) / (exp(2 * ci_lower_z) + 1)
-       ci_upper <- (exp(2 * ci_upper_z) - 1) / (exp(2 * ci_upper_z) + 1)
-       
-       # t-test
-       df_val <- N - 2
-       t_val <- r * sqrt(df_val / (1 - r^2))
-       p_val <- 2 * pt(-abs(t_val), df = df_val)
-       
-       df_list[["corr"]] <- data.frame(
-         Estimate = r,
-         `Std. Error` = NA,
-         `Lower 95%` = ci_lower,
-         `Upper 95%` = ci_upper,
-         `t value` = t_val,
-         df = df_val,
-         Pr = p_val,
-         check.names = FALSE
-       )
-    } else if (P > 2) {
-       for (i in 1:(P-1)) {
-         for (j in (i+1):P) {
-           r <- cor_mat[i, j]
-           z <- 0.5 * log((1 + r) / (1 - r))
-           se_z <- 1 / sqrt(N - 3)
-           ci_lower_z <- z - 1.96 * se_z
-           ci_upper_z <- z + 1.96 * se_z
-           ci_lower <- (exp(2 * ci_lower_z) - 1) / (exp(2 * ci_lower_z) + 1)
-           ci_upper <- (exp(2 * ci_upper_z) - 1) / (exp(2 * ci_upper_z) + 1)
-           
-           # t-test
-           df_val <- N - 2
-           t_val <- r * sqrt(df_val / (1 - r^2))
-           p_val <- 2 * pt(-abs(t_val), df = df_val)
-           
-           df_list[[paste0("corr[", var_names[i], ", ", var_names[j], "]")]] <- data.frame(
-             Estimate = r,
-             `Std. Error` = NA,
-             `Lower 95%` = ci_lower,
-             `Upper 95%` = ci_upper,
-             `t value` = t_val,
-             df = df_val,
-             Pr = p_val,
-             check.names = FALSE
-           )
-         }
-       }
-    }
-    
-    df_fixed <- do.call(rbind, df_list)
-    
     mdl_obj <- Classic_Model$new(
       type = "corr",
       formula = formula,
       data = as.data.frame(Y_mat),
-      view = c("corr")
+      view = c("corr"),
+      extra = list(P_y = P_y, P_x = P_x)
     )
     return(mdl_obj)
   }
@@ -1776,6 +1792,24 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      if (multivariate) {
        generate_exprs[[length(generate_exprs) + 1]] <- quote(B_corr <- L_corr_between %*% t(L_corr_between))
        generate_exprs[[length(generate_exprs) + 1]] <- quote(W_corr <- L_corr_within %*% t(L_corr_within))
+       
+       if (P_x > 0) {
+          # Partial correlation for Within level
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy <- W_corr[1:P_y, 1:P_y])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx <- W_corr[1:P_y, (P_y+1):P])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx <- W_corr[(P_y+1):P, (P_y+1):P])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov_w <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(D_w <- diag(1 / sqrt(diag(P_cov_w))))
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(W_pcorr <- D_w %*% P_cov_w %*% D_w)
+          
+          # Partial correlation for Between level
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy_b <- B_corr[1:P_y, 1:P_y])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx_b <- B_corr[1:P_y, (P_y+1):P])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx_b <- B_corr[(P_y+1):P, (P_y+1):P])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov_b <- R_yy_b - R_yx_b %*% solve(R_xx_b) %*% t(R_yx_b))
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(D_b <- diag(1 / sqrt(diag(P_cov_b))))
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(B_pcorr <- D_b %*% P_cov_b %*% D_b)
+       }
      }
      generate_ast <- as.call(generate_exprs)
 
@@ -1789,9 +1823,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      if (multivariate) {
        v_names$B_corr <- list(var_names, var_names)
        v_names$W_corr <- list(var_names, var_names)
+       if (P_x > 0) {
+          v_names$B_pcorr <- list(target_names, target_names)
+          v_names$W_pcorr <- list(target_names, target_names)
+       }
      }
 
-     data_list <- list(Y = Y_mat, group_id = group_id, N = N, P = P, J = J)
+     data_list <- list(Y = Y_mat, group_id = group_id, N = N, P = P, J = J, P_y = P_y, P_x = P_x)
      if (use_weak_info) {
        data_list$mid_y <- mid_y_val
        data_list$alpha_prior_sd <- half_d_y
@@ -1804,10 +1842,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      init_list$u <- matrix(0, J, P)
 
      view_order <- c("ICC")
-     if (multivariate) view_order <- c(view_order, "B_corr", "W_corr")
+     if (multivariate) {
+       if (P_x > 0) view_order <- c(view_order, "W_pcorr", "B_pcorr")
+       view_order <- c(view_order, "B_corr", "W_corr")
+     }
      view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
 
-     mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+     mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
      return(mdl)
   } else {
      # Simple correlation mode
@@ -1893,6 +1934,15 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      generate_exprs <- list(as.name("{"))
      if (P > 2) {
        generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- CF_corr %*% t(CF_corr))
+       
+       if (P_x > 0) {
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy <- corr[1:P_y, 1:P_y])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx <- corr[1:P_y, (P_y+1):P])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx <- corr[(P_y+1):P, (P_y+1):P])
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(D <- diag(1 / sqrt(diag(P_cov))))
+          generate_exprs[[length(generate_exprs) + 1]] <- quote(pcorr <- D %*% P_cov %*% D)
+       }
      }
      generate_ast <- as.call(generate_exprs)
 
@@ -1900,7 +1950,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      class(mdl_code) <- "rtmb_code"
 
      dat_list <- list(
-       N = N, P = P, Y_bar = colMeans(Y_mat), S_Y = cov(Y_mat) * (N - 1)
+       N = N, P = P, Y_bar = colMeans(Y_mat), S_Y = cov(Y_mat) * (N - 1), P_y = P_y, P_x = P_x
      )
      if (prior_type == "weak") {
        dat_list$mid_y <- mid_y_val
@@ -1913,13 +1963,15 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        v_names$corr <- "rho"
      } else {
        v_names$corr <- list(var_names, var_names)
+       if (P_x > 0) v_names$pcorr <- list(target_names, target_names)
      }
 
      init_list <- if (is.null(init)) {
        list(mean = colMeans(Y_mat), sd = apply(Y_mat, 2, sd))
      } else init
 
-     obj <- BayesRTMB::rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, view = "corr")
+     view_vars <- if (P_x > 0) "pcorr" else "corr"
+     obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, view = view_vars)
 
      if (!is.null(null)) {
        obj <- obj$null_model(target = null)
@@ -2493,7 +2545,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   view_order <- if (has_cov_prob) c("b", "prob_mean", "mu", "sigma") else c("prob_mean", "mu", "sigma")
   if (multivariate && !is_diag) view_order <- c(view_order, "corr")
 
-  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
   return(mdl)
 }
 
@@ -3047,7 +3099,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   }
   if (!is_diag) view_order <- c(view_order, "corr")
 
-  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
   return(mdl)
 }
 
@@ -3121,7 +3173,8 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     family_list <- family
   }
 
-  data_list <- list(N = nrow(data))
+  N <- nrow(data)
+  data_list <- list(N = N)
   resp_names <- character(n_eq)
   X_list <- list()
   X_colnames <- list()
@@ -3359,6 +3412,31 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     }
   }
 
+  # Calculate specific degrees of freedom for each equation
+  df_map <- list()
+  for (i in 1:n_eq) {
+    df_val <- N - ncol(X_list[[i]])
+    df_map[[paste0("b", i)]] <- df_val
+    df_map[[paste0("sigma", i)]] <- df_val
+  }
+  # For IE/DE/TE, use the DF of the outcome equation
+  for (iv in indeps) {
+    for (m in mediators) {
+      idx_m_resp <- which(resp_names == m)
+      idx_m_pred <- which(sapply(X_colnames, function(x) m %in% x))
+      if (length(idx_m_resp) > 0 && length(idx_m_pred) > 0) {
+        for (dv_idx in idx_m_pred) {
+          if (dv_idx == idx_m_resp) next
+          dv_name <- resp_names[dv_idx]
+          df_dv <- N - ncol(X_list[[dv_idx]])
+          df_map[[paste0("IE_", iv, "_", m, "_", dv_name)]] <- df_dv
+          df_map[[paste0("DE_", iv, "_", dv_name)]] <- df_dv
+          df_map[[paste0("TE_", iv, "_", m, "_", dv_name)]] <- df_dv
+        }
+      }
+    }
+  }
+
   mdl_code <- list(
     setup = setup_ast,
     parameters = as.call(c(list(as.name("{")), param_exprs))
@@ -3382,7 +3460,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     refit_fn <- function(new_data) {
       rtmb_mediation(formula = formula, data = new_data, family = family, prior = prior, y_range = y_range, view = view, classic = TRUE)$estimate()
     }
-    return(Classic_Model$new(type = "mediation", formula = formula, data = data, family = family, view = view, obj = mdl, refit_fn = refit_fn))
+    return(Classic_Model$new(type = "mediation", formula = formula, data = data, family = family, view = if (is.null(view)) view_order else view, obj = mdl, refit_fn = refit_fn, extra = list(df_map = df_map)))
   }
   
   return(mdl)

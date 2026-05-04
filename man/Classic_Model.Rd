@@ -24,6 +24,8 @@ like `rtmb_lm`.
 \item{\code{obj}}{Optional underlying model object (e.g., RTMB_Model for lmer).}
 
 \item{\code{refit_fn}}{Optional function to re-fit the model on new data.}
+
+\item{\code{extra}}{Optional list of additional parameters for specific model types.}
 }
 \if{html}{\out{</div>}}
 }
@@ -50,7 +52,8 @@ Create a new `Classic_Model` object.
   family = "gaussian",
   view = NULL,
   obj = NULL,
-  refit_fn = NULL
+  refit_fn = NULL,
+  extra = list()
 )}\if{html}{\out{</div>}}
 }
 
@@ -70,6 +73,8 @@ Create a new `Classic_Model` object.
 \item{\code{obj}}{Optional underlying model object (e.g., RTMB_Model for lmer).}
 
 \item{\code{refit_fn}}{Optional function to re-fit the model on new data.}
+
+\item{\code{extra}}{Optional list of additional parameters for specific model types.}
 }
 \if{html}{\out{</div>}}
 }

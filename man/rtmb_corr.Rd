@@ -8,6 +8,7 @@ rtmb_corr(
   x = NULL,
   data = NULL,
   ID = NULL,
+  covariates = NULL,
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
