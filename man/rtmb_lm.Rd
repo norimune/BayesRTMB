@@ -11,7 +11,8 @@ rtmb_lm(
   y_range = NULL,
   init = NULL,
   null = NULL,
-  gmc = NULL
+  gmc = NULL,
+  classic = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,8 @@ rtmb_lm(
 \item{null}{Character string specifying the target parameter for the null model.}
 
 \item{gmc}{Character vector of variable names for GMC}
+
+\item{classic}{Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.}
 }
 \description{
 RTMB-based Linear Regression wrapper function

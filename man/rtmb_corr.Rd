@@ -2,35 +2,44 @@
 % Please edit documentation in R/wrapper_functions.R
 \name{rtmb_corr}
 \alias{rtmb_corr}
-\title{Fit a Correlation Model using RTMB'}
+\title{Fit a Correlation Model using RTMB}
 \usage{
 rtmb_corr(
-  data,
+  x = NULL,
+  data = NULL,
+  ID = NULL,
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
   null = NULL,
+  classic = FALSE,
   ...
 )
 }
 \arguments{
-\item{data}{A data frame or matrix of response variables.}
+\item{x}{A matrix, data frame, formula, or expression (e.g., \code{cbind(V1, V2)}) of response variables.}
 
-\item{prior}{Prior configuration object: \code{prior_uniform()} (default) or \code{prior_weak()}.}
+\item{data}{An optional data frame containing the variables.}
+
+\item{ID}{A character string or expression specifying the group ID variable for multilevel models.}
+
+\item{prior}{Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.}
 
 \item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-Required when using \code{prior_weak()}.}
+Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.}
 
 \item{init}{Optional list of initial values.}
 
 \item{null}{Optional list specifying parameters to fix to null values.}
 
+\item{classic}{Logical; if \code{TRUE}, performs classical frequentist estimation instead of Bayesian/MAP.}
+
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
 \value{
-A \code{RTMB_Model} object.
+A \code{RTMB_Model} or \code{Classic_Model} object.
 }
 \description{
-Fits a correlation model to estimate means, standard deviations, and correlation structures.
-Supports both bivariate and multivariate data.
+`rtmb_corr` fits a correlation model to estimate means, standard deviations, and correlation structures.
+It supports simple correlation, multilevel correlation, and classical frequentist estimation.
 }

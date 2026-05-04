@@ -860,13 +860,42 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model.
 #' @param gmc Character vector of variable names for GMC
+#' @param classic Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
                     prior = prior_uniform(),
                     y_range = NULL,
                     init = NULL, null = NULL,
-                    gmc = NULL) {
+                    gmc = NULL,
+                    classic = FALSE) {
+
+  if (classic) {
+    if (!is.null(gmc)) {
+      data_centered <- as.data.frame(data)
+      target_gmc <- if (identical(gmc, "all")) {
+        names(data_centered)[sapply(data_centered, is.numeric)]
+      } else {
+        gmc
+      }
+      for (v in target_gmc) {
+        if (v %in% names(data_centered)) {
+          data_centered[[v]] <- data_centered[[v]] - mean(data_centered[[v]], na.rm = TRUE)
+        } else {
+          warning(sprintf("Variable '%s' for GMC not found in data.", v))
+        }
+      }
+      data <- data_centered
+    }
+
+    return(Classic_Model$new(
+      type = "lm",
+      formula = formula,
+      data = data,
+      family = "gaussian",
+      view = c("Intercept", "b", "sigma")
+    ))
+  }
 
   rtmb_glm(
     formula = formula,
@@ -1428,157 +1457,440 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   return(obj)
 }
 
-#' Fit a Correlation Model using RTMB'
-#' @description
-#' Fits a correlation model to estimate means, standard deviations, and correlation structures.
-#' Supports both bivariate and multivariate data.
+#' Fit a Correlation Model using RTMB
 #'
-#' @param data A data frame or matrix of response variables.
-#' @param prior Prior configuration object: \code{prior_uniform()} (default) or \code{prior_weak()}.
+#' @description
+#' `rtmb_corr` fits a correlation model to estimate means, standard deviations, and correlation structures.
+#' It supports simple correlation, multilevel correlation, and classical frequentist estimation.
+#'
+#' @param x A matrix, data frame, formula, or expression (e.g., \code{cbind(V1, V2)}) of response variables.
+#' @param data An optional data frame containing the variables.
+#' @param ID A character string or expression specifying the group ID variable for multilevel models.
+#' @param prior Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-#' Required when using \code{prior_weak()}.
+#' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
 #' @param null Optional list specifying parameters to fix to null values.
+#' @param classic Logical; if \code{TRUE}, performs classical frequentist estimation instead of Bayesian/MAP.
 #' @param ... Additional arguments passed to \code{rtmb_model}.
-#' @return A \code{RTMB_Model} object.
+#' @return A \code{RTMB_Model} or \code{Classic_Model} object.
 #' @export
-rtmb_corr <- function(data, prior = prior_uniform(), y_range = NULL,
-                      init = NULL, null = NULL, ...) {
+rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
+                      prior = prior_uniform(), y_range = NULL,
+                      init = NULL, null = NULL, classic = FALSE, ...) {
+  
+  x_expr <- substitute(x)
+  id_expr <- substitute(ID)
+  
+  # Evaluation logic for response variables (Y_mat)
+  if (!is.null(data)) {
+    # Evaluate x in the context of data (NSE support for cbind(a, b))
+    Y_mat <- eval(x_expr, data, parent.frame())
+  } else {
+    Y_mat <- x
+  }
+  
+  # Handle if Y_mat is a formula
+  if (inherits(Y_mat, "formula")) {
+    formula <- Y_mat
+    mf_y <- model.frame(formula, data = data)
+    Y_mat <- model.response(mf_y)
+    if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
+  } else {
+    formula <- NULL
+    # If Y_mat is a character vector of names, subset from data
+    if (is.character(Y_mat) && length(Y_mat) > 1 && !is.null(data)) {
+      Y_mat <- data[, Y_mat, drop = FALSE]
+    }
+  }
 
+  # Parse ID (NSE support for ID = group)
+  id_val <- NULL
+  if (!is.null(ID)) {
+    if (!is.null(data)) {
+      # Try to evaluate ID in data
+      id_val <- try(eval(id_expr, data, parent.frame()), silent = TRUE)
+      if (inherits(id_val, "try-error") || is.null(id_val)) {
+        # Fallback: check if ID name is in data
+        id_name <- as.character(id_expr)
+        if (id_name %in% names(data)) {
+          id_val <- data[[id_name]]
+        } else {
+          id_val <- ID # Literal value
+        }
+      }
+    } else if (is.data.frame(Y_mat)) {
+      # If data is NULL but x is a dataframe, check if ID is a column name
+      id_name <- as.character(id_expr)
+      if (id_name %in% names(Y_mat)) {
+        id_val <- Y_mat[[id_name]]
+        # We will remove this column from Y_mat later
+      } else {
+        id_val <- ID
+      }
+    } else {
+      id_val <- ID
+    }
+    
+    # If the response matrix still contains the ID column, remove it
+    id_name_str <- as.character(id_expr)
+    if (is.data.frame(Y_mat) && id_name_str %in% colnames(Y_mat)) {
+       Y_mat[[id_name_str]] <- NULL
+    }
+  }
+  
+  # Ensure Y_mat is a numeric matrix
+  Y_mat <- as.data.frame(Y_mat)
+  num_cols <- sapply(Y_mat, is.numeric)
+  Y_mat <- Y_mat[, num_cols, drop = FALSE]
+  Y_mat <- as.matrix(Y_mat)
+
+  N <- nrow(Y_mat)
+  P <- ncol(Y_mat)
+  if (P < 1) stop("No numeric columns found for correlation analysis.")
+  
+  var_names <- colnames(Y_mat)
+  if (is.null(var_names)) var_names <- paste0("V", 1:P)
+  colnames(Y_mat) <- var_names
+
+  # --- Classic Mode (Frequentist) ---
+  if (classic) {
+    if (!is.null(id_val)) {
+      stop("Classic mode (frequentist) for multilevel correlation is not supported. Please use classic = FALSE.")
+    }
+    
+    # Calculate means and standard deviations
+    means <- colMeans(Y_mat, na.rm = TRUE)
+    sds <- apply(Y_mat, 2, sd, na.rm = TRUE)
+    
+    # Calculate correlation matrix
+    cor_mat <- cor(Y_mat, use = "pairwise.complete.obs")
+    
+    # Create fixed effects data frame
+    df_list <- list()
+    
+    # Add correlations
+    if (P == 2) {
+       r <- cor_mat[1, 2]
+       z <- 0.5 * log((1 + r) / (1 - r))
+       se_z <- 1 / sqrt(N - 3)
+       ci_lower_z <- z - 1.96 * se_z
+       ci_upper_z <- z + 1.96 * se_z
+       ci_lower <- (exp(2 * ci_lower_z) - 1) / (exp(2 * ci_lower_z) + 1)
+       ci_upper <- (exp(2 * ci_upper_z) - 1) / (exp(2 * ci_upper_z) + 1)
+       
+       # t-test
+       df_val <- N - 2
+       t_val <- r * sqrt(df_val / (1 - r^2))
+       p_val <- 2 * pt(-abs(t_val), df = df_val)
+       
+       df_list[["corr"]] <- data.frame(
+         Estimate = r,
+         `Std. Error` = NA,
+         `Lower 95%` = ci_lower,
+         `Upper 95%` = ci_upper,
+         `t value` = t_val,
+         df = df_val,
+         Pr = p_val,
+         check.names = FALSE
+       )
+    } else if (P > 2) {
+       for (i in 1:(P-1)) {
+         for (j in (i+1):P) {
+           r <- cor_mat[i, j]
+           z <- 0.5 * log((1 + r) / (1 - r))
+           se_z <- 1 / sqrt(N - 3)
+           ci_lower_z <- z - 1.96 * se_z
+           ci_upper_z <- z + 1.96 * se_z
+           ci_lower <- (exp(2 * ci_lower_z) - 1) / (exp(2 * ci_lower_z) + 1)
+           ci_upper <- (exp(2 * ci_upper_z) - 1) / (exp(2 * ci_upper_z) + 1)
+           
+           # t-test
+           df_val <- N - 2
+           t_val <- r * sqrt(df_val / (1 - r^2))
+           p_val <- 2 * pt(-abs(t_val), df = df_val)
+           
+           df_list[[paste0("corr[", var_names[i], ", ", var_names[j], "]")]] <- data.frame(
+             Estimate = r,
+             `Std. Error` = NA,
+             `Lower 95%` = ci_lower,
+             `Upper 95%` = ci_upper,
+             `t value` = t_val,
+             df = df_val,
+             Pr = p_val,
+             check.names = FALSE
+           )
+         }
+       }
+    }
+    
+    df_fixed <- do.call(rbind, df_list)
+    
+    mdl_obj <- Classic_Model$new(
+      type = "corr",
+      formula = formula,
+      data = df_fixed,
+      view = c("corr")
+    )
+    return(mdl_obj)
+  }
+
+  # --- RTMB Implementation ---
   if (is.null(prior)) {
     prior <- prior_uniform()
   }
 
-  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
-  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
-      is.null(prior$Intercept_sd) && is.null(prior$mu_sd) && is.null(prior$b_sd) &&
-      is.null(prior$sigma_rate)) {
-    prior <- prior_weak()
-  }
+  if (!is.null(id_val)) {
+     # Multilevel correlation mode
+     group_factor <- as.factor(id_val)
+     group_id <- as.integer(group_factor)
+     group_names <- levels(group_factor)
+     J <- length(group_names)
 
-  if (!inherits(prior, "rtmb_prior")) {
-    stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
-  }
+     # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
+     if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
+         is.null(prior$Intercept_sd) && is.null(prior$b_sd) &&
+         is.null(prior$sigma_rate) && is.null(prior$tau_rate)) {
+       prior <- prior_weak()
+     }
 
-  Y_mat <- as.matrix(data)
-  N <- nrow(Y_mat)
-  P <- ncol(Y_mat)
-  var_names <- colnames(Y_mat)
-  if (is.null(var_names)) var_names <- paste0("V", 1:P)
+     if (!inherits(prior, "rtmb_prior")) {
+       stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
+     }
 
-  prior_type <- prior$type
-  default_prior <- list(Intercept_sd = 10, mu_sd = 10, sigma_rate = 1.0, lkj_eta = 1.0)
-  prior <- .merge_prior(default_prior, prior)
-  # Ensure mu_sd and Intercept_sd are synced if one is provided in prior_uniform
-  if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
-  if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
+     default_prior_settings <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, lkj_eta = 1.0, sd_ratio = 0.5)
+     prior <- .merge_prior(default_prior_settings, prior)
 
-  # --- 1. Dynamic AST Construction: setup ---
-  setup_exprs <- list(as.name("{"))
-  setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- N)
-  setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- P)
+     if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
+     if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
 
-  if (prior_type == "weak") {
-    if (is.null(y_range)) {
-      stop("y_range is required when using prior_weak().")
-    }
-    # Logic for y_range (vector, matrix, or list)
-    if (is.list(y_range)) {
-      y_range_mat <- do.call(rbind, y_range)
-    } else if (is.vector(y_range) && length(y_range) == 2) {
-      y_range_mat <- matrix(y_range, P, 2, byrow = TRUE)
-    } else {
-      y_range_mat <- as.matrix(y_range)
-    }
+     prior_type <- prior$type
+     use_weak_info <- prior_type %in% c("weak")
+     multivariate <- P > 1
 
-    mid_y_val <- (y_range_mat[, 1] + y_range_mat[, 2]) / 2
-    alpha_prior_sd_val <- (y_range_mat[, 2] - y_range_mat[, 1]) / 2
-    sigma_rate_val <- 1 / (alpha_prior_sd_val * 0.5)
+     setup_exprs <- list()
+     if (use_weak_info) {
+       if (is.null(y_range)) {
+         stop("Specifying 'y_range' is required when using prior_weak().")
+       }
+       if (is.list(y_range)) {
+         Y_range_mat <- do.call(rbind, lapply(y_range, as.numeric))
+       } else if (is.vector(y_range) && length(y_range) == 2) {
+         Y_range_mat <- matrix(rep(as.numeric(y_range), each = P), P, 2)
+       } else {
+         Y_range_mat <- as.matrix(y_range)
+       }
 
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
-  }
-  setup_ast <- as.call(setup_exprs)
+       half_d_y <- (Y_range_mat[, 2] - Y_range_mat[, 1]) / 2
+       mid_y_val <- (Y_range_mat[, 2] + Y_range_mat[, 1]) / 2
+       base_scale <- half_d_y * prior$sd_ratio
 
-  # --- 2. Dynamic AST Construction: parameters ---
-  param_exprs <- list(as.name("{"))
-  param_exprs[[length(param_exprs) + 1]] <- bquote(mean <- Dim(.(P)))
-  param_exprs[[length(param_exprs) + 1]] <- bquote(sd   <- Dim(.(P), lower = 0))
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
+     }
+     setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
-  if (P == 2) {
-    param_exprs[[length(param_exprs) + 1]] <- bquote(corr <- Dim(lower = -1, upper = 1))
+     param_exprs <- list(as.name("{"))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(.(P)))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(u <- Dim(c(J, .(P)), random = TRUE))
+
+     param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_between <- Dim(.(P), lower = 0))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_within <- Dim(.(P), lower = 0))
+
+     if (multivariate) {
+       param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr_between <- Dim(c(.(P), .(P)), type = "CF_corr"))
+       param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr_within <- Dim(c(.(P), .(P)), type = "CF_corr"))
+     }
+     param_ast <- as.call(param_exprs)
+
+     model_exprs <- list(as.name("{"))
+     if (multivariate) {
+       model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior$lkj_eta)))
+       model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_within ~ lkj_CF_corr(.(prior$lkj_eta)))
+       model_exprs[[length(model_exprs) + 1]] <- quote(u ~ multi_normal_CF(mean = rep(0, P), sd = sigma_between, CF_Omega = L_corr_between))
+     } else {
+       model_exprs[[length(model_exprs) + 1]] <- quote(u ~ normal(0, sigma_between))
+     }
+
+     model_exprs[[length(model_exprs) + 1]] <- quote(Y_pred <- u[group_id, ] + rep(mu, each = N))
+     if (multivariate) {
+       model_exprs[[length(model_exprs) + 1]] <- quote(Y ~ multi_normal_CF(mean = Y_pred, sd = sigma_within, CF_Omega = L_corr_within))
+     } else {
+       model_exprs[[length(model_exprs) + 1]] <- quote(Y ~ normal(Y_pred, sigma_within))
+     }
+
+     if (prior_type == "weak") {
+       model_exprs[[length(model_exprs) + 1]] <- quote(sigma_between ~ exponential(sigma_rate_vec))
+       model_exprs[[length(model_exprs) + 1]] <- quote(sigma_within ~ exponential(sigma_rate_vec))
+       model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(mid_y, alpha_prior_sd))
+     } else if (prior_type == "uniform") {
+       if (!is.null(prior$sigma_rate)) {
+         model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_between ~ exponential(.(prior$sigma_rate)))
+         model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_within ~ exponential(.(prior$sigma_rate)))
+       }
+       if (!is.null(prior$Intercept_sd)) {
+         model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior$Intercept_sd)))
+       }
+     }
+     model_ast <- as.call(model_exprs)
+
+     generate_exprs <- list(as.name("{"))
+     generate_exprs[[length(generate_exprs) + 1]] <- quote(ICC <- (sigma_between^2) / (sigma_between^2 + sigma_within^2))
+     if (multivariate) {
+       generate_exprs[[length(generate_exprs) + 1]] <- quote(B_corr <- L_corr_between %*% t(L_corr_between))
+       generate_exprs[[length(generate_exprs) + 1]] <- quote(W_corr <- L_corr_within %*% t(L_corr_within))
+     }
+     generate_ast <- as.call(generate_exprs)
+
+     mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
+     class(mdl_code) <- "rtmb_code"
+
+     v_names <- list(mu = var_names, sigma_between = var_names, sigma_within = var_names)
+     v_names$u <- list(group_names, var_names)
+     v_names$ICC <- var_names
+
+     if (multivariate) {
+       v_names$B_corr <- list(var_names, var_names)
+       v_names$W_corr <- list(var_names, var_names)
+     }
+
+     data_list <- list(Y = Y_mat, group_id = group_id, N = N, P = P, J = J)
+     if (use_weak_info) {
+       data_list$mid_y <- mid_y_val
+       data_list$alpha_prior_sd <- half_d_y
+       data_list$sigma_rate_vec <- 1.0 / base_scale
+     }
+
+     init_list <- list(mu = colMeans(Y_mat))
+     init_list$sigma_between <- apply(Y_mat, 2, sd) * 0.5
+     init_list$sigma_within <- apply(Y_mat, 2, sd) * 0.5
+     init_list$u <- matrix(0, J, P)
+
+     view_order <- c("ICC")
+     if (multivariate) view_order <- c(view_order, "B_corr", "W_corr")
+     view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
+
+     mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+     return(mdl)
   } else {
-    param_exprs[[length(param_exprs) + 1]] <- bquote(CF_corr <- Dim(c(.(P), .(P)), type = "CF_corr"))
+     # Simple correlation mode
+     if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
+         is.null(prior$Intercept_sd) && is.null(prior$mu_sd) && is.null(prior$b_sd) &&
+         is.null(prior$sigma_rate)) {
+       prior <- prior_weak()
+     }
+
+     if (!inherits(prior, "rtmb_prior")) {
+       stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
+     }
+
+     prior_type <- prior$type
+     default_prior <- list(Intercept_sd = 10, mu_sd = 10, sigma_rate = 1.0, lkj_eta = 1.0)
+     prior <- .merge_prior(default_prior, prior)
+     if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
+     if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
+
+     setup_exprs <- list(as.name("{"))
+     setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- N)
+     setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- P)
+
+     if (prior_type == "weak") {
+       if (is.null(y_range)) {
+         stop("y_range is required when using prior_weak().")
+       }
+       if (is.list(y_range)) {
+         y_range_mat <- do.call(rbind, y_range)
+       } else if (is.vector(y_range) && length(y_range) == 2) {
+         y_range_mat <- matrix(y_range, P, 2, byrow = TRUE)
+       } else {
+         y_range_mat <- as.matrix(y_range)
+       }
+
+       mid_y_val <- (y_range_mat[, 1] + y_range_mat[, 2]) / 2
+       alpha_prior_sd_val <- (y_range_mat[, 2] - y_range_mat[, 1]) / 2
+       sigma_rate_val <- 1 / (alpha_prior_sd_val * 0.5)
+
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
+     }
+     setup_ast <- as.call(setup_exprs)
+
+     param_exprs <- list(as.name("{"))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(mean <- Dim(.(P)))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(sd   <- Dim(.(P), lower = 0))
+
+     if (P == 2) {
+       param_exprs[[length(param_exprs) + 1]] <- bquote(corr <- Dim(lower = -1, upper = 1))
+     } else {
+       param_exprs[[length(param_exprs) + 1]] <- bquote(CF_corr <- Dim(c(.(P), .(P)), type = "CF_corr"))
+     }
+     param_ast <- as.call(param_exprs)
+
+     model_exprs <- list(as.name("{"))
+     if (prior_type == "weak") {
+       model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
+       model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate_vec))
+     } else {
+       if (!is.null(prior$mu_sd)) {
+         model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior$mu_sd)))
+       }
+       if (!is.null(prior$sigma_rate)) {
+         model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))
+       }
+     }
+
+     if (P == 2) {
+       model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior$lkj_eta)))
+       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- matrix(corr * 0, nrow = 2, ncol = 2))
+       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[1, 1] <- 1)
+       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 1] <- corr)
+       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 2] <- sqrt(1 - corr^2))
+     } else {
+       model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
+     }
+
+     model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
+     model_ast <- as.call(model_exprs)
+
+     generate_exprs <- list(as.name("{"))
+     if (P > 2) {
+       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- CF_corr %*% t(CF_corr))
+     }
+     generate_ast <- as.call(generate_exprs)
+
+     mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
+     class(mdl_code) <- "rtmb_code"
+
+     dat_list <- list(
+       N = N, P = P, Y_bar = colMeans(Y_mat), S_Y = cov(Y_mat) * (N - 1)
+     )
+     if (prior_type == "weak") {
+       dat_list$mid_y <- mid_y_val
+       dat_list$alpha_prior_sd <- alpha_prior_sd_val
+       dat_list$sigma_rate_vec <- sigma_rate_val
+     }
+
+     v_names <- list(mean = var_names, sd = var_names)
+     if (P == 2) {
+       v_names$corr <- "rho"
+     } else {
+       v_names$corr <- list(var_names, var_names)
+     }
+
+     init_list <- if (is.null(init)) {
+       list(mean = colMeans(Y_mat), sd = apply(Y_mat, 2, sd))
+     } else init
+
+     obj <- BayesRTMB::rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, view = "corr")
+
+     if (!is.null(null)) {
+       obj <- obj$null_model(target = null)
+     }
+
+     return(obj)
   }
-  param_ast <- as.call(param_exprs)
-
-  # --- 3. Dynamic AST Construction: model ---
-  model_exprs <- list(as.name("{"))
-
-  # Priors
-  if (prior_type == "weak") {
-    model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
-    model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate_vec))
-  } else {
-    if (!is.null(prior$mu_sd)) {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior$mu_sd)))
-    }
-    if (!is.null(prior$sigma_rate)) {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))
-    }
-  }
-
-  if (P == 2) {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior$lkj_eta)))
-    model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- matrix(corr * 0, nrow = 2, ncol = 2))
-    model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[1, 1] <- 1)
-    model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 1] <- corr)
-    model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 2] <- sqrt(1 - corr^2))
-  } else {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
-  }
-
-  model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
-  model_ast <- as.call(model_exprs)
-
-  # --- 4. Dynamic AST Construction: generate ---
-  generate_exprs <- list(as.name("{"))
-  if (P > 2) {
-    generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- CF_corr %*% t(CF_corr))
-  }
-  generate_ast <- as.call(generate_exprs)
-
-  mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
-  class(mdl_code) <- "rtmb_code"
-
-  dat_list <- list(
-    N = N, P = P, Y_bar = colMeans(Y_mat), S_Y = cov(Y_mat) * (N - 1)
-  )
-  if (prior_type == "weak") {
-    dat_list$mid_y <- mid_y_val
-    dat_list$alpha_prior_sd <- alpha_prior_sd_val
-    dat_list$sigma_rate_vec <- sigma_rate_val
-  }
-
-  v_names <- list(mean = var_names, sd = var_names)
-  if (P == 2) {
-    v_names$corr <- "rho"
-  } else {
-    v_names$corr <- list(var_names, var_names)
-  }
-
-  init_list <- if (is.null(init)) {
-    list(mean = colMeans(Y_mat), sd = apply(Y_mat, 2, sd))
-  } else init
-
-  obj <- BayesRTMB::rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, view = "corr")
-
-  if (!is.null(null)) {
-    obj <- obj$null_model(target = null)
-  }
-
-  return(obj)
 }
 
 #' RTMB-based Bayesian two-sample t-test wrapper function
@@ -2708,212 +3020,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #' @description
 #' This function fits a multilevel correlation model to estimate between-group and within-group
 #' covariance/correlation structures, along with Intraclass Correlation Coefficients (ICC).
-#'
-#' @param formula A formula (e.g., \code{cbind(V1, V2) ~ 1}) or a matrix of response variables.
-#' @param ID A character string or expression specifying the group ID variable.
-#' @param data A data frame.
-#' @param prior Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.
-#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-#' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
-#' @param ... Additional arguments passed to \code{rtmb_model}.
-#' @return A \code{RTMB_Model} object.
-#' @export
-rtmb_ML_corr <- function(formula, ID, data = NULL,
-                         prior = prior_uniform(),
-                         y_range = NULL, ...) {
 
-  if (is.null(prior)) {
-    prior <- prior_uniform()
-  }
-
-  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
-  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
-      is.null(prior$Intercept_sd) && is.null(prior$b_sd) &&
-      is.null(prior$sigma_rate) && is.null(prior$tau_rate)) {
-    prior <- prior_weak()
-  }
-
-  if (!inherits(prior, "rtmb_prior")) {
-    stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
-  }
-
-  # Consolidated default prior settings
-  default_prior_settings <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, lkj_eta = 1.0, sd_ratio = 0.5)
-  prior <- .merge_prior(default_prior_settings, prior)
-
-  # Sync mu_sd and Intercept_sd
-  if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
-  if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
-
-  # NSE for formula/Y
-  formula_expr <- substitute(formula)
-  formula_val <- try(formula, silent = TRUE)
-
-  if (inherits(formula_val, "try-error") ||
-      (!inherits(formula_val, "formula") && !is.matrix(formula_val) && !is.vector(formula_val))) {
-    if (!is.null(data) && all(all.vars(formula_expr) %in% names(data))) {
-      formula <- as.formula(call("~", formula_expr, 1))
-    } else if (!inherits(formula_val, "try-error")) {
-      formula <- formula_val
-    } else {
-      stop(paste0("Object '", deparse(formula_expr), "' not found."))
-    }
-  } else {
-    formula <- formula_val
-  }
-
-  # Parse Y
-  if (inherits(formula, "formula")) {
-    mf_y <- model.frame(formula, data = data)
-    Y_mat <- model.response(mf_y)
-    if (is.null(Y_mat)) Y_mat <- as.matrix(mf_y)
-  } else {
-    Y_mat <- as.matrix(formula)
-  }
-  Y_mat <- as.matrix(Y_mat)
-  N <- nrow(Y_mat)
-  P <- ncol(Y_mat)
-  if (is.null(colnames(Y_mat))) colnames(Y_mat) <- paste0("Y", 1:P)
-
-  # Parse ID
-  id_expr <- substitute(ID)
-  id_val <- if (!is.null(data)) data[[as.character(id_expr)]] else ID
-  if (is.null(id_val)) stop("Group ID not found.")
-
-  group_factor <- as.factor(id_val)
-  group_id <- as.integer(group_factor)
-  group_names <- levels(group_factor)
-  J <- length(group_names)
-
-  prior_type <- prior$type
-  use_weak_info <- prior_type %in% c("weak")
-  multivariate <- P > 1
-
-  # (Consolidated above)
-
-  # --- 1. Setup ---
-  setup_exprs <- list()
-  if (use_weak_info) {
-    if (is.null(y_range)) {
-      stop("Specifying 'y_range' is required when using prior_weak().")
-    }
-
-    # Process y_range into P x 2 matrix
-    if (is.list(y_range)) {
-      if (length(y_range) != P) stop(sprintf("y_range list must have length P = %d.", P))
-      Y_range_mat <- do.call(rbind, lapply(y_range, as.numeric))
-    } else if (is.vector(y_range) && length(y_range) == 2) {
-      Y_range_mat <- matrix(rep(as.numeric(y_range), each = P), P, 2)
-    } else if ((is.matrix(y_range) || is.data.frame(y_range)) && nrow(y_range) == P && ncol(y_range) == 2) {
-      Y_range_mat <- as.matrix(y_range)
-    } else {
-      stop("Invalid format for y_range. Must be c(min, max), or a matrix/list of length P.")
-    }
-
-    half_d_y <- (Y_range_mat[, 2] - Y_range_mat[, 1]) / 2
-    mid_y_val <- (Y_range_mat[, 2] + Y_range_mat[, 1]) / 2
-    base_scale <- half_d_y * prior$sd_ratio
-
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
-  }
-  setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-
-  # --- 2. Parameters ---
-  param_exprs <- list(as.name("{"))
-  param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(.(P)))
-  param_exprs[[length(param_exprs) + 1]] <- bquote(u <- Dim(c(J, .(P)), random = TRUE))
-
-  param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_between <- Dim(.(P), lower = 0))
-  param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_within <- Dim(.(P), lower = 0))
-
-  if (multivariate) {
-    param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr_between <- Dim(c(.(P), .(P)), type = "CF_corr"))
-    param_exprs[[length(param_exprs) + 1]] <- bquote(L_corr_within <- Dim(c(.(P), .(P)), type = "CF_corr"))
-  }
-  param_ast <- as.call(param_exprs)
-
-  # --- 3. Model ---
-  model_exprs <- list(as.name("{"))
-
-  # Correlation priors
-  if (multivariate) {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior$lkj_eta)))
-    model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_within ~ lkj_CF_corr(.(prior$lkj_eta)))
-  }
-
-  # Between-group prior
-  if (multivariate) {
-    model_exprs[[length(model_exprs) + 1]] <- quote(u ~ multi_normal_CF(mean = rep(0, P), sd = sigma_between, CF_Omega = L_corr_between))
-  } else {
-    model_exprs[[length(model_exprs) + 1]] <- quote(u ~ normal(0, sigma_between))
-  }
-
-  # Within-group likelihood
-  model_exprs[[length(model_exprs) + 1]] <- quote(Y_pred <- u[group_id, ] + rep(mu, each = N))
-  if (multivariate) {
-    model_exprs[[length(model_exprs) + 1]] <- quote(Y ~ multi_normal_CF(mean = Y_pred, sd = sigma_within, CF_Omega = L_corr_within))
-  } else {
-    model_exprs[[length(model_exprs) + 1]] <- quote(Y ~ normal(Y_pred, sigma_within))
-  }
-
-  if (prior_type == "weak") {
-    model_exprs[[length(model_exprs) + 1]] <- quote(sigma_between ~ exponential(sigma_rate_vec))
-    model_exprs[[length(model_exprs) + 1]] <- quote(sigma_within ~ exponential(sigma_rate_vec))
-    model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(mid_y, alpha_prior_sd))
-  } else if (prior_type == "uniform") {
-    if (!is.null(prior$sigma_rate)) {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_between ~ exponential(.(prior$sigma_rate)))
-      model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_within ~ exponential(.(prior$sigma_rate)))
-    }
-    if (!is.null(prior$Intercept_sd)) {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior$Intercept_sd)))
-    }
-  }
-  model_ast <- as.call(model_exprs)
-
-  # --- 4. Generate ---
-  generate_exprs <- list(as.name("{"))
-  generate_exprs[[length(generate_exprs) + 1]] <- quote(ICC <- (sigma_between^2) / (sigma_between^2 + sigma_within^2))
-  if (multivariate) {
-    generate_exprs[[length(generate_exprs) + 1]] <- quote(B_corr <- L_corr_between %*% t(L_corr_between))
-    generate_exprs[[length(generate_exprs) + 1]] <- quote(W_corr <- L_corr_within %*% t(L_corr_within))
-  }
-  generate_ast <- as.call(generate_exprs)
-
-  mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
-  class(mdl_code) <- "rtmb_code"
-
-  v_names <- list(mu = colnames(Y_mat), sigma_between = colnames(Y_mat), sigma_within = colnames(Y_mat))
-  v_names$u <- list(group_names, colnames(Y_mat))
-  v_names$ICC <- colnames(Y_mat)
-
-  if (multivariate) {
-    v_names$B_corr <- list(colnames(Y_mat), colnames(Y_mat))
-    v_names$W_corr <- list(colnames(Y_mat), colnames(Y_mat))
-  }
-
-  data_list <- list(Y = Y_mat, group_id = group_id, N = N, P = P, J = J)
-  if (use_weak_info) {
-    data_list$mid_y <- mid_y_val
-    data_list$alpha_prior_sd <- half_d_y
-    data_list$sigma_rate_vec <- 1.0 / base_scale
-  }
-
-  # Initialization
-  init_list <- list(mu = colMeans(Y_mat))
-  init_list$sigma_between <- apply(Y_mat, 2, sd) * 0.5
-  init_list$sigma_within <- apply(Y_mat, 2, sd) * 0.5
-  init_list$u <- matrix(0, J, P)
-
-  view_order <- c("ICC")
-  if (multivariate) view_order <- c(view_order, "B_corr", "W_corr")
-  view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
-
-  mdl <- BayesRTMB::rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
-  return(mdl)
-}
 
 #' RTMB-based Mediation Analysis Wrapper
 #'

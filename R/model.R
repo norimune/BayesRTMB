@@ -177,6 +177,7 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
 #' @param init A list or numeric vector of initial values for parameters (optional). If not specified, initialized randomly.
 #' @param view Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).
 #' @param null_target Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.
+#' @param null_target Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'

@@ -130,9 +130,19 @@ print.summary_BayesRTMB <- function(x, digits = NULL,...) {
   out_char <- as.data.frame(lapply(names(df), function(cn) {
     val <- df[[cn]]
     if (is.numeric(val)) {
-      if (grepl("ess|iter|count", cn, ignore.case = TRUE)) {
-        # ESS and similar metrics are integers (including NA handling)
+      if (grepl("ess|iter|count|df", cn, ignore.case = TRUE)) {
+        # ESS, DF and similar metrics are integers (including NA handling)
         ifelse(is.na(val), "NA", sprintf("%.0f", val))
+      } else if (cn == "t value" || cn == "Pr(>|t|)" || cn == "Pr") {
+        # Specific formatting for classic frequentist results
+        fmt <- "%.3f"
+        res <- ifelse(is.na(val), "NA", sprintf(fmt, val))
+        if (cn == "Pr(>|t|)" || cn == "Pr") {
+          # Omit leading zero for p-values
+          res <- gsub("^0\\.", ".", res)
+          res <- gsub("^-0\\.", "-.", res) # Handle rare case of -0
+        }
+        res
       } else {
         fmt <- paste0("%.", digits, "f")
         ifelse(is.na(val), "NA", sprintf(fmt, val))

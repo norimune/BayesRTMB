@@ -2,7 +2,7 @@
 % Please edit documentation in R/wrapper_functions.R
 \name{rtmb_mediation}
 \alias{rtmb_mediation}
-\title{RTMB-based Mediation Analysis Wrapper}
+\title{Multilevel Correlation Analysis (Kenny's Model)}
 \usage{
 rtmb_mediation(
   formula,
@@ -29,6 +29,10 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 An `RTMB_Model` object.
 }
 \description{
+This function fits a multilevel correlation model to estimate between-group and within-group
+covariance/correlation structures, along with Intraclass Correlation Coefficients (ICC).
+RTMB-based Mediation Analysis Wrapper
+
 `rtmb_mediation` performs mediation analysis by simultaneously estimating multiple
 GLM regression equations. It automatically identifies mediation paths and calculates
 indirect, direct, and total effects.
