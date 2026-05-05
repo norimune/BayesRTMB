@@ -148,15 +148,19 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        classic = FALSE) {
 
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
-  if (!is.null(contrasts)) {
-    if (contrasts == "sum") {
-      old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
-      on.exit(options(old_opts))
-    } else if (contrasts == "treatment") {
-      old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
-      on.exit(options(old_opts))
-    }
-  }
+   # If classic mode, we internally force 'sum' contrasts for stable ANOVA/DFs,
+   # but we store the user's requested contrast for the summary display.
+   actual_contrasts <- if (classic) "sum" else contrasts
+   
+   if (!is.null(actual_contrasts)) {
+     if (actual_contrasts == "sum") {
+       old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
+       on.exit(options(old_opts), add = TRUE)
+     } else if (actual_contrasts == "treatment") {
+       old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
+       on.exit(options(old_opts), add = TRUE)
+     }
+   }
 
   # --- 0. Data Preparation (Factors) ---
   if (!is.null(factors)) {
@@ -862,7 +866,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
-  obj$contrasts <- contrasts
+  # Store preferences
+  obj$contrasts <- actual_contrasts
+  obj$requested_contrasts <- contrasts
 
   if (!is.null(null)) {
     obj <- obj$null_model(pars = null)

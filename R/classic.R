@@ -502,6 +502,66 @@ Classic_Fit <- R6::R6Class(
           df_print <- self$fit
         }
         
+        # --- Internal to Requested Contrast Transformation for Display ---
+        req_ct <- if (!is.null(self$model$obj$requested_contrasts)) self$model$obj$requested_contrasts else "treatment"
+        curr_ct <- if (!is.null(self$model$obj$contrasts)) self$model$obj$contrasts else "sum"
+        
+        if (req_ct != curr_ct) {
+          # Use names for safe identification of fixed effects
+          beta_full <- df_print$Estimate
+          names(beta_full) <- rownames(df_print)
+          V_full <- self$vcov
+          
+          fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", names(beta_full)))
+          if (length(fe_idx) > 0) {
+            beta <- beta_full[fe_idx]
+            V <- V_full[fe_idx, fe_idx]
+            
+            formula <- nobars(self$model$formula)
+            predictor_vars <- all.vars(delete.response(terms(formula)))
+            relevant_data <- self$model$data[, predictor_vars, drop = FALSE]
+            levs <- lapply(relevant_data, function(x) if(is.factor(x)) levels(x) else unique(x))
+            grid <- expand.grid(levs)
+            
+            # X_from (current internal: usually sum)
+            old_opts <- options(contrasts = if (curr_ct == "sum") c("contr.sum", "contr.poly") else c("contr.treatment", "contr.poly"))
+            X_from <- model.matrix(delete.response(terms(formula)), grid)
+            options(old_opts)
+            
+            # X_to (requested: usually treatment)
+            old_opts <- options(contrasts = if (req_ct == "treatment") c("contr.treatment", "contr.poly") else c("contr.sum", "contr.poly"))
+            X_to <- model.matrix(delete.response(terms(formula)), grid)
+            options(old_opts)
+            
+            if (ncol(X_from) == length(beta)) {
+              M <- qr.solve(X_to, X_from)
+              beta_new <- as.numeric(M %*% beta)
+              V_new <- M %*% V %*% t(M)
+              se_new <- sqrt(diag(V_new))
+              
+              # Update df_print with new values for fixed effects
+              df_print$Estimate[fe_idx] <- beta_new
+              df_print$`Std. Error`[fe_idx] <- se_new
+              df_print$`t value`[fe_idx] <- beta_new / se_new
+              if (!is.null(df_print$Pr)) {
+                df_print$Pr[fe_idx] <- 2 * pt(-abs(df_print$`t value`[fe_idx]), df = df_print$df[fe_idx])
+              }
+              if ("Lower 95%" %in% names(df_print)) {
+                df_print$`Lower 95%`[fe_idx] <- beta_new - 1.96 * se_new
+                df_print$`Upper 95%`[fe_idx] <- beta_new + 1.96 * se_new
+              }
+              # Update Row Names to match requested contrast coding
+              new_names <- colnames(X_to)
+              new_names[new_names == "(Intercept)"] <- "Intercept"
+              # Wrap other fixed effects in b[...]
+              is_fe <- new_names != "Intercept"
+              new_names[is_fe] <- paste0("b[", new_names[is_fe], "]")
+              
+              rownames(df_print)[fe_idx] <- new_names
+            }
+          }
+        }
+        
         # 1. Round main numeric columns
         cols_to_round <- setdiff(names(df_print), c("Pr", "df"))
         for (col in cols_to_round) {
