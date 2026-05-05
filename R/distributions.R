@@ -555,7 +555,11 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
   eps_mat <- diag(diag(Sigma) * 1e-6 + 1e-11, K)
   safe_Sigma <- Sigma + eps_mat
 
-  U <- chol(safe_Sigma)
+  U <- tryCatch(chol(safe_Sigma), error = function(e) NULL)
+  if (is.null(U)) {
+    # If Cholesky fails (non-PD matrix), return a large penalty instead of crashing
+    return(if (sum) -1e10 else rep(-1e10, length(x)))
+  }
   log_det <- log_det_chol(U)
   L <- t(U)
   const <- -0.5 * (K * log(2 * pi) + log_det)

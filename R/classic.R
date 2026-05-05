@@ -145,12 +145,19 @@ Classic_Model <- R6::R6Class(
           return(self$data[idx, , drop = FALSE])
         }
         
-        grp_var <- as.character(bars[[1]][[3]])
+        # Cluster bootstrap: sample by the highest level cluster
+        # (the one with the fewest groups)
+        num_groups <- sapply(bars, function(b) length(unique(self$data[[as.character(b[[3]])]])))
+        best_bar_idx <- which.min(num_groups)
+        
+        grp_var <- as.character(bars[[best_bar_idx]][[3]])
         clusters <- unique(self$data[[grp_var]])
         resampled_clusters <- sample(clusters, length(clusters), replace = TRUE)
         
+        # Fast resampling using split and lapply
+        split_data <- split(self$data, self$data[[grp_var]])
         resampled_list <- lapply(resampled_clusters, function(c) {
-          self$data[self$data[[grp_var]] == c, , drop = FALSE]
+          split_data[[as.character(c)]]
         })
         return(do.call(rbind, resampled_list))
       } else {
@@ -553,7 +560,8 @@ Classic_Fit <- R6::R6Class(
             options(old_opts)
             
             if (ncol(X_from) == length(beta)) {
-              M <- qr.solve(X_to, X_from)
+              # Use MASS::ginv for robust transformation even with rank-deficient models
+              M <- MASS::ginv(X_to) %*% X_from
               beta_new <- as.numeric(M %*% beta)
               V_new <- M %*% V %*% t(M)
               se_new <- sqrt(diag(V_new))
@@ -712,10 +720,9 @@ Classic_Fit <- R6::R6Class(
         X_sum <- model.matrix(delete.response(terms(formula)), grid)
         options(old_opts)
         
-        # 3. Calculate transformation matrix M
+        # 3. Calculate transformation matrix M using ginv for robustness
         if (ncol(X_curr) == length(beta)) {
-          # Use qr.solve for robustness
-          M <- qr.solve(X_sum, X_curr)
+          M <- MASS::ginv(X_sum) %*% X_curr
           beta <- as.numeric(M %*% beta)
           names(beta) <- colnames(X_sum) 
           V <- M %*% V %*% t(M)
@@ -849,7 +856,28 @@ Classic_Fit <- R6::R6Class(
       }
       
       # Use raw model matrix columns to ensure exact parameter matching
-      X_grid <- model.matrix(orig_terms, ref_grid, contrasts.arg = ct_list)
+      X_grid_raw <- model.matrix(orig_terms, ref_grid, contrasts.arg = ct_list)
+      
+      # Match columns with the original model (handling dropped coefficients)
+      orig_cols <- self$model$extra$X_colnames
+      if (!is.null(orig_cols)) {
+        # Intercept handling
+        grid_cols <- colnames(X_grid_raw)
+        grid_cols[grid_cols == "(Intercept)"] <- "Intercept" # Internal consistency
+        
+        col_idx <- match(orig_cols, colnames(X_grid_raw))
+        # Handle cases where "(Intercept)" vs "Intercept" naming differs
+        if (any(is.na(col_idx)) && "Intercept" %in% orig_cols) {
+           col_idx[orig_cols == "Intercept"] <- which(colnames(X_grid_raw) == "(Intercept)")
+        }
+        
+        if (any(is.na(col_idx))) {
+           stop("Could not match lsmeans grid columns with original model parameters.")
+        }
+        X_grid <- X_grid_raw[, col_idx, drop = FALSE]
+      } else {
+        X_grid <- X_grid_raw
+      }
       
       # Positional matching is more robust than name matching for RTMB fixed effects
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)

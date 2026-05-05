@@ -153,6 +153,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        resid_group = NULL) {
 
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
+   if (classic && !family %in% c("gaussian", "lognormal", "student_t")) {
+     stop("classic = TRUE is only supported for 'gaussian', 'lognormal', and 'student_t' families.")
+   }
+
    # If classic mode, we internally force 'sum' contrasts for stable ANOVA/DFs,
    # but we store the user's requested contrast for the summary display.
    actual_contrasts <- if (classic) "sum" else contrasts
@@ -253,8 +257,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   sigma_group_names <- "sigma"
   if (!is.null(sigma_by)) {
     if (!family %in% c("gaussian", "lognormal", "student_t")) {
-      warning("'sigma_by' is currently only supported for continuous families (gaussian, lognormal, student_t). Ignoring.")
-      sigma_by <- NULL
+      stop("'sigma_by' is only supported for continuous families (gaussian, lognormal, student_t).")
     } else {
       # Identify categorical factors in sigma_by
       if (identical(sigma_by, "all")) {
@@ -278,6 +281,18 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         num_sigma_groups <- nlevels(sigma_factor)
         sigma_group_names <- levels(sigma_factor)
       }
+    }
+  }
+
+  # --- 0.2 Default Initial Values ---
+  if (is.null(init)) {
+    init <- list()
+  }
+  if (is.list(init)) {
+    # Set safe default for residual correlation (e.g. CS, AR1) if not specified by user.
+    # This avoids non-positive definite matrices during the initial check.
+    if (!is.null(resid_cor) && !("rho_resid" %in% names(init)) && resid_cor %in% c("ar1", "cs", "toep")) {
+      init$rho_resid <- 0.1
     }
   }
 
@@ -429,6 +444,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   has_intercept <- "(Intercept)" %in% colnames(X)
   if (family == "ordered") has_intercept <- FALSE
+  fixed_colnames <- colnames(X)
   if ("(Intercept)" %in% colnames(X)) {
     X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
   }
@@ -1008,7 +1024,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
     return(Classic_Model$new(type = mod_type, formula = formula, data = data, family = family, 
                              view = if (!is.null(view)) view else view_vars, obj = obj, refit_fn = refit_fn,
-                             extra = list(X_assign = X_assign, X_terms = X_terms)))
+                             extra = list(X_assign = X_assign, X_terms = X_terms, X_colnames = fixed_colnames)))
   }
 
   return(obj)

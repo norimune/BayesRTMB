@@ -326,9 +326,13 @@ RTMB_Model <- R6::R6Class(
         idx_fixed <- ad_obj$env$lfixed()
         p_full[idx_fixed] <- theta
         
-        H <- ad_obj$env$spHess(p_full, random = TRUE)
+        H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), error = function(e) NULL)
+        if (is.null(H)) return(rep(Inf, length(beta_idx)))
+        
         # Convert to dense matrix for solve to ensure diagonal extraction works reliably
-        V_full <- solve(as.matrix(H))
+        V_full <- tryCatch(solve(as.matrix(H)), error = function(e) NULL)
+        if (is.null(V_full)) return(rep(Inf, length(beta_idx)))
+        
         diag(V_full)[beta_idx]
       }
       
