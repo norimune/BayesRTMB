@@ -12,7 +12,10 @@ rtmb_glm(
   y_range = NULL,
   init = NULL,
   null = NULL,
-  gmc = NULL
+  gmc = NULL,
+  factors = NULL,
+  contrasts = "treatment",
+  classic = FALSE
 )
 }
 \arguments{

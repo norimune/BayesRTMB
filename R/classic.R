@@ -56,7 +56,7 @@ Classic_Model <- R6::R6Class(
       fit_res <- self$.perform_fit(self$data)
       
       if (!bootstrap) {
-        return(Classic_Fit$new(self, fit_res))
+        return(Classic_Fit$new(self, fit_res$df_combined, vcov = fit_res$V_beta))
       }
 
       # 2. Perform Bootstrap
@@ -129,7 +129,7 @@ Classic_Model <- R6::R6Class(
         res_df$Pr[1:n_rows] <- 2 * pt(-abs(res_df$`t value`[1:n_rows]), df = res_df$df[1:n_rows])
       }
       
-      res <- Classic_Fit$new(self, res_df)
+      res <- Classic_Fit$new(self, res_df, vcov = fit_res$V_beta)
       res$bootstrap_results <- boot_mat
       return(res)
     },
@@ -163,22 +163,46 @@ Classic_Model <- R6::R6Class(
     #' @param data The data to fit.
     .perform_fit = function(data) {
       if (self$type == "lm") {
-        return(stats::lm(self$formula, data = data))
+        fit <- stats::lm(self$formula, data = data)
+        return(list(df_combined = fit, V_beta = vcov(fit)))
       } else if (self$type %in% c("lmer", "lmm", "glmm")) {
         obj <- self$obj
         
         fe_params <- c()
-        if ("Intercept" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept")
-        if ("b" %in% names(obj$par_list)) fe_params <- c(fe_params, "b")
+        fixed_names <- c()
+        if ("Intercept" %in% names(obj$par_list)) {
+           fe_params <- c(fe_params, "Intercept")
+           fixed_names <- c(fixed_names, "Intercept")
+        }
+        if ("b" %in% names(obj$par_list)) {
+           fe_params <- c(fe_params, "b")
+           b_names <- if (!is.null(obj$par_names$b)) obj$par_names$b else paste0("b[", 1:obj$par_list$b$length, "]")
+           fixed_names <- c(fixed_names, b_names)
+        }
+        K <- length(fixed_names)
 
         ad_setup <- obj$build_ad_obj(laplace = TRUE, jacobian_target = "none")
         ad_obj <- ad_setup$ad_obj
         opt <- nlminb(ad_obj$par, ad_obj$fn, ad_obj$gr)
         
-        sd_rep <- RTMB::sdreport(ad_obj)
+        # Use sdreport with joint precision to get covariance of random-treated fixed effects
+        sd_rep <- RTMB::sdreport(ad_obj, getJointPrecision = TRUE)
+        
+        # Get the full joint covariance if precision is available
+        V_joint <- if (!is.null(sd_rep$jointPrecision)) {
+          solve(sd_rep$jointPrecision)
+        } else {
+          sd_rep$cov.fixed # Fallback (should not happen for classic=TRUE)
+        }
+        
         smry_ran <- summary(sd_rep, select = "random")
         ran_names <- rownames(smry_ran)
         fe_idx_in_ran <- which(gsub("\\[.*\\]$", "", ran_names) %in% fe_params)
+        
+        # The joint covariance includes all random effects. 
+        # Fixed effects treated as random are in fe_idx_in_ran.
+        V_beta <- V_joint[fe_idx_in_ran, fe_idx_in_ran, drop = FALSE]
+        colnames(V_beta) <- rownames(V_beta) <- fixed_names
         
         reml_res <- obj$calculate_reml_satterthwaite_df(ad_obj, opt$par, fe_idx_in_ran)
         
@@ -221,12 +245,24 @@ Classic_Model <- R6::R6Class(
         smry_fix <- summary(sd_rep, select = "fixed")
         
         # 1. sigma
-        sig_idx <- grepl("^sigma[0-9]*$", rownames(smry_fix))
-        if (any(sig_idx)) {
+        sig_idx <- which(rownames(smry_fix) == "sigma")
+        if (length(sig_idx) > 0) {
            sig_smry <- smry_fix[sig_idx, , drop = FALSE]
+           new_sig_names <- rep("sigma", length(sig_idx))
+           if (!is.null(obj$par_names$sigma)) {
+              for (j in seq_along(new_sig_names)) {
+                if (j <= length(obj$par_names$sigma)) {
+                   new_sig_names[j] <- paste0("sigma[", obj$par_names$sigma[j], "]")
+                }
+              }
+           }
+           if (length(new_sig_names) > 1 && any(duplicated(new_sig_names))) {
+             new_sig_names <- make.unique(new_sig_names)
+           }
+           
            df_combined <- rbind(df_combined, data.frame(
              Estimate = exp(sig_smry[, "Estimate"]),
-             `Std. Error` = NA, df = NA, row.names = rownames(sig_smry), check.names = FALSE
+             `Std. Error` = NA, df = NA, row.names = new_sig_names, check.names = FALSE
            ))
         }
         
@@ -268,7 +304,7 @@ Classic_Model <- R6::R6Class(
         df_combined$`Lower 95%` <- df_combined$Estimate + qt(0.025, df = df_combined$df) * df_combined$`Std. Error`
         df_combined$`Upper 95%` <- df_combined$Estimate + qt(0.975, df = df_combined$df) * df_combined$`Std. Error`
         
-        return(df_combined)
+        return(list(df_combined = df_combined, V_beta = V_beta))
         
       } else if (self$type == "corr") {
         P_y <- if (!is.null(self$extra$P_y)) self$extra$P_y else ncol(data)
@@ -417,6 +453,7 @@ Classic_Model <- R6::R6Class(
 #' @field model The `Classic_Model` object used for estimation.
 #' @field fit The result of the estimation (dataframe or lm object).
 #' @field par A named list of parameter estimates.
+#' @field vcov Variance-covariance matrix of fixed effects.
 #' @field bootstrap_results A matrix containing bootstrap samples, if applicable.
 #'
 #' @export
@@ -426,14 +463,17 @@ Classic_Fit <- R6::R6Class(
     model = NULL,
     fit = NULL,
     par = NULL,
+    vcov = NULL,
     bootstrap_results = NULL,
 
     #' @description Create a new `Classic_Fit` object.
     #' @param model The `Classic_Model` object.
     #' @param fit The result of the estimation.
-    initialize = function(model, fit) {
+    #' @param vcov Variance-covariance matrix of fixed effects.
+    initialize = function(model, fit, vcov = NULL) {
       self$model <- model
       self$fit <- fit
+      self$vcov <- vcov
       self$par <- self$.construct_par_list(fit)
     },
 
@@ -522,6 +562,263 @@ Classic_Fit <- R6::R6Class(
       } else {
         print(self$fit)
       }
+    },
+
+    #' @description Perform ANOVA (Wald F-tests) on the fitted model.
+    #' @param method Character; "reml" (standard) or "ls" (experimental).
+    #' @param type Integer; Type of Sum of Squares (only Type III supported currently).
+    #' @return A data frame containing the ANOVA table.
+    anova = function(method = c("reml", "ls"), type = 3) {
+      # Ensure consistent contrasts for term matching if needed
+      old_opts <- NULL
+      if (!is.null(self$model$contrasts)) {
+        if (self$model$contrasts == "sum") {
+          old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
+        } else if (self$model$contrasts == "treatment") {
+          old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
+        }
+      }
+      if (!is.null(old_opts)) on.exit(options(old_opts), add = TRUE)
+
+      method <- match.arg(method)
+      if (is.null(self$model$extra$X_assign)) stop("ANOVA requires term assignments (X_assign).")
+      if (is.null(self$vcov)) stop("ANOVA requires the parameter covariance matrix (vcov).")
+
+      V_full <- self$vcov
+      # self$fit is the data frame from summary(sdreport)
+      beta_full <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
+      names(beta_full) <- rownames(self$fit)
+      
+      assign_idx <- self$model$extra$X_assign
+      
+      # Match fixed effects by name pattern to be robust
+      fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", names(beta_full)))
+      if (length(fe_idx) == 0) stop("Could not identify fixed effects for ANOVA.")
+      
+      beta <- beta_full[fe_idx]
+      V <- V_full[fe_idx, fe_idx]
+      
+      # full_assign for fixed effects (Intercept=0, others 1..T)
+      full_assign <- c(0, assign_idx)
+      
+      # --- Automatic Contrast Transformation to 'sum' ---
+      # Type III ANOVA requires orthogonal (sum) contrasts for meaningful main effects.
+      ct_setting <- if (!is.null(self$model$obj$contrasts)) self$model$obj$contrasts else "sum"
+      if (ct_setting != "sum") {
+        formula <- nobars(self$model$formula)
+        # Use a minimal grid of unique PREDICTOR combinations for perfect M calculation
+        predictor_vars <- all.vars(delete.response(terms(formula)))
+        relevant_data <- self$model$data[, predictor_vars, drop = FALSE]
+        levs <- lapply(relevant_data, function(x) if(is.factor(x)) levels(x) else unique(x))
+        grid <- expand.grid(levs)
+        
+        # 1. X with current contrasts
+        old_opts <- options(contrasts = if (ct_setting == "treatment") 
+                            c("contr.treatment", "contr.poly") else options()$contrasts)
+        X_curr <- model.matrix(delete.response(terms(formula)), grid)
+        options(old_opts)
+        
+        # 2. X with sum contrasts
+        old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
+        X_sum <- model.matrix(delete.response(terms(formula)), grid)
+        options(old_opts)
+        
+        # 3. Calculate transformation matrix M
+        if (ncol(X_curr) == length(beta)) {
+          # Use qr.solve for robustness
+          M <- qr.solve(X_sum, X_curr)
+          beta <- as.numeric(M %*% beta)
+          names(beta) <- colnames(X_sum) 
+          V <- M %*% V %*% t(M)
+        }
+      }
+
+      terms <- self$model$extra$X_terms
+      res_list <- list()
+      
+      # Mapping coefficients to terms
+      has_int <- any(grepl("^Intercept", names(beta))) || any(full_assign == 0)
+      
+      # Handle Intercept separately or include in terms
+      # Users typically don't want Intercept in ANOVA table for mixed models
+      all_assign <- if (has_int) seq_along(terms) else seq_along(terms)
+      all_term_names <- terms
+
+      for (i in seq_along(all_assign)) {
+        a_id <- all_assign[i]
+        t_name <- all_term_names[i]
+        
+        # Find indices in beta/V corresponding to this term
+        # assign_idx matches the order in model.matrix (which includes intercept as 0)
+        idx <- which(assign_idx == a_id)
+        if (length(idx) == 0) next
+        
+        L <- matrix(0, nrow = length(idx), ncol = length(beta))
+        for (j in seq_along(idx)) L[j, idx[j]] <- 1
+        
+        # Wald statistic: F = (L*beta)' * inv(L*V*L') * (L*beta) / rank(L)
+        LVL <- L %*% V %*% t(L)
+        inv_LVL <- try(solve(LVL), silent = TRUE)
+        if (inherits(inv_LVL, "try-error")) inv_LVL <- MASS::ginv(LVL)
+        
+        W <- as.numeric(t(L %*% beta) %*% inv_LVL %*% (L %*% beta))
+        df1 <- length(idx)
+        f_val <- W / df1
+        
+        # Denominator DF (Satterthwaite)
+        # We take the average of the DFs for the involved parameters as an approximation
+        # or use the first one if they are all from the same level.
+        if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
+           df2 <- min(self$fit$df[idx], na.rm = TRUE)
+        } else if (inherits(self$fit, "lm")) {
+           df2 <- self$fit$df.residual
+        } else {
+           df2 <- Inf
+        }
+        
+        p_val <- pf(f_val, df1, df2, lower.tail = FALSE)
+        
+        res_list[[t_name]] <- data.frame(
+          `NumDF` = df1,
+          `DenDF` = df2,
+          `F value` = f_val,
+          `Pr(>F)` = p_val,
+          row.names = t_name,
+          check.names = FALSE
+        )
+      }
+      
+      res_df <- do.call(rbind, res_list)
+      
+      # Add significance symbols
+      sig <- symnum(res_df$`Pr(>F)`, corr = FALSE, na = FALSE,
+                    cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
+                    symbols = c("***", "**", "*", ".", " "))
+      res_df$signif <- as.character(sig)
+
+      # Formatting for printing
+      class(res_df) <- c("anova", "data.frame")
+      attr(res_df, "heading") <- "ANOVA Table (Wald F-tests)"
+      return(res_df)
+    },
+
+    #' @description Calculate Least Squares Means (Marginal Means).
+    #' @param specs Character vector of factors to calculate means for.
+    #' @return A data frame containing the marginal means, SEs, and CIs.
+    lsmeans = function(specs) {
+      # Ensure consistent contrasts for reference grid construction
+      old_opts <- NULL
+      if (!is.null(self$model$contrasts)) {
+        if (self$model$contrasts == "sum") {
+          old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
+        } else if (self$model$contrasts == "treatment") {
+          old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
+        }
+      }
+      if (!is.null(old_opts)) on.exit(options(old_opts), add = TRUE)
+
+      if (is.null(self$model$data)) stop("lsmeans requires the original data.")
+      data <- self$model$data
+      formula <- self$model$formula
+      beta <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
+      V <- self$vcov
+      
+      # 1. Identify all factors in the model
+      vars <- all.vars(nobars(formula))[-1]
+      is_cat <- sapply(data[vars], function(x) is.factor(x) || is.character(x))
+      cat_vars <- vars[is_cat]
+      
+      if (!all(specs %in% cat_vars)) stop("specs must be categorical factors in the model.")
+      
+      # 2. Create a reference grid for all categorical factors
+      grid_list <- lapply(data[cat_vars], function(x) levels(as.factor(x)))
+      ref_grid <- expand.grid(grid_list)
+      
+      # 3. Handle continuous covariates by setting them to their mean
+      cont_vars <- vars[!is_cat]
+      for (v in cont_vars) {
+        ref_grid[[v]] <- mean(data[[v]], na.rm = TRUE)
+      }
+      
+      # 4. Generate model matrix for the reference grid
+      # We need to use the same terms and contrast settings as the original fit
+      mf_orig <- model.frame(nobars(formula), data)
+      orig_terms <- delete.response(terms(mf_orig))
+      
+      # Explicitly construct contrasts list based on model preference
+      ct_setting <- if (!is.null(self$model$obj$contrasts)) self$model$obj$contrasts else "sum"
+      ct_list <- list()
+      # Only apply to factors present in the variables
+      for (v in cat_vars) {
+        if (ct_setting == "treatment") {
+          ct_list[[v]] <- "contr.treatment"
+        } else {
+          ct_list[[v]] <- "contr.sum"
+        }
+      }
+      
+      # Use raw model matrix columns to ensure exact parameter matching
+      X_grid <- model.matrix(orig_terms, ref_grid, contrasts.arg = ct_list)
+      
+      # Positional matching is more robust than name matching for RTMB fixed effects
+      beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
+      fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
+      
+      # Prediction matrix X_grid must match the order and count of beta_match
+      beta_match <- beta_vals[fe_idx]
+      V_match <- self$vcov[fe_idx, fe_idx]
+      
+      if (ncol(X_grid) != length(beta_match)) {
+         stop("Dimension mismatch in lsmeans: X_grid columns (", ncol(X_grid), 
+              ") do not match fixed effects (", length(beta_match), ").")
+      }
+      # Target factors are in 'specs'
+      groups <- interaction(ref_grid[specs], drop = TRUE, sep = ":")
+      unique_groups <- levels(groups)
+      
+      res_list <- list()
+      for (grp in unique_groups) {
+        idx <- which(groups == grp)
+        # Average the rows of X_grid for this group
+        L <- colMeans(X_grid[idx, , drop = FALSE])
+        
+        est <- as.numeric(L %*% beta_match)
+        se <- sqrt(as.numeric(t(L) %*% V_match %*% L))
+        
+        # DF (approximate)
+        # Try to find a representative DF for the specified factors
+        df_val <- Inf
+        if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
+          # Look for fixed effect terms (b[...]) that match any of the specs
+          match_pattern <- paste0("^b\\[(", paste(specs, collapse="|"), ")")
+          match_idx <- grepl(match_pattern, rownames(self$fit))
+          if (any(match_idx)) {
+            # Use the minimum DF among relevant terms (conservative)
+            df_val <- min(self$fit$df[match_idx], na.rm = TRUE)
+          } else {
+            # Fallback to Intercept DF or mean
+            if ("Intercept" %in% rownames(self$fit)) {
+              df_val <- self$fit["Intercept", "df"]
+            } else {
+              df_val <- mean(self$fit$df, na.rm = TRUE)
+            }
+          }
+        } else if (inherits(self$fit, "lm")) {
+          df_val <- self$fit$df.residual
+        }
+        
+        res_list[[grp]] <- data.frame(
+          lsmean = est,
+          `Std. Error` = se,
+          df = df_val,
+          `Lower 95%` = est + qt(0.025, df_val) * se,
+          `Upper 95%` = est + qt(0.975, df_val) * se,
+          row.names = grp,
+          check.names = FALSE
+        )
+      }
+      
+      return(do.call(rbind, res_list))
     },
 
     #' @description Print the fit results.

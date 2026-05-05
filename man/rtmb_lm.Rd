@@ -12,6 +12,8 @@ rtmb_lm(
   init = NULL,
   null = NULL,
   gmc = NULL,
+  factors = NULL,
+  contrasts = "treatment",
   classic = FALSE
 )
 }
@@ -29,6 +31,8 @@ rtmb_lm(
 \item{null}{Character string specifying the target parameter for the null model.}
 
 \item{gmc}{Character vector of variable names for GMC}
+
+\item{factors}{Character vector of variable names to be treated as factors.}
 
 \item{classic}{Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.}
 }

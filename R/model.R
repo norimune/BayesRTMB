@@ -289,7 +289,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   # --- 2. Static validation and evaluation of Parameters block ---
   param_exprs <- as.list(code$parameters)[-1]
   evaluated_par_list <- list()
-  eval_env <- list2env(data, parent = parent.env(globalenv()))
+  eval_env <- list2env(data, parent = parent.frame())
 
   for (e in param_exprs) {
     if (is.null(e)) next

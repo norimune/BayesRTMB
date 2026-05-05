@@ -133,6 +133,7 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param classic Logical; if TRUE, use classical (frequentist) estimation.
+#' @param factors Character vector of variable names to be treated as factors.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
@@ -141,7 +142,31 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        init = NULL, null = NULL,
                        gmc = NULL, cwc = NULL,
                        view = NULL,
+                       sigma_by = NULL,
+                       factors = NULL,
+                       contrasts = "treatment",
                        classic = FALSE) {
+
+  # --- 0. Contrast Management (Automatic sum-to-zero) ---
+  if (!is.null(contrasts)) {
+    if (contrasts == "sum") {
+      old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
+      on.exit(options(old_opts))
+    } else if (contrasts == "treatment") {
+      old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
+      on.exit(options(old_opts))
+    }
+  }
+
+  # --- 0. Data Preparation (Factors) ---
+  if (!is.null(factors)) {
+    data <- as.data.frame(data)
+    for (f in factors) {
+      if (f %in% names(data)) {
+        data[[f]] <- as.factor(data[[f]])
+      }
+    }
+  }
 
   # --- 0. Data Centering (GMC / CWC) ---
   if (!is.null(gmc) || !is.null(cwc)) {
@@ -213,6 +238,40 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     data <- data_centered
   }
 
+  # --- 0.1 Handle sigma_by (Heteroscedasticity) ---
+  sigma_idx <- NULL
+  num_sigma_groups <- 1
+  sigma_group_names <- "sigma"
+  if (!is.null(sigma_by)) {
+    if (!family %in% c("gaussian", "lognormal", "student_t")) {
+      warning("'sigma_by' is currently only supported for continuous families (gaussian, lognormal, student_t). Ignoring.")
+      sigma_by <- NULL
+    } else {
+      # Identify categorical factors in sigma_by
+      if (identical(sigma_by, "all")) {
+        # Extract all variables in fixed part of formula and check if they are factors
+        vars_in_form <- all.vars(nobars(formula))
+        # Exclude response (the first variable in all.vars is the response)
+        vars_in_form <- vars_in_form[-1]
+        is_cat <- sapply(data[vars_in_form], function(x) is.factor(x) || is.character(x))
+        target_vars <- vars_in_form[is_cat]
+      } else {
+        target_vars <- sigma_by
+      }
+
+      if (length(target_vars) > 0) {
+        sigma_factor <- if (length(target_vars) > 1) {
+          interaction(data[target_vars], drop = TRUE, sep = ":")
+        } else {
+          as.factor(data[[target_vars]])
+        }
+        sigma_idx <- as.integer(sigma_factor)
+        num_sigma_groups <- nlevels(sigma_factor)
+        sigma_group_names <- levels(sigma_factor)
+      }
+    }
+  }
+
   if (is.null(prior)) {
     prior <- prior_uniform()
   }
@@ -278,6 +337,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     mf <- model.frame(all_vars_form, data = data)
     Y <- model.response(mf)
     X <- model.matrix(fixed_form, mf)
+    X_assign <- attr(X, "assign")
+    X_terms <- attr(terms(fixed_form), "term.labels")
     offset <- model.offset(mf)
     N <- nrow(mf)
 
@@ -335,6 +396,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     mf <- model.frame(formula, data)
     Y <- model.response(mf)
     X <- model.matrix(formula, mf)
+    X_assign <- attr(X, "assign")
+    X_terms <- attr(terms(formula), "term.labels")
     offset <- model.offset(mf)
     num_bars <- 0
     dat_ranef <- list()
@@ -441,9 +504,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }, error = function(e) init <- NULL)
   }
 
-  dat <- list(Y = Y, trials = trials, X = X)
+  dat <- list(Y = Y, trials = trials, X = X, 
+              sigma_idx = sigma_idx, num_sigma_groups = num_sigma_groups)
   if (has_random) {
     dat <- c(dat, dat_ranef)
+  }
+  if (!is.null(sigma_idx)) {
+    dat$sigma_idx <- sigma_idx
+    dat$num_sigma_groups <- num_sigma_groups
   }
   if (!is.null(offset)) dat$offset <- offset
   if (family == "ordered") dat$num_categories <- length(unique(Y))
@@ -519,6 +587,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   tmp_env <- list2env(dat)
   eval(setup_ast, tmp_env)
   N <- tmp_env$N; K <- tmp_env$K
+  num_sigma_groups <- if (!is.null(tmp_env$num_sigma_groups)) tmp_env$num_sigma_groups else 1
 
   # --- Parameters AST ---
   param_exprs <- list()
@@ -565,7 +634,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   }
 
-  if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(1, lower = 0))
+  if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(num_sigma_groups, lower = 0))
   if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
   if (family == "gamma") param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
   if (family == "neg_binomial") param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
@@ -634,9 +703,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   ll_data_exprs <- list()
   ll_data_exprs[[1]] <- switch(family,
-                               "gaussian" = quote(Y ~ normal(eta, sigma)),
-                               "lognormal" = quote(Y ~ lognormal(eta, sigma)),
-                               "student_t" = quote(Y ~ student_t(nu, eta, sigma)),
+                               "gaussian" = if (!is.null(sigma_idx)) quote(Y ~ normal(eta, sigma[sigma_idx])) else quote(Y ~ normal(eta, sigma)),
+                               "lognormal" = if (!is.null(sigma_idx)) quote(Y ~ lognormal(eta, sigma[sigma_idx])) else quote(Y ~ lognormal(eta, sigma)),
+                               "student_t" = if (!is.null(sigma_idx)) quote(Y ~ student_t(nu, eta, sigma[sigma_idx])) else quote(Y ~ student_t(nu, eta, sigma)),
                                "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
                                "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
                                "binomial" = quote(Y ~ binomial_logit(trials, eta)),
@@ -754,6 +823,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   code_obj$model <- model_ast
 
   par_names_list <- list()
+  if (num_sigma_groups > 1) {
+    par_names_list$sigma <- sigma_group_names
+  }
   if (K > 0) {
     par_names_list$b <- fixed_names
     if (regularization == "rhs") {
@@ -790,6 +862,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
+  obj$contrasts <- contrasts
 
   if (!is.null(null)) {
     obj <- obj$null_model(pars = null)
@@ -814,10 +887,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       rtmb_glmer(formula = formula, data = new_data, family = family,
                  laplace = laplace, prior = prior, y_range = y_range,
                  init = init, null = null, gmc = gmc, cwc = cwc,
-                 view = view, classic = TRUE)$estimate()
+                 view = view, sigma_by = sigma_by, classic = TRUE)$estimate()
     }
     return(Classic_Model$new(type = mod_type, formula = formula, data = data, family = family, 
-                             view = if (!is.null(view)) view else view_vars, obj = obj, refit_fn = refit_fn))
+                             view = if (!is.null(view)) view else view_vars, obj = obj, refit_fn = refit_fn,
+                             extra = list(X_assign = X_assign, X_terms = X_terms)))
   }
 
   return(obj)
@@ -835,17 +909,21 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param gmc Character vector of variable names for GMC
 #' @param cwc List for CWC
 #' @param view Character vector of parameter names to prioritize in summary.
+#' @param factors Character vector of variable names to be treated as factors.
 #' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
 rtmb_lmer <- function(formula, data, laplace = TRUE,
-                      prior = prior_uniform(),
-                      y_range = NULL,
-                      init = NULL, null = NULL,
-                      gmc = NULL, cwc = NULL,
-                      view = NULL,
-                      classic = FALSE) {
+                       prior = prior_uniform(),
+                       y_range = NULL,
+                       init = NULL, null = NULL,
+                       gmc = NULL, cwc = NULL,
+                       view = NULL,
+                       sigma_by = NULL,
+                       factors = NULL,
+                       contrasts = "treatment",
+                       classic = FALSE) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
@@ -854,6 +932,9 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              null = null,
              gmc = gmc, cwc = cwc,
              view = view,
+             sigma_by = sigma_by,
+             factors = factors,
+             contrasts = contrasts,
              classic = classic)
 }
 
@@ -870,21 +951,23 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
-                     prior = prior_uniform(),
-                     y_range = NULL,
-                     init = NULL, null = NULL,
-                     gmc = NULL) {
-  rtmb_glmer(
-    formula = formula,
-    data = data,
-    family = family,
-    laplace = FALSE,
-    prior = prior,
-    y_range = y_range,
-    init = init,
-    null = null,
-    gmc = gmc
-  )
+                       prior = prior_uniform(),
+                       y_range = NULL,
+                       init = NULL, null = NULL,
+                       gmc = NULL,
+                       factors = NULL,
+                       contrasts = "treatment",
+                       classic = FALSE) {
+  rtmb_glmer(formula = formula, data = data, family = family,
+             laplace = FALSE,
+             prior = prior,
+             y_range = y_range,
+             init = init,
+             null = null,
+             gmc = gmc,
+             factors = factors,
+             contrasts = contrasts,
+             classic = classic)
 }
 
 #' RTMB-based Linear Regression wrapper function
@@ -897,6 +980,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param null Character string specifying the target parameter for the null model.
 #' @param gmc Character vector of variable names for GMC
 #' @param classic Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.
+#' @param factors Character vector of variable names to be treated as factors.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
@@ -904,45 +988,19 @@ rtmb_lm <- function(formula, data,
                     y_range = NULL,
                     init = NULL, null = NULL,
                     gmc = NULL,
+                    factors = NULL,
+                    contrasts = "treatment",
                     classic = FALSE) {
-
-  if (classic) {
-    if (!is.null(gmc)) {
-      data_centered <- as.data.frame(data)
-      target_gmc <- if (identical(gmc, "all")) {
-        names(data_centered)[sapply(data_centered, is.numeric)]
-      } else {
-        gmc
-      }
-      for (v in target_gmc) {
-        if (v %in% names(data_centered)) {
-          data_centered[[v]] <- data_centered[[v]] - mean(data_centered[[v]], na.rm = TRUE)
-        } else {
-          warning(sprintf("Variable '%s' for GMC not found in data.", v))
-        }
-      }
-      data <- data_centered
-    }
-
-    return(Classic_Model$new(
-      type = "lm",
-      formula = formula,
-      data = data,
-      family = "gaussian",
-      view = c("Intercept", "b", "sigma")
-    ))
-  }
-
-  rtmb_glm(
-    formula = formula,
-    data = data,
-    family = "gaussian",
-    prior = prior,
-    y_range = y_range,
-    init = init,
-    null = null,
-    gmc = gmc
-  )
+  rtmb_glmer(formula = formula, data = data, family = "gaussian",
+             laplace = FALSE,
+             prior = prior,
+             y_range = y_range,
+             init = init,
+             null = null,
+             gmc = gmc,
+             factors = factors,
+             contrasts = contrasts,
+             classic = classic)
 }
 
 
@@ -1303,6 +1361,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       view = target_view
     )
 
+    # Store contrast preference for post-estimation methods
+    obj$contrasts <- contrasts
+    
     return(obj)
   }
 }
@@ -1977,7 +2038,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        obj <- obj$null_model(target = null)
      }
 
-     return(obj)
+     # Store contrast preference for post-estimation methods
+    obj$contrasts <- contrasts
+    
+    return(obj)
   }
 }
 

@@ -15,6 +15,8 @@ An R6 class representing the results of a classical (frequentist) estimation.
 
 \item{\code{par}}{A named list of parameter estimates.}
 
+\item{\code{vcov}}{Variance-covariance matrix of fixed effects.}
+
 \item{\code{bootstrap_results}}{A matrix containing bootstrap samples, if applicable.}
 }
 \if{html}{\out{</div>}}
@@ -24,6 +26,8 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \itemize{
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
 \item \href{#method-Classic_Fit-summary}{\code{Classic_Fit$summary()}}
+\item \href{#method-Classic_Fit-anova}{\code{Classic_Fit$anova()}}
+\item \href{#method-Classic_Fit-lsmeans}{\code{Classic_Fit$lsmeans()}}
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-.construct_par_list}{\code{Classic_Fit$.construct_par_list()}}
 \item \href{#method-Classic_Fit-clone}{\code{Classic_Fit$clone()}}
@@ -35,7 +39,7 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \subsection{Method \code{new()}}{
 Create a new `Classic_Fit` object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$new(model, fit)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$new(model, fit, vcov = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -44,6 +48,8 @@ Create a new `Classic_Fit` object.
 \item{\code{model}}{The `Classic_Model` object.}
 
 \item{\code{fit}}{The result of the estimation.}
+
+\item{\code{vcov}}{Variance-covariance matrix of fixed effects.}
 }
 \if{html}{\out{</div>}}
 }
@@ -63,6 +69,48 @@ Display a summary of the estimation results.
 \item{\code{digits}}{Number of digits to print for estimates.}
 }
 \if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-anova"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-anova}{}}}
+\subsection{Method \code{anova()}}{
+Perform ANOVA (Wald F-tests) on the fitted model.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$anova(method = c("reml", "ls"), type = 3)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{method}}{Character; "reml" (standard) or "ls" (experimental).}
+
+\item{\code{type}}{Integer; Type of Sum of Squares (only Type III supported currently).}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A data frame containing the ANOVA table.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-lsmeans"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-lsmeans}{}}}
+\subsection{Method \code{lsmeans()}}{
+Calculate Least Squares Means (Marginal Means).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$lsmeans(specs)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{specs}}{Character vector of factors to calculate means for.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A data frame containing the marginal means, SEs, and CIs.
 }
 }
 \if{html}{\out{<hr>}}

@@ -15,6 +15,9 @@ rtmb_lmer(
   gmc = NULL,
   cwc = NULL,
   view = NULL,
+  sigma_by = NULL,
+  factors = NULL,
+  contrasts = "treatment",
   classic = FALSE
 )
 }
@@ -38,6 +41,8 @@ rtmb_lmer(
 \item{cwc}{List for CWC}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{factors}{Character vector of variable names to be treated as factors.}
 
 \item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 }

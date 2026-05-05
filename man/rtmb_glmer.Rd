@@ -16,6 +16,9 @@ rtmb_glmer(
   gmc = NULL,
   cwc = NULL,
   view = NULL,
+  sigma_by = NULL,
+  factors = NULL,
+  contrasts = "treatment",
   classic = FALSE
 )
 }
@@ -41,6 +44,8 @@ rtmb_glmer(
 \item{cwc}{List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{factors}{Character vector of variable names to be treated as factors.}
 
 \item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 }
