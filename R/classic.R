@@ -174,6 +174,10 @@ Classic_Model <- R6::R6Class(
            fe_params <- c(fe_params, "Intercept")
            fixed_names <- c(fixed_names, "Intercept")
         }
+        if ("Intercept_c" %in% names(obj$par_list)) {
+           fe_params <- c(fe_params, "Intercept_c")
+           fixed_names <- c(fixed_names, "Intercept") # Display as Intercept
+        }
         if ("b" %in% names(obj$par_list)) {
            fe_params <- c(fe_params, "b")
            b_names <- if (!is.null(obj$par_names$b)) obj$par_names$b else paste0("b[", 1:obj$par_list$b$length, "]")
@@ -197,6 +201,8 @@ Classic_Model <- R6::R6Class(
         
         smry_ran <- summary(sd_rep, select = "random")
         ran_names <- rownames(smry_ran)
+        
+        # Match fixed effects by prefix (e.g., "b[1]" matches "b")
         fe_idx_in_ran <- which(gsub("\\[.*\\]$", "", ran_names) %in% fe_params)
         
         # The joint covariance includes all random effects. 
@@ -205,13 +211,6 @@ Classic_Model <- R6::R6Class(
         colnames(V_beta) <- rownames(V_beta) <- fixed_names
         
         reml_res <- obj$calculate_reml_satterthwaite_df(ad_obj, opt$par, fe_idx_in_ran)
-        
-        df_combined <- data.frame(
-          Estimate = smry_ran[fe_idx_in_ran, "Estimate"],
-          `Std. Error` = reml_res$se,
-          df = reml_res$df,
-          check.names = FALSE
-        )
         
         # Rename parameters using obj$par_names
         raw_names <- ran_names[fe_idx_in_ran]
@@ -222,10 +221,8 @@ Classic_Model <- R6::R6Class(
             new_names[i] <- "Intercept"
           } else if (raw_names[i] == "b" || grepl("^b\\[", raw_names[i])) {
             b_count <- b_count + 1
-            # Try to get index from regex first, e.g., b[1]
             p_match <- regmatches(raw_names[i], regexec("^b\\[([0-9]+)\\]$", raw_names[i]))[[1]]
             idx <- if (length(p_match) > 1) as.numeric(p_match[2]) else b_count
-            
             if (!is.null(obj$par_names$b) && idx <= length(obj$par_names$b)) {
               new_names[i] <- paste0("b[", obj$par_names$b[idx], "]")
             } else {
@@ -235,12 +232,15 @@ Classic_Model <- R6::R6Class(
             new_names[i] <- raw_names[i]
           }
         }
-        
-        # Final safety check for duplicate names
-        if (any(duplicated(new_names))) {
-           new_names <- make.unique(new_names)
-        }
-        rownames(df_combined) <- new_names
+        if (any(duplicated(new_names))) new_names <- make.unique(new_names)
+
+        df_combined <- data.frame(
+          Estimate = smry_ran[fe_idx_in_ran, "Estimate"],
+          `Std. Error` = reml_res$se,
+          df = reml_res$df,
+          row.names = new_names,
+          check.names = FALSE
+        )
         
         smry_fix <- summary(sd_rep, select = "fixed")
         
@@ -297,6 +297,25 @@ Classic_Model <- R6::R6Class(
                `Std. Error` = NA, df = NA, row.names = p, check.names = FALSE
              ))
           }
+        }
+        
+        # 4. Residual correlation (interval -1 to 1)
+        if ("rho_resid" %in% rownames(smry_fix)) {
+           rho_idx <- which(rownames(smry_fix) == "rho_resid")
+           rho_smry <- smry_fix[rho_idx, , drop = FALSE]
+           rho_est <- (1 / (1 + exp(-rho_smry[, "Estimate"]))) * 2 - 1
+           
+           # Handle multiple lags (TOEP)
+           new_rho_names <- if (nrow(rho_smry) > 1) {
+              paste0("rho_resid[lag", 1:nrow(rho_smry), "]")
+           } else {
+              "rho_resid"
+           }
+           
+           df_combined <- rbind(df_combined, data.frame(
+             Estimate = rho_est,
+             `Std. Error` = NA, df = NA, row.names = new_rho_names, check.names = FALSE
+           ))
         }
 
         df_combined$`t value` <- df_combined$Estimate / df_combined$`Std. Error`
@@ -642,17 +661,27 @@ Classic_Fit <- R6::R6Class(
 
       method <- match.arg(method)
       if (is.null(self$model$extra$X_assign)) stop("ANOVA requires term assignments (X_assign).")
-      if (is.null(self$vcov)) stop("ANOVA requires the parameter covariance matrix (vcov).")
-
       V_full <- self$vcov
-      # self$fit is the data frame from summary(sdreport)
       beta_full <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
-      names(beta_full) <- rownames(self$fit)
+      
+      # Handle names for lm objects specifically
+      full_names <- if (is.data.frame(self$fit)) rownames(self$fit) else names(beta_full)
+      if (inherits(self$fit, "lm")) {
+        full_names[full_names == "(Intercept)"] <- "Intercept"
+      }
+      names(beta_full) <- full_names
       
       assign_idx <- self$model$extra$X_assign
       
-      # Match fixed effects by name pattern to be robust
-      fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", names(beta_full)))
+      # Match fixed effects based on model type
+      if (inherits(self$fit, "lm")) {
+        # For lm, all parameters are fixed effects
+        fe_idx <- seq_along(beta_full)
+      } else {
+        # For RTMB models, they start with Intercept or b
+        fe_idx <- which(grepl("^(Intercept|Intercept_c|b($|\\[))", names(beta_full)))
+      }
+      
       if (length(fe_idx) == 0) stop("Could not identify fixed effects for ANOVA.")
       
       beta <- beta_full[fe_idx]
@@ -690,6 +719,8 @@ Classic_Fit <- R6::R6Class(
           beta <- as.numeric(M %*% beta)
           names(beta) <- colnames(X_sum) 
           V <- M %*% V %*% t(M)
+          # Update assign_idx to match the new contrast coding
+          assign_idx <- attr(X_sum, "assign")
         }
       }
 

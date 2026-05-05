@@ -408,7 +408,6 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   }
 
   # --- 6. Pass to R6 class ---
-  if (!silent) cat("Checking RTMB setup...\n")
   obj <- RTMB_Model$new(
     data       = data,
     par_list   = evaluated_par_list,

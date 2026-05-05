@@ -139,13 +139,18 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        prior = prior_uniform(),
                        y_range = NULL,
-                       init = NULL, null = NULL,
-                       gmc = NULL, cwc = NULL,
+                       init = NULL,
+                       null = NULL,
+                       gmc = NULL,
+                       cwc = NULL,
                        view = NULL,
                        sigma_by = NULL,
                        factors = NULL,
                        contrasts = "treatment",
-                       classic = FALSE) {
+                       classic = FALSE,
+                       resid_cor = NULL,
+                       resid_time = NULL,
+                       resid_group = NULL) {
 
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
    # If classic mode, we internally force 'sum' contrasts for stable ANOVA/DFs,
@@ -338,7 +343,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     num_bars <- length(bars)
     suffix <- function(b) if (num_bars > 1) paste0("_", b) else ""
 
-    mf <- model.frame(all_vars_form, data = data)
+    # Add residual correlation variables to formula for model.frame if needed
+    mf_form <- all_vars_form
+    if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
+    if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
+
+    mf <- model.frame(mf_form, data = data)
     Y <- model.response(mf)
     X <- model.matrix(fixed_form, mf)
     X_assign <- attr(X, "assign")
@@ -397,12 +407,18 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       group_labels_list[[b]] <- group_var_label
     }
   } else {
-    mf <- model.frame(formula, data)
+    # Add residual correlation variables to formula for model.frame if needed
+    mf_form <- formula
+    if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
+    if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
+
+    mf <- model.frame(mf_form, data)
     Y <- model.response(mf)
     X <- model.matrix(formula, mf)
     X_assign <- attr(X, "assign")
     X_terms <- attr(terms(formula), "term.labels")
     offset <- model.offset(mf)
+    N <- nrow(mf)
     num_bars <- 0
     dat_ranef <- list()
     num_ranef_list <- list()
@@ -510,6 +526,37 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   dat <- list(Y = Y, trials = trials, X = X, 
               sigma_idx = sigma_idx, num_sigma_groups = num_sigma_groups)
+  
+  if (!is.null(resid_cor)) {
+    if (family != "gaussian") stop("Residual correlation structures are currently only supported for Gaussian models.")
+    resid_cor <- tolower(resid_cor)
+    if (!resid_cor %in% c("ar1", "cs", "un", "toep")) stop("Currently 'ar1', 'cs', 'un', and 'toep' are supported for resid_cor.")
+    
+    # Identify group for residuals
+    if (is.null(resid_group)) {
+      if (has_random) {
+        resid_group_var <- as.character(bars[[1]][[3]])
+      } else {
+        stop("Residual correlation requires 'resid_group' (e.g., resid_group = 'ID') if no random effects are specified.")
+      }
+    } else {
+      resid_group_var <- resid_group
+    }
+    
+    if (!(resid_group_var %in% names(mf))) stop(sprintf("Residual grouping variable '%s' not found in data.", resid_group_var))
+
+    group_resid <- as.numeric(as.factor(mf[[resid_group_var]]))
+    dat$group_resid <- group_resid
+    dat$num_groups_resid <- max(group_resid)
+    if (!is.null(resid_time)) {
+      dat$time_resid <- as.numeric(as.factor(mf[[resid_time]])) - 1
+    } else {
+      # Use row order within group
+      dat$time_resid <- ave(rep(1, N), group_resid, FUN = seq_along) - 1
+    }
+    dat$max_T_resid <- max(table(group_resid))
+  }
+
   if (has_random) {
     dat <- c(dat, dat_ranef)
   }
@@ -597,14 +644,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   param_exprs <- list()
   if (has_intercept) {
     if (prior_type %in% c("flat", "uniform")) {
-      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept <- Dim(1))
+      param_exprs[[length(param_exprs) + 1]] <- if (classic) quote(Intercept <- Dim(1, random = TRUE)) else quote(Intercept <- Dim(1))
     } else {
-      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
+      param_exprs[[length(param_exprs) + 1]] <- if (classic) quote(Intercept_c <- Dim(1, random = TRUE)) else quote(Intercept_c <- Dim(1))
     }
   }
   if (K > 0) {
     if (regularization == "none") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
+      param_exprs[[length(param_exprs) + 1]] <- if (classic) quote(b <- Dim(K, random = TRUE)) else quote(b <- Dim(K))
     } else if (regularization == "rhs") {
       param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(K))
       param_exprs[[length(param_exprs) + 1]] <- quote(lambda <- Dim(K, lower = 0))
@@ -639,6 +686,15 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(num_sigma_groups, lower = 0))
+  if (!is.null(resid_cor)) {
+    if (resid_cor %in% c("ar1", "cs")) {
+      param_exprs[[length(param_exprs) + 1]] <- quote(rho_resid <- Dim(type = "interval", lower = -1, upper = 1))
+    } else if (resid_cor == "un") {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(L_resid <- Dim(c(.(dat$max_T_resid), .(dat$max_T_resid)), type = "CF_corr"))
+    } else if (resid_cor == "toep") {
+      param_exprs[[length(param_exprs) + 1]] <- bquote(rho_resid <- Dim(.(dat$max_T_resid - 1), type = "interval", lower = -1, upper = 1))
+    }
+  }
   if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
   if (family == "gamma") param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
   if (family == "neg_binomial") param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
@@ -706,17 +762,65 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
 
   ll_data_exprs <- list()
-  ll_data_exprs[[1]] <- switch(family,
-                               "gaussian" = if (!is.null(sigma_idx)) quote(Y ~ normal(eta, sigma[sigma_idx])) else quote(Y ~ normal(eta, sigma)),
-                               "lognormal" = if (!is.null(sigma_idx)) quote(Y ~ lognormal(eta, sigma[sigma_idx])) else quote(Y ~ lognormal(eta, sigma)),
-                               "student_t" = if (!is.null(sigma_idx)) quote(Y ~ student_t(nu, eta, sigma[sigma_idx])) else quote(Y ~ student_t(nu, eta, sigma)),
-                               "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
-                               "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
-                               "binomial" = quote(Y ~ binomial_logit(trials, eta)),
-                               "poisson" = quote(Y ~ poisson(exp(eta))),
-                               "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
-                               "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints))
-  )
+  if (!is.null(resid_cor)) {
+    vi_inner_expr <- switch(resid_cor,
+      "ar1" = quote(Vi[r,c] <- s_r * s_c * (rho_resid^abs(ti[r] - ti[c]))),
+      "cs"  = quote(if (r == c) Vi[r,c] <- s_r^2 else Vi[r,c] <- s_r * s_c * rho_resid),
+      "toep"= quote({
+               lag <- abs(ti[r] - ti[c])
+               if (lag == 0) Vi[r,c] <- s_r * s_c
+               else if (lag <= length(rho_resid)) Vi[r,c] <- s_r * s_c * rho_resid[lag]
+               else Vi[r,c] <- 0
+            }),
+      "un" = quote({
+               if (r == c) Vi[r,c] <- s_r^2
+               else {
+                 idx_r <- ti[r] + 1
+                 idx_c <- ti[c] + 1
+                 Vi[r,c] <- s_r * s_c * R_mat_resid[idx_r, idx_c]
+               }
+            })
+    )
+
+    # Build model components list
+    ll_data_exprs <- list()
+    ll_data_exprs[[length(ll_data_exprs) + 1]] <- quote(has_sig_idx <- !is.null(sigma_idx))
+    if (resid_cor == "un") {
+      ll_data_exprs[[length(ll_data_exprs) + 1]] <- quote(R_mat_resid <- L_resid %*% t(L_resid))
+    }
+    
+    ll_data_exprs[[length(ll_data_exprs) + 1]] <- bquote(
+      for (i in 1:num_groups_resid) {
+        idx <- which(group_resid == i)
+        ni <- length(idx)
+        ti <- time_resid[idx]
+        mu_i <- eta[idx]
+        
+        Vi <- matrix(0, ni, ni)
+        for (r in 1:ni) {
+          s_r <- if (has_sig_idx) sigma[sigma_idx[idx[r]]] else sigma
+          for (c in 1:ni) {
+            s_c <- if (has_sig_idx) sigma[sigma_idx[idx[c]]] else sigma
+            .(vi_inner_expr)
+          }
+        }
+        diag(Vi) <- diag(Vi) + 1e-4
+        Y[idx] ~ multi_normal(mu_i, Vi)
+      }
+    )
+  } else {
+    ll_data_exprs[[1]] <- switch(family,
+                                 "gaussian" = if (!is.null(sigma_idx)) quote(Y ~ normal(eta, sigma[sigma_idx])) else quote(Y ~ normal(eta, sigma)),
+                                 "lognormal" = if (!is.null(sigma_idx)) quote(Y ~ lognormal(eta, sigma[sigma_idx])) else quote(Y ~ lognormal(eta, sigma)),
+                                 "student_t" = if (!is.null(sigma_idx)) quote(Y ~ student_t(nu, eta, sigma[sigma_idx])) else quote(Y ~ student_t(nu, eta, sigma)),
+                                 "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
+                                 "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
+                                 "binomial" = quote(Y ~ binomial_logit(trials, eta)),
+                                 "poisson" = quote(Y ~ poisson(exp(eta))),
+                                 "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
+                                 "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints))
+    )
+  }
 
   ll_random_exprs <- list()
   if (has_random) {
@@ -859,6 +963,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       if (num_ranef_list[[b]] > 1) view_vars <- c(view_vars, paste0("corr", suffix(b)))
     }
   }
+  if (!is.null(resid_cor)) {
+    if (resid_cor %in% c("ar1", "cs", "toep")) view_vars <- c(view_vars, "rho_resid")
+    if (resid_cor == "un") view_vars <- c(view_vars, "L_resid")
+  }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
   obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, 
@@ -877,7 +985,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (classic) {
     # --- 1. Identify Fixed Effects to be integrated (REML) ---
     fe_params <- c()
-    if (has_intercept) fe_params <- c(fe_params, "Intercept")
+    if (has_intercept) {
+       if ("Intercept" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept")
+       if ("Intercept_c" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept_c")
+    }
     if (K > 0) fe_params <- c(fe_params, "b")
     
     # Temporarily set fixed effects as random in par_list to enable REML when estimate() is called
@@ -888,7 +999,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
     
     # Wrap in Classic_Model and return (let user call $estimate())
-    mod_type <- if (has_random) "lmer" else "lm"
+    mod_type <- if (has_random || !is.null(resid_cor)) "lmer" else "lm"
     refit_fn <- function(new_data) {
       rtmb_glmer(formula = formula, data = new_data, family = family,
                  laplace = laplace, prior = prior, y_range = y_range,
@@ -923,25 +1034,34 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 rtmb_lmer <- function(formula, data, laplace = TRUE,
                        prior = prior_uniform(),
                        y_range = NULL,
-                       init = NULL, null = NULL,
-                       gmc = NULL, cwc = NULL,
+                       init = NULL,
+                       null = NULL,
+                       gmc = NULL,
+                       cwc = NULL,
                        view = NULL,
                        sigma_by = NULL,
                        factors = NULL,
                        contrasts = "treatment",
-                       classic = FALSE) {
+                       classic = FALSE,
+                       resid_cor = NULL,
+                       resid_time = NULL,
+                       resid_group = NULL) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
              y_range = y_range,
              init = init,
              null = null,
-             gmc = gmc, cwc = cwc,
+             gmc = gmc,
+             cwc = cwc,
              view = view,
              sigma_by = sigma_by,
              factors = factors,
              contrasts = contrasts,
-             classic = classic)
+             classic = classic,
+             resid_cor = resid_cor,
+             resid_time = resid_time,
+             resid_group = resid_group)
 }
 
 #' RTMB-based GLM wrapper function (no random effects)

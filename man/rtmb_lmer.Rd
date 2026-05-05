@@ -18,7 +18,10 @@ rtmb_lmer(
   sigma_by = NULL,
   factors = NULL,
   contrasts = "treatment",
-  classic = FALSE
+  classic = FALSE,
+  resid_cor = NULL,
+  resid_time = NULL,
+  resid_group = NULL
 )
 }
 \arguments{
