@@ -1346,7 +1346,7 @@ RTMB_Model <- R6::R6Class(
         save_info <- NULL
       }
 
-      random_flags <- sapply(orig_pl, function(x) isTRUE(x$random))
+      random_flags <- vapply(orig_pl, function(x) isTRUE(x$random), logical(1))
 
       if (laplace && any(random_flags)) {
         pl_fixed  <- parse_parameters(orig_pl[!random_flags], self$par_names)

@@ -144,7 +144,9 @@ RTMB_Fit_Base <- R6::R6Class(
                                inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
         if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine joint MAP.")
 
+        if (all(is.na(lp_samps))) stop("Log-probability ('lp') contains only NAs.")
         max_idx <- which(lp_samps == max(lp_samps, na.rm = TRUE), arr.ind = TRUE)
+        if (nrow(max_idx) == 0) stop("Failed to find the maximum log-probability.")
         best_i <- max_idx[1, 1]
         best_c <- max_idx[1, 2]
 

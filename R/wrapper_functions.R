@@ -136,7 +136,7 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param sigma_by Character vector specifying variables to group residual variance by (heteroscedasticity).
-#' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
+#' @param resid_corr Residual correlation structure: "ar1" (Autoregressive), "cs" (Compound Symmetry), "toep" (Toeplitz), or "un" (Unstructured).
 #' @param resid_time Variable name for time points in residual correlation.
 #' @param resid_group Variable name for grouping in residual correlation.
 #' @example inst/examples/ex_lm.R
@@ -160,6 +160,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
    if (classic && !family %in% c("gaussian", "lognormal", "student_t")) {
      stop("classic = TRUE is only supported for 'gaussian', 'lognormal', and 'student_t' families.")
+   }
+
+   if (!is.null(resid_corr)) {
+     valid_resid_corr <- c("ar1", "cs", "un", "toep")
+     if (!(resid_corr %in% valid_resid_corr)) {
+       stop(sprintf("Invalid 'resid_corr' value: '%s'. Valid options are: %s", 
+            resid_corr, paste(valid_resid_corr, collapse = ", ")))
+     }
    }
 
    # If classic mode, we internally force 'sum' contrasts for stable ANOVA/DFs,
@@ -542,6 +550,18 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         if (has_intercept) init$b <- init_coef[-1]
         else init$b <- init_coef
       }
+      
+      # Initial values for residual correlation
+      if (!is.null(resid_corr)) {
+        if (resid_corr %in% c("ar1", "cs")) init$rho_resid <- 0.1
+        else if (resid_corr == "toep") init$rho_resid <- rep(0.1, dat$max_T_resid - 1)
+        else if (resid_corr == "un") init$L_resid <- diag(dat$max_T_resid)
+      }
+      
+      if (family %in% c("gaussian", "lognormal", "student_t")) {
+        init$sigma <- if (num_sigma_groups > 1) rep(stats::sd(Y) * 0.5, num_sigma_groups) else stats::sd(Y) * 0.5
+      }
+
     }, error = function(e) init <- NULL)
   }
 
@@ -709,11 +729,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(num_sigma_groups, lower = 0))
   if (!is.null(resid_corr)) {
     if (resid_corr %in% c("ar1", "cs")) {
-      param_exprs[[length(param_exprs) + 1]] <- quote(rho_resid <- Dim(type = "interval", lower = -1, upper = 1))
+      param_exprs[[length(param_exprs) + 1]] <- quote(rho_resid <- Dim(type = "interval", lower = -0.99, upper = 0.99))
     } else if (resid_corr == "un") {
       param_exprs[[length(param_exprs) + 1]] <- bquote(L_resid <- Dim(c(.(dat$max_T_resid), .(dat$max_T_resid)), type = "CF_corr"))
     } else if (resid_corr == "toep") {
-      param_exprs[[length(param_exprs) + 1]] <- bquote(rho_resid <- Dim(.(dat$max_T_resid - 1), type = "interval", lower = -1, upper = 1))
+      param_exprs[[length(param_exprs) + 1]] <- bquote(rho_resid <- Dim(.(dat$max_T_resid - 1), type = "interval", lower = -0.99, upper = 0.99))
     }
   }
   if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
@@ -825,7 +845,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
             .(vi_inner_expr)
           }
         }
-        diag(Vi) <- diag(Vi) + 1e-4
+        diag(Vi) <- diag(Vi) + 1e-3
         Y[idx] ~ multi_normal(mu_i, Vi)
       }
     )

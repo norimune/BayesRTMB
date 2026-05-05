@@ -56,7 +56,7 @@ rtmb_glmer(
 
 \item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 
-\item{resid_corr}{Residual correlation structure (e.g., "ar1", "cs", "un", "toep").}
+\item{resid_corr}{Residual correlation structure: "ar1" (Autoregressive), "cs" (Compound Symmetry), "toep" (Toeplitz), or "un" (Unstructured).}
 
 \item{resid_time}{Variable name for time points in residual correlation.}
 

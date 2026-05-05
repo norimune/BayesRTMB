@@ -62,7 +62,7 @@ Classic_Model <- R6::R6Class(
       # 2. Perform Bootstrap
       cat(sprintf("Performing non-parametric bootstrap (%d samples)...\n", n_boot))
       
-      boot_results <- list()
+      boot_results <- vector("list", n_boot)
       pb <- txtProgressBar(min = 0, max = n_boot, style = 3)
       
       # Suppress messages during bootstrap
@@ -83,11 +83,11 @@ Classic_Model <- R6::R6Class(
           })
           
           if (is.data.frame(boot_fit)) {
-            boot_results[[length(boot_results) + 1]] <- boot_fit$Estimate
+            boot_results[[i]] <- boot_fit$Estimate
           } else if (inherits(boot_fit, "Classic_Fit")) {
-            boot_results[[length(boot_results) + 1]] <- boot_fit$fit$Estimate
+            boot_results[[i]] <- boot_fit$fit$Estimate
           } else if (inherits(boot_fit, "lm")) {
-            boot_results[[length(boot_results) + 1]] <- stats::coef(boot_fit)
+            boot_results[[i]] <- stats::coef(boot_fit)
           }
         }, error = function(e) {
           # Skip failed fits
@@ -95,6 +95,8 @@ Classic_Model <- R6::R6Class(
         setTxtProgressBar(pb, i)
       }
       close(pb)
+      
+      boot_results <- Filter(Negate(is.null), boot_results)
       
       if (length(boot_results) == 0) stop("All bootstrap fits failed.")
       
@@ -124,7 +126,7 @@ Classic_Model <- R6::R6Class(
       res_df$`Std. Error`[1:n_rows] <- boot_se[1:n_rows]
       res_df$`Lower 95%`[1:n_rows] <- boot_lower[1:n_rows]
       res_df$`Upper 95%`[1:n_rows] <- boot_upper[1:n_rows]
-      res_df$`t value`[1:n_rows] <- res_df$Estimate[1:n_rows] / res_df$`Std. Error`[1:n_rows]
+      res_df$`t value`[1:n_rows] <- res_df$Estimate[1:n_rows] / pmax(res_df$`Std. Error`[1:n_rows], 1e-12)
       if (!is.null(res_df$df)) {
         res_df$Pr[1:n_rows] <- 2 * pt(-abs(res_df$`t value`[1:n_rows]), df = res_df$df[1:n_rows])
       }
@@ -325,11 +327,16 @@ Classic_Model <- R6::R6Class(
            ))
         }
 
-        df_combined$`t value` <- df_combined$Estimate / df_combined$`Std. Error`
+        df_combined$`t value` <- df_combined$Estimate / pmax(df_combined$`Std. Error`, 1e-12)
         df_combined$Pr <- 2 * pt(-abs(df_combined$`t value`), df = df_combined$df)
         df_combined$`Lower 95%` <- df_combined$Estimate + qt(0.025, df = df_combined$df) * df_combined$`Std. Error`
         df_combined$`Upper 95%` <- df_combined$Estimate + qt(0.975, df = df_combined$df) * df_combined$`Std. Error`
         
+        # Capture metrics for AIC/BIC
+        self$extra$loglik <- -opt$objective
+        self$extra$df <- length(opt$par)
+        self$extra$nobs <- nrow(data)
+
         return(list(df_combined = df_combined, V_beta = V_beta))
         
       } else if (self$type == "corr") {
@@ -494,7 +501,7 @@ Classic_Model <- R6::R6Class(
           }
         }
         
-        df_res$`t value` <- df_res$Estimate / df_res$`Std. Error`
+        df_res$`t value` <- df_res$Estimate / pmax(df_res$`Std. Error`, 1e-12)
         df_res$Pr <- 2 * pt(-abs(df_res$`t value`), df = df_res$df)
         df_res$`Lower 95%` <- df_res$Estimate + qt(0.025, df = df_res$df) * df_res$`Std. Error`
         df_res$`Upper 95%` <- df_res$Estimate + qt(0.975, df = df_res$df) * df_res$`Std. Error`
@@ -562,6 +569,38 @@ Classic_Fit <- R6::R6Class(
       self$par <- self$.construct_par_list(fit)
     },
 
+    #' @description Get the AIC of the fitted model.
+    AIC = function() {
+      ll <- self$logLik()
+      k <- attr(ll, "df")
+      return(-2 * as.numeric(ll) + 2 * k)
+    },
+
+    #' @description Get the BIC of the fitted model.
+    BIC = function() {
+      ll <- self$logLik()
+      k <- attr(ll, "df")
+      n <- attr(ll, "nobs")
+      return(-2 * as.numeric(ll) + log(n) * k)
+    },
+
+    #' @description Get the Log-Likelihood of the fitted model.
+    logLik = function() {
+      if (inherits(self$fit, "lm")) {
+        return(stats::logLik(self$fit))
+      }
+      
+      val <- if (!is.null(self$model$extra$loglik)) self$model$extra$loglik else NA
+      df_val <- if (!is.null(self$model$extra$df)) self$model$extra$df else nrow(self$fit)
+      nobs_val <- if (!is.null(self$model$extra$nobs)) self$model$extra$nobs else 0
+      
+      res <- val
+      attr(res, "df") <- df_val
+      attr(res, "nobs") <- nobs_val
+      class(res) <- "logLik"
+      return(res)
+    },
+
     #' @description Display a summary of the estimation results.
     #' @param digits Number of digits to print for estimates.
     summary = function(digits = 5) {
@@ -570,6 +609,14 @@ Classic_Fit <- R6::R6Class(
       if (!is.null(self$bootstrap_results)) {
         cat("Based on non-parametric bootstrap (", nrow(self$bootstrap_results), " samples)\n")
       }
+      
+      # AIC/BIC display
+      ll <- self$logLik()
+      if (!is.na(ll)) {
+        cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n", 
+            as.numeric(ll), self$AIC(), self$BIC()))
+      }
+
       cat("\nPoint Estimates and Confidence Intervals:\n")
       if (self$model$type == "ttest") {
         levs <- self$model$extra$levs
@@ -632,7 +679,7 @@ Classic_Fit <- R6::R6Class(
               # Update df_print with new values for fixed effects
               df_print$Estimate[fe_idx] <- beta_new
               df_print$`Std. Error`[fe_idx] <- se_new
-              df_print$`t value`[fe_idx] <- beta_new / se_new
+              df_print$`t value`[fe_idx] <- beta_new / pmax(se_new, 1e-12)
               if (!is.null(df_print$Pr)) {
                 df_print$Pr[fe_idx] <- 2 * pt(-abs(df_print$`t value`[fe_idx]), df = df_print$df[fe_idx])
               }
@@ -888,10 +935,13 @@ Classic_Fit <- R6::R6Class(
       return(res_df)
     },
 
-    #' @description Calculate Least Squares Means (Marginal Means).
+    #' @description Calculate Least Squares Means (Marginal Means) and contrasts.
     #' @param specs Character vector of factors to calculate means for.
-    #' @return A data frame containing the marginal means, SEs, and CIs.
-    lsmeans = function(specs) {
+    #' @param pairwise Logical; whether to perform pairwise comparisons.
+    #' @param simple Character vector of factors to hold constant for simple main effects.
+    #' @param adjust Character; p-value adjustment method (e.g., "bonferroni", "holm", "none").
+    #' @return A data frame containing the marginal means or contrasts.
+    lsmeans = function(specs, pairwise = FALSE, simple = NULL, adjust = "bonferroni") {
       # Ensure consistent contrasts for reference grid construction
       old_opts <- NULL
       if (!is.null(self$model$contrasts)) {
@@ -906,15 +956,14 @@ Classic_Fit <- R6::R6Class(
       if (is.null(self$model$data)) stop("lsmeans requires the original data.")
       data <- self$model$data
       formula <- self$model$formula
-      beta <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
-      V <- self$vcov
       
       # 1. Identify all factors in the model
       vars <- all.vars(nobars(formula))[-1]
       is_cat <- sapply(data[vars], function(x) is.factor(x) || is.character(x))
       cat_vars <- vars[is_cat]
       
-      if (!all(specs %in% cat_vars)) stop("specs must be categorical factors in the model.")
+      full_specs <- unique(c(specs, simple))
+      if (!all(full_specs %in% cat_vars)) stop("specs/simple must be categorical factors in the model.")
       
       # 2. Create a reference grid for all categorical factors
       grid_list <- lapply(data[cat_vars], function(x) levels(as.factor(x)))
@@ -927,105 +976,159 @@ Classic_Fit <- R6::R6Class(
       }
       
       # 4. Generate model matrix for the reference grid
-      # We need to use the same terms and contrast settings as the original fit
       mf_orig <- model.frame(nobars(formula), data)
       orig_terms <- delete.response(terms(mf_orig))
       
-      # Explicitly construct contrasts list based on model preference
       ct_setting <- if (!is.null(self$model$obj$contrasts)) self$model$obj$contrasts else "sum"
       ct_list <- list()
-      # Only apply to factors present in the variables
       for (v in cat_vars) {
-        if (ct_setting == "treatment") {
-          ct_list[[v]] <- "contr.treatment"
-        } else {
-          ct_list[[v]] <- "contr.sum"
-        }
+        ct_list[[v]] <- if (ct_setting == "treatment") "contr.treatment" else "contr.sum"
       }
       
-      # Use raw model matrix columns to ensure exact parameter matching
       X_grid_raw <- model.matrix(orig_terms, ref_grid, contrasts.arg = ct_list)
       
-      # Match columns with the original model (handling dropped coefficients)
+      # Match columns with the original model
       orig_cols <- self$model$extra$X_colnames
       if (!is.null(orig_cols)) {
-        # Intercept handling
         grid_cols <- colnames(X_grid_raw)
-        grid_cols[grid_cols == "(Intercept)"] <- "Intercept" # Internal consistency
-        
+        grid_cols[grid_cols == "(Intercept)"] <- "Intercept"
         col_idx <- match(orig_cols, colnames(X_grid_raw))
-        # Handle cases where "(Intercept)" vs "Intercept" naming differs
         if (any(is.na(col_idx)) && "Intercept" %in% orig_cols) {
            col_idx[orig_cols == "Intercept"] <- which(colnames(X_grid_raw) == "(Intercept)")
         }
-        
-        if (any(is.na(col_idx))) {
-           stop("Could not match lsmeans grid columns with original model parameters.")
-        }
+        if (any(is.na(col_idx))) stop("Could not match lsmeans grid columns with original model parameters.")
         X_grid <- X_grid_raw[, col_idx, drop = FALSE]
       } else {
         X_grid <- X_grid_raw
       }
       
-      # Positional matching is more robust than name matching for RTMB fixed effects
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
       fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
-      
-      # Prediction matrix X_grid must match the order and count of beta_match
       beta_match <- beta_vals[fe_idx]
       V_match <- self$vcov[fe_idx, fe_idx]
       
-      if (ncol(X_grid) != length(beta_match)) {
-         stop("Dimension mismatch in lsmeans: X_grid columns (", ncol(X_grid), 
-              ") do not match fixed effects (", length(beta_match), ").")
-      }
-      # Target factors are in 'specs'
-      groups <- interaction(ref_grid[specs], drop = TRUE, sep = ":")
-      unique_groups <- levels(groups)
+      # Group by specs + simple
+      groups_full <- interaction(ref_grid[full_specs], drop = TRUE, sep = ":")
+      unique_groups_full <- levels(groups_full)
       
-      res_list <- list()
-      for (grp in unique_groups) {
-        idx <- which(groups == grp)
-        # Average the rows of X_grid for this group
-        L <- colMeans(X_grid[idx, , drop = FALSE])
-        
-        est <- as.numeric(L %*% beta_match)
-        se <- sqrt(as.numeric(t(L) %*% V_match %*% L))
-        
-        # DF (approximate)
-        # Try to find a representative DF for the specified factors
-        df_val <- Inf
-        if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
-          # Look for fixed effect terms (b[...]) that match any of the specs
-          match_pattern <- paste0("^b\\[(", paste(specs, collapse="|"), ")")
-          match_idx <- grepl(match_pattern, rownames(self$fit))
-          if (any(match_idx)) {
-            # Use the minimum DF among relevant terms (conservative)
-            df_val <- min(self$fit$df[match_idx], na.rm = TRUE)
-          } else {
-            # Fallback to Intercept DF or mean
-            if ("Intercept" %in% rownames(self$fit)) {
-              df_val <- self$fit["Intercept", "df"]
-            } else {
-              df_val <- mean(self$fit$df, na.rm = TRUE)
+      # Calculate L-vectors for each group
+      L_list <- list()
+      for (grp in unique_groups_full) {
+        idx <- which(groups_full == grp)
+        L_list[[grp]] <- colMeans(X_grid[idx, , drop = FALSE])
+      }
+
+      if (!pairwise) {
+        # --- Marginal Means ---
+        res_list <- list()
+        for (grp in unique_groups_full) {
+          L <- L_list[[grp]]
+          est <- as.numeric(L %*% beta_match)
+          se <- sqrt(as.numeric(t(L) %*% V_match %*% L))
+          df_val <- self$.get_lsmeans_df(specs)
+          
+          res_list[[grp]] <- data.frame(
+            estimate = est, `Std. Error` = se, df = df_val,
+            `Lower 95%` = est + qt(0.025, df_val) * se,
+            `Upper 95%` = est + qt(0.975, df_val) * se,
+            row.names = grp, check.names = FALSE
+          )
+        }
+        return(do.call(rbind, res_list))
+      } else {
+        # --- Pairwise Comparisons ---
+        contrast_list <- list()
+        # If simple is provided, we only compare within levels of 'simple'
+        if (!is.null(simple)) {
+          mod_grid <- unique(ref_grid[simple])
+          focal_grid <- unique(ref_grid[specs])
+          
+          for (row_m in 1:nrow(mod_grid)) {
+            m_vals <- mod_grid[row_m, , drop = FALSE]
+            for (i in 1:(nrow(focal_grid)-1)) {
+              for (j in (i+1):nrow(focal_grid)) {
+                # Find indices in unique_groups_full that match focal + moderator
+                # This is more robust than string pasting
+                find_idx <- function(f_row, m_row) {
+                  vals <- character(length(full_specs))
+                  vals[1:length(specs)] <- as.character(unlist(f_row))
+                  vals[(length(specs)+1):length(full_specs)] <- as.character(unlist(m_row))
+                  target_label <- paste(vals, collapse = ":")
+                  idx <- which(unique_groups_full == target_label)
+                  if (length(idx) == 0) return(NULL)
+                  return(idx)
+                }
+                
+                idx_i <- find_idx(focal_grid[i,], m_vals)
+                idx_j <- find_idx(focal_grid[j,], m_vals)
+
+                if (!is.null(idx_i) && !is.null(idx_j)) {
+                  name_i <- unique_groups_full[idx_i]
+                  name_j <- unique_groups_full[idx_j]
+                  L_diff <- L_list[[name_i]] - L_list[[name_j]]
+                  contrast_label <- paste0("(", name_i, ") - (", name_j, ")")
+                  contrast_list[[contrast_label]] <- self$.calc_contrast(L_diff, specs)
+                }
+              }
             }
           }
+        } else {
+          # All pairwise
+          for (i in 1:(length(unique_groups_full)-1)) {
+            for (j in (i+1):length(unique_groups_full)) {
+              name_i <- unique_groups_full[i]
+              name_j <- unique_groups_full[j]
+              L_diff <- L_list[[name_i]] - L_list[[name_j]]
+              contrast_label <- paste0("(", name_i, ") - (", name_j, ")")
+              contrast_list[[contrast_label]] <- self$.calc_contrast(L_diff, specs)
+            }
+          }
+        }
+        
+        res <- do.call(rbind, contrast_list)
+        if (adjust != "none") {
+          res$Pr <- p.adjust(res$Pr, method = adjust)
+          attr(res, "adjustment") <- adjust
+        }
+        return(res)
+      }
+    },
+
+    #' @description (Internal) Calculate metrics for a contrast.
+    .calc_contrast = function(L, specs) {
+      beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
+      fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
+      beta_match <- beta_vals[fe_idx]
+      V_match <- self$vcov[fe_idx, fe_idx]
+      
+      est <- as.numeric(L %*% beta_match)
+      se <- sqrt(as.numeric(t(L) %*% V_match %*% L))
+      df_val <- self$.get_lsmeans_df(specs)
+      t_val <- est / pmax(se, 1e-12)
+      p_val <- 2 * pt(-abs(t_val), df = df_val)
+      
+      data.frame(
+        estimate = est, `Std. Error` = se, df = df_val,
+        `t value` = t_val, Pr = p_val,
+        check.names = FALSE
+      )
+    },
+
+    #' @description (Internal) Get representative DF for lsmeans.
+    .get_lsmeans_df = function(specs) {
+      df_val <- Inf
+      if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
+        match_pattern <- paste0("^b\\[(", paste(specs, collapse="|"), ")")
+        match_idx <- grepl(match_pattern, rownames(self$fit))
+        if (any(match_idx)) {
+          df_val <- min(self$fit$df[match_idx], na.rm = TRUE)
         } else if (inherits(self$fit, "lm")) {
           df_val <- self$fit$df.residual
         }
-        
-        res_list[[grp]] <- data.frame(
-          lsmean = est,
-          `Std. Error` = se,
-          df = df_val,
-          `Lower 95%` = est + qt(0.025, df_val) * se,
-          `Upper 95%` = est + qt(0.975, df_val) * se,
-          row.names = grp,
-          check.names = FALSE
-        )
+      } else if (inherits(self$fit, "lm")) {
+        df_val <- self$fit$df.residual
       }
-      
-      return(do.call(rbind, res_list))
+      return(df_val)
     },
 
     #' @description Print the fit results.
@@ -1058,3 +1161,18 @@ Classic_Fit <- R6::R6Class(
     }
   )
 )
+
+#' @export
+logLik.Classic_Fit <- function(object, ...) {
+  object$logLik()
+}
+
+#' @export
+AIC.Classic_Fit <- function(object, ..., k = 2) {
+  object$AIC()
+}
+
+#' @export
+BIC.Classic_Fit <- function(object, ...) {
+  object$BIC()
+}

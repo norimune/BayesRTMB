@@ -101,7 +101,9 @@ MCMC_Fit <- R6::R6Class(
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)
 
       lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
+      if (all(is.na(lp_draws))) stop("Log-probability ('lp') contains only NAs.")
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
+      if (nrow(max_idx) == 0) stop("Failed to find the maximum log-probability.")
       best_iter <- max_idx[1, 1]
       best_chain <- max_idx[1, 2]
 
@@ -383,7 +385,7 @@ MCMC_Fit <- R6::R6Class(
       I <- dim(self$fit)[1]
       C <- dim(self$fit)[2]
       orig_pl <- self$model$par_list
-      random_flags <- sapply(orig_pl, function(x) isTRUE(x$random))
+      random_flags <- vapply(orig_pl, function(x) isTRUE(x$random), logical(1))
 
       target_par_list <- if (self$laplace && any(random_flags)) orig_pl[!random_flags] else orig_pl
       draws_ob <- self$fit[, , -1, drop = FALSE]
@@ -403,7 +405,7 @@ MCMC_Fit <- R6::R6Class(
           }
         }
       } else {
-        Q <- sum(sapply(target_par_list, function(x) x$unc_length))
+        Q <- sum(vapply(target_par_list, function(x) x$unc_length, numeric(1)))
       }
 
       draws_uc <- array(NA, dim = c(I, C, Q))
