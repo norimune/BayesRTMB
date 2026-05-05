@@ -137,6 +137,7 @@ Classic_Model <- R6::R6Class(
     },
 
     #' @description (Internal) Resample data for bootstrap.
+    #' @return Resampled data frame.
     .resample_data = function() {
       N <- nrow(self$data)
       
@@ -170,6 +171,7 @@ Classic_Model <- R6::R6Class(
 
     #' @description (Internal) Perform a single fit.
     #' @param data The data to fit.
+    #' @return A list containing the fit result and covariance matrix.
     .perform_fit = function(data) {
       if (self$type == "lm") {
         fit <- stats::lm(self$formula, data = data)
@@ -1095,6 +1097,9 @@ Classic_Fit <- R6::R6Class(
     },
 
     #' @description (Internal) Calculate metrics for a contrast.
+    #' @param L Contrast matrix.
+    #' @param specs Variable names for lsmeans.
+    #' @return A data frame with estimate, SE, df, t-value, and p-value.
     .calc_contrast = function(L, specs) {
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
       fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
@@ -1115,6 +1120,8 @@ Classic_Fit <- R6::R6Class(
     },
 
     #' @description (Internal) Get representative DF for lsmeans.
+    #' @param specs Variable names for lsmeans.
+    #' @return Degrees of freedom.
     .get_lsmeans_df = function(specs) {
       df_val <- Inf
       if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
@@ -1138,6 +1145,7 @@ Classic_Fit <- R6::R6Class(
 
     #' @description (Internal) Construct a list of parameters from the fit.
     #' @param fit The fit result (dataframe or lm object).
+    #' @return A named list of parameters.
     .construct_par_list = function(fit) {
       par_list <- list()
       if (inherits(fit, "lm")) {

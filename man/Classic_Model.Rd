@@ -110,6 +110,9 @@ A `Classic_Fit` object containing the results.
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Model$.resample_data()}\if{html}{\out{</div>}}
 }
 
+\subsection{Returns}{
+Resampled data frame.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Model-.perform_fit"></a>}}
@@ -126,6 +129,9 @@ A `Classic_Fit` object containing the results.
 \item{\code{data}}{The data to fit.}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A list containing the fit result and covariance matrix.
 }
 }
 \if{html}{\out{<hr>}}

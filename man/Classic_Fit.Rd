@@ -25,9 +25,14 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
+\item \href{#method-Classic_Fit-AIC}{\code{Classic_Fit$AIC()}}
+\item \href{#method-Classic_Fit-BIC}{\code{Classic_Fit$BIC()}}
+\item \href{#method-Classic_Fit-logLik}{\code{Classic_Fit$logLik()}}
 \item \href{#method-Classic_Fit-summary}{\code{Classic_Fit$summary()}}
 \item \href{#method-Classic_Fit-anova}{\code{Classic_Fit$anova()}}
 \item \href{#method-Classic_Fit-lsmeans}{\code{Classic_Fit$lsmeans()}}
+\item \href{#method-Classic_Fit-.calc_contrast}{\code{Classic_Fit$.calc_contrast()}}
+\item \href{#method-Classic_Fit-.get_lsmeans_df}{\code{Classic_Fit$.get_lsmeans_df()}}
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-.construct_par_list}{\code{Classic_Fit$.construct_par_list()}}
 \item \href{#method-Classic_Fit-clone}{\code{Classic_Fit$clone()}}
@@ -53,6 +58,36 @@ Create a new `Classic_Fit` object.
 }
 \if{html}{\out{</div>}}
 }
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-AIC"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-AIC}{}}}
+\subsection{Method \code{AIC()}}{
+Get the AIC of the fitted model.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$AIC()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-BIC"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-BIC}{}}}
+\subsection{Method \code{BIC()}}{
+Get the BIC of the fitted model.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$BIC()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-logLik"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-logLik}{}}}
+\subsection{Method \code{logLik()}}{
+Get the Log-Likelihood of the fitted model.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$logLik()}\if{html}{\out{</div>}}
+}
+
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-summary"></a>}}
@@ -97,20 +132,73 @@ A data frame containing the ANOVA table.
 \if{html}{\out{<a id="method-Classic_Fit-lsmeans"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-lsmeans}{}}}
 \subsection{Method \code{lsmeans()}}{
-Calculate Least Squares Means (Marginal Means).
+Calculate Least Squares Means (Marginal Means) and contrasts.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$lsmeans(specs)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$lsmeans(
+  specs,
+  pairwise = FALSE,
+  simple = NULL,
+  adjust = "bonferroni"
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{specs}}{Character vector of factors to calculate means for.}
+
+\item{\code{pairwise}}{Logical; whether to perform pairwise comparisons.}
+
+\item{\code{simple}}{Character vector of factors to hold constant for simple main effects.}
+
+\item{\code{adjust}}{Character; p-value adjustment method (e.g., "bonferroni", "holm", "none").}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A data frame containing the marginal means, SEs, and CIs.
+A data frame containing the marginal means or contrasts.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-.calc_contrast"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-.calc_contrast}{}}}
+\subsection{Method \code{.calc_contrast()}}{
+(Internal) Calculate metrics for a contrast.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.calc_contrast(L, specs)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{L}}{Contrast matrix.}
+
+\item{\code{specs}}{Variable names for lsmeans.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A data frame with estimate, SE, df, t-value, and p-value.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-.get_lsmeans_df"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-.get_lsmeans_df}{}}}
+\subsection{Method \code{.get_lsmeans_df()}}{
+(Internal) Get representative DF for lsmeans.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.get_lsmeans_df(specs)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{specs}}{Variable names for lsmeans.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Degrees of freedom.
 }
 }
 \if{html}{\out{<hr>}}
@@ -138,6 +226,9 @@ Print the fit results.
 \item{\code{fit}}{The fit result (dataframe or lm object).}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of parameters.
 }
 }
 \if{html}{\out{<hr>}}
