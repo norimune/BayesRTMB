@@ -335,13 +335,14 @@ Classic_Model <- R6::R6Class(
       } else if (self$type == "corr") {
         P_y <- if (!is.null(self$extra$P_y)) self$extra$P_y else ncol(data)
         P_x <- if (!is.null(self$extra$P_x)) self$extra$P_x else 0
+        method <- if (!is.null(self$extra$method)) self$extra$method else "pearson"
         P <- ncol(data)
         var_names <- colnames(data)
         target_names <- var_names[1:P_y]
         N <- nrow(data)
         
         df_list <- list()
-        full_cor_mat <- cor(data, use = "pairwise.complete.obs")
+        full_cor_mat <- cor(data, use = "pairwise.complete.obs", method = method)
         
         if (P_x > 0) {
            # Partial correlation derivation
@@ -350,9 +351,9 @@ Classic_Model <- R6::R6Class(
            R_xx <- full_cor_mat[(P_y+1):P, (P_y+1):P, drop = FALSE]
            
            # Solve for partial covariance
-           P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx)
+           P_cov <- R_yy - R_yx %*% MASS::ginv(R_xx) %*% t(R_yx)
            # Convert to correlation
-           D <- diag(1 / sqrt(diag(P_cov)))
+           D <- diag(1 / sqrt(pmax(diag(P_cov), 1e-12)))
            cor_mat <- D %*% P_cov %*% D
            N_eff <- N - P_x
         } else {
@@ -365,6 +366,7 @@ Classic_Model <- R6::R6Class(
         for (i in 1:(P_y-1)) {
           for (j in (i+1):P_y) {
             r <- cor_mat[i, j]
+            # Fisher z-transformation for CI and SE
             z <- 0.5 * log((1 + r) / (1 - r))
             se_z <- 1 / sqrt(N_eff - 3)
             ci_lower_z <- z - 1.96 * se_z
@@ -376,7 +378,8 @@ Classic_Model <- R6::R6Class(
             t_val <- r * sqrt(df_val / (1 - r^2))
             p_val <- 2 * pt(-abs(t_val), df = df_val)
             
-            p_name <- paste0("corr[", var_names[i], ", ", var_names[j], "]")
+            label_type <- if (P_x > 0) "pcorr" else "corr"
+            p_name <- paste0(label_type, "[", var_names[i], ", ", var_names[j], "]")
             df_list[[p_name]] <- data.frame(
               Estimate = r,
               `Std. Error` = NA,
@@ -390,7 +393,63 @@ Classic_Model <- R6::R6Class(
             )
           }
         }
-        return(do.call(rbind, df_list))
+        df_combined <- do.call(rbind, df_list)
+        return(list(df_combined = df_combined, V_beta = NULL))
+      } else if (self$type == "ttest") {
+        Y1 <- self$extra$Y1
+        Y2 <- self$extra$Y2
+        var.equal <- if (!is.null(self$extra$var.equal)) self$extra$var.equal else FALSE
+        paired <- if (!is.null(self$extra$paired)) self$extra$paired else FALSE
+        
+        # Standard t-test
+        fit <- stats::t.test(Y1, Y2, var.equal = var.equal, paired = paired)
+        
+        # Calculate Cohen's d (Estimate for 'delta')
+        if (paired) {
+          diffs <- Y1 - Y2
+          n <- length(diffs)
+          # For paired t-test, d is mean(diff) / sd(diff)
+          d_est <- mean(diffs, na.rm = TRUE) / stats::sd(diffs, na.rm = TRUE)
+          se_d <- sqrt(1/n + d_est^2 / (2*n))
+          diff_est <- as.numeric(fit$estimate)
+        } else {
+          n1 <- length(Y1); n2 <- length(Y2)
+          v1 <- stats::var(Y1); v2 <- stats::var(Y2)
+          s_pooled <- sqrt(((n1 - 1) * v1 + (n2 - 1) * v2) / (n1 + n2 - 2))
+          # Align with t.test: mean(x) - mean(y)
+          d_est <- (mean(Y1) - mean(Y2)) / s_pooled
+          se_d <- sqrt((n1 + n2) / (n1 * n2) + d_est^2 / (2 * (n1 + n2)))
+          diff_est <- as.numeric(fit$estimate[1] - fit$estimate[2])
+        }
+        
+        crit_t <- stats::qt(0.975, df = fit$parameter)
+        
+        df_combined <- data.frame(
+          Estimate = d_est,
+          `Std. Error` = se_d,
+          `Lower 95%` = d_est - crit_t * se_d,
+          `Upper 95%` = d_est + crit_t * se_d,
+          `t value` = fit$statistic,
+          df = fit$parameter,
+          Pr = fit$p.value,
+          row.names = "delta",
+          check.names = FALSE
+        )
+        
+        # Add the raw difference as well
+        df_combined <- rbind(df_combined, data.frame(
+          Estimate = diff_est,
+          `Std. Error` = fit$stderr,
+          `Lower 95%` = fit$conf.int[1],
+          `Upper 95%` = fit$conf.int[2],
+          `t value` = fit$statistic,
+          df = fit$parameter,
+          Pr = fit$p.value,
+          row.names = "diff",
+          check.names = FALSE
+        ))
+        
+        return(list(df_combined = df_combined, V_beta = NULL))
       } else if (self$type == "mediation") {
         obj <- self$obj
         obj$data <- data
@@ -512,6 +571,10 @@ Classic_Fit <- R6::R6Class(
         cat("Based on non-parametric bootstrap (", nrow(self$bootstrap_results), " samples)\n")
       }
       cat("\nPoint Estimates and Confidence Intervals:\n")
+      if (self$model$type == "ttest") {
+        levs <- self$model$extra$levs
+        cat(sprintf("(Comparison: %s - %s)\n", levs[1], levs[2]))
+      }
       
       if (is.data.frame(self$fit) || inherits(self$fit, "lm")) {
         # Convert lm to dataframe if needed
@@ -646,6 +709,24 @@ Classic_Fit <- R6::R6Class(
         
         # Print the data frame cleanly
         print(df_final, quote = FALSE, right = TRUE)
+
+        # --- Enhanced Output for LM/GLM ---
+        if (inherits(self$fit, "lm")) {
+          s_lm <- summary(self$fit)
+          cat("\n---\n")
+          cat(sprintf("Residual standard error: %s on %d degrees of freedom\n", 
+                      format(round(s_lm$sigma, digits), nsmall = digits), s_lm$df[2]))
+          cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n", 
+                      format(round(s_lm$r.squared, 4), nsmall = 4), 
+                      format(round(s_lm$adj.r.squared, 4), nsmall = 4)))
+          if (!is.null(s_lm$fstatistic)) {
+            f <- s_lm$fstatistic
+            p_f <- pf(f[1], f[2], f[3], lower.tail = FALSE)
+            cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n", 
+                        format(round(f[1], 2), nsmall = 2), f[2], f[3], 
+                        if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
+          }
+        }
       } else {
         print(self$fit)
       }
@@ -794,9 +875,16 @@ Classic_Fit <- R6::R6Class(
                     symbols = c("***", "**", "*", ".", " "))
       res_df$signif <- as.character(sig)
 
-      # Formatting for printing
+      # --- Enhanced ANOVA Output with R2 ---
       class(res_df) <- c("anova", "data.frame")
-      attr(res_df, "heading") <- "ANOVA Table (Wald F-tests)"
+      heading <- "ANOVA Table (Wald F-tests)"
+      if (inherits(self$fit, "lm")) {
+        s_lm <- summary(self$fit)
+        heading <- paste0(heading, sprintf("\nMultiple R-squared: %s, Adjusted R-squared: %s", 
+                          format(round(s_lm$r.squared, 4), nsmall = 4), 
+                          format(round(s_lm$adj.r.squared, 4), nsmall = 4)))
+      }
+      attr(res_df, "heading") <- heading
       return(res_df)
     },
 

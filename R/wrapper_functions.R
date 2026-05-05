@@ -134,6 +134,11 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @param factors Character vector of variable names to be treated as factors.
+#' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
+#' @param sigma_by Character vector specifying variables to group residual variance by (heteroscedasticity).
+#' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
+#' @param resid_time Variable name for time points in residual correlation.
+#' @param resid_group Variable name for grouping in residual correlation.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
@@ -148,7 +153,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        factors = NULL,
                        contrasts = "treatment",
                        classic = FALSE,
-                       resid_cor = NULL,
+                       resid_corr = NULL,
                        resid_time = NULL,
                        resid_group = NULL) {
 
@@ -291,7 +296,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (is.list(init)) {
     # Set safe default for residual correlation (e.g. CS, AR1) if not specified by user.
     # This avoids non-positive definite matrices during the initial check.
-    if (!is.null(resid_cor) && !("rho_resid" %in% names(init)) && resid_cor %in% c("ar1", "cs", "toep")) {
+    if (!is.null(resid_corr) && !("rho_resid" %in% names(init)) && resid_corr %in% c("ar1", "cs", "toep")) {
       init$rho_resid <- 0.1
     }
   }
@@ -543,10 +548,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   dat <- list(Y = Y, trials = trials, X = X, 
               sigma_idx = sigma_idx, num_sigma_groups = num_sigma_groups)
   
-  if (!is.null(resid_cor)) {
+  if (!is.null(resid_corr)) {
     if (family != "gaussian") stop("Residual correlation structures are currently only supported for Gaussian models.")
-    resid_cor <- tolower(resid_cor)
-    if (!resid_cor %in% c("ar1", "cs", "un", "toep")) stop("Currently 'ar1', 'cs', 'un', and 'toep' are supported for resid_cor.")
+    resid_corr <- tolower(resid_corr)
+    if (!resid_corr %in% c("ar1", "cs", "un", "toep")) stop("Currently 'ar1', 'cs', 'un', and 'toep' are supported for resid_corr.")
     
     # Identify group for residuals
     if (is.null(resid_group)) {
@@ -702,12 +707,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(num_sigma_groups, lower = 0))
-  if (!is.null(resid_cor)) {
-    if (resid_cor %in% c("ar1", "cs")) {
+  if (!is.null(resid_corr)) {
+    if (resid_corr %in% c("ar1", "cs")) {
       param_exprs[[length(param_exprs) + 1]] <- quote(rho_resid <- Dim(type = "interval", lower = -1, upper = 1))
-    } else if (resid_cor == "un") {
+    } else if (resid_corr == "un") {
       param_exprs[[length(param_exprs) + 1]] <- bquote(L_resid <- Dim(c(.(dat$max_T_resid), .(dat$max_T_resid)), type = "CF_corr"))
-    } else if (resid_cor == "toep") {
+    } else if (resid_corr == "toep") {
       param_exprs[[length(param_exprs) + 1]] <- bquote(rho_resid <- Dim(.(dat$max_T_resid - 1), type = "interval", lower = -1, upper = 1))
     }
   }
@@ -778,8 +783,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
 
   ll_data_exprs <- list()
-  if (!is.null(resid_cor)) {
-    vi_inner_expr <- switch(resid_cor,
+  if (!is.null(resid_corr)) {
+    vi_inner_expr <- switch(resid_corr,
       "ar1" = quote(Vi[r,c] <- s_r * s_c * (rho_resid^abs(ti[r] - ti[c]))),
       "cs"  = quote(if (r == c) Vi[r,c] <- s_r^2 else Vi[r,c] <- s_r * s_c * rho_resid),
       "toep"= quote({
@@ -801,7 +806,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     # Build model components list
     ll_data_exprs <- list()
     ll_data_exprs[[length(ll_data_exprs) + 1]] <- quote(has_sig_idx <- !is.null(sigma_idx))
-    if (resid_cor == "un") {
+    if (resid_corr == "un") {
       ll_data_exprs[[length(ll_data_exprs) + 1]] <- quote(R_mat_resid <- L_resid %*% t(L_resid))
     }
     
@@ -979,9 +984,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       if (num_ranef_list[[b]] > 1) view_vars <- c(view_vars, paste0("corr", suffix(b)))
     }
   }
-  if (!is.null(resid_cor)) {
-    if (resid_cor %in% c("ar1", "cs", "toep")) view_vars <- c(view_vars, "rho_resid")
-    if (resid_cor == "un") view_vars <- c(view_vars, "L_resid")
+  if (!is.null(resid_corr)) {
+    if (resid_corr %in% c("ar1", "cs", "toep")) view_vars <- c(view_vars, "rho_resid")
+    if (resid_corr == "un") view_vars <- c(view_vars, "L_resid")
   }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
@@ -1015,7 +1020,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
     
     # Wrap in Classic_Model and return (let user call $estimate())
-    mod_type <- if (has_random || !is.null(resid_cor)) "lmer" else "lm"
+    mod_type <- if (has_random || !is.null(resid_corr)) "lmer" else "lm"
     refit_fn <- function(new_data) {
       rtmb_glmer(formula = formula, data = new_data, family = family,
                  laplace = laplace, prior = prior, y_range = y_range,
@@ -1043,6 +1048,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param cwc List for CWC
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param factors Character vector of variable names to be treated as factors.
+#' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
+#' @param sigma_by Character vector specifying variables to group residual variance by (heteroscedasticity).
+#' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
+#' @param resid_time Variable name for time points in residual correlation.
+#' @param resid_group Variable name for grouping in residual correlation.
 #' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @return RTMB_Model object
 #' @export
@@ -1059,7 +1069,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        factors = NULL,
                        contrasts = "treatment",
                        classic = FALSE,
-                       resid_cor = NULL,
+                       resid_corr = NULL,
                        resid_time = NULL,
                        resid_group = NULL) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
@@ -1075,7 +1085,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              factors = factors,
              contrasts = contrasts,
              classic = classic,
-             resid_cor = resid_cor,
+             resid_corr = resid_corr,
              resid_time = resid_time,
              resid_group = resid_group)
 }
@@ -1880,14 +1890,20 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
       stop("Classic mode (frequentist) for multilevel correlation is not supported. Please use classic = FALSE.")
     }
     
+    method <- if ("method" %in% names(list(...))) list(...)$method else "pearson"
+
     mdl_obj <- Classic_Model$new(
       type = "corr",
       formula = formula,
       data = as.data.frame(Y_mat),
       view = c("corr"),
-      extra = list(P_y = P_y, P_x = P_x)
+      extra = list(P_y = P_y, P_x = P_x, method = method)
     )
     return(mdl_obj)
+  }
+
+  if (!classic && "method" %in% names(list(...))) {
+     warning("Argument 'method' is only effective when classic = TRUE. It will be ignored for Bayesian/MAP estimation.")
   }
 
   # --- RTMB Implementation ---
@@ -2194,33 +2210,38 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 #' It estimates the effect size (delta) with a Cauchy prior, allowing for robust inference
 #' and calculation of Bayes factors.
 #'
-#' @param x Numeric vector of responses for group 1, or a formula (e.g., `y ~ group`).
-#' @param y Numeric vector of responses for group 2. Required if `x` is not a formula.
-#' @param data Data frame containing the variables in the formula.
+#' @param x Numeric vector of responses for group 1, a formula (e.g., `y ~ group`), or a column name (unquoted) if `data` is provided.
+#' @param y Numeric vector of responses for group 2, or a column name (unquoted) if `data` is provided. Required if `x` is not a formula.
+#' @param data Data frame containing the variables.
 #' @param r Numeric; Cauchy prior scale for the effect size (delta). Default is 0.707.
-#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
-#' @param use_weak_info Logical; whether to explicitly use weakly informative priors.
-#' @param prior List of hyperparameters for the default fixed priors.
-#' @param weak_info_prior List of hyperparameters for the weakly informative priors.
+#' @param paired Logical; whether to perform a paired t-test.
+#' @param ID Character; name of the ID variable for paired t-tests (required for formula input with paired = TRUE).
+#' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.
+#' @param prior An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
-#' @param y1 Deprecated. Use `x` instead.
-#' @param y2 Deprecated. Use `y` instead.
+#' @param classic Logical; if TRUE, perform frequentist estimation.
+#' @param var.equal Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.
+#' @param ... Additional arguments.
 #' @return An \code{RTMB_Model} object.
 #' @example inst/examples/ex_ttest.R
 #' @export
 rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
+                       paired = FALSE, ID = NULL,
                        y_range = NULL,
-                       use_weak_info = FALSE,
-                       prior = list(mean_sd = 10, sd_rate = 0.1),
-                       weak_info_prior = list(sd_ratio = 0.5),
+                       prior = prior_uniform(),
                        init = NULL, null = NULL,
-                       y1 = NULL, y2 = NULL) {
+                       classic = FALSE, var.equal = FALSE, ...) {
 
-  if (!is.null(y1)) x <- y1
-  if (!is.null(y2)) y <- y2
+  x_expr <- substitute(x)
+  y_expr <- substitute(y)
+  
+  # Check if x is a formula without evaluating it yet
+  is_formula <- is.call(x_expr) && (x_expr[[1]] == quote(`~`))
 
-  if (inherits(x, "formula")) {
+  if (is_formula) {
+    # Evaluate x only now that we know it's a formula
+    x <- eval(x_expr, parent.frame())
     if (is.null(data)) {
       mf <- model.frame(x, parent.frame())
     } else {
@@ -2230,87 +2251,189 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     group <- as.factor(mf[[2]])
 
     if (length(levels(group)) != 2) {
-      stop("The grouping variable must have exactly 2 levels.")
+      stop(sprintf("The grouping variable '%s' must have exactly 2 levels for a t-test (found %d: %s).", 
+           names(mf)[2], length(levels(group)), paste(levels(group), collapse=", ")))
     }
 
-    Y1 <- as.numeric(na.omit(response[group == levels(group)[1]]))
-    Y2 <- as.numeric(na.omit(response[group == levels(group)[2]]))
+    levs <- levels(group)
+    x_label <- levs[1]
+    y_label <- levs[2]
+
+    if (paired) {
+       if (is.null(ID)) stop("Paired t-test with formula requires 'ID' argument (e.g., ID = 'subject_id').")
+       id_val <- if (!is.null(data)) data[[ID]] else eval(substitute(ID), parent.frame())
+       if (is.null(id_val)) stop(sprintf("ID variable '%s' not found.", ID))
+       
+       d1 <- mf[group == levs[1], , drop = FALSE]
+       d1$id <- id_val[group == levs[1]]
+       d2 <- mf[group == levs[2], , drop = FALSE]
+       d2$id <- id_val[group == levs[2]]
+       
+       common_ids <- intersect(d1$id, d2$id)
+       if (length(common_ids) == 0) stop("No matching IDs found between the two groups for paired t-test.")
+       
+       Y1 <- d1[match(common_ids, d1$id), 1]
+       Y2 <- d2[match(common_ids, d2$id), 1]
+    } else {
+       Y1 <- as.numeric(na.omit(response[group == levs[1]]))
+       Y2 <- as.numeric(na.omit(response[group == levs[2]]))
+    }
   } else {
-    if (is.null(y)) stop("y must be provided if x is not a formula.")
-    Y1 <- as.numeric(na.omit(x))
-    Y2 <- as.numeric(na.omit(y))
+    # Non-formula case: handle unquoted names in data
+    x_label <- deparse(x_expr)
+    y_label <- deparse(y_expr)
+    
+    if (!is.null(data)) {
+       Y1 <- if (x_label %in% names(data)) data[[x_label]] else eval(x_expr, parent.frame())
+       Y2 <- if (y_label %in% names(data)) data[[y_label]] else eval(y_expr, parent.frame())
+    } else {
+       Y1 <- eval(x_expr, parent.frame())
+       Y2 <- eval(y_expr, parent.frame())
+    }
+    
+    Y1 <- as.numeric(na.omit(Y1))
+    Y2 <- as.numeric(na.omit(Y2))
+    
+    if (paired && length(Y1) != length(Y2)) {
+       stop("For paired t-test, x and y must have the same length.")
+    }
+  }
+  
+  levs <- c(x_label, y_label)
+
+  if (classic) {
+    mdl_obj <- Classic_Model$new(
+      type = "ttest",
+      formula = if (is_formula) x else NULL,
+      data = if (!is.null(data)) data else NULL,
+      view = c("delta", "diff"),
+      extra = list(Y1 = Y1, Y2 = Y2, var.equal = var.equal, paired = paired, 
+                   levs = levs)
+    )
+    return(mdl_obj)
   }
 
-  if (!is.null(y_range)) {
-    use_weak_info <- TRUE
+  if (!classic && !missing(var.equal)) {
+     warning("Argument 'var.equal' is only effective when classic = TRUE. It will be ignored for Bayesian/MAP estimation (which currently assumes equal variances).")
   }
 
-  if (use_weak_info && is.null(y_range)) {
-    stop("Specifying 'y_range' is required when using weakly informative priors.")
-  }
-
-  default_prior <- list(mean_sd = 10, sd_rate = 0.1)
-  if (!is.null(prior)) {
-    prior <- .merge_prior(default_prior, prior)
+  use_weak_info <- FALSE
+  if (is.null(prior)) prior <- prior_uniform()
+  
+  if (inherits(prior, "rtmb_prior")) {
+    if (prior$type == "weak") {
+      use_weak_info <- TRUE
+      if (is.null(y_range)) {
+        stop("Specifying 'y_range' is required when using weakly informative priors (prior_weak()).")
+      }
+      sd_ratio <- if (!is.null(prior$sd_ratio)) prior$sd_ratio else 0.5
+    } else {
+      mu_sd <- prior$mu_sd
+      sigma_rate <- prior$sigma_rate
+    }
   } else {
-    prior <- default_prior
+    # Backwards compatibility for manual list
+    mu_sd <- if (!is.null(prior$mean_sd)) prior$mean_sd else NULL
+    sigma_rate <- if (!is.null(prior$sd_rate)) prior$sd_rate else NULL
   }
 
-  default_weak_prior <- list(sd_ratio = 0.5)
-  if (!is.null(weak_info_prior)) {
-    weak_info_prior <- .merge_prior(default_weak_prior, weak_info_prior)
+  if (paired) {
+    diffs <- Y1 - Y2
+    dat <- list(diffs = diffs, r = r)
+    tmp_env <- list2env(dat, parent = environment())
+    
+    if (use_weak_info) {
+      setup_exprs <- list()
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(sd_ratio))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(mu_prior_sd <- half_d_y)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0) # Diff is expected near 0
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_weak <- 1.0 / base_scale)
+      setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
+      eval(setup_ast, tmp_env)
+    } else {
+      setup_ast <- NULL
+    }
+    
+    param_ast <- quote({
+      mu_diff = Dim(1)
+      sd_diff = Dim(1, lower = 0)
+    })
+    
+    tran_ast <- quote({
+      delta <- mu_diff / sd_diff
+    })
+    
+    model_exprs <- list()
+    model_exprs[[length(model_exprs) + 1]] <- quote(diffs ~ normal(mu_diff, sd_diff))
+    model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ cauchy(0, r))
+    if (use_weak_info) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(mu_diff ~ normal(mid_y, mu_prior_sd))
+      model_exprs[[length(model_exprs) + 1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
+    } else {
+      if (!is.null(mu_sd)) {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(mu_diff ~ normal(0, .(mu_sd)))
+      }
+      if (!is.null(sigma_rate)) {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(sd_diff ~ exponential(.(sigma_rate)))
+      }
+    }
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
+    view_vars <- c("delta", "mu_diff", "sd_diff")
+    
   } else {
-    weak_info_prior <- default_weak_prior
+    dat <- list(Y1 = Y1, Y2 = Y2, r = r)
+    tmp_env <- list2env(dat, parent = environment())
+
+    # --- Setup AST ---
+    if (use_weak_info) {
+      setup_exprs <- list()
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(sd_ratio))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(mu_prior_sd <- half_d_y)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_weak <- 1.0 / base_scale)
+
+      setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
+      eval(setup_ast, tmp_env)
+    } else {
+      setup_ast <- NULL
+    }
+
+    # --- Parameters AST ---
+    param_ast <- quote({
+      mean = Dim(1)
+      sd = Dim(1, lower = 0)
+      delta = Dim(1)
+    })
+
+    # --- Transform AST ---
+    tran_ast <- quote({
+      diff <- delta * sd
+      mean0 <- mean - diff / 2
+      mean1 <- mean + diff / 2
+    })
+
+    # --- Model AST ---
+    model_exprs <- list()
+    model_exprs[[length(model_exprs) + 1]] <- quote(Y1 ~ normal(mean0, sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(Y2 ~ normal(mean1, sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ cauchy(0, r))
+
+    if (use_weak_info) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, mu_prior_sd))
+      model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate_weak))
+    } else {
+      if (!is.null(mu_sd)) {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(mu_sd)))
+      }
+      if (!is.null(sigma_rate)) {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(sigma_rate)))
+      }
+    }
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
+    view_vars <- c("delta", "mean", "sd")
   }
-
-
-  dat <- list(Y1 = Y1, Y2 = Y2, r = r)
-  tmp_env <- list2env(dat, parent = environment())
-
-  # --- Setup AST ---
-  if (use_weak_info) {
-    setup_exprs <- list()
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- half_d_y * weak_info_prior$sd_ratio)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(mu_prior_sd <- half_d_y)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
-
-    setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-    eval(setup_ast, tmp_env)
-  } else {
-    setup_ast <- NULL
-  }
-
-  # --- Parameters AST ---
-  param_ast <- quote({
-    mean = Dim(1)
-    sd = Dim(1, lower = 0)
-    delta = Dim(1)
-  })
-
-  # --- Transform AST ---
-  tran_ast <- quote({
-    diff <- delta * sd
-    mean0 <- mean - diff / 2
-    mean1 <- mean + diff / 2
-  })
-
-  # --- Model AST ---
-  model_exprs <- list()
-  model_exprs[[length(model_exprs) + 1]] <- quote(Y1 ~ normal(mean0, sd))
-  model_exprs[[length(model_exprs) + 1]] <- quote(Y2 ~ normal(mean1, sd))
-  model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ cauchy(0, r))
-
-  if (use_weak_info) {
-    model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, mu_prior_sd))
-    model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate))
-  } else {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior$mean_sd)))
-    model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sd_rate)))
-  }
-
-  model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
   # --- Construction of model object ---
   code_args <- list(parameters = param_ast, transform = tran_ast, model = model_ast)
@@ -2321,8 +2444,6 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-
-  view_vars <- c("delta", "mean", "sd")
 
   obj <- rtmb_model(
     data = ordered_data,

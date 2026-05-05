@@ -20,7 +20,7 @@ rtmb_glmer(
   factors = NULL,
   contrasts = "treatment",
   classic = FALSE,
-  resid_cor = NULL,
+  resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL
 )
@@ -48,9 +48,19 @@ rtmb_glmer(
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 
+\item{sigma_by}{Character vector specifying variables to group residual variance by (heteroscedasticity).}
+
 \item{factors}{Character vector of variable names to be treated as factors.}
 
+\item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
+
 \item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
+
+\item{resid_corr}{Residual correlation structure (e.g., "ar1", "cs", "un", "toep").}
+
+\item{resid_time}{Variable name for time points in residual correlation.}
+
+\item{resid_group}{Variable name for grouping in residual correlation.}
 }
 \description{
 RTMB-based GLMM wrapper function

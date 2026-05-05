@@ -9,40 +9,43 @@ rtmb_ttest(
   y = NULL,
   data = NULL,
   r = 0.707,
+  paired = FALSE,
+  ID = NULL,
   y_range = NULL,
-  use_weak_info = FALSE,
-  prior = list(mean_sd = 10, sd_rate = 0.1),
-  weak_info_prior = list(sd_ratio = 0.5),
+  prior = prior_uniform(),
   init = NULL,
   null = NULL,
-  y1 = NULL,
-  y2 = NULL
+  classic = FALSE,
+  var.equal = FALSE,
+  ...
 )
 }
 \arguments{
-\item{x}{Numeric vector of responses for group 1, or a formula (e.g., `y ~ group`).}
+\item{x}{Numeric vector of responses for group 1, a formula (e.g., `y ~ group`), or a column name (unquoted) if `data` is provided.}
 
-\item{y}{Numeric vector of responses for group 2. Required if `x` is not a formula.}
+\item{y}{Numeric vector of responses for group 2, or a column name (unquoted) if `data` is provided. Required if `x` is not a formula.}
 
-\item{data}{Data frame containing the variables in the formula.}
+\item{data}{Data frame containing the variables.}
 
 \item{r}{Numeric; Cauchy prior scale for the effect size (delta). Default is 0.707.}
 
-\item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.}
+\item{paired}{Logical; whether to perform a paired t-test.}
 
-\item{use_weak_info}{Logical; whether to explicitly use weakly informative priors.}
+\item{ID}{Character; name of the ID variable for paired t-tests (required for formula input with paired = TRUE).}
 
-\item{prior}{List of hyperparameters for the default fixed priors.}
+\item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.}
 
-\item{weak_info_prior}{List of hyperparameters for the weakly informative priors.}
+\item{prior}{An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).}
 
 \item{init}{List of initial values.}
 
 \item{null}{Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").}
 
-\item{y1}{Deprecated. Use `x` instead.}
+\item{classic}{Logical; if TRUE, perform frequentist estimation.}
 
-\item{y2}{Deprecated. Use `y` instead.}
+\item{var.equal}{Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.}
+
+\item{...}{Additional arguments.}
 }
 \value{
 An \code{RTMB_Model} object.
