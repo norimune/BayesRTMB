@@ -14,8 +14,7 @@ rtmb_glm(
   null = NULL,
   gmc = NULL,
   factors = NULL,
-  contrasts = "treatment",
-  classic = FALSE
+  contrasts = "treatment"
 )
 }
 \arguments{

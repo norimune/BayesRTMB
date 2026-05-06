@@ -4,27 +4,20 @@
 \alias{rtmb_loglinear}
 \title{RTMB-based Log-linear Analysis (Contingency Table)}
 \usage{
-rtmb_loglinear(
-  formula,
-  data,
-  classic = FALSE,
-  fisher = FALSE,
-  prior = prior_uniform(),
-  ...
-)
+rtmb_loglinear(formula, data, prior = prior_uniform(), ...)
 }
 \arguments{
 \item{formula}{A formula describing the table structure (e.g., `~ A + B` for independence, `~ A * B` for dependence).}
 
 \item{data}{A data frame, table, or matrix.}
 
-\item{classic}{Logical; if TRUE, perform frequentist estimation and ANOVA tests.}
-
-\item{fisher}{Logical; if TRUE, perform Fisher's exact test (for 2D tables).}
-
 \item{prior}{Prior specification (e.g., `prior_uniform()` or `prior_weak()`). Default is `prior_uniform()`.}
 
 \item{...}{Additional arguments passed to the internal estimation engine.}
+
+\item{classic}{Logical; if TRUE, perform frequentist estimation and ANOVA tests.}
+
+\item{fisher}{Logical; if TRUE, perform Fisher's exact test (for 2D tables).}
 }
 \value{
 An `RTMB_Model`, `MCMC_Fit`, or `Classic_Fit` object depending on the settings.

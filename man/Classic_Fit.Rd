@@ -9,13 +9,17 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
-\item{\code{model}}{The `Classic_Model` object used for estimation.}
+\item{\code{model}}{The `RTMB_Model` object used for estimation.}
 
 \item{\code{fit}}{The result of the estimation (dataframe or lm object).}
 
-\item{\code{par}}{A named list of parameter estimates.}
+\item{\code{par}}{a named list of parameter estimates.}
 
 \item{\code{vcov}}{Variance-covariance matrix of fixed effects.}
+
+\item{\code{se_method}}{Character string specifying the method used for standard errors.}
+
+\item{\code{cluster}}{Character string specifying the cluster variable name, if any.}
 
 \item{\code{bootstrap_results}}{A matrix containing bootstrap samples, if applicable.}
 }
@@ -25,6 +29,9 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
+\item \href{#method-Classic_Fit-compute_robust}{\code{Classic_Fit$compute_robust()}}
+\item \href{#method-Classic_Fit-compute_bootstrap}{\code{Classic_Fit$compute_bootstrap()}}
+\item \href{#method-Classic_Fit-.update_fit_with_vcov}{\code{Classic_Fit$.update_fit_with_vcov()}}
 \item \href{#method-Classic_Fit-AIC}{\code{Classic_Fit$AIC()}}
 \item \href{#method-Classic_Fit-BIC}{\code{Classic_Fit$BIC()}}
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
@@ -44,20 +51,85 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \subsection{Method \code{new()}}{
 Create a new `Classic_Fit` object.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$new(model, fit, vcov = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$new(
+  model,
+  fit,
+  vcov = NULL,
+  se_method = "wald",
+  cluster = NULL,
+  test_results = list()
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{model}}{The `Classic_Model` object.}
+\item{\code{model}}{The `RTMB_Model` object.}
 
 \item{\code{fit}}{The result of the estimation.}
 
 \item{\code{vcov}}{Variance-covariance matrix of fixed effects.}
+
+\item{\code{se_method}}{Character; "wald", "robust", or "bootstrap".}
+
+\item{\code{cluster}}{Character; cluster variable name.}
+
+\item{\code{test_results}}{List of additional test results (e.g., chisq.test).}
 }
 \if{html}{\out{</div>}}
 }
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-compute_robust"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-compute_robust}{}}}
+\subsection{Method \code{compute_robust()}}{
+Compute robust standard errors (sandwich estimator).
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$compute_robust(cluster = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{cluster}}{Character; variable name for clustering.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Self.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-compute_bootstrap"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-compute_bootstrap}{}}}
+\subsection{Method \code{compute_bootstrap()}}{
+Compute bootstrap standard errors.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$compute_bootstrap(n_boot = 1000, cluster = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{n_boot}}{Integer; number of samples.}
+
+\item{\code{cluster}}{Character; clustering variable.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Self.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-.update_fit_with_vcov"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-.update_fit_with_vcov}{}}}
+\subsection{Method \code{.update_fit_with_vcov()}}{
+(Internal) Update fit data frame with current vcov.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.update_fit_with_vcov()}\if{html}{\out{</div>}}
+}
+
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-AIC"></a>}}
@@ -112,13 +184,15 @@ Get the Log-Likelihood of the fitted model.
 \subsection{Method \code{summary()}}{
 Display a summary of the estimation results.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$summary(digits = 5)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$summary(digits = 5, max_rows = 10)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{digits}}{Number of digits to print for estimates.}
+
+\item{\code{max_rows}}{Maximum number of rows to display in the coefficient table.}
 }
 \if{html}{\out{</div>}}
 }

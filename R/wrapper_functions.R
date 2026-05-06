@@ -141,7 +141,7 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' rtmb_table(skill, cond, data = debate, classic = TRUE)
 #' }
 #' @export
-rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE, prior = prior_uniform(), ...) {
+rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_uniform(), ...) {
   
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -170,21 +170,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
   grid <- expand.grid(Row = R_names, Col = C_names)
   cell_labels <- paste0(v1_name, ":", grid$Row, ", ", v2_name, ":", grid$Col)
   
-  # 2. Classic Mode
-  if (classic) {
-    # We use the standard Classic_Model class (R6)
-    model <- Classic_Model$new(
-      type = "table",
-      formula = NULL, # formula is optional for table
-      data = data,
-      extra = list(
-        tab = tab,
-        correct = correct,
-        cell_labels = cell_labels
-      )
-    )
-    return(model)
-  }
+
   
   # 3. Bayes Mode (Multinomial Model)
   # Data for RTMB
@@ -241,6 +227,8 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
   )
   class(res) <- c("rtmb_table", class(res))
   
+  res$type <- "table"
+  res$extra <- list(tab = tab, correct = correct)
   return(res)
 }
 
@@ -272,7 +260,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
 #' fit_bayas <- rtmb_loglinear(~ Class * Sex * Age * Survived, data = Titanic, prior = prior_weak())
 #' }
 #' @export
-rtmb_loglinear <- function(formula, data, classic = FALSE, fisher = FALSE, prior = prior_uniform(), ...) {
+rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
   
   # 1. Data Preparation
   # Convert table or matrix to long data frame
@@ -343,28 +331,14 @@ rtmb_loglinear <- function(formula, data, classic = FALSE, fisher = FALSE, prior
     formula = formula,
     data = data,
     family = "poisson",
-    classic = classic,
     prior = prior,
     generate = gen_block,
     ...
   )
 
-  # If classic, we return the Classic_Model object (to be consistent with other wrappers)
+  # Tag as loglinear
+  res$type <- "loglinear"
   fit <- res
-
-  # 3. Add Fisher's Exact Test if requested (Classic mode only)
-  if (classic && fisher) {
-    # Only for 2D tables
-    vars_in_model <- setdiff(all.vars(formula), response_var)
-    if (length(vars_in_model) == 2) {
-      tab <- xtabs(formula, data)
-      fisher_res <- fisher.test(tab)
-      # Store in fit object (Classic_Fit usually has an 'extra' slot or we can append)
-      fit$extra$fisher <- fisher_res
-    } else {
-      warning("Fisher's exact test is only implemented for 2D tables.")
-    }
-  }
 
   # Tag as rtmb_loglinear for potential custom methods
   class(fit) <- c("rtmb_loglinear", class(fit))
@@ -385,7 +359,7 @@ rtmb_loglinear <- function(formula, data, classic = FALSE, fisher = FALSE, prior
 #' @param gmc Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #' @param view Character vector of parameter names to prioritize in summary.
-#' @param classic Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode with random effects, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.
+
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param sigma_by Character vector specifying variables to group residual variance by (heteroscedasticity).
@@ -405,7 +379,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        factors = NULL,
                        contrasts = "treatment",
                        sigma_by = NULL,
-                       classic = FALSE,
                        resid_corr = NULL,
                        resid_time = NULL,
                        resid_group = NULL,
@@ -413,9 +386,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        .force_sum = FALSE) {
 
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
-    if (classic && !family %in% c("gaussian", "lognormal", "student_t", "poisson", "binomial", "bernoulli")) {
-      stop("classic = TRUE is only supported for 'gaussian', 'lognormal', 'student_t', 'poisson', 'binomial', and 'bernoulli' families.")
-    }
+
 
    if (!is.null(resid_corr)) {
      valid_resid_corr <- c("ar1", "cs", "un", "toep")
@@ -573,7 +544,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   # If classic mode and random effects are present (or forced), we internally 
   # force 'sum' contrasts for stable Type III ANOVA/DFs.
   # Otherwise, we use the user-requested contrast (defaulting to 'treatment').
-  actual_contrasts <- if (classic && (has_random || .force_sum)) "sum" else contrasts
+  actual_contrasts <- if (.force_sum) "sum" else contrasts
   
   if (!is.null(actual_contrasts)) {
     if (actual_contrasts == "sum") {
@@ -943,14 +914,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   param_exprs <- list()
   if (has_intercept) {
     if (prior_type %in% c("flat", "uniform")) {
-      param_exprs[[length(param_exprs) + 1]] <- if (classic) quote(Intercept <- Dim(1, random = TRUE)) else quote(Intercept <- Dim(1))
+      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept <- Dim(1))
     } else {
-      param_exprs[[length(param_exprs) + 1]] <- if (classic) quote(Intercept_c <- Dim(1, random = TRUE)) else quote(Intercept_c <- Dim(1))
+      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
     }
   }
   if (K > 0) {
     if (regularization == "none") {
-      param_exprs[[length(param_exprs) + 1]] <- if (classic) quote(b <- Dim(K, random = TRUE)) else quote(b <- Dim(K))
+      param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
     } else if (regularization == "rhs") {
       param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(K))
       param_exprs[[length(param_exprs) + 1]] <- quote(lambda <- Dim(K, lower = 0))
@@ -1270,7 +1241,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
   obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, 
-                    view = if (!is.null(view)) view else view_vars, silent = classic)
+                    view = if (!is.null(view)) view else view_vars, silent = FALSE)
   obj$formula <- formula
   obj$raw_data <- data
   obj$family <- family
@@ -1282,38 +1253,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     obj <- obj$null_model(pars = null)
   }
 
-  if (classic) {
-    # --- 1. Identify Fixed Effects to be integrated (REML) ---
-    fe_params <- c()
-    if (has_intercept) {
-       if ("Intercept" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept")
-       if ("Intercept_c" %in% names(obj$par_list)) fe_params <- c(fe_params, "Intercept_c")
-    }
-    if (K > 0) fe_params <- c(fe_params, "b")
-    
-    # Temporarily set fixed effects as random in par_list to enable REML when estimate() is called
-    for (p in fe_params) {
-      if (p %in% names(obj$par_list)) {
-        obj$par_list[[p]]$random <- TRUE
-      }
-    }
-    
-    # Wrap in Classic_Model and return (let user call $estimate())
-    mod_type <- if (has_random || !is.null(resid_corr)) {
-      if (family %in% c("gaussian", "lognormal", "student_t")) "lmer" else "glmm"
-    } else {
-      if (family %in% c("gaussian", "lognormal", "student_t")) "lm" else "glm"
-    }
-    refit_fn <- function(new_data) {
-      rtmb_glmer(formula = formula, data = new_data, family = family,
-                 laplace = laplace, prior = prior, y_range = y_range,
-                 init = init, null = null, gmc = gmc, cwc = cwc,
-                 view = view, sigma_by = sigma_by, classic = TRUE)$estimate()
-    }
-    return(Classic_Model$new(type = mod_type, formula = formula, data = data, family = family, 
-                             view = if (!is.null(view)) view else view_vars, obj = obj, refit_fn = refit_fn,
-                             extra = list(X_assign = X_assign, X_terms = X_terms, X_colnames = fixed_colnames)))
+  # --- Metadata for classic inference and other methods ---
+  obj$type <- if (has_random || !is.null(resid_corr)) {
+    if (family %in% c("gaussian", "lognormal", "student_t")) "lmer" else "glmm"
+  } else {
+    if (family %in% c("gaussian", "lognormal", "student_t")) "lm" else "glm"
   }
+  obj$extra <- list(X_assign = X_assign, X_terms = X_terms, X_colnames = fixed_colnames)
 
   return(obj)
 }
@@ -1336,7 +1282,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
 #' @param resid_time Variable name for time points in residual correlation.
 #' @param resid_group Variable name for grouping in residual correlation.
-#' @param classic Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.
+
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
@@ -1351,7 +1297,6 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        sigma_by = NULL,
                        factors = NULL,
                        contrasts = "treatment",
-                       classic = FALSE,
                        resid_corr = NULL,
                        resid_time = NULL,
                        resid_group = NULL) {
@@ -1367,7 +1312,6 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              sigma_by = sigma_by,
              factors = factors,
              contrasts = contrasts,
-             classic = classic,
              resid_corr = resid_corr,
              resid_time = resid_time,
              resid_group = resid_group,
@@ -1392,8 +1336,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                        init = NULL, null = NULL,
                        gmc = NULL,
                        factors = NULL,
-                       contrasts = "treatment",
-                       classic = FALSE) {
+                       contrasts = "treatment") {
   rtmb_glmer(formula = formula, data = data, family = family,
              laplace = FALSE,
              prior = prior,
@@ -1402,8 +1345,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              null = null,
              gmc = gmc,
              factors = factors,
-             contrasts = contrasts,
-             classic = classic)
+             contrasts = contrasts)
 }
 
 #' RTMB-based Linear Regression wrapper function
@@ -1415,7 +1357,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model.
 #' @param gmc Character vector of variable names for GMC
-#' @param classic Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.
+
 #' @param factors Character vector of variable names to be treated as factors.
 #' @example inst/examples/ex_lm.R
 #' @export
@@ -1425,8 +1367,7 @@ rtmb_lm <- function(formula, data,
                     init = NULL, null = NULL,
                     gmc = NULL,
                     factors = NULL,
-                    contrasts = "treatment",
-                    classic = FALSE) {
+                    contrasts = "treatment") {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = FALSE,
              prior = prior,
@@ -1435,8 +1376,7 @@ rtmb_lm <- function(formula, data,
              null = null,
              gmc = gmc,
              factors = factors,
-             contrasts = contrasts,
-             classic = classic)
+             contrasts = contrasts)
 }
 
 
@@ -2004,14 +1944,14 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
 #' @param null Optional list specifying parameters to fix to null values.
-#' @param classic Logical; if \code{TRUE}, performs classical frequentist estimation instead of Bayesian/MAP.
+
 #' @param ... Additional arguments passed to \code{rtmb_model}.
-#' @return A \code{RTMB_Model} or \code{Classic_Model} object.
+#' @return A \code{RTMB_Model} object.
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
                       prior = prior_uniform(), y_range = NULL,
-                      init = NULL, null = NULL, classic = FALSE, ...) {
+                      init = NULL, null = NULL, ...) {
   
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
@@ -2168,27 +2108,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   if (is.null(var_names)) var_names <- paste0("V", 1:P)
   colnames(Y_mat) <- var_names
 
-  # --- Classic Mode (Frequentist) ---
-  if (classic) {
-    if (!is.null(id_val)) {
-      stop("Classic mode (frequentist) for multilevel correlation is not supported. Please use classic = FALSE.")
-    }
-    
-    method <- if ("method" %in% names(list(...))) list(...)$method else "pearson"
 
-    mdl_obj <- Classic_Model$new(
-      type = "corr",
-      formula = formula,
-      data = as.data.frame(Y_mat),
-      view = c("corr"),
-      extra = list(P_y = P_y, P_x = P_x, method = method)
-    )
-    return(mdl_obj)
-  }
-
-  if (!classic && "method" %in% names(list(...))) {
-     warning("Argument 'method' is only effective when classic = TRUE. It will be ignored for Bayesian/MAP estimation.")
-  }
 
   # --- RTMB Implementation ---
   if (is.null(prior)) {
@@ -2352,6 +2272,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
 
      mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+     mdl$raw_data <- data
+     
+     mdl$type <- "corr"
+
      return(mdl)
   } else {
      # Simple correlation mode
@@ -2436,16 +2360,19 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
      generate_exprs <- list(as.name("{"))
      if (P > 2) {
-       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- CF_corr %*% t(CF_corr))
-       
-       if (P_x > 0) {
-          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy <- corr[1:P_y, 1:P_y])
-          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx <- corr[1:P_y, (P_y+1):P])
-          generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx <- corr[(P_y+1):P, (P_y+1):P])
-          generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
-          generate_exprs[[length(generate_exprs) + 1]] <- quote(D <- diag(1 / sqrt(diag(P_cov))))
-          generate_exprs[[length(generate_exprs) + 1]] <- quote(pcorr <- D %*% P_cov %*% D)
-       }
+       generate_exprs[[length(generate_exprs) + 1]] <- quote({
+           M_CF <- as.matrix(CF_corr)
+           corr <- M_CF %*% t(M_CF)
+           
+           if (P_x > 0) {
+              R_yy <- corr[1:P_y, 1:P_y]
+              R_yx <- corr[1:P_y, (P_y+1):P]
+              R_xx <- corr[(P_y+1):P, (P_y+1):P]
+              P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx)
+              D <- diag(1 / sqrt(diag(P_cov)))
+              pcorr <- D %*% P_cov %*% D
+           }
+        })
      }
      generate_ast <- as.call(generate_exprs)
 
@@ -2480,8 +2407,9 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        obj <- obj$null_model(target = null)
      }
 
-     # Store contrast preference for post-estimation methods
-    obj$contrasts <- contrasts
+     obj$contrasts <- contrasts
+    obj$raw_data <- data
+    obj$type <- "corr"
     
     return(obj)
   }
@@ -2504,7 +2432,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 #' @param prior An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
-#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
+
 #' @param var.equal Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.
 #' @param ... Additional arguments.
 #' @return An \code{RTMB_Model} object.
@@ -2515,7 +2443,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        y_range = NULL,
                        prior = prior_uniform(),
                        init = NULL, null = NULL,
-                       classic = FALSE, var.equal = FALSE, ...) {
+                       var.equal = FALSE, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -2585,21 +2513,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   
   levs <- c(x_label, y_label)
 
-  if (classic) {
-    mdl_obj <- Classic_Model$new(
-      type = "ttest",
-      formula = if (is_formula) x else NULL,
-      data = if (!is.null(data)) data else NULL,
-      view = c("delta", "diff"),
-      extra = list(Y1 = Y1, Y2 = Y2, var.equal = var.equal, paired = paired, 
-                   levs = levs)
-    )
-    return(mdl_obj)
-  }
 
-  if (!classic && !missing(var.equal)) {
-     warning("Argument 'var.equal' is only effective when classic = TRUE. It will be ignored for Bayesian/MAP estimation (which currently assumes equal variances).")
-  }
+
+
 
   use_weak_info <- FALSE
   if (is.null(prior)) prior <- prior_uniform()
@@ -2740,6 +2656,11 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   if (!is.null(null)) {
     obj <- obj$null_model(target = null)
   }
+
+  obj$type <- "ttest"
+  obj$extra <- list(Y1 = Y1, Y2 = Y2, var.equal = var.equal, paired = paired, levs = levs)
+
+
 
   return(obj)
 }
@@ -3735,7 +3656,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
 #' @param y_range Theoretical minimum and maximum values of the response variable.
 #' @param view Character vector of parameter names to prioritize in summary.
-#' @param classic Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.
+
 #' @param ... Additional arguments passed to the model construction.
 #'
 #' @details
@@ -3750,13 +3671,8 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #'
 #' @return An `RTMB_Model` object.
 #' @export
-rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, view = NULL, classic = FALSE, ...) {
-  if (classic) {
-    # If classic is TRUE, we return a Classic_Model.
-    # Note: We still need to build the RTMB_Model first to use it in Classic_Model for mediation.
-    # But we can call rtmb_mediation(classic = FALSE) recursively to get the model.
-    # However, to avoid infinite recursion, we just set classic = FALSE here.
-  }
+rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, view = NULL, ...) {
+
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
   n_eq <- length(formula)
@@ -4063,16 +3979,14 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   
   # Ensure env is correctly formatted for rtmb_model
   # Using the evaluated objects directly from tmp_env
-  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order, silent = classic)
+  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order, silent = FALSE)
   mdl$formula <- formula
   mdl$raw_data <- data
   
-  if (classic) {
-    refit_fn <- function(new_data) {
-      rtmb_mediation(formula = formula, data = new_data, family = family, prior = prior, y_range = y_range, view = view, classic = TRUE)$estimate()
-    }
-    return(Classic_Model$new(type = "mediation", formula = formula, data = data, family = family, view = if (is.null(view)) view_order else view, obj = mdl, refit_fn = refit_fn, extra = list(df_map = df_map)))
-  }
+  mdl$type <- "mediation"
+  mdl$extra <- list(df_map = df_map)
+
+
   
   return(mdl)
 }

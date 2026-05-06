@@ -11,7 +11,6 @@ rtmb_mediation(
   prior = prior_uniform(),
   y_range = NULL,
   view = NULL,
-  classic = FALSE,
   ...
 )
 }
@@ -28,8 +27,6 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 \item{y_range}{Theoretical minimum and maximum values of the response variable.}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
-
-\item{classic}{Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.}
 
 \item{...}{Additional arguments passed to the model construction.}
 }

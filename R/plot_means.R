@@ -1,17 +1,16 @@
 #' Plot marginal means with error bars
 #'
 #' @description
-#' plot method for rtmb_lsmeans objects. Creates a bar plot of marginal means with error bars.
+#' Plot method for rtmb_lsmeans objects.
 #'
 #' @param x An rtmb_lsmeans object.
 #' @param y Ignored.
-#' @param error_bar Type of error bar. Either se (Standard Error) or ci (95% Confidence Interval).
+#' @param error_bar Type of error bar ("se" or "ci").
 #' @param col Color of the bars.
 #' @param main Plot title.
 #' @param xlab X axis label.
 #' @param ylab Y axis label.
-#' @param ... Additional arguments passed to barplot().
-#' @return The bar centers (invisibly).
+#' @param ... Additional arguments passed to barplot.
 #' @export
 plot.rtmb_lsmeans <- function(x, y, error_bar = "se", col = NULL, main = NULL, xlab = NULL, ylab = NULL, ...) {
   if (!inherits(x, "rtmb_lsmeans")) {

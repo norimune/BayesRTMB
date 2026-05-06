@@ -19,7 +19,6 @@ rtmb_glmer(
   factors = NULL,
   contrasts = "treatment",
   sigma_by = NULL,
-  classic = FALSE,
   resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL,
@@ -55,8 +54,6 @@ rtmb_glmer(
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
 
 \item{sigma_by}{Character vector specifying variables to group residual variance by (heteroscedasticity).}
-
-\item{classic}{Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode with random effects, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.}
 
 \item{resid_corr}{Residual correlation structure: "ar1" (Autoregressive), "cs" (Compound Symmetry), "toep" (Toeplitz), or "un" (Unstructured).}
 

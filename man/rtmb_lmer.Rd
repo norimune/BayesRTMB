@@ -18,7 +18,6 @@ rtmb_lmer(
   sigma_by = NULL,
   factors = NULL,
   contrasts = "treatment",
-  classic = FALSE,
   resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL
@@ -50,8 +49,6 @@ rtmb_lmer(
 \item{factors}{Character vector of variable names to be treated as factors.}
 
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
-
-\item{classic}{Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.}
 
 \item{resid_corr}{Residual correlation structure (e.g., "ar1", "cs", "un", "toep").}
 

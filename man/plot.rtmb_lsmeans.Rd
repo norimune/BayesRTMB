@@ -20,7 +20,7 @@
 
 \item{y}{Ignored.}
 
-\item{error_bar}{Type of error bar. Either se (Standard Error) or ci (95% Confidence Interval).}
+\item{error_bar}{Type of error bar ("se" or "ci").}
 
 \item{col}{Color of the bars.}
 
@@ -30,11 +30,8 @@
 
 \item{ylab}{Y axis label.}
 
-\item{...}{Additional arguments passed to barplot().}
-}
-\value{
-The bar centers (invisibly).
+\item{...}{Additional arguments passed to barplot.}
 }
 \description{
-plot method for rtmb_lsmeans objects. Creates a bar plot of marginal means with error bars.
+Plot method for rtmb_lsmeans objects.
 }

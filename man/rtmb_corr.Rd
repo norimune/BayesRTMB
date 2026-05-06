@@ -13,7 +13,6 @@ rtmb_corr(
   y_range = NULL,
   init = NULL,
   null = NULL,
-  classic = FALSE,
   ...
 )
 }
@@ -33,12 +32,10 @@ Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to
 
 \item{null}{Optional list specifying parameters to fix to null values.}
 
-\item{classic}{Logical; if \code{TRUE}, performs classical frequentist estimation instead of Bayesian/MAP.}
-
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
 \value{
-A \code{RTMB_Model} or \code{Classic_Model} object.
+A \code{RTMB_Model} object.
 }
 \description{
 `rtmb_corr` fits a correlation model to estimate means, standard deviations, and correlation structures.

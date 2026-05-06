@@ -13,8 +13,7 @@ rtmb_lm(
   null = NULL,
   gmc = NULL,
   factors = NULL,
-  contrasts = "treatment",
-  classic = FALSE
+  contrasts = "treatment"
 )
 }
 \arguments{
@@ -33,8 +32,6 @@ rtmb_lm(
 \item{gmc}{Character vector of variable names for GMC}
 
 \item{factors}{Character vector of variable names to be treated as factors.}
-
-\item{classic}{Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.}
 }
 \description{
 RTMB-based Linear Regression wrapper function
