@@ -1,34 +1,37 @@
 #' Plot marginal means with error bars
 #'
-#' plot_means function creates a bar plot of marginal means with error bars.
+#' @description
+#' plot method for rtmb_lsmeans objects. Creates a bar plot of marginal means with error bars.
 #'
-#' @param object An rtmb_lsmeans object.
-#' @param error_bar Type of error bar.
+#' @param x An rtmb_lsmeans object.
+#' @param y Ignored.
+#' @param error_bar Type of error bar. Either se (Standard Error) or ci (95% Confidence Interval).
 #' @param col Color of the bars.
 #' @param main Plot title.
 #' @param xlab X axis label.
 #' @param ylab Y axis label.
-#' @param ... Additional arguments.
+#' @param ... Additional arguments passed to barplot().
+#' @return The bar centers (invisibly).
 #' @export
-plot_means <- function(object, error_bar = "se", col = NULL, main = NULL, xlab = NULL, ylab = NULL, ...) {
-  if (!inherits(object, "rtmb_lsmeans")) {
-    if (!all(c("estimate", "Std. Error") %in% names(object))) {
-      stop("object must be an 'rtmb_lsmeans' object or a dataframe with 'estimate' and 'Std. Error'.")
+plot.rtmb_lsmeans <- function(x, y, error_bar = "se", col = NULL, main = NULL, xlab = NULL, ylab = NULL, ...) {
+  if (!inherits(x, "rtmb_lsmeans")) {
+    if (!all(c("estimate", "Std. Error") %in% names(x))) {
+      stop("x must be an rtmb_lsmeans object or a dataframe with estimate and Std. Error.")
     }
   }
   
   if (length(error_bar) > 1) error_bar <- error_bar[1]
   error_bar <- match.arg(error_bar, c("se", "ci"))
-  means <- object$estimate
-  names(means) <- rownames(object)
+  means <- x$estimate
+  names(means) <- rownames(x)
   
   if (error_bar == "se") {
-    upper <- means + object$`Std. Error`
-    lower <- means - object$`Std. Error`
+    upper <- means + x$`Std. Error`
+    lower <- means - x$`Std. Error`
     if (is.null(ylab)) ylab <- "Mean SE"
   } else {
-    upper <- object$`Upper 95%`
-    lower <- object$`Lower 95%`
+    upper <- x$`Upper 95%`
+    lower <- x$`Lower 95%`
     if (is.null(ylab)) ylab <- "Mean CI"
   }
   
@@ -47,29 +50,24 @@ plot_means <- function(object, error_bar = "se", col = NULL, main = NULL, xlab =
   if (ylim[1] < 0) ylim[1] <- ylim[1] - pad
 
   # Draw barplot
-  old_par <- par(mar = c(5, 5, 4, 2) + 0.1, mgp = c(3, 0.7, 0), tcl = -0.3)
-  on.exit(par(old_par))
+  old_par <- graphics::par(mar = c(5, 5, 4, 2) + 0.1, mgp = c(3, 0.7, 0), tcl = -0.3)
+  on.exit(graphics::par(old_par))
   
-  b <- barplot(means, ylim = ylim, col = col, main = main, xlab = xlab, ylab = ylab, 
+  b <- graphics::barplot(means, ylim = ylim, col = col, main = main, xlab = xlab, ylab = ylab, 
                border = "white", las = 1, cex.axis = 0.9, ...)
   
   # Add a light grid
-  abline(h = 0, lwd = 1.5, col = "gray40")
-  grid(nx = NA, ny = NULL, col = "gray90", lty = "solid")
+  graphics::abline(h = 0, lwd = 1.5, col = "gray40")
+  graphics::grid(nx = NA, ny = NULL, col = "gray90", lty = "solid")
   # Redraw bars over grid
-  barplot(means, add = TRUE, col = col, border = "white", axes = FALSE, ...)
+  graphics::barplot(means, add = TRUE, col = col, border = "white", axes = FALSE, ...)
 
   # Add error bars
-  segments(b, lower, b, upper, lwd = 1.8, col = "gray20")
+  graphics::segments(b, lower, b, upper, lwd = 1.8, col = "gray20")
   # Caps
-  eps <- 0.05 * diff(par("usr")[1:2]) / length(means)
-  segments(b - eps, lower, b + eps, lower, lwd = 1.8, col = "gray20")
-  segments(b - eps, upper, b + eps, upper, lwd = 1.8, col = "gray20")
+  eps <- 0.05 * diff(graphics::par("usr")[1:2]) / length(means)
+  graphics::segments(b - eps, lower, b + eps, lower, lwd = 1.8, col = "gray20")
+  graphics::segments(b - eps, upper, b + eps, upper, lwd = 1.8, col = "gray20")
   
   invisible(b)
-}
-
-#' @export
-plot.rtmb_lsmeans <- function(x, ...) {
-  plot_means(x, ...)
 }

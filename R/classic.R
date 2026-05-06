@@ -1355,9 +1355,6 @@ print.Classic_Fit <- function(x, ...) {
 lsmeans <- function(object, specs, ...) {
   UseMethod("lsmeans")
 }
-plot.rtmb_lsmeans <- function(x, ...) {
-  plot_means(x, ...)
-}
 
 #' @export
 lsmeans.Classic_Fit <- function(object, specs, ...) {

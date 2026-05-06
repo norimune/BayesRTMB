@@ -51,7 +51,7 @@ home:
 
 articles:
 - title: English
-  desc: BayesRTMB の英語記事です。
+  desc: BayesRTMB English articles.
   contents:
   - introduction
   - quick_start
@@ -73,9 +73,10 @@ reference:
   contents:
   - rtmb_code
   - rtmb_model
+  - safe_rtmb_model
 
 - title: "Wrapper Functions"
-  desc: "Functions for quick, standard analyses."
+  desc: "Functions for quick, standard analyses (Classical and Bayesian)."
   contents:
   - rtmb_lm
   - rtmb_glm
@@ -83,8 +84,13 @@ reference:
   - rtmb_glmer
   - rtmb_ttest
   - rtmb_corr
+  - rtmb_mediation
+  - rtmb_mixture
+  - rtmb_table
+  - rtmb_loglinear
   - rtmb_fa
   - rtmb_irt
+  - rtmb_lrt
 
 - title: "Plotting and Diagnostics"
   desc: "Functions for visualizing MCMC samples and model results."
@@ -96,6 +102,8 @@ reference:
   contents:
   - bayes_factor
   - conditional_effects
+  - simple_effects
+  - lsmeans
   - item_curve
   - item_info
   - test_info
@@ -131,12 +139,13 @@ reference:
   - MAP_Fit
   - MCMC_Fit
   - VB_Fit
+  - Classic_Fit
 
 - title: "Datasets"
   contents:
   - beverage
   - BigFive
-  - discussion
+  - debate
 
 - title: "Documentation Topics"
   contents:
@@ -148,7 +157,6 @@ reference:
 
 - title: "Other Objects and Internals"
   contents:
-  - safe_rtmb_model
   - Dim
   - validate_data
   - generate_random_init
