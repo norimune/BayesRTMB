@@ -16,13 +16,14 @@ rtmb_glmer(
   gmc = NULL,
   cwc = NULL,
   view = NULL,
-  sigma_by = NULL,
   factors = NULL,
   contrasts = "treatment",
+  sigma_by = NULL,
   classic = FALSE,
   resid_corr = NULL,
   resid_time = NULL,
-  resid_group = NULL
+  resid_group = NULL,
+  generate = NULL
 )
 }
 \arguments{
@@ -48,11 +49,11 @@ rtmb_glmer(
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 
-\item{sigma_by}{Character vector specifying variables to group residual variance by (heteroscedasticity).}
-
 \item{factors}{Character vector of variable names to be treated as factors.}
 
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
+
+\item{sigma_by}{Character vector specifying variables to group residual variance by (heteroscedasticity).}
 
 \item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 

@@ -176,6 +176,27 @@ Classic_Model <- R6::R6Class(
       if (self$type == "lm") {
         fit <- stats::lm(self$formula, data = data)
         return(list(df_combined = fit, V_beta = vcov(fit)))
+      } else if (self$type == "glm") {
+        fit <- stats::glm(self$formula, data = data, family = self$family)
+        return(list(df_combined = fit, V_beta = vcov(fit)))
+      } else if (self$type == "table") {
+        # Perform chi-squared and fisher tests directly
+        # The data here is expected to be a table/matrix or the raw data
+        tab <- self$extra$tab
+        res_chisq <- stats::chisq.test(tab, correct = self$extra$correct)
+        res_fisher <- stats::fisher.test(tab)
+        
+        # Store results in the model extra field for summary to find
+        self$extra$chisq <- res_chisq
+        self$extra$fisher <- res_fisher
+        
+        # Return a simple data frame for the 'fit' slot to avoid GLM summary
+        df_res <- data.frame(
+          Estimate = as.vector(tab),
+          row.names = self$extra$cell_labels,
+          check.names = FALSE
+        )
+        return(list(df_combined = df_res, V_beta = NULL))
       } else if (self$type %in% c("lmer", "lmm", "glmm")) {
         obj <- self$obj
         
@@ -606,8 +627,12 @@ Classic_Fit <- R6::R6Class(
     #' @description Display a summary of the estimation results.
     #' @param digits Number of digits to print for estimates.
     summary = function(digits = 5) {
-      cat("\nCall:\n")
-      cat(paste("Classical estimation via", self$model$type), "\n")
+      if (!is.null(self$model$type) && self$model$type == "table") {
+        cat("\nContingency Table Analysis\n")
+      } else {
+        cat("\nCall:\n")
+        cat(paste("Classical estimation via", self$model$type), "\n")
+      }
       if (!is.null(self$bootstrap_results)) {
         cat("Based on non-parametric bootstrap (", nrow(self$bootstrap_results), " samples)\n")
       }
@@ -619,22 +644,37 @@ Classic_Fit <- R6::R6Class(
             as.numeric(ll), self$AIC(), self$BIC()))
       }
 
-      cat("\nPoint Estimates and Confidence Intervals:\n")
+      # Skip point estimates header for table models
+      if (self$model$type != "table") {
+        cat("\nPoint Estimates and Confidence Intervals:\n")
+      }
       if (self$model$type == "ttest") {
         levs <- self$model$extra$levs
         cat(sprintf("(Comparison: %s - %s)\n", levs[1], levs[2]))
+      } else if (self$model$type == "table" && !is.null(self$model$extra$tab)) {
+        cat("\nContingency Table:\n")
+        print(self$model$extra$tab)
       }
       
       if (is.data.frame(self$fit) || inherits(self$fit, "lm")) {
         # Convert lm to dataframe if needed
         if (inherits(self$fit, "lm")) {
           s_lm <- summary(self$fit)
+          is_asymptotic <- inherits(self$model, c("rtmb_loglinear", "rtmb_table"))
           df_print <- as.data.frame(s_lm$coefficients)
-          colnames(df_print) <- c("Estimate", "Std. Error", "t value", "Pr")
-          df_print$df <- self$fit$df.residual
-          ci <- confint(self$fit)
-          df_print$`Lower 95%` <- ci[, 1]
-          df_print$`Upper 95%` <- ci[, 2]
+          
+          if (is_asymptotic) {
+            colnames(df_print) <- c("Estimate", "Std. Error", "z value", "Pr")
+            df_print$df <- Inf
+            crit <- 1.96 
+          } else {
+            colnames(df_print) <- c("Estimate", "Std. Error", "t value", "Pr")
+            df_print$df <- self$fit$df.residual
+            crit <- stats::qt(0.975, df = pmax(df_print$df, 1e-6))
+          }
+          
+          df_print$`Lower 95%` <- df_print$Estimate - crit * df_print$`Std. Error`
+          df_print$`Upper 95%` <- df_print$Estimate + crit * df_print$`Std. Error`
           rownames(df_print)[rownames(df_print) == "(Intercept)"] <- "Intercept"
         } else {
           df_print <- self$fit
@@ -681,9 +721,12 @@ Classic_Fit <- R6::R6Class(
               # Update df_print with new values for fixed effects
               df_print$Estimate[fe_idx] <- beta_new
               df_print$`Std. Error`[fe_idx] <- se_new
-              df_print$`t value`[fe_idx] <- beta_new / pmax(se_new, 1e-12)
+              
+              stat_col <- if ("z value" %in% names(df_print)) "z value" else "t value"
+              df_print[[stat_col]][fe_idx] <- beta_new / pmax(se_new, 1e-12)
+              
               if (!is.null(df_print$Pr)) {
-                df_print$Pr[fe_idx] <- 2 * pt(-abs(df_print$`t value`[fe_idx]), df = df_print$df[fe_idx])
+                df_print$Pr[fe_idx] <- 2 * stats::pt(-abs(df_print[[stat_col]][fe_idx]), df = df_print$df[fe_idx])
               }
               if ("Lower 95%" %in% names(df_print)) {
                 df_print$`Lower 95%`[fe_idx] <- beta_new - 1.96 * se_new
@@ -736,7 +779,12 @@ Classic_Fit <- R6::R6Class(
         }
         
         # 4. Reorder columns for consistency
-        desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "t value", "df", "Pr")
+        is_asymptotic <- inherits(self$model, "rtmb_loglinear") || (!is.null(self$model$type) && self$model$type == "table")
+        if (is_asymptotic) {
+          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "Pr")
+        } else {
+          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "df", "Pr")
+        }
         current_names <- names(df_print)
         
         # Filter existing columns
@@ -751,29 +799,68 @@ Classic_Fit <- R6::R6Class(
         
         df_final <- df_print[, final_cols, drop = FALSE]
         
+        # Remove df for asymptotic models if requested
+        if (is_asymptotic && "df" %in% names(df_final)) {
+          df_final$df <- NULL
+        }
+        
         # Rename sig to blank just before printing
         if ("sig" %in% names(df_final)) {
            names(df_final)[names(df_final) == "sig"] <- ""
         }
         
-        # Print the data frame cleanly
-        print(df_final, quote = FALSE, right = TRUE)
+        # Print the data frame cleanly (only if not a table model)
+        if (self$model$type != "table") {
+          print(df_final, quote = FALSE, right = TRUE)
+        }
+
+        # --- Specialized output for rtmb_table ---
+        if ((!is.null(self$model$type) && self$model$type == "table") || inherits(self$model, "rtmb_table")) {
+          cat("\n---\n")
+          if (!is.null(self$model$extra$chisq)) {
+             res <- self$model$extra$chisq
+             cat(sprintf("%s\n", res$method))
+             cat(sprintf("X-squared = %.4f, df = %d, p-value = %.5f\n", 
+                         res$statistic, res$parameter, res$p.value))
+          }
+          if (!is.null(self$model$extra$fisher)) {
+             res <- self$model$extra$fisher
+             cat("\nFisher's Exact Test for Count Data\n")
+             cat(sprintf("p-value = %.5f\n", res$p.value))
+             if (!is.null(res$estimate)) {
+               cat(sprintf("alternative hypothesis: %s\n", res$alternative))
+               cat(sprintf("odds ratio: %.4f\n", res$estimate))
+             }
+          }
+        }
 
         # --- Enhanced Output for LM/GLM ---
-        if (inherits(self$fit, "lm")) {
+        if (inherits(self$fit, c("lm", "glm"))) {
           s_lm <- summary(self$fit)
           cat("\n---\n")
-          cat(sprintf("Residual standard error: %s on %d degrees of freedom\n", 
-                      format(round(s_lm$sigma, digits), nsmall = digits), s_lm$df[2]))
-          cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n", 
-                      format(round(s_lm$r.squared, 4), nsmall = 4), 
-                      format(round(s_lm$adj.r.squared, 4), nsmall = 4)))
-          if (!is.null(s_lm$fstatistic)) {
-            f <- s_lm$fstatistic
-            p_f <- pf(f[1], f[2], f[3], lower.tail = FALSE)
-            cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n", 
-                        format(round(f[1], 2), nsmall = 2), f[2], f[3], 
-                        if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
+          
+          # Handle GLM vs LM specific output
+          # cat("DEBUG: fit class =", class(self$fit), "\n")
+          if (inherits(self$fit, "glm")) {
+            cat(sprintf("Dispersion parameter for %s family taken to be %s\n", 
+                        self$model$family, format(round(s_lm$dispersion, digits), nsmall = digits)))
+            cat(sprintf("Null deviance: %s on %d degrees of freedom\n", 
+                        format(round(s_lm$null.deviance, 2), nsmall = 2), s_lm$df.null))
+            cat(sprintf("Residual deviance: %s on %d degrees of freedom\n", 
+                        format(round(s_lm$deviance, 2), nsmall = 2), s_lm$df.residual))
+          } else if (inherits(self$fit, "lm")) {
+            cat(sprintf("Residual standard error: %s on %d degrees of freedom\n", 
+                        format(round(s_lm$sigma, digits), nsmall = digits), s_lm$df[2]))
+            cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n", 
+                        format(round(s_lm$r.squared, 4), nsmall = 4), 
+                        format(round(s_lm$adj.r.squared, 4), nsmall = 4)))
+            if (!is.null(s_lm$fstatistic)) {
+              f <- s_lm$fstatistic
+              p_f <- pf(f[1], f[2], f[3], lower.tail = FALSE)
+              cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n", 
+                          format(round(f[1], 2), nsmall = 2), f[2], f[3], 
+                          if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
+            }
           }
         }
       } else {
@@ -786,6 +873,9 @@ Classic_Fit <- R6::R6Class(
     #' @param type Integer; Type of Sum of Squares (only Type III supported currently).
     #' @return A data frame containing the ANOVA table.
     anova = function(method = c("reml", "ls"), type = 3) {
+      if (!is.null(self$model$type) && self$model$type == "table") {
+        return(self$summary())
+      }
       # Ensure consistent contrasts for term matching if needed
       old_opts <- NULL
       if (!is.null(self$model$contrasts)) {
@@ -904,30 +994,45 @@ Classic_Fit <- R6::R6Class(
            df2 <- Inf
         }
         
-        p_val <- pf(f_val, df1, df2, lower.tail = FALSE)
+        if (df2 == 0 || is.infinite(df2)) {
+          p_val <- stats::pchisq(W, df1, lower.tail = FALSE)
+        } else {
+          p_val <- stats::pf(f_val, df1, df2, lower.tail = FALSE)
+        }
         
-        res_list[[t_name]] <- data.frame(
-          `NumDF` = df1,
-          `DenDF` = df2,
-          `F value` = f_val,
-          `Pr(>F)` = p_val,
-          row.names = t_name,
-          check.names = FALSE
-        )
+        if (df2 == 0 || is.infinite(df2)) {
+          res_list[[t_name]] <- data.frame(
+            `Df` = df1,
+            `Chisq` = W,
+            `Pr(>Chisq)` = p_val,
+            row.names = t_name,
+            check.names = FALSE
+          )
+        } else {
+          res_list[[t_name]] <- data.frame(
+            `NumDF` = df1,
+            `DenDF` = df2,
+            `F value` = f_val,
+            `Pr(>F)` = p_val,
+            row.names = t_name,
+            check.names = FALSE
+          )
+        }
       }
       
       res_df <- do.call(rbind, res_list)
       
       # Add significance symbols
-      sig <- symnum(res_df$`Pr(>F)`, corr = FALSE, na = FALSE,
+      p_col_name <- if ("Pr(>Chisq)" %in% names(res_df)) "Pr(>Chisq)" else "Pr(>F)"
+      sig <- symnum(res_df[[p_col_name]], corr = FALSE, na = FALSE,
                     cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
                     symbols = c("***", "**", "*", ".", " "))
       res_df$signif <- as.character(sig)
 
       # --- Enhanced ANOVA Output with R2 ---
       class(res_df) <- c("anova", "data.frame")
-      heading <- "ANOVA Table (Wald F-tests)"
-      if (inherits(self$fit, "lm")) {
+      heading <- if ("Chisq" %in% names(res_df)) "ANOVA Table (Wald Chisq tests)" else "ANOVA Table (Wald F-tests)"
+      if (inherits(self$fit, "lm") && !inherits(self$fit, "glm")) {
         s_lm <- summary(self$fit)
         heading <- paste0(heading, sprintf("\nMultiple R-squared: %s, Adjusted R-squared: %s", 
                           format(round(s_lm$r.squared, 4), nsmall = 4), 

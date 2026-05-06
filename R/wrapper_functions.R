@@ -119,6 +119,259 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
   return(res)
 }
 
+#' RTMB-based Contingency Table Analysis (Chi-squared Test)
+#'
+#' @description
+#' `rtmb_table` performs a chi-squared test of independence between two categorical variables.
+#' It provides both classic (frequentist) Pearson chi-squared tests and Bayesian multinomial-style models.
+#'
+#' @param x Variable name or formula.
+#' @param y Variable name (optional if x is a formula).
+#' @param data A data frame.
+#' @param classic Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.
+#' @param correct Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).
+#' @param prior Prior specification (Bayesian mode). Default is `prior_uniform()`.
+#' @param ... Additional arguments.
+#'
+#' @return A `Classic_Fit` or `MCMC_Fit` object.
+#'
+#' @examples
+#' \donttest{
+#' # Classic chi-squared test
+#' rtmb_table(skill, cond, data = debate, classic = TRUE)
+#' }
+#' @export
+rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE, prior = prior_uniform(), ...) {
+  
+  x_expr <- substitute(x)
+  y_expr <- substitute(y)
+  
+  # 1. Extract Variables
+  if (is.null(data)) {
+    v1 <- eval(x_expr, parent.frame())
+    v2 <- eval(y_expr, parent.frame())
+    v1_name <- deparse(x_expr)
+    v2_name <- deparse(y_expr)
+  } else {
+    v1 <- if (is.name(x_expr)) data[[as.character(x_expr)]] else eval(x_expr, data)
+    v2 <- if (is.name(y_expr)) data[[as.character(y_expr)]] else eval(y_expr, data)
+    v1_name <- as.character(x_expr)
+    v2_name <- as.character(y_expr)
+  }
+  
+  # Ensure factors
+  v1 <- as.factor(v1)
+  v2 <- as.factor(v2)
+  tab <- table(v1, v2)
+  
+  # Prepare row/column names for labels
+  R_names <- rownames(tab)
+  C_names <- colnames(tab)
+  grid <- expand.grid(Row = R_names, Col = C_names)
+  cell_labels <- paste0(grid$Row, ":", grid$Col)
+  
+  # 2. Classic Mode
+  if (classic) {
+    # We use the standard Classic_Model class (R6)
+    model <- Classic_Model$new(
+      type = "table",
+      formula = NULL, # formula is optional for table
+      data = data,
+      extra = list(
+        tab = tab,
+        correct = correct,
+        cell_labels = cell_labels
+      )
+    )
+    return(model)
+  }
+  
+  # 3. Bayes Mode (Multinomial Model)
+  # Data for RTMB
+  Y_vec <- as.vector(tab)
+  R <- nrow(tab)
+  C <- ncol(tab)
+  N_total <- sum(Y_vec)
+  
+  setup <- list(
+    Y = Y_vec,
+    R = R,
+    C = C,
+    N = N_total
+  )
+  
+  rtmb_model_code <- rtmb_code(
+    setup = {
+      # No special setup needed for now, Y and N are provided
+    },
+    parameters = {
+      # Simplex for probabilities (automatically constrained to sum to 1)
+      # We give it meaningful names during rtmb_model() call
+      p <- Dim(R * C, type = "simplex")
+    },
+    model = {
+      # Likelihood
+      Y ~ multinomial(N, p)
+      
+      # Prior (Flat Dirichlet by default)
+      p ~ dirichlet(rep(1, R * C))
+      
+      # Derived quantities for reporting
+      mu <- p * N
+      # Pearson Chi-squared statistic for the estimated probabilities
+      # Sum (O - E)^2 / E
+      chisq_val <- sum((Y - mu)^2 / mu)
+      
+      ADREPORT(mu)
+      ADREPORT(chisq_val)
+    },
+    generate = {
+      # We only generate what is not already in parameters/ADREPORT
+      mu <- p * N
+      chisq_val <- sum((Y - mu)^2 / mu)
+      list(mu = mu, chisq_val = chisq_val)
+    }
+  )
+  
+  # Create the model object with explicit parameter names for 'p' and 'mu'
+  res <- rtmb_model(
+    code = rtmb_model_code, 
+    data = setup,
+    par_names = list(p = cell_labels, mu = cell_labels)
+  )
+  class(res) <- c("rtmb_table", class(res))
+  
+  return(res)
+}
+
+#' RTMB-based Log-linear Analysis (Contingency Table)
+#'
+#' @description
+#' `rtmb_loglinear` performs log-linear analysis of contingency tables using RTMB.
+#' It models cell frequencies using a Poisson distribution and a log link function.
+#' For Bayesian inference, it supports weakly informative priors (Stan-style).
+#' For frequentist inference (`classic = TRUE`), it provides Wald-based ANOVA for independence tests.
+#'
+#' @param formula A formula describing the table structure (e.g., `~ A + B` for independence, `~ A * B` for dependence).
+#' @param data A data frame, table, or matrix.
+#' @param classic Logical; if TRUE, perform frequentist estimation and ANOVA tests.
+#' @param fisher Logical; if TRUE, perform Fisher's exact test (for 2D tables).
+#' @param prior Prior specification (e.g., `prior_uniform()` or `prior_weak()`). Default is `prior_uniform()`.
+#' @param ... Additional arguments passed to the internal estimation engine.
+#'
+#' @return An `RTMB_Model`, `MCMC_Fit`, or `Classic_Fit` object depending on the settings.
+#'
+#' @examples
+#' \donttest{
+#' # 2x2 table analysis
+#' df <- as.data.frame(Titanic)
+#' fit <- rtmb_loglinear(Survived ~ Sex + Age, data = df, classic = TRUE)
+#' fit$anova()
+#'
+#' # Bayesian 4-way table interaction analysis
+#' fit_bayas <- rtmb_loglinear(~ Class * Sex * Age * Survived, data = Titanic, prior = prior_weak())
+#' }
+#' @export
+rtmb_loglinear <- function(formula, data, classic = FALSE, fisher = FALSE, prior = prior_uniform(), ...) {
+  
+  # 1. Data Preparation
+  # Convert table or matrix to long data frame
+  was_table <- FALSE
+  if (inherits(data, c("table", "matrix"))) {
+    data <- as.data.frame(as.table(data))
+    was_table <- TRUE
+  }
+  
+  # Identify variables and frequency column
+  all_vars <- all.vars(formula)
+  response_var <- NULL
+  
+  # Check if formula has a response
+  if (length(formula) == 3) {
+    response_var <- as.character(formula[[2]])
+  }
+  
+  # If no response is specified
+  if (is.null(response_var)) {
+    if (was_table && "Freq" %in% names(data)) {
+      # For tables/matrices, we automatically use the Freq column
+      formula <- update(formula, Freq ~ .)
+      response_var <- "Freq"
+    } else {
+      # For raw data frames, we aggregate
+      # Check if variables exist in data
+      missing_vars <- setdiff(all_vars, names(data))
+      if (length(missing_vars) > 0) {
+        stop(sprintf("Variables not found in data: %s", paste(missing_vars, collapse = ", ")))
+      }
+      
+      # Aggregate raw observations into counts
+      data_counts <- as.data.frame(table(data[all_vars]))
+      # Update formula to include 'Freq' as response
+      formula <- update(formula, Freq ~ .)
+      data <- data_counts
+      response_var <- "Freq"
+    }
+  }
+  
+
+  # Ensure response is numeric (counts)
+  data[[response_var]] <- as.numeric(data[[response_var]])
+
+  # 2. Invoke rtmb_glmer (or internal logic) with family = "poisson"
+  # Since rtmb_glmer is already robust, we leverage it.
+  # However, we override some defaults to better suit table analysis.
+  
+  # For rtmb_table, we default to prior_weak with Stan-style values if requested
+  if (inherits(prior, "prior_weak")) {
+    # Stan-style defaults for log-linear (Poisson)
+    if (is.null(prior$sd_ratio)) prior$sd_ratio <- 5.0 # For Intercept (alpha_prior_sd)
+    if (is.null(prior$max_beta)) prior$max_beta <- 2.5 # For coefficients
+  }
+
+  # Call the engine
+  # We use rtmb_glmer which handles formulas, random effects, and priors.
+  
+  # Custom generate block for expected frequencies
+  gen_block <- quote({
+    eta <- if (exists("Intercept_c")) Intercept_c + X_c %*% b else Intercept + X %*% b
+    mu <- exp(eta)
+    list(mu = mu)
+  })
+
+  res <- rtmb_glmer(
+    formula = formula,
+    data = data,
+    family = "poisson",
+    classic = classic,
+    prior = prior,
+    generate = gen_block,
+    ...
+  )
+
+  # If classic, we return the Classic_Model object (to be consistent with other wrappers)
+  fit <- res
+
+  # 3. Add Fisher's Exact Test if requested (Classic mode only)
+  if (classic && fisher) {
+    # Only for 2D tables
+    vars_in_model <- setdiff(all.vars(formula), response_var)
+    if (length(vars_in_model) == 2) {
+      tab <- xtabs(formula, data)
+      fisher_res <- fisher.test(tab)
+      # Store in fit object (Classic_Fit usually has an 'extra' slot or we can append)
+      fit$extra$fisher <- fisher_res
+    } else {
+      warning("Fisher's exact test is only implemented for 2D tables.")
+    }
+  }
+
+  # Tag as rtmb_loglinear for potential custom methods
+  class(fit) <- c("rtmb_loglinear", class(fit))
+  
+  return(fit)
+}
+
 #' RTMB-based GLMM wrapper function
 #'
 #' @param formula lme4-style formula (e.g., Y ~ X + (1 | GID))
@@ -149,18 +402,19 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        gmc = NULL,
                        cwc = NULL,
                        view = NULL,
-                       sigma_by = NULL,
                        factors = NULL,
                        contrasts = "treatment",
+                       sigma_by = NULL,
                        classic = FALSE,
                        resid_corr = NULL,
                        resid_time = NULL,
-                       resid_group = NULL) {
+                       resid_group = NULL,
+                       generate = NULL) {
 
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
-   if (classic && !family %in% c("gaussian", "lognormal", "student_t")) {
-     stop("classic = TRUE is only supported for 'gaussian', 'lognormal', and 'student_t' families.")
-   }
+    if (classic && !family %in% c("gaussian", "lognormal", "student_t", "poisson", "binomial", "bernoulli")) {
+      stop("classic = TRUE is only supported for 'gaussian', 'lognormal', 'student_t', 'poisson', 'binomial', and 'bernoulli' families.")
+    }
 
    if (!is.null(resid_corr)) {
      valid_resid_corr <- c("ar1", "cs", "un", "toep")
@@ -638,9 +892,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- base_scale * .(prior$max_beta))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
     } else if (family %in% c("poisson", "neg_binomial", "gamma")) {
+      # For Poisson/log-link models, Stan often uses Normal(log(mean(y)), 2.5 or 5) for intercept
+      # and Normal(0, 2.5) for coefficients.
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- log(mean(Y) + 0.5))
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- .(prior$sd_ratio))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- 1.0)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- base_scale)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
     } else {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(prior$sd_ratio))
@@ -970,6 +1226,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   code_obj <- list(setup = setup_ast, parameters = param_ast)
   if (!is.null(tran_ast)) code_obj$transform <- tran_ast
   code_obj$model <- model_ast
+  if (!is.null(generate)) code_obj$generate <- generate
 
   par_names_list <- list()
   if (num_sigma_groups > 1) {
@@ -1040,7 +1297,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
     
     # Wrap in Classic_Model and return (let user call $estimate())
-    mod_type <- if (has_random || !is.null(resid_corr)) "lmer" else "lm"
+    mod_type <- if (has_random || !is.null(resid_corr)) {
+      if (family %in% c("gaussian", "lognormal", "student_t")) "lmer" else "glmm"
+    } else {
+      if (family %in% c("gaussian", "lognormal", "student_t")) "lm" else "glm"
+    }
     refit_fn <- function(new_data) {
       rtmb_glmer(formula = formula, data = new_data, family = family,
                  laplace = laplace, prior = prior, y_range = y_range,
