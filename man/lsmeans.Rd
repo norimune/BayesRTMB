@@ -2,7 +2,7 @@
 % Please edit documentation in R/classic.R
 \name{lsmeans}
 \alias{lsmeans}
-\title{Generic function for least-squares means (marginal means).}
+\title{Least-squares means (marginal means)}
 \usage{
 lsmeans(object, specs, ...)
 }
@@ -14,5 +14,5 @@ lsmeans(object, specs, ...)
 \item{...}{Additional arguments.}
 }
 \description{
-Generic function for least-squares means (marginal means).
+Generic function to calculate least-squares means (marginal means) for fitted models.
 }

@@ -168,7 +168,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
   R_names <- rownames(tab)
   C_names <- colnames(tab)
   grid <- expand.grid(Row = R_names, Col = C_names)
-  cell_labels <- paste0(grid$Row, ":", grid$Col)
+  cell_labels <- paste0(v1_name, ":", grid$Row, ", ", v2_name, ":", grid$Col)
   
   # 2. Classic Mode
   if (classic) {

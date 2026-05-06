@@ -1094,7 +1094,9 @@ Classic_Fit <- R6::R6Class(
             row.names = grp, check.names = FALSE
           )
         }
-        return(do.call(rbind, res_list))
+        res <- do.call(rbind, res_list)
+        class(res) <- c("rtmb_lsmeans", class(res))
+        return(res)
       } else {
         # --- Pairwise Comparisons ---
         contrast_list <- list()
@@ -1150,6 +1152,7 @@ Classic_Fit <- R6::R6Class(
           res$Pr <- p.adjust(res$Pr, method = adjust)
           attr(res, "adjustment") <- adjust
         }
+        class(res) <- c("rtmb_contrasts", class(res))
         return(res)
       }
     },
@@ -1325,15 +1328,19 @@ anova.Classic_Fit <- function(object, ...) {
   object$anova(...)
 }
 
-#' @title Generic function for least-squares means (marginal means).
-#' @name lsmeans
-#' @description Generic function for least-squares means (marginal means).
+#' Least-squares means (marginal means)
+#'
+#' Generic function to calculate least-squares means (marginal means) for fitted models.
+#'
 #' @param object A fitted model object.
 #' @param specs Variable names to calculate marginal means for.
 #' @param ... Additional arguments.
 #' @export
 lsmeans <- function(object, specs, ...) {
   UseMethod("lsmeans")
+}
+plot.rtmb_lsmeans <- function(x, ...) {
+  plot_means(x, ...)
 }
 
 #' @export
