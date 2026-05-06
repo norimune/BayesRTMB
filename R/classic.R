@@ -610,6 +610,13 @@ Classic_Fit <- R6::R6Class(
       return(-2 * as.numeric(ll) + log(n[1]) * k[1])
     },
 
+    #' @description Print the fit results.
+    #' @param ... Additional arguments passed to `summary()`.
+    print = function(...) {
+      print(self$summary(...))
+      invisible(self)
+    },
+
     #' @description Get the Log-Likelihood of the fitted model.
     logLik = function() {
       if (inherits(self$fit, "lm")) {
@@ -1067,8 +1074,12 @@ Classic_Fit <- R6::R6Class(
       beta_match <- beta_vals[fe_idx]
       V_match <- self$vcov[fe_idx, fe_idx]
       
-      # Group by specs + simple
-      groups_full <- interaction(ref_grid[full_specs], drop = TRUE, sep = ":")
+      # Group by specs + simple with descriptive labels
+      label_grid <- ref_grid[full_specs]
+      for (v in full_specs) {
+        label_grid[[v]] <- paste0(v, "=", label_grid[[v]])
+      }
+      groups_full <- interaction(label_grid, drop = TRUE, sep = ":")
       unique_groups_full <- levels(groups_full)
       
       # Calculate L-vectors for each group
@@ -1326,6 +1337,11 @@ print.summary_Classic_Fit <- function(x, ...) {
 #' @export
 anova.Classic_Fit <- function(object, ...) {
   object$anova(...)
+}
+
+#' @export
+print.Classic_Fit <- function(x, ...) {
+  x$print(...)
 }
 
 #' Least-squares means (marginal means)

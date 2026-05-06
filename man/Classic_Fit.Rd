@@ -27,6 +27,7 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
 \item \href{#method-Classic_Fit-AIC}{\code{Classic_Fit$AIC()}}
 \item \href{#method-Classic_Fit-BIC}{\code{Classic_Fit$BIC()}}
+\item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-logLik}{\code{Classic_Fit$logLik()}}
 \item \href{#method-Classic_Fit-summary}{\code{Classic_Fit$summary()}}
 \item \href{#method-Classic_Fit-anova}{\code{Classic_Fit$anova()}}
@@ -77,6 +78,23 @@ Get the BIC of the fitted model.
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$BIC()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-print"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-print}{}}}
+\subsection{Method \code{print()}}{
+Print the fit results.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$print(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `summary()`.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-logLik"></a>}}
