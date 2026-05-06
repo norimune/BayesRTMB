@@ -41,7 +41,7 @@ rtmb_ttest(
 
 \item{null}{Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").}
 
-\item{classic}{Logical; if TRUE, perform frequentist estimation.}
+\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
 
 \item{var.equal}{Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.}
 

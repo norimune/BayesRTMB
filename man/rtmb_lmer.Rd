@@ -51,7 +51,7 @@ rtmb_lmer(
 
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
 
-\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
+\item{classic}{Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.}
 
 \item{resid_corr}{Residual correlation structure (e.g., "ar1", "cs", "un", "toep").}
 

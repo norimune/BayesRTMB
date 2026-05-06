@@ -29,7 +29,7 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 
-\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
+\item{classic}{Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.}
 
 \item{...}{Additional arguments passed to the model construction.}
 }

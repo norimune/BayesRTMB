@@ -554,7 +554,7 @@ Classic_Model <- R6::R6Class(
         } else {
           df_res <- df_res[order(rownames(df_res)), ]
         }
-        return(df_res)
+        return(list(df_combined = df_res, V_beta = NULL))
       }
     }
   )
@@ -595,16 +595,19 @@ Classic_Fit <- R6::R6Class(
     #' @description Get the AIC of the fitted model.
     AIC = function() {
       ll <- self$logLik()
-      k <- attr(ll, "df")
-      return(-2 * as.numeric(ll) + 2 * k)
+      k <- as.numeric(attr(ll, "df"))
+      if (length(k) == 0 || is.na(k)) k <- 0
+      return(-2 * as.numeric(ll) + 2 * k[1])
     },
 
     #' @description Get the BIC of the fitted model.
     BIC = function() {
       ll <- self$logLik()
-      k <- attr(ll, "df")
-      n <- attr(ll, "nobs")
-      return(-2 * as.numeric(ll) + log(n) * k)
+      k <- as.numeric(attr(ll, "df"))
+      n <- as.numeric(attr(ll, "nobs"))
+      if (length(k) == 0 || is.na(k)) k <- 0
+      if (length(n) == 0 || is.na(n) || n <= 0) n <- 1
+      return(-2 * as.numeric(ll) + log(n[1]) * k[1])
     },
 
     #' @description Get the Log-Likelihood of the fitted model.
@@ -613,9 +616,9 @@ Classic_Fit <- R6::R6Class(
         return(stats::logLik(self$fit))
       }
       
-      val <- if (!is.null(self$model$extra$loglik)) self$model$extra$loglik else NA
-      df_val <- if (!is.null(self$model$extra$df)) self$model$extra$df else nrow(self$fit)
-      nobs_val <- if (!is.null(self$model$extra$nobs)) self$model$extra$nobs else 0
+      val <- if (!is.null(self$model$extra[["loglik"]])) self$model$extra[["loglik"]] else NA
+      df_val <- if (!is.null(self$model$extra[["df"]])) self$model$extra[["df"]] else nrow(self$fit)
+      nobs_val <- if (!is.null(self$model$extra[["nobs"]])) self$model$extra[["nobs"]] else 0
       
       res <- val
       attr(res, "df") <- df_val
@@ -627,35 +630,17 @@ Classic_Fit <- R6::R6Class(
     #' @description Display a summary of the estimation results.
     #' @param digits Number of digits to print for estimates.
     summary = function(digits = 5) {
-      if (!is.null(self$model$type) && self$model$type == "table") {
-        cat("\nContingency Table Analysis\n")
-      } else {
-        cat("\nCall:\n")
-        cat(paste("Classical estimation via", self$model$type), "\n")
-      }
-      if (!is.null(self$bootstrap_results)) {
-        cat("Based on non-parametric bootstrap (", nrow(self$bootstrap_results), " samples)\n")
-      }
-      
-      # AIC/BIC display
-      ll <- self$logLik()
-      if (!is.na(ll)) {
-        cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n", 
-            as.numeric(ll), self$AIC(), self$BIC()))
-      }
+      res <- list(
+        type = self$model$type,
+        family = self$model$family,
+        bootstrap = if (!is.null(self$bootstrap_results)) nrow(self$bootstrap_results) else NULL,
+        logLik = self$logLik(),
+        AIC = self$AIC(),
+        BIC = self$BIC(),
+        extra = self$model$extra,
+        digits = digits
+      )
 
-      # Skip point estimates header for table models
-      if (self$model$type != "table") {
-        cat("\nPoint Estimates and Confidence Intervals:\n")
-      }
-      if (self$model$type == "ttest") {
-        levs <- self$model$extra$levs
-        cat(sprintf("(Comparison: %s - %s)\n", levs[1], levs[2]))
-      } else if (self$model$type == "table" && !is.null(self$model$extra$tab)) {
-        cat("\nContingency Table:\n")
-        print(self$model$extra$tab)
-      }
-      
       if (is.data.frame(self$fit) || inherits(self$fit, "lm")) {
         # Convert lm to dataframe if needed
         if (inherits(self$fit, "lm")) {
@@ -809,64 +794,32 @@ Classic_Fit <- R6::R6Class(
            names(df_final)[names(df_final) == "sig"] <- ""
         }
         
-        # Print the data frame cleanly (only if not a table model)
-        if (self$model$type != "table") {
-          print(df_final, quote = FALSE, right = TRUE)
-        }
-
-        # --- Specialized output for rtmb_table ---
-        if ((!is.null(self$model$type) && self$model$type == "table") || inherits(self$model, "rtmb_table")) {
-          cat("\n---\n")
-          if (!is.null(self$model$extra$chisq)) {
-             res <- self$model$extra$chisq
-             cat(sprintf("%s\n", res$method))
-             cat(sprintf("X-squared = %.4f, df = %d, p-value = %.5f\n", 
-                         res$statistic, res$parameter, res$p.value))
-          }
-          if (!is.null(self$model$extra$fisher)) {
-             res <- self$model$extra$fisher
-             cat("\nFisher's Exact Test for Count Data\n")
-             cat(sprintf("p-value = %.5f\n", res$p.value))
-             if (!is.null(res$estimate)) {
-               cat(sprintf("alternative hypothesis: %s\n", res$alternative))
-               cat(sprintf("odds ratio: %.4f\n", res$estimate))
-             }
-          }
-        }
+        res$coefficients <- df_final
 
         # --- Enhanced Output for LM/GLM ---
         if (inherits(self$fit, c("lm", "glm"))) {
           s_lm <- summary(self$fit)
-          cat("\n---\n")
-          
-          # Handle GLM vs LM specific output
-          # cat("DEBUG: fit class =", class(self$fit), "\n")
-          if (inherits(self$fit, "glm")) {
-            cat(sprintf("Dispersion parameter for %s family taken to be %s\n", 
-                        self$model$family, format(round(s_lm$dispersion, digits), nsmall = digits)))
-            cat(sprintf("Null deviance: %s on %d degrees of freedom\n", 
-                        format(round(s_lm$null.deviance, 2), nsmall = 2), s_lm$df.null))
-            cat(sprintf("Residual deviance: %s on %d degrees of freedom\n", 
-                        format(round(s_lm$deviance, 2), nsmall = 2), s_lm$df.residual))
-          } else if (inherits(self$fit, "lm")) {
-            cat(sprintf("Residual standard error: %s on %d degrees of freedom\n", 
-                        format(round(s_lm$sigma, digits), nsmall = digits), s_lm$df[2]))
-            cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n", 
-                        format(round(s_lm$r.squared, 4), nsmall = 4), 
-                        format(round(s_lm$adj.r.squared, 4), nsmall = 4)))
-            if (!is.null(s_lm$fstatistic)) {
-              f <- s_lm$fstatistic
-              p_f <- pf(f[1], f[2], f[3], lower.tail = FALSE)
-              cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n", 
-                          format(round(f[1], 2), nsmall = 2), f[2], f[3], 
-                          if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
-            }
-          }
+          res$lm_info <- list(
+            dispersion = if (inherits(self$fit, "glm")) s_lm$dispersion else NULL,
+            null_deviance = if (inherits(self$fit, "glm")) s_lm$null.deviance else NULL,
+            df_null = if (inherits(self$fit, "glm")) s_lm$df.null else NULL,
+            deviance = if (inherits(self$fit, "glm")) s_lm$deviance else NULL,
+            df_residual = s_lm$df.residual,
+            sigma = if (inherits(self$fit, "lm")) s_lm$sigma else NULL,
+            df_lm = if (inherits(self$fit, "lm")) s_lm$df else NULL,
+            r_squared = if (inherits(self$fit, "lm")) s_lm$r.squared else NULL,
+            adj_r_squared = if (inherits(self$fit, "lm")) s_lm$adj.r.squared else NULL,
+            fstatistic = if (inherits(self$fit, "lm")) s_lm$fstatistic else NULL
+          )
         }
       } else {
-        print(self$fit)
+        res$fit_summary <- self$fit
       }
+      
+      class(res) <- "summary_Classic_Fit"
+      return(res)
     },
+
 
     #' @description Perform ANOVA (Wald F-tests) on the fitted model.
     #' @param method Character; "reml" (standard) or "ls" (experimental).
@@ -1243,11 +1196,6 @@ Classic_Fit <- R6::R6Class(
       return(df_val)
     },
 
-    #' @description Print the fit results.
-    print = function() {
-      self$summary()
-    },
-
     #' @description (Internal) Construct a list of parameters from the fit.
     #' @param fit The fit result (dataframe or lm object).
     #' @return A named list of parameters.
@@ -1274,6 +1222,124 @@ Classic_Fit <- R6::R6Class(
     }
   )
 )
+
+#' @export
+summary.Classic_Fit <- function(object, ...) {
+  object$summary(...)
+}
+
+#' @export
+print.summary_Classic_Fit <- function(x, ...) {
+  digits <- if (!is.null(x$digits)) x$digits else 5
+  
+  if (!is.null(x$type) && x$type == "table") {
+    cat("\nContingency Table Analysis\n")
+  } else {
+    cat("\nCall:\n")
+    cat(paste("Classical estimation via", x$type), "\n")
+  }
+  
+  if (!is.null(x$bootstrap)) {
+    cat("Based on non-parametric bootstrap (", x$bootstrap, " samples)\n")
+  }
+  
+  # AIC/BIC display
+  if (!is.null(x$logLik) && !is.na(x$logLik)) {
+    cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n", 
+        as.numeric(x$logLik), x$AIC, x$BIC))
+  }
+
+  # Skip point estimates header for table models
+  if (x$type != "table") {
+    cat("\nPoint Estimates and Confidence Intervals:\n")
+  }
+  
+  if (x$type == "ttest") {
+    levs <- x$extra$levs
+    cat(sprintf("(Comparison: %s - %s)\n", levs[1], levs[2]))
+  } else if (x$type == "table" && !is.null(x$extra$tab)) {
+    cat("\nContingency Table:\n")
+    print(x$extra$tab)
+  }
+
+  if (!is.null(x$coefficients)) {
+    if (x$type != "table") {
+      print(x$coefficients, quote = FALSE, right = TRUE)
+    }
+    
+    # Specialized output for tables
+    if (x$type == "table") {
+      cat("\n---\n")
+      if (!is.null(x$extra$chisq)) {
+         res <- x$extra$chisq
+         cat(sprintf("%s\n", res$method))
+         cat(sprintf("X-squared = %.4f, df = %d, p-value = %.5f\n", 
+                     res$statistic, res$parameter, res$p.value))
+      }
+      if (!is.null(x$extra$fisher)) {
+         res <- x$extra$fisher
+         cat("\nFisher's Exact Test for Count Data\n")
+         cat(sprintf("p-value = %.5f\n", res$p.value))
+         if (!is.null(res$estimate)) {
+           cat(sprintf("alternative hypothesis: %s\n", res$alternative))
+           cat(sprintf("odds ratio: %.4f\n", res$estimate))
+         }
+      }
+    }
+
+    # LM/GLM extra info
+    if (!is.null(x$lm_info)) {
+      cat("\n---\n")
+      info <- x$lm_info
+      if (!is.null(info$dispersion)) {
+        cat(sprintf("Dispersion parameter for %s family taken to be %s\n", 
+                    x$family, format(round(info$dispersion, digits), nsmall = digits)))
+        cat(sprintf("Null deviance: %s on %d degrees of freedom\n", 
+                    format(round(info$null_deviance, 2), nsmall = 2), info$df_null))
+        cat(sprintf("Residual deviance: %s on %d degrees of freedom\n", 
+                    format(round(info$deviance, 2), nsmall = 2), info$df_residual))
+      } else if (!is.null(info$sigma)) {
+        cat(sprintf("Residual standard error: %s on %d degrees of freedom\n", 
+                    format(round(info$sigma, digits), nsmall = digits), info$df_residual))
+        cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n", 
+                    format(round(info$r_squared, 4), nsmall = 4), 
+                    format(round(info$adj_r_squared, 4), nsmall = 4)))
+        if (!is.null(info$fstatistic)) {
+          f <- info$fstatistic
+          p_f <- stats::pf(f[1], f[2], f[3], lower.tail = FALSE)
+          cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n", 
+                      format(round(f[1], 2), nsmall = 2), f[2], f[3], 
+                      if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
+        }
+      }
+    }
+  } else if (!is.null(x$fit_summary)) {
+    print(x$fit_summary)
+  }
+  
+  invisible(x)
+}
+
+#' @export
+anova.Classic_Fit <- function(object, ...) {
+  object$anova(...)
+}
+
+#' @title Generic function for least-squares means (marginal means).
+#' @name lsmeans
+#' @description Generic function for least-squares means (marginal means).
+#' @param object A fitted model object.
+#' @param specs Variable names to calculate marginal means for.
+#' @param ... Additional arguments.
+#' @export
+lsmeans <- function(object, specs, ...) {
+  UseMethod("lsmeans")
+}
+
+#' @export
+lsmeans.Classic_Fit <- function(object, specs, ...) {
+  object$lsmeans(specs, ...)
+}
 
 #' @export
 logLik.Classic_Fit <- function(object, ...) {

@@ -385,7 +385,7 @@ rtmb_loglinear <- function(formula, data, classic = FALSE, fisher = FALSE, prior
 #' @param gmc Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #' @param view Character vector of parameter names to prioritize in summary.
-#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
+#' @param classic Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode with random effects, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param sigma_by Character vector specifying variables to group residual variance by (heteroscedasticity).
@@ -409,7 +409,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        resid_corr = NULL,
                        resid_time = NULL,
                        resid_group = NULL,
-                       generate = NULL) {
+                       generate = NULL,
+                       .force_sum = FALSE) {
 
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
     if (classic && !family %in% c("gaussian", "lognormal", "student_t", "poisson", "binomial", "bernoulli")) {
@@ -421,20 +422,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
      if (!(resid_corr %in% valid_resid_corr)) {
        stop(sprintf("Invalid 'resid_corr' value: '%s'. Valid options are: %s", 
             resid_corr, paste(valid_resid_corr, collapse = ", ")))
-     }
-   }
-
-   # If classic mode, we internally force 'sum' contrasts for stable ANOVA/DFs,
-   # but we store the user's requested contrast for the summary display.
-   actual_contrasts <- if (classic) "sum" else contrasts
-   
-   if (!is.null(actual_contrasts)) {
-     if (actual_contrasts == "sum") {
-       old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
-       on.exit(options(old_opts), add = TRUE)
-     } else if (actual_contrasts == "treatment") {
-       old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
-       on.exit(options(old_opts), add = TRUE)
      }
    }
 
@@ -582,6 +569,21 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   regularization <- if (prior_type %in% c("rhs", "ssp")) prior_type else "none"
   use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
   has_random <- !is.null(findbars(formula))
+
+  # If classic mode and random effects are present (or forced), we internally 
+  # force 'sum' contrasts for stable Type III ANOVA/DFs.
+  # Otherwise, we use the user-requested contrast (defaulting to 'treatment').
+  actual_contrasts <- if (classic && (has_random || .force_sum)) "sum" else contrasts
+  
+  if (!is.null(actual_contrasts)) {
+    if (actual_contrasts == "sum") {
+      old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
+      on.exit(options(old_opts), add = TRUE)
+    } else if (actual_contrasts == "treatment") {
+      old_opts <- options(contrasts = c("contr.treatment", "contr.poly"))
+      on.exit(options(old_opts), add = TRUE)
+    }
+  }
 
   default_prior <- list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0)
   prior <- .merge_prior(default_prior, prior)
@@ -1334,7 +1336,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
 #' @param resid_time Variable name for time points in residual correlation.
 #' @param resid_group Variable name for grouping in residual correlation.
-#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
+#' @param classic Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
@@ -1368,7 +1370,8 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              classic = classic,
              resid_corr = resid_corr,
              resid_time = resid_time,
-             resid_group = resid_group)
+             resid_group = resid_group,
+             .force_sum = TRUE)
 }
 
 #' RTMB-based GLM wrapper function (no random effects)
@@ -2501,7 +2504,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 #' @param prior An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
-#' @param classic Logical; if TRUE, perform frequentist estimation.
+#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
 #' @param var.equal Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.
 #' @param ... Additional arguments.
 #' @return An \code{RTMB_Model} object.
@@ -3732,7 +3735,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
 #' @param y_range Theoretical minimum and maximum values of the response variable.
 #' @param view Character vector of parameter names to prioritize in summary.
-#' @param classic Logical; if TRUE, use classical (frequentist) estimation.
+#' @param classic Logical; whether to use classical (frequentist) estimation instead of Bayesian/MAP estimation. Default is FALSE.
 #' @param ... Additional arguments passed to the model construction.
 #'
 #' @details

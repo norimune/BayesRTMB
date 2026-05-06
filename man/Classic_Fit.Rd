@@ -33,7 +33,6 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-lsmeans}{\code{Classic_Fit$lsmeans()}}
 \item \href{#method-Classic_Fit-.calc_contrast}{\code{Classic_Fit$.calc_contrast()}}
 \item \href{#method-Classic_Fit-.get_lsmeans_df}{\code{Classic_Fit$.get_lsmeans_df()}}
-\item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-.construct_par_list}{\code{Classic_Fit$.construct_par_list()}}
 \item \href{#method-Classic_Fit-clone}{\code{Classic_Fit$clone()}}
 }
@@ -200,16 +199,6 @@ A data frame with estimate, SE, df, t-value, and p-value.
 \subsection{Returns}{
 Degrees of freedom.
 }
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Classic_Fit-print"></a>}}
-\if{latex}{\out{\hypertarget{method-Classic_Fit-print}{}}}
-\subsection{Method \code{print()}}{
-Print the fit results.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$print()}\if{html}{\out{</div>}}
-}
-
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-.construct_par_list"></a>}}

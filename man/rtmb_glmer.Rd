@@ -23,7 +23,8 @@ rtmb_glmer(
   resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL,
-  generate = NULL
+  generate = NULL,
+  .force_sum = FALSE
 )
 }
 \arguments{
@@ -55,7 +56,7 @@ rtmb_glmer(
 
 \item{sigma_by}{Character vector specifying variables to group residual variance by (heteroscedasticity).}
 
-\item{classic}{Logical; if TRUE, use classical (frequentist) estimation.}
+\item{classic}{Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode with random effects, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.}
 
 \item{resid_corr}{Residual correlation structure: "ar1" (Autoregressive), "cs" (Compound Symmetry), "toep" (Toeplitz), or "un" (Unstructured).}
 
