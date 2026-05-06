@@ -118,16 +118,15 @@ bf
 ## 2. rtmb_lm (Linear Regression Analysis)
 
 You can perform linear regression with a format identical to standard
-[`lm()`](https://rdrr.io/r/stats/lm.html). Here, we use the `discussion`
-data included in the package (simulated data regarding discussion
-satisfaction).
+[`lm()`](https://rdrr.io/r/stats/lm.html). Here, we use the `debate`
+data included in the package (simulated data regarding debate sat).
 
 ``` r
 
-data(discussion)
+data(debate)
 
-# Model predicting satisfaction using talk and skill
-mdl_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
+# Model predicting sat using talk and skill
+mdl_lm <- rtmb_lm(sat ~ talk + skill, data = debate)
 
 # Quick check via MAP estimation
 fit_lm <- mdl_lm$optimize()
@@ -161,9 +160,9 @@ variable in `y_range`.
 
 ``` r
 
-# Create a model using weakly informative priors (assuming satisfaction ranges from 1 to 5)
-mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill,
-  data = discussion,
+# Create a model using weakly informative priors (assuming sat ranges from 1 to 5)
+mdl_lm_weak <- rtmb_lm(sat ~ talk + skill,
+  data = debate,
   use_weak_info = TRUE,
   y_range = c(1, 5)
 )
@@ -215,14 +214,13 @@ mdl_lm_weak$print_code()
 
 By specifying the `family` argument, you can perform logistic
 regression, Poisson regression, etc. As an example, we will execute a
-logistic regression predicting the experimental condition (condition: 0
-or 1).
+logistic regression predicting the experimental cond (cond: 0 or 1).
 
 ``` r
 
 # Logistic regression (family = "bernoulli")
-mdl_glm <- rtmb_glm(condition ~ satisfaction + skill,
-  data = discussion,
+mdl_glm <- rtmb_glm(cond ~ sat + skill,
+  data = debate,
   family = "bernoulli"
 )
 
@@ -234,7 +232,7 @@ fit_glm$summary()
        variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
 ## lp               -213.72  1.24  -212.80  -216.90  -212.31      1567      2449  1.00 
 ## Intercept          -1.35  0.50    -1.32    -2.31    -0.38      3740      2794  1.00 
-## b[satisfaction]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
+## b[sat]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
 ## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 
 ```
@@ -263,14 +261,14 @@ distribution.
 
 You can handle models including random effects (varying effects) using
 the `(1 | group)` notation, similar to the `lme4` package. Let’s build a
-model taking into account that individual satisfaction varies depending
-on the group they belong to.
+model taking into account that individual sat varies depending on the
+group they belong to.
 
 ``` r
 
 # Random intercept model
-mdl_glmer <- rtmb_glmer(satisfaction ~ talk + (1 | group),
-  data = discussion
+mdl_glmer <- rtmb_glmer(sat ~ talk + (1 | group),
+  data = debate
 )
 
 # When including random effects, optimize() with Laplace approximation is fast
@@ -317,8 +315,8 @@ struggles with regularized models, so it’s better to use MCMC.
 
 mdl_glmer <-
   rtmb_glmer(
-    satisfaction ~ talk + performance + skill + condition + (1 | group),
-    data = discussion,
+    sat ~ talk + perf + skill + cond + (1 | group),
+    data = debate,
     penalty = "ssp",
     y_range = c(1, 5)
   )
@@ -329,7 +327,7 @@ mcmc_glmer
 
 ``` r
 
-mcmc_glmer$draws("b[condition]") |> plot_dens()
+mcmc_glmer$draws("b[cond]") |> plot_dens()
 ```
 
 ![Shrunk Posterior Distribution](ssp_posterior_dist.png)
@@ -341,37 +339,33 @@ Shrunk Posterior Distribution
 ## 5. Post-Estimation Analysis (Interaction & Visualization)
 
 After fitting a regression model (LM, GLM, GLMER), you can use
-[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
-and
+`condal_effects()` and
 [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
 to analyze and visualize the results. These methods are currently
 available for models fitted using MCMC
 ([`sample()`](https://rdrr.io/r/base/sample.html)).
 
-#### Visualization with `conditional_effects()`
+#### Visualization with `condal_effects()`
 
-The
-[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
-function is used to visualize the predicted values of a model. It is
-particularly powerful for understanding interaction effects.
+The `condal_effects()` function is used to visualize the predicted
+values of a model. It is particularly powerful for understanding
+interaction effects.
 
 ``` r
 
-# Linear regression with interaction between talk and condition
-mdl_int <- rtmb_lm(satisfaction ~ talk * performance, data = discussion)
+# Linear regression with interaction between talk and cond
+mdl_int <- rtmb_lm(sat ~ talk * perf, data = debate)
 fit_int <- mdl_int$sample()
 
 # Visualize the interaction effect
 # For continuous moderators, it automatically shows Mean ± 1SD
-ce <- conditional_effects(fit_int, effect = "talk:performance")
+ce <- condal_effects(fit_int, effect = "talk:perf")
 plot(ce)
 ```
 
 #### Simple Effects Analysis with `simple_effects()`
 
-While
-[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
-provides a visual overview,
+While `condal_effects()` provides a visual overview,
 [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
 allows you to statistically examine the effect of a focal variable at
 specific levels of a moderator.
@@ -381,17 +375,17 @@ specific levels of a moderator.
 
 ``` r
 
-# Calculate simple slopes of 'talk' for each level of 'condition'
-se <- simple_effects(fit_int, effect = "talk:performance")
+# Calculate simple slopes of 'talk' for each level of 'cond'
+se <- simple_effects(fit_int, effect = "talk:perf")
 print(se)
 ```
 
 ``` text
 ## --- Simple Effects Analysis ---
-##    moderator performance          term estimate  lower upper
-##  performance       2.930 Slope of talk    0.038 -0.118 0.191
-##  performance       4.690 Slope of talk    0.266  0.161 0.369
-##  performance       6.450 Slope of talk    0.494  0.354 0.631
+##    moderator perf          term estimate  lower upper
+##  perf       2.930 Slope of talk    0.038 -0.118 0.191
+##  perf       4.690 Slope of talk    0.266  0.161 0.369
+##  perf       6.450 Slope of talk    0.494  0.354 0.631
 ```
 
 By default, for continuous moderators, it evaluates the effect at the

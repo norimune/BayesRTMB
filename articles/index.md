@@ -2,7 +2,7 @@
 
 ### English
 
-BayesRTMB の英語記事です。
+BayesRTMB English articles.
 
 - [Introduction to
   BayesRTMB](https://norimune.github.io/BayesRTMB/articles/introduction.md):

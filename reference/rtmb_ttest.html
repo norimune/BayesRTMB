@@ -67,14 +67,15 @@ and calculation of Bayes factors.</p>
 <span>  y <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  data <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  r <span class="op">=</span> <span class="fl">0.707</span>,</span>
+<span>  paired <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  ID <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  use_weak_info <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  prior <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean_sd <span class="op">=</span> <span class="fl">10</span>, sd_rate <span class="op">=</span> <span class="fl">0.1</span><span class="op">)</span>,</span>
-<span>  weak_info_prior <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>sd_ratio <span class="op">=</span> <span class="fl">0.5</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  y1 <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  y2 <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  classic <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  var.equal <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -83,35 +84,35 @@ and calculation of Bayes factors.</p>
 
 
 <dl><dt id="arg-x">x<a class="anchor" aria-label="anchor" href="#arg-x"></a></dt>
-<dd><p>Numeric vector of responses for group 1, or a formula (e.g., `y ~ group`).</p></dd>
+<dd><p>Numeric vector of responses for group 1, a formula (e.g., `y ~ group`), or a column name (unquoted) if `data` is provided.</p></dd>
 
 
 <dt id="arg-y">y<a class="anchor" aria-label="anchor" href="#arg-y"></a></dt>
-<dd><p>Numeric vector of responses for group 2. Required if `x` is not a formula.</p></dd>
+<dd><p>Numeric vector of responses for group 2, or a column name (unquoted) if `data` is provided. Required if `x` is not a formula.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>Data frame containing the variables in the formula.</p></dd>
+<dd><p>Data frame containing the variables.</p></dd>
 
 
 <dt id="arg-r">r<a class="anchor" aria-label="anchor" href="#arg-r"></a></dt>
 <dd><p>Numeric; Cauchy prior scale for the effect size (delta). Default is 0.707.</p></dd>
 
 
+<dt id="arg-paired">paired<a class="anchor" aria-label="anchor" href="#arg-paired"></a></dt>
+<dd><p>Logical; whether to perform a paired t-test.</p></dd>
+
+
+<dt id="arg-id">ID<a class="anchor" aria-label="anchor" href="#arg-id"></a></dt>
+<dd><p>Character; name of the ID variable for paired t-tests (required for formula input with paired = TRUE).</p></dd>
+
+
 <dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
-<dd><p>Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.</p></dd>
-
-
-<dt id="arg-use-weak-info">use_weak_info<a class="anchor" aria-label="anchor" href="#arg-use-weak-info"></a></dt>
-<dd><p>Logical; whether to explicitly use weakly informative priors.</p></dd>
+<dd><p>Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.</p></dd>
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>List of hyperparameters for the default fixed priors.</p></dd>
-
-
-<dt id="arg-weak-info-prior">weak_info_prior<a class="anchor" aria-label="anchor" href="#arg-weak-info-prior"></a></dt>
-<dd><p>List of hyperparameters for the weakly informative priors.</p></dd>
+<dd><p>An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).</p></dd>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
@@ -122,12 +123,16 @@ and calculation of Bayes factors.</p>
 <dd><p>Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").</p></dd>
 
 
-<dt id="arg-y-">y1<a class="anchor" aria-label="anchor" href="#arg-y-"></a></dt>
-<dd><p>Deprecated. Use `x` instead.</p></dd>
+<dt id="arg-classic">classic<a class="anchor" aria-label="anchor" href="#arg-classic"></a></dt>
+<dd><p>Logical; if TRUE, use classical (frequentist) estimation.</p></dd>
 
 
-<dt id="arg-y-">y2<a class="anchor" aria-label="anchor" href="#arg-y-"></a></dt>
-<dd><p>Deprecated. Use `y` instead.</p></dd>
+<dt id="arg-var-equal">var.equal<a class="anchor" aria-label="anchor" href="#arg-var-equal"></a></dt>
+<dd><p>Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Additional arguments.</p></dd>
 
 </dl></div>
     <div class="section level2">

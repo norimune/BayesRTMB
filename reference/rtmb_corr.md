@@ -1,39 +1,58 @@
-# Fit a Correlation Model using RTMB'
+# Fit a Correlation Model using RTMB
 
-Fits a correlation model to estimate means, standard deviations, and
-correlation structures. Supports both bivariate and multivariate data.
+\`rtmb_corr\` fits a correlation model to estimate means, standard
+deviations, and correlation structures. It supports simple correlation,
+multilevel correlation, and classical frequentist estimation.
 
 ## Usage
 
 ``` r
 rtmb_corr(
-  data,
+  x = NULL,
+  data = NULL,
+  ID = NULL,
+  covariates = NULL,
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
   null = NULL,
+  classic = FALSE,
   ...
 )
 ```
 
 ## Arguments
 
+- x:
+
+  A matrix, data frame, formula, or expression (e.g., `cbind(V1, V2)`)
+  of response variables.
+
 - data:
 
-  A data frame or matrix of response variables.
+  An optional data frame containing the variables.
+
+- ID:
+
+  A character string or expression specifying the group ID variable for
+  multilevel models.
 
 - prior:
 
   Prior configuration object:
   [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
-  (default) or
+  or
   [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
+  Default is
+  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md).
 
 - y_range:
 
   Optional numeric vector or matrix defining the theoretical range (min,
   max) of response variables. Required when using
   [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
+  Can be a vector of length 2 (applies to all variables) or a
+  matrix/list of length P.
 
 - init:
 
@@ -43,10 +62,15 @@ rtmb_corr(
 
   Optional list specifying parameters to fix to null values.
 
+- classic:
+
+  Logical; if `TRUE`, performs classical frequentist estimation instead
+  of Bayesian/MAP.
+
 - ...:
 
   Additional arguments passed to `rtmb_model`.
 
 ## Value
 
-A `RTMB_Model` object.
+A `RTMB_Model` or `Classic_Model` object.

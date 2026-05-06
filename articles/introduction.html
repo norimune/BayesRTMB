@@ -268,10 +268,10 @@ point estimates or a rough shape of the distribution.</p>
 <p>When building hierarchical models, you can declare parameters as
 <code>random = TRUE</code>.</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
-<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">group</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">group</span></span>
 <span><span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">group</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">data_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>,group <span class="op">=</span> <span class="va">group</span>, G <span class="op">=</span> <span class="va">G</span><span class="op">)</span></span>
@@ -333,8 +333,8 @@ standard analyses without having to define models from scratch.</p>
 <p>For instance, you can use <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> for linear
 regression.</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
-<span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
+<span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># MAP estimation</span></span>
 <span><span class="va">map_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -361,8 +361,8 @@ in the <code>null_model</code> argument of the
 <code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> method, the estimation of the null model and
 the calculation of the Bayes factor are done automatically.</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
-<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">condition</span>, data <span class="op">=</span> <span class="va">discussion</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
+<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">cond</span>, data <span class="op">=</span> <span class="va">debate</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
 <span><span class="va">mcmc_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Comparison with the null model where effect size (delta) is fixed at 0</span></span>

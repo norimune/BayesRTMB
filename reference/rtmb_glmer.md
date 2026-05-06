@@ -13,7 +13,19 @@ rtmb_glmer(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL,
+  cwc = NULL,
+  view = NULL,
+  factors = NULL,
+  contrasts = "treatment",
+  sigma_by = NULL,
+  classic = FALSE,
+  resid_corr = NULL,
+  resid_time = NULL,
+  resid_group = NULL,
+  generate = NULL,
+  .force_sum = FALSE
 )
 ```
 
@@ -57,6 +69,52 @@ rtmb_glmer(
 - null:
 
   Character string specifying the target parameter for the null model.
+
+- gmc:
+
+  Character vector of variable names for Grand Mean Centering (GMC). If
+  "all", all numeric variables are centered.
+
+- cwc:
+
+  List for Centering Within Cluster (CWC). Should contain `cluster`
+  (group variable) and `pars` (variable names to center).
+
+- view:
+
+  Character vector of parameter names to prioritize in summary.
+
+- factors:
+
+  Character vector of variable names to be treated as factors.
+
+- contrasts:
+
+  Character string specifying the contrast type ("treatment" or "sum").
+
+- sigma_by:
+
+  Character vector specifying variables to group residual variance by
+  (heteroscedasticity).
+
+- classic:
+
+  Logical; if TRUE, use classical (frequentist) estimation. In
+  frequentist mode with random effects, sum-to-zero contrasts are
+  internally enforced for Type III ANOVA compatibility.
+
+- resid_corr:
+
+  Residual correlation structure: "ar1" (Autoregressive), "cs" (Compound
+  Symmetry), "toep" (Toeplitz), or "un" (Unstructured).
+
+- resid_time:
+
+  Variable name for time points in residual correlation.
+
+- resid_group:
+
+  Variable name for grouping in residual correlation.
 
 ## Examples
 

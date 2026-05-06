@@ -231,11 +231,11 @@ fit_mcmc$log_ml
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-X_names <- c("talk", "performance", "skill")
-X <- subset(discussion, select = X_names)
+Y <- debate$sat
+X_names <- c("talk", "perf", "skill")
+X <- subset(debate, select = X_names)
 
 data_reg <- list(Y = Y, X = X)
 
@@ -290,7 +290,7 @@ mcmc_reg
 ## lp                 -411.40  1.68  -410.25  -415.73  -409.27       982       867  1.00 
 ## alpha                 1.51  0.25     1.56     1.02     1.97       632       671  1.01 
 ## beta[talk]            0.27  0.05     0.27     0.17     0.37       848      1193  1.01 
-## beta[performance]     0.15  0.03     0.15     0.10     0.21       845       965  1.00 
+## beta[perf]     0.15  0.03     0.15     0.10     0.21       845       965  1.00 
 ## beta[skill]           0.19  0.07     0.19     0.07     0.32       874      1124  1.00 
 ## sigma                 0.90  0.04     0.90     0.83     0.97       858      1195  1.01 
 ## mu[1]                 2.96  0.10     2.96     2.76     3.16       857      1153  1.00 
@@ -326,17 +326,17 @@ bf_result
 
 あるパラメータの集団差をさらにモデリングしたいとき階層線形モデルが役立ちます。データの確率モデルに含まれるパラメータが、さらに確率モデルを持つとき、階層モデルと呼びます。
 
-階層モデルの分析例として今回も `discussion` データを用います。
+階層モデルの分析例として今回も `debate` データを用います。
 ここでは集団ごとの切片のランダム効果を導入し、集団差を表現します。
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-X_names <- c("talk", "performance", "skill")
-X <- subset(discussion, select = X_names)
-group <- discussion$group
+Y <- debate$sat
+X_names <- c("talk", "perf", "skill")
+X <- subset(debate, select = X_names)
+group <- debate$group
 
 data_hlm <- list(Y = Y, X = X, group = group)
 
@@ -414,7 +414,7 @@ opt_hlm$summary(c("alpha","beta","tau","sigma"))
 ##          variable  Estimate  Std. Error  Lower 95%  Upper 95%    DF 
 ## alpha               1.52450     0.25733    1.01716    2.03185   205 
 ## beta[talk]          0.23487     0.05323    0.13013    0.33961   311 
-## beta[performance]   0.15451     0.03713    0.08085    0.22818    99 
+## beta[perf]   0.15451     0.03713    0.08085    0.22818    99 
 ## beta[skill]         0.22613     0.05990    0.10822    0.34405   274 
 ## tau                 0.48512     0.06507    0.36576    0.64343    17 
 ## sigma               0.74836     0.03755    0.67772    0.82637   148 
@@ -429,8 +429,8 @@ opt_hlm$summary(c("alpha","beta","tau","sigma"))
 
 library(lme4)
 result <-
-  lmer(satisfaction ~ talk + performance + skill + (1 | group),
-    data = discussion, REML = FALSE
+  lmer(sat ~ talk + perf + skill + (1 | group),
+    data = debate, REML = FALSE
   )
 
 result |> summary()
@@ -438,8 +438,8 @@ result |> summary()
 
 ``` text
 ## Linear mixed model fit by maximum likelihood  ['lmerMod']
-## Formula: satisfaction ~ talk + performance + skill + (1 | group)
-##    Data: discussion
+## Formula: sat ~ talk + perf + skill + (1 | group)
+##    Data: debate
 ## 
 ##       AIC       BIC    logLik -2*log(L)  df.resid 
 ##     771.1     793.4    -379.6     759.1       294 
@@ -458,13 +458,13 @@ result |> summary()
 ##             Estimate Std. Error t value
 ## (Intercept)  1.52449    0.25735   5.924
 ## talk         0.23485    0.05286   4.443
-## performance  0.15451    0.03714   4.160
+## perf         0.15451    0.03714   4.160
 ## skill        0.22616    0.05960   3.795
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr) talk   prfrmn
 ## talk        -0.516              
-## performance -0.632 -0.056       
+## perf        -0.632 -0.056       
 ## skill       -0.387 -0.138 -0.020
 ```
 
@@ -490,7 +490,7 @@ opt_hlm$summary(c("alpha","beta","tau","sigma"))
 ##          variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF 
 ## alpha               1.52450     0.25672    1.02423    2.04694  205 
 ## beta[talk]          0.23487     0.05181    0.13788    0.33975  311 
-## beta[performance]   0.15451     0.03654    0.07911    0.22626   99 
+## beta[perf]   0.15451     0.03654    0.07911    0.22626   99 
 ## beta[skill]         0.22613     0.06036    0.10550    0.34844  274 
 ## tau                 0.48512     0.07084    0.36055    0.63918   17 
 ## sigma               0.74836     0.03752    0.67921    0.82579  148 
@@ -511,7 +511,7 @@ opt_hlm$profile("beta")
 ## Profile Likelihood Confidence Intervals:
 ##  variable          Estimate Lower 2.5% Upper 97.5%
 ##  beta[talk]        0.23487  0.13020    0.33950    
-##  beta[performance] 0.15451  0.08107    0.22802    
+##  beta[perf] 0.15451  0.08107    0.22802    
 ##  beta[skill]       0.22613  0.10803    0.34363   
 ```
 
@@ -548,7 +548,7 @@ mcmc_hlm$summary()
 ## lp                 -503.48  11.43  -502.73  -527.43  -482.45       845      1883  1.00 
 ## alpha                 1.53   0.26     1.50     1.02     2.04      1885      2572  1.00 
 ## beta[talk]            0.24   0.06     0.23     0.13     0.34      3292      3346  1.00 
-## beta[performance]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 
+## beta[perf]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 
 ## beta[skill]           0.23   0.06     0.21     0.10     0.34      4128      3016  1.00 
 ## tau                   0.50   0.07     0.50     0.36     0.63      1532      1885  1.00 
 ## sigma                 0.76   0.04     0.76     0.69     0.84      2123      3211  1.00 
@@ -668,12 +668,12 @@ mcmc_hlm_l$bridgesampling()
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-X_names <- c("talk", "performance", "skill")
-X <- subset(discussion, select = X_names)
-group <- discussion$group
+Y <- debate$sat
+X_names <- c("talk", "perf", "skill")
+X <- subset(debate, select = X_names)
+group <- debate$group
 
 data_glmm <- list(Y = Y, X = X, group = group)
 
@@ -737,7 +737,7 @@ opt_glmm
 ## alpha[3]            4.25193     0.63446    1.98068    6.83335 
 ## alpha[4]            6.50517     0.70195    3.81621    9.59934 
 ## beta[talk]          0.50442     0.13449    0.24082    0.76802 
-## beta[performance]   0.32810     0.09502    0.14186    0.51434 
+## beta[perf]   0.32810     0.09502    0.14186    0.51434 
 ## beta[skill]         0.49771     0.15633    0.19131    0.80411 
 ## tau                 1.27056     0.21778    0.90803    1.77784 
 ## mu[1,1]             2.81917     0.93273    0.99105    4.64730 

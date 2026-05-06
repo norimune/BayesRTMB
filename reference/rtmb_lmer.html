@@ -63,7 +63,17 @@
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  null <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cwc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sigma_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  contrasts <span class="op">=</span> <span class="st">"treatment"</span>,</span>
+<span>  classic <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  resid_corr <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resid_time <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resid_group <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -97,6 +107,46 @@
 
 <dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
 <dd><p>Null model parameters</p></dd>
+
+
+<dt id="arg-gmc">gmc<a class="anchor" aria-label="anchor" href="#arg-gmc"></a></dt>
+<dd><p>Character vector of variable names for GMC</p></dd>
+
+
+<dt id="arg-cwc">cwc<a class="anchor" aria-label="anchor" href="#arg-cwc"></a></dt>
+<dd><p>List for CWC</p></dd>
+
+
+<dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
+<dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
+
+
+<dt id="arg-sigma-by">sigma_by<a class="anchor" aria-label="anchor" href="#arg-sigma-by"></a></dt>
+<dd><p>Character vector specifying variables to group residual variance by (heteroscedasticity).</p></dd>
+
+
+<dt id="arg-factors">factors<a class="anchor" aria-label="anchor" href="#arg-factors"></a></dt>
+<dd><p>Character vector of variable names to be treated as factors.</p></dd>
+
+
+<dt id="arg-contrasts">contrasts<a class="anchor" aria-label="anchor" href="#arg-contrasts"></a></dt>
+<dd><p>Character string specifying the contrast type ("treatment" or "sum").</p></dd>
+
+
+<dt id="arg-classic">classic<a class="anchor" aria-label="anchor" href="#arg-classic"></a></dt>
+<dd><p>Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.</p></dd>
+
+
+<dt id="arg-resid-corr">resid_corr<a class="anchor" aria-label="anchor" href="#arg-resid-corr"></a></dt>
+<dd><p>Residual correlation structure (e.g., "ar1", "cs", "un", "toep").</p></dd>
+
+
+<dt id="arg-resid-time">resid_time<a class="anchor" aria-label="anchor" href="#arg-resid-time"></a></dt>
+<dd><p>Variable name for time points in residual correlation.</p></dd>
+
+
+<dt id="arg-resid-group">resid_group<a class="anchor" aria-label="anchor" href="#arg-resid-group"></a></dt>
+<dd><p>Variable name for grouping in residual correlation.</p></dd>
 
 </dl></div>
     <div class="section level2">

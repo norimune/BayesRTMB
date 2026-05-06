@@ -8,10 +8,12 @@ Functions for defining and fitting custom models.
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
   : Create an RTMB_Model Object
+- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
+  : Safe RTMB model construction (with error message translation)
 
 ## Wrapper Functions
 
-Functions for quick, standard analyses.
+Functions for quick, standard analyses (Classical and Bayesian).
 
 - [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
   : RTMB-based Linear Regression wrapper function
@@ -24,11 +26,21 @@ Functions for quick, standard analyses.
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
-  : Fit a Correlation Model using RTMB'
+  : Fit a Correlation Model using RTMB
+- [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md)
+  : Multilevel Correlation Analysis (Kenny's Model)
+- [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md)
+  : Mixture Model Wrapper for RTMB
+- [`rtmb_table()`](https://norimune.github.io/BayesRTMB/reference/rtmb_table.md)
+  : RTMB-based Contingency Table Analysis (Chi-squared Test)
+- [`rtmb_loglinear()`](https://norimune.github.io/BayesRTMB/reference/rtmb_loglinear.md)
+  : RTMB-based Log-linear Analysis (Contingency Table)
 - [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
   : RTMB-based Factor Analysis Wrapper
 - [`rtmb_irt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_irt.md)
   : RTMB-based IRT (Item Response Theory) Wrapper
+- [`rtmb_lrt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.md)
+  : Fit a Latent Rank Theory (LRT) Model
 
 ## Plotting and Diagnostics
 
@@ -53,6 +65,10 @@ Tools for model evaluation and post-processing.
   : Calculate Bayes factor from log marginal likelihoods
 - [`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
   : Calculate Conditional Effects
+- [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
+  : Calculate Simple Effects
+- [`lsmeans()`](https://norimune.github.io/BayesRTMB/reference/lsmeans.md)
+  : Least-squares means (marginal means)
 - [`item_curve()`](https://norimune.github.io/BayesRTMB/reference/item_curve.md)
   : Calculate Item Response Curve / Category Response Curve
 - [`item_info()`](https://norimune.github.io/BayesRTMB/reference/item_info.md)
@@ -117,6 +133,8 @@ Functions used within rtmb_code for stability and transformations.
   : MCMC fit object
 - [`VB_Fit`](https://norimune.github.io/BayesRTMB/reference/VB_Fit.md) :
   VB fit object
+- [`Classic_Fit`](https://norimune.github.io/BayesRTMB/reference/Classic_Fit.md)
+  : Classic fit object
 
 ## Datasets
 
@@ -124,8 +142,8 @@ Functions used within rtmb_code for stability and transformations.
   : Beverage Preference Data
 - [`BigFive`](https://norimune.github.io/BayesRTMB/reference/BigFive.md)
   : Big Five Personality Traits Data
-- [`discussion`](https://norimune.github.io/BayesRTMB/reference/discussion.md)
-  : Group Discussion Simulation Data
+- [`debate`](https://norimune.github.io/BayesRTMB/reference/debate.md) :
+  Debate Simulation Data
 
 ## Documentation Topics
 
@@ -142,8 +160,6 @@ Functions used within rtmb_code for stability and transformations.
 
 ## Other Objects and Internals
 
-- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
-  : Safe RTMB model construction (with error message translation)
 - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) :
   Define parameter dimensions and types
 - [`validate_data()`](https://norimune.github.io/BayesRTMB/reference/validate_data.md)
@@ -154,6 +170,10 @@ Functions used within rtmb_code for stability and transformations.
   : Automatic Differentiation Variational Inference (ADVI)
 - [`BigFive`](https://norimune.github.io/BayesRTMB/reference/BigFive.md)
   : Big Five Personality Traits Data
+- [`Classic_Fit`](https://norimune.github.io/BayesRTMB/reference/Classic_Fit.md)
+  : Classic fit object
+- [`Classic_Model`](https://norimune.github.io/BayesRTMB/reference/Classic_Model.md)
+  : Classic Model Class for Frequentist Estimation
 - [`MAP_Fit`](https://norimune.github.io/BayesRTMB/reference/MAP_Fit.md)
   : MAP fit object
 - [`MCMC_Fit`](https://norimune.github.io/BayesRTMB/reference/MCMC_Fit.md)
@@ -172,8 +192,8 @@ Functions used within rtmb_code for stability and transformations.
   : Calculate Conditional Effects
 - [`conditional_effects(`*`<mcmc_fit>`*`)`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.mcmc_fit.md)
   : Calculate conditional effects for MCMC fit objects
-- [`discussion`](https://norimune.github.io/BayesRTMB/reference/discussion.md)
-  : Group Discussion Simulation Data
+- [`debate`](https://norimune.github.io/BayesRTMB/reference/debate.md) :
+  Debate Simulation Data
 - [`distance()`](https://norimune.github.io/BayesRTMB/reference/distance.md)
   : Euclidean distance
 - [`distributions`](https://norimune.github.io/BayesRTMB/reference/distributions.md)
@@ -216,6 +236,8 @@ Functions used within rtmb_code for stability and transformations.
   : Log-sum-exp function for matrices (row-wise)
 - [`logit()`](https://norimune.github.io/BayesRTMB/reference/logit.md) :
   Logit function
+- [`lsmeans()`](https://norimune.github.io/BayesRTMB/reference/lsmeans.md)
+  : Least-squares means (marginal means)
 - [`map_est()`](https://norimune.github.io/BayesRTMB/reference/map_est.md)
   : Maximum A Posteriori (MAP) Estimate
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
@@ -228,6 +250,8 @@ Functions used within rtmb_code for stability and transformations.
   : Code block for parameter definitions
 - [`plot(`*`<ce_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/plot.ce_rtmb.md)
   : Plot method for ce_rtmb class (Base R)
+- [`plot(`*`<rtmb_lsmeans>`*`)`](https://norimune.github.io/BayesRTMB/reference/plot.rtmb_lsmeans.md)
+  : Plot marginal means with error bars
 - [`plot_acf()`](https://norimune.github.io/BayesRTMB/reference/plot_acf.md)
   : Plot autocorrelation for one variable across chains
 - [`plot_dens()`](https://norimune.github.io/BayesRTMB/reference/plot_dens.md)
@@ -264,12 +288,10 @@ Functions used within rtmb_code for stability and transformations.
   Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
-- [`rtmb_ML_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ML_corr.md)
-  : Multilevel Correlation Analysis (Kenny's Model)
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
-  : Fit a Correlation Model using RTMB'
+  : Fit a Correlation Model using RTMB
 - [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
   : RTMB-based Factor Analysis Wrapper
 - [`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md)
@@ -282,16 +304,24 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Linear Regression wrapper function
 - [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
   : RTMB-based Linear Mixed Model (LMM) wrapper function
+- [`rtmb_loglinear()`](https://norimune.github.io/BayesRTMB/reference/rtmb_loglinear.md)
+  : RTMB-based Log-linear Analysis (Contingency Table)
 - [`rtmb_lrt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.md)
   : Fit a Latent Rank Theory (LRT) Model
+- [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md)
+  : Multilevel Correlation Analysis (Kenny's Model)
 - [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md)
   : Mixture Model Wrapper for RTMB
 - [`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
   : Guidelines for Writing RTMB-Compatible Code
+- [`rtmb_table()`](https://norimune.github.io/BayesRTMB/reference/rtmb_table.md)
+  : RTMB-based Contingency Table Analysis (Chi-squared Test)
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
   : Common Features and Arguments of RTMB Wrapper Functions
+- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
+  : Safe RTMB model construction (with error message translation)
 - [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
   : Calculate Simple Effects
 - [`simple_effects(`*`<mcmc_fit>`*`)`](https://norimune.github.io/BayesRTMB/reference/simple_effects.mcmc_fit.md)
@@ -314,7 +344,11 @@ Functions used within rtmb_code for stability and transformations.
   : Vector to centered matrix (RTMB compatible)
 - [`to_centered_tri()`](https://norimune.github.io/BayesRTMB/reference/to_centered_tri.md)
   : Vector to centered triangular matrix (RTMB compatible)
+- [`to_long()`](https://norimune.github.io/BayesRTMB/reference/to_long.md)
+  : Convert Wide Data to Long Format
 - [`to_lower_tri()`](https://norimune.github.io/BayesRTMB/reference/to_lower_tri.md)
   : Vector to lower triangular matrix (RTMB compatible)
+- [`to_wide()`](https://norimune.github.io/BayesRTMB/reference/to_wide.md)
+  : Convert Long Data to Wide Format
 - [`transform_code()`](https://norimune.github.io/BayesRTMB/reference/transform_code.md)
   : Transformed Code Wrapper for RTMB

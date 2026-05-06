@@ -175,13 +175,13 @@
 <h2 id="rtmb_lm線形回帰分析">2. rtmb_lm（線形回帰分析）<a class="anchor" aria-label="anchor" href="#rtmb_lm%E7%B7%9A%E5%BD%A2%E5%9B%9E%E5%B8%B0%E5%88%86%E6%9E%90"></a>
 </h2>
 <p>標準的な <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> と同様のフォーマットで線形回帰を行えます。
-ここでは、パッケージに同梱されている <code>discussion</code>
+ここでは、パッケージに同梱されている <code>debate</code>
 データ（議論の満足度に関するシミュレーションデータ）を使用します。</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># satisfaction を talk と skill で予測するモデル</span></span>
-<span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<span><span class="co"># sat を talk と skill で予測するモデル</span></span>
+<span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># MAP推定で素早く確認</span></span>
 <span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -215,8 +215,8 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 弱情報事前分布を使用してモデルを作成（満足度が 1〜5 の範囲の場合）</span></span>
 <span><span class="co"># y_range を指定するだけで自動的に適切な事前分布が設定されます</span></span>
-<span><span class="va">mdl_lm_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span><span class="va">mdl_lm_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">mdl_lm_weak</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -260,8 +260,8 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 を使用します。</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 係数 (b) の事前分布の標準誤差を 5、切片 (Intercept) を 10 に設定</span></span>
-<span><span class="va">mdl_lm_custom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span><span class="va">mdl_lm_custom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_uniform.html">prior_uniform</a></span><span class="op">(</span>b_sd <span class="op">=</span> <span class="fl">5</span>, Intercept_sd <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <hr>
@@ -272,12 +272,12 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 </h2>
 <p><code>family</code>
 引数を指定することで、ロジスティック回帰やポアソン回帰などを行えます。
-例として、実験条件（condition: 0 or
+例として、実験条件（cond: 0 or
 1）を予測するロジスティック回帰を実行します。</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ロジスティック回帰 (family = "bernoulli")</span></span>
-<span><span class="va">mdl_glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glm.html">rtmb_glm</a></span><span class="op">(</span><span class="va">condition</span> <span class="op">~</span> <span class="va">satisfaction</span> <span class="op">+</span> <span class="va">skill</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span><span class="va">mdl_glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glm.html">rtmb_glm</a></span><span class="op">(</span><span class="va">cond</span> <span class="op">~</span> <span class="va">sat</span> <span class="op">+</span> <span class="va">skill</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>  family <span class="op">=</span> <span class="st">"bernoulli"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -286,7 +286,7 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 <pre class="text"><code>       variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
 ## lp               -213.72  1.24  -212.80  -216.90  -212.31      1567      2449  1.00 
 ## Intercept          -1.35  0.50    -1.32    -2.31    -0.38      3740      2794  1.00 
-## b[satisfaction]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
+## b[sat]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
 ## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 </code></pre>
 <div class="section level4">
@@ -411,33 +411,33 @@ Prior）</strong>を自動構成することを推奨しています。</p>
 <h2 id="事後解析交互作用の可視化と単純効果分析">5. 事後解析（交互作用の可視化と単純効果分析）<a class="anchor" aria-label="anchor" href="#%E4%BA%8B%E5%BE%8C%E8%A7%A3%E6%9E%90%E4%BA%A4%E4%BA%92%E4%BD%9C%E7%94%A8%E3%81%AE%E5%8F%AF%E8%A6%96%E5%8C%96%E3%81%A8%E5%8D%98%E7%B4%94%E5%8A%B9%E6%9E%9C%E5%88%86%E6%9E%90"></a>
 </h2>
 <p>回帰モデル（LM, GLM,
-GLMER）を適合させた後、<code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> や
+GLMER）を適合させた後、<code>condal_effects()</code> や
 <code><a href="../reference/simple_effects.html">simple_effects()</a></code>
 を使用して結果の解析や可視化を行えます。これらのメソッドは現在、MCMC（<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>）で適合させたモデルで利用可能です。</p>
 <div class="section level4">
-<h4 id="conditional_effects-による可視化">
-<code>conditional_effects()</code> による可視化<a class="anchor" aria-label="anchor" href="#conditional_effects-%E3%81%AB%E3%82%88%E3%82%8B%E5%8F%AF%E8%A6%96%E5%8C%96"></a>
+<h4 id="condal_effects-による可視化">
+<code>condal_effects()</code> による可視化<a class="anchor" aria-label="anchor" href="#condal_effects-%E3%81%AB%E3%82%88%E3%82%8B%E5%8F%AF%E8%A6%96%E5%8C%96"></a>
 </h4>
-<p><code><a href="../reference/conditional_effects.html">conditional_effects()</a></code>
+<p><code>condal_effects()</code>
 関数は、モデルの予測値を可視化するために使用されます。特に交互作用効果を理解するのに強力です。</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># talk と performance の交互作用を含む線形回帰</span></span>
-<span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">performance</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># talk と perf の交互作用を含む線形回帰</span></span>
+<span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span><span class="va">mcmc_int</span> <span class="op">&lt;-</span> <span class="va">mdl_int</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 交互作用効果の可視化</span></span>
 <span><span class="co"># 連続変数の調整変数の場合、自動的に 平均値 ± 1SD が表示されます</span></span>
-<span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/conditional_effects.html">conditional_effects</a></span><span class="op">(</span><span class="va">mcmc_int</span>, effect <span class="op">=</span> <span class="st">"talk:performance"</span>,sd_multiplier <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu">condal_effects</span><span class="op">(</span><span class="va">mcmc_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span>,sd_multiplier <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ce</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
-<img src="conditional_effect.png" alt="交互作用効果の図"><div class="figcaption">交互作用効果の図</div>
+<img src="condal_effect.png" alt="交互作用効果の図"><div class="figcaption">交互作用効果の図</div>
 </div>
 </div>
 <div class="section level4">
 <h4 id="simple_effects-による単純効果分析">
 <code>simple_effects()</code> による単純効果分析<a class="anchor" aria-label="anchor" href="#simple_effects-%E3%81%AB%E3%82%88%E3%82%8B%E5%8D%98%E7%B4%94%E5%8A%B9%E6%9E%9C%E5%88%86%E6%9E%90"></a>
 </h4>
-<p><code><a href="../reference/conditional_effects.html">conditional_effects()</a></code>
+<p><code>condal_effects()</code>
 が視覚的な概観を提供するのに対し、<code><a href="../reference/simple_effects.html">simple_effects()</a></code>
 では特定の調整変数のレベルにおける焦点変数の効果を統計的に検討できます。</p>
 <ul>
@@ -449,14 +449,14 @@ GLMER）を適合させた後、<code><a href="../reference/conditional_effects.
 焦点変数がカテゴリ変数の場合。</li>
 </ul>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># performance の各レベルにおける 'talk' の単純傾きを計算</span></span>
-<span><span class="va">se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">mcmc_int</span>, effect <span class="op">=</span> <span class="st">"talk:performance"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># perf の各レベルにおける 'talk' の単純傾きを計算</span></span>
+<span><span class="va">se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">mcmc_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## --- Simple Effects Analysis ---</span></span>
-<span><span class="co">##    moderator performance          term estimate  lower upper</span></span>
-<span><span class="co">##  performance       2.930 Slope of talk    0.038 -0.118 0.191</span></span>
-<span><span class="co">##  performance       4.690 Slope of talk    0.266  0.161 0.369</span></span>
-<span><span class="co">##  performance       6.450 Slope of talk    0.494  0.354 0.631</span></span></code></pre>
+<span><span class="co">##    moderator perf          term estimate  lower upper</span></span>
+<span><span class="co">##  perf       2.930 Slope of talk    0.038 -0.118 0.191</span></span>
+<span><span class="co">##  perf       4.690 Slope of talk    0.266  0.161 0.369</span></span>
+<span><span class="co">##  perf       6.450 Slope of talk    0.494  0.354 0.631</span></span></code></pre>
 <p>デフォルトでは、連続変数の調整変数の場合、平均値および平均値 ± 1SD
 の位置で効果を評価します。この挙動は <code>sd_multiplier</code>
 引数を指定することで変更できます。</p>

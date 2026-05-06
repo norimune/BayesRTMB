@@ -323,18 +323,17 @@ generate and estimate models without writing code yourself. For details,
 see <a href="wrapper_functions.html">Wrapper Functions</a>.</p>
 <p>Here, we will build a model that assigns normal distributions to the
 intercept and regression coefficients, and an exponential distribution
-to the residual standard deviation as priors. We will use the discussion
-data included in this package. This data contains the satisfaction of a
-discussion as the objective variable, and features like the amount of
-talk, discussion performance, conversation skills, and condition
-(discussion goal). Here, we will use the amount of talk, performance,
-and conversation skills.</p>
+to the residual standard deviation as priors. We will use the debate
+data included in this package. This data contains the sat of a debate as
+the objective variable, and features like the amount of talk, debate
+perf, conversation skills, and cond (debate goal). Here, we will use the
+amount of talk, perf, and conversation skills.</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
-<span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"performance"</span>,<span class="st">"skill"</span><span class="op">)</span></span>
-<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">discussion</span>, select <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"perf"</span>,<span class="st">"skill"</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">debate</span>, select <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">data_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, X <span class="op">=</span> <span class="va">X</span><span class="op">)</span></span>
 <span></span>
@@ -412,19 +411,19 @@ an effect using a Bayesian approach.</p>
 <div class="section level2">
 <h2 id="hierarchical-linear-model">Hierarchical Linear Model<a class="anchor" aria-label="anchor" href="#hierarchical-linear-model"></a>
 </h2>
-<p>We will again use the <code>discussion</code> data for our
-hierarchical model example. Here, we introduce random effects for each
-group to represent individual differences.</p>
+<p>We will again use the <code>debate</code> data for our hierarchical
+model example. Here, we introduce random effects for each group to
+represent individual differences.</p>
 <p>In hierarchical models, centering explanatory variables and providing
 appropriate initial values can often be effective in improving the
 stability of the estimation.</p>
 <div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
-<span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"performance"</span>,<span class="st">"skill"</span><span class="op">)</span></span>
-<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">discussion</span>, select <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
-<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">group</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"perf"</span>,<span class="st">"skill"</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">debate</span>, select <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">group</span></span>
 <span></span>
 <span><span class="va">data_hlm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, X <span class="op">=</span> <span class="va">X</span>, group <span class="op">=</span> <span class="va">group</span><span class="op">)</span></span>
 <span></span>
@@ -498,7 +497,7 @@ overall picture via MAP first.</p>
 <span><span class="co">##          variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
 <span><span class="co">## alpha               1.52450     0.25732    1.02015    2.02884 </span></span>
 <span><span class="co">## beta[talk]          0.23487     0.05323    0.13054    0.33920 </span></span>
-<span><span class="co">## beta[performance]   0.15451     0.03713    0.08175    0.22728 </span></span>
+<span><span class="co">## beta[perf]   0.15451     0.03713    0.08175    0.22728 </span></span>
 <span><span class="co">## beta[skill]         0.22613     0.05990    0.10874    0.34352 </span></span>
 <span><span class="co">## tau                 0.48512     0.06507    0.37298    0.63098 </span></span>
 <span><span class="co">## sigma               0.74762     0.03752    0.67759    0.82488 </span></span>
@@ -515,13 +514,13 @@ to run it.)</em></p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/lme4/lme4/" class="external-link">lme4</a></span><span class="op">)</span></span>
 <span><span class="va">result</span> <span class="op">&lt;-</span> </span>
-<span>  <span class="fu">lmer</span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">performance</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">group</span><span class="op">)</span>, </span>
-<span>       data <span class="op">=</span> <span class="va">discussion</span>, REML <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="fu">lmer</span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span><span class="op">|</span><span class="va">group</span><span class="op">)</span>, </span>
+<span>       data <span class="op">=</span> <span class="va">debate</span>, REML <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">result</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Linear mixed model fit by maximum likelihood  ['lmerMod']</span></span>
-<span><span class="co">## Formula: satisfaction ~ talk + performance + skill + (1 | group)</span></span>
-<span><span class="co">##    Data: discussion</span></span>
+<span><span class="co">## Formula: sat ~ talk + perf + skill + (1 | group)</span></span>
+<span><span class="co">##    Data: debate</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">##       AIC       BIC    logLik -2*log(L)  df.resid </span></span>
 <span><span class="co">##     771.1     793.4    -379.6     759.1       294 </span></span>
@@ -540,13 +539,13 @@ to run it.)</em></p>
 <span><span class="co">##             Estimate Std. Error t value</span></span>
 <span><span class="co">## (Intercept)  1.52449    0.25735   5.924</span></span>
 <span><span class="co">## talk         0.23485    0.05286   4.443</span></span>
-<span><span class="co">## performance  0.15451    0.03714   4.160</span></span>
+<span><span class="co">## perf  0.15451    0.03714   4.160</span></span>
 <span><span class="co">## skill        0.22616    0.05960   3.795</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Correlation of Fixed Effects:</span></span>
 <span><span class="co">##             (Intr) talk   prfrmn</span></span>
 <span><span class="co">## talk        -0.516              </span></span>
-<span><span class="co">## performance -0.632 -0.056       </span></span>
+<span><span class="co">## perf -0.632 -0.056       </span></span>
 <span><span class="co">## skill       -0.387 -0.138 -0.020</span></span></code></pre>
 <p>The estimation results for the random effects are saved separately in
 <code>random_effects</code>.</p>
@@ -574,7 +573,7 @@ needed while checking convergence diagnostics.</p>
 <span><span class="co">## lp                 -503.48  11.43  -502.73  -527.43  -482.45       845      1883  1.00 </span></span>
 <span><span class="co">## alpha                 1.53   0.26     1.50     1.02     2.04      1885      2572  1.00 </span></span>
 <span><span class="co">## beta[talk]            0.24   0.06     0.23     0.13     0.34      3292      3346  1.00 </span></span>
-<span><span class="co">## beta[performance]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 </span></span>
+<span><span class="co">## beta[perf]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 </span></span>
 <span><span class="co">## beta[skill]           0.23   0.06     0.21     0.10     0.34      4128      3016  1.00 </span></span>
 <span><span class="co">## tau                   0.50   0.07     0.50     0.36     0.63      1532      1885  1.00 </span></span>
 <span><span class="co">## sigma                 0.76   0.04     0.76     0.69     0.84      2123      3211  1.00 </span></span>
@@ -621,7 +620,7 @@ adequate for obtaining point estimates.</p>
 <span><span class="co">## lp                 -403.59863  2.68487  -401.72373  -410.58114  -400.88726 </span></span>
 <span><span class="co">## alpha                 1.52112  0.06460     1.52966     1.39289     1.65062 </span></span>
 <span><span class="co">## beta[talk]            0.23008  0.02011     0.22903     0.18939     0.26960 </span></span>
-<span><span class="co">## beta[performance]     0.15445  0.01236     0.15815     0.12902     0.17917 </span></span>
+<span><span class="co">## beta[perf]     0.15445  0.01236     0.15815     0.12902     0.17917 </span></span>
 <span><span class="co">## beta[skill]           0.22121  0.02962     0.23026     0.16046     0.27926 </span></span>
 <span><span class="co">## tau                   0.52022  0.06577     0.50972     0.40743     0.65876 </span></span>
 <span><span class="co">## sigma                 0.76221  0.03666     0.75816     0.69228     0.83982 </span></span>
@@ -646,7 +645,7 @@ yield results similar to MAP.</p>
 <span><span class="co">## lp                 -403.97866  2.20926  -402.90991  -409.23611  -401.18538 </span></span>
 <span><span class="co">## alpha                 1.53770  0.25051     1.56744     1.01054     2.02055 </span></span>
 <span><span class="co">## beta[talk]            0.24155  0.05547     0.23247     0.13522     0.35168 </span></span>
-<span><span class="co">## beta[performance]     0.15541  0.03070     0.14594     0.09867     0.21363 </span></span>
+<span><span class="co">## beta[perf]     0.15541  0.03070     0.14594     0.09867     0.21363 </span></span>
 <span><span class="co">## beta[skill]           0.22281  0.06458     0.24644     0.09070     0.34811 </span></span>
 <span><span class="co">## tau                   0.51825  0.07037     0.52741     0.39687     0.66168 </span></span>
 <span><span class="co">## sigma                 0.75946  0.05066     0.76286     0.66550     0.85404 </span></span>
@@ -722,16 +721,16 @@ slightly from MCMC without Laplace approximation.</p>
 <h2 id="glmm">GLMM<a class="anchor" aria-label="anchor" href="#glmm"></a>
 </h2>
 <p>Generalized Linear Mixed Models (GLMMs) are also possible.</p>
-<p>Since discussion satisfaction is measured on a 5-point scale, it can
-be treated as ordinal data. Therefore, let’s run a multilevel analysis
-assuming an ordered logistic distribution.</p>
+<p>Since debate sat is measured on a 5-point scale, it can be treated as
+ordinal data. Therefore, let’s run a multilevel analysis assuming an
+ordered logistic distribution.</p>
 <div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
-<span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"performance"</span>,<span class="st">"skill"</span><span class="op">)</span></span>
-<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">discussion</span>, select <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
-<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">group</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"perf"</span>,<span class="st">"skill"</span><span class="op">)</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/subset.html" class="external-link">subset</a></span><span class="op">(</span><span class="va">debate</span>, select <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">group</span></span>
 <span></span>
 <span><span class="va">data_glmm</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, X <span class="op">=</span> <span class="va">X</span>, group <span class="op">=</span> <span class="va">group</span><span class="op">)</span></span>
 <span></span>
@@ -788,7 +787,7 @@ random effects.</p>
 <span><span class="co">## alpha[3]            4.25193     0.63446    1.98068    6.83335 </span></span>
 <span><span class="co">## alpha[4]            6.50517     0.70195    3.81621    9.59934 </span></span>
 <span><span class="co">## beta[talk]          0.50442     0.13449    0.24082    0.76802 </span></span>
-<span><span class="co">## beta[performance]   0.32810     0.09502    0.14186    0.51434 </span></span>
+<span><span class="co">## beta[perf]   0.32810     0.09502    0.14186    0.51434 </span></span>
 <span><span class="co">## beta[skill]         0.49771     0.15633    0.19131    0.80411 </span></span>
 <span><span class="co">## tau                 1.27056     0.21778    0.90803    1.77784 </span></span>
 <span><span class="co">## mu[1,1]             2.81917     0.93273    0.99105    4.64730 </span></span>

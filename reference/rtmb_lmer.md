@@ -12,7 +12,17 @@ rtmb_lmer(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL,
+  cwc = NULL,
+  view = NULL,
+  sigma_by = NULL,
+  factors = NULL,
+  contrasts = "treatment",
+  classic = FALSE,
+  resid_corr = NULL,
+  resid_time = NULL,
+  resid_group = NULL
 )
 ```
 
@@ -47,6 +57,49 @@ rtmb_lmer(
 - null:
 
   Null model parameters
+
+- gmc:
+
+  Character vector of variable names for GMC
+
+- cwc:
+
+  List for CWC
+
+- view:
+
+  Character vector of parameter names to prioritize in summary.
+
+- sigma_by:
+
+  Character vector specifying variables to group residual variance by
+  (heteroscedasticity).
+
+- factors:
+
+  Character vector of variable names to be treated as factors.
+
+- contrasts:
+
+  Character string specifying the contrast type ("treatment" or "sum").
+
+- classic:
+
+  Logical; if TRUE, use classical (frequentist) estimation. In
+  frequentist mode, sum-to-zero contrasts are internally enforced for
+  Type III ANOVA compatibility.
+
+- resid_corr:
+
+  Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
+
+- resid_time:
+
+  Variable name for time points in residual correlation.
+
+- resid_group:
+
+  Variable name for grouping in residual correlation.
 
 ## Value
 

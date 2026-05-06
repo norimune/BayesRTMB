@@ -12,7 +12,11 @@ rtmb_glm(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL,
+  factors = NULL,
+  contrasts = "treatment",
+  classic = FALSE
 )
 ```
 
@@ -50,6 +54,10 @@ rtmb_glm(
 - null:
 
   Character string specifying the target parameter for the null model.
+
+- gmc:
+
+  Character vector of variable names for GMC
 
 ## Examples
 

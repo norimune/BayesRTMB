@@ -11,7 +11,11 @@ rtmb_lm(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
-  null = NULL
+  null = NULL,
+  gmc = NULL,
+  factors = NULL,
+  contrasts = "treatment",
+  classic = FALSE
 )
 ```
 
@@ -44,6 +48,19 @@ rtmb_lm(
 - null:
 
   Character string specifying the target parameter for the null model.
+
+- gmc:
+
+  Character vector of variable names for GMC
+
+- factors:
+
+  Character vector of variable names to be treated as factors.
+
+- classic:
+
+  Logical; whether to use classical (frequentist) estimation instead of
+  Bayesian/MAP estimation. Default is FALSE.
 
 ## Examples
 

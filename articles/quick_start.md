@@ -289,20 +289,19 @@ Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md).
 
 Here, we will build a model that assigns normal distributions to the
 intercept and regression coefficients, and an exponential distribution
-to the residual standard deviation as priors. We will use the discussion
-data included in this package. This data contains the satisfaction of a
-discussion as the objective variable, and features like the amount of
-talk, discussion performance, conversation skills, and condition
-(discussion goal). Here, we will use the amount of talk, performance,
-and conversation skills.
+to the residual standard deviation as priors. We will use the debate
+data included in this package. This data contains the sat of a debate as
+the objective variable, and features like the amount of talk, debate
+perf, conversation skills, and cond (debate goal). Here, we will use the
+amount of talk, perf, and conversation skills.
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill")
-X <- subset(discussion, select = X_names)
+Y <- debate$sat
+X_names <- c("talk","perf","skill")
+X <- subset(debate, select = X_names)
 
 data_reg <- list(Y = Y, X = X)
 
@@ -397,9 +396,9 @@ bf_result
 
 ## Hierarchical Linear Model
 
-We will again use the `discussion` data for our hierarchical model
-example. Here, we introduce random effects for each group to represent
-individual differences.
+We will again use the `debate` data for our hierarchical model example.
+Here, we introduce random effects for each group to represent individual
+differences.
 
 In hierarchical models, centering explanatory variables and providing
 appropriate initial values can often be effective in improving the
@@ -407,12 +406,12 @@ stability of the estimation.
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill")
-X <- subset(discussion, select = X_names)
-group <- discussion$group
+Y <- debate$sat
+X_names <- c("talk","perf","skill")
+X <- subset(debate, select = X_names)
+group <- debate$group
 
 data_hlm <- list(Y = Y, X = X, group = group)
 
@@ -492,7 +491,7 @@ opt_hlm
 ##          variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 ## alpha               1.52450     0.25732    1.02015    2.02884 
 ## beta[talk]          0.23487     0.05323    0.13054    0.33920 
-## beta[performance]   0.15451     0.03713    0.08175    0.22728 
+## beta[perf]   0.15451     0.03713    0.08175    0.22728 
 ## beta[skill]         0.22613     0.05990    0.10874    0.34352 
 ## tau                 0.48512     0.06507    0.37298    0.63098 
 ## sigma               0.74762     0.03752    0.67759    0.82488 
@@ -512,16 +511,16 @@ you wish to run it.)*
 
 library(lme4)
 result <- 
-  lmer(satisfaction ~ talk + performance + skill + (1|group), 
-       data = discussion, REML = FALSE)
+  lmer(sat ~ talk + perf + skill + (1|group), 
+       data = debate, REML = FALSE)
 
 result |> summary()
 ```
 
 ``` text
 ## Linear mixed model fit by maximum likelihood  ['lmerMod']
-## Formula: satisfaction ~ talk + performance + skill + (1 | group)
-##    Data: discussion
+## Formula: sat ~ talk + perf + skill + (1 | group)
+##    Data: debate
 ## 
 ##       AIC       BIC    logLik -2*log(L)  df.resid 
 ##     771.1     793.4    -379.6     759.1       294 
@@ -540,13 +539,13 @@ result |> summary()
 ##             Estimate Std. Error t value
 ## (Intercept)  1.52449    0.25735   5.924
 ## talk         0.23485    0.05286   4.443
-## performance  0.15451    0.03714   4.160
+## perf  0.15451    0.03714   4.160
 ## skill        0.22616    0.05960   3.795
 ## 
 ## Correlation of Fixed Effects:
 ##             (Intr) talk   prfrmn
 ## talk        -0.516              
-## performance -0.632 -0.056       
+## perf -0.632 -0.056       
 ## skill       -0.387 -0.138 -0.020
 ```
 
@@ -585,7 +584,7 @@ mcmc_hlm$summary()
 ## lp                 -503.48  11.43  -502.73  -527.43  -482.45       845      1883  1.00 
 ## alpha                 1.53   0.26     1.50     1.02     2.04      1885      2572  1.00 
 ## beta[talk]            0.24   0.06     0.23     0.13     0.34      3292      3346  1.00 
-## beta[performance]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 
+## beta[perf]     0.15   0.04     0.16     0.08     0.23      1724      2415  1.00 
 ## beta[skill]           0.23   0.06     0.21     0.10     0.34      4128      3016  1.00 
 ## tau                   0.50   0.07     0.50     0.36     0.63      1532      1885  1.00 
 ## sigma                 0.76   0.04     0.76     0.69     0.84      2123      3211  1.00 
@@ -641,7 +640,7 @@ vb_hlm$summary(digits=5)
 ## lp                 -403.59863  2.68487  -401.72373  -410.58114  -400.88726 
 ## alpha                 1.52112  0.06460     1.52966     1.39289     1.65062 
 ## beta[talk]            0.23008  0.02011     0.22903     0.18939     0.26960 
-## beta[performance]     0.15445  0.01236     0.15815     0.12902     0.17917 
+## beta[perf]     0.15445  0.01236     0.15815     0.12902     0.17917 
 ## beta[skill]           0.22121  0.02962     0.23026     0.16046     0.27926 
 ## tau                   0.52022  0.06577     0.50972     0.40743     0.65876 
 ## sigma                 0.76221  0.03666     0.75816     0.69228     0.83982 
@@ -673,7 +672,7 @@ vb_hlm$summary(digits=5)
 ## lp                 -403.97866  2.20926  -402.90991  -409.23611  -401.18538 
 ## alpha                 1.53770  0.25051     1.56744     1.01054     2.02055 
 ## beta[talk]            0.24155  0.05547     0.23247     0.13522     0.35168 
-## beta[performance]     0.15541  0.03070     0.14594     0.09867     0.21363 
+## beta[perf]     0.15541  0.03070     0.14594     0.09867     0.21363 
 ## beta[skill]           0.22281  0.06458     0.24644     0.09070     0.34811 
 ## tau                   0.51825  0.07037     0.52741     0.39687     0.66168 
 ## sigma                 0.75946  0.05066     0.76286     0.66550     0.85404 
@@ -775,18 +774,18 @@ mcmc_hlm_l$bridgesampling()
 
 Generalized Linear Mixed Models (GLMMs) are also possible.
 
-Since discussion satisfaction is measured on a 5-point scale, it can be
-treated as ordinal data. Therefore, let’s run a multilevel analysis
-assuming an ordered logistic distribution.
+Since debate sat is measured on a 5-point scale, it can be treated as
+ordinal data. Therefore, let’s run a multilevel analysis assuming an
+ordered logistic distribution.
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-X_names <- c("talk","performance","skill")
-X <- subset(discussion, select = X_names)
-group <- discussion$group
+Y <- debate$sat
+X_names <- c("talk","perf","skill")
+X <- subset(debate, select = X_names)
+group <- debate$group
 
 data_glmm <- list(Y = Y, X = X, group = group)
 
@@ -850,7 +849,7 @@ opt_glmm
 ## alpha[3]            4.25193     0.63446    1.98068    6.83335 
 ## alpha[4]            6.50517     0.70195    3.81621    9.59934 
 ## beta[talk]          0.50442     0.13449    0.24082    0.76802 
-## beta[performance]   0.32810     0.09502    0.14186    0.51434 
+## beta[perf]   0.32810     0.09502    0.14186    0.51434 
 ## beta[skill]         0.49771     0.15633    0.19131    0.80411 
 ## tau                 1.27056     0.21778    0.90803    1.77784 
 ## mu[1,1]             2.81917     0.93273    0.99105    4.64730 

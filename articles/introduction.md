@@ -200,10 +200,10 @@ When building hierarchical models, you can declare parameters as
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-group <- discussion$group
+Y <- debate$sat
+group <- debate$group
 G <- length(unique(group))
 
 data_icc <- list(Y = Y,group = group, G = G)
@@ -283,8 +283,8 @@ for linear regression.
 
 ``` r
 
-data(discussion)
-fit_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
+data(debate)
+fit_lm <- rtmb_lm(sat ~ talk + skill, data = debate)
 
 # MAP estimation
 map_lm <- fit_lm$optimize()
@@ -323,8 +323,8 @@ Bayes factor are done automatically.
 
 ``` r
 
-data(discussion)
-mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
+data(debate)
+mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
 # Comparison with the null model where effect size (delta) is fixed at 0

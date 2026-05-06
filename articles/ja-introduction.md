@@ -186,10 +186,10 @@ vb_fit$summary()
 
 ``` r
 
-data(discussion)
+data(debate)
 
-Y <- discussion$satisfaction
-group <- discussion$group
+Y <- debate$sat
+group <- debate$group
 G <- length(unique(group))
 
 data_icc <- list(Y = Y,group = group, G = G)
@@ -269,8 +269,8 @@ BayesRTMB
 
 ``` r
 
-data(discussion)
-mdl_lmer <- rtmb_lm(satisfaction ~ talk + condition + (1 | group), data = discussion)
+data(debate)
+mdl_lmer <- rtmb_lm(sat ~ talk + cond + (1 | group), data = debate)
 
 # MAP推定
 opt_lmer <- mdl_lmer$optimize(df = "auto")
@@ -289,7 +289,7 @@ opt_lmer$summary()
 ##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF 
 ## Intercept      2.58149     0.18124    2.22468    2.93829  274 
 ## b[talk]        0.25197     0.05764    0.13852    0.36541  295 
-## b[condition]   0.18183     0.14595   -0.10729    0.47094  114 
+## b[cond]   0.18183     0.14595   -0.10729    0.47094  114 
 ## sigma          0.77760     0.03891    0.70443    0.85838  159 
 ## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 
 ```
@@ -307,8 +307,8 @@ opt_lmer$summary()
 
 ``` r
 
-data(discussion)
-mdl_ttest <- rtmb_ttest(satisfaction ~ condition, data = discussion, r = 0.707)
+data(debate)
+mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
 # 効果量(delta)を0に固定した帰無モデルとの比較

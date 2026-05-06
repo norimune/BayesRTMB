@@ -178,14 +178,13 @@ comparison (Bayes factor) against a null model where the effect size is
 <h2 id="rtmb_lm-linear-regression-analysis">2. rtmb_lm (Linear Regression Analysis)<a class="anchor" aria-label="anchor" href="#rtmb_lm-linear-regression-analysis"></a>
 </h2>
 <p>You can perform linear regression with a format identical to standard
-<code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>. Here, we use the <code>discussion</code> data
-included in the package (simulated data regarding discussion
-satisfaction).</p>
+<code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code>. Here, we use the <code>debate</code> data included in
+the package (simulated data regarding debate sat).</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># Model predicting satisfaction using talk and skill</span></span>
-<span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<span><span class="co"># Model predicting sat using talk and skill</span></span>
+<span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Quick check via MAP estimation</span></span>
 <span><span class="va">fit_lm</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -214,9 +213,9 @@ appropriate <strong>Weakly Informative Priors</strong> by setting
 and maximum values of the objective variable in
 <code>y_range</code>.</p>
 <div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Create a model using weakly informative priors (assuming satisfaction ranges from 1 to 5)</span></span>
-<span><span class="va">mdl_lm_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<code class="sourceCode R"><span><span class="co"># Create a model using weakly informative priors (assuming sat ranges from 1 to 5)</span></span>
+<span><span class="va">mdl_lm_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>  use_weak_info <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -265,12 +264,12 @@ and maximum values of the objective variable in
 </h2>
 <p>By specifying the <code>family</code> argument, you can perform
 logistic regression, Poisson regression, etc. As an example, we will
-execute a logistic regression predicting the experimental condition
-(condition: 0 or 1).</p>
+execute a logistic regression predicting the experimental cond (cond: 0
+or 1).</p>
 <div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Logistic regression (family = "bernoulli")</span></span>
-<span><span class="va">mdl_glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glm.html">rtmb_glm</a></span><span class="op">(</span><span class="va">condition</span> <span class="op">~</span> <span class="va">satisfaction</span> <span class="op">+</span> <span class="va">skill</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span><span class="va">mdl_glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glm.html">rtmb_glm</a></span><span class="op">(</span><span class="va">cond</span> <span class="op">~</span> <span class="va">sat</span> <span class="op">+</span> <span class="va">skill</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>  family <span class="op">=</span> <span class="st">"bernoulli"</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -279,7 +278,7 @@ execute a logistic regression predicting the experimental condition
 <pre class="text"><code>       variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
 ## lp               -213.72  1.24  -212.80  -216.90  -212.31      1567      2449  1.00 
 ## Intercept          -1.35  0.50    -1.32    -2.31    -0.38      3740      2794  1.00 
-## b[satisfaction]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
+## b[sat]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
 ## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 </code></pre>
 <div class="section level4">
@@ -362,12 +361,11 @@ data.</td>
 <p>You can handle models including random effects (varying effects)
 using the <code>(1 | group)</code> notation, similar to the
 <code>lme4</code> package. Let’s build a model taking into account that
-individual satisfaction varies depending on the group they belong
-to.</p>
+individual sat varies depending on the group they belong to.</p>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Random intercept model</span></span>
-<span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
-<span>  data <span class="op">=</span> <span class="va">discussion</span></span>
+<span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># When including random effects, optimize() with Laplace approximation is fast</span></span>
@@ -409,8 +407,8 @@ models, so it’s better to use MCMC.</p>
 <div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
-<span>    <span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">performance</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="va">condition</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
-<span>    data <span class="op">=</span> <span class="va">discussion</span>,</span>
+<span>    <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="va">cond</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
+<span>    data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>    penalty <span class="op">=</span> <span class="st">"ssp"</span>,</span>
 <span>    y_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span></span>
 <span>  <span class="op">)</span></span>
@@ -418,7 +416,7 @@ models, so it’s better to use MCMC.</p>
 <span><span class="va">mcmc_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">mcmc_glmer</span></span></code></pre></div>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"b[condition]"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"b[cond]"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
 <img src="ssp_posterior_dist.png" alt="Shrunk Posterior Distribution"><div class="figcaption">Shrunk Posterior Distribution</div>
 </div>
@@ -429,29 +427,29 @@ models, so it’s better to use MCMC.</p>
 <h2 id="post-estimation-analysis-interaction-visualization">5. Post-Estimation Analysis (Interaction &amp; Visualization)<a class="anchor" aria-label="anchor" href="#post-estimation-analysis-interaction-visualization"></a>
 </h2>
 <p>After fitting a regression model (LM, GLM, GLMER), you can use
-<code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> and <code><a href="../reference/simple_effects.html">simple_effects()</a></code> to
+<code>condal_effects()</code> and <code><a href="../reference/simple_effects.html">simple_effects()</a></code> to
 analyze and visualize the results. These methods are currently available
 for models fitted using MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>).</p>
 <div class="section level4">
-<h4 id="visualization-with-conditional_effects">Visualization with <code>conditional_effects()</code><a class="anchor" aria-label="anchor" href="#visualization-with-conditional_effects"></a>
+<h4 id="visualization-with-condal_effects">Visualization with <code>condal_effects()</code><a class="anchor" aria-label="anchor" href="#visualization-with-condal_effects"></a>
 </h4>
-<p>The <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> function is used to visualize
-the predicted values of a model. It is particularly powerful for
+<p>The <code>condal_effects()</code> function is used to visualize the
+predicted values of a model. It is particularly powerful for
 understanding interaction effects.</p>
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Linear regression with interaction between talk and condition</span></span>
-<span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">performance</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Linear regression with interaction between talk and cond</span></span>
+<span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span><span class="va">fit_int</span> <span class="op">&lt;-</span> <span class="va">mdl_int</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Visualize the interaction effect</span></span>
 <span><span class="co"># For continuous moderators, it automatically shows Mean ± 1SD</span></span>
-<span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/conditional_effects.html">conditional_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:performance"</span><span class="op">)</span></span>
+<span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu">condal_effects</span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ce</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level4">
 <h4 id="simple-effects-analysis-with-simple_effects">Simple Effects Analysis with <code>simple_effects()</code><a class="anchor" aria-label="anchor" href="#simple-effects-analysis-with-simple_effects"></a>
 </h4>
-<p>While <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> provides a visual overview,
+<p>While <code>condal_effects()</code> provides a visual overview,
 <code><a href="../reference/simple_effects.html">simple_effects()</a></code> allows you to statistically examine the
 effect of a focal variable at specific levels of a moderator.</p>
 <ul>
@@ -463,14 +461,14 @@ continuous.</li>
 categorical.</li>
 </ul>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Calculate simple slopes of 'talk' for each level of 'condition'</span></span>
-<span><span class="va">se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:performance"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># Calculate simple slopes of 'talk' for each level of 'cond'</span></span>
+<span><span class="va">se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## --- Simple Effects Analysis ---</span></span>
-<span><span class="co">##    moderator performance          term estimate  lower upper</span></span>
-<span><span class="co">##  performance       2.930 Slope of talk    0.038 -0.118 0.191</span></span>
-<span><span class="co">##  performance       4.690 Slope of talk    0.266  0.161 0.369</span></span>
-<span><span class="co">##  performance       6.450 Slope of talk    0.494  0.354 0.631</span></span></code></pre>
+<span><span class="co">##    moderator perf          term estimate  lower upper</span></span>
+<span><span class="co">##  perf       2.930 Slope of talk    0.038 -0.118 0.191</span></span>
+<span><span class="co">##  perf       4.690 Slope of talk    0.266  0.161 0.369</span></span>
+<span><span class="co">##  perf       6.450 Slope of talk    0.494  0.354 0.631</span></span></code></pre>
 <p>By default, for continuous moderators, it evaluates the effect at the
 Mean and Mean ± 1SD. You can change this behavior by specifying the
 <code>sd_multiplier</code> argument.</p>

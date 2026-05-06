@@ -117,15 +117,15 @@ bf
 
 標準的な [`lm()`](https://rdrr.io/r/stats/lm.html)
 と同様のフォーマットで線形回帰を行えます。
-ここでは、パッケージに同梱されている `discussion`
+ここでは、パッケージに同梱されている `debate`
 データ（議論の満足度に関するシミュレーションデータ）を使用します。
 
 ``` r
 
-data(discussion)
+data(debate)
 
-# satisfaction を talk と skill で予測するモデル
-mdl_lm <- rtmb_lm(satisfaction ~ talk + skill, data = discussion)
+# sat を talk と skill で予測するモデル
+mdl_lm <- rtmb_lm(sat ~ talk + skill, data = debate)
 
 # MAP推定で素早く確認
 fit_lm <- mdl_lm$optimize()
@@ -166,8 +166,8 @@ Prior）**を自動構成することを推奨しています。
 
 # 弱情報事前分布を使用してモデルを作成（満足度が 1〜5 の範囲の場合）
 # y_range を指定するだけで自動的に適切な事前分布が設定されます
-mdl_lm_weak <- rtmb_lm(satisfaction ~ talk + skill,
-  data = discussion,
+mdl_lm_weak <- rtmb_lm(sat ~ talk + skill,
+  data = debate,
   y_range = c(1, 5)
 )
 mdl_lm_weak$print_code()
@@ -218,8 +218,8 @@ mdl_lm_weak$print_code()
 ``` r
 
 # 係数 (b) の事前分布の標準誤差を 5、切片 (Intercept) を 10 に設定
-mdl_lm_custom <- rtmb_lm(satisfaction ~ talk + skill,
-  data = discussion,
+mdl_lm_custom <- rtmb_lm(sat ~ talk + skill,
+  data = debate,
   prior = prior_uniform(b_sd = 5, Intercept_sd = 10)
 )
 ```
@@ -230,14 +230,14 @@ mdl_lm_custom <- rtmb_lm(satisfaction ~ talk + skill,
 
 `family`
 引数を指定することで、ロジスティック回帰やポアソン回帰などを行えます。
-例として、実験条件（condition: 0 or
+例として、実験条件（cond: 0 or
 1）を予測するロジスティック回帰を実行します。
 
 ``` r
 
 # ロジスティック回帰 (family = "bernoulli")
-mdl_glm <- rtmb_glm(condition ~ satisfaction + skill,
-  data = discussion,
+mdl_glm <- rtmb_glm(cond ~ sat + skill,
+  data = debate,
   family = "bernoulli"
 )
 
@@ -249,7 +249,7 @@ fit_glm$summary()
        variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
 ## lp               -213.72  1.24  -212.80  -216.90  -212.31      1567      2449  1.00 
 ## Intercept          -1.35  0.50    -1.32    -2.31    -0.38      3740      2794  1.00 
-## b[satisfaction]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
+## b[sat]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
 ## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
 ## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 
 ```
@@ -343,36 +343,34 @@ opt_mix$print()
 
 ## 5. 事後解析（交互作用の可視化と単純効果分析）
 
-回帰モデル（LM, GLM,
-GLMER）を適合させた後、[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
-や
+回帰モデル（LM, GLM, GLMER）を適合させた後、`condal_effects()` や
 [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
 を使用して結果の解析や可視化を行えます。これらのメソッドは現在、MCMC（[`sample()`](https://rdrr.io/r/base/sample.html)）で適合させたモデルで利用可能です。
 
-#### `conditional_effects()` による可視化
+#### `condal_effects()` による可視化
 
-[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+`condal_effects()`
 関数は、モデルの予測値を可視化するために使用されます。特に交互作用効果を理解するのに強力です。
 
 ``` r
 
-# talk と performance の交互作用を含む線形回帰
-mdl_int <- rtmb_lm(satisfaction ~ talk * performance, data = discussion)
+# talk と perf の交互作用を含む線形回帰
+mdl_int <- rtmb_lm(sat ~ talk * perf, data = debate)
 mcmc_int <- mdl_int$sample()
 
 # 交互作用効果の可視化
 # 連続変数の調整変数の場合、自動的に 平均値 ± 1SD が表示されます
-ce <- conditional_effects(mcmc_int, effect = "talk:performance",sd_multiplier = 1)
+ce <- condal_effects(mcmc_int, effect = "talk:perf",sd_multiplier = 1)
 plot(ce)
 ```
 
-![交互作用効果の図](conditional_effect.png)
+![交互作用効果の図](condal_effect.png)
 
 交互作用効果の図
 
 #### `simple_effects()` による単純効果分析
 
-[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+`condal_effects()`
 が視覚的な概観を提供するのに対し、[`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
 では特定の調整変数のレベルにおける焦点変数の効果を統計的に検討できます。
 
@@ -382,17 +380,17 @@ plot(ce)
 
 ``` r
 
-# performance の各レベルにおける 'talk' の単純傾きを計算
-se <- simple_effects(mcmc_int, effect = "talk:performance")
+# perf の各レベルにおける 'talk' の単純傾きを計算
+se <- simple_effects(mcmc_int, effect = "talk:perf")
 print(se)
 ```
 
 ``` text
 ## --- Simple Effects Analysis ---
-##    moderator performance          term estimate  lower upper
-##  performance       2.930 Slope of talk    0.038 -0.118 0.191
-##  performance       4.690 Slope of talk    0.266  0.161 0.369
-##  performance       6.450 Slope of talk    0.494  0.354 0.631
+##    moderator perf          term estimate  lower upper
+##  perf       2.930 Slope of talk    0.038 -0.118 0.191
+##  perf       4.690 Slope of talk    0.266  0.161 0.369
+##  perf       6.450 Slope of talk    0.494  0.354 0.631
 ```
 
 デフォルトでは、連続変数の調整変数の場合、平均値および平均値 ± 1SD

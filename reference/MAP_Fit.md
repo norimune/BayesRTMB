@@ -108,6 +108,8 @@ estimation.
 
 - [`MAP_Fit$ranef()`](#method-map_fit-ranef)
 
+- [`MAP_Fit$draws()`](#method-map_fit-draws)
+
 - [`MAP_Fit$summary()`](#method-map_fit-summary)
 
 - [`MAP_Fit$print()`](#method-map_fit-print)
@@ -305,6 +307,49 @@ Return random effect estimates as a named list.
 #### Returns
 
 A named list of random effect estimates.
+
+------------------------------------------------------------------------
+
+### Method `draws()`
+
+Extract samples from the asymptotic posterior distribution.
+
+#### Usage
+
+    MAP_Fit$draws(
+      pars = NULL,
+      inc_random = FALSE,
+      inc_transform = TRUE,
+      inc_generate = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Character or numeric vector specifying the names or indices of
+  parameters to extract.
+
+- `inc_random`:
+
+  Logical; whether to include random effects.
+
+- `inc_transform`:
+
+  Logical; whether to include transformed parameters.
+
+- `inc_generate`:
+
+  Logical; whether to include generated quantities.
+
+- `...`:
+
+  Ignored.
+
+#### Returns
+
+An array of samples \[iterations, 1, parameters\].
 
 ------------------------------------------------------------------------
 

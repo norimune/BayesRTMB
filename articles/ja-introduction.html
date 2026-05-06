@@ -256,10 +256,10 @@ Rtools44）。</li>
 <p>階層モデルなどを構築する場合、パラメータを <code>random = TRUE</code>
 として宣言できます。</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">satisfaction</span></span>
-<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">discussion</span><span class="op">$</span><span class="va">group</span></span>
+<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">group</span></span>
 <span><span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">group</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">data_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>,group <span class="op">=</span> <span class="va">group</span>, G <span class="op">=</span> <span class="va">G</span><span class="op">)</span></span>
@@ -323,8 +323,8 @@ Rtools44）。</li>
 <p>たとえばマルチレベルモデルであれば <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code>
 を使います。</p>
 <div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
-<span><span class="va">mdl_lmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">condition</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">discussion</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
+<span><span class="va">mdl_lmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">cond</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># MAP推定</span></span>
 <span><span class="va">opt_lmer</span> <span class="op">&lt;-</span> <span class="va">mdl_lmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>df <span class="op">=</span> <span class="st">"auto"</span><span class="op">)</span></span>
@@ -340,7 +340,7 @@ Rtools44）。</li>
 <span><span class="co">##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF </span></span>
 <span><span class="co">## Intercept      2.58149     0.18124    2.22468    2.93829  274 </span></span>
 <span><span class="co">## b[talk]        0.25197     0.05764    0.13852    0.36541  295 </span></span>
-<span><span class="co">## b[condition]   0.18183     0.14595   -0.10729    0.47094  114 </span></span>
+<span><span class="co">## b[cond]   0.18183     0.14595   -0.10729    0.47094  114 </span></span>
 <span><span class="co">## sigma          0.77760     0.03891    0.70443    0.85838  159 </span></span>
 <span><span class="co">## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 </span></span></code></pre>
 <p>一般化線形混合モデルには <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>、因子分析には
@@ -350,8 +350,8 @@ Rtools44）。</li>
 <code>null_model</code> 引数に「0
 に固定したいパラメータ名」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">discussion</span><span class="op">)</span></span>
-<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">satisfaction</span> <span class="op">~</span> <span class="va">condition</span>, data <span class="op">=</span> <span class="va">discussion</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
+<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">cond</span>, data <span class="op">=</span> <span class="va">debate</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
 <span><span class="va">mcmc_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># 効果量(delta)を0に固定した帰無モデルとの比較</span></span>

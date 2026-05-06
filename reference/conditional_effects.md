@@ -7,27 +7,27 @@ variable, potentially conditional on the levels of another variable
 ## Usage
 
 ``` r
-conditional_effects(fit, effect, sd_multiplier = 1, ...)
+conditional_effects(fit, effect, ...)
 ```
 
 ## Arguments
 
 - fit:
 
-  Model fit object (e.g., \`mcmc_fit\`).
+  Model fit object (e.g., \`mcmc_fit\`, \`map_fit\`).
 
 - effect:
 
   Name of the variable to visualize (e.g., "X1" or "X1:X2").
 
+- ...:
+
+  Additional arguments.
+
 - sd_multiplier:
 
   Numeric. Multiplier for standard deviation when splitting continuous
   moderators (default is 1).
-
-- ...:
-
-  Additional arguments.
 
 ## Value
 

@@ -158,6 +158,7 @@ MAP fit object"></head><body>
 <li><p><a href="#method-map_fit-MAP"><code>MAP_Fit$MAP()</code></a></p></li>
 <li><p><a href="#method-map_fit-new"><code>MAP_Fit$new()</code></a></p></li>
 <li><p><a href="#method-map_fit-ranef"><code>MAP_Fit$ranef()</code></a></p></li>
+<li><p><a href="#method-map_fit-draws"><code>MAP_Fit$draws()</code></a></p></li>
 <li><p><a href="#method-map_fit-summary"><code>MAP_Fit$summary()</code></a></p></li>
 <li><p><a href="#method-map_fit-print"><code>MAP_Fit$print()</code></a></p></li>
 <li><p><a href="#method-map_fit-generated_quantities"><code>MAP_Fit$generated_quantities()</code></a></p></li>
@@ -345,15 +346,57 @@ MAP fit object"></head><body>
 <p>A named list of random effect estimates.</p>
 </div>
 
-</div><p></p><hr><a id="method-map_fit-summary"></a><div class="section">
-<h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
-<p>Summarize MAP estimates.</p><div class="section">
+</div><p></p><hr><a id="method-map_fit-draws"></a><div class="section">
+<h3 id="method-draws-">Method <code>draws()</code><a class="anchor" aria-label="anchor" href="#method-draws-"></a></h3>
+<p>Extract samples from the asymptotic posterior distribution.</p><div class="section">
 <h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  inc_random <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  inc_transform <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  inc_generate <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Character or numeric vector specifying the names or indices of parameters to extract.</p></dd>
+
+
+<dt><code>inc_random</code></dt>
+<dd><p>Logical; whether to include random effects.</p></dd>
+
+
+<dt><code>inc_transform</code></dt>
+<dd><p>Logical; whether to include transformed parameters.</p></dd>
+
+
+<dt><code>inc_generate</code></dt>
+<dd><p>Logical; whether to include generated quantities.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Ignored.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<p>An array of samples [iterations, 1, parameters].</p>
+</div>
+
+</div><p></p><hr><a id="method-map_fit-summary"></a><div class="section">
+<h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
+<p>Summarize MAP estimates.</p><div class="section">
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.</p></dd>
 
@@ -373,19 +416,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A summary object, typically a data frame.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-print"></a><div class="section">
 <h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
 <p>Print a brief summary of the fitted object.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector specifying the names of parameters to summarize.</p></dd>
 
@@ -405,19 +448,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-generated_quantities"></a><div class="section">
 <h3 id="method-generated-quantities-">Method <code>generated_quantities()</code><a class="anchor" aria-label="anchor" href="#method-generated-quantities-"></a></h3>
 <p>Compute generated quantities from the MAP estimate.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">code</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
 <dd><p>An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.</p></dd>
 
@@ -425,14 +468,14 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-profile"></a><div class="section">
 <h3 id="method-profile-">Method <code><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile()</a></code><a class="anchor" aria-label="anchor" href="#method-profile-"></a></h3>
 <p>Calculate Profile Likelihood confidence intervals for specific parameters.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">profile</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
@@ -446,7 +489,7 @@ MAP fit object"></head><body>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector of parameter names to profile. If NULL, all fixed parameters are profiled.</p></dd>
 
@@ -482,19 +525,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

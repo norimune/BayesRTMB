@@ -12,14 +12,15 @@ rtmb_ttest(
   y = NULL,
   data = NULL,
   r = 0.707,
+  paired = FALSE,
+  ID = NULL,
   y_range = NULL,
-  use_weak_info = FALSE,
-  prior = list(mean_sd = 10, sd_rate = 0.1),
-  weak_info_prior = list(sd_ratio = 0.5),
+  prior = prior_uniform(),
   init = NULL,
   null = NULL,
-  y1 = NULL,
-  y2 = NULL
+  classic = FALSE,
+  var.equal = FALSE,
+  ...
 )
 ```
 
@@ -27,40 +28,41 @@ rtmb_ttest(
 
 - x:
 
-  Numeric vector of responses for group 1, or a formula (e.g., \`y ~
-  group\`).
+  Numeric vector of responses for group 1, a formula (e.g., \`y ~
+  group\`), or a column name (unquoted) if \`data\` is provided.
 
 - y:
 
-  Numeric vector of responses for group 2. Required if \`x\` is not a
-  formula.
+  Numeric vector of responses for group 2, or a column name (unquoted)
+  if \`data\` is provided. Required if \`x\` is not a formula.
 
 - data:
 
-  Data frame containing the variables in the formula.
+  Data frame containing the variables.
 
 - r:
 
   Numeric; Cauchy prior scale for the effect size (delta). Default is
   0.707.
 
+- paired:
+
+  Logical; whether to perform a paired t-test.
+
+- ID:
+
+  Character; name of the ID variable for paired t-tests (required for
+  formula input with paired = TRUE).
+
 - y_range:
 
   Theoretical minimum and maximum values of the response variable as a
-  vector c(min, max). Specifying this automatically enables weakly
-  informative priors.
-
-- use_weak_info:
-
-  Logical; whether to explicitly use weakly informative priors.
+  vector c(min, max). Required when using weakly informative priors.
 
 - prior:
 
-  List of hyperparameters for the default fixed priors.
-
-- weak_info_prior:
-
-  List of hyperparameters for the weakly informative priors.
+  An object of class "rtmb_prior" (e.g., \`prior_uniform()\` or
+  \`prior_weak()\`).
 
 - init:
 
@@ -71,13 +73,19 @@ rtmb_ttest(
   Character string specifying the target parameter for the null model
   (e.g., "delta" or "delta ~ cauchy(0, r)").
 
-- y1:
+- classic:
 
-  Deprecated. Use \`x\` instead.
+  Logical; if TRUE, use classical (frequentist) estimation.
 
-- y2:
+- var.equal:
 
-  Deprecated. Use \`y\` instead.
+  Logical; for independent t-tests in classic mode, whether to assume
+  equal variances (Student's t-test) or not (Welch's t-test). Default is
+  FALSE.
+
+- ...:
+
+  Additional arguments.
 
 ## Value
 
