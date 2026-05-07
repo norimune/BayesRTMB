@@ -7,7 +7,7 @@ estimation.
 
 - `model`:
 
-  The \`Classic_Model\` object used for estimation.
+  The \`RTMB_Model\` object used for estimation.
 
 - `fit`:
 
@@ -15,21 +15,43 @@ estimation.
 
 - `par`:
 
-  A named list of parameter estimates.
+  a named list of parameter estimates.
 
 - `vcov`:
 
   Variance-covariance matrix of fixed effects.
 
+- `se_method`:
+
+  Character string specifying the method used for standard errors.
+
+- `cluster`:
+
+  Character string specifying the cluster variable name, if any.
+
 - `bootstrap_results`:
 
   A matrix containing bootstrap samples, if applicable.
+
+- `test_results`:
+
+  List of additional test results (e.g., chisq.test).
+
+- `view`:
+
+  Character vector of parameter names to prioritize in summary.
 
 ## Methods
 
 ### Public methods
 
 - [`Classic_Fit$new()`](#method-Classic_Fit-new)
+
+- [`Classic_Fit$compute_robust()`](#method-Classic_Fit-compute_robust)
+
+- [`Classic_Fit$compute_bootstrap()`](#method-Classic_Fit-compute_bootstrap)
+
+- [`Classic_Fit$.update_fit_with_vcov()`](#method-Classic_Fit-.update_fit_with_vcov)
 
 - [`Classic_Fit$AIC()`](#method-Classic_Fit-AIC)
 
@@ -61,13 +83,21 @@ Create a new \`Classic_Fit\` object.
 
 #### Usage
 
-    Classic_Fit$new(model, fit, vcov = NULL)
+    Classic_Fit$new(
+      model,
+      fit,
+      vcov = NULL,
+      se_method = "wald",
+      cluster = NULL,
+      test_results = list(),
+      view = NULL
+    )
 
 #### Arguments
 
 - `model`:
 
-  The \`Classic_Model\` object.
+  The \`RTMB_Model\` object.
 
 - `fit`:
 
@@ -76,6 +106,76 @@ Create a new \`Classic_Fit\` object.
 - `vcov`:
 
   Variance-covariance matrix of fixed effects.
+
+- `se_method`:
+
+  Character; "wald", "robust", or "bootstrap".
+
+- `cluster`:
+
+  Character; cluster variable name.
+
+- `test_results`:
+
+  List of additional test results (e.g., chisq.test).
+
+- `view`:
+
+  Character vector of parameter names to prioritize in summary.
+
+------------------------------------------------------------------------
+
+### Method `compute_robust()`
+
+Compute robust standard errors (sandwich estimator).
+
+#### Usage
+
+    Classic_Fit$compute_robust(cluster = NULL)
+
+#### Arguments
+
+- `cluster`:
+
+  Character; variable name for clustering.
+
+#### Returns
+
+Self.
+
+------------------------------------------------------------------------
+
+### Method `compute_bootstrap()`
+
+Compute bootstrap standard errors.
+
+#### Usage
+
+    Classic_Fit$compute_bootstrap(n_boot = 1000, cluster = NULL)
+
+#### Arguments
+
+- `n_boot`:
+
+  Integer; number of samples.
+
+- `cluster`:
+
+  Character; clustering variable.
+
+#### Returns
+
+Self.
+
+------------------------------------------------------------------------
+
+### Method `.update_fit_with_vcov()`
+
+(Internal) Update fit data frame with current vcov.
+
+#### Usage
+
+    Classic_Fit$.update_fit_with_vcov()
 
 ------------------------------------------------------------------------
 
@@ -131,7 +231,7 @@ Display a summary of the estimation results.
 
 #### Usage
 
-    Classic_Fit$summary(digits = 5)
+    Classic_Fit$summary(digits = 5, max_rows = 10)
 
 #### Arguments
 
@@ -139,11 +239,15 @@ Display a summary of the estimation results.
 
   Number of digits to print for estimates.
 
+- `max_rows`:
+
+  Maximum number of rows to display in the coefficient table.
+
 ------------------------------------------------------------------------
 
 ### Method [`anova()`](https://rdrr.io/r/stats/anova.html)
 
-Perform ANOVA (Wald F-tests) on the fitted model.
+Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.
 
 #### Usage
 

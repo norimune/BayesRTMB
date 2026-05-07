@@ -17,10 +17,10 @@ rtmb_glmer(
   gmc = NULL,
   cwc = NULL,
   view = NULL,
+  within = NULL,
   factors = NULL,
   contrasts = "treatment",
   sigma_by = NULL,
-  classic = FALSE,
   resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL,
@@ -96,12 +96,6 @@ rtmb_glmer(
 
   Character vector specifying variables to group residual variance by
   (heteroscedasticity).
-
-- classic:
-
-  Logical; if TRUE, use classical (frequentist) estimation. In
-  frequentist mode with random effects, sum-to-zero contrasts are
-  internally enforced for Type III ANOVA compatibility.
 
 - resid_corr:
 

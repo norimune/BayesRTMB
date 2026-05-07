@@ -16,7 +16,6 @@ rtmb_corr(
   y_range = NULL,
   init = NULL,
   null = NULL,
-  classic = FALSE,
   ...
 )
 ```
@@ -62,15 +61,10 @@ rtmb_corr(
 
   Optional list specifying parameters to fix to null values.
 
-- classic:
-
-  Logical; if `TRUE`, performs classical frequentist estimation instead
-  of Bayesian/MAP.
-
 - ...:
 
   Additional arguments passed to `rtmb_model`.
 
 ## Value
 
-A `RTMB_Model` or `Classic_Model` object.
+A `RTMB_Model` object.

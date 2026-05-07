@@ -172,8 +172,6 @@ Functions used within rtmb_code for stability and transformations.
   : Big Five Personality Traits Data
 - [`Classic_Fit`](https://norimune.github.io/BayesRTMB/reference/Classic_Fit.md)
   : Classic fit object
-- [`Classic_Model`](https://norimune.github.io/BayesRTMB/reference/Classic_Model.md)
-  : Classic Model Class for Frequentist Estimation
 - [`MAP_Fit`](https://norimune.github.io/BayesRTMB/reference/MAP_Fit.md)
   : MAP fit object
 - [`MCMC_Fit`](https://norimune.github.io/BayesRTMB/reference/MCMC_Fit.md)
@@ -270,6 +268,8 @@ Functions used within rtmb_code for stability and transformations.
   : Print method for ce_simple
 - [`print(`*`<summary_BayesRTMB>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.md)
   : print for summary_BayesRTMB class
+- [`prior_jzs()`](https://norimune.github.io/BayesRTMB/reference/prior_jzs.md)
+  : Specify a JZS (Jeffrey-Zellner-Siow) prior for t-tests
 - [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md)
   : Specify a Regularized Horseshoe prior for continuous shrinkage
 - [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md)

@@ -14,8 +14,7 @@ rtmb_lm(
   null = NULL,
   gmc = NULL,
   factors = NULL,
-  contrasts = "treatment",
-  classic = FALSE
+  contrasts = "treatment"
 )
 ```
 
@@ -56,11 +55,6 @@ rtmb_lm(
 - factors:
 
   Character vector of variable names to be treated as factors.
-
-- classic:
-
-  Logical; whether to use classical (frequentist) estimation instead of
-  Bayesian/MAP estimation. Default is FALSE.
 
 ## Examples
 

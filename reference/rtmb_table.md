@@ -11,7 +11,6 @@ rtmb_table(
   x,
   y = NULL,
   data = NULL,
-  classic = FALSE,
   correct = TRUE,
   prior = prior_uniform(),
   ...
@@ -32,11 +31,6 @@ rtmb_table(
 
   A data frame.
 
-- classic:
-
-  Logical; if TRUE, perform frequentist chi-squared and Fisher's exact
-  tests.
-
 - correct:
 
   Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic
@@ -50,6 +44,11 @@ rtmb_table(
 
   Additional arguments.
 
+- classic:
+
+  Logical; if TRUE, perform frequentist chi-squared and Fisher's exact
+  tests.
+
 ## Value
 
 A \`Classic_Fit\` or \`MCMC_Fit\` object.
@@ -60,20 +59,51 @@ A \`Classic_Fit\` or \`MCMC_Fit\` object.
 # \donttest{
 # Classic chi-squared test
 rtmb_table(skill, cond, data = debate, classic = TRUE)
-#> <Classic_Model>
+#> Pre-checking model code...
+#> Checking RTMB setup...
+#> <rtmb_table>
+#>   Inherits from: <RTMB_Model>
 #>   Public:
-#>     .perform_fit: function (data) 
-#>     .resample_data: function () 
+#>     build_ad_obj: function (init = NULL, laplace = FALSE, jacobian_target = "all", 
+#>     calculate_reml_satterthwaite_df: function (ad_obj, opt_par, beta_idx) 
+#>     calculate_satterthwaite_df: function (ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, 
+#>     classic: function (df = "auto", df_pars = "auto", REML = TRUE, view = NULL, 
 #>     clone: function (deep = FALSE) 
-#>     data: data.frame
-#>     estimate: function (bootstrap = FALSE, n_boot = 1000) 
+#>     code: list
+#>     constrained_vector_to_list: function (vec) 
+#>     contrasts: NULL
+#>     data: list
 #>     extra: list
-#>     family: gaussian
+#>     family: NULL
 #>     formula: NULL
-#>     initialize: function (type, formula, data, family = "gaussian", view = NULL, 
-#>     obj: NULL
-#>     refit_fn: NULL
+#>     generate: function (dat, para) 
+#>     get_ad_obj: function (...) 
+#>     get_n_obs: function () 
+#>     get_par_list: function (init = NULL) 
+#>     init: 0.852412934102303 0.118440864476572 0.0275952171199781 0 ...
+#>     initialize: function (data, par_list, log_prob, transform = NULL, generate = NULL, 
+#>     log_prob: function (dat, para) 
+#>     map: NULL
+#>     null_model: function (target, value = 0) 
+#>     optimize: function (laplace = TRUE, init = NULL, num_estimate = 1, control = list(), 
+#>     par_list: list
+#>     par_names: list
+#>     pl_full: list
+#>     prepare_init: function (init_arg) 
+#>     print_code: function () 
+#>     print_generate: function () 
+#>     print_log_prob: function () 
+#>     print_transform: function () 
+#>     prior_correction: 0
+#>     raw_data: NULL
+#>     requested_contrasts: NULL
+#>     sample: function (sampling = 1000, warmup = 1000, chains = 4, thin = 1, 
+#>     to_constrained: function (par_list_unconstrained) 
+#>     to_unconstrained: function (par_list_constrained) 
+#>     transform: function (dat, para) 
 #>     type: table
+#>     unconstrained_vector_to_list: function (vec) 
+#>     variational: function (iter = 3000, tol_rel_obj = 0.005, window_size = 100, 
 #>     view: NULL
 # }
 ```

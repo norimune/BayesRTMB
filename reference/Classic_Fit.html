@@ -58,7 +58,7 @@
     <div class="section level2">
     <h2 id="public-fields">Public fields<a class="anchor" aria-label="anchor" href="#public-fields"></a></h2>
     <p></p><div class="r6-fields"><dl><dt><code>model</code></dt>
-<dd><p>The `Classic_Model` object used for estimation.</p></dd>
+<dd><p>The `RTMB_Model` object used for estimation.</p></dd>
 
 
 <dt><code>fit</code></dt>
@@ -66,15 +66,31 @@
 
 
 <dt><code>par</code></dt>
-<dd><p>A named list of parameter estimates.</p></dd>
+<dd><p>a named list of parameter estimates.</p></dd>
 
 
 <dt><code>vcov</code></dt>
 <dd><p>Variance-covariance matrix of fixed effects.</p></dd>
 
 
+<dt><code>se_method</code></dt>
+<dd><p>Character string specifying the method used for standard errors.</p></dd>
+
+
+<dt><code>cluster</code></dt>
+<dd><p>Character string specifying the cluster variable name, if any.</p></dd>
+
+
 <dt><code>bootstrap_results</code></dt>
 <dd><p>A matrix containing bootstrap samples, if applicable.</p></dd>
+
+
+<dt><code>test_results</code></dt>
+<dd><p>List of additional test results (e.g., chisq.test).</p></dd>
+
+
+<dt><code>view</code></dt>
+<dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
 
 </dl><p></p></div>
@@ -86,6 +102,9 @@
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 
 <ul><li><p><a href="#method-Classic_Fit-new"><code>Classic_Fit$new()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-compute_robust"><code>Classic_Fit$compute_robust()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-compute_bootstrap"><code>Classic_Fit$compute_bootstrap()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-.update_fit_with_vcov"><code>Classic_Fit$.update_fit_with_vcov()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-AIC"><code>Classic_Fit$AIC()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-BIC"><code>Classic_Fit$BIC()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-print"><code>Classic_Fit$print()</code></a></p></li>
@@ -101,13 +120,21 @@
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
 <p>Create a new `Classic_Fit` object.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/Classic_Fit.html">Classic_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span><span class="va">model</span>, <span class="va">fit</span>, vcov <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/Classic_Fit.html">Classic_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
+<span>  <span class="va">model</span>,</span>
+<span>  <span class="va">fit</span>,</span>
+<span>  vcov <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  se_method <span class="op">=</span> <span class="st">"wald"</span>,</span>
+<span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  test_results <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>model</code></dt>
-<dd><p>The `Classic_Model` object.</p></dd>
+<dd><p>The `RTMB_Model` object.</p></dd>
 
 
 <dt><code>fit</code></dt>
@@ -118,13 +145,81 @@
 <dd><p>Variance-covariance matrix of fixed effects.</p></dd>
 
 
+<dt><code>se_method</code></dt>
+<dd><p>Character; "wald", "robust", or "bootstrap".</p></dd>
+
+
+<dt><code>cluster</code></dt>
+<dd><p>Character; cluster variable name.</p></dd>
+
+
+<dt><code>test_results</code></dt>
+<dd><p>List of additional test results (e.g., chisq.test).</p></dd>
+
+
+<dt><code>view</code></dt>
+<dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
+
+
 </dl><p></p></div>
 </div>
+
+</div><p></p><hr><a id="method-Classic_Fit-compute_robust"></a><div class="section">
+<h3 id="method-compute-robust-">Method <code>compute_robust()</code><a class="anchor" aria-label="anchor" href="#method-compute-robust-"></a></h3>
+<p>Compute robust standard errors (sandwich estimator).</p><div class="section">
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">compute_robust</span><span class="op">(</span>cluster <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>cluster</code></dt>
+<dd><p>Character; variable name for clustering.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns">Returns<a class="anchor" aria-label="anchor" href="#returns"></a></h4>
+<p>Self.</p>
+</div>
+
+</div><p></p><hr><a id="method-Classic_Fit-compute_bootstrap"></a><div class="section">
+<h3 id="method-compute-bootstrap-">Method <code>compute_bootstrap()</code><a class="anchor" aria-label="anchor" href="#method-compute-bootstrap-"></a></h3>
+<p>Compute bootstrap standard errors.</p><div class="section">
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">compute_bootstrap</span><span class="op">(</span>n_boot <span class="op">=</span> <span class="fl">1000</span>, cluster <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>n_boot</code></dt>
+<dd><p>Integer; number of samples.</p></dd>
+
+
+<dt><code>cluster</code></dt>
+<dd><p>Character; clustering variable.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<p>Self.</p>
+</div>
+
+</div><p></p><hr><a id="method-Classic_Fit-.update_fit_with_vcov"></a><div class="section">
+<h3 id="method-update-fit-with-vcov-">Method <code>.update_fit_with_vcov()</code><a class="anchor" aria-label="anchor" href="#method-update-fit-with-vcov-"></a></h3>
+<p>(Internal) Update fit data frame with current vcov.</p><div class="section">
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.update_fit_with_vcov</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
 
 </div><p></p><hr><a id="method-Classic_Fit-AIC"></a><div class="section">
 <h3 id="method-aic-">Method <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code><a class="anchor" aria-label="anchor" href="#method-aic-"></a></h3>
 <p>Get the AIC of the fitted model.</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">AIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -132,7 +227,7 @@
 </div><p></p><hr><a id="method-Classic_Fit-BIC"></a><div class="section">
 <h3 id="method-bic-">Method <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code><a class="anchor" aria-label="anchor" href="#method-bic-"></a></h3>
 <p>Get the BIC of the fitted model.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">BIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -140,12 +235,12 @@
 </div><p></p><hr><a id="method-Classic_Fit-print"></a><div class="section">
 <h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
 <p>Print the fit results.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `summary()`.</p></dd>
 
@@ -156,7 +251,7 @@
 </div><p></p><hr><a id="method-Classic_Fit-logLik"></a><div class="section">
 <h3 id="method-loglik-">Method <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code><a class="anchor" aria-label="anchor" href="#method-loglik-"></a></h3>
 <p>Get the Log-Likelihood of the fitted model.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">logLik</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -164,14 +259,18 @@
 </div><p></p><hr><a id="method-Classic_Fit-summary"></a><div class="section">
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
 <p>Display a summary of the estimation results.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>digits <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>digits <span class="op">=</span> <span class="fl">5</span>, max_rows <span class="op">=</span> <span class="fl">10</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>digits</code></dt>
 <dd><p>Number of digits to print for estimates.</p></dd>
+
+
+<dt><code>max_rows</code></dt>
+<dd><p>Maximum number of rows to display in the coefficient table.</p></dd>
 
 
 </dl><p></p></div>
@@ -179,13 +278,13 @@
 
 </div><p></p><hr><a id="method-Classic_Fit-anova"></a><div class="section">
 <h3 id="method-anova-">Method <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code><a class="anchor" aria-label="anchor" href="#method-anova-"></a></h3>
-<p>Perform ANOVA (Wald F-tests) on the fitted model.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<p>Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.</p><div class="section">
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">anova</span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"reml"</span>, <span class="st">"ls"</span><span class="op">)</span>, type <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>method</code></dt>
 <dd><p>Character; "reml" (standard) or "ls" (experimental).</p></dd>
 
@@ -197,14 +296,14 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns">Returns<a class="anchor" aria-label="anchor" href="#returns"></a></h4>
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
 <p>A data frame containing the ANOVA table.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-lsmeans"></a><div class="section">
 <h3 id="method-lsmeans-">Method <code><a href="lsmeans.html">lsmeans()</a></code><a class="anchor" aria-label="anchor" href="#method-lsmeans-"></a></h3>
 <p>Calculate Least Squares Means (Marginal Means) and contrasts.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span></span>
 <span>  <span class="va">specs</span>,</span>
 <span>  pairwise <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -214,7 +313,7 @@
 </div>
 
 <div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Character vector of factors to calculate means for.</p></dd>
 
@@ -234,19 +333,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>A data frame containing the marginal means or contrasts.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.calc_contrast"></a><div class="section">
 <h3 id="method-calc-contrast-">Method <code>.calc_contrast()</code><a class="anchor" aria-label="anchor" href="#method-calc-contrast-"></a></h3>
 <p>(Internal) Calculate metrics for a contrast.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.calc_contrast</span><span class="op">(</span><span class="va">L</span>, <span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>L</code></dt>
 <dd><p>Contrast matrix.</p></dd>
 
@@ -258,19 +357,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>A data frame with estimate, SE, df, t-value, and p-value.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.get_lsmeans_df"></a><div class="section">
 <h3 id="method-get-lsmeans-df-">Method <code>.get_lsmeans_df()</code><a class="anchor" aria-label="anchor" href="#method-get-lsmeans-df-"></a></h3>
 <p>(Internal) Get representative DF for lsmeans.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.get_lsmeans_df</span><span class="op">(</span><span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Variable names for lsmeans.</p></dd>
 
@@ -278,19 +377,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>Degrees of freedom.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.construct_par_list"></a><div class="section">
 <h3 id="method-construct-par-list-">Method <code>.construct_par_list()</code><a class="anchor" aria-label="anchor" href="#method-construct-par-list-"></a></h3>
 <p>(Internal) Construct a list of parameters from the fit.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.construct_par_list</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fit</code></dt>
 <dd><p>The fit result (dataframe or lm object).</p></dd>
 
@@ -298,19 +397,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>A named list of parameters.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

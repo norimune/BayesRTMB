@@ -18,7 +18,6 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/BayesRTMB-package.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/BigFive.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/Classic_Fit.html</loc></url>
-<url><loc>https://norimune.github.io/BayesRTMB/reference/Classic_Model.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/Dim.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/MAP_Fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/MCMC_Fit.html</loc></url>
@@ -107,6 +106,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.ce_rtmb.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.ce_simple.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/prior_jzs.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/prior_rhs.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/prior_ssp.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/prior_uniform.html</loc></url>

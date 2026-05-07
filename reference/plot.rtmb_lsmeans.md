@@ -1,5 +1,7 @@
 # Plot marginal means with error bars
 
+Plot method for rtmb_lsmeans objects.
+
 ## Usage
 
 ``` r
@@ -28,17 +30,24 @@ plot(
 
 - error_bar:
 
-  Type of error bar. Either se (Standard Error) or ci (95
+  Type of error bar ("se" or "ci").
 
-  colColor of the bars.
+- col:
 
-  mainPlot title.
+  Color of the bars.
 
-  xlabX axis label.
+- main:
 
-  ylabY axis label.
+  Plot title.
 
-  ...Additional arguments passed to barplot().
+- xlab:
 
-The bar centers (invisibly). plot method for rtmb_lsmeans objects.
-Creates a bar plot of marginal means with error bars.
+  X axis label.
+
+- ylab:
+
+  Y axis label.
+
+- ...:
+
+  Additional arguments passed to barplot.

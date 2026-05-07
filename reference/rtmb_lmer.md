@@ -19,10 +19,11 @@ rtmb_lmer(
   sigma_by = NULL,
   factors = NULL,
   contrasts = "treatment",
-  classic = FALSE,
   resid_corr = NULL,
   resid_time = NULL,
-  resid_group = NULL
+  resid_group = NULL,
+  within = NULL,
+  ...
 )
 ```
 
@@ -83,12 +84,6 @@ rtmb_lmer(
 
   Character string specifying the contrast type ("treatment" or "sum").
 
-- classic:
-
-  Logical; if TRUE, use classical (frequentist) estimation. In
-  frequentist mode, sum-to-zero contrasts are internally enforced for
-  Type III ANOVA compatibility.
-
 - resid_corr:
 
   Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
@@ -100,6 +95,22 @@ rtmb_lmer(
 - resid_group:
 
   Variable name for grouping in residual correlation.
+
+- within:
+
+  Optional list for wide-to-long conversion. For repeated measures data
+  in wide format, specify the factor names and their levels, e.g.,
+  `list(Time = 4)` or `list(A = 2, B = 3)`. The total number of levels
+  must match the number of columns in
+  [`cbind()`](https://rdrr.io/r/base/cbind.html) on the LHS. If omitted
+  and the LHS is [`cbind()`](https://rdrr.io/r/base/cbind.html), the
+  within-factor name is inferred from RHS variables not present in the
+  data.
+
+- ...:
+
+  Additional arguments passed to
+  [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md).
 
 ## Value
 

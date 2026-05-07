@@ -63,7 +63,6 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 <span>  <span class="va">x</span>,</span>
 <span>  y <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  data <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  classic <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  correct <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -86,10 +85,6 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 <dd><p>A data frame.</p></dd>
 
 
-<dt id="arg-classic">classic<a class="anchor" aria-label="anchor" href="#arg-classic"></a></dt>
-<dd><p>Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.</p></dd>
-
-
 <dt id="arg-correct">correct<a class="anchor" aria-label="anchor" href="#arg-correct"></a></dt>
 <dd><p>Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).</p></dd>
 
@@ -100,6 +95,10 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Additional arguments.</p></dd>
+
+
+<dt id="arg-classic">classic<a class="anchor" aria-label="anchor" href="#arg-classic"></a></dt>
+<dd><p>Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -112,20 +111,51 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
     <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># Classic chi-squared test</span></span></span>
 <span class="r-in"><span><span class="fu">rtmb_table</span><span class="op">(</span><span class="va">skill</span>, <span class="va">cond</span>, data <span class="op">=</span> <span class="va">debate</span>, classic <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;Classic_Model&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> &lt;rtmb_table&gt;</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>   Inherits from: &lt;RTMB_Model&gt;</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   Public:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     .perform_fit: function (data) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     .resample_data: function () </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     build_ad_obj: function (init = NULL, laplace = FALSE, jacobian_target = "all", </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     calculate_reml_satterthwaite_df: function (ad_obj, opt_par, beta_idx) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     calculate_satterthwaite_df: function (ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     classic: function (df = "auto", df_pars = "auto", REML = TRUE, view = NULL, </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     clone: function (deep = FALSE) </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     data: data.frame</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     estimate: function (bootstrap = FALSE, n_boot = 1000) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     code: list</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     constrained_vector_to_list: function (vec) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     contrasts: NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     data: list</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     extra: list</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     family: gaussian</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     family: NULL</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     formula: NULL</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     initialize: function (type, formula, data, family = "gaussian", view = NULL, </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     obj: NULL</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>     refit_fn: NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     generate: function (dat, para) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     get_ad_obj: function (...) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     get_n_obs: function () </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     get_par_list: function (init = NULL) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     init: 0.852412934102303 0.118440864476572 0.0275952171199781 0 ...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     initialize: function (data, par_list, log_prob, transform = NULL, generate = NULL, </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     log_prob: function (dat, para) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     map: NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     null_model: function (target, value = 0) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     optimize: function (laplace = TRUE, init = NULL, num_estimate = 1, control = list(), </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     par_list: list</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     par_names: list</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     pl_full: list</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     prepare_init: function (init_arg) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     print_code: function () </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     print_generate: function () </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     print_log_prob: function () </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     print_transform: function () </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     prior_correction: 0</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     raw_data: NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     requested_contrasts: NULL</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     sample: function (sampling = 1000, warmup = 1000, chains = 4, thin = 1, </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     to_constrained: function (par_list_unconstrained) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     to_unconstrained: function (par_list_constrained) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     transform: function (dat, para) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     type: table</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     unconstrained_vector_to_list: function (vec) </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     variational: function (iter = 3000, tol_rel_obj = 0.005, window_size = 100, </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     view: NULL</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>

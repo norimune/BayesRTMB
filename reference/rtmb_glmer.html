@@ -68,10 +68,10 @@
 <span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cwc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  within <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  contrasts <span class="op">=</span> <span class="st">"treatment"</span>,</span>
 <span>  sigma_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  classic <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  resid_corr <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resid_time <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resid_group <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -138,10 +138,6 @@
 
 <dt id="arg-sigma-by">sigma_by<a class="anchor" aria-label="anchor" href="#arg-sigma-by"></a></dt>
 <dd><p>Character vector specifying variables to group residual variance by (heteroscedasticity).</p></dd>
-
-
-<dt id="arg-classic">classic<a class="anchor" aria-label="anchor" href="#arg-classic"></a></dt>
-<dd><p>Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode with random effects, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.</p></dd>
 
 
 <dt id="arg-resid-corr">resid_corr<a class="anchor" aria-label="anchor" href="#arg-resid-corr"></a></dt>

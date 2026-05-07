@@ -20,7 +20,6 @@ rtmb_mediation(
   prior = prior_uniform(),
   y_range = NULL,
   view = NULL,
-  classic = FALSE,
   ...
 )
 ```
@@ -53,11 +52,6 @@ rtmb_mediation(
 - view:
 
   Character vector of parameter names to prioritize in summary.
-
-- classic:
-
-  Logical; whether to use classical (frequentist) estimation instead of
-  Bayesian/MAP estimation. Default is FALSE.
 
 - ...:
 

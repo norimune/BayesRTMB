@@ -70,10 +70,11 @@
 <span>  sigma_by <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  contrasts <span class="op">=</span> <span class="st">"treatment"</span>,</span>
-<span>  classic <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  resid_corr <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  resid_time <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  resid_group <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  resid_group <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  within <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -133,10 +134,6 @@
 <dd><p>Character string specifying the contrast type ("treatment" or "sum").</p></dd>
 
 
-<dt id="arg-classic">classic<a class="anchor" aria-label="anchor" href="#arg-classic"></a></dt>
-<dd><p>Logical; if TRUE, use classical (frequentist) estimation. In frequentist mode, sum-to-zero contrasts are internally enforced for Type III ANOVA compatibility.</p></dd>
-
-
 <dt id="arg-resid-corr">resid_corr<a class="anchor" aria-label="anchor" href="#arg-resid-corr"></a></dt>
 <dd><p>Residual correlation structure (e.g., "ar1", "cs", "un", "toep").</p></dd>
 
@@ -147,6 +144,17 @@
 
 <dt id="arg-resid-group">resid_group<a class="anchor" aria-label="anchor" href="#arg-resid-group"></a></dt>
 <dd><p>Variable name for grouping in residual correlation.</p></dd>
+
+
+<dt id="arg-within">within<a class="anchor" aria-label="anchor" href="#arg-within"></a></dt>
+<dd><p>Optional list for wide-to-long conversion. For repeated measures data in wide format,
+specify the factor names and their levels, e.g., <code>list(Time = 4)</code> or <code>list(A = 2, B = 3)</code>.
+The total number of levels must match the number of columns in <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind()</a></code> on the LHS.
+If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind()</a></code>, the within-factor name is inferred from RHS variables not present in the data.</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Additional arguments passed to <code><a href="RTMB_Model.html">rtmb_model()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

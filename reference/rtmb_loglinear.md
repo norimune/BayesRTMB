@@ -9,14 +9,7 @@ TRUE\`), it provides Wald-based ANOVA for independence tests.
 ## Usage
 
 ``` r
-rtmb_loglinear(
-  formula,
-  data,
-  classic = FALSE,
-  fisher = FALSE,
-  prior = prior_uniform(),
-  ...
-)
+rtmb_loglinear(formula, data, prior = prior_uniform(), ...)
 ```
 
 ## Arguments
@@ -30,14 +23,6 @@ rtmb_loglinear(
 
   A data frame, table, or matrix.
 
-- classic:
-
-  Logical; if TRUE, perform frequentist estimation and ANOVA tests.
-
-- fisher:
-
-  Logical; if TRUE, perform Fisher's exact test (for 2D tables).
-
 - prior:
 
   Prior specification (e.g., \`prior_uniform()\` or \`prior_weak()\`).
@@ -46,6 +31,14 @@ rtmb_loglinear(
 - ...:
 
   Additional arguments passed to the internal estimation engine.
+
+- classic:
+
+  Logical; if TRUE, perform frequentist estimation and ANOVA tests.
+
+- fisher:
+
+  Logical; if TRUE, perform Fisher's exact test (for 2D tables).
 
 ## Value
 
@@ -59,8 +52,9 @@ the settings.
 # 2x2 table analysis
 df <- as.data.frame(Titanic)
 fit <- rtmb_loglinear(Survived ~ Sex + Age, data = df, classic = TRUE)
+#> Error in rtmb_glmer(formula = formula, data = data, family = "poisson",     prior = prior, generate = gen_block, ...): unused argument (classic = TRUE)
 fit$anova()
-#> Error: attempt to apply non-function
+#> Error: object 'fit' not found
 
 # Bayesian 4-way table interaction analysis
 fit_bayas <- rtmb_loglinear(~ Class * Sex * Age * Survived, data = Titanic, prior = prior_weak())
