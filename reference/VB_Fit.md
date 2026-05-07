@@ -84,6 +84,10 @@ Automatic Differentiation Variational Inference (ADVI).
 
 - [`VB_Fit$new()`](#method-advi_fit-new)
 
+- [`VB_Fit$EAP()`](#method-advi_fit-EAP)
+
+- [`VB_Fit$MAP()`](#method-advi_fit-MAP)
+
 - [`VB_Fit$print()`](#method-advi_fit-print)
 
 - [`VB_Fit$draws()`](#method-advi_fit-draws)
@@ -102,8 +106,6 @@ Automatic Differentiation Variational Inference (ADVI).
 
 Inherited methods
 
-- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
-- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
 - [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
 - [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
@@ -190,6 +192,47 @@ Create a new \`VB_Fit\` object.
 - `mu_history`:
 
   Matrix of the parameter trajectory from the final window.
+
+------------------------------------------------------------------------
+
+### Method `EAP()`
+
+Calculate Expected A Posteriori (EAP) estimates (posterior means).
+
+#### Usage
+
+    VB_Fit$EAP(pars = NULL)
+
+#### Arguments
+
+- `pars`:
+
+  Optional character or numeric vector of parameter names/indices to
+  extract.
+
+#### Returns
+
+A named list of EAP estimates.
+
+------------------------------------------------------------------------
+
+### Method `MAP()`
+
+Calculate Maximum A Posteriori (MAP) estimates (joint mode iteration).
+
+#### Usage
+
+    VB_Fit$MAP(pars = NULL)
+
+#### Arguments
+
+- `pars`:
+
+  Optional character vector of parameter names to extract.
+
+#### Returns
+
+A named list of MAP estimates.
 
 ------------------------------------------------------------------------
 
