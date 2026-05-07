@@ -67,7 +67,8 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.</p>
 <span>  nfactors <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  rotate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  score <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  prior <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mean_sd <span class="op">=</span> <span class="fl">10</span>, loadings_sd <span class="op">=</span> <span class="fl">1</span>, sd_rate <span class="op">=</span> <span class="fl">10</span>, ssp_ratio <span class="op">=</span> <span class="fl">0.25</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -94,11 +95,18 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.</p>
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.</p></dd>
+<dd><p>Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
+Hyperparameters can be specified within these functions (e.g., `prior_uniform(mean_sd = 10, sd_rate = 10)`).
+Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).</p></dd>
+
+
+<dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
+<dd><p>A numeric vector of length 2 specifying the theoretical min and max values of the items.
+Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
-<dd><p>List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.</p></dd>
+<dd><p>List of initial values.</p></dd>
 
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>

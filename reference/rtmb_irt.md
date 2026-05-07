@@ -11,10 +11,11 @@ rtmb_irt(
   data,
   model = c("2PL", "1PL", "3PL"),
   type = c("binary", "ordered"),
-  prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1,
-    c_beta = 4, theta_sd = 1),
+  prior = prior_uniform(),
   init = NULL,
-  fixed = NULL
+  fixed = NULL,
+  view = NULL,
+  ...
 )
 ```
 
@@ -34,11 +35,28 @@ rtmb_irt(
 
 - prior:
 
-  List of hyperparameters for prior distributions.
+  Prior configuration: \`prior_uniform()\` (default) or
+  \`prior_weak()\`. Hyperparameters can be specified within these
+  functions (e.g., \`prior_weak(b_sd = 5)\`). Available parameters for
+  IRT: \`a_rate\` (discrimination), \`b_sd\` (difficulty),
+  \`c_alpha\`/\`c_beta\` (guessing).
 
 - init:
 
   List of initial values.
+
+- fixed:
+
+  A named list of parameter values to fix (optional).
+
+- view:
+
+  Character vector of parameter names to prioritize in summary.
+
+- ...:
+
+  Additional arguments passed to
+  [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md).
 
 ## Examples
 
