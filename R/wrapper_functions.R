@@ -1500,6 +1500,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   if (is.null(prior)) prior <- prior_uniform()
   prior_type <- if (inherits(prior, "rtmb_prior")) prior$type else "weak"
   
+  # New logic: If y_range is specified, automatically treat as "weak"
+  if (!is.null(y_range)) {
+    prior_type <- "weak"
+  }
+  
+  # Error handling: if weak is requested but y_range is missing
+  if (prior_type == "weak" && is.null(y_range)) {
+    stop("When using 'prior_weak()', you must specify 'y_range' (e.g., y_range = c(1, 5)) to define the scaling of the priors.", call. = FALSE)
+  }
+
   # Default/Initial settings
   prior_mean_center <- 0
   prior_mean_sd <- prior$mean_sd
@@ -1508,7 +1518,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   ssp_ratio <- if (!is.null(prior$ssp_ratio)) prior$ssp_ratio else 0.25
 
   # Weak Information Prior Logic (GLMER style)
-  if (prior_type == "weak" && !is.null(y_range)) {
+  if (prior_type == "weak") {
     sd_ratio <- if (!is.null(prior$sd_ratio)) prior$sd_ratio else 0.5
     half_d_y <- diff(y_range) / 2
     base_scale <- half_d_y * sd_ratio
@@ -1520,8 +1530,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   }
 
   dat_fa <- list(
-    N = N, J = J, K_factors = K,
-    Y_bar = Y_bar, S_Y = S_Y,
+    Y = Y,
+    K_factors = K,
     prior_mean_center = prior_mean_center,
     prior_mean_sd = prior_mean_sd,
     prior_sd_rate = prior_sd_rate,
@@ -1533,7 +1543,12 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   # --- 3. Simplified Setup AST ---
   setup_ast <- quote({
-    # No if-statements here, pre-calculated values are used
+    N <- nrow(Y)
+    J <- ncol(Y)
+    # Note: Using colMeans and cov for efficiency in RTMB if possible, 
+    # but follow user's requested syntax for setup block.
+    Y_bar <- apply(Y, 2, mean)
+    S_Y <- cov(Y) * (N - 1)
   })
 
   if (is_ssp) {
@@ -1577,29 +1592,32 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
 
     tran_ast <- quote({
-      L_raw <- Lambda_star * r * tau
-      h2 <- rowSums(L_raw * (L_raw %*% CF_Omega))
+      Lambda <- Lambda_star * r * tau
+      h2 <- rowSums(Lambda * (Lambda %*% CF_Omega))
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      L <- L_raw / sd_Y
+      L <- Lambda / sd_Y
       fa_cor <- CF_Omega %*% t(CF_Omega)
     })
 
-    model_ast <- quote({
-      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw %*% CF_Omega)
-      if (!is.null(prior_mean_sd)) mean ~ normal(prior_mean_center, prior_mean_sd)
-      if (!is.null(prior_sd_rate)) sd ~ exponential(prior_sd_rate)
-      CF_Omega ~ lkj_CF_corr(1)
-      mu_r <- log(ssp_ratio / (1 - ssp_ratio))
-      r ~ logit_normal(mu_r, 3)
-      tau ~ exponential(1)
-      Lambda_star ~ laplace(0, 1)
-    })
+    model_exprs <- list()
+    # In SSP case, Lambda is a transformed variable. 
+    # S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega)
+    # Note: Lambda here is the loadings *before* correlation matrix rotation.
+    model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega))
+    if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(prior_mean_center, prior_mean_sd))
+    if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(prior_sd_rate))
+    model_exprs[[length(model_exprs) + 1]] <- quote(CF_Omega ~ lkj_CF_corr(1))
+    model_exprs[[length(model_exprs) + 1]] <- bquote(mu_r <- log(ssp_ratio / (1 - ssp_ratio)))
+    model_exprs[[length(model_exprs) + 1]] <- quote(r ~ logit_normal(mu_r, 3))
+    model_exprs[[length(model_exprs) + 1]] <- quote(tau ~ exponential(1))
+    model_exprs[[length(model_exprs) + 1]] <- quote(Lambda_star ~ laplace(0, 1))
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
     base_gq <- quote({
-      Sigma <- L_raw %*% fa_cor %*% t(L_raw) + diag(sd^2)
+      Sigma <- Lambda %*% fa_cor %*% t(Lambda) + diag(sd^2)
       var_total <- diag(Sigma)
-      var_common <- rowSums(L_raw * (L_raw %*% CF_Omega))
+      var_common <- rowSums(Lambda * (Lambda %*% CF_Omega))
       communality <- var_common / var_total
       out <- list(communality = communality)
     })
@@ -1607,14 +1625,14 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       quote({
         Y_c <- matrix(0, nrow = N, ncol = J)
         for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-        out$score <- Y_c %*% solve(Sigma, L_raw %*% fa_cor)
+        out$score <- Y_c %*% solve(Sigma, Lambda %*% fa_cor)
       })
     } else quote({})
     ret_expr <- quote({ return(out) })
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
-    code_obj <- rtmb_code(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
-    p_names <- list(mean = var_names, Lambda_star = var_names, r = var_names, tau = var_names, sd = var_names, CF_Omega = paste0("Factor", 1:K), L_raw = var_names, L = var_names, fa_cor = paste0("Factor", 1:K), communality = var_names)
+    code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
+    p_names <- list(mean = var_names, Lambda_star = var_names, r = var_names, tau = var_names, sd = var_names, CF_Omega = paste0("Factor", 1:K), Lambda = var_names, L = var_names, fa_cor = paste0("Factor", 1:K), communality = var_names)
     if (score) {
       ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
@@ -1647,15 +1665,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       h2 <- rowSums(L_raw^2)
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      L <- L_raw / sd_Y
+      L <- L_raw/sd_Y
     })
 
-    model_ast <- quote({
-      S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw)
-      if (!is.null(prior_mean_sd)) mean ~ normal(prior_mean_center, prior_mean_sd)
-      if (!is.null(prior_sd_rate)) sd ~ exponential(prior_sd_rate)
-      if (!is.null(prior_loadings_sd)) L_raw ~ lower_tri_normal(0, prior_loadings_sd)
-    })
+    model_exprs <- list()
+    # Standard FA case: L_raw is a parameter (lower triangular matrix)
+    model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw))
+    if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, prior_mean_sd))
+    if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(prior_sd_rate))
+    if (!is.null(prior_loadings_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(L_raw ~ lower_tri_normal(0, prior_loadings_sd))
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
     base_gq <- quote({
       Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
@@ -1699,7 +1718,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     ret_expr <- quote({ return(out) })
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
-    code_obj <- rtmb_code(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
+    code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
     p_names <- list(mean = var_names, L_raw = var_names, sd = var_names, L = var_names, communality = var_names)
     if (!is.null(rotate)) { p_names[[paste0("L_", rotate)]] <- var_names; if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K) }
     if (score) { ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N); p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K)) }

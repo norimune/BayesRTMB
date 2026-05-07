@@ -188,7 +188,19 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
                      missing_vars[1], paste(deparse(e), collapse = " ")), call. = FALSE)
       }
 
-      evaluated_par_list[[v_name]] <- eval(d_expr, envir = eval_env)
+      p_obj <- eval(d_expr, envir = eval_env)
+      
+      # Handle initial values from 'init' argument
+      if (!is.null(init)) {
+        if (is.list(init) && !is.null(init[[v_name]])) {
+          p_obj$init <- init[[v_name]]
+        } else if (is.numeric(init)) {
+          # If init is a flat vector, it's more complex to handle here without to_constrained logic
+          # For now, handle list-based init which is standard for wrappers
+        }
+      }
+      
+      evaluated_par_list[[v_name]] <- p_obj
     } else {
       stop("Format error in 'parameters' block: ", paste(deparse(e), collapse = " "))
     }
@@ -242,30 +254,26 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   }
 
   # --- 4. Pre-check (Sandbox execution) ---
-  if (!silent) cat("Pre-checking model code...\n")
+  # --- 4. Pre-check (Sandbox execution) ---
+  if (!silent) {
+    cat("Pre-checking model code...\n")
+  }
 
   test_unc_list <- lapply(evaluated_par_list, function(p) {
     rnorm(p$unc_length, mean = 0, sd = 0.1)
   })
   test_para <- to_constrained(test_unc_list, evaluated_par_list)
 
-  for (name in names(evaluated_par_list)) {
-    p <- evaluated_par_list[[name]]
-    if (!is.null(p$init)) {
-      val <- rep(p$init, length.out = p$length)
-      if (any(is.na(val))) {
-        val[is.na(val)] <- as.numeric(test_para[[name]])[is.na(val)]
-      }
-      test_para[[name]] <- array(val, dim = p$dim)
+  if (!is.null(comp_transform)) {
+    test_tran <- with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
+    if (is.list(test_tran)) {
+      test_para <- utils::modifyList(test_para, test_tran)
     }
   }
 
-  if (!is.null(comp_transform)) {
-    test_tran <- with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
-    if (is.list(test_tran)) test_para <- c(test_para, test_tran)
-  }
-
-  with_rtmb_error_handling({ comp_model(data, test_para) }, "model")
+  with_rtmb_error_handling({ 
+    comp_model(data, test_para) 
+  }, "model")
 
   if (!is.null(comp_generate)) {
     with_rtmb_error_handling({ comp_generate(data, test_para) }, "generate")
