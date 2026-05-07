@@ -52,6 +52,8 @@ from MCMC estimation.
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-mcmc_fit-get_point_estimate}{\code{MCMC_Fit$get_point_estimate()}}
+\item \href{#method-mcmc_fit-EAP}{\code{MCMC_Fit$EAP()}}
+\item \href{#method-mcmc_fit-MAP}{\code{MCMC_Fit$MAP()}}
 \item \href{#method-mcmc_fit-new}{\code{MCMC_Fit$new()}}
 \item \href{#method-mcmc_fit-print}{\code{MCMC_Fit$print()}}
 \item \href{#method-mcmc_fit-draws}{\code{MCMC_Fit$draws()}}
@@ -69,8 +71,6 @@ from MCMC estimation.
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul>
@@ -94,6 +94,46 @@ Get point estimate for a target parameter (internal use).
 }
 \subsection{Returns}{
 Matrix or array of point estimate.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+Calculate the Expected A Posteriori (EAP) estimates.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$EAP(pars = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of EAP estimates (posterior means).
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+Calculate the Maximum A Posteriori (MAP) estimates from samples.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$MAP(pars = NULL)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of MAP estimates (samples with highest log-posterior).
 }
 }
 \if{html}{\out{<hr>}}

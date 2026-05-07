@@ -10,6 +10,7 @@ rtmb_table(
   data = NULL,
   correct = TRUE,
   prior = prior_uniform(),
+  fixed = NULL,
   ...
 )
 }

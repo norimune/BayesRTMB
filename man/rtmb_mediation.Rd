@@ -10,6 +10,7 @@ rtmb_mediation(
   family = "gaussian",
   prior = prior_uniform(),
   y_range = NULL,
+  fixed = NULL,
   view = NULL,
   ...
 )
@@ -25,6 +26,8 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 \item{prior}{An object of class "rtmb_prior" specifying the prior distribution.}
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable.}
+
+\item{fixed}{A named list of parameter values to fix (optional).}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 

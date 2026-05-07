@@ -152,7 +152,7 @@ prior_jzs <- function(r = 0.707) {
 #' rtmb_table(skill, cond, data = debate, classic = TRUE)
 #' }
 #' @export
-rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_uniform(), ...) {
+rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_uniform(), fixed = NULL, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -234,7 +234,8 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
   res <- rtmb_model(
     code = rtmb_model_code,
     data = setup,
-    par_names = list(p = cell_labels, mu = cell_labels)
+    par_names = list(p = cell_labels, mu = cell_labels),
+    fixed = fixed
   )
   class(res) <- c("rtmb_table", class(res))
 
@@ -271,7 +272,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
 #' fit_bayas <- rtmb_loglinear(~ Class * Sex * Age * Survived, data = Titanic, prior = prior_weak())
 #' }
 #' @export
-rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
+rtmb_loglinear <- function(formula, data, prior = prior_uniform(), fixed = NULL, ...) {
 
   # 1. Data Preparation
   # Convert table or matrix to long data frame
@@ -367,7 +368,7 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
     data = data,
     family = "poisson",
     prior = prior,
-    generate = gen_block,
+    generate = gen_block, fixed = fixed,
     ...
   )
 
@@ -408,6 +409,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        prior = prior_uniform(),
                        y_range = NULL,
                        init = NULL,
+                       fixed = NULL,
                        null = NULL,
                        gmc = NULL,
                        cwc = NULL,
@@ -1286,6 +1288,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
   obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init,
+                    fixed = fixed,
                     view = if (!is.null(view)) view else view_vars, silent = FALSE)
   obj$formula <- formula
   obj$raw_data <- data
@@ -1352,6 +1355,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        prior = prior_uniform(),
                        y_range = NULL,
                        init = NULL,
+                       fixed = NULL,
                        null = NULL,
                        gmc = NULL,
                        cwc = NULL,
@@ -1398,7 +1402,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 rtmb_glm <- function(formula, data, family = "gaussian",
                        prior = prior_uniform(),
                        y_range = NULL,
-                       init = NULL, null = NULL,
+                       init = NULL, fixed = NULL, null = NULL,
                        gmc = NULL,
                        factors = NULL,
                        contrasts = "treatment") {
@@ -1407,6 +1411,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              prior = prior,
              y_range = y_range,
              init = init,
+             fixed = fixed,
              null = null,
              gmc = gmc,
              factors = factors,
@@ -1429,7 +1434,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 rtmb_lm <- function(formula, data,
                     prior = prior_uniform(),
                     y_range = NULL,
-                    init = NULL, null = NULL,
+                    init = NULL, fixed = NULL, null = NULL,
                     gmc = NULL,
                     factors = NULL,
                     contrasts = "treatment") {
@@ -1438,6 +1443,7 @@ rtmb_lm <- function(formula, data,
              prior = prior,
              y_range = y_range,
              init = init,
+             fixed = fixed,
              null = null,
              gmc = gmc,
              factors = factors,
@@ -1459,11 +1465,12 @@ rtmb_lm <- function(formula, data,
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
 #' @param prior List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
 #' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
+#' @param fixed A named list of parameter values to fix (optional).
 #' @example inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
-                    init = NULL) {
+                    init = NULL, fixed = NULL) {
 
   Y <- as.matrix(data)
   K <- nfactors
@@ -1823,7 +1830,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1),
-                     init = NULL) {
+                     init = NULL, fixed = NULL) {
 
   model <- match.arg(model)
   type <- match.arg(type)
@@ -1989,7 +1996,8 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     if (model == "3PL") init$c <- rep(0.1, length(item_names))
   }
 
-  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, init = init, view = view_vars)
+  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, 
+                    init = init, fixed = fixed, view = view_vars)
 
   return(obj)
 }
@@ -2015,7 +2023,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
                       prior = prior_uniform(), y_range = NULL,
-                      init = NULL, null = NULL, ...) {
+                      init = NULL, fixed = NULL, null = NULL, ...) {
 
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
@@ -2335,7 +2343,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
      view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
 
-     obj <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+     obj <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
      obj$raw_data <- data
 
      obj$type <- "corr"
@@ -2466,7 +2474,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      } else init
 
      view_vars <- if (P_x > 0) "pcorr" else "corr"
-     obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, view = view_vars)
+     obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
 
      if (!is.null(null)) {
        obj <- obj$null_model(target = null)
@@ -2503,7 +2511,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        paired = FALSE, ID = NULL,
                        y_range = NULL,
                        prior = prior_uniform(),
-                       init = NULL, null = NULL,
+                       init = NULL, fixed = NULL, null = NULL,
                        var.equal = TRUE, ...) {
 
   x_expr <- substitute(x)
@@ -2610,7 +2618,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
 
   tmp_env <- list2env(dat)
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-  obj <- rtmb_model(data = ordered_data, code = code_obj, view = view_vars)
+  obj <- rtmb_model(data = ordered_data, code = code_obj, fixed = fixed, view = view_vars)
 
   obj$type <- "ttest"
   obj$extra$df_pars <- df_pars
@@ -2637,7 +2645,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
 #' @export
 rtmb_mixture <- function(formula, k = 2, data = NULL,
                          covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-                         prior = prior_uniform(), ...) {
+                         prior = prior_uniform(), fixed = NULL, ...) {
 
   if (is.null(prior)) {
     prior <- prior_uniform()
@@ -3032,7 +3040,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   view_order <- if (has_cov_prob) c("b", "prob_mean", "mu", "sigma") else c("prob_mean", "mu", "sigma")
   if (multivariate && !is_diag) view_order <- c(view_order, "corr")
 
-  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
   return(mdl)
 }
 
@@ -3058,7 +3066,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
                      magnitude = NULL, smoothing = NULL, noise = 0.01,
                      prob_smoothing = FALSE,
                      link = c("ordered", "sequential"),
-                     prior = prior_uniform(), ...) {
+                     prior = prior_uniform(), fixed = NULL, ...) {
 
   if (is.null(rank_coords)) rank_coords <- 1:k
 
@@ -3586,7 +3594,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   }
   if (!is_diag) view_order <- c(view_order, "corr")
 
-  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
   return(mdl)
 }
 
@@ -3610,6 +3618,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #'   for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "gaussian".
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
 #' @param y_range Theoretical minimum and maximum values of the response variable.
+#' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
 
 #' @param ... Additional arguments passed to the model construction.
@@ -3626,7 +3635,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 #'
 #' @return An `RTMB_Model` object.
 #' @export
-rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, view = NULL, ...) {
+rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, fixed = NULL, view = NULL, ...) {
 
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
@@ -3934,7 +3943,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
 
   # Ensure env is correctly formatted for rtmb_model
   # Using the evaluated objects directly from tmp_env
-  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order, silent = FALSE)
+  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order, silent = FALSE)
   mdl$formula <- formula
   mdl$raw_data <- data
 

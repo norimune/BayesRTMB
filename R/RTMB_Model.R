@@ -2462,6 +2462,45 @@ RTMB_Model <- R6::R6Class(
       return(n_total)
     },
 
+    #' @description Create a new `RTMB_Model` object with certain parameters fixed.
+    #' @param fixed_list A named list of parameter values to fix.
+    #' @return A new `RTMB_Model` object.
+    fixed_model = function(fixed_list) {
+      if (!is.list(fixed_list)) stop("fixed_list must be a named list.")
+      
+      # 1. Start with current map and init
+      new_map <- if (is.null(self$map)) list() else self$map
+      new_init_list <- self$get_par_list()
+      
+      for (name in names(fixed_list)) {
+        if (!(name %in% names(self$par_list))) {
+          warning(sprintf("Parameter '%s' not found in model. Skipping.", name))
+          next
+        }
+        val <- fixed_list[[name]]
+        p <- self$par_list[[name]]
+        
+        # Validate length
+        if (length(val) != p$length) {
+          stop(sprintf("Length of fixed value for '%s' (%d) does not match parameter length (%d).", 
+                       name, length(val), p$length))
+        }
+        
+        # Update init
+        new_init_list[[name]] <- val
+        
+        # Update map to fix all elements
+        new_map[[name]] <- factor(rep(NA, p$unc_length))
+      }
+      
+      # 2. Clone and return
+      new_model <- self$clone()
+      new_model$map <- new_map
+      new_model$init <- new_model$prepare_init(new_init_list)
+      
+      return(new_model)
+    },
+
     #' @description Create a null model by fixing specified parameters to a given value.
     #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]") to automatically extract the prior from the model code.
     #' @param value Numeric value to fix parameters to. Default is 0.

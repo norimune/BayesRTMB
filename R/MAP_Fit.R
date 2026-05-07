@@ -59,20 +59,22 @@ MAP_Fit <- R6::R6Class(
       stop("Parameter not found: ", target)
     },
 
-    #' @description Return point estimates (EAP is not applicable).
-    #' @param ... Ignored.
+    #' @description Return point estimates (EAP is not applicable for MAP).
+    #' @param pars Optional character vector of parameter names to extract.
     #' @return A named list of point estimates.
-    EAP = function(...) {
-      warning("EAP is not applicable for MAP_Fit. Returning point estimates instead.")
-      return(c(self$par, self$transform, self$generate))
+    EAP = function(pars = NULL) {
+      res <- c(self$par, self$transform, self$generate)
+      if (is.null(pars)) return(res)
+      return(res[names(res) %in% pars])
     },
 
     #' @description Return point estimates (MAP sampling method is not applicable).
-    #' @param ... Ignored.
+    #' @param pars Optional character vector of parameter names to extract.
     #' @return A named list of point estimates.
-    MAP = function(...) {
-      warning("Sampling-based MAP is not applicable for MAP_Fit. Returning point estimates instead.")
-      return(c(self$par, self$transform, self$generate))
+    MAP = function(pars = NULL) {
+      res <- c(self$par, self$transform, self$generate)
+      if (is.null(pars)) return(res)
+      return(res[names(res) %in% pars])
     },
 
     #' @description Create a new `MAP_Fit` object.

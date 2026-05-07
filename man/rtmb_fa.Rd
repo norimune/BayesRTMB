@@ -10,7 +10,8 @@ rtmb_fa(
   rotate = NULL,
   score = FALSE,
   prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
-  init = NULL
+  init = NULL,
+  fixed = NULL
 )
 }
 \arguments{
@@ -25,6 +26,8 @@ rtmb_fa(
 \item{prior}{List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.}
 
 \item{init}{List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.}
+
+\item{fixed}{A named list of parameter values to fix (optional).}
 }
 \description{
 Performs exploratory factor analysis (EFA) using RTMB. It supports standard

@@ -16,6 +16,7 @@ rtmb_lrt(
   prob_smoothing = FALSE,
   link = c("ordered", "sequential"),
   prior = prior_uniform(),
+  fixed = NULL,
   ...
 )
 }

@@ -59,7 +59,7 @@ NULL
 #' @param par_names A named list of character vectors corresponding to the dimensions of specific parameters (optional).
 #' @param init A list or numeric vector of initial values for parameters (optional). If not specified, initialized randomly.
 #' @param view Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).
-#' @param null_target Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.
+#' @param fixed A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.
 #' @param null_target Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
@@ -134,7 +134,7 @@ NULL
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
-rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null_target = NULL, silent = FALSE) {
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, fixed = NULL, null_target = NULL, silent = FALSE) {
 
   if (is.null(silent)) silent <- FALSE
   if (getOption("BayesRTMB.silent", FALSE)) silent <- TRUE
@@ -308,6 +308,10 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     code       = original_code
   )
 
+
+  if (!is.null(fixed)) {
+    obj <- obj$fixed_model(fixed)
+  }
 
   if (!is.null(null_target)) {
     if (!is.character(null_target) || length(null_target) != 1) {

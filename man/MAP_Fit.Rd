@@ -106,15 +106,15 @@ Matrix or array of point estimate.
 \if{html}{\out{<a id="method-map_fit-EAP"></a>}}
 \if{latex}{\out{\hypertarget{method-map_fit-EAP}{}}}
 \subsection{Method \code{EAP()}}{
-Return point estimates (EAP is not applicable).
+Return point estimates (EAP is not applicable for MAP).
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$EAP(...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$EAP(pars = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{Ignored.}
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
 }
 \if{html}{\out{</div>}}
 }
@@ -128,13 +128,13 @@ A named list of point estimates.
 \subsection{Method \code{MAP()}}{
 Return point estimates (MAP sampling method is not applicable).
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$MAP(...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$MAP(pars = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{Ignored.}
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
 }
 \if{html}{\out{</div>}}
 }

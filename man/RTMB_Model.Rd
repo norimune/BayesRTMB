@@ -10,6 +10,7 @@ rtmb_model(
   par_names = list(),
   init = NULL,
   view = NULL,
+  fixed = NULL,
   null_target = NULL,
   silent = FALSE
 )
@@ -24,6 +25,8 @@ rtmb_model(
 \item{init}{A list or numeric vector of initial values for parameters (optional). If not specified, initialized randomly.}
 
 \item{view}{Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).}
+
+\item{fixed}{A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.}
 
 \item{null_target}{Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.}
 

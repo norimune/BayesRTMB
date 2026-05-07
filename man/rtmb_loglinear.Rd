@@ -4,7 +4,7 @@
 \alias{rtmb_loglinear}
 \title{RTMB-based Log-linear Analysis (Contingency Table)}
 \usage{
-rtmb_loglinear(formula, data, prior = prior_uniform(), ...)
+rtmb_loglinear(formula, data, prior = prior_uniform(), fixed = NULL, ...)
 }
 \arguments{
 \item{formula}{A formula describing the table structure (e.g., `~ A + B` for independence, `~ A * B` for dependence).}
