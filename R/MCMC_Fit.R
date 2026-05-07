@@ -163,8 +163,7 @@ MCMC_Fit <- R6::R6Class(
         eap_list <- c(eap_list, g_list)
       }
 
-      if (is.null(pars)) return(eap_list)
-      return(eap_list[names(eap_list) %in% pars])
+      return(select_parameters(eap_list, pars))
     },
 
     #' @description Calculate the Maximum A Posteriori (MAP) estimates from samples.
@@ -172,13 +171,12 @@ MCMC_Fit <- R6::R6Class(
     #' @return A named list of MAP estimates (samples with highest log-posterior).
     MAP = function(pars = NULL) {
       all_vars <- unique(c(names(self$model$par_list), names(self$transform_dims), names(self$generate_dims)))
-      if (!is.null(pars)) all_vars <- intersect(all_vars, pars)
       
       res <- list()
       for (p in all_vars) {
         res[[p]] <- self$get_point_estimate(p)
       }
-      return(res)
+      return(select_parameters(res, pars))
     },
 
     #' @description Create a new `MCMC_Fit` object.
@@ -295,25 +293,32 @@ MCMC_Fit <- R6::R6Class(
 
       if (!is.null(pars)) {
         if (is.numeric(pars)) {
-          valid_idx <- pars[pars >= 1 & pars <= P]
-          if (length(valid_idx) == 0) {
-            stop("The index specified in 'pars' was not found.", call. = FALSE)
+          # Support both positive and negative numeric indexing
+          # In R, array[,,pars] just works for both!
+          # But we want to validate if possible
+          target_idx <- tryCatch(seq_along(param_names)[pars], error = function(e) NULL)
+          if (is.null(target_idx) || length(target_idx) == 0) {
+            stop("The index specified in 'pars' was not found or is invalid.", call. = FALSE)
           }
-          target_idx <- valid_idx
-
         } else if (is.character(pars)) {
           base_names <- gsub("\\[.*\\]$", "", param_names)
           
-          ordered_idx <- integer(0)
-          for (p in pars) {
-            match_idx <- which(param_names == p | base_names == p)
-            ordered_idx <- c(ordered_idx, match_idx)
+          # Check for exclusion (e.g., "-theta")
+          if (any(grepl("^-", pars))) {
+            exclude_names <- gsub("^-", "", pars)
+            target_idx <- which(!(param_names %in% exclude_names | base_names %in% exclude_names))
+          } else {
+            ordered_idx <- integer(0)
+            for (p in pars) {
+              match_idx <- which(param_names == p | base_names == p)
+              ordered_idx <- c(ordered_idx, match_idx)
+            }
+            target_idx <- unique(ordered_idx)
           }
-          target_idx <- unique(ordered_idx)
+          
           if (length(target_idx) == 0) {
             stop("The variable name specified in 'pars' was not found.", call. = FALSE)
           }
-
         } else {
           stop("'pars' must be either numeric or character.", call. = FALSE)
         }

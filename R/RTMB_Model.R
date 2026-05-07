@@ -455,7 +455,7 @@ RTMB_Model <- R6::R6Class(
           func = f_ad,
           parameters = init_unc_list,
           random = use_random,
-          map = if (!is.null(map)) map else self$map,
+          map = if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map)),
           silent = TRUE
         )
       }, error = function(e) {
@@ -485,12 +485,22 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Integer; random seed for sampling.
     #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
     #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
+    #' @param fixed Optional list specifying parameter values to fix.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL) {
+                        df = NULL, fixed = NULL) {
+
+      if (!is.null(fixed)) {
+        return(self$fixed_model(fixed)$optimize(
+          laplace = laplace, init = init, num_estimate = num_estimate, control = control,
+          optimizer = optimizer, method = method, map = map, se = se,
+          ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
+          num_samples = num_samples, seed = seed, df = df
+        ))
+      }
 
       if (!is.null(se_method)) ci_method <- se_method
       ci_method <- match.arg(ci_method)
@@ -1336,12 +1346,19 @@ RTMB_Model <- R6::R6Class(
     # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with automatic Satterthwaite degrees of freedom.
     #' @param df "auto" for Satterthwaite, numeric/Inf for specific degrees of freedom.
-    #' @param df_pars Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none").
+    #' @param df_pars Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "none".
     #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
     #' @param view Character vector of parameters to prioritize in the summary output.
     #' @param views Alias for \code{view}.
+    #' @param map Optional list specifying parameters to fix (factors).
+    #' @param fixed Optional list specifying parameter values to fix.
     #' @return A `Classic_Fit` object.
-    classic = function(df = "auto", df_pars = "auto", REML = TRUE, view = NULL, views = NULL) {
+    classic = function(df = "auto", df_pars = "none", REML = TRUE, view = NULL, views = NULL, map = NULL, fixed = NULL) {
+      if (!is.null(fixed)) {
+        return(self$fixed_model(fixed)$classic(
+          df = df, df_pars = df_pars, REML = REML, view = view, views = views, map = map
+        ))
+      }
       if (is.null(view) && !is.null(views)) view <- views
 
       # --- 1. Determine target variables for DF calculation ---
@@ -1711,12 +1728,24 @@ RTMB_Model <- R6::R6Class(
     #' @param init Optional initial values for parameters.
     #' @param init_jitter sd of randomize initial values for parameters.
     #' @param save_csv Optional list for saving MCMC results. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
+    #' @param map Optional list specifying parameters to fix (factors).
+    #' @param fixed Optional list specifying parameter values to fix.
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling=1000, warmup=1000, chains=4,
                       thin=1, seed=sample.int(1e6,1),
                       delta=0.8, max_treedepth = 10,
                       parallel = FALSE, laplace = FALSE,
-                      init = NULL, init_jitter = 0.1, save_csv = NULL) {
+                      init = NULL, init_jitter = 0.1, save_csv = NULL,
+                      map = NULL, fixed = NULL) {
+
+      if (!is.null(fixed)) {
+        return(self$fixed_model(fixed)$sample(
+          sampling = sampling, warmup = warmup, chains = chains, thin = thin,
+          seed = seed, delta = delta, max_treedepth = max_treedepth,
+          parallel = parallel, laplace = laplace, init = init,
+          init_jitter = init_jitter, save_csv = save_csv, map = map
+        ))
+      }
 
       #if (!is.null(init)) init <- as.numeric(init)
       set.seed(seed)
@@ -1773,7 +1802,7 @@ RTMB_Model <- R6::R6Class(
       local_data       <- self$data
       local_par_list   <- self$par_list
       local_pl_full    <- self$pl_full
-      local_map        <- self$map
+      local_map        <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
       local_log_prob   <- self$log_prob
       local_transform  <- self$transform
 
@@ -2010,13 +2039,25 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Integer; random seed for reproducibility.
     #' @param init Optional numeric vector or list for initial parameter values. Default is NULL.
     #' @param save_csv Optional list for saving VB results. e.g., list(name = "model", dir = "BayesRTMB_vb").
+    #' @param map Optional list specifying parameters to fix (factors).
+    #' @param fixed Optional list specifying parameter values to fix.
     #' @return A fitted `VB_Fit` object containing posterior samples and diagnostic information.
     variational = function(iter = 3000,
                            tol_rel_obj = 0.005, window_size = 100,
                            num_samples = 1000, num_estimate = 4, alpha = 0.01,
                            laplace = FALSE, print_freq = 1000,
                            method = c("meanfield", "fullrank", "hybrid"), parallel = FALSE,
-                           seed = sample.int(1e6, 1), init = NULL, save_csv = NULL) {
+                           seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
+                           map = NULL, fixed = NULL) {
+
+      if (!is.null(fixed)) {
+        return(self$fixed_model(fixed)$variational(
+          iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
+          num_samples = num_samples, num_estimate = num_estimate, alpha = alpha,
+          laplace = laplace, print_freq = print_freq, method = method,
+          parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map
+        ))
+      }
 
       set.seed(seed)
       method <- match.arg(method)
@@ -2050,7 +2091,7 @@ RTMB_Model <- R6::R6Class(
       local_data       <- self$data
       local_par_list   <- self$par_list
       local_pl_full    <- self$pl_full
-      local_map        <- self$map
+      local_map        <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
       local_log_prob   <- self$log_prob
       local_transform  <- self$transform
 
@@ -2463,7 +2504,7 @@ RTMB_Model <- R6::R6Class(
     #' @param fixed_list A named list of parameter values to fix.
     #' @return A new `RTMB_Model` object.
     fixed_model = function(fixed_list) {
-      if (!is.list(fixed_list)) stop("fixed_list must be a named list.")
+      if (!is.list(fixed_list)) stop("fixed_list must be a named list (e.g., fixed = list(theta = ...)).")
       
       # 1. Start with current map and init
       new_map <- if (is.null(self$map)) list() else self$map

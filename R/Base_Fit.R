@@ -40,7 +40,15 @@ RTMB_Fit_Base <- R6::R6Class(
                          if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
                          if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
       } else {
-        target_vars <- pars
+        if (is.character(pars) && any(grepl("^-", pars))) {
+          exclude_names <- gsub("^-", "", pars)
+          all_vars <- c(names(self$model$par_list),
+                        if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
+                        if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
+          target_vars <- all_vars[!(all_vars %in% exclude_names)]
+        } else {
+          target_vars <- pars
+        }
         inc_tran <- any(target_vars %in% names(self$transform_dims))
         inc_gen <- any(target_vars %in% names(self$generate_dims))
       }
@@ -85,13 +93,6 @@ RTMB_Fit_Base <- R6::R6Class(
         }
       }
 
-      # Extract single variable if specifically requested
-      if (length(pars) == 1 && !(pars %in% c("parameters", "all"))) {
-        if (pars %in% names(res)) {
-          return(res[[pars]])
-        }
-      }
-
       return(res)
     },
 
@@ -121,7 +122,15 @@ RTMB_Fit_Base <- R6::R6Class(
                          if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
                          if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
       } else {
-        target_vars <- pars
+        if (is.character(pars) && any(grepl("^-", pars))) {
+          exclude_names <- gsub("^-", "", pars)
+          all_vars <- c(names(self$model$par_list),
+                        if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
+                        if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
+          target_vars <- all_vars[!(all_vars %in% exclude_names)]
+        } else {
+          target_vars <- pars
+        }
         inc_tran <- any(target_vars %in% names(self$transform_dims))
         inc_gen <- any(target_vars %in% names(self$generate_dims))
       }
@@ -184,13 +193,6 @@ RTMB_Fit_Base <- R6::R6Class(
             dim(val) <- v_dim
           }
           res[[v]] <- val
-        }
-      }
-
-      # Extract single variable if specifically requested
-      if (length(pars) == 1 && !(pars %in% c("parameters", "all"))) {
-        if (pars %in% names(res)) {
-          return(res[[pars]])
         }
       }
 

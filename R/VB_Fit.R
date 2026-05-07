@@ -100,6 +100,58 @@ VB_Fit <- R6::R6Class(
       class(self) <- c(class(self), "RTMB_Fit_Base")
     },
 
+    #' @description Calculate Expected A Posteriori (EAP) estimates (posterior means).
+    #' @param pars Optional character or numeric vector of parameter names/indices to extract.
+    #' @return A named list of EAP estimates.
+    EAP = function(pars = NULL) {
+      eap_list <- constrained_vector_to_list(self$posterior_mean, self$model$par_list)
+      
+      if (!is.null(self$transform_fit)) {
+        t_means <- apply(self$transform_fit, 3, mean, na.rm = TRUE)
+        t_list <- list()
+        for (name in names(self$transform_dims)) {
+          idx <- grep(paste0("^", name, "(\\[|$)"), names(t_means))
+          if (length(idx) > 0) {
+            val <- t_means[idx]
+            d <- self$transform_dims[[name]]
+            if (length(d) > 1) dim(val) <- d
+            t_list[[name]] <- val
+          }
+        }
+        eap_list <- c(eap_list, t_list)
+      }
+      
+      if (!is.null(self$generate_fit)) {
+        g_means <- apply(self$generate_fit, 3, mean, na.rm = TRUE)
+        g_list <- list()
+        for (name in names(self$generate_dims)) {
+          idx <- grep(paste0("^", name, "(\\[|$)"), names(g_means))
+          if (length(idx) > 0) {
+            val <- g_means[idx]
+            d <- self$generate_dims[[name]]
+            if (length(d) > 1) dim(val) <- d
+            g_list[[name]] <- val
+          }
+        }
+        eap_list <- c(eap_list, g_list)
+      }
+
+      return(select_parameters(eap_list, pars))
+    },
+
+    #' @description Calculate Maximum A Posteriori (MAP) estimates (joint mode iteration).
+    #' @param pars Optional character vector of parameter names to extract.
+    #' @return A named list of MAP estimates.
+    MAP = function(pars = NULL) {
+      all_vars <- unique(c(names(self$model$par_list), names(self$transform_dims), names(self$generate_dims)))
+      
+      res <- list()
+      for (p in all_vars) {
+        res[[p]] <- self$get_point_estimate(p)
+      }
+      return(select_parameters(res, pars))
+    },
+
     #' @description Print a brief summary of the fitted object.
     #' @param ... Additional arguments passed to the `summary` method.
     #' @return The object itself, invisibly.
@@ -189,25 +241,30 @@ VB_Fit <- R6::R6Class(
 
       if (!is.null(pars)) {
         if (is.numeric(pars)) {
-          valid_idx <- pars[pars >= 1 & pars <= P]
-          if (length(valid_idx) == 0) {
-            stop("The index specified in 'pars' was not found.", call. = FALSE)
+          # Support both positive and negative numeric indexing
+          target_idx <- tryCatch(seq_along(param_names)[pars], error = function(e) NULL)
+          if (is.null(target_idx) || length(target_idx) == 0) {
+            stop("The index specified in 'pars' was not found or is invalid.", call. = FALSE)
           }
-          target_idx <- valid_idx
-
         } else if (is.character(pars)) {
           base_names <- gsub("\\[.*\\]$", "", param_names)
           
-          ordered_idx <- integer(0)
-          for (p in pars) {
-            match_idx <- which(param_names == p | base_names == p)
-            ordered_idx <- c(ordered_idx, match_idx)
+          # Check for exclusion (e.g., "-theta")
+          if (any(grepl("^-", pars))) {
+            exclude_names <- gsub("^-", "", pars)
+            target_idx <- which(!(param_names %in% exclude_names | base_names %in% exclude_names))
+          } else {
+            ordered_idx <- integer(0)
+            for (p in pars) {
+              match_idx <- which(param_names == p | base_names == p)
+              ordered_idx <- c(ordered_idx, match_idx)
+            }
+            target_idx <- unique(ordered_idx)
           }
-          target_idx <- unique(ordered_idx)
+          
           if (length(target_idx) == 0) {
             stop("The variable name specified in 'pars' was not found.", call. = FALSE)
           }
-
         } else {
           stop("'pars' must be either numeric or character.", call. = FALSE)
         }

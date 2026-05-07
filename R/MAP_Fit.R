@@ -72,8 +72,7 @@ MAP_Fit <- R6::R6Class(
          }
        }
        
-       if (is.null(pars)) return(res)
-       return(res[names(res) %in% pars])
+       return(select_parameters(res, pars))
      },
 
     #' @description Return point estimates (MAP sampling method is not applicable).
@@ -88,8 +87,7 @@ MAP_Fit <- R6::R6Class(
          }
        }
        
-       if (is.null(pars)) return(res)
-       return(res[names(res) %in% pars])
+       return(select_parameters(res, pars))
      },
 
     #' @description Create a new `MAP_Fit` object.

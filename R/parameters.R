@@ -1018,3 +1018,40 @@ unpack_parameters <- function(para, par_list) {
   }
   return(res)
 }
+
+#' Select parameters from a list by name or index
+#' @param all_list A named list of parameters.
+#' @param pars A character or numeric vector.
+#' @return A subset of the list.
+#' @keywords internal
+select_parameters <- function(all_list, pars) {
+  if (is.null(pars)) return(all_list)
+  if (identical(pars, "parameters") || identical(pars, "all")) return(all_list)
+  
+  # 1. Numeric indexing (positive or negative)
+  if (is.numeric(pars)) {
+    # We use a trick to handle both positive and negative indices correctly in one go
+    # However, base R already handles this: list[pars]
+    # But we want to ensure we don't return out-of-bounds NAs if possible
+    res <- tryCatch(all_list[pars], error = function(e) NULL)
+    if (is.null(res)) return(all_list[0]) # Return empty list if error
+    return(res[names(res) != ""]) # Filter out any NA names that might appear from out-of-bounds positive indices
+  }
+  
+  # 2. Character indexing
+  if (is.character(pars)) {
+    is_negative <- grepl("^-", pars)
+    if (any(is_negative)) {
+      if (!all(is_negative)) {
+        stop("Cannot mix positive and negative parameter names in selection.")
+      }
+      exclude_names <- gsub("^-", "", pars)
+      return(all_list[!(names(all_list) %in% exclude_names)])
+    } else {
+      # Standard positive selection
+      return(all_list[names(all_list) %in% pars])
+    }
+  }
+  
+  return(all_list)
+}
