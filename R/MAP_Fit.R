@@ -62,20 +62,35 @@ MAP_Fit <- R6::R6Class(
     #' @description Return point estimates (EAP is not applicable for MAP).
     #' @param pars Optional character vector of parameter names to extract.
     #' @return A named list of point estimates.
-    EAP = function(pars = NULL) {
-      res <- c(self$par, self$transform, self$generate)
-      if (is.null(pars)) return(res)
-      return(res[names(res) %in% pars])
-    },
+     EAP = function(pars = NULL) {
+       res <- c(self$par, self$transform, self$generate)
+       
+       # If random effects exist as a separate list, ensure they are merged if not already in par
+       if (!is.null(self$random_effects) && is.list(self$random_effects)) {
+         for (n in names(self$random_effects)) {
+           if (!(n %in% names(res))) res[[n]] <- self$random_effects[[n]]
+         }
+       }
+       
+       if (is.null(pars)) return(res)
+       return(res[names(res) %in% pars])
+     },
 
     #' @description Return point estimates (MAP sampling method is not applicable).
     #' @param pars Optional character vector of parameter names to extract.
     #' @return A named list of point estimates.
-    MAP = function(pars = NULL) {
-      res <- c(self$par, self$transform, self$generate)
-      if (is.null(pars)) return(res)
-      return(res[names(res) %in% pars])
-    },
+     MAP = function(pars = NULL) {
+       res <- c(self$par, self$transform, self$generate)
+       
+       if (!is.null(self$random_effects) && is.list(self$random_effects)) {
+         for (n in names(self$random_effects)) {
+           if (!(n %in% names(res))) res[[n]] <- self$random_effects[[n]]
+         }
+       }
+       
+       if (is.null(pars)) return(res)
+       return(res[names(res) %in% pars])
+     },
 
     #' @description Create a new `MAP_Fit` object.
     #' @param model The `RTMB_Model` object used for estimation.

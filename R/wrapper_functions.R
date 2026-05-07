@@ -1463,69 +1463,88 @@ rtmb_lm <- function(formula, data,
 #' @param nfactors Number of factors (K).
 #' @param rotate String specifying the rotation method (e.g., "varimax", "promax", "ssp"). If NULL, no rotation is applied. Specifying "ssp" performs regularized factor analysis.
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
-#' @param prior List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.
-#' @param init List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.
+#' @param prior Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
+#'   Hyperparameters can be specified within these functions (e.g., `prior_uniform(mean_sd = 10, sd_rate = 10)`).
+#'   Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).
+#' @param y_range A numeric vector of length 2 specifying the theoretical min and max values of the items.
+#'   Used to construct weakly informative priors when `prior = prior_weak()`.
+#' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @example inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
-                    prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
+                    prior = prior_uniform(),
+                    y_range = NULL,
                     init = NULL, fixed = NULL) {
 
   Y <- as.matrix(data)
   K <- nfactors
+  J <- ncol(Y)
+  N <- nrow(Y)
 
-  default_prior <- list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25)
-  if (!is.null(prior)) {
-    prior <- .merge_prior(default_prior, prior)
-  } else {
-    prior <- default_prior
-  }
+  if (K >= J) stop("The number of factors (K) must be less than the number of observed variables (J).")
 
   var_names <- colnames(data)
-  if (is.null(var_names)) var_names <- paste0("V", 1:ncol(Y))
+  if (is.null(var_names)) var_names <- paste0("V", 1:J)
 
-  if (K >= ncol(Y)) stop("The number of factors (K) must be less than the number of observed variables (J).")
+  # --- 1. Pre-calculate Sufficient Statistics in R (Handling NAs) ---
+  if (any(is.na(Y))) {
+    Y_bar <- apply(Y, 2, mean, na.rm = TRUE)
+    S_Y <- cov(Y, use = "pairwise.complete.obs") * (N - 1)
+  } else {
+    Y_bar <- apply(Y, 2, mean)
+    S_Y <- cov(Y) * (N - 1)
+  }
+
+  # --- 2. Prior Handling (Extracting from prior object) ---
+  if (is.null(prior)) prior <- prior_uniform()
+  prior_type <- if (inherits(prior, "rtmb_prior")) prior$type else "weak"
+  
+  # Default/Initial settings
+  prior_mean_center <- 0
+  prior_mean_sd <- prior$mean_sd
+  prior_sd_rate <- prior$sd_rate
+  prior_loadings_sd <- prior$loadings_sd
+  ssp_ratio <- if (!is.null(prior$ssp_ratio)) prior$ssp_ratio else 0.25
+
+  # Weak Information Prior Logic (GLMER style)
+  if (prior_type == "weak" && !is.null(y_range)) {
+    sd_ratio <- if (!is.null(prior$sd_ratio)) prior$sd_ratio else 0.5
+    half_d_y <- diff(y_range) / 2
+    base_scale <- half_d_y * sd_ratio
+    
+    prior_mean_center <- mean(y_range)
+    prior_mean_sd <- half_d_y
+    prior_sd_rate <- 1.0 / base_scale
+    prior_loadings_sd <- base_scale
+  }
+
+  dat_fa <- list(
+    N = N, J = J, K_factors = K,
+    Y_bar = Y_bar, S_Y = S_Y,
+    prior_mean_center = prior_mean_center,
+    prior_mean_sd = prior_mean_sd,
+    prior_sd_rate = prior_sd_rate,
+    prior_loadings_sd = prior_loadings_sd
+  )
 
   # Determine if SSP model is used
   is_ssp <- !is.null(rotate) && rotate == "ssp"
 
-  # Common setup block
+  # --- 3. Simplified Setup AST ---
   setup_ast <- quote({
-    N <- nrow(Y)
-    J <- ncol(Y)
-
-    # Check for missing values and calculate sufficient statistics accordingly
-    if (any(is.na(Y))) {
-      warning("Missing values (NAs) detected in the data. Using pairwise complete observations for sufficient statistics. Results may be approximate.")
-      Y_bar <- apply(Y, 2, mean, na.rm = TRUE)
-      S_Y <- cov(Y, use = "pairwise.complete.obs") * (N - 1)
-    } else {
-      Y_bar <- apply(Y, 2, mean)
-      S_Y <- cov(Y) * (N - 1)
-    }
+    # No if-statements here, pre-calculated values are used
   })
 
   if (is_ssp) {
-    if (is.null(prior$ssp_ratio)) prior$ssp_ratio <- 0.25
-
-    dat_fa <- list(
-      Y = Y, K_factors = K,
-      prior_mean_sd = prior$mean_sd, prior_sd_rate = prior$sd_rate,
-      ssp_ratio = prior$ssp_ratio
-    )
-
-    tmp_env <- list2env(dat_fa)
-    eval(setup_ast, tmp_env)
-    N <- tmp_env$N; J <- tmp_env$J; Y_bar <- tmp_env$Y_bar; S_Y <- tmp_env$S_Y
-
+    dat_fa$ssp_ratio <- ssp_ratio
     if (score) dat_fa$Y <- Y
 
-    # Automatic generation of initial values for SSP (using PCA and promax from Base R)
+    # Automatic generation of initial values for SSP
     if (is.null(init)) {
       tryCatch({
         eig <- eigen(S_Y / (N - 1))
-        L_pca <- eig$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(eig$values[1:K]), nrow = K, ncol = K)
+        L_pca <- eig$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(eig$values[1:K], 0.01)), nrow = K, ncol = K)
         var_Y <- diag(S_Y / (N - 1))
 
         if (K > 1) {
@@ -1536,27 +1555,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
           init_CF_Omega <- t(chol(Phi))
         } else {
           init_Lambda <- L_pca
-          Phi <- matrix(1, nrow = 1, ncol = 1)
           init_CF_Omega <- matrix(1, nrow = 1, ncol = 1)
+          Phi <- matrix(1, nrow = 1, ncol = 1)
         }
-
         h2_raw <- rowSums(init_Lambda * (init_Lambda %*% Phi))
         init_sd <- sqrt(pmax(var_Y - h2_raw, 0.01 * var_Y))
-
         L_std <- init_Lambda / sqrt(var_Y)
         init_r <- ifelse(abs(L_std) > 0.2, 0.9, 0.1)
 
-        init <- list(
-          mean = Y_bar,
-          Lambda_star = init_Lambda,
-          sd = init_sd,
-          CF_Omega = init_CF_Omega,
-          r = init_r,
-          tau = matrix(1.0, nrow = J, ncol = K)
-        )
-      }, error = function(e) {
-        stop("Failed to automatically generate initial values. Please provide initial values manually via the 'init' argument. Details: ", conditionMessage(e))
-      })
+        init <- list(mean = Y_bar, Lambda_star = init_Lambda, sd = init_sd, CF_Omega = init_CF_Omega, r = init_r, tau = matrix(1.0, nrow = J, ncol = K))
+      }, error = function(e) { init <- NULL })
     }
 
     param_ast <- quote({
@@ -1579,10 +1587,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     model_ast <- quote({
       S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw %*% CF_Omega)
-      mean ~ normal(0, prior_mean_sd)
-      sd ~ exponential(prior_sd_rate)
+      if (!is.null(prior_mean_sd)) mean ~ normal(prior_mean_center, prior_mean_sd)
+      if (!is.null(prior_sd_rate)) sd ~ exponential(prior_sd_rate)
       CF_Omega ~ lkj_CF_corr(1)
-
       mu_r <- log(ssp_ratio / (1 - ssp_ratio))
       r ~ logit_normal(mu_r, 3)
       tau ~ exponential(1)
@@ -1596,7 +1603,6 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       communality <- var_common / var_total
       out <- list(communality = communality)
     })
-
     score_expr <- if (score) {
       quote({
         Y_c <- matrix(0, nrow = N, ncol = J)
@@ -1604,71 +1610,29 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         out$score <- Y_c %*% solve(Sigma, L_raw %*% fa_cor)
       })
     } else quote({})
-
     ret_expr <- quote({ return(out) })
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
-
-    code_args <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
-    code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
-
-    p_names <- list(
-      mean = var_names,
-      Lambda_star = var_names,
-      r = var_names,
-      tau = var_names,
-      sd = var_names,
-      CF_Omega = paste0("Factor", 1:K),
-      L_raw = var_names,
-      L = var_names,
-      fa_cor = paste0("Factor", 1:K),
-      communality = var_names
-    )
+    
+    code_obj <- rtmb_code(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
+    p_names <- list(mean = var_names, Lambda_star = var_names, r = var_names, tau = var_names, sd = var_names, CF_Omega = paste0("Factor", 1:K), L_raw = var_names, L = var_names, fa_cor = paste0("Factor", 1:K), communality = var_names)
     if (score) {
-      ind_names <- rownames(data)
-      if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
+      ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
-
-    target_view <- c("L", "sd", "fa_cor")
-
-    obj <- rtmb_model(
-      data = dat_fa,
-      code = code_obj,
-      par_names = p_names,
-      init = init,
-      view = target_view
-    )
-
+    obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = c("L", "sd", "fa_cor"), fixed = fixed)
     return(obj)
 
   } else {
-    # --- Existing rotation logic (varimax, promax, etc.) ---
-    dat_fa <- list(
-      Y = Y, K_factors = K,
-      prior_mean_sd = prior$mean_sd, prior_loadings_sd = prior$loadings_sd, prior_sd_rate = prior$sd_rate
-    )
-
-    tmp_env <- list2env(dat_fa)
-    eval(setup_ast, tmp_env)
-    N <- tmp_env$N; J <- tmp_env$J; Y_bar <- tmp_env$Y_bar; S_Y <- tmp_env$S_Y
-
+    # --- Standard rotation logic ---
     if (score) dat_fa$Y <- Y
-
     if (is.null(init)) {
       tryCatch({
         eig <- eigen(S_Y / (N - 1))
-        L_pca <- eig$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(eig$values[1:K]), nrow=K, ncol=K)
-        L_top <- L_pca[1:K, , drop = FALSE]
-        qr_res <- qr(t(L_top))
-        Q_mat <- qr.Q(qr_res)
+        L_pca <- eig$vectors[, 1:K, drop = FALSE] %*% diag(sqrt(pmax(eig$values[1:K], 0.01)), nrow=K, ncol=K)
+        L_top <- L_pca[1:K, , drop = FALSE]; qr_res <- qr(t(L_top)); Q_mat <- qr.Q(qr_res)
         init_loadings <- L_pca %*% Q_mat
         init_sd <- pmax(diag(S_Y / (N - 1)) - rowSums(init_loadings^2), 0.01)^0.5
-
-        for (j in 1:J) {
-          for (k in 1:K) {
-            if (j < k) init_loadings[j, k] <- 0
-          }
-        }
+        for (j in 1:J) for (k in 1:K) if (j < k) init_loadings[j, k] <- 0
         init <- list(mean = Y_bar, L_raw = init_loadings, sd = init_sd)
       }, error = function(e) { init <- NULL })
     }
@@ -1688,129 +1652,60 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     model_ast <- quote({
       S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw)
-      mean ~ normal(0, prior_mean_sd)
-      sd ~ exponential(prior_sd_rate)
-      L_raw ~ lower_tri_normal(0, prior_loadings_sd)
+      if (!is.null(prior_mean_sd)) mean ~ normal(prior_mean_center, prior_mean_sd)
+      if (!is.null(prior_sd_rate)) sd ~ exponential(prior_sd_rate)
+      if (!is.null(prior_loadings_sd)) L_raw ~ lower_tri_normal(0, prior_loadings_sd)
     })
 
     base_gq <- quote({
       Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
-      var_total <- diag(Sigma)
-      var_common <- rowSums(L_raw^2)
-      communality <- var_common / var_total
+      var_total <- diag(Sigma); var_common <- rowSums(L_raw^2); communality <- var_common / var_total
       out <- list(communality = communality)
     })
 
     if (!is.null(rotate)) {
       rot_loadings_name <- paste0("L_", rotate)
-
-      if (exists(rotate, mode = "function")) {
-        rot_fn <- match.fun(rotate)
-        fn_call <- as.name(rotate)
-      } else if (requireNamespace("GPArotation", quietly = TRUE) &&
-                 exists(rotate, where = asNamespace("GPArotation"), mode = "function")) {
-        rot_fn <- getFromNamespace(rotate, "GPArotation")
-        fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
-      } else {
-        stop("Rotation function not found: ", rotate, ". If this is from GPArotation, please install it using install.packages('GPArotation').")
-      }
-
-      dummy_L <- matrix(rnorm(J * K), J, K)
-      test_rot <- rot_fn(dummy_L)
-
-      is_matrix_rot <- is.matrix(test_rot)
-      has_phi <- !is_matrix_rot && !is.null(test_rot$Phi)
-
+      if (exists(rotate, mode = "function")) { rot_fn <- match.fun(rotate); fn_call <- as.name(rotate) }
+      else if (requireNamespace("GPArotation", quietly = TRUE) && exists(rotate, where = asNamespace("GPArotation"), mode = "function")) {
+        rot_fn <- getFromNamespace(rotate, "GPArotation"); fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
+      } else stop("Rotation function not found: ", rotate)
+      
+      dummy_L <- matrix(rnorm(J * K), J, K); test_rot <- rot_fn(dummy_L)
+      is_matrix_rot <- is.matrix(test_rot); has_phi <- !is_matrix_rot && !is.null(test_rot$Phi)
       if (is_matrix_rot) {
-        rot_expr <- bquote({
-          rot_obj <- .(fn_call)(L)
-          rot_mat <- unclass(rot_obj)
-          out[[.(rot_loadings_name)]] <- rot_mat
-        })
+        rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out[[.(rot_loadings_name)]] <- unclass(rot_obj) })
         score_expr <- if (score) bquote({
-          Y_c <- matrix(0, nrow = N, ncol = J)
-          for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-          rot_raw <- unclass(.(fn_call)(L_raw))
-          if (!is.matrix(rot_raw)) rot_raw <- unclass(rot_raw$loadings)
+          Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+          rot_raw <- unclass(.(fn_call)(L_raw)); if (!is.matrix(rot_raw)) rot_raw <- unclass(rot_raw$loadings)
           out$score <- Y_c %*% solve(Sigma, rot_raw)
         }) else quote({})
       } else {
         if (has_phi) {
-          rot_expr <- bquote({
-            rot_obj <- .(fn_call)(L)
-            rot_mat <- unclass(rot_obj$loadings)
-            out$fa_cor <- rot_obj$Phi
-            out[[.(rot_loadings_name)]] <- rot_mat
-          })
+          rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out$fa_cor <- rot_obj$Phi; out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings) })
           score_expr <- if (score) bquote({
-            Y_c <- matrix(0, nrow = N, ncol = J)
-            for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-            rot_raw_obj <- .(fn_call)(L_raw)
-            rot_raw_mat <- unclass(rot_raw_obj$loadings)
-            out$score <- Y_c %*% solve(Sigma, rot_raw_mat %*% rot_raw_obj$Phi)
+            Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+            rot_raw_obj <- .(fn_call)(L_raw); out$score <- Y_c %*% solve(Sigma, unclass(rot_raw_obj$loadings) %*% rot_raw_obj$Phi)
           }) else quote({})
         } else {
-          rot_expr <- bquote({
-            rot_obj <- .(fn_call)(L)
-            rot_mat <- unclass(rot_obj$loadings)
-            out[[.(rot_loadings_name)]] <- rot_mat
-          })
+          rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings) })
           score_expr <- if (score) bquote({
-            Y_c <- matrix(0, nrow = N, ncol = J)
-            for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-            rot_raw <- unclass(.(fn_call)(L_raw)$loadings)
-            out$score <- Y_c %*% solve(Sigma, rot_raw)
+            Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+            out$score <- Y_c %*% solve(Sigma, unclass(.(fn_call)(L_raw)$loadings))
           }) else quote({})
         }
       }
-    } else {
-      has_phi <- FALSE
-      rot_expr <- quote({})
-      score_expr <- if (score) {
-        quote({
-          Y_c <- matrix(0, nrow = N, ncol = J)
-          for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
-          out$score <- Y_c %*% solve(Sigma, L_raw)
-        })
-      } else quote({})
-    }
+    } else { has_phi <- FALSE; rot_expr <- quote({}); score_expr <- if (score) quote({ Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean; out$score <- Y_c %*% solve(Sigma, L_raw) }) else quote({}) }
 
     ret_expr <- quote({ return(out) })
-
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
-
-    code_args <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
-    code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
-
-    p_names <- list(
-      mean = var_names,
-      L_raw = var_names,
-      sd = var_names,
-      L = var_names,
-      communality = var_names
-    )
-    if (!is.null(rotate)) {
-      p_names[[paste0("L_", rotate)]] <- var_names
-      if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K)
-    }
-    if (score) {
-      ind_names <- rownames(data)
-      if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
-      p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
-    }
+    
+    code_obj <- rtmb_code(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast)
+    p_names <- list(mean = var_names, L_raw = var_names, sd = var_names, L = var_names, communality = var_names)
+    if (!is.null(rotate)) { p_names[[paste0("L_", rotate)]] <- var_names; if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K) }
+    if (score) { ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N); p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K)) }
 
     target_view <- if (!is.null(rotate)) c(paste0("L_", rotate), "sd", "fa_cor") else c("L", "sd", "fa_cor")
-
-    obj <- rtmb_model(
-      data = dat_fa,
-      code = code_obj,
-      par_names = p_names,
-      init = init,
-      view = target_view
-    )
-
-    # Store contrast preference for post-estimation methods
-
+    obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = target_view, fixed = fixed)
     return(obj)
   }
 }
@@ -1824,13 +1719,18 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 #' @param data A data frame or matrix of item responses (N persons x J items).
 #' @param model Character string for the model type: "1PL", "2PL", or "3PL".
 #' @param type Character string for the data type: "binary" or "ordered".
-#' @param prior List of hyperparameters for prior distributions.
+#' @param prior Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
+#'   Hyperparameters can be specified within these functions (e.g., `prior_weak(b_sd = 5)`).
+#'   Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c_alpha`/`c_beta` (guessing).
 #' @param init List of initial values.
+#' @param fixed A named list of parameter values to fix (optional).
+#' @param view Character vector of parameter names to prioritize in summary.
+#' @param ... Additional arguments passed to \code{rtmb_model()}.
 #' @example inst/examples/ex_irt.R
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
-                     prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1),
-                     init = NULL, fixed = NULL) {
+                     prior = prior_uniform(), 
+                     init = NULL, fixed = NULL, view = NULL, ...) {
 
   model <- match.arg(model)
   type <- match.arg(type)
@@ -1847,35 +1747,25 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   person_names <- rownames(Y)
   if (is.null(person_names)) person_names <- paste0("Person", 1:nrow(Y))
 
-  # Exclude NA and convert to long format (for speedup and reducing unnecessary computation graph)
-  obs_data <- which(!is.na(Y), arr.ind = TRUE)
-  person_idx <- as.integer(obs_data[, "row"])
-  item_idx <- as.integer(obs_data[, "col"])
-  Y_obs <- Y[obs_data]
+  # Prior Handling
+  if (is.null(prior)) prior <- prior_uniform()
+  prior_type <- if (inherits(prior, "rtmb_prior")) prior$type else "weak"
+  
+  # Extract hyperparameters from prior object if they exist
+  # Use priority: 1. Explicitly provided in prior_weak(...), 2. Default weak values (if type is weak)
+  a_rate  <- prior$a_rate
+  b_sd    <- prior$b_sd
+  c_alpha <- prior$c_alpha
+  c_beta  <- prior$c_beta
 
-  if (type == "ordered") {
-    # Ordered scale assumes categories start from 1 (specification of ordered_logistic)
-    min_y <- min(Y_obs)
-    if (min_y == 0) {
-      Y_obs <- Y_obs + 1
-      message("Since the minimum value of the ordered data was 0, it was automatically converted internally to a 1-based index.")
-    }
+  # Default weak values
+  if (prior_type == "weak") {
+    if (is.null(a_rate)) a_rate <- 1
+    if (is.null(b_sd)) b_sd <- 3
+    if (is.null(c_alpha)) c_alpha <- 1
+    if (is.null(c_beta)) c_beta <- 9
   }
-
-  default_prior <- list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1, c_beta = 4, theta_sd = 1)
-  if (!is.null(prior)) prior <- .merge_prior(default_prior, prior) else prior <- default_prior
-
-  # Remove preprocessing from the wrapper function side and pass only the raw matrix Y
-  dat <- list(
-    Y = Y,
-    prior_a_log_mean = prior$a_log_mean,
-    prior_a_log_sd = prior$a_log_sd,
-    prior_b_mean = prior$b_mean,
-    prior_b_sd = prior$b_sd,
-    prior_c_alpha = prior$c_alpha,
-    prior_c_beta = prior$c_beta,
-    prior_theta_sd = prior$theta_sd
-  )
+  theta_sd <- 1 # Fixed to 1 for identification by default
 
   # --- Construction of Setup Block ---
   setup_exprs <- list()
@@ -1888,14 +1778,12 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   setup_exprs[[7]] <- quote(N_obs <- length(Y_obs))
 
   if (type == "ordered") {
-    # The process of correcting 0-based ordered scale to 1-based is also done in setup
     setup_exprs[[8]] <- quote(if (min(Y_obs) == 0) Y_obs <- Y_obs + 1)
     setup_exprs[[9]] <- quote(K_cat <- max(Y_obs))
   }
-
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
-  tmp_env <- list2env(dat)
+  tmp_env <- list2env(list(Y = Y))
   eval(setup_ast, tmp_env)
 
   # --- Construction of Parameters Block ---
@@ -1928,7 +1816,6 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     } else {
       loop_body[[4]] <- quote(eta <- a[j] * (theta[p] - b[j]))
     }
-
     if (model == "3PL") {
       loop_body[[5]] <- quote(prob <- c[j] + (1 - c[j]) * plogis(eta))
       loop_body[[6]] <- quote(y ~ bernoulli(prob))
@@ -1944,7 +1831,6 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     loop_body[[5]] <- quote(y ~ ordered_logistic(eta, b[j, ]))
   }
 
-  # Construct the entire loop
   loop_ast <- quote(for (i in 1:N_obs) {})
   loop_ast[[4]] <- as.call(c(list(as.name("{")), loop_body))
 
@@ -1953,18 +1839,20 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   model_exprs[[length(model_exprs) + 1]] <- loop_ast
 
   model_exprs[[length(model_exprs) + 1]] <- "# Priors"
-  if (model %in% c("2PL", "3PL")) {
-    model_exprs[[length(model_exprs) + 1]] <- quote(a ~ lognormal(prior_a_log_mean, prior_a_log_sd))
+  if (model %in% c("2PL", "3PL") && !is.null(a_rate)) {
+    model_exprs[[length(model_exprs) + 1]] <- bquote(a ~ exponential(.(a_rate)))
   }
-  if (type == "binary") {
-    model_exprs[[length(model_exprs) + 1]] <- quote(b ~ normal(prior_b_mean, prior_b_sd))
-  } else {
-    model_exprs[[length(model_exprs) + 1]] <- quote(for (j in 1:N_items) b[j, ] ~ normal(prior_b_mean, prior_b_sd))
+  if (!is.null(b_sd)) {
+    if (type == "binary") {
+      model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(b_sd)))
+    } else {
+      model_exprs[[length(model_exprs) + 1]] <- bquote(for (j in 1:N_items) b[j, ] ~ normal(0, .(b_sd)))
+    }
   }
-  if (model == "3PL") {
-    model_exprs[[length(model_exprs) + 1]] <- quote(c ~ beta(prior_c_alpha, prior_c_beta))
+  if (model == "3PL" && !is.null(c_alpha) && !is.null(c_beta)) {
+    model_exprs[[length(model_exprs) + 1]] <- bquote(c ~ beta(.(c_alpha), .(c_beta)))
   }
-  model_exprs[[length(model_exprs) + 1]] <- quote(theta ~ normal(0, prior_theta_sd))
+  model_exprs[[length(model_exprs) + 1]] <- bquote(theta ~ normal(0, .(theta_sd)))
 
   model_ast <- as.call(c(list(as.name("{")), model_exprs))
 

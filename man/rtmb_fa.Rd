@@ -9,7 +9,8 @@ rtmb_fa(
   nfactors = 1,
   rotate = NULL,
   score = FALSE,
-  prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
+  prior = prior_uniform(),
+  y_range = NULL,
   init = NULL,
   fixed = NULL
 )
@@ -23,9 +24,14 @@ rtmb_fa(
 
 \item{score}{Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).}
 
-\item{prior}{List of hyperparameters for prior distributions. `ssp_ratio` represents the proportion of non-zero loadings per factor when "ssp" is specified.}
+\item{prior}{Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
+Hyperparameters can be specified within these functions (e.g., `prior_uniform(mean_sd = 10, sd_rate = 10)`).
+Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).}
 
-\item{init}{List of initial values. If not provided, initial values are automatically generated based on PCA or the psych package.}
+\item{y_range}{A numeric vector of length 2 specifying the theoretical min and max values of the items.
+Used to construct weakly informative priors when `prior = prior_weak()`.}
+
+\item{init}{List of initial values.}
 
 \item{fixed}{A named list of parameter values to fix (optional).}
 }

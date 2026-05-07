@@ -535,7 +535,18 @@ RTMB_Model <- R6::R6Class(
             base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), mean = 0, sd = 0.5)
           }
 
-          if (optimizer == "nlminb") {
+          if (length(base_ad_obj$par) == 0) {
+            # No parameters to optimize (all fixed and/or random effects integrated out)
+            cat("No fixed effects to optimize. Returning initial values.\n")
+            opt <- list(
+              par = numeric(0),
+              objective = base_ad_obj$fn(numeric(0)),
+              convergence = 0,
+              message = "all parameters fixed",
+              iterations = 0,
+              evaluations = c(obj = 1, grad = 0)
+            )
+          } else if (optimizer == "nlminb") {
             if (is.null(control$iter.max)) control$iter.max <- 5000
             if (is.null(control$eval.max)) control$eval.max <- 5000
             if (is.null(control$rel.tol)) control$rel.tol <- 1e-8

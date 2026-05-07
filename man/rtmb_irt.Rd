@@ -8,10 +8,11 @@ rtmb_irt(
   data,
   model = c("2PL", "1PL", "3PL"),
   type = c("binary", "ordered"),
-  prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1,
-    c_beta = 4, theta_sd = 1),
+  prior = prior_uniform(),
   init = NULL,
-  fixed = NULL
+  fixed = NULL,
+  view = NULL,
+  ...
 )
 }
 \arguments{
@@ -21,9 +22,17 @@ rtmb_irt(
 
 \item{type}{Character string for the data type: "binary" or "ordered".}
 
-\item{prior}{List of hyperparameters for prior distributions.}
+\item{prior}{Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
+Hyperparameters can be specified within these functions (e.g., `prior_weak(b_sd = 5)`).
+Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c_alpha`/`c_beta` (guessing).}
 
 \item{init}{List of initial values.}
+
+\item{fixed}{A named list of parameter values to fix (optional).}
+
+\item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{...}{Additional arguments passed to \code{rtmb_model()}.}
 }
 \description{
 Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model) using RTMB.
