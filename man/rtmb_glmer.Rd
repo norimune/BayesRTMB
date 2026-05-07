@@ -16,6 +16,7 @@ rtmb_glmer(
   gmc = NULL,
   cwc = NULL,
   view = NULL,
+  within = NULL,
   factors = NULL,
   contrasts = "treatment",
   sigma_by = NULL,

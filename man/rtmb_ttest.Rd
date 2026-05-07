@@ -15,7 +15,7 @@ rtmb_ttest(
   prior = prior_uniform(),
   init = NULL,
   null = NULL,
-  var.equal = FALSE,
+  var.equal = TRUE,
   ...
 )
 }
@@ -34,42 +34,19 @@ rtmb_ttest(
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.}
 
-\item{prior}{An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).}
+\item{prior}{An object of class "rtmb_prior" (e.g., `prior_uniform()`, `prior_jzs()`, or `prior_weak()`).}
 
 \item{init}{List of initial values.}
 
-\item{null}{Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").}
+\item{null}{Character string specifying the target parameter for the null model (e.g., "delta").}
 
-\item{var.equal}{Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.}
+\item{var.equal}{Logical; whether to assume equal variances. Default is TRUE.}
 
 \item{...}{Additional arguments.}
 }
 \value{
-An \code{RTMB_Model} object.
+An `RTMB_Model` object.
 }
 \description{
-Performs a Bayesian two-sample t-test using RTMB.
-It estimates the effect size (delta) with a Cauchy prior, allowing for robust inference
-and calculation of Bayes factors.
-}
-\examples{
-\dontrun{
-  # Simulate two-sample data with a true effect size
-  set.seed(123)
-  y1 <- rnorm(30, mean = 0.5, sd = 1)
-  y2 <- rnorm(30, mean = 0.0, sd = 1)
-
-  # Fit the Bayesian two-sample t-test model
-  # r = 0.707 is the standard scale for the Cauchy prior on the effect size
-  fit_ttest <- rtmb_ttest(y1, y2, r = 0.707)
-
-  # MCMC sampling (chains and iterations reduced for faster execution)
-  mcmc_ttest <- fit_ttest$sample(sampling = 500, warmup = 500, chains = 2)
-  mcmc_ttest$summary()
-
-  # Calculate Bayes factor against the null hypothesis (effect size delta = 0)
-  # Specifying "delta" automatically fixes the parameter to 0 and drops its prior
-  bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
-  print(bf_ttest)
-}
+Performs a Bayesian or Frequentist two-sample t-test using RTMB.
 }

@@ -119,6 +119,17 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
   return(res)
 }
 
+#' Specify a JZS (Jeffrey-Zellner-Siow) prior for t-tests
+#'
+#' @param r Numeric; scale parameter for the Cauchy prior on effect size delta. Default is 0.707.
+#' @return A list with class "rtmb_prior"
+#' @export
+prior_jzs <- function(r = 0.707) {
+  res <- list(type = "jzs", r = r)
+  class(res) <- "rtmb_prior"
+  return(res)
+}
+
 #' RTMB-based Contingency Table Analysis (Chi-squared Test)
 #'
 #' @description
@@ -142,10 +153,10 @@ prior_rhs <- function(expected_vars = 3, slab_scale = 2.0, slab_df = 4.0, ...) {
 #' }
 #' @export
 rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_uniform(), ...) {
-  
+
   x_expr <- substitute(x)
   y_expr <- substitute(y)
-  
+
   # 1. Extract Variables
   if (is.null(data)) {
     v1 <- eval(x_expr, parent.frame())
@@ -158,34 +169,34 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
     v1_name <- as.character(x_expr)
     v2_name <- as.character(y_expr)
   }
-  
+
   # Ensure factors
   v1 <- as.factor(v1)
   v2 <- as.factor(v2)
   tab <- table(v1, v2)
-  
+
   # Prepare row/column names for labels
   R_names <- rownames(tab)
   C_names <- colnames(tab)
   grid <- expand.grid(Row = R_names, Col = C_names)
   cell_labels <- paste0(v1_name, ":", grid$Row, ", ", v2_name, ":", grid$Col)
-  
 
-  
+
+
   # 3. Bayes Mode (Multinomial Model)
   # Data for RTMB
   Y_vec <- as.vector(tab)
   R <- nrow(tab)
   C <- ncol(tab)
   N_total <- sum(Y_vec)
-  
+
   setup <- list(
     Y = Y_vec,
     R = R,
     C = C,
     N = N_total
   )
-  
+
   rtmb_model_code <- rtmb_code(
     setup = {
       # No special setup needed for now, Y and N are provided
@@ -195,38 +206,38 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
       # We give it meaningful names during rtmb_model() call
       p <- Dim(R * C, type = "simplex")
     },
-    model = {
-      # Likelihood
-      Y ~ multinomial(N, p)
-      
-      # Prior (Flat Dirichlet by default)
-      p ~ dirichlet(rep(1, R * C))
-      
+    transform = {
       # Derived quantities for reporting
       mu <- p * N
       # Pearson Chi-squared statistic for the estimated probabilities
       # Sum (O - E)^2 / E
       chisq_val <- sum((Y - mu)^2 / mu)
-      
-      ADREPORT(mu)
-      ADREPORT(chisq_val)
+      report(mu)
+      report(chisq_val)
+    },
+    model = {
+      # Likelihood
+      Y ~ multinomial(N, p)
+
+      # Prior (Flat Dirichlet by default)
+      p ~ dirichlet(rep(1, R * C))
     },
     generate = {
-      # We only generate what is not already in parameters/ADREPORT
+      # We only generate what is not already in parameters/report
       mu <- p * N
       chisq_val <- sum((Y - mu)^2 / mu)
       list(mu = mu, chisq_val = chisq_val)
     }
   )
-  
+
   # Create the model object with explicit parameter names for 'p' and 'mu'
   res <- rtmb_model(
-    code = rtmb_model_code, 
+    code = rtmb_model_code,
     data = setup,
     par_names = list(p = cell_labels, mu = cell_labels)
   )
   class(res) <- c("rtmb_table", class(res))
-  
+
   res$type <- "table"
   res$extra <- list(tab = tab, correct = correct)
   return(res)
@@ -261,7 +272,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
 #' }
 #' @export
 rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
-  
+
   # 1. Data Preparation
   # Convert table or matrix to long data frame
   was_table <- FALSE
@@ -269,16 +280,16 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
     data <- as.data.frame(as.table(data))
     was_table <- TRUE
   }
-  
+
   # Identify variables and frequency column
   all_vars <- all.vars(formula)
   response_var <- NULL
-  
+
   # Check if formula has a response
   if (length(formula) == 3) {
     response_var <- as.character(formula[[2]])
   }
-  
+
   # If no response is specified
   if (is.null(response_var)) {
     if (was_table && "Freq" %in% names(data)) {
@@ -292,7 +303,7 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
       if (length(missing_vars) > 0) {
         stop(sprintf("Variables not found in data: %s", paste(missing_vars, collapse = ", ")))
       }
-      
+
       # Aggregate raw observations into counts
       data_counts <- as.data.frame(table(data[all_vars]))
       # Update formula to include 'Freq' as response
@@ -301,7 +312,7 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
       response_var <- "Freq"
     }
   }
-  
+
 
   # Ensure response is numeric (counts)
   data[[response_var]] <- as.numeric(data[[response_var]])
@@ -309,7 +320,7 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
   # 2. Invoke rtmb_glmer (or internal logic) with family = "poisson"
   # Since rtmb_glmer is already robust, we leverage it.
   # However, we override some defaults to better suit table analysis.
-  
+
   # For rtmb_table, we default to prior_weak with Stan-style values if requested
   if (inherits(prior, "prior_weak")) {
     # Stan-style defaults for log-linear (Poisson)
@@ -319,13 +330,37 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
 
   # Call the engine
   # We use rtmb_glmer which handles formulas, random effects, and priors.
-  
-  # Custom generate block for expected frequencies
-  gen_block <- quote({
-    eta <- if (exists("Intercept_c")) Intercept_c + X_c %*% b else Intercept + X %*% b
-    mu <- exp(eta)
-    list(mu = mu)
-  })
+
+  # 2. Determine centering and predictors (to keep generate block clean in print_code)
+  args <- list(...)
+  is_weak_triggered <- !is.null(args$y_range) && prior$type == "uniform"
+  is_centered <- (!prior$type %in% c("flat", "uniform")) || is_weak_triggered
+
+  # Identify if there are predictors
+  X_tmp <- stats::model.matrix(nobars(formula), data[1, , drop = FALSE])
+  K <- ncol(X_tmp) - (if (attr(stats::terms(nobars(formula)), "intercept")) 1 else 0)
+
+  if (is_centered) {
+    int_name <- as.name("Intercept_c")
+    x_name <- as.name("X_c")
+  } else {
+    int_name <- as.name("Intercept")
+    x_name <- as.name("X")
+  }
+
+  if (K > 0) {
+    gen_block <- bquote({
+      eta <- .(int_name) + .(x_name) %*% b
+      mu <- exp(eta)
+      list(mu = mu)
+    })
+  } else {
+    gen_block <- bquote({
+      eta <- rep(.(int_name), N)
+      mu <- exp(eta)
+      list(mu = mu)
+    })
+  }
 
   res <- rtmb_glmer(
     formula = formula,
@@ -338,11 +373,12 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), ...) {
 
   # Tag as loglinear
   res$type <- "loglinear"
+  res$extra$obs_Y <- data[[response_var]]
   fit <- res
 
   # Tag as rtmb_loglinear for potential custom methods
   class(fit) <- c("rtmb_loglinear", class(fit))
-  
+
   return(fit)
 }
 
@@ -376,6 +412,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        gmc = NULL,
                        cwc = NULL,
                        view = NULL,
+                       within = NULL,
                        factors = NULL,
                        contrasts = "treatment",
                        sigma_by = NULL,
@@ -385,13 +422,21 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        generate = NULL,
                        .force_sum = FALSE) {
 
+  # --- Handle Wide to Long conversion if needed ---
+  if (family == "gaussian" && is.call(formula[[2]]) && identical(formula[[2]][[1]], as.name("cbind"))) {
+    processed <- .handle_wide_to_long(formula, data, within, factors)
+    formula <- processed$formula
+    data <- processed$data
+    factors <- processed$factors
+  }
+
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
 
 
    if (!is.null(resid_corr)) {
      valid_resid_corr <- c("ar1", "cs", "un", "toep")
      if (!(resid_corr %in% valid_resid_corr)) {
-       stop(sprintf("Invalid 'resid_corr' value: '%s'. Valid options are: %s", 
+       stop(sprintf("Invalid 'resid_corr' value: '%s'. Valid options are: %s",
             resid_corr, paste(valid_resid_corr, collapse = ", ")))
      }
    }
@@ -541,11 +586,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
   has_random <- !is.null(findbars(formula))
 
-  # If classic mode and random effects are present (or forced), we internally 
+  # If classic mode and random effects are present (or forced), we internally
   # force 'sum' contrasts for stable Type III ANOVA/DFs.
   # Otherwise, we use the user-requested contrast (defaulting to 'treatment').
   actual_contrasts <- if (.force_sum) "sum" else contrasts
-  
+
   if (!is.null(actual_contrasts)) {
     if (actual_contrasts == "sum") {
       old_opts <- options(contrasts = c("contr.sum", "contr.poly"))
@@ -777,14 +822,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         if (has_intercept) init$b <- init_coef[-1]
         else init$b <- init_coef
       }
-      
+
       # Initial values for residual correlation
       if (!is.null(resid_corr)) {
         if (resid_corr %in% c("ar1", "cs")) init$rho_resid <- 0.1
         else if (resid_corr == "toep") init$rho_resid <- rep(0.1, dat$max_T_resid - 1)
         else if (resid_corr == "un") init$L_resid <- diag(dat$max_T_resid)
       }
-      
+
       if (family %in% c("gaussian", "lognormal", "student_t")) {
         init$sigma <- if (num_sigma_groups > 1) rep(stats::sd(Y) * 0.5, num_sigma_groups) else stats::sd(Y) * 0.5
       }
@@ -792,14 +837,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }, error = function(e) init <- NULL)
   }
 
-  dat <- list(Y = Y, trials = trials, X = X, 
+  dat <- list(Y = Y, trials = trials, X = X,
               sigma_idx = sigma_idx, num_sigma_groups = num_sigma_groups)
-  
+
   if (!is.null(resid_corr)) {
     if (family != "gaussian") stop("Residual correlation structures are currently only supported for Gaussian models.")
     resid_corr <- tolower(resid_corr)
     if (!resid_corr %in% c("ar1", "cs", "un", "toep")) stop("Currently 'ar1', 'cs', 'un', and 'toep' are supported for resid_corr.")
-    
+
     # Identify group for residuals
     if (is.null(resid_group)) {
       if (has_random) {
@@ -810,7 +855,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     } else {
       resid_group_var <- resid_group
     }
-    
+
     if (!(resid_group_var %in% names(mf))) stop(sprintf("Residual grouping variable '%s' not found in data.", resid_group_var))
 
     group_resid <- as.numeric(as.factor(mf[[resid_group_var]]))
@@ -1058,14 +1103,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (resid_corr == "un") {
       ll_data_exprs[[length(ll_data_exprs) + 1]] <- quote(R_mat_resid <- L_resid %*% t(L_resid))
     }
-    
+
     ll_data_exprs[[length(ll_data_exprs) + 1]] <- bquote(
       for (i in 1:num_groups_resid) {
         idx <- which(group_resid == i)
         ni <- length(idx)
         ti <- time_resid[idx]
         mu_i <- eta[idx]
-        
+
         Vi <- matrix(0, ni, ni)
         for (r in 1:ni) {
           s_r <- if (has_sig_idx) sigma[sigma_idx[idx[r]]] else sigma
@@ -1240,7 +1285,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init, 
+  obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init,
                     view = if (!is.null(view)) view else view_vars, silent = FALSE)
   obj$formula <- formula
   obj$raw_data <- data
@@ -1259,7 +1304,19 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   } else {
     if (family %in% c("gaussian", "lognormal", "student_t")) "lm" else "glm"
   }
-  obj$extra <- list(X_assign = X_assign, X_terms = X_terms, X_colnames = fixed_colnames)
+  obj$extra <- list(
+    X_assign = X_assign, 
+    X_terms = X_terms, 
+    X_colnames = fixed_colnames,
+    factors = factors,
+    within = within
+  )
+
+  fixed_effects <- if (K > 0) "b" else character(0)
+  if (has_intercept) {
+    fixed_effects <- c(ifelse(prior_type %in% c("flat", "uniform"), "Intercept", "Intercept_c"), fixed_effects)
+  }
+  obj$extra$df_pars <- fixed_effects
 
   return(obj)
 }
@@ -1282,7 +1339,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 #' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
 #' @param resid_time Variable name for time points in residual correlation.
 #' @param resid_group Variable name for grouping in residual correlation.
-
+#' @param within Optional list for wide-to-long conversion. For repeated measures data in wide format,
+#' specify the factor names and their levels, e.g., \code{list(Time = 4)} or \code{list(A = 2, B = 3)}.
+#' The total number of levels must match the number of columns in \code{cbind()} on the LHS.
+#' If omitted and the LHS is \code{cbind()}, the within-factor name is inferred from RHS variables not present in the data.
+#' @param ... Additional arguments passed to \code{rtmb_model()}.
+#'
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
@@ -1299,7 +1361,9 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        contrasts = "treatment",
                        resid_corr = NULL,
                        resid_time = NULL,
-                       resid_group = NULL) {
+                       resid_group = NULL,
+                       within = NULL,
+                       ...) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
@@ -1315,6 +1379,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              resid_corr = resid_corr,
              resid_time = resid_time,
              resid_group = resid_group,
+             within = within,
              .force_sum = TRUE)
 }
 
@@ -1738,8 +1803,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     )
 
     # Store contrast preference for post-estimation methods
-    obj$contrasts <- contrasts
-    
+
     return(obj)
   }
 }
@@ -1952,10 +2016,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
                       prior = prior_uniform(), y_range = NULL,
                       init = NULL, null = NULL, ...) {
-  
+
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
-  
+
   # Evaluation logic for response variables (Y_mat)
   if (!is.null(data)) {
     # Evaluate x in the context of data (NSE support for cbind(a, b))
@@ -1963,15 +2027,15 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   } else {
     Y_mat <- x
   }
-  
+
   # Handle if Y_mat is a formula
   if (inherits(Y_mat, "formula")) {
     formula <- Y_mat
     lhs_expr <- formula[[2]]
-    
+
     # 1. Try to evaluate LHS directly (handles cbind(y1, y2) or Y_df)
     Y_mat <- try(eval(lhs_expr, data, parent.frame()), silent = TRUE)
-    
+
     # 2. If eval(lhs) failed, try a safer model.frame call
     if (inherits(Y_mat, "try-error") || is.null(Y_mat)) {
       resp_formula <- bquote(.(lhs_expr) ~ 1)
@@ -1992,7 +2056,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     if (is.list(Y_mat) && !is.data.frame(Y_mat)) {
        Y_mat <- do.call(cbind, Y_mat)
     }
-    
+
     # If formula has RHS, extract covariates
     if (length(formula) == 3 && is.null(covariates)) {
        rhs_expr <- formula[[3]]
@@ -2070,14 +2134,14 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     } else {
       id_val <- ID
     }
-    
+
     # If the response matrix still contains the ID column, remove it
     id_name_str <- as.character(id_expr)
     if (is.data.frame(Y_mat) && id_name_str %in% colnames(Y_mat)) {
        Y_mat[[id_name_str]] <- NULL
     }
   }
-  
+
   # Ensure Y_mat is a numeric matrix
   Y_mat <- as.data.frame(Y_mat)
   num_cols <- sapply(Y_mat, is.numeric)
@@ -2103,7 +2167,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   N <- nrow(Y_mat)
   P <- ncol(Y_mat)
   if (P < 1) stop("No numeric columns found for correlation analysis.")
-  
+
   var_names <- colnames(Y_mat)
   if (is.null(var_names)) var_names <- paste0("V", 1:P)
   colnames(Y_mat) <- var_names
@@ -2167,7 +2231,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
      param_exprs <- list(as.name("{"))
-     param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(.(P)))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(mu <- Dim(.(P), random = TRUE))
      param_exprs[[length(param_exprs) + 1]] <- bquote(u <- Dim(c(J, .(P)), random = TRUE))
 
      param_exprs[[length(param_exprs) + 1]] <- bquote(sigma_between <- Dim(.(P), lower = 0))
@@ -2215,7 +2279,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      if (multivariate) {
        generate_exprs[[length(generate_exprs) + 1]] <- quote(B_corr <- L_corr_between %*% t(L_corr_between))
        generate_exprs[[length(generate_exprs) + 1]] <- quote(W_corr <- L_corr_within %*% t(L_corr_within))
-       
+
        if (P_x > 0) {
           # Partial correlation for Within level
           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy <- W_corr[1:P_y, 1:P_y])
@@ -2224,7 +2288,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
           generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov_w <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
           generate_exprs[[length(generate_exprs) + 1]] <- quote(D_w <- diag(1 / sqrt(diag(P_cov_w))))
           generate_exprs[[length(generate_exprs) + 1]] <- quote(W_pcorr <- D_w %*% P_cov_w %*% D_w)
-          
+
           # Partial correlation for Between level
           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy_b <- B_corr[1:P_y, 1:P_y])
           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx_b <- B_corr[1:P_y, (P_y+1):P])
@@ -2271,12 +2335,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
      view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
 
-     mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
-     mdl$raw_data <- data
-     
-     mdl$type <- "corr"
+     obj <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, view = view_order)
+     obj$raw_data <- data
 
-     return(mdl)
+     obj$type <- "corr"
+     obj$extra$df_pars <- "mu"
+
+     return(obj)
   } else {
      # Simple correlation mode
      if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
@@ -2322,7 +2387,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      setup_ast <- as.call(setup_exprs)
 
      param_exprs <- list(as.name("{"))
-     param_exprs[[length(param_exprs) + 1]] <- bquote(mean <- Dim(.(P)))
+     param_exprs[[length(param_exprs) + 1]] <- bquote(mean <- Dim(.(P), random = TRUE))
      param_exprs[[length(param_exprs) + 1]] <- bquote(sd   <- Dim(.(P), lower = 0))
 
      if (P == 2) {
@@ -2363,7 +2428,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        generate_exprs[[length(generate_exprs) + 1]] <- quote({
            M_CF <- as.matrix(CF_corr)
            corr <- M_CF %*% t(M_CF)
-           
+
            if (P_x > 0) {
               R_yy <- corr[1:P_y, 1:P_y]
               R_yx <- corr[1:P_y, (P_y+1):P]
@@ -2407,10 +2472,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        obj <- obj$null_model(target = null)
      }
 
-     obj$contrasts <- contrasts
     obj$raw_data <- data
     obj$type <- "corr"
-    
+    obj$extra$df_pars <- "mean"
+
     return(obj)
   }
 }
@@ -2418,9 +2483,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 #' RTMB-based Bayesian two-sample t-test wrapper function
 #'
 #' @description
-#' Performs a Bayesian two-sample t-test using RTMB.
-#' It estimates the effect size (delta) with a Cauchy prior, allowing for robust inference
-#' and calculation of Bayes factors.
+#' Performs a Bayesian or Frequentist two-sample t-test using RTMB.
 #'
 #' @param x Numeric vector of responses for group 1, a formula (e.g., `y ~ group`), or a column name (unquoted) if `data` is provided.
 #' @param y Numeric vector of responses for group 2, or a column name (unquoted) if `data` is provided. Required if `x` is not a formula.
@@ -2429,238 +2492,130 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 #' @param paired Logical; whether to perform a paired t-test.
 #' @param ID Character; name of the ID variable for paired t-tests (required for formula input with paired = TRUE).
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.
-#' @param prior An object of class "rtmb_prior" (e.g., `prior_uniform()` or `prior_weak()`).
+#' @param prior An object of class "rtmb_prior" (e.g., `prior_uniform()`, `prior_jzs()`, or `prior_weak()`).
 #' @param init List of initial values.
-#' @param null Character string specifying the target parameter for the null model (e.g., "delta" or "delta ~ cauchy(0, r)").
-
-#' @param var.equal Logical; for independent t-tests in classic mode, whether to assume equal variances (Student's t-test) or not (Welch's t-test). Default is FALSE.
+#' @param null Character string specifying the target parameter for the null model (e.g., "delta").
+#' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
 #' @param ... Additional arguments.
-#' @return An \code{RTMB_Model} object.
-#' @example inst/examples/ex_ttest.R
+#' @return An `RTMB_Model` object.
 #' @export
 rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        paired = FALSE, ID = NULL,
                        y_range = NULL,
                        prior = prior_uniform(),
                        init = NULL, null = NULL,
-                       var.equal = FALSE, ...) {
+                       var.equal = TRUE, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
-  
-  # Check if x is a formula without evaluating it yet
+
+  # --- 1. Data Extraction ---
   is_formula <- is.call(x_expr) && (x_expr[[1]] == quote(`~`))
-
   if (is_formula) {
-    # Evaluate x only now that we know it's a formula
     x <- eval(x_expr, parent.frame())
-    if (is.null(data)) {
-      mf <- model.frame(x, parent.frame())
-    } else {
-      mf <- model.frame(x, data)
-    }
-    response <- mf[[1]]
-    group <- as.factor(mf[[2]])
-
-    if (length(levels(group)) != 2) {
-      stop(sprintf("The grouping variable '%s' must have exactly 2 levels for a t-test (found %d: %s).", 
-           names(mf)[2], length(levels(group)), paste(levels(group), collapse=", ")))
-    }
-
-    levs <- levels(group)
-    x_label <- levs[1]
-    y_label <- levs[2]
-
+    mf <- if (is.null(data)) model.frame(x, parent.frame()) else model.frame(x, data)
+    response <- mf[[1]]; group <- as.factor(mf[[2]])
+    levs <- levels(group); x_label <- levs[1]; y_label <- levs[2]
     if (paired) {
-       if (is.null(ID)) stop("Paired t-test with formula requires 'ID' argument (e.g., ID = 'subject_id').")
-       id_val <- if (!is.null(data)) data[[ID]] else eval(substitute(ID), parent.frame())
-       if (is.null(id_val)) stop(sprintf("ID variable '%s' not found.", ID))
-       
-       d1 <- mf[group == levs[1], , drop = FALSE]
-       d1$id <- id_val[group == levs[1]]
-       d2 <- mf[group == levs[2], , drop = FALSE]
-       d2$id <- id_val[group == levs[2]]
-       
-       common_ids <- intersect(d1$id, d2$id)
-       if (length(common_ids) == 0) stop("No matching IDs found between the two groups for paired t-test.")
-       
-       Y1 <- d1[match(common_ids, d1$id), 1]
-       Y2 <- d2[match(common_ids, d2$id), 1]
+      id_val <- if (!is.null(data)) data[[ID]] else eval(substitute(ID), parent.frame())
+      d1 <- mf[group == levs[1], ]; d1$id <- id_val[group == levs[1]]
+      d2 <- mf[group == levs[2], ]; d2$id <- id_val[group == levs[2]]
+      common_ids <- intersect(d1$id, d2$id)
+      Y1 <- d1[match(common_ids, d1$id), 1]; Y2 <- d2[match(common_ids, d2$id), 1]
     } else {
-       Y1 <- as.numeric(na.omit(response[group == levs[1]]))
-       Y2 <- as.numeric(na.omit(response[group == levs[2]]))
+      Y1 <- as.numeric(na.omit(response[group == levs[1]]))
+      Y2 <- as.numeric(na.omit(response[group == levs[2]]))
     }
   } else {
-    # Non-formula case: handle unquoted names in data
-    x_label <- deparse(x_expr)
-    y_label <- deparse(y_expr)
-    
+    x_label <- deparse(x_expr); y_label <- deparse(y_expr)
     if (!is.null(data)) {
-       Y1 <- if (x_label %in% names(data)) data[[x_label]] else eval(x_expr, parent.frame())
-       Y2 <- if (y_label %in% names(data)) data[[y_label]] else eval(y_expr, parent.frame())
+      Y1 <- if (x_label %in% names(data)) data[[x_label]] else eval(x_expr, parent.frame())
+      Y2 <- if (y_label %in% names(data)) data[[y_label]] else eval(y_expr, parent.frame())
     } else {
-       Y1 <- eval(x_expr, parent.frame())
-       Y2 <- eval(y_expr, parent.frame())
+      Y1 <- eval(x_expr, parent.frame()); Y2 <- eval(y_expr, parent.frame())
     }
-    
-    Y1 <- as.numeric(na.omit(Y1))
-    Y2 <- as.numeric(na.omit(Y2))
-    
-    if (paired && length(Y1) != length(Y2)) {
-       stop("For paired t-test, x and y must have the same length.")
-    }
+    Y1 <- as.numeric(na.omit(Y1)); Y2 <- as.numeric(na.omit(Y2))
   }
-  
   levs <- c(x_label, y_label)
 
-
-
-
-
-  use_weak_info <- FALSE
+  # --- 2. Prior Setup ---
   if (is.null(prior)) prior <- prior_uniform()
-  
-  if (inherits(prior, "rtmb_prior")) {
-    if (prior$type == "weak") {
-      use_weak_info <- TRUE
-      if (is.null(y_range)) {
-        stop("Specifying 'y_range' is required when using weakly informative priors (prior_weak()).")
-      }
-      sd_ratio <- if (!is.null(prior$sd_ratio)) prior$sd_ratio else 0.5
-    } else {
-      mu_sd <- prior$mu_sd
-      sigma_rate <- prior$sigma_rate
-    }
-  } else {
-    # Backwards compatibility for manual list
-    mu_sd <- if (!is.null(prior$mean_sd)) prior$mean_sd else NULL
-    sigma_rate <- if (!is.null(prior$sd_rate)) prior$sd_rate else NULL
+  prior_type <- prior$type
+  is_jzs <- prior_type == "jzs"
+  is_weak <- prior_type == "weak"
+  use_delta_param <- is_jzs || is_weak
+  if (is_jzs) r <- prior$r
+
+  # --- 3. AST Construction ---
+  setup_ast <- quote({})
+  if (is_weak) {
+    if (is.null(y_range)) stop("y_range is required for prior_weak().")
+    setup_ast <- bquote({
+      half_d_y <- .(diff(y_range) / 2)
+      base_scale <- half_d_y * .(prior$sd_ratio)
+      mu_prior_sd <- half_d_y
+      mid_y <- .(if(paired) 0 else mean(y_range))
+      sigma_rate_weak <- 1.0 / base_scale
+    })
   }
 
   if (paired) {
-    diffs <- Y1 - Y2
-    dat <- list(diffs = diffs, r = r)
-    tmp_env <- list2env(dat, parent = environment())
-    
-    if (use_weak_info) {
-      setup_exprs <- list()
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(sd_ratio))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mu_prior_sd <- half_d_y)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0) # Diff is expected near 0
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_weak <- 1.0 / base_scale)
-      setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-      eval(setup_ast, tmp_env)
+    dat <- list(diffs = Y1 - Y2, r = r)
+    param_ast <- if (use_delta_param) {
+      quote({ sd_diff = Dim(1, lower = 0); delta = Dim(1) })
     } else {
-      setup_ast <- NULL
+      quote({ sd_diff = Dim(1, lower = 0); diff = Dim(1) })
     }
-    
-    param_ast <- quote({
-      mu_diff = Dim(1)
-      sd_diff = Dim(1, lower = 0)
-    })
-    
-    tran_ast <- quote({
-      delta <- mu_diff / sd_diff
-    })
-    
-    model_exprs <- list()
-    model_exprs[[length(model_exprs) + 1]] <- quote(diffs ~ normal(mu_diff, sd_diff))
-    model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ cauchy(0, r))
-    if (use_weak_info) {
-      model_exprs[[length(model_exprs) + 1]] <- quote(mu_diff ~ normal(mid_y, mu_prior_sd))
-      model_exprs[[length(model_exprs) + 1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
+    tran_ast <- if (use_delta_param) {
+      quote({ diff <- delta * sd_diff; report(diff) })
     } else {
-      if (!is.null(mu_sd)) {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(mu_diff ~ normal(0, .(mu_sd)))
-      }
-      if (!is.null(sigma_rate)) {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(sd_diff ~ exponential(.(sigma_rate)))
-      }
+      quote({ delta <- diff / sd_diff; report(delta) })
     }
-    model_ast <- as.call(c(list(as.name("{")), model_exprs))
-    view_vars <- c("delta", "mu_diff", "sd_diff")
-    
+    model_body <- list(quote(diffs ~ normal(diff, sd_diff)))
+    if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
+    if (is_weak) {
+      model_body[[length(model_body)+1]] <- quote(diff ~ normal(mid_y, mu_prior_sd))
+      model_body[[length(model_body)+1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
+    }
+    view_vars <- c("diff", "delta", "sd_diff")
+    df_pars <- if (use_delta_param) "delta" else "diff"
   } else {
     dat <- list(Y1 = Y1, Y2 = Y2, r = r)
-    tmp_env <- list2env(dat, parent = environment())
-
-    # --- Setup AST ---
-    if (use_weak_info) {
-      setup_exprs <- list()
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(sd_ratio))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mu_prior_sd <- half_d_y)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_weak <- 1.0 / base_scale)
-
-      setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-      eval(setup_ast, tmp_env)
+    param_ast <- if (use_delta_param) {
+      quote({ mean = Dim(1); sd = Dim(1, lower = 0); delta = Dim(1) })
     } else {
-      setup_ast <- NULL
+      quote({ mean = Dim(1); sd = Dim(1, lower = 0); diff = Dim(1) })
     }
-
-    # --- Parameters AST ---
-    param_ast <- quote({
-      mean = Dim(1)
-      sd = Dim(1, lower = 0)
-      delta = Dim(1)
-    })
-
-    # --- Transform AST ---
-    tran_ast <- quote({
-      diff <- delta * sd
-      mean0 <- mean - diff / 2
-      mean1 <- mean + diff / 2
-    })
-
-    # --- Model AST ---
-    model_exprs <- list()
-    model_exprs[[length(model_exprs) + 1]] <- quote(Y1 ~ normal(mean0, sd))
-    model_exprs[[length(model_exprs) + 1]] <- quote(Y2 ~ normal(mean1, sd))
-    model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ cauchy(0, r))
-
-    if (use_weak_info) {
-      model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, mu_prior_sd))
-      model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate_weak))
+    tran_ast <- if (use_delta_param) {
+      quote({ diff <- delta * sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(diff) })
     } else {
-      if (!is.null(mu_sd)) {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(mu_sd)))
-      }
-      if (!is.null(sigma_rate)) {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(sigma_rate)))
-      }
+      quote({ delta <- diff / sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(delta) })
     }
-    model_ast <- as.call(c(list(as.name("{")), model_exprs))
-    view_vars <- c("delta", "mean", "sd")
+    model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
+    if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
+    if (is_weak) {
+      model_body[[length(model_body)+1]] <- quote(mean ~ normal(mid_y, mu_prior_sd))
+      model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, mu_prior_sd))
+      model_body[[length(model_body)+1]] <- quote(sd ~ exponential(sigma_rate_weak))
+    }
+    view_vars <- c("diff", "delta", "mean", "sd")
+    df_pars <- if (use_delta_param) c("mean", "delta") else c("mean", "diff")
   }
 
-  # --- Construction of model object ---
-  code_args <- list(parameters = param_ast, transform = tran_ast, model = model_ast)
-  if (!is.null(setup_ast)) {
-    code_args <- c(list(setup = setup_ast), code_args)
-  }
+  model_ast <- as.call(c(list(as.name("{")), model_body))
+  code_obj <- eval(substitute(
+    rtmb_code(setup = S, parameters = P, transform = T, model = M),
+    list(S = setup_ast, P = param_ast, T = tran_ast, M = model_ast)
+  ))
 
-  code_obj <- eval(as.call(c(list(as.name("rtmb_code")), code_args)))
-
+  tmp_env <- list2env(dat)
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-
-  obj <- rtmb_model(
-    data = ordered_data,
-    code = code_obj,
-    par_names = list(),
-    init = init,
-    view = view_vars
-  )
-
-  if (!is.null(null)) {
-    obj <- obj$null_model(target = null)
-  }
+  obj <- rtmb_model(data = ordered_data, code = code_obj, view = view_vars)
 
   obj$type <- "ttest"
-  obj$extra <- list(Y1 = Y1, Y2 = Y2, var.equal = var.equal, paired = paired, levs = levs)
-
-
+  obj$extra$df_pars <- df_pars
+  obj$extra$levs <- levs
+  if (!is.null(null)) obj <- obj$null_model(target = null)
 
   return(obj)
 }
@@ -3705,14 +3660,14 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   resp_names <- character(n_eq)
   X_list <- list()
   X_colnames <- list()
-  
+
   # 1. Parse Formulas and Prepare Data
   for (i in 1:n_eq) {
     f <- formula[[i]]
     mf <- model.frame(f, data = data)
     y_name <- as.character(f[[2]])
     resp_names[i] <- y_name
-    
+
     Y_val <- as.numeric(model.response(mf))
     data_list[[paste0("Y_", i)]] <- Y_val
     X_mat <- model.matrix(f, data = data)
@@ -3746,12 +3701,12 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   # 2. Setup AST Block
   setup_exprs <- list()
   setup_exprs[[1]] <- quote(N <- N)
-  
+
   for (i in 1:n_eq) {
     f_type <- family_list[[i]]
     p_name <- paste0("b", i)
     X_name <- as.name(paste0("X_", i))
-    
+
     has_b_prior <- prior_type == "weak" || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)
     has_sigma_prior <- f_type == "gaussian" && (prior_type == "weak" || !is.null(prior$sigma_rate))
 
@@ -3761,7 +3716,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
       b_prior_sd_name <- as.name(paste0(p_name, "_prior_sd"))
       b_prior_mean_name <- as.name(paste0(p_name, "_prior_mean"))
       intercept_prior_sd_name <- as.name(paste0("intercept_prior_sd_", i))
-      
+
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_sd_name) <- apply(.(X_name), 2, sd))
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_sd_name)[.(X_sd_name) == 0] <- 1)
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_mean_name) <- rep(0, ncol(.(X_name))))
@@ -3769,7 +3724,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
       if (prior_type == "weak") {
         X_c_name <- as.name(paste0("X_c_", i))
         mid_y_name <- as.name(paste0("mid_y_", i))
-        
+
         setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name) <- apply(.(X_name), 2, mean))
         has_intercept <- "Intercept" %in% X_colnames[[i]]
         if (has_intercept) {
@@ -3817,7 +3772,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
          setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name)[.(idx)] <- .(intercept_prior_sd_name))
       }
     }
-    
+
     if (has_sigma_prior && prior_type != "weak") {
        sigma_rate_val <- if (!is.null(prior$sigma_rate)) prior$sigma_rate else 1
        sigma_rate_name <- as.name(paste0("sigma", i, "_rate"))
@@ -3826,7 +3781,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   }
 
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-  
+
   tmp_env <- list2env(data_list)
   eval(setup_ast, tmp_env)
 
@@ -3835,12 +3790,12 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   tran_exprs <- list()
   model_exprs <- list()
   generate_exprs <- list()
-  
+
   v_names <- list()
   init_list <- list()
   b_vars <- c()
   s_vars <- c()
-  
+
   for (i in 1:n_eq) {
     y_name <- resp_names[i]
     p_name <- paste0("b", i)
@@ -3848,31 +3803,31 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     s_name <- paste0("sigma", i)
     f_type <- family_list[[i]]
     P_dim <- ncol(X_list[[i]])
-    
+
     has_intercept <- "Intercept" %in% X_colnames[[i]]
     is_centered <- (prior_type == "weak" && has_intercept)
     target_p_name <- if (is_centered) p_c_name else p_name
-    
+
     param_exprs[[length(param_exprs) + 1]] <- bquote(.(as.name(target_p_name)) <- Dim(.(P_dim)))
 
     if (is_centered) {
        v_names[[p_c_name]] <- X_colnames[[i]]
        v_names[[p_name]] <- X_colnames[[i]]
        init_list[[p_c_name]] <- rep(0, P_dim)
-       
+
        idx <- which(X_colnames[[i]] == "Intercept")
        X_mean_name <- as.name(paste0("X_mean_", i))
-       
+
        tran_exprs[[length(tran_exprs) + 1]] <- bquote(.(as.name(p_name)) <- .(as.name(p_c_name)))
        tran_exprs[[length(tran_exprs) + 1]] <- bquote(.(as.name(p_name))[.(idx)] <- .(as.name(p_c_name))[.(idx)] - sum(.(X_mean_name) * .(as.name(p_c_name))))
-       
+
        lin_pred_expr <- bquote(.(as.name(paste0("X_c_", i))) %*% .(as.name(p_c_name)))
     } else {
        v_names[[p_name]] <- X_colnames[[i]]
        init_list[[p_name]] <- rep(0, P_dim)
        lin_pred_expr <- bquote(.(as.name(paste0("X_", i))) %*% .(as.name(p_name)))
     }
-    
+
     if (f_type == "gaussian") {
       param_exprs[[length(param_exprs) + 1]] <- bquote(.(as.name(s_name)) <- Dim(lower = 0))
       init_list[[s_name]] <- 1.0
@@ -3889,7 +3844,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
       b_prior_mean_name <- as.name(paste0(p_name, "_prior_mean"))
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(target_p_name)) ~ normal(.(b_prior_mean_name), .(b_prior_sd_name)))
     }
-    
+
     if (f_type == "gaussian") {
       has_sigma_prior <- prior_type == "weak" || !is.null(prior$sigma_rate)
       if (has_sigma_prior) {
@@ -3897,7 +3852,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
         model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(s_name)) ~ exponential(.(rate_name)))
       }
     }
-    
+
     b_vars <- c(b_vars, p_name)
     if (f_type == "gaussian") s_vars <- c(s_vars, s_name)
   }
@@ -3913,7 +3868,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     for (m in mediators) {
       idx_m_resp <- which(resp_names == m)
       idx_m_pred <- which(sapply(X_colnames, function(x) m %in% x))
-      
+
       if (length(idx_m_resp) > 0 && length(idx_m_pred) > 0) {
         pos_iv <- which(X_colnames[[idx_m_resp]] == iv)
         if (length(pos_iv) > 0) {
@@ -3976,18 +3931,16 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   mdl_code$env <- tmp_env
 
   view_order <- c(b_vars, names(generate_exprs), s_vars)
-  
+
   # Ensure env is correctly formatted for rtmb_model
   # Using the evaluated objects directly from tmp_env
   mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, view = view_order, silent = FALSE)
   mdl$formula <- formula
   mdl$raw_data <- data
-  
+
   mdl$type <- "mediation"
-  mdl$extra <- list(df_map = df_map)
+  mdl$extra$df_pars <- if (prior_type == "weak") paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
 
-
-  
   return(mdl)
 }
 

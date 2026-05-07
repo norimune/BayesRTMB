@@ -22,6 +22,10 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item{\code{cluster}}{Character string specifying the cluster variable name, if any.}
 
 \item{\code{bootstrap_results}}{A matrix containing bootstrap samples, if applicable.}
+
+\item{\code{test_results}}{List of additional test results (e.g., chisq.test).}
+
+\item{\code{view}}{Character vector of parameter names to prioritize in summary.}
 }
 \if{html}{\out{</div>}}
 }
@@ -57,7 +61,8 @@ Create a new `Classic_Fit` object.
   vcov = NULL,
   se_method = "wald",
   cluster = NULL,
-  test_results = list()
+  test_results = list(),
+  view = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -75,6 +80,8 @@ Create a new `Classic_Fit` object.
 \item{\code{cluster}}{Character; cluster variable name.}
 
 \item{\code{test_results}}{List of additional test results (e.g., chisq.test).}
+
+\item{\code{view}}{Character vector of parameter names to prioritize in summary.}
 }
 \if{html}{\out{</div>}}
 }
@@ -201,7 +208,7 @@ Display a summary of the estimation results.
 \if{html}{\out{<a id="method-Classic_Fit-anova"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-anova}{}}}
 \subsection{Method \code{anova()}}{
-Perform ANOVA (Wald F-tests) on the fitted model.
+Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$anova(method = c("reml", "ls"), type = 3)}\if{html}{\out{</div>}}
 }

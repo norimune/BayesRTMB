@@ -20,7 +20,9 @@ rtmb_lmer(
   contrasts = "treatment",
   resid_corr = NULL,
   resid_time = NULL,
-  resid_group = NULL
+  resid_group = NULL,
+  within = NULL,
+  ...
 )
 }
 \arguments{
@@ -55,6 +57,13 @@ rtmb_lmer(
 \item{resid_time}{Variable name for time points in residual correlation.}
 
 \item{resid_group}{Variable name for grouping in residual correlation.}
+
+\item{within}{Optional list for wide-to-long conversion. For repeated measures data in wide format,
+specify the factor names and their levels, e.g., \code{list(Time = 4)} or \code{list(A = 2, B = 3)}.
+The total number of levels must match the number of columns in \code{cbind()} on the LHS.
+If omitted and the LHS is \code{cbind()}, the within-factor name is inferred from RHS variables not present in the data.}
+
+\item{...}{Additional arguments passed to \code{rtmb_model()}.}
 }
 \value{
 RTMB_Model object

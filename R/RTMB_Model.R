@@ -223,7 +223,7 @@ RTMB_Model <- R6::R6Class(
     #' @param max_df Numeric; maximum allowed degrees of freedom. Default is NULL.
     #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
     calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL) {
-      cat("Estimating Satterthwaite degrees of freedom...\n")
+      #cat("Estimating Satterthwaite degrees of freedom...\n")
 
       par <- if (!is.null(opt_par)) opt_par else ad_obj$par
       P <- length(par)
@@ -320,29 +320,29 @@ RTMB_Model <- R6::R6Class(
     #' @return A numeric vector of estimated degrees of freedom for the fixed effects.
     calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx) {
       cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
-      
+
       P <- length(opt_par)
       n_beta <- length(beta_idx)
-      
+
       # Helper to get diagonal of inverse joint Hessian for beta
       get_beta_vars <- function(theta) {
         p_full <- ad_obj$env$last.par.best
         idx_fixed <- ad_obj$env$lfixed()
         p_full[idx_fixed] <- theta
-        
+
         H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), error = function(e) NULL)
         if (is.null(H)) return(rep(Inf, length(beta_idx)))
-        
+
         # Convert to dense matrix for solve to ensure diagonal extraction works reliably
         V_full <- tryCatch(solve(as.matrix(H)), error = function(e) NULL)
         if (is.null(V_full)) return(rep(Inf, length(beta_idx)))
-        
+
         diag(V_full)[beta_idx]
       }
-      
+
       V_beta_diag_0 <- tryCatch(get_beta_vars(opt_par), error = function(e) return(rep(Inf, n_beta)))
       if (all(is.infinite(V_beta_diag_0))) return(V_beta_diag_0)
-      
+
       # Covariance of variance components (theta)
       simple_jacobian <- function(f, x, h = 1e-4) {
         p <- length(x)
@@ -357,31 +357,31 @@ RTMB_Model <- R6::R6Class(
         }
         return(res)
       }
-      
+
       H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), error = function(e) NULL)
       if (is.null(H_theta)) return(rep(Inf, n_beta))
-      
+
       V_theta <- tryCatch(solve(H_theta), error = function(e) {
         tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
       })
       if (is.null(V_theta)) return(rep(Inf, n_beta))
-      
+
       # Gradient of V_beta_diag with respect to theta
       eps <- 1e-5 * pmax(abs(opt_par), 0.1)
       grad_V_beta_diag <- matrix(0, nrow = P, ncol = n_beta)
-      
+
       for (k in 1:P) {
         p_plus <- p_minus <- opt_par
         p_plus[k] <- opt_par[k] + eps[k]
         p_minus[k] <- opt_par[k] - eps[k]
-        
+
         v_plus <- tryCatch(get_beta_vars(p_plus), error = function(e) NULL)
         v_minus <- tryCatch(get_beta_vars(p_minus), error = function(e) NULL)
-        
+
         if (is.null(v_plus) || is.null(v_minus)) next
         grad_V_beta_diag[k, ] <- (v_plus - v_minus) / (2 * eps[k])
       }
-      
+
       dfs <- rep(Inf, n_beta)
       for (i in 1:n_beta) {
         grad_vi <- grad_V_beta_diag[, i]
@@ -390,7 +390,7 @@ RTMB_Model <- R6::R6Class(
           dfs[i] <- 2 * (V_beta_diag_0[i]^2) / var_vi
         }
       }
-      
+
       dfs <- pmax(dfs, 2.1)
       return(list(df = dfs, se = sqrt(V_beta_diag_0)))
     },
@@ -424,10 +424,20 @@ RTMB_Model <- R6::R6Class(
 
       f_ad <- function(y_unc_list) {
         para <- to_constrained(y_unc_list, par_list_local)
+
         if (!is.null(self$transform)) {
           tran_res <- self$transform(data_local, para)
           para <- c(para, tran_res)
+
+          # transform ADREPORT
+          if (length(tran_res) > 0) {
+            for (n in names(tran_res)) {
+              assign(n, tran_res[[n]])
+              eval(substitute(RTMB::ADREPORT(V), list(V = as.name(n))))
+            }
+          }
         }
+
         lp <- log_prob_local(data_local, para)
 
         # If include_generate is TRUE, call generate and ADREPORT results
@@ -486,7 +496,7 @@ RTMB_Model <- R6::R6Class(
     #' @param se_sampling Logical; Alias for `ci_method = "sampling"` (for backward compatibility).
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
     #' @param seed Integer; random seed for sampling.
-    #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary. 
+    #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
     #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
     #' @param include_generate Logical; whether to include and ADREPORT generated quantities in the AD object for standard error estimation. Default is FALSE.
     #' @return A fitted `MAP_Fit` object.
@@ -1195,17 +1205,35 @@ RTMB_Model <- R6::R6Class(
             up_out <- apply(mat_all, 2, quantile, probs=0.975, na.rm=TRUE)
           }
         } else {
-          # Use Delta Method (Jacobian J calculated above)
-          Cov_u_derived <- Cov_u
-          if (!all(dim(Cov_u_derived) == c(L_u, L_u))) {
-            Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
-          }
-          diag(Cov_u_derived) <- pmax(diag(Cov_u_derived), unc_se_vec^2)
-          Cov_u_derived[is.na(Cov_u_derived)] <- 0
+          smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
 
-          se_out <- numeric(L_out)
-          for (j in 1:L_out) {
-            se_out[j] <- sqrt(sum((J[j, ] %*% Cov_u_derived) * J[j, ], na.rm = TRUE))
+          se_out <- rep(NA_real_, L_out)
+
+          if (!is.null(smry_rep_all) && nrow(smry_rep_all) > 0) {
+            # build_derived_df の後半で作る names_vec と同じルールで現在のフラット名を作成
+            current_flat_names <- c()
+            for (name in names(base_out)) {
+              val <- base_out[[name]]
+              d_val <- if (is.null(dim(val))) length(val) else dim(val)
+              current_flat_names <- c(current_flat_names, generate_flat_names(name, d_val, self$par_names[[name]]))
+            }
+            # sdreportの結果と照合
+            m_idx <- match(current_flat_names, rownames(smry_rep_all))
+            valid_m <- !is.na(m_idx)
+            if (any(valid_m)) {
+              se_out[valid_m] <- smry_rep_all$`Std. Error`[m_idx[valid_m]]
+            }
+          }
+
+          # 万が一 sdreport に含まれていない場合は従来のデルタ法でバックアップ
+          missing_se <- is.na(se_out)
+          if (any(missing_se)) {
+            Cov_u_derived <- Cov_u
+            if (!all(dim(Cov_u_derived) == c(L_u, L_u))) Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
+            diag(Cov_u_derived) <- pmax(diag(Cov_u_derived), unc_se_vec^2)
+            for (j in which(missing_se)) {
+              se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u_derived) * J[j, ])))
+            }
           }
 
           z_95 <- qnorm(0.975)
@@ -1311,49 +1339,58 @@ RTMB_Model <- R6::R6Class(
     # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with automatic Satterthwaite degrees of freedom.
     #' @param df "auto" for Satterthwaite, numeric/Inf for specific degrees of freedom.
-    #' @param df_vars Character vector of variables to estimate degrees of freedom for (or "all" / "none").
+    #' @param df_pars Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none").
     #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
+    #' @param view Character vector of parameters to prioritize in the summary output.
+    #' @param views Alias for \code{view}.
     #' @return A `Classic_Fit` object.
-    classic = function(df = "auto", df_vars = "auto", REML = TRUE) {
-      test_results <- list()
-      if (!is.null(self$data$prior$type) && self$data$prior$type != "uniform") {
-        warning("Prior distributions are specified. The results are based on Regularized Maximum Likelihood and should be interpreted with caution.", call. = FALSE)
+    classic = function(df = "auto", df_pars = "auto", REML = TRUE, view = NULL, views = NULL) {
+      if (is.null(view) && !is.null(views)) view <- views
+
+      # --- 1. Determine target variables for DF calculation ---
+      if (identical(df_pars, "auto")) {
+        if (!is.null(self$extra$df_pars)) {
+          target_vars <- self$extra$df_pars
+        } else {
+          # Default patterns for fixed effects
+          fix_vars_default <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
+          target_vars <- names(self$par_list)[sapply(names(self$par_list), function(n) {
+            p_info <- self$par_list[[n]]
+            is_fixed_name <- any(sapply(fix_vars_default, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), n)))
+            is_unbounded <- identical(p_info$bounds, "none")
+
+            # Target if it's a known fixed name OR if it has no bounds (and is not already marked as random)
+            (is_fixed_name || is_unbounded) && !isTRUE(p_info$random)
+          })]
+        }
+      } else if (identical(df_pars, "none")) {
+        target_vars <- character(0)
+      } else if (identical(df_pars, "all")) {
+        target_vars <- names(self$par_list)
+      } else {
+        target_vars <- df_pars
       }
 
-      # Specialized Analytic Paths for simple models (keeping for user convenience and precision)
-      if (!is.null(self$type)) {
-        if (self$type == "table") {
-          tab <- self$extra$tab
-          test_results$chisq <- stats::chisq.test(tab, correct = isTRUE(self$extra$correct))
-          test_results$fisher <- try(stats::fisher.test(tab), silent = TRUE)
-        } else if (self$type == "corr") {
-          # The generic pipeline will work, but we can add the analytic correlation matrix to test_results
-        } else if (self$type == "ttest") {
-          # Generic pipeline works well for delta/diff
-        }
-      }
+      # --- 2. Variable Classification for REML/ML Pipeline ---
+      # Standard fixed effect patterns
+      fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
+      # Standard variance/shape component patterns (never random)
+      var_patterns <- c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr",
+                        "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau")
 
       modified_par_list <- self$par_list
-      
-      # --- Universal REML Pipeline: Variable Classification ---
-      # 1. Standard Fixed Effects (to be integrated out if REML=TRUE)
-      fix_vars <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu")
-      # 2. Standard Variance/Shape Components (to be optimized, never random)
-      var_params <- c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr", 
-                      "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau")
-      
-      # Mark variables as random or fixed based on REML/ML mode
       for (name in names(modified_par_list)) {
-        is_fix <- any(sapply(fix_vars, function(v) grepl(paste0("^", v, "($|\\[|\\.)"), name)))
-        is_var <- any(sapply(var_params, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
+        # Check if the parameter is a known fixed effect or explicitly targeted for DF
+        is_fix_pattern <- any(sapply(fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
+        is_target <- name %in% target_vars
+        is_var <- any(sapply(var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
         is_ran_original <- isTRUE(modified_par_list[[name]]$random)
-        
+
         if (REML) {
-          # REML: Integrate out both original random effects AND fixed effects
-          if (is_fix || is_ran_original) {
+          # REML: Integrate out original random effects AND fixed effects
+          if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
             modified_par_list[[name]]$random <- TRUE
           } else {
-            # Variance components should stay fixed (optimized)
             modified_par_list[[name]]$random <- FALSE
           }
         } else {
@@ -1365,253 +1402,301 @@ RTMB_Model <- R6::R6Class(
           }
         }
       }
-      
-      # Determine variables for Satterthwaite DF calculation (target_vars)
-      if (is.character(df_vars)) {
-        if (length(df_vars) == 1 && df_vars == "auto") {
-          # Default: compute DF for fixed effects
-          target_vars <- names(modified_par_list)[sapply(names(modified_par_list), function(n) {
-             any(sapply(fix_vars, function(v) grepl(paste0("^", v, "($|\\[|\\.)"), n)))
-          })]
-        } else if (length(df_vars) == 1 && df_vars == "none") {
-          target_vars <- character(0)
-        } else if (length(df_vars) == 1 && df_vars == "all") {
-          target_vars <- names(modified_par_list)
-        } else {
-          target_vars <- df_vars
-        }
-      } else {
-        target_vars <- df_vars
+
+      # --- 3. Additional test results and diagnostics ---
+      test_results <- list()
+      if (!is.null(self$data$prior$type) && self$data$prior$type != "uniform") {
+        warning("Prior distributions are specified. The results are based on Regularized Maximum Likelihood and should be interpreted with caution.", call. = FALSE)
       }
-      
+
+      if (!is.null(self$type)) {
+        if (self$type == "table") {
+          tab <- self$extra$tab
+          test_results$chisq <- stats::chisq.test(tab, correct = isTRUE(self$extra$correct))
+          test_results$fisher <- try(stats::fisher.test(tab), silent = TRUE)
+        }
+      }
+
       original_par_list <- self$par_list
       self$par_list <- modified_par_list
       on.exit({ self$par_list <- original_par_list }, add = TRUE)
-      
+
       laplace_flag <- REML || any(sapply(modified_par_list, function(x) isTRUE(x$random)))
-      
-      ad_setup <- tryCatch(self$build_ad_obj(laplace = laplace_flag, jacobian_target = "none", include_generate = TRUE), 
+
+      ad_setup <- tryCatch(self$build_ad_obj(laplace = laplace_flag, jacobian_target = "none", include_generate = TRUE),
                            error = function(e) stop("MakeADFun failed: ", e$message))
       ad_obj <- ad_setup$ad_obj
-      
+
       if (length(ad_obj$par) > 0) {
-        opt <- tryCatch(suppressWarnings(nlminb(start = ad_obj$par, objective = ad_obj$fn, gradient = ad_obj$gr)), 
+        opt <- tryCatch(suppressWarnings(nlminb(start = ad_obj$par, objective = ad_obj$fn, gradient = ad_obj$gr)),
                         error = function(e) stop("Optimization failed: ", e$message))
       } else {
         opt <- list(par = numeric(0), objective = ad_obj$fn(numeric(0)), convergence = 0)
       }
-      
-      L_u_total <- length(unlist(ad_obj$env$parList(), use.names = FALSE))
+
+      L_u_total <- length(ad_obj$env$last.par)
+      est_dfs_all <- rep(if(is.numeric(df)) df[1] else Inf, L_u_total)
+
       if (identical(df, "auto") && length(target_vars) > 0) {
-         idx_fix_active <- ad_obj$env$lfixed()
-         est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
-         
-         # For REML, we also need DFs for fixed effects which are in 'random'
-         if (REML && length(ad_obj$env$random) > 0) {
-            # Identify beta indices (fixed effects treated as random)
-            # They are in target_vars and also in ad_obj$env$random
-            full_par_names <- unlist(lapply(names(self$par_list), function(n) {
-               rep(n, self$par_list[[n]]$unc_length)
-            }))
-            # We want indices in ad_obj$env$random that correspond to fixed effects
-            # ad_obj$env$random are indices in the full unconstrained vector
-            beta_idx_in_full <- which(full_par_names %in% target_vars & (1:L_u_total %in% ad_obj$env$random))
-            
-            if (length(beta_idx_in_full) > 0) {
-               reml_dfs <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, beta_idx_in_full)
-               est_dfs_all[beta_idx_in_full] <- reml_dfs
-            }
-         }
-         ad_obj$fn(opt$par)
-      } else {
-          est_dfs_all <- rep(if(is.numeric(df)) df[1] else Inf, L_u_total)
-      }
-      
-       sd_rep <- tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = laplace_flag), error = function(e) stop("sdreport failed: ", e$message))
-       
-       smry_fix <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "fixed"))), error = function(e) data.frame())
-       smry_ran <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "random"))), error = function(e) data.frame())
-       smry_rep <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "report"))), error = function(e) data.frame())
-       
-       # Extract Full Covariance Matrix
-       # This is crucial for mixed models and REML to allow post-hoc transformations
-       V_joint <- NULL
-       if (laplace_flag && !is.null(sd_rep$jointPrecision)) {
-          V_joint <- tryCatch(as.matrix(solve(sd_rep$jointPrecision)), error = function(e) NULL)
-       } else if (!is.null(sd_rep$cov.fixed)) {
-          V_joint <- sd_rep$cov.fixed
-       }
-       
-       # Assign df
-       idx_fix <- ad_obj$env$lfixed()
-       idx_ran <- ad_obj$env$random
-       
-       if (nrow(smry_fix) > 0 && length(idx_fix) == nrow(smry_fix)) smry_fix$df <- est_dfs_all[idx_fix] else if (nrow(smry_fix) > 0) smry_fix$df <- Inf
-       if (nrow(smry_ran) > 0 && length(idx_ran) == nrow(smry_ran)) smry_ran$df <- est_dfs_all[idx_ran] else if (nrow(smry_ran) > 0) smry_ran$df <- Inf
-       if (nrow(smry_rep) > 0) smry_rep$df <- Inf
-       
-       df_combined <- rbind(smry_fix, smry_ran, smry_rep)
-       
-       # --- Improve Naming for Vector Parameters (e.g. r_re[1]) ---
-       # 1. Get base names from sdreport components
-       tmb_names <- c(names(sd_rep$par.fixed), names(sd_rep$par.random))
-       
-       # 2. Normalize Intercept and add indices to vector parameters
-       tmb_names[tmb_names == "(Intercept)"] <- "Intercept"
-       for (n in unique(tmb_names)) {
-         idx <- which(tmb_names == n)
-         if (length(idx) > 1) tmb_names[idx] <- paste0(n, "[", 1:length(idx), "]")
-       }
-       
-       # 3. Apply standardized names to table and ensure matrix matches exactly
-       n_par_main <- length(tmb_names)
-       rownames(df_combined)[1:n_par_main] <- tmb_names
-       
-       # 4. Filter out true random effects (BLUPs like r_re) if laplace is used
-       # This makes the output consistent with optimize()
-       if (laplace_flag) {
-          is_blup <- grepl("^(r_re|u|z|lambda|tau|p|prob)($|\\[)", rownames(df_combined))
-          df_combined <- df_combined[!is_blup, , drop = FALSE]
-       }
-       
-       V_final <- NULL
-       if (!is.null(V_joint)) {
-          # Ensure V_joint has names and matches the first n_par_main rows of df_combined
-          if (nrow(V_joint) == n_par_main) {
-             rownames(V_joint) <- colnames(V_joint) <- tmb_names
-             V_final <- V_joint
+        # (A) ML等で最適化対象側にいる固定効果のDF
+        idx_fix_active <- ad_obj$env$lfixed()
+        est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
+
+        # (B) REML等でランダム効果側に積分消去された固定効果のDF
+        if (length(ad_obj$env$random) > 0) {
+          full_par_names <- names(ad_obj$env$last.par)
+          target_full_idx <- which(full_par_names %in% target_vars)
+
+          # ランダム効果ベクトル内の相対インデックスに変換
+          idx_ran <- ad_obj$env$random
+          target_ran_idx <- match(target_full_idx, idx_ran)
+
+          # 最適化対象（NA）を除外
+          valid_mask <- !is.na(target_ran_idx)
+          target_ran_idx <- target_ran_idx[valid_mask]
+          valid_full_idx <- target_full_idx[valid_mask]
+
+          if (length(target_ran_idx) > 0) {
+            reml_dfs <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx)
+            est_dfs_all[valid_full_idx] <- if (is.list(reml_dfs)) reml_dfs$df else reml_dfs
           }
-       }
-      
-      # Map names correctly if possible
-      new_names <- rownames(df_combined)
+        }
+        ad_obj$fn(opt$par)
+      }
+
+      # =====================================================================
+      # 1. SDReportの実行と基本サマリーの抽出
+      # =====================================================================
+
+      sd_rep <- tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = laplace_flag), error = function(e) stop("sdreport failed: ", e$message))
+
+      smry_fix <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "fixed"))), error = function(e) data.frame())
+      smry_ran <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "random"))), error = function(e) data.frame())
+      smry_rep <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "report"))), error = function(e) data.frame())
+
+      idx_fix <- ad_obj$env$lfixed()
+      idx_ran <- ad_obj$env$random
+      if (nrow(smry_fix) > 0) smry_fix$df <- if (length(idx_fix) == nrow(smry_fix)) est_dfs_all[idx_fix] else Inf
+      if (nrow(smry_ran) > 0) smry_ran$df <- if (length(idx_ran) == nrow(smry_ran)) est_dfs_all[idx_ran] else Inf
+      if (nrow(smry_rep) > 0) {
+        smry_rep$df <- Inf
+
+        if (identical(df, "auto") && exists("est_dfs_all")) {
+          tran_list <- if(!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error=function(e) NULL) else NULL
+          gen_list <- if(!is.null(self$generate)) tryCatch(self$generate(self$data, c(con_est_list, tran_list)), error=function(e) NULL) else NULL
+          all_derived <- c(tran_list, gen_list)
+
+          if (length(all_derived) > 0) {
+            df_calc <- build_derived_df(function(d, p) c(tran_list, gen_list), all_derived, is_generate = TRUE)
+
+            if (!is.null(df_calc)) {
+              m_idx <- match(rownames(smry_rep), rownames(df_calc))
+              valid_m <- !is.na(m_idx)
+              smry_rep$df[valid_m] <- df_calc$DF[m_idx[valid_m]]
+            }
+          }
+        }
+      }
+
+
+      V_joint <- NULL
+      if (laplace_flag && !is.null(sd_rep$jointPrecision)) {
+        V_joint <- tryCatch(as.matrix(solve(sd_rep$jointPrecision)), error = function(e) NULL)
+      } else if (!is.null(sd_rep$cov.fixed)) {
+        V_joint <- sd_rep$cov.fixed
+      }
+
+      # =====================================================================
+      # 2. フィルタリングと結合
+      # =====================================================================
+      par_names_all <- names(self$par_list)
+      if (nrow(smry_rep) > 0) {
+        rep_names_base <- gsub("\\.[0-9]+$", "", rownames(smry_rep))
+        keep_rep <- rep(TRUE, nrow(smry_rep))
+
+        for (name in par_names_all) {
+          p_info <- self$par_list[[name]]
+          is_constrained <- p_info$unc_length > 0 && p_info$unc_length != p_info$length
+
+          if (name %in% rep_names_base) {
+            if (is_constrained) {
+              # For constrained parameters, keep the reported (constrained) version and remove from fixed/random
+              if (nrow(smry_fix) > 0) smry_fix <- smry_fix[gsub("\\.[0-9]+$", "", rownames(smry_fix)) != name, , drop = FALSE]
+              if (nrow(smry_ran) > 0) smry_ran <- smry_ran[gsub("\\.[0-9]+$", "", rownames(smry_ran)) != name, , drop = FALSE]
+            } else {
+              # For unconstrained parameters, keep the original parameter (which has DF) and remove from report
+              keep_rep[rep_names_base == name] <- FALSE
+            }
+          }
+        }
+        smry_rep <- smry_rep[keep_rep, , drop = FALSE]
+      }
+
+      df_combined <- rbind(smry_fix, smry_ran, smry_rep)
+
+      if (laplace_flag) {
+        is_blup <- grepl("^(r_re|u)($|\\[|\\.)", rownames(df_combined))
+        df_combined <- df_combined[!is_blup, , drop = FALSE]
+      }
+
+      # =====================================================================
+      # 3. 名前の正規化
+      # =====================================================================
+      base_names <- gsub("\\.[0-9]+$", "", rownames(df_combined))
+      base_names[base_names == "(Intercept)"] <- "Intercept"
+
+      for (n in unique(base_names)) {
+        idx <- which(base_names == n)
+        if (length(idx) > 1) base_names[idx] <- paste0(n, "[", seq_along(idx), "]")
+      }
+
       if (!is.null(self$par_names)) {
         for (p in names(self$par_names)) {
-          idx <- which(grepl(paste0("^", p, "($|\\[|\\.)"), new_names))
+          idx <- which(grepl(paste0("^", p, "($|\\[)"), base_names))
           if (length(idx) > 0) {
             labels <- self$par_names[[p]]
             for (j in seq_along(idx)) {
-              if (j <= length(labels)) {
-                new_names[idx[j]] <- paste0(p, "[", labels[j], "]")
-              }
+              if (j <= length(labels)) base_names[idx[j]] <- paste0(p, "[", labels[j], "]")
             }
           }
         }
       }
-      
-      # Deal with duplicated names
-      if (any(duplicated(new_names))) {
-         new_names <- make.unique(new_names)
-      }
-      rownames(df_combined) <- new_names
-      
+      rownames(df_combined) <- make.unique(base_names)
+
+      # =====================================================================
+      # 4 & 5. 制約なし空間での統計量計算と制約あり空間への逆変換
+      # =====================================================================
+      # まず全パラメータに対して、現在の Estimate と SE を用いて標準的な Wald法で仮計算する。
+      # これは ADREPORT された派生パラメータ（すでに制約あり空間にある）等のためのデフォルト計算となる。
       df_combined$`t value` <- df_combined$Estimate / pmax(df_combined$`Std. Error`, 1e-12)
       df_combined$Pr <- 2 * pt(-abs(df_combined$`t value`), df = pmax(df_combined$df, 1e-6))
       df_combined$`Lower 95%` <- df_combined$Estimate + qt(0.025, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
       df_combined$`Upper 95%` <- df_combined$Estimate + qt(0.975, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
-      
-      # --- Transform back to constrained space (Delta Method) ---
-      # Identify parameter components and their constraints
-      idx_curr <- 1
+
+      # 続いて、par_list に登録されている「最適化された元のパラメータ」に対して、
+      # 制約なし空間での推定値 u と SE_u を用いて統計量と信頼区間を再計算し、制約あり空間に逆変換する。
       for (name in names(self$par_list)) {
         p_info <- self$par_list[[name]]
-        L_u <- p_info$unc_length
-        L_c <- p_info$length
-        
-        if (L_u > 0) {
-          # Find rows in df_combined corresponding to this parameter
-          row_indices <- which(rownames(df_combined) == name | grepl(paste0("^", name, "\\["), rownames(df_combined)))
-          
-          # Only proceed if we have a match and it's a simple scalar/vector constraint we can handle
-          # For more complex constraints (like CF_corr), they are often left as is or handled elsewhere
-          if (length(row_indices) == L_c) {
-             # Apply constraints based on lower/upper
-             lower <- if(is.numeric(p_info$lower)) p_info$lower else -Inf
-             upper <- if(is.numeric(p_info$upper)) p_info$upper else Inf
-             
-             # Currently we handle: lower only (exp), both (logit), or none (identity)
-             # This matches the to_constrained logic
-             if (all(is.infinite(upper)) && any(is.finite(lower))) {
-                # log-scale to natural (x = exp(u) + lower) -> dx/du = exp(u) = x - lower
-                u <- df_combined$Estimate[row_indices]
-                se_u <- df_combined$`Std. Error`[row_indices]
-                x <- exp(u) + lower
-                se_x <- exp(u) * se_u
-                
-                df_combined$Estimate[row_indices] <- x
-                df_combined$`Std. Error`[row_indices] <- se_x
-             } else if (any(is.finite(lower)) && any(is.finite(upper))) {
-                # logit-scale to natural (x = lower + (upper-lower)*inv_logit(u)) 
-                # -> dx/du = (upper-lower) * inv_logit(u) * (1-inv_logit(u))
-                u <- df_combined$Estimate[row_indices]
-                se_u <- df_combined$`Std. Error`[row_indices]
-                inv_logit <- function(v) 1 / (1 + exp(-v))
-                il <- inv_logit(u)
-                x <- lower + (upper - lower) * il
-                se_x <- (upper - lower) * il * (1 - il) * se_u
-                
-                df_combined$Estimate[row_indices] <- x
-                df_combined$`Std. Error`[row_indices] <- se_x
-             }
+        row_indices <- which(grepl(paste0("^", name, "($|\\[)"), rownames(df_combined)))
+
+        if (length(row_indices) > 0 && length(row_indices) == p_info$length) {
+          lower <- if(is.numeric(p_info$lower)) p_info$lower else -Inf
+          upper <- if(is.numeric(p_info$upper)) p_info$upper else Inf
+
+          u <- df_combined$Estimate[row_indices]
+          se_u <- df_combined$`Std. Error`[row_indices]
+          df_val <- pmax(df_combined$df[row_indices], 1e-6)
+
+          crit <- qt(0.975, df = df_val)
+          low_u <- u - crit * se_u
+          up_u  <- u + crit * se_u
+
+          if (all(is.infinite(upper)) && any(is.finite(lower))) {
+            u_null <- if (lower < 0) log(-lower) else NA
+
+            df_combined$Estimate[row_indices] <- exp(u) + lower
+            df_combined$`Std. Error`[row_indices] <- exp(u) * se_u
+            df_combined$`Lower 95%`[row_indices] <- exp(low_u) + lower
+            df_combined$`Upper 95%`[row_indices] <- exp(up_u) + lower
+
+            t_val <- (u - u_null) / pmax(se_u, 1e-12)
+            df_combined$`t value`[row_indices] <- t_val
+            df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
+
+          } else if (any(is.finite(lower)) && any(is.finite(upper))) {
+            p_null <- -lower / (upper - lower)
+            u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else NA
+
+            il <- function(v) 1 / (1 + exp(-v))
+
+            df_combined$Estimate[row_indices] <- lower + (upper - lower) * il(u)
+            df_combined$`Std. Error`[row_indices] <- (upper - lower) * il(u) * (1 - il(u)) * se_u
+
+            c_low <- lower + (upper - lower) * il(low_u)
+            c_up  <- lower + (upper - lower) * il(up_u)
+            df_combined$`Lower 95%`[row_indices] <- pmin(c_low, c_up)
+            df_combined$`Upper 95%`[row_indices] <- pmax(c_low, c_up)
+
+            t_val <- (u - u_null) / pmax(se_u, 1e-12)
+            df_combined$`t value`[row_indices] <- t_val
+            df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
+
+          } else {
+            u_null <- 0
+            t_val <- (u - u_null) / pmax(se_u, 1e-12)
+
+            df_combined$`Lower 95%`[row_indices] <- low_u
+            df_combined$`Upper 95%`[row_indices] <- up_u
+            df_combined$`t value`[row_indices] <- t_val
+            df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
           }
         }
       }
-      
-      # Re-calculate CI and t/p values after transformation if any happened
-      df_combined$`t value` <- df_combined$Estimate / pmax(df_combined$`Std. Error`, 1e-12)
-      df_combined$Pr <- 2 * pt(-abs(df_combined$`t value`), df = pmax(df_combined$df, 1e-6))
-      df_combined$`Lower 95%` <- df_combined$Estimate + qt(0.025, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
-      df_combined$`Upper 95%` <- df_combined$Estimate + qt(0.975, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
-      
-      
-      # Record attributes for logLik
+
+      # --- 相関分析固有のオーバーライド (相関については解析的な公式が最も正しいため維持) ---
+      if (!is.null(self$type) && self$type == "corr") {
+        pat <- "^(corr|pcorr|B_corr|W_corr|B_pcorr|W_pcorr)(\\[|$)"
+        corr_idx <- grep(pat, rownames(df_combined))
+        if (length(corr_idx) > 0) {
+          for (i in corr_idx) {
+            r <- df_combined$Estimate[i]
+            se_r <- df_combined$`Std. Error`[i]
+
+            if (abs(r) < 0.9999 && se_r > 1e-8) {
+              rn <- rownames(df_combined)[i]
+              N_val <- if (!is.null(self$data$N)) self$data$N else 100
+              df_val <- N_val - 2
+
+              if (grepl("^B_", rn)) {
+                J_val <- self$data$J
+                if (!is.null(J_val)) df_val <- J_val - 2
+              }
+              if (grepl("pcorr", rn)) {
+                Px_val <- self$data$P_x
+                if (!is.null(Px_val)) df_val <- df_val - Px_val
+              }
+              df_val <- pmax(df_val, 1)
+
+              t_val <- r * sqrt(df_val / (1 - r^2))
+              p_val <- 2 * pt(-abs(t_val), df = df_val)
+
+              z <- atanh(r)
+              se_z <- 1 / sqrt(pmax(df_val - 1, 1e-6))
+              z_crit <- qnorm(0.975)
+
+              df_combined$`t value`[i] <- t_val
+              df_combined$Pr[i] <- p_val
+              df_combined$df[i] <- df_val
+              df_combined$`Lower 95%`[i] <- tanh(z - z_crit * se_z)
+              df_combined$`Upper 95%`[i] <- tanh(z + z_crit * se_z)
+            } else {
+              df_combined$`t value`[i] <- NA
+              df_combined$Pr[i] <- NA
+            }
+          }
+        }
+      }
+
+      # =====================================================================
+      # 6. メタデータの記録と表示順序
+      # =====================================================================
       if (is.null(self$extra)) self$extra <- list()
       self$extra$loglik <- -opt$objective
       self$extra$df <- length(opt$par)
-      if (!is.null(self$data$N)) {
-         self$extra$nobs <- self$data$N
-      } else if (!is.null(self$data$Y)) {
-         self$extra$nobs <- length(self$data$Y)
-      } else {
-         self$extra$nobs <- NA
-      }
+      self$extra$nobs <- if (!is.null(self$data$N)) self$data$N else if (!is.null(self$data$Y)) length(self$data$Y) else NA
 
-      # --- Final Reordering based on 'view' ---
       if (nrow(df_combined) > 0) {
-        view_vars <- self$view
-        if (is.null(view_vars)) view_vars <- c("Intercept", "b", "tau", "sigma", "sd", "rho", "r_re")
-        
-        # Identify indices matching view_vars order
+        view_to_use <- if (!is.null(view)) view else if (!is.null(self$view)) self$view else c("Intercept", "b", "tau", "sigma", "sd", "rho", "r_re")
+
         row_names <- rownames(df_combined)
-        ordered_idx <- c()
-        for (v in view_vars) {
-           idx <- which(row_names == v | grepl(paste0("^", v, "($|\\[|\\.|_([0-9]+)?$)"), row_names))
-           ordered_idx <- c(ordered_idx, setdiff(idx, ordered_idx))
-        }
-        
-        # Add remaining variables
-        remaining_idx <- setdiff(1:nrow(df_combined), ordered_idx)
-        final_idx <- c(ordered_idx, remaining_idx)
-        
-        # Prepare the reordered table
-        df_new <- df_combined[final_idx, , drop = FALSE]
-        
-        # Prepare the reordered covariance matrix
-        # Use name-based subsetting to ensure robustness even if df_combined has report variables
-        if (!is.null(V_joint)) {
-           V_new <- matrix(NA, nrow = nrow(df_new), ncol = nrow(df_new))
-           rownames(V_new) <- colnames(V_new) <- rownames(df_new)
-           
-           common_names <- intersect(rownames(V_joint), rownames(V_new))
-           if (length(common_names) > 0) {
-              V_new[common_names, common_names] <- V_joint[common_names, common_names]
-           }
-           V_joint <- V_new
-        }
-        df_combined <- df_new
+        ordered_idx <- unlist(lapply(view_to_use, function(v) which(grepl(paste0("^", v, "($|\\[|\\.)"), row_names))))
+        ordered_idx <- unique(ordered_idx)
+
+        final_idx <- c(ordered_idx, setdiff(seq_len(nrow(df_combined)), ordered_idx))
+        df_combined <- df_combined[final_idx, , drop = FALSE]
       }
 
-      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, test_results = test_results)
+      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, test_results = test_results, view = view)
       return(res)
     },
 
