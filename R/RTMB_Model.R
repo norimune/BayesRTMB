@@ -406,9 +406,8 @@ RTMB_Model <- R6::R6Class(
     #' }
     #' Default is "all".
     #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
-    #' @param include_generate Logical; whether to include and ADREPORT generated quantities. Default is FALSE.
     #' @return An RTMB objective object (ad_obj).
-    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL, include_generate = FALSE) {
+    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL) {
 
       random_effs <- names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
@@ -439,18 +438,6 @@ RTMB_Model <- R6::R6Class(
         }
 
         lp <- log_prob_local(data_local, para)
-
-        # If include_generate is TRUE, call generate and ADREPORT results
-        if (isTRUE(include_generate) && !is.null(self$generate)) {
-          gen_res <- self$generate(data_local, para)
-          if (length(gen_res) > 0) {
-            for (n in names(gen_res)) {
-              # We need the variable to be in the environment for ADREPORT to pick up its name
-              assign(n, gen_res[[n]])
-              eval(substitute(RTMB::ADREPORT(V), list(V = as.name(n))))
-            }
-          }
-        }
 
         if (jacobian_target == "all") {
           lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
@@ -498,13 +485,12 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Integer; random seed for sampling.
     #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
     #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
-    #' @param include_generate Logical; whether to include and ADREPORT generated quantities in the AD object for standard error estimation. Default is FALSE.
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL, include_generate = FALSE) {
+                        df = NULL) {
 
       if (!is.null(se_method)) ci_method <- se_method
       ci_method <- match.arg(ci_method)
@@ -523,7 +509,7 @@ RTMB_Model <- R6::R6Class(
       # Jacobian is not required for MAP estimation
       jac_target <- if (laplace) "random" else "none"
 
-      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target, map = map, include_generate = include_generate)
+      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target, map = map)
       base_ad_obj <- ad_setup$ad_obj
 
       for (i in 1:num_estimate) {
@@ -1434,7 +1420,7 @@ RTMB_Model <- R6::R6Class(
 
       laplace_flag <- REML || any(sapply(modified_par_list, function(x) isTRUE(x$random)))
 
-      ad_setup <- tryCatch(self$build_ad_obj(laplace = laplace_flag, jacobian_target = "none", include_generate = TRUE),
+      ad_setup <- tryCatch(self$build_ad_obj(laplace = laplace_flag, jacobian_target = "none"),
                            error = function(e) stop("MakeADFun failed: ", e$message))
       ad_obj <- ad_setup$ad_obj
 

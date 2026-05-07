@@ -1623,8 +1623,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
     score_expr <- if (score) {
       quote({
-        Y_c <- matrix(0, nrow = N, ncol = J)
-        for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+        # Use explicit matrix creation to ensure AD type is preserved
+        Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
         out$score <- Y_c %*% solve(Sigma, Lambda %*% fa_cor)
       })
     } else quote({})
@@ -1694,7 +1694,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       if (is_matrix_rot) {
         rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out[[.(rot_loadings_name)]] <- unclass(rot_obj) })
         score_expr <- if (score) bquote({
-          Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+          Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
           rot_raw <- unclass(.(fn_call)(L_raw)); if (!is.matrix(rot_raw)) rot_raw <- unclass(rot_raw$loadings)
           out$score <- Y_c %*% solve(Sigma, rot_raw)
         }) else quote({})
@@ -1702,18 +1702,18 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         if (has_phi) {
           rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out$fa_cor <- rot_obj$Phi; out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings) })
           score_expr <- if (score) bquote({
-            Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+            Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
             rot_raw_obj <- .(fn_call)(L_raw); out$score <- Y_c %*% solve(Sigma, unclass(rot_raw_obj$loadings) %*% rot_raw_obj$Phi)
           }) else quote({})
         } else {
           rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings) })
           score_expr <- if (score) bquote({
-            Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean
+            Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
             out$score <- Y_c %*% solve(Sigma, unclass(.(fn_call)(L_raw)$loadings))
           }) else quote({})
         }
       }
-    } else { has_phi <- FALSE; rot_expr <- quote({}); score_expr <- if (score) quote({ Y_c <- matrix(0, nrow = N, ncol = J); for (i in 1:N) Y_c[i, ] <- Y[i, ] - mean; out$score <- Y_c %*% solve(Sigma, L_raw) }) else quote({}) }
+    } else { has_phi <- FALSE; rot_expr <- quote({}); score_expr <- if (score) quote({ Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE); out$score <- Y_c %*% solve(Sigma, L_raw) }) else quote({}) }
 
     ret_expr <- quote({ return(out) })
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
