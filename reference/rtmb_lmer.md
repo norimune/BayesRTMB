@@ -12,6 +12,7 @@ rtmb_lmer(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
+  fixed = NULL,
   null = NULL,
   gmc = NULL,
   cwc = NULL,

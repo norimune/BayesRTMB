@@ -15,6 +15,7 @@ rtmb_ttest(
   y_range = NULL,
   prior = prior_uniform(),
   init = NULL,
+  fixed = NULL,
   null = NULL,
   var.equal = TRUE,
   ...

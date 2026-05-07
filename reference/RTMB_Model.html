@@ -74,6 +74,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.</p>
 <span>  par_names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  null_target <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  silent <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -101,6 +102,10 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.</p>
 
 <dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
 <dd><p>Character vector of parameter names to be displayed preferentially at the top when outputting results like <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code> (optional).</p></dd>
+
+
+<dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
+<dd><p>A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.</p></dd>
 
 
 <dt id="arg-null-target">null_target<a class="anchor" aria-label="anchor" href="#arg-null-target"></a></dt>

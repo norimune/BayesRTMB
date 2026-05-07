@@ -13,6 +13,7 @@ rtmb_mixture(
   data = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
   prior = prior_uniform(),
+  fixed = NULL,
   ...
 )
 ```

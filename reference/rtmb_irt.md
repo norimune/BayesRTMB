@@ -13,7 +13,8 @@ rtmb_irt(
   type = c("binary", "ordered"),
   prior = list(a_log_mean = 0, a_log_sd = 0.5, b_mean = 0, b_sd = 2.5, c_alpha = 1,
     c_beta = 4, theta_sd = 1),
-  init = NULL
+  init = NULL,
+  fixed = NULL
 )
 ```
 

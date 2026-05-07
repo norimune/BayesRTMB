@@ -19,6 +19,7 @@ rtmb_mediation(
   family = "gaussian",
   prior = prior_uniform(),
   y_range = NULL,
+  fixed = NULL,
   view = NULL,
   ...
 )
@@ -48,6 +49,10 @@ rtmb_mediation(
 - y_range:
 
   Theoretical minimum and maximum values of the response variable.
+
+- fixed:
+
+  A named list of parameter values to fix (optional).
 
 - view:
 

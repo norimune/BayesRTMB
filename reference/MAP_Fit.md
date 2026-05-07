@@ -149,17 +149,17 @@ Matrix or array of point estimate.
 
 ### Method `EAP()`
 
-Return point estimates (EAP is not applicable).
+Return point estimates (EAP is not applicable for MAP).
 
 #### Usage
 
-    MAP_Fit$EAP(...)
+    MAP_Fit$EAP(pars = NULL)
 
 #### Arguments
 
-- `...`:
+- `pars`:
 
-  Ignored.
+  Optional character vector of parameter names to extract.
 
 #### Returns
 
@@ -173,13 +173,13 @@ Return point estimates (MAP sampling method is not applicable).
 
 #### Usage
 
-    MAP_Fit$MAP(...)
+    MAP_Fit$MAP(pars = NULL)
 
 #### Arguments
 
-- `...`:
+- `pars`:
 
-  Ignored.
+  Optional character vector of parameter names to extract.
 
 #### Returns
 

@@ -11,6 +11,7 @@ rtmb_lm(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
+  fixed = NULL,
   null = NULL,
   gmc = NULL,
   factors = NULL,

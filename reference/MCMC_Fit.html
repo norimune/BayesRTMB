@@ -134,6 +134,8 @@ from MCMC estimation.</p>
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 
 <ul><li><p><a href="#method-mcmc_fit-get_point_estimate"><code>MCMC_Fit$get_point_estimate()</code></a></p></li>
+<li><p><a href="#method-mcmc_fit-EAP"><code>MCMC_Fit$EAP()</code></a></p></li>
+<li><p><a href="#method-mcmc_fit-MAP"><code>MCMC_Fit$MAP()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-new"><code>MCMC_Fit$new()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-print"><code>MCMC_Fit$print()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-draws"><code>MCMC_Fit$draws()</code></a></p></li>
@@ -146,9 +148,7 @@ from MCMC estimation.</p>
 <li><p><a href="#method-mcmc_fit-generated_quantities"><code>MCMC_Fit$generated_quantities()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-resolve_switching"><code>MCMC_Fit$resolve_switching()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-clone"><code>MCMC_Fit$clone()</code></a></p></li>
-</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href="RTMB_Fit_Base.html#method-EAP"><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href="RTMB_Fit_Base.html#method-MAP"><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href="RTMB_Fit_Base.html#method-rotate"><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul></details></p><hr><a id="method-mcmc_fit-get_point_estimate"></a><div class="section">
 <h3 id="method-get-point-estimate-">Method <code>get_point_estimate()</code><a class="anchor" aria-label="anchor" href="#method-get-point-estimate-"></a></h3>
@@ -170,10 +170,50 @@ from MCMC estimation.</p>
 <p>Matrix or array of point estimate.</p>
 </div>
 
+</div><p></p><hr><a id="method-mcmc_fit-EAP"></a><div class="section">
+<h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
+<p>Calculate the Expected A Posteriori (EAP) estimates.</p><div class="section">
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Optional character vector of parameter names to extract.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<p>A named list of EAP estimates (posterior means).</p>
+</div>
+
+</div><p></p><hr><a id="method-mcmc_fit-MAP"></a><div class="section">
+<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
+<p>Calculate the Maximum A Posteriori (MAP) estimates from samples.</p><div class="section">
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Optional character vector of parameter names to extract.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<p>A named list of MAP estimates (samples with highest log-posterior).</p>
+</div>
+
 </div><p></p><hr><a id="method-mcmc_fit-new"></a><div class="section">
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
 <p>Create a new `MCMC_Fit` object.</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/MCMC_Fit.html">MCMC_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  <span class="va">model</span>,</span>
 <span>  <span class="va">fit</span>,</span>
@@ -187,7 +227,7 @@ from MCMC estimation.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>model</code></dt>
 <dd><p>An `RTMB_Model` object used for estimation.</p></dd>
 
@@ -226,12 +266,12 @@ from MCMC estimation.</p>
 </div><p></p><hr><a id="method-mcmc_fit-print"></a><div class="section">
 <h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
 <p>Print a brief summary of the fitted object.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments.</p></dd>
 
@@ -239,14 +279,14 @@ from MCMC estimation.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-draws"></a><div class="section">
 <h3 id="method-draws-">Method <code>draws()</code><a class="anchor" aria-label="anchor" href="#method-draws-"></a></h3>
 <p>Extract posterior draws for selected parameters.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -258,7 +298,7 @@ from MCMC estimation.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.</p></dd>
 
@@ -286,14 +326,14 @@ from MCMC estimation.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>Posterior draws.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-summary"></a><div class="section">
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
 <p>Summarize posterior draws.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -307,7 +347,7 @@ from MCMC estimation.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.</p></dd>
 
@@ -343,31 +383,31 @@ from MCMC estimation.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A summary object.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-unconstrain_draws"></a><div class="section">
 <h3 id="method-unconstrain-draws-">Method <code>unconstrain_draws()</code><a class="anchor" aria-label="anchor" href="#method-unconstrain-draws-"></a></h3>
 <p>Transform posterior draws to the unconstrained scale.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">unconstrain_draws</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>Posterior draws on the unconstrained scale.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-log_prob"></a><div class="section">
 <h3 id="method-log-prob-">Method <code>log_prob()</code><a class="anchor" aria-label="anchor" href="#method-log-prob-"></a></h3>
 <p>Evaluate log-probability values.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">log_prob</span><span class="op">(</span>safe <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>safe</code></dt>
 <dd><p>Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.</p></dd>
 
@@ -375,14 +415,14 @@ from MCMC estimation.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>Numeric vector of log-probability values.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-bridgesampling"></a><div class="section">
 <h3 id="method-bridgesampling-">Method <code>bridgesampling()</code><a class="anchor" aria-label="anchor" href="#method-bridgesampling-"></a></h3>
 <p>Estimate the marginal likelihood by bridge sampling.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"normal"</span>,</span>
 <span>  use_neff <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -392,7 +432,7 @@ from MCMC estimation.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>method</code></dt>
 <dd><p>Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".</p></dd>
 
@@ -412,14 +452,14 @@ from MCMC estimation.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>Bridge sampling result.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-bayes_factor"></a><div class="section">
 <h3 id="method-bayes-factor-">Method <code><a href="bayes_factor.html">bayes_factor()</a></code><a class="anchor" aria-label="anchor" href="#method-bayes-factor-"></a></h3>
 <p>Calculate the Bayes Factor against a null model or another fit object.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span></span>
 <span>  <span class="va">null_model</span>,</span>
 <span>  bs_method <span class="op">=</span> <span class="st">"normal"</span>,</span>
@@ -429,7 +469,7 @@ from MCMC estimation.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>null_model</code></dt>
 <dd><p>Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.</p></dd>
 
@@ -452,12 +492,12 @@ from MCMC estimation.</p>
 </div><p></p><hr><a id="method-mcmc_fit-transformed_draws"></a><div class="section">
 <h3 id="method-transformed-draws-">Method <code>transformed_draws()</code><a class="anchor" aria-label="anchor" href="#method-transformed-draws-"></a></h3>
 <p>Compute transformed parameters from posterior draws.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">transformed_draws</span><span class="op">(</span>tran_fn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>tran_fn</code></dt>
 <dd><p>A function for transformed parameters.</p></dd>
 
@@ -465,19 +505,19 @@ from MCMC estimation.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
 <p>Transformed parameter draws.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-generated_quantities"></a><div class="section">
 <h3 id="method-generated-quantities-">Method <code>generated_quantities()</code><a class="anchor" aria-label="anchor" href="#method-generated-quantities-"></a></h3>
 <p>Compute generated quantities from posterior draws.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">code</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
 <dd><p>An `rtmb_code({ ... })` or `{ ... }` block containing the logic
 to be calculated using posterior samples.</p></dd>
@@ -486,7 +526,7 @@ to be calculated using posterior samples.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
 <p>The `MCMC_Fit` object itself (invisibly).
 Results are appended to the `generate_fit` field.</p>
 </div>
@@ -494,7 +534,7 @@ Results are appended to the `generate_fit` field.</p>
 </div><p></p><hr><a id="method-mcmc_fit-resolve_switching"></a><div class="section">
 <h3 id="method-resolve-switching-">Method <code>resolve_switching()</code><a class="anchor" aria-label="anchor" href="#method-resolve-switching-"></a></h3>
 <p>Resolve label switching in posterior draws.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">resolve_switching</span><span class="op">(</span></span>
 <span>  <span class="va">target</span>,</span>
 <span>  linked <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -504,7 +544,7 @@ Results are appended to the `generate_fit` field.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Character string specifying the target variable to base the relabeling on.</p></dd>
 
@@ -524,19 +564,19 @@ Results are appended to the `generate_fit` field.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
+<h4 id="returns-11">Returns<a class="anchor" aria-label="anchor" href="#returns-11"></a></h4>
 <p>Relabeled draws or updated object.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

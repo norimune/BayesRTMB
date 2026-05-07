@@ -14,7 +14,8 @@ rtmb_fa(
   rotate = NULL,
   score = FALSE,
   prior = list(mean_sd = 10, loadings_sd = 1, sd_rate = 10, ssp_ratio = 0.25),
-  init = NULL
+  init = NULL,
+  fixed = NULL
 )
 ```
 
@@ -49,6 +50,10 @@ rtmb_fa(
 
   List of initial values. If not provided, initial values are
   automatically generated based on PCA or the psych package.
+
+- fixed:
+
+  A named list of parameter values to fix (optional).
 
 ## Examples
 

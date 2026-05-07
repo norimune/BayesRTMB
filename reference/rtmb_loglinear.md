@@ -9,7 +9,7 @@ TRUE\`), it provides Wald-based ANOVA for independence tests.
 ## Usage
 
 ``` r
-rtmb_loglinear(formula, data, prior = prior_uniform(), ...)
+rtmb_loglinear(formula, data, prior = prior_uniform(), fixed = NULL, ...)
 ```
 
 ## Arguments
@@ -52,7 +52,7 @@ the settings.
 # 2x2 table analysis
 df <- as.data.frame(Titanic)
 fit <- rtmb_loglinear(Survived ~ Sex + Age, data = df, classic = TRUE)
-#> Error in rtmb_glmer(formula = formula, data = data, family = "poisson",     prior = prior, generate = gen_block, ...): unused argument (classic = TRUE)
+#> Error in rtmb_glmer(formula = formula, data = data, family = "poisson",     prior = prior, generate = gen_block, fixed = fixed, ...): unused argument (classic = TRUE)
 fit$anova()
 #> Error: object 'fit' not found
 

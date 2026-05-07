@@ -15,6 +15,7 @@ rtmb_corr(
   prior = prior_uniform(),
   y_range = NULL,
   init = NULL,
+  fixed = NULL,
   null = NULL,
   ...
 )

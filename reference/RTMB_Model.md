@@ -16,6 +16,7 @@ rtmb_model(
   par_names = list(),
   init = NULL,
   view = NULL,
+  fixed = NULL,
   null_target = NULL,
   silent = FALSE
 )
@@ -48,6 +49,12 @@ rtmb_model(
   Character vector of parameter names to be displayed preferentially at
   the top when outputting results like
   [`summary()`](https://rdrr.io/r/base/summary.html) (optional).
+
+- fixed:
+
+  A named list of parameter values to fix (optional). Useful for scoring
+  or plug-in estimation where some parameters (e.g., item parameters)
+  are fixed to known values.
 
 - null_target:
 

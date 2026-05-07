@@ -13,6 +13,7 @@ rtmb_table(
   data = NULL,
   correct = TRUE,
   prior = prior_uniform(),
+  fixed = NULL,
   ...
 )
 ```
@@ -75,6 +76,7 @@ rtmb_table(skill, cond, data = debate, classic = TRUE)
 #>     data: list
 #>     extra: list
 #>     family: NULL
+#>     fixed_model: function (fixed_list) 
 #>     formula: NULL
 #>     generate: function (dat, para) 
 #>     get_ad_obj: function (...) 
