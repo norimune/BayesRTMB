@@ -67,12 +67,42 @@ MAP_Fit <- R6::R6Class(
      EAP = function(pars = NULL) {
        res <- c(self$par, self$transform, self$generate)
        
-       # If random effects exist as a separate list, ensure they are merged if not already in par
-       if (!is.null(self$random_effects) && is.list(self$random_effects)) {
+       # Extract random effects estimates from summary data frame if available
+       if (!is.null(self$random_effects) && is.data.frame(self$random_effects)) {
+         re_df <- self$random_effects
+         re_names <- rownames(re_df)
+         re_ests <- re_df$Estimate
+         
+         if (!is.null(re_ests)) {
+           # Map flattened names (e.g., "theta[1]") to parameter groups if needed, 
+           # but for EAP/MAP we can just add them if they aren't there.
+           # However, it's better to group them by base name.
+           base_names <- unique(gsub("\\[.*\\]$", "", re_names))
+           for (bn in base_names) {
+             if (!(bn %in% names(res))) {
+               # Extract all elements for this base name
+               idx <- which(gsub("\\[.*\\]$", "", re_names) == bn)
+               if (length(idx) > 0) {
+                 val <- re_ests[idx]
+                 # Attempt to restore original dimensions if possible (stored in model)
+                 p_info <- self$model$par_list[[bn]]
+                 if (!is.null(p_info) && !is.null(p_info$dim) && length(p_info$dim) > 1) {
+                   dim(val) <- p_info$dim
+                 }
+                 res[[bn]] <- val
+               }
+             }
+           }
+         }
+       } else if (!is.null(self$random_effects) && is.list(self$random_effects)) {
          for (n in names(self$random_effects)) {
            if (!(n %in% names(res))) res[[n]] <- self$random_effects[[n]]
          }
        }
+       
+       # Strict filtering to remove any metadata column names that might have leaked
+       metadata_names <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%", "DF", "t value", "Pr")
+       res <- res[!(names(res) %in% metadata_names)]
        
        return(select_parameters(res, pars))
      },
@@ -81,15 +111,7 @@ MAP_Fit <- R6::R6Class(
     #' @param pars Optional character vector of parameter names to extract.
     #' @return A named list of point estimates.
      MAP = function(pars = NULL) {
-       res <- c(self$par, self$transform, self$generate)
-       
-       if (!is.null(self$random_effects) && is.list(self$random_effects)) {
-         for (n in names(self$random_effects)) {
-           if (!(n %in% names(res))) res[[n]] <- self$random_effects[[n]]
-         }
-       }
-       
-       return(select_parameters(res, pars))
+       return(self$EAP(pars = pars))
      },
 
     #' @description Create a new `MAP_Fit` object.
@@ -343,11 +365,12 @@ MAP_Fit <- R6::R6Class(
         return(x)
       })
 
-      if ("DF" %in% colnames(df_combined)) {
-        df_combined$DF <- ifelse(is.infinite(df_combined$DF), "Inf", as.character(round(df_combined$DF)))
-      }
+      # For MAP Fit, we typically only show Estimate unless specified (but user wants them gone)
+      # Drop SE and CI columns if they exist
+      cols_to_keep <- setdiff(colnames(df_combined), c("Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%"))
+      df_display <- df_combined[, cols_to_keep, drop = FALSE]
 
-      out_df <- data.frame(variable = rownames(df_combined), df_combined, check.names = FALSE, stringsAsFactors = FALSE)
+      out_df <- data.frame(variable = rownames(df_display), df_display, check.names = FALSE, stringsAsFactors = FALSE)
       rownames(out_df) <- NULL
 
       if (!is.null(max_rows) && nrow(out_df) > max_rows) {

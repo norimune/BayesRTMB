@@ -558,16 +558,17 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
     res <- dnorm(x, mean = mean, sd = sqrt(Sigma + 1e-11), log = TRUE)
     return(if (sum) sum(res) else res)
   }
-  # Ensure positive definiteness with a small jitter
-  # We use a fixed jitter to prevent singular matrices even when sigma is very small
-  safe_Sigma <- Sigma + diag(rep(1e-7, K))
+  # Ensure positive definiteness with a scale-aware jitter
+  # This prevents singularity even if the elements of Sigma are very large or very small.
+  diag_Sigma <- diag(Sigma)
+  safe_Sigma <- Sigma + diag(diag_Sigma * 1e-6 + 1e-8)
 
   # Calculate log-determinant and quadratic form more robustly
   # For RTMB, using determinant() and solve() can sometimes be more stable than chol()
   # if the matrix is very near-singular.
   
   log_det_obj <- determinant(safe_Sigma, logarithm = TRUE)
-  log_det <- as.numeric(log_det_obj$modulus) * log_det_obj$sign
+  log_det <- log_det_obj$modulus
   
   const <- -0.5 * (K * log(2 * pi) + log_det)
 
@@ -605,13 +606,13 @@ multi_student_t_lpdf <- function(x, df, mean, Sigma, sum = TRUE) {
     return(if (sum) sum(res) else res)
   }
   
-  # Ensure positive definiteness with a small jitter
-  # We use a jitter to prevent singular matrices
-  safe_Sigma <- Sigma + diag(rep(1e-7, K))
+  # Ensure positive definiteness with a scale-aware jitter
+  diag_Sigma <- diag(Sigma)
+  safe_Sigma <- Sigma + diag(diag_Sigma * 1e-6 + 1e-8)
   
   # Calculate log-determinant and quadratic form more robustly
   log_det_obj <- determinant(safe_Sigma, logarithm = TRUE)
-  log_det <- as.numeric(log_det_obj$modulus) * log_det_obj$sign
+  log_det <- log_det_obj$modulus
   
   const <- lgamma((df + K) / 2) - lgamma(df / 2) - 0.5 * (K * log(df * pi) + log_det)
   
