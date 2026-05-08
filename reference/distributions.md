@@ -51,6 +51,12 @@ two ways:
 - `multi_normal(mean, Sigma)`: Standard multivariate normal
   distribution.
 
+- `multi_student_t(df, mean, Sigma)`: Multivariate Student's
+  t-distribution.
+
+- `multi_cauchy(mean, Sigma)`: Multivariate Cauchy distribution
+  (Student-t with df=1).
+
 - `lkj_corr(eta)`: LKJ prior for correlation matrices.
 
 - `dirichlet(alpha)`: Dirichlet distribution for simplexes.

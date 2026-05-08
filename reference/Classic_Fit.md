@@ -41,6 +41,14 @@ estimation.
 
   Character vector of parameter names to prioritize in summary.
 
+- `par_unc`:
+
+  Numeric vector of unconstrained parameter estimates.
+
+- `vcov_unc`:
+
+  Variance-covariance matrix of parameters in unconstrained space.
+
 ## Methods
 
 ### Public methods
@@ -62,6 +70,8 @@ estimation.
 - [`Classic_Fit$logLik()`](#method-Classic_Fit-logLik)
 
 - [`Classic_Fit$summary()`](#method-Classic_Fit-summary)
+
+- [`Classic_Fit$savage_dickey()`](#method-Classic_Fit-savage_dickey)
 
 - [`Classic_Fit$anova()`](#method-Classic_Fit-anova)
 
@@ -87,6 +97,8 @@ Create a new \`Classic_Fit\` object.
       model,
       fit,
       vcov = NULL,
+      par_unc = NULL,
+      vcov_unc = NULL,
       se_method = "wald",
       cluster = NULL,
       test_results = list(),
@@ -106,6 +118,14 @@ Create a new \`Classic_Fit\` object.
 - `vcov`:
 
   Variance-covariance matrix of fixed effects.
+
+- `par_unc`:
+
+  Numeric vector of unconstrained parameter estimates.
+
+- `vcov_unc`:
+
+  Variance-covariance matrix of parameters in unconstrained space.
 
 - `se_method`:
 
@@ -242,6 +262,35 @@ Display a summary of the estimation results.
 - `max_rows`:
 
   Maximum number of rows to display in the coefficient table.
+
+------------------------------------------------------------------------
+
+### Method `savage_dickey()`
+
+Calculate Bayes Factors using the Savage-Dickey density ratio method.
+
+#### Usage
+
+    Classic_Fit$savage_dickey(pars = NULL, null = 0, digits = 3)
+
+#### Arguments
+
+- `pars`:
+
+  Character vector of parameter names to test.
+
+- `null`:
+
+  Numeric; the null value to test against (in constrained space).
+  Default is 0.
+
+- `digits`:
+
+  Number of decimal places to round results.
+
+#### Returns
+
+A data frame containing the Bayes Factors and evidence descriptors.
 
 ------------------------------------------------------------------------
 

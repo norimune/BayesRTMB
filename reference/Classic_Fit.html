@@ -93,6 +93,14 @@
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
 
+<dt><code>par_unc</code></dt>
+<dd><p>Numeric vector of unconstrained parameter estimates.</p></dd>
+
+
+<dt><code>vcov_unc</code></dt>
+<dd><p>Variance-covariance matrix of parameters in unconstrained space.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -110,6 +118,7 @@
 <li><p><a href="#method-Classic_Fit-print"><code>Classic_Fit$print()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-logLik"><code>Classic_Fit$logLik()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-summary"><code>Classic_Fit$summary()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-savage_dickey"><code>Classic_Fit$savage_dickey()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-anova"><code>Classic_Fit$anova()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-lsmeans"><code>Classic_Fit$lsmeans()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-.calc_contrast"><code>Classic_Fit$.calc_contrast()</code></a></p></li>
@@ -124,6 +133,8 @@
 <span>  <span class="va">model</span>,</span>
 <span>  <span class="va">fit</span>,</span>
 <span>  vcov <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  par_unc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  vcov_unc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  se_method <span class="op">=</span> <span class="st">"wald"</span>,</span>
 <span>  cluster <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  test_results <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="op">)</span>,</span>
@@ -143,6 +154,14 @@
 
 <dt><code>vcov</code></dt>
 <dd><p>Variance-covariance matrix of fixed effects.</p></dd>
+
+
+<dt><code>par_unc</code></dt>
+<dd><p>Numeric vector of unconstrained parameter estimates.</p></dd>
+
+
+<dt><code>vcov_unc</code></dt>
+<dd><p>Variance-covariance matrix of parameters in unconstrained space.</p></dd>
 
 
 <dt><code>se_method</code></dt>
@@ -276,15 +295,43 @@
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-anova"></a><div class="section">
-<h3 id="method-anova-">Method <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code><a class="anchor" aria-label="anchor" href="#method-anova-"></a></h3>
-<p>Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.</p><div class="section">
+</div><p></p><hr><a id="method-Classic_Fit-savage_dickey"></a><div class="section">
+<h3 id="method-savage-dickey-">Method <code>savage_dickey()</code><a class="anchor" aria-label="anchor" href="#method-savage-dickey-"></a></h3>
+<p>Calculate Bayes Factors using the Savage-Dickey density ratio method.</p><div class="section">
 <h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">anova</span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"reml"</span>, <span class="st">"ls"</span><span class="op">)</span>, type <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">savage_dickey</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, null <span class="op">=</span> <span class="fl">0</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Character vector of parameter names to test.</p></dd>
+
+
+<dt><code>null</code></dt>
+<dd><p>Numeric; the null value to test against (in constrained space). Default is 0.</p></dd>
+
+
+<dt><code>digits</code></dt>
+<dd><p>Number of decimal places to round results.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<p>A data frame containing the Bayes Factors and evidence descriptors.</p>
+</div>
+
+</div><p></p><hr><a id="method-Classic_Fit-anova"></a><div class="section">
+<h3 id="method-anova-">Method <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code><a class="anchor" aria-label="anchor" href="#method-anova-"></a></h3>
+<p>Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.</p><div class="section">
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">anova</span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"reml"</span>, <span class="st">"ls"</span><span class="op">)</span>, type <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>method</code></dt>
 <dd><p>Character; "reml" (standard) or "ls" (experimental).</p></dd>
 
@@ -296,14 +343,14 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>A data frame containing the ANOVA table.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-lsmeans"></a><div class="section">
 <h3 id="method-lsmeans-">Method <code><a href="lsmeans.html">lsmeans()</a></code><a class="anchor" aria-label="anchor" href="#method-lsmeans-"></a></h3>
 <p>Calculate Least Squares Means (Marginal Means) and contrasts.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span></span>
 <span>  <span class="va">specs</span>,</span>
 <span>  pairwise <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -313,7 +360,7 @@
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Character vector of factors to calculate means for.</p></dd>
 
@@ -333,19 +380,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>A data frame containing the marginal means or contrasts.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.calc_contrast"></a><div class="section">
 <h3 id="method-calc-contrast-">Method <code>.calc_contrast()</code><a class="anchor" aria-label="anchor" href="#method-calc-contrast-"></a></h3>
 <p>(Internal) Calculate metrics for a contrast.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.calc_contrast</span><span class="op">(</span><span class="va">L</span>, <span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>L</code></dt>
 <dd><p>Contrast matrix.</p></dd>
 
@@ -357,19 +404,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A data frame with estimate, SE, df, t-value, and p-value.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.get_lsmeans_df"></a><div class="section">
 <h3 id="method-get-lsmeans-df-">Method <code>.get_lsmeans_df()</code><a class="anchor" aria-label="anchor" href="#method-get-lsmeans-df-"></a></h3>
 <p>(Internal) Get representative DF for lsmeans.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.get_lsmeans_df</span><span class="op">(</span><span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Variable names for lsmeans.</p></dd>
 
@@ -377,19 +424,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>Degrees of freedom.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.construct_par_list"></a><div class="section">
 <h3 id="method-construct-par-list-">Method <code>.construct_par_list()</code><a class="anchor" aria-label="anchor" href="#method-construct-par-list-"></a></h3>
 <p>(Internal) Construct a list of parameters from the fit.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.construct_par_list</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fit</code></dt>
 <dd><p>The fit result (dataframe or lm object).</p></dd>
 
@@ -397,19 +444,19 @@
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>A named list of parameters.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

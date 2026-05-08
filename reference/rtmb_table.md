@@ -68,12 +68,13 @@ rtmb_table(skill, cond, data = debate, classic = TRUE)
 #>     build_ad_obj: function (init = NULL, laplace = FALSE, jacobian_target = "all", 
 #>     calculate_reml_satterthwaite_df: function (ad_obj, opt_par, beta_idx) 
 #>     calculate_satterthwaite_df: function (ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, 
-#>     classic: function (df = "auto", df_pars = "none", REML = TRUE, view = NULL, 
+#>     classic: function (df = "auto", df_pars = "auto", REML = TRUE, view = NULL, 
 #>     clone: function (deep = FALSE) 
 #>     code: list
 #>     constrained_vector_to_list: function (vec) 
 #>     contrasts: NULL
 #>     data: list
+#>     evaluate_univariate_prior: function (p_name, u_val, par_list = NULL) 
 #>     extra: list
 #>     family: NULL
 #>     fixed_model: function (fixed_list) 

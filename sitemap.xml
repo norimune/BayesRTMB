@@ -82,8 +82,10 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/math_functions.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/mixture_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/model_code.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/multi_cauchy_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/multi_student_t_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multinomial_lpmf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/neg_binomial_2_lpmf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/neg_binomial_lpmf.html</loc></url>
