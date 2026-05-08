@@ -37,6 +37,8 @@
 #' \strong{Multivariate and Matrix Distributions:}
 #' \itemize{
 #'   \item \code{multi_normal(mean, Sigma)}: Standard multivariate normal distribution.
+#'   \item \code{multi_student_t(df, mean, Sigma)}: Multivariate Student's t-distribution.
+#'   \item \code{multi_cauchy(mean, Sigma)}: Multivariate Cauchy distribution (Student-t with df=1).
 #'   \item \code{lkj_corr(eta)}: LKJ prior for correlation matrices.
 #'   \item \code{dirichlet(alpha)}: Dirichlet distribution for simplexes.
 #'   \item \code{lower_tri_normal(mean, sd)}: Normal distribution for elements of a lower-triangular matrix.
@@ -552,34 +554,92 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
   }
 
   K <- nrow(Sigma)
-  eps_mat <- diag(diag(Sigma) * 1e-6 + 1e-11, K)
-  safe_Sigma <- Sigma + eps_mat
-
-  U <- tryCatch(chol(safe_Sigma), error = function(e) NULL)
-  if (is.null(U)) {
-    # If Cholesky fails (non-PD matrix), return a large penalty instead of crashing
-    return(if (sum) -1e10 else rep(-1e10, length(x)))
+  if (is.null(K) || length(Sigma) == 1) {
+    res <- dnorm(x, mean = mean, sd = sqrt(Sigma + 1e-11), log = TRUE)
+    return(if (sum) sum(res) else res)
   }
-  log_det <- log_det_chol(U)
-  L <- t(U)
+  # Ensure positive definiteness with a small jitter
+  # We use a fixed jitter to prevent singular matrices even when sigma is very small
+  safe_Sigma <- Sigma + diag(rep(1e-7, K))
+
+  # Calculate log-determinant and quadratic form more robustly
+  # For RTMB, using determinant() and solve() can sometimes be more stable than chol()
+  # if the matrix is very near-singular.
+  
+  log_det_obj <- determinant(safe_Sigma, logarithm = TRUE)
+  log_det <- as.numeric(log_det_obj$modulus) * log_det_obj$sign
+  
   const <- -0.5 * (K * log(2 * pi) + log_det)
 
-  if (is.matrix(x)) {
+  if (is.matrix(x) && ncol(x) > 1) {
     n <- nrow(x)
     resid_t <- if (is.matrix(mean)) t(x - mean) else t(x) - mean
-    z <- solve(L, resid_t)
-    if (sum) {
-      quad_form <- sum(z^2)
-      return(n * const - 0.5 * quad_form)
-    } else {
-      quad_per_obs <- colSums(z^2)
-      return(const - 0.5 * quad_per_obs)
-    }
+    quad_form <- colSums(resid_t * solve(safe_Sigma, resid_t))
+    res <- const - 0.5 * quad_form
+    return(if (sum) sum(res) else res)
   } else {
-    # Calculation for vectors
-    quad_form <- quad_form_chol(x - mean, L)
+    # Single observation
+    x_vec <- if(is.matrix(x)) drop(x) else x
+    mean_vec <- if(is.matrix(mean)) drop(mean) else mean
+    resid <- x_vec - mean_vec
+    quad_form <- sum(resid * solve(safe_Sigma, resid))
     return(const - 0.5 * quad_form)
   }
+}
+
+#' Multivariate Student-t log-probability density function
+#'
+#' @param x Vector or matrix of quantiles.
+#' @param df Degrees of freedom.
+#' @param mean Vector or matrix of means.
+#' @param Sigma Scale matrix.
+#' @return The sum of the log-density.
+#' @keywords internal
+multi_student_t_lpdf <- function(x, df, mean, Sigma, sum = TRUE) {
+  # Robust dimension check for RTMB
+  Sigma_val <- drop(Sigma)
+  K <- if (is.matrix(Sigma)) nrow(Sigma) else length(Sigma_val)
+  
+  if (length(Sigma_val) == 1) {
+    res <- student_t_lpdf(x, df = df, mu = mean, sigma = sqrt(Sigma_val + 1e-11), sum = FALSE)
+    return(if (sum) sum(res) else res)
+  }
+  
+  # Ensure positive definiteness with a small jitter
+  # We use a jitter to prevent singular matrices
+  safe_Sigma <- Sigma + diag(rep(1e-7, K))
+  
+  # Calculate log-determinant and quadratic form more robustly
+  log_det_obj <- determinant(safe_Sigma, logarithm = TRUE)
+  log_det <- as.numeric(log_det_obj$modulus) * log_det_obj$sign
+  
+  const <- lgamma((df + K) / 2) - lgamma(df / 2) - 0.5 * (K * log(df * pi) + log_det)
+  
+  if (is.matrix(x) && ncol(x) > 1) {
+    n <- nrow(x)
+    resid_t <- if (is.matrix(mean)) t(x - mean) else t(x) - mean
+    quad_form <- colSums(resid_t * solve(safe_Sigma, resid_t))
+    res <- const - 0.5 * (df + K) * log1p(quad_form / df)
+    return(if (sum) sum(res) else res)
+  } else {
+    # Single observation (vector or column-matrix)
+    x_vec <- if(is.matrix(x)) drop(x) else x
+    mean_vec <- if(is.matrix(mean)) drop(mean) else mean
+    resid <- x_vec - mean_vec
+    quad_form <- sum(resid * solve(safe_Sigma, resid))
+    return(const - 0.5 * (df + K) * log1p(quad_form / df))
+  }
+}
+
+#' Multivariate Cauchy log-probability density function
+#'
+#' @param x Vector or matrix of quantiles.
+#' @param mean Vector or matrix of means.
+#' @param Sigma Scale matrix.
+#' @return The sum of the log-density.
+#' @keywords internal
+multi_cauchy_lpdf <- function(x, mean, Sigma, sum = TRUE) {
+  multi_student_t_lpdf(x, df = 1, mean = mean, Sigma = Sigma, sum = sum)
 }
 
 #' Normal Mixture log-probability density function

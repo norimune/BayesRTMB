@@ -2,16 +2,24 @@
 % Please edit documentation in R/wrapper_functions.R
 \name{prior_jzs}
 \alias{prior_jzs}
-\title{Specify a JZS (Jeffrey-Zellner-Siow) prior for t-tests}
+\title{Specify a JZS (Jeffreys-Zellner-Siow) prior}
 \usage{
+prior_jzs(r = 0.707)
+
 prior_jzs(r = 0.707)
 }
 \arguments{
 \item{r}{Numeric; scale parameter for the Cauchy prior on effect size delta. Default is 0.707.}
+
+\item{...}{Optional hyperparameters}
 }
 \value{
 A list with class "rtmb_prior"
+
+A list with class "rtmb_prior"
 }
 \description{
+Specify a JZS (Jeffreys-Zellner-Siow) prior
+
 Specify a JZS (Jeffrey-Zellner-Siow) prior for t-tests
 }

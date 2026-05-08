@@ -54,6 +54,8 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
+\item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
+
 \item{\code{map}}{List; the parameter mapping used.}
 }
 \if{html}{\out{</div>}}
@@ -68,6 +70,7 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-ranef}{\code{MAP_Fit$ranef()}}
 \item \href{#method-map_fit-draws}{\code{MAP_Fit$draws()}}
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
+\item \href{#method-map_fit-savage_dickey}{\code{MAP_Fit$savage_dickey()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
 \item \href{#method-map_fit-profile}{\code{MAP_Fit$profile()}}
@@ -165,6 +168,7 @@ Create a new `MAP_Fit` object.
   generate = NULL,
   se_samples = NULL,
   par_unc = NULL,
+  vcov_unc = NULL,
   ci_method = "wald",
   laplace = TRUE,
   map = NULL
@@ -205,6 +209,8 @@ Create a new `MAP_Fit` object.
 \item{\code{se_samples}}{List of simulated samples for standard error estimation.}
 
 \item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw values).}
+
+\item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
 
 \item{\code{ci_method}}{Method used for CI estimation ("wald" or "sampling").}
 
@@ -286,6 +292,30 @@ Summarize MAP estimates.
 }
 \subsection{Returns}{
 A summary object, typically a data frame.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-savage_dickey"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-savage_dickey}{}}}
+\subsection{Method \code{savage_dickey()}}{
+Calculate Bayes Factors using the Savage-Dickey density ratio.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$savage_dickey(pars = NULL, null = 0, digits = 3)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to test. If NULL, tests all fixed effects.}
+
+\item{\code{null}}{The null hypothesis value (on the constrained scale). Default is 0.}
+
+\item{\code{digits}}{Number of decimal places in the output.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A data frame containing Bayes Factors and evidence descriptions.
 }
 }
 \if{html}{\out{<hr>}}

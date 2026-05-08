@@ -512,18 +512,20 @@ RTMB_Model <- R6::R6Class(
     #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
     #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
     #' @param fixed Optional list specifying parameter values to fix.
+    #' @param REML Logical; whether to use Restricted Maximum Likelihood (REML). Default is FALSE.
+    #' @param df_pars Character vector of parameters to be treated as fixed effects for REML/DF calculation, or "auto". Default is "auto".
     #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL, fixed = NULL) {
+                        df = NULL, fixed = NULL, REML = FALSE, df_pars = "auto") {
       if (!is.null(fixed)) {
         return(self$fixed_model(fixed)$optimize(
           laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
-          num_samples = num_samples, seed = seed, df = df
+          num_samples = num_samples, seed = seed, df = df, REML = REML, df_pars = df_pars
         ))
       }
 
@@ -540,6 +542,51 @@ RTMB_Model <- R6::R6Class(
       opt_results <- list()
       obj_vals <- numeric(num_estimate)
       conv_codes <- numeric(num_estimate)
+
+      # --- 1. Determine target variables for DF calculation ---
+      if (identical(df_pars, "auto")) {
+        if (!is.null(self$extra$df_pars)) {
+          target_vars <- self$extra$df_pars
+        } else {
+          # Default to none if no specific df_pars are provided in the model's extra info
+          target_vars <- character(0)
+        }
+      } else if (identical(df_pars, "none")) {
+        target_vars <- character(0)
+      } else if (identical(df_pars, "all")) {
+        target_vars <- names(self$par_list)
+      } else {
+        target_vars <- df_pars
+      }
+
+      # --- 2. Variable Classification for REML ---
+      original_par_list <- self$par_list
+      if (REML) {
+        fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
+        var_patterns <- c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr", "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau")
+
+        modified_par_list <- self$par_list
+        for (name in names(modified_par_list)) {
+          is_fix_pattern <- any(sapply(fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
+          is_target <- name %in% target_vars
+          is_var <- any(sapply(var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
+          is_ran_original <- isTRUE(modified_par_list[[name]]$random)
+
+          if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
+            modified_par_list[[name]]$random <- TRUE
+          } else {
+            modified_par_list[[name]]$random <- FALSE
+          }
+        }
+        self$par_list <- modified_par_list
+        on.exit(
+          {
+            self$par_list <- original_par_list
+          },
+          add = TRUE
+        )
+        laplace <- TRUE
+      }
 
       # Jacobian is not required for MAP estimation
       jac_target <- if (laplace) "random" else "none"
@@ -842,8 +889,26 @@ RTMB_Model <- R6::R6Class(
       # --- Degrees of freedom adjustment ---
       if (any(!is.infinite(df_t))) {
         est_dfs_all <- rep(df_t[1], L_u_total)
-      } else if (auto_df) {
+      } else if (auto_df || REML) {
+        # (A) Active parameters (ML side)
         est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
+
+        # (B) Integrated-out parameters (REML side)
+        if (REML && length(ad_obj$env$random) > 0) {
+          full_par_names <- names(ad_obj$env$last.par)
+          target_full_idx <- which(full_par_names %in% target_vars)
+          idx_ran <- ad_obj$env$random
+          target_ran_idx <- match(target_full_idx, idx_ran)
+
+          valid_mask <- !is.na(target_ran_idx)
+          target_ran_idx <- target_ran_idx[valid_mask]
+          valid_full_idx <- target_full_idx[valid_mask]
+
+          if (length(target_ran_idx) > 0) {
+            reml_dfs <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx)
+            est_dfs_all[valid_full_idx] <- if (is.list(reml_dfs)) reml_dfs$df else reml_dfs
+          }
+        }
         ad_obj$fn(opt$par)
       } else {
         est_dfs_all <- rep(Inf, L_u_total)
@@ -1099,10 +1164,13 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
+      # Restore original par_list before result categorization
+      if (REML) self$par_list <- original_par_list
+
       # Map unconstrained DFs back to parameter list structure
       df_list_con <- list()
       # Determine if we should include DF in the output
-      show_df <- auto_df || !is.infinite(df_t)
+      show_df <- auto_df || REML || !is.infinite(df_t)
 
       if (exists("est_dfs_all")) {
         # est_dfs_all is on unconstrained scale. For summary, we map it to constrained parameters.
@@ -1370,7 +1438,8 @@ RTMB_Model <- R6::R6Class(
         par_unc        = unc_est_vec,
         ci_method      = ci_method,
         laplace        = laplace,
-        map            = target_map
+        map            = target_map,
+        vcov_unc       = Cov_u
       )
 
       return(res_obj)
@@ -2630,7 +2699,7 @@ RTMB_Model <- R6::R6Class(
 
         if (has_index) {
           base_name <- as.character(target_ast[[2]])
-          idx_expr <- target_ast[[3]] # e.g., numeric 2 or symbol X1
+          idx_expr <- target_ast[[3]]
         } else {
           base_name <- as.character(target_ast)
           idx_expr <- NULL
@@ -2639,8 +2708,12 @@ RTMB_Model <- R6::R6Class(
         # Internal function to find the prior distribution of the target parameter from the AST
         find_prior <- function(expr) {
           if (is.call(expr)) {
-            if (identical(expr[[1]], as.name("~")) && identical(expr[[2]], as.name(base_name))) {
-              return(expr[[3]])
+            if (identical(expr[[1]], as.name("~"))) {
+              lhs <- expr[[2]]
+              if (identical(lhs, as.name(base_name)) ||
+                (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(base_name)))) {
+                return(expr[[3]])
+              }
             }
             for (i in seq_along(expr)) {
               res <- find_prior(expr[[i]])
@@ -2659,51 +2732,61 @@ RTMB_Model <- R6::R6Class(
 
         # If an index is specified, dynamically resolve arguments based on the data environment
         if (has_index) {
-          eval_env <- list2env(self$data, parent = parent.frame())
+          # Use the environment where setup variables are stored
+          eval_env <- list2env(self$data, parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
+          for (n in names(self$init)) assign(n, self$init[[n]], envir = eval_env)
 
-          # Fix: Make index value determination safe
-          # Evaluate in environment, and adopt if it is a numeric or string of length 1.
-          # Otherwise (if it's a vector like a data column), treat the variable name itself as a string
           idx_val <- tryCatch(
             {
               res <- eval(idx_expr, envir = eval_env)
-              if (length(res) == 1 && (is.numeric(res) || is.character(res))) {
-                res
-              } else {
-                as.character(idx_expr)
-              }
+              if (length(res) == 1 && (is.numeric(res) || is.character(res))) res else as.character(idx_expr)
             },
             error = function(e) as.character(idx_expr)
           )
 
           for (i in 2:length(prior_expr)) {
             arg_expr <- prior_expr[[i]]
-
-            # If not a numeric literal (variable or formula)
             if (!is.numeric(arg_expr)) {
-              # Evaluate arguments in the data environment
               arg_val <- tryCatch(eval(arg_expr, envir = eval_env), error = function(e) NULL)
-
-              # Apply index only if the evaluation result is a vector (length >= 2)
               if (!is.null(arg_val) && length(arg_val) > 1) {
-                # Safely test extraction by index
                 ext_val <- arg_val[idx_val]
-
-                # Replace with a constant only if one value could be extracted without being NA
                 if (length(ext_val) == 1 && !is.na(ext_val)) {
                   prior_expr[[i]] <- ext_val
                 } else {
-                  # If extraction failed (e.g., accessed unnamed vector with string), leave as expression
                   prior_expr[[i]] <- call("[", arg_expr, idx_expr)
                 }
               }
             }
           }
         }
-
         new_formula <- call("~", target_ast, prior_expr)
         target <- paste(deparse(new_formula), collapse = " ")
         cat(sprintf("Auto-completed target: %s\n", target))
+      } else {
+        # Target contains "~"
+        target_f <- str2lang(target)
+        target_ast <- target_f[[2]] # Only the LHS
+        lhs <- target_ast
+        has_index <- is.call(lhs) && identical(lhs[[1]], as.name("["))
+        if (has_index) {
+          base_name <- as.character(lhs[[2]])
+          idx_expr <- lhs[[3]]
+
+          # Resolve idx_val for tilde case
+          eval_env <- list2env(self$data, parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
+          for (n in names(self$init)) assign(n, self$init[[n]], envir = eval_env)
+          idx_val <- tryCatch(
+            {
+              res <- eval(idx_expr, envir = eval_env)
+              if (length(res) == 1 && (is.numeric(res) || is.character(res))) res else as.character(idx_expr)
+            },
+            error = function(e) as.character(idx_expr)
+          )
+        } else {
+          base_name <- as.character(lhs)
+          idx_expr <- NULL
+          idx_val <- NULL
+        }
       }
 
       f <- tryCatch(as.formula(target), error = function(e) {
@@ -2789,10 +2872,21 @@ RTMB_Model <- R6::R6Class(
         prior_expr <- as.call(append(as.list(prior_expr), call("rep", value, k_fixed), after = 1))
 
         eval_env <- list2env(self$data, parent = parent.frame())
+        # Inject current parameter values as a list so they match the model code structure
+        init_list <- constrained_vector_to_list(self$init, self$par_list)
+        for (n in names(init_list)) assign(n, init_list[[n]], envir = eval_env)
+
+        # Define loop/index variables (like 'k') for evaluation
+        if (has_index) {
+          assign("k", idx_val, envir = eval_env)
+          if (is.symbol(idx_expr)) assign(as.character(idx_expr), idx_val, envir = eval_env)
+        }
+
         correction_val <- tryCatch(
           {
             # If the evaluated log-density is a vector, sum it using sum()
-            sum(eval(prior_expr, envir = eval_env))
+            res <- sum(eval(prior_expr, envir = eval_env))
+            res
           },
           error = function(e) {
             stop(sprintf("Failed to evaluate prior '%s'. Error: %s", prior_str, e$message))
@@ -2815,6 +2909,7 @@ RTMB_Model <- R6::R6Class(
 
       # --- Addition of Jacobian correction ---
       b_type <- p$bounds
+      lj_val <- 0
       if (b_type %in% c("lower", "upper", "interval")) {
         val_vec <- rep(value, length.out = k_fixed)
         lj_val <- 0
@@ -2832,6 +2927,48 @@ RTMB_Model <- R6::R6Class(
         }
         correction_val <- correction_val + lj_val
       }
+
+      # --- 7. Clone and Modify Code ---
+      new_model <- self$clone()
+
+      # Track if the prior was successfully modified in the AST
+      prior_removed <- FALSE
+      if (!is.null(self$code)) {
+        new_model$code <- as.list(self$code)
+        target_spec <- spec
+        old_ast <- paste(deparse(new_model$code$model), collapse = "\n")
+        new_model$code$model <- remove_prior_from_ast(self$code$model, target_spec, self$par_names[[base_name]])
+        if (paste(deparse(new_model$code$model), collapse = "\n") != old_ast) {
+          prior_removed <- TRUE
+        } else {
+          # If removal failed (e.g. vectorized b ~ normal() but target is b[1]),
+          # append a cancellation term to the end of the model block.
+          # This ensures the density is subtracted INSIDE the integral (MakeADFun).
+
+          # 1. Prepare the lpdf call (prior_expr is already converted to _lpdf in null_model)
+          # We need to use the original lhs (target_ast) as the first argument
+          cancel_call <- prior_expr
+          cancel_call[[2]] <- target_ast
+
+          # 2. Add to AST: lp <- lp - cancellation_term
+          # We assume the log-probability variable is named 'lp' as per package convention
+          sub_expr <- bquote(lp <- lp - .(cancel_call))
+
+          # 3. Find the position before the return statement
+          ast_list <- as.list(new_model$code$model)
+          ret_idx <- which(sapply(ast_list, function(x) is.call(x) && identical(x[[1]], as.name("return"))))
+
+          if (length(ret_idx) > 0) {
+            new_ast_list <- append(ast_list, list(sub_expr), after = ret_idx[1] - 1)
+            new_model$code$model <- as.call(new_ast_list)
+            prior_removed <- TRUE # Mark as removed since it's cancelled in AST
+          }
+        }
+        # Rebuild log_prob from modified AST
+        user_env <- if (!is.null(self$code$env)) self$code$env else parent.frame()
+        new_model$log_prob <- eval(substitute(model_code(E, env = EN), list(E = new_model$code$model, EN = user_env)))
+      }
+
       if (is_full) {
         map_list[[par_name]] <- factor(rep(NA, p$unc_length))
       } else {
@@ -2851,17 +2988,21 @@ RTMB_Model <- R6::R6Class(
       adjusted_init[[par_name]] <- val
       if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
 
-      # --- 7. Clone and return ---
-      new_model <- self$clone()
-      if (!is.null(new_model$code)) new_model$code <- as.list(self$code)
-
       new_model$map <- map_list
       new_model$init <- adjusted_init
-      new_model$prior_correction <- correction_val
+
+      # If the prior was removed from AST, we only need to subtract Jacobian correction.
+      # If it was NOT removed (e.g. vectorized b ~ normal()), we subtract both density and Jacobian.
+      if (prior_removed) {
+        new_model$prior_correction <- lj_val
+      } else {
+        # This case happens if no code is present or if something went wrong
+        new_model$prior_correction <- correction_val + lj_val
+      }
 
       cat("Null model created. Fixed parameters:\n")
       cat(sprintf("  %s -> %g (Dimensions: %d)\n", spec, value, k_fixed))
-      cat(sprintf("  Prior correction applied: %f\n", correction_val))
+      cat(sprintf("  Jacobian correction applied: %f\n", lj_val))
 
       return(new_model)
     },
@@ -2869,47 +3010,19 @@ RTMB_Model <- R6::R6Class(
     #' @description Evaluate the univariate prior density contribution of a specific parameter.
     #' @param p_name Flattened parameter name (e.g., "beta[1]").
     #' @param u_val Value in unconstrained space.
+    #' @param par_list Optional parameter list (constrained) to use for evaluation.
     #' @return Numeric log-prior density (unconstrained).
-    evaluate_univariate_prior = function(p_name, u_val) {
+    evaluate_univariate_prior = function(p_name, u_val, par_list = NULL) {
       ast <- self$code$model
-      if (is.null(ast)) return(0)
+      if (is.null(ast)) {
+        return(0)
+      }
 
       p_base <- gsub("\\[.*\\]$", "", p_name)
       p_info <- self$par_list[[p_base]]
 
-      # 1. Extract only lines in AST involving p_base as LHS of ~
-      filter_var_prior <- function(x) {
-        if (is.call(x)) {
-          if (identical(x[[1]], as.name("~"))) {
-            lhs <- x[[2]]
-            vars <- all.vars(lhs)
-            if (p_base %in% vars) return(x)
-            return(NULL)
-          }
-          if (identical(x[[1]], as.name("{"))) {
-            new_args <- list()
-            for (i in 2:length(x)) {
-              sub_e <- filter_var_prior(x[[i]])
-              if (!is.null(sub_e)) new_args <- c(new_args, list(sub_e))
-            }
-            if (length(new_args) == 0) return(NULL)
-            return(as.call(c(list(as.name("{")), new_args)))
-          }
-          if (identical(x[[1]], as.name("for"))) {
-            body <- filter_var_prior(x[[4]])
-            if (is.null(body)) return(NULL)
-            x[[4]] <- body
-            return(x)
-          }
-        }
-        return(NULL)
-      }
-
-      var_prior_ast <- filter_var_prior(ast)
-      if (is.null(var_prior_ast)) return(0) # Default to uniform prior
-
-      # 2. Evaluate AST
-      curr_par_list <- to_constrained(unconstrained_vector_to_list(self$init, self$par_list), self$par_list)
+      # 1. Prepare evaluation environment
+      curr_par_list <- if (!is.null(par_list)) par_list else to_constrained(unconstrained_vector_to_list(self$init, self$par_list), self$par_list)
 
       p_idx <- 1
       if (grepl("\\[", p_name)) {
@@ -2917,15 +3030,12 @@ RTMB_Model <- R6::R6Class(
         p_idx <- suppressWarnings(as.integer(idx_str))
         if (is.na(p_idx)) {
           p_names <- self$par_names[[p_base]]
-          if (!is.null(p_names)) {
-            p_idx <- which(p_names == idx_str)
-            if (length(p_idx) == 0) p_idx <- 1
-          } else {
-            p_idx <- 1
-          }
+          if (!is.null(p_names)) p_idx <- which(p_names == idx_str)
+          if (length(p_idx) == 0) p_idx <- 1
         }
       }
 
+      # Set the target value in unconstrained space then convert to constrained
       c_val <- u_val
       lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
       upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
@@ -2937,12 +3047,164 @@ RTMB_Model <- R6::R6Class(
       } else if (is.finite(lower) && is.finite(upper)) {
         c_val <- lower + (upper - lower) / (1 + exp(-u_val))
       }
-
       curr_par_list[[p_base]][p_idx] <- c_val
 
-      # Use eval(bquote(...)) to pass the AST directly
-      fn <- eval(bquote(model_code(.(var_prior_ast), env = parent.frame())))
-      lp_con_full <- tryCatch(fn(self$data, curr_par_list), error = function(e) -Inf)
+      # 2. Smart Evaluation with custom ~ and distribution functions
+      # We create a function that executes the model code but only keeps track of priors for p_name
+      total_lp <- 0
+
+      # Helper to resolve names like b[k] to b[1] or b[talk]
+      resolve_name <- function(expr, env) {
+        if (is.name(expr)) {
+          return(as.character(expr))
+        }
+        if (is.call(expr) && identical(expr[[1]], as.name("["))) {
+          base <- as.character(expr[[2]])
+          indices <- as.list(expr)[-(1:2)]
+          idx_vals <- sapply(indices, function(idx) {
+            val <- try(eval(idx, envir = env), silent = TRUE)
+            if (inherits(val, "try-error")) {
+              return(as.character(idx))
+            }
+            val
+          })
+          # Map index to name if available
+          p_names <- self$par_names[[base]]
+          if (!is.null(p_names) && length(idx_vals) == 1 && is.numeric(idx_vals[1])) {
+            ii <- as.integer(idx_vals[1])
+            if (ii >= 1 && ii <= length(p_names)) {
+              return(paste0(base, "[", p_names[ii], "]"))
+            }
+          }
+          return(paste0(base, "[", paste(idx_vals, collapse = ","), "]"))
+        }
+        return(deparse(expr))
+      }
+
+      # Define evaluation environment
+      eval_env <- new.env(parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
+
+      # Add data and parameters
+      eval_env$dat <- self$data
+      eval_env$par <- curr_par_list
+      eval_env$lp <- 0 # Local lp counter (unused by our custom ~ but for safety)
+
+      # Custom Sampling Operator
+      # In RTMB, `Y ~ normal(mu, sigma)` is equivalent to `normal(Y, mu, sigma)`.
+      # We must NOT eagerly evaluate rhs because the distribution function expects
+      # the LHS value as its first argument. Instead, we intercept the call,
+      # inject the LHS value, and then evaluate.
+      eval_env$`~` <- function(lhs, rhs) {
+        lhs_expr <- substitute(lhs)
+        rhs_expr <- substitute(rhs)
+        res_name <- resolve_name(lhs_expr, env = parent.frame())
+        
+        dist_func <- if (is.call(rhs_expr)) deparse(rhs_expr[[1]]) else "none"
+
+        # Check if this is a multivariate distribution we can marginalize
+        is_multivariate <- FALSE
+        if (dist_func %in% c("multi_normal", "multi_student_t", "multi_cauchy")) {
+          is_multivariate <- TRUE
+        }
+
+        # Match logic:
+        if (is_multivariate) {
+          base_match <- (res_name == p_base)
+          
+          if (base_match && p_name != p_base) {
+            # Target is b[k], LHS is b. We marginalize.
+            # 1. Evaluate args of multi_...
+            args <- as.list(rhs_expr)[-1]
+            eval_args <- lapply(args, function(a) tryCatch(eval(a, envir = eval_env), error = function(e) e$message))
+            
+            # 2. Extract marginals
+            if (dist_func == "multi_normal") {
+              mu <- eval_args[[1]][p_idx]
+              Sigma_kk <- eval_args[[2]][p_idx, p_idx]
+              log_dens <- dnorm(u_val, mu, sqrt(Sigma_kk), log = TRUE)
+            } else {
+              # Student-t / Cauchy
+              idx_df <- if (dist_func == "multi_student_t") 1 else NULL
+              idx_mu <- if (dist_func == "multi_student_t") 2 else 1
+              idx_Sigma <- if (dist_func == "multi_student_t") 3 else 2
+
+              df_val <- if (!is.null(idx_df)) eval_args[[idx_df]] else 1
+              mu <- eval_args[[idx_mu]][p_idx]
+              Sigma_kk <- eval_args[[idx_Sigma]][p_idx, p_idx]
+              
+              # Final density evaluation (use dt directly for safety)
+              scale <- sqrt(as.numeric(Sigma_kk))
+              val <- (u_val - mu) / scale
+              log_dens <- dt(as.numeric(val), df = as.numeric(df_val), log = TRUE) - log(scale)
+            }
+            total_lp <<- total_lp + log_dens
+          } else if (res_name == p_name) {
+            # Exact match
+            full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
+            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), error = function(e) NULL)
+            if (!is.null(log_dens)) total_lp <<- total_lp + sum(log_dens)
+          }
+        } else {
+          # Standard univariate logic
+          # Build the full distribution call by injecting lhs as the first argument
+          if (is.call(rhs_expr)) {
+            full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
+            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), error = function(e) NULL)
+          } else {
+            log_dens <- tryCatch(eval(rhs_expr, envir = parent.frame()), error = function(e) NULL)
+          }
+
+          if (!is.null(log_dens)) {
+            # Match logic:
+            # 1. Exact match (e.g., "b[1]" == "b[1]")
+            if (res_name == p_name) {
+              total_lp <<- total_lp + sum(log_dens)
+            }
+            # 2. LHS is base name (e.g., "b") and p_name is indexed (e.g., "b[1]")
+            else if (res_name == p_base && p_name != p_base && length(log_dens) >= p_idx) {
+              total_lp <<- total_lp + log_dens[p_idx]
+            }
+            # 3. p_name is base name ("b") and res_name is indexed ("b[1]")
+            else if (p_name == p_base && grepl(paste0("^", p_base, "\\["), res_name)) {
+              total_lp <<- total_lp + sum(log_dens)
+            }
+          }
+        }
+
+        invisible(NULL)
+      }
+
+      # Override distribution functions to return log-density
+      eval_env$normal <- function(x, mean, sd) dnorm(x, mean, sd, log = TRUE)
+      eval_env$cauchy <- function(x, location, scale) cauchy_lpdf(x, location, scale, sum = FALSE)
+      eval_env$exponential <- function(x, rate) dexp(x, rate, log = TRUE)
+      eval_env$gamma <- function(x, shape, rate) dgamma(x, shape, rate, log = TRUE)
+      eval_env$inverse_gamma <- function(x, shape, scale) dinverse_gamma(x, shape, scale, log = TRUE)
+      eval_env$student_t <- function(x, df, mean, sd) dstudent_t(x, df, mean, sd, log = TRUE)
+      eval_env$beta <- function(x, shape1, shape2) dbeta(x, shape1, shape2, log = TRUE)
+      eval_env$bernoulli <- function(x, prob) dbinom(x, 1, prob, log = TRUE)
+      eval_env$binomial <- function(x, size, prob) dbinom(x, size, prob, log = TRUE)
+      eval_env$poisson <- function(x, lambda) dpois(x, lambda, log = TRUE)
+      eval_env$multi_normal <- function(x, mean, Sigma) multi_normal_lpdf(x, mean, Sigma, sum = FALSE)
+      eval_env$multi_student_t <- function(x, df, mean, Sigma) multi_student_t_lpdf(x, df, mean, Sigma, sum = FALSE)
+      eval_env$multi_cauchy <- function(x, mean, Sigma) multi_cauchy_lpdf(x, mean, Sigma, sum = FALSE)
+
+      # Additional RTMB helpers
+      eval_env$getAll <- function(d, p) {
+        for (n in names(d)) assign(n, d[[n]], envir = parent.frame())
+        for (n in names(p)) assign(n, p[[n]], envir = parent.frame())
+      }
+      eval_env$Dim <- function(...) NULL
+
+      # Execute the model AST in the custom environment
+      tryCatch(
+        {
+          eval(as.call(c(list(as.name("{")), quote(getAll(dat, par)), ast)), envir = eval_env)
+        },
+        error = function(e) {
+          # If execution fails, fallback to 0 or diagnostic
+        }
+      )
 
       # (F) Jacobian for this element
       lj <- 0
@@ -2952,28 +3214,89 @@ RTMB_Model <- R6::R6Class(
         lj <- log(upper - lower) - u_val - 2 * log(1 + exp(-u_val))
       }
 
-      return(lp_con_full + lj)
+      return(total_lp + lj)
     }
   )
 )
 
-remove_prior_from_ast <- function(expr, target_vars) {
+remove_prior_from_ast <- function(expr, target_spec, p_names = NULL) {
+  # target_spec is like "b" or "b[talk]"
+  target_base <- gsub("\\[.*\\]$", "", target_spec)
+  has_index <- grepl("\\[", target_spec)
+
   if (is.call(expr)) {
-    # Check the contents of the { ... } block
+    # 1. Handle { ... } blocks
     if (identical(expr[[1]], as.name("{"))) {
-      new_args <- lapply(as.list(expr)[-1], function(e) remove_prior_from_ast(e, target_vars))
-      new_args <- Filter(Negate(is.null), new_args) # Remove deleted lines (NULL)
+      new_args <- lapply(as.list(expr)[-1], function(e) remove_prior_from_ast(e, target_spec, p_names))
+      new_args <- Filter(Negate(is.null), new_args)
       return(as.call(c(as.name("{"), new_args)))
     }
-    # Check the prior distribution expression ~
-    else if (identical(expr[[1]], as.name("~"))) {
-      lhs <- deparse(expr[[2]]) # Get the variable name on the left side
-      if (lhs %in% target_vars) {
-        return(NULL) # Delete this line completely if it is the target variable
+
+    # 2. Handle sampling statements b[k] ~ ...
+    if (identical(expr[[1]], as.name("~"))) {
+      lhs <- expr[[2]]
+      lhs_str <- deparse(lhs)
+
+      # If target is "b" (full vector), remove any prior for "b" or "b[...]"
+      if (!has_index) {
+        if (identical(lhs, as.name(target_base)) ||
+          (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(target_base)))) {
+          return(NULL)
+        }
+      } else {
+        # Target is specific element "b[talk]"
+        # If LHS is exactly "b[talk]", remove it.
+        if (lhs_str == target_spec) {
+          return(NULL)
+        }
+
+        # If LHS is indexed like "b[k]" inside a loop, we can't easily remove it
+        # unless we wrap it in a condition. For JZS/independent priors, we use a trick:
+        # We replace it with an expression that evaluates to 0 if k matches the target.
+        if (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(target_base))) {
+          # We'll handle this in the parent 'for' loop or by adding a condition here if we can resolve the index.
+          # But simpler: if it's the exact string b[talk], we already removed it.
+        }
       }
     }
-    # Process other function calls recursively
-    new_args <- lapply(as.list(expr), function(e) remove_prior_from_ast(e, target_vars))
+
+    # 3. Handle for loops
+    if (identical(expr[[1]], as.name("for"))) {
+      var_name <- as.character(expr[[2]]) # loop variable e.g. "k"
+      body <- expr[[4]]
+
+      # If we are removing a specific element b[talk] from b[k] loop
+      if (has_index && is.call(body) && identical(body[[1]], as.name("~"))) {
+        # Check if the body matches the target base
+        if (is.call(body[[2]]) && identical(body[[2]][[2]], as.name(target_base))) {
+          # Wrap the body in a condition: if (k != talk_idx) ...
+          # Get the index value from target_spec (e.g. "talk")
+          target_idx_str <- gsub(".*\\[(.*)\\].*", "\\1", target_spec)
+
+          # Resolve label to integer index if possible
+          if (!is.null(p_names)) {
+            idx_match <- which(p_names == target_idx_str)
+            if (length(idx_match) > 0) target_idx_str <- idx_match
+          }
+
+          # Convert to if-expression: if (k != index) ...
+          new_body <- bquote(if (.(as.name(var_name)) != .(target_idx_str)) .(body))
+          expr[[4]] <- new_body
+          return(expr)
+        }
+      }
+
+      # Otherwise recurse into body
+      new_body <- remove_prior_from_ast(body, target_spec, p_names)
+      if (is.null(new_body)) {
+        return(NULL)
+      }
+      expr[[4]] <- new_body
+      return(expr)
+    }
+
+    # Recurse for others
+    new_args <- lapply(as.list(expr), function(e) remove_prior_from_ast(e, target_spec, p_names))
     return(as.call(new_args))
   }
   return(expr)

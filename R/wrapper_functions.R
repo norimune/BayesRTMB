@@ -92,6 +92,18 @@ prior_weak <- function(sd_ratio = 0.5, max_beta = 1.0, ...) {
   return(res)
 }
 
+#' Specify a JZS (Jeffreys-Zellner-Siow) prior
+#'
+#' @param r Scale factor for the Cauchy prior on effect sizes. Default is 0.707 (sqrt(2)/2).
+#' @param ... Optional hyperparameters
+#' @return A list with class "rtmb_prior"
+#' @export
+prior_jzs <- function(r = 0.707, ...) {
+  res <- list(type = "jzs", r = r, ...)
+  class(res) <- "rtmb_prior"
+  return(res)
+}
+
 #' Specify a Spike-and-Slab prior for variable selection
 #'
 #' @param ssp_ratio Prior probability of inclusion for each variable. Default is 0.25.
@@ -585,7 +597,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   prior_type <- prior$type
   regularization <- if (prior_type %in% c("rhs", "ssp")) prior_type else "none"
-  use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
+  use_weak_info <- prior_type %in% c("weak", "rhs", "ssp", "jzs")
   has_random <- !is.null(findbars(formula))
 
   # If classic mode and random effects are present (or forced), we internally
@@ -618,7 +630,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   families_requiring_yrange <- c("gaussian", "lognormal", "student_t")
   is_continuous <- family %in% families_requiring_yrange
 
-  if (use_weak_info && is_continuous && is.null(y_range)) {
+  if (use_weak_info && is_continuous && is.null(y_range) && prior_type != "jzs") {
     stop(sprintf("Specifying 'y_range' is required when using prior_%s() with family = '%s'.", prior_type, family))
   }
 
@@ -728,6 +740,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     ranef_names_list <- list()
     group_labels_list <- list()
   }
+  
+  jzs_V_val <- NULL
 
   has_intercept <- "(Intercept)" %in% colnames(X)
   if (family == "ordered") has_intercept <- FALSE
@@ -918,11 +932,28 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- .(prior$sd_ratio))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- 1.0)
     } else {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(prior$sd_ratio))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
+      if (prior_type == "jzs") {
+         # For JZS, we use defaults if y_range is missing
+         if (!is.null(y_range)) {
+           setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
+           setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(prior$sd_ratio))
+           setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
+           setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
+         } else {
+           # JZS defaults for alpha/sigma part if y_range is missing (though we use flat priors anyway)
+           setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- 1.0)
+           setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- 10.0)
+           setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
+         }
+         setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
+         setup_exprs[[length(setup_exprs) + 1]] <- bquote(jzs_r <- .(prior$r))
+      } else {
+         setup_exprs[[length(setup_exprs) + 1]] <- quote(half_d_y <- diff(y_range) / 2)
+         setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(prior$sd_ratio))
+         setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
+         setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mean(y_range))
+         setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate <- 1.0 / base_scale)
+      }
     }
 
     setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_rate <- 1.0 / base_scale)
@@ -933,6 +964,32 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- .(prior$max_beta) * base_scale / X_sd)
       if (has_intercept && !prior_type %in% c("flat", "uniform")) {
         setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
+      } else if (prior_type == "jzs") {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
+      }
+
+      if (prior_type == "jzs") {
+        # Calculate (X_c' X_c / N)^-1 for multivariate JZS
+        # X_c is centered X.
+        X_mean_val <- apply(X, 2, mean)
+        X_c_val <- X - rep(1, N) %*% t(X_mean_val)
+        
+        X_for_jzs <- X_c_val
+        
+        if (ncol(X_for_jzs) > 0) {
+          # Calculate (X'X/N)^-1 with numerical safety
+          XtX_inv <- solve(t(X_for_jzs) %*% X_for_jzs / N)
+          # Force symmetry and add a tiny jitter to ensure PD
+          jzs_V_val <- 0.5 * (XtX_inv + t(XtX_inv))
+          diag(jzs_V_val) <- diag(jzs_V_val) + 1e-10
+          
+          jzs_scales <- sqrt(diag(jzs_V_val))
+          
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(jzs_V <- .(jzs_V_val))
+        } else {
+          # Null model case: no predictors for JZS
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(jzs_V <- matrix(0, 0, 0))
+        }
       }
 
       if (regularization == "rhs") {
@@ -967,7 +1024,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   }
   if (K > 0) {
-    if (regularization == "none") {
+    if (prior_type == "jzs") {
+      param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
+    } else if (regularization == "none") {
       param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
     } else if (regularization == "rhs") {
       param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(K))
@@ -1157,10 +1216,17 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   prior_exprs <- list()
-  if (prior_type %in% c("weak", "rhs", "ssp")) {
+  if (prior_type %in% c("weak", "rhs", "ssp", "jzs")) {
     if (family %in% c("gaussian", "lognormal", "student_t")) {
       if (use_weak_info && prior_type == "weak") {
         prior_exprs[[length(prior_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+      } else if (prior_type == "jzs") {
+        # Jeffreys prior for variance (p(sigma) proportional to 1/sigma)
+        if (num_sigma_groups > 1) {
+          prior_exprs[[length(prior_exprs) + 1]] <- quote(lp <- lp - sum(log(sigma)))
+        } else {
+          prior_exprs[[length(prior_exprs) + 1]] <- quote(lp <- lp - log(sigma))
+        }
       } else if (!is.null(prior$sigma_rate)) {
         prior_exprs[[length(prior_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
       }
@@ -1174,13 +1240,24 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (has_intercept) {
       if (use_weak_info && prior_type == "weak") {
         prior_exprs[[length(prior_exprs) + 1]] <- quote(Intercept_c ~ normal(mid_y, alpha_prior_sd))
+      } else if (prior_type == "jzs") {
+        # Flat prior for intercept (p(alpha) proportional to 1) - no term added
+        prior_exprs[[length(prior_exprs) + 1]] <- quote("# Flat prior for Intercept (JZS)")
       } else if (!is.null(prior$Intercept_sd)) {
         prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept_c ~ normal(0, .(prior$Intercept_sd)))
       }
     }
 
     if (K > 0) {
-      if (regularization == "none") {
+      if (prior_type == "jzs") {
+        # Multivariate JZS (Single-g prior): b ~ Multivariate-Cauchy(0, r^2 * sigma^2 * (X'X/N)^-1)
+        # This matches the BayesFactor package and handles correlations correctly.
+        # We use bquote to embed the pre-calculated dimension.
+        if (!is.null(jzs_V_val) && ncol(jzs_V_val) > 0) {
+          K_jzs <- ncol(jzs_V_val)
+          prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ multi_cauchy(rep(0, .(K_jzs)), (jzs_r * sigma)^2 * jzs_V))
+        }
+      } else if (regularization == "none") {
         if (use_weak_info && prior_type == "weak") {
           prior_exprs[[length(prior_exprs) + 1]] <- quote(b ~ normal(0, beta_prior_sd))
         } else if (!is.null(prior$b_sd)) {
@@ -2455,20 +2532,46 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
 
   # --- 2. Prior Setup ---
   if (is.null(prior)) prior <- prior_uniform()
+
+  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform") {
+    prior <- prior_weak()
+  }
   prior_type <- prior$type
   is_jzs <- prior_type == "jzs"
   is_weak <- prior_type == "weak"
-  use_delta_param <- is_jzs || is_weak
+  use_delta_param <- is_jzs
   if (is_jzs) r <- prior$r
 
   # --- 3. AST Construction ---
   setup_ast <- quote({})
   if (is_weak) {
-    if (is.null(y_range)) stop("y_range is required for prior_weak().")
+    if (is.null(y_range)) {
+      stop("Specifying 'y_range' (theoretical minimum and maximum values of the response) is required when using prior_weak().", call. = FALSE)
+    }
+    
+    # Common setup values
+    sd_ratio_val <- prior$sd_ratio
+    max_beta_val <- prior$max_beta
+    
     setup_ast <- bquote({
       half_d_y <- .(diff(y_range) / 2)
-      base_scale <- half_d_y * .(prior$sd_ratio)
-      mu_prior_sd <- half_d_y
+      base_scale <- half_d_y * .(sd_ratio_val)
+      alpha_prior_sd <- half_d_y
+      
+      # Determine x_sd based on design
+      .(if (paired) {
+        quote(x_sd <- 0.5) # Balanced Condition effect (Condition 0/1)
+      } else {
+        quote({
+          n1 <- length(Y1)
+          n2 <- length(Y2)
+          p1 <- n1 / (n1 + n2)
+          x_sd <- sqrt(p1 * (1 - p1))
+        })
+      })
+      
+      diff_prior_sd <- .(max_beta_val) * base_scale / x_sd
       mid_y <- .(if(paired) 0 else mean(y_range))
       sigma_rate_weak <- 1.0 / base_scale
     })
@@ -2489,7 +2592,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     model_body <- list(quote(diffs ~ normal(diff, sd_diff)))
     if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
     if (is_weak) {
-      model_body[[length(model_body)+1]] <- quote(diff ~ normal(mid_y, mu_prior_sd))
+      model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
       model_body[[length(model_body)+1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
     }
     view_vars <- c("diff", "delta", "sd_diff")
@@ -2509,8 +2612,8 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
     if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
     if (is_weak) {
-      model_body[[length(model_body)+1]] <- quote(mean ~ normal(mid_y, mu_prior_sd))
-      model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, mu_prior_sd))
+      model_body[[length(model_body)+1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
+      model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
       model_body[[length(model_body)+1]] <- quote(sd ~ exponential(sigma_rate_weak))
     }
     view_vars <- c("diff", "delta", "mean", "sd")

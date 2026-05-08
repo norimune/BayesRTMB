@@ -529,7 +529,6 @@ MCMC_Fit <- R6::R6Class(
     #' @param max_iter Integer; maximum number of iterations for the estimation algorithm. Default is 100.
     #' @return Bridge sampling result.
     bridgesampling = function(method = "normal", use_neff = TRUE, seed = NULL, max_iter = 100) {
-
       if (!is.null(seed)) set.seed(seed)
 
       draws_uc <- self$unconstrain_draws()
@@ -537,6 +536,23 @@ MCMC_Fit <- R6::R6Class(
 
       N_total <- nrow(draws_uc)
       Q <- ncol(draws_uc)
+
+      # Handle models with no free parameters
+      if (Q == 0) {
+        logml.bs <- log_prob_fn(numeric(0))
+        
+        correction <- self$model$prior_correction
+        if (!is.null(correction) && correction != 0) {
+          logml.bs <- logml.bs - correction
+        }
+        
+        cat(sprintf("Bridge Sampling Converged (Fixed Point): LogML = %.3f\n", logml.bs))
+        res <- logml.bs
+        attr(res, "error") <- 0
+        attr(res, "ess") <- N_total
+        self$log_ml <- res
+        return(res)
+      }
 
       index1 <- seq(1, N_total - 1, by = 2)
       index2 <- seq(2, N_total, by = 2)
