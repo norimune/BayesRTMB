@@ -30,25 +30,24 @@
 #' @import RTMB
 RTMB_Model <- R6::R6Class(
   classname = "RTMB_Model",
-
   public = list(
-    data       = NULL,
-    par_list   = NULL,
-    log_prob   = NULL,
-    transform  = NULL,
-    generate   = NULL,
-    par_names  = NULL,
-    pl_full    = NULL,
-    formula    = NULL,
-    raw_data   = NULL,
-    family     = NULL,
-    init       = NULL,
-    view       = NULL,
-    code       = NULL,
-    map        = NULL,
-    type       = NULL,
-    extra      = NULL,
-    contrasts  = NULL,
+    data = NULL,
+    par_list = NULL,
+    log_prob = NULL,
+    transform = NULL,
+    generate = NULL,
+    par_names = NULL,
+    pl_full = NULL,
+    formula = NULL,
+    raw_data = NULL,
+    family = NULL,
+    init = NULL,
+    view = NULL,
+    code = NULL,
+    map = NULL,
+    type = NULL,
+    extra = NULL,
+    contrasts = NULL,
     requested_contrasts = NULL,
     prior_correction = 0,
 
@@ -78,9 +77,9 @@ RTMB_Model <- R6::R6Class(
           x
         }
       })
-      self$log_prob   <- log_prob
-      self$transform  <- transform
-      self$generate   <- generate
+      self$log_prob <- log_prob
+      self$transform <- transform
+      self$generate <- generate
 
       self$pl_full <- parse_parameters(self$par_list, self$par_names)
       names(self$pl_full$init) <- self$pl_full$names
@@ -90,31 +89,40 @@ RTMB_Model <- R6::R6Class(
       self$init <- init_vec
       test_para <- constrained_vector_to_list(init_vec, self$par_list)
 
-      test_val <- tryCatch({
-        if (!is.null(self$transform)) {
-          test_tran <- self$transform(self$data, test_para)
-          test_para <- c(test_para, test_tran)
+      test_val <- tryCatch(
+        {
+          if (!is.null(self$transform)) {
+            test_tran <- self$transform(self$data, test_para)
+            test_para <- c(test_para, test_tran)
+          }
+          self$log_prob(self$data, test_para)
+        },
+        error = function(e) {
+          stop("An error occurred during the test execution of the R function (log_prob).\n[Error]: ",
+            e$message,
+            "\n  * Possible cause: Inappropriate initial parameter values may lead to uncomputable likelihoods (Inf or NaN).",
+            "\n  * Solution: Set appropriate initial values within the domain (e.g., >0 for variance) via the 'init' argument, or reconsider the data scaling.",
+            call. = FALSE
+          )
         }
-        self$log_prob(self$data, test_para)
-      }, error = function(e) {
-        stop("An error occurred during the test execution of the R function (log_prob).\n[Error]: ",
-             e$message,
-             "\n  * Possible cause: Inappropriate initial parameter values may lead to uncomputable likelihoods (Inf or NaN).",
-             "\n  * Solution: Set appropriate initial values within the domain (e.g., >0 for variance) via the 'init' argument, or reconsider the data scaling.",
-             call. = FALSE)
-      })
+      )
 
       if (!is.numeric(test_val) || length(test_val) != 1) {
         stop("log_prob must return a single numeric value (scalar).")
       }
 
       if (!is.null(self$transform)) {
-        test_tran <- tryCatch({
-          self$transform(self$data, test_para)
-        }, error = function(e) {
-          stop("An error occurred during the test execution of the R function (transform).\n[Error]: ",
-               e$message, call. = FALSE)
-        })
+        test_tran <- tryCatch(
+          {
+            self$transform(self$data, test_para)
+          },
+          error = function(e) {
+            stop("An error occurred during the test execution of the R function (transform).\n[Error]: ",
+              e$message,
+              call. = FALSE
+            )
+          }
+        )
 
         if (!is.null(test_tran)) {
           if (!is.list(test_tran)) {
@@ -131,7 +139,9 @@ RTMB_Model <- R6::R6Class(
       test_gr <- tryCatch(test_ad$ad_obj$gr(test_ad$ad_obj$par), error = function(e) e)
       if (inherits(test_gr, "error")) {
         stop("An error occurred during gradient calculation in MakeADFun.\n[Error]: ",
-             test_gr$message, call. = FALSE)
+          test_gr$message,
+          call. = FALSE
+        )
       }
     },
 
@@ -223,7 +233,7 @@ RTMB_Model <- R6::R6Class(
     #' @param max_df Numeric; maximum allowed degrees of freedom. Default is NULL.
     #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
     calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL) {
-      #cat("Estimating Satterthwaite degrees of freedom...\n")
+      # cat("Estimating Satterthwaite degrees of freedom...\n")
 
       par <- if (!is.null(opt_par)) opt_par else ad_obj$par
       P <- length(par)
@@ -258,7 +268,9 @@ RTMB_Model <- R6::R6Class(
       V <- tryCatch(solve(H0), error = function(e) {
         tryCatch(MASS::ginv(H0), error = function(e2) NULL)
       })
-      if (is.null(V)) return(df_full)
+      if (is.null(V)) {
+        return(df_full)
+      }
 
       # Step 2: Compute dV_ii/dtheta_k via central differences of the Hessian
       # Optimized: Compute dH/dtheta_k once per k and vectorize diag(V dH V)
@@ -268,10 +280,10 @@ RTMB_Model <- R6::R6Class(
 
       for (k in 1:P) {
         par_plus <- par_minus <- par
-        par_plus[k]  <- par[k] + eps[k]
+        par_plus[k] <- par[k] + eps[k]
         par_minus[k] <- par[k] - eps[k]
 
-        H_plus  <- tryCatch(simple_jacobian(ad_obj$gr, par_plus),  error = function(e) NULL)
+        H_plus <- tryCatch(simple_jacobian(ad_obj$gr, par_plus), error = function(e) NULL)
         H_minus <- tryCatch(simple_jacobian(ad_obj$gr, par_minus), error = function(e) NULL)
 
         if (is.null(H_plus) || is.null(H_minus)) next
@@ -331,17 +343,25 @@ RTMB_Model <- R6::R6Class(
         p_full[idx_fixed] <- theta
 
         H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), error = function(e) NULL)
-        if (is.null(H)) return(rep(Inf, length(beta_idx)))
+        if (is.null(H)) {
+          return(rep(Inf, length(beta_idx)))
+        }
 
         # Convert to dense matrix for solve to ensure diagonal extraction works reliably
         V_full <- tryCatch(solve(as.matrix(H)), error = function(e) NULL)
-        if (is.null(V_full)) return(rep(Inf, length(beta_idx)))
+        if (is.null(V_full)) {
+          return(rep(Inf, length(beta_idx)))
+        }
 
         diag(V_full)[beta_idx]
       }
 
-      V_beta_diag_0 <- tryCatch(get_beta_vars(opt_par), error = function(e) return(rep(Inf, n_beta)))
-      if (all(is.infinite(V_beta_diag_0))) return(V_beta_diag_0)
+      V_beta_diag_0 <- tryCatch(get_beta_vars(opt_par), error = function(e) {
+        return(rep(Inf, n_beta))
+      })
+      if (all(is.infinite(V_beta_diag_0))) {
+        return(V_beta_diag_0)
+      }
 
       # Covariance of variance components (theta)
       simple_jacobian <- function(f, x, h = 1e-4) {
@@ -359,12 +379,16 @@ RTMB_Model <- R6::R6Class(
       }
 
       H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), error = function(e) NULL)
-      if (is.null(H_theta)) return(rep(Inf, n_beta))
+      if (is.null(H_theta)) {
+        return(rep(Inf, n_beta))
+      }
 
       V_theta <- tryCatch(solve(H_theta), error = function(e) {
         tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
       })
-      if (is.null(V_theta)) return(rep(Inf, n_beta))
+      if (is.null(V_theta)) {
+        return(rep(Inf, n_beta))
+      }
 
       # Gradient of V_beta_diag with respect to theta
       eps <- 1e-5 * pmax(abs(opt_par), 0.1)
@@ -408,7 +432,6 @@ RTMB_Model <- R6::R6Class(
     #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
     #' @return An RTMB objective object (ad_obj).
     build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL) {
-
       random_effs <- names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
@@ -416,10 +439,10 @@ RTMB_Model <- R6::R6Class(
       current_init_list <- constrained_vector_to_list(current_init, self$par_list)
       init_unc_list <- to_unconstrained(current_init_list, self$par_list)
 
-      pl_full_local    <- self$pl_full
-      par_list_local   <- self$par_list
-      log_prob_local   <- self$log_prob
-      data_local       <- self$data
+      pl_full_local <- self$pl_full
+      par_list_local <- self$par_list
+      log_prob_local <- self$log_prob
+      data_local <- self$data
 
       f_ad <- function(y_unc_list) {
         para <- to_constrained(y_unc_list, par_list_local)
@@ -450,17 +473,20 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      ad_obj <- tryCatch({
-        RTMB::MakeADFun(
-          func = f_ad,
-          parameters = init_unc_list,
-          random = use_random,
-          map = if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map)),
-          silent = TRUE
-        )
-      }, error = function(e) {
-        stop("Failed to setup MakeADFun.\n[Error]: ", e$message, call. = FALSE)
-      })
+      ad_obj <- tryCatch(
+        {
+          RTMB::MakeADFun(
+            func = f_ad,
+            parameters = init_unc_list,
+            random = use_random,
+            map = if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map)),
+            silent = TRUE
+          )
+        },
+        error = function(e) {
+          stop("Failed to setup MakeADFun.\n[Error]: ", e$message, call. = FALSE)
+        }
+      )
 
       return(list(
         ad_obj = ad_obj,
@@ -492,7 +518,6 @@ RTMB_Model <- R6::R6Class(
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
                         df = NULL, fixed = NULL) {
-
       if (!is.null(fixed)) {
         return(self$fixed_model(fixed)$optimize(
           laplace = laplace, init = init, num_estimate = num_estimate, control = control,
@@ -523,65 +548,69 @@ RTMB_Model <- R6::R6Class(
       base_ad_obj <- ad_setup$ad_obj
 
       for (i in 1:num_estimate) {
-        if (num_estimate > 1)
+        if (num_estimate > 1) {
           cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
+        }
 
-        res <- tryCatch({
-          if (i > 1 && is.null(init)) {
-            base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), mean = 0, sd = 0.5)
+        res <- tryCatch(
+          {
+            if (i > 1 && is.null(init)) {
+              base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), mean = 0, sd = 0.5)
+            }
+
+            if (length(base_ad_obj$par) == 0) {
+              # No parameters to optimize (all fixed and/or random effects integrated out)
+              cat("No fixed effects to optimize. Returning initial values.\n")
+              opt <- list(
+                par = numeric(0),
+                objective = base_ad_obj$fn(numeric(0)),
+                convergence = 0,
+                message = "all parameters fixed",
+                iterations = 0,
+                evaluations = c(obj = 1, grad = 0)
+              )
+            } else if (optimizer == "nlminb") {
+              if (is.null(control$iter.max)) control$iter.max <- 5000
+              if (is.null(control$eval.max)) control$eval.max <- 5000
+              if (is.null(control$rel.tol)) control$rel.tol <- 1e-8
+
+              opt <- suppressWarnings(nlminb(
+                start     = base_ad_obj$par,
+                objective = base_ad_obj$fn,
+                gradient  = base_ad_obj$gr,
+                control   = control
+              ))
+            } else if (optimizer == "optim") {
+              if (is.null(control$maxit)) control$maxit <- 5000
+
+              opt <- optim(
+                par     = base_ad_obj$par,
+                fn      = base_ad_obj$fn,
+                gr      = base_ad_obj$gr,
+                method  = method,
+                control = control
+              )
+              opt$objective <- opt$value
+            } else {
+              stop("optimizer must be either 'optim' or 'nlminb'.")
+            }
+
+            list(opt = opt, ad_obj = base_ad_obj)
+          },
+          error = function(e) {
+            warning("Optimization error: ", e$message, call. = FALSE)
+            NULL
           }
-
-          if (length(base_ad_obj$par) == 0) {
-            # No parameters to optimize (all fixed and/or random effects integrated out)
-            cat("No fixed effects to optimize. Returning initial values.\n")
-            opt <- list(
-              par = numeric(0),
-              objective = base_ad_obj$fn(numeric(0)),
-              convergence = 0,
-              message = "all parameters fixed",
-              iterations = 0,
-              evaluations = c(obj = 1, grad = 0)
-            )
-          } else if (optimizer == "nlminb") {
-            if (is.null(control$iter.max)) control$iter.max <- 5000
-            if (is.null(control$eval.max)) control$eval.max <- 5000
-            if (is.null(control$rel.tol)) control$rel.tol <- 1e-8
-
-            opt <- suppressWarnings(nlminb(
-              start     = base_ad_obj$par,
-              objective = base_ad_obj$fn,
-              gradient  = base_ad_obj$gr,
-              control   = control
-            ))
-          } else if (optimizer == "optim") {
-            if (is.null(control$maxit)) control$maxit <- 5000
-
-            opt <- optim(
-              par     = base_ad_obj$par,
-              fn      = base_ad_obj$fn,
-              gr      = base_ad_obj$gr,
-              method  = method,
-              control = control
-            )
-            opt$objective <- opt$value
-          } else {
-            stop("optimizer must be either 'optim' or 'nlminb'.")
-          }
-
-          list(opt = opt, ad_obj = base_ad_obj)
-        }, error = function(e) {
-          warning("Optimization error: ", e$message, call. = FALSE)
-          NULL
-        })
+        )
 
         if (!is.null(res)) {
           opt_results[[i]] <- res
-          obj_vals[i]      <- res$opt$objective
-          conv_codes[i]    <- res$opt$convergence
+          obj_vals[i] <- res$opt$objective
+          conv_codes[i] <- res$opt$convergence
         } else {
           opt_results[[i]] <- NULL
-          obj_vals[i]      <- NA
-          conv_codes[i]    <- NA
+          obj_vals[i] <- NA
+          conv_codes[i] <- NA
         }
       }
       cat("\n")
@@ -606,14 +635,16 @@ RTMB_Model <- R6::R6Class(
             status_str <- if (conv_codes[i] == 0) "Converged" else "Not Converged"
           }
           best_marker <- if (i == best_idx) "  <-- BEST" else ""
-          cat(sprintf("  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
-                      i, obj_vals[i], as.character(conv_codes[i]), status_str, best_marker))
+          cat(sprintf(
+            "  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
+            i, obj_vals[i], as.character(conv_codes[i]), status_str, best_marker
+          ))
         }
         cat("\n")
       }
 
       ad_obj <- best_res$ad_obj
-      opt    <- best_res$opt
+      opt <- best_res$opt
       ad_obj$fn(opt$par)
 
       sd_rep <- if (se) tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL) else NULL
@@ -692,7 +723,6 @@ RTMB_Model <- R6::R6Class(
         }
         # Safety check: Ensure the number of calculated indices perfectly matches the TMB output size
         if (length(idx_fix_active) == length(se_fix)) {
-
           # 1. Assign standard errors to independent parameters
           unc_se_vec[idx_fix_active] <- se_fix
 
@@ -789,7 +819,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       unc_est_list <- unconstrained_vector_to_list(unc_est_vec, self$par_list)
-      unc_se_list  <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
+      unc_se_list <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
       con_est_list <- to_constrained(unc_est_list, self$par_list)
 
       # Fill diagonal for parameters without covariance information while preserving any
@@ -797,7 +827,7 @@ RTMB_Model <- R6::R6Class(
       diag(Cov_u) <- pmax(diag(Cov_u), unc_se_vec^2)
       Cov_u[is.na(Cov_u)] <- 0
 
-      con_se_list  <- list()
+      con_se_list <- list()
       con_lower_list <- list()
       con_upper_list <- list()
 
@@ -836,7 +866,7 @@ RTMB_Model <- R6::R6Class(
         # Ensure Positive Definite for MASS::mvrnorm
         eig <- eigen(Cov_u_valid, symmetric = TRUE)
         eig$values <- pmax(eig$values, 1e-8)
-        Cov_u_pd <- eig$vectors %*% diag(eig$values, nrow=length(eig$values)) %*% t(eig$vectors)
+        Cov_u_pd <- eig$vectors %*% diag(eig$values, nrow = length(eig$values)) %*% t(eig$vectors)
 
         raw_samples <- MASS::mvrnorm(num_samples, mu = mu_valid, Sigma = Cov_u_pd)
         if (!is.matrix(raw_samples)) raw_samples <- as.matrix(raw_samples)
@@ -885,7 +915,7 @@ RTMB_Model <- R6::R6Class(
 
         # Sample random effects independently
         if (laplace && length(idx_ran) > 0) {
-          for(ridx in idx_ran) {
+          for (ridx in idx_ran) {
             u_samples_mat[, ridx] <- rnorm(num_samples, mean = unc_est_vec[ridx], sd = unc_se_vec[ridx])
           }
         }
@@ -982,9 +1012,9 @@ RTMB_Model <- R6::R6Class(
             c_low <- rep(NA, p_info$length)
             c_up <- rep(NA, p_info$length)
           } else {
-            c_se <- apply(mat, 2, sd, na.rm=TRUE)
-            c_low <- apply(mat, 2, quantile, probs=0.025, na.rm=TRUE)
-            c_up <- apply(mat, 2, quantile, probs=0.975, na.rm=TRUE)
+            c_se <- apply(mat, 2, sd, na.rm = TRUE)
+            c_low <- apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE)
+            c_up <- apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE)
           }
 
           if (length(p_info$dim) > 1) {
@@ -996,7 +1026,6 @@ RTMB_Model <- R6::R6Class(
           con_lower_list[[name]] <- c_low
           con_upper_list[[name]] <- c_up
         }
-
       } else {
         # Standard SE calculation (Wald)
         eps_diff <- 1e-5
@@ -1005,7 +1034,7 @@ RTMB_Model <- R6::R6Class(
         for (name in names(self$par_list)) {
           p_info <- self$par_list[[name]]
           u_val <- unc_est_list[[name]]
-          u_se  <- unc_se_list[[name]]
+          u_se <- unc_se_list[[name]]
           c_val <- con_est_list[[name]]
 
           L_u <- p_info$unc_length
@@ -1046,24 +1075,24 @@ RTMB_Model <- R6::R6Class(
 
           if (p_info$bounds == "corr_matrix") {
             c_low <- rep(NA, L_c)
-            c_up  <- rep(NA, L_c)
+            c_up <- rep(NA, L_c)
           } else {
-              u_dfs <- est_dfs_all[u_indices]
-              u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
-              u_low <- u_val - u_q_95 * u_se
-              u_up  <- u_val + u_q_95 * u_se
+            u_dfs <- est_dfs_all[u_indices]
+            u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
+            u_low <- u_val - u_q_95 * u_se
+            u_up <- u_val + u_q_95 * u_se
             c_low <- transform_single(u_low)
-            c_up  <- transform_single(u_up)
+            c_up <- transform_single(u_up)
 
             c_low_final <- pmin(c_low, c_up)
-            c_up_final  <- pmax(c_low, c_up)
+            c_up_final <- pmax(c_low, c_up)
             c_low <- c_low_final
-            c_up  <- c_up_final
+            c_up <- c_up_final
           }
 
           if (length(p_info$dim) > 1) {
             dim(c_low) <- p_info$dim
-            dim(c_up)  <- p_info$dim
+            dim(c_up) <- p_info$dim
           }
           con_lower_list[[name]] <- c_low
           con_upper_list[[name]] <- c_up
@@ -1108,9 +1137,9 @@ RTMB_Model <- R6::R6Class(
 
             names_vec <- c(names_vec, f_names)
             est_vec <- c(est_vec, as.numeric(con_est_list[[name]]))
-            se_vec  <- c(se_vec,  as.numeric(con_se_list[[name]]))
+            se_vec <- c(se_vec, as.numeric(con_se_list[[name]]))
             low_vec <- c(low_vec, as.numeric(con_lower_list[[name]]))
-            up_vec  <- c(up_vec,  as.numeric(con_upper_list[[name]]))
+            up_vec <- c(up_vec, as.numeric(con_upper_list[[name]]))
             if (!is.null(df_list_con[[name]])) {
               df_vec <- c(df_vec, as.numeric(df_list_con[[name]]))
             } else {
@@ -1119,7 +1148,9 @@ RTMB_Model <- R6::R6Class(
           }
         }
 
-        if (length(names_vec) == 0) return(NULL)
+        if (length(names_vec) == 0) {
+          return(NULL)
+        }
 
         res_df <- data.frame(
           Estimate     = est_vec,
@@ -1153,7 +1184,9 @@ RTMB_Model <- R6::R6Class(
       }
 
       build_derived_df <- function(func, base_out, is_generate = FALSE) {
-        if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
+        if (is.null(func) || is.null(base_out) || length(base_out) == 0) {
+          return(NULL)
+        }
 
         flat_base <- unlist(base_out, use.names = FALSE)
         L_out <- length(flat_base)
@@ -1207,9 +1240,9 @@ RTMB_Model <- R6::R6Class(
               }
             }
             mat_all <- do.call(cbind, unname(mat_list))
-            se_out <- apply(mat_all, 2, sd, na.rm=TRUE)
-            low_out <- apply(mat_all, 2, quantile, probs=0.025, na.rm=TRUE)
-            up_out <- apply(mat_all, 2, quantile, probs=0.975, na.rm=TRUE)
+            se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
+            low_out <- apply(mat_all, 2, quantile, probs = 0.025, na.rm = TRUE)
+            up_out <- apply(mat_all, 2, quantile, probs = 0.975, na.rm = TRUE)
           }
         } else {
           smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
@@ -1289,7 +1322,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE)
-      df_generate  <- build_derived_df(self$generate, gq_list, is_generate = TRUE)
+      df_generate <- build_derived_df(self$generate, gq_list, is_generate = TRUE)
 
       log_ml <- NA
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
@@ -1311,7 +1344,7 @@ RTMB_Model <- R6::R6Class(
             }
 
             log_det_cov <- sum(log(vals))
-            log_ml <- - opt$objective + lj_missing + (D / 2) * log(2 * pi) + 0.5 * log_det_cov - self$prior_correction
+            log_ml <- -opt$objective + lj_missing + (D / 2) * log(2 * pi) + 0.5 * log_det_cov - self$prior_correction
           }
         }
       }
@@ -1389,8 +1422,10 @@ RTMB_Model <- R6::R6Class(
       # Standard fixed effect patterns
       fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
       # Standard variance/shape component patterns (never random)
-      var_patterns <- c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr",
-                        "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau")
+      var_patterns <- c(
+        "sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr",
+        "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau"
+      )
 
       modified_par_list <- self$par_list
       for (name in names(modified_par_list)) {
@@ -1433,23 +1468,30 @@ RTMB_Model <- R6::R6Class(
 
       original_par_list <- self$par_list
       self$par_list <- modified_par_list
-      on.exit({ self$par_list <- original_par_list }, add = TRUE)
+      on.exit(
+        {
+          self$par_list <- original_par_list
+        },
+        add = TRUE
+      )
 
       laplace_flag <- REML || any(sapply(modified_par_list, function(x) isTRUE(x$random)))
 
       ad_setup <- tryCatch(self$build_ad_obj(laplace = laplace_flag, jacobian_target = "none"),
-                           error = function(e) stop("MakeADFun failed: ", e$message))
+        error = function(e) stop("MakeADFun failed: ", e$message)
+      )
       ad_obj <- ad_setup$ad_obj
 
       if (length(ad_obj$par) > 0) {
         opt <- tryCatch(suppressWarnings(nlminb(start = ad_obj$par, objective = ad_obj$fn, gradient = ad_obj$gr)),
-                        error = function(e) stop("Optimization failed: ", e$message))
+          error = function(e) stop("Optimization failed: ", e$message)
+        )
       } else {
         opt <- list(par = numeric(0), objective = ad_obj$fn(numeric(0)), convergence = 0)
       }
 
       L_u_total <- length(ad_obj$env$last.par)
-      est_dfs_all <- rep(if(is.numeric(df)) df[1] else Inf, L_u_total)
+      est_dfs_all <- rep(if (is.numeric(df)) df[1] else Inf, L_u_total)
 
       if (identical(df, "auto") && length(target_vars) > 0) {
         # (A) ML等で最適化対象側にいる固定効果のDF
@@ -1496,8 +1538,8 @@ RTMB_Model <- R6::R6Class(
         smry_rep$df <- Inf
 
         if (identical(df, "auto") && exists("est_dfs_all")) {
-          tran_list <- if(!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error=function(e) NULL) else NULL
-          gen_list <- if(!is.null(self$generate)) tryCatch(self$generate(self$data, c(con_est_list, tran_list)), error=function(e) NULL) else NULL
+          tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL
+          gen_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, c(con_est_list, tran_list)), error = function(e) NULL) else NULL
           all_derived <- c(tran_list, gen_list)
 
           if (length(all_derived) > 0) {
@@ -1594,8 +1636,8 @@ RTMB_Model <- R6::R6Class(
         row_indices <- which(grepl(paste0("^", name, "($|\\[)"), rownames(df_combined)))
 
         if (length(row_indices) > 0 && length(row_indices) == p_info$length) {
-          lower <- if(is.numeric(p_info$lower)) p_info$lower else -Inf
-          upper <- if(is.numeric(p_info$upper)) p_info$upper else Inf
+          lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
+          upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
 
           u <- df_combined$Estimate[row_indices]
           se_u <- df_combined$`Std. Error`[row_indices]
@@ -1603,7 +1645,7 @@ RTMB_Model <- R6::R6Class(
 
           crit <- qt(0.975, df = df_val)
           low_u <- u - crit * se_u
-          up_u  <- u + crit * se_u
+          up_u <- u + crit * se_u
 
           if (all(is.infinite(upper)) && any(is.finite(lower))) {
             u_null <- if (lower < 0) log(-lower) else NA
@@ -1616,7 +1658,6 @@ RTMB_Model <- R6::R6Class(
             t_val <- (u - u_null) / pmax(se_u, 1e-12)
             df_combined$`t value`[row_indices] <- t_val
             df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
-
           } else if (any(is.finite(lower)) && any(is.finite(upper))) {
             p_null <- -lower / (upper - lower)
             u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else NA
@@ -1627,14 +1668,13 @@ RTMB_Model <- R6::R6Class(
             df_combined$`Std. Error`[row_indices] <- (upper - lower) * il(u) * (1 - il(u)) * se_u
 
             c_low <- lower + (upper - lower) * il(low_u)
-            c_up  <- lower + (upper - lower) * il(up_u)
+            c_up <- lower + (upper - lower) * il(up_u)
             df_combined$`Lower 95%`[row_indices] <- pmin(c_low, c_up)
             df_combined$`Upper 95%`[row_indices] <- pmax(c_low, c_up)
 
             t_val <- (u - u_null) / pmax(se_u, 1e-12)
             df_combined$`t value`[row_indices] <- t_val
             df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
-
           } else {
             u_null <- 0
             t_val <- (u - u_null) / pmax(se_u, 1e-12)
@@ -1731,13 +1771,12 @@ RTMB_Model <- R6::R6Class(
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
     #' @return A fitted `MCMC_Fit` object.
-    sample = function(sampling=1000, warmup=1000, chains=4,
-                      thin=1, seed=sample.int(1e6,1),
-                      delta=0.8, max_treedepth = 10,
+    sample = function(sampling = 1000, warmup = 1000, chains = 4,
+                      thin = 1, seed = sample.int(1e6, 1),
+                      delta = 0.8, max_treedepth = 10,
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL) {
-
       if (!is.null(fixed)) {
         return(self$fixed_model(fixed)$sample(
           sampling = sampling, warmup = warmup, chains = chains, thin = thin,
@@ -1747,7 +1786,7 @@ RTMB_Model <- R6::R6Class(
         ))
       }
 
-      #if (!is.null(init)) init <- as.numeric(init)
+      # if (!is.null(init)) init <- as.numeric(init)
       set.seed(seed)
       orig_pl <- self$par_list
 
@@ -1769,20 +1808,20 @@ RTMB_Model <- R6::R6Class(
       random_flags <- vapply(orig_pl, function(x) isTRUE(x$random), logical(1))
 
       if (laplace && any(random_flags)) {
-        pl_fixed  <- parse_parameters(orig_pl[!random_flags], self$par_names)
+        pl_fixed <- parse_parameters(orig_pl[!random_flags], self$par_names)
         pl_random <- parse_parameters(orig_pl[random_flags], self$par_names)
 
-        fixed_idx  <- which(self$pl_full$names %in% pl_fixed$names)
+        fixed_idx <- which(self$pl_full$names %in% pl_fixed$names)
         random_idx <- which(self$pl_full$names %in% pl_random$names)
       } else {
-        pl_fixed   <- self$pl_full
-        pl_random  <- NULL
-        fixed_idx  <- 1:length(self$pl_full$names)
+        pl_fixed <- self$pl_full
+        pl_random <- NULL
+        fixed_idx <- 1:length(self$pl_full$names)
         random_idx <- integer(0)
       }
 
       P_fixed <- length(pl_fixed$names)
-      P_random <- if(!is.null(pl_random)) length(pl_random$names) else 0
+      P_random <- if (!is.null(pl_random)) length(pl_random$names) else 0
 
       # --- Set up parallel plan early to allow messaging ---
       if (parallel) {
@@ -1799,12 +1838,12 @@ RTMB_Model <- R6::R6Class(
       }
 
       # --- Data extraction to minimize serialization payload to workers ---
-      local_data       <- self$data
-      local_par_list   <- self$par_list
-      local_pl_full    <- self$pl_full
-      local_map        <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
-      local_log_prob   <- self$log_prob
-      local_transform  <- self$transform
+      local_data <- self$data
+      local_par_list <- self$par_list
+      local_pl_full <- self$pl_full
+      local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
+      local_log_prob <- self$log_prob
+      local_transform <- self$transform
 
       random_effs <- names(local_par_list)[random_flags]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
@@ -1851,17 +1890,20 @@ RTMB_Model <- R6::R6Class(
           return(-(lp + lj))
         }
 
-        ad_obj <- tryCatch({
-          RTMB::MakeADFun(
-            func = f_ad,
-            parameters = unc_init_list_new,
-            random = use_random,
-            map = local_map,
-            silent = TRUE
-          )
-        }, error = function(e) {
-          stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
-        })
+        ad_obj <- tryCatch(
+          {
+            RTMB::MakeADFun(
+              func = f_ad,
+              parameters = unc_init_list_new,
+              random = use_random,
+              map = local_map,
+              silent = TRUE
+            )
+          },
+          error = function(e) {
+            stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
+          }
+        )
 
         res <- NUTS_method(
           model = ad_obj,
@@ -1901,28 +1943,32 @@ RTMB_Model <- R6::R6Class(
       results_list <- list()
       if (parallel) {
         iter <- sampling + warmup
-        total_updates <- chains * (1+floor(iter / 100))
+        total_updates <- chains * (1 + floor(iter / 100))
 
         progressr::with_progress({
           p <- progressr::progressor(steps = total_updates)
-          results_list <- withCallingHandlers({
-            future.apply::future_lapply(1:chains, function(c) {
-              run_chain(c, p_callback = function(msg = "", amt = 1, ...) {
-                if (is.numeric(msg)) {
-                  amt <- msg
-                  msg <- ""
-                }
-                p(amount = amt, message = as.character(msg))
-              })
-            }, future.seed = TRUE,
-            future.packages = c("RTMB","BayesRTMB"),
-            future.globals = FALSE  # Automatic global search disabled for performance
-            )
-          }, warning = function(w) {
-            if (grepl("package:BayesRTMB", conditionMessage(w))) {
-              invokeRestart("muffleWarning")
+          results_list <- withCallingHandlers(
+            {
+              future.apply::future_lapply(1:chains, function(c) {
+                run_chain(c, p_callback = function(msg = "", amt = 1, ...) {
+                  if (is.numeric(msg)) {
+                    amt <- msg
+                    msg <- ""
+                  }
+                  p(amount = amt, message = as.character(msg))
+                })
+              },
+              future.seed = TRUE,
+              future.packages = c("RTMB", "BayesRTMB"),
+              future.globals = FALSE # Automatic global search disabled for performance
+              )
+            },
+            warning = function(w) {
+              if (grepl("package:BayesRTMB", conditionMessage(w))) {
+                invokeRestart("muffleWarning")
+              }
             }
-          })
+          )
         })
       } else {
         results_list <- lapply(1:chains, function(c) {
@@ -1931,12 +1977,12 @@ RTMB_Model <- R6::R6Class(
       }
 
       # --- Compile outputs ---
-      mcmc_index <- seq(from = (warmup+1), to = (warmup+sampling), by = thin)
-      accept_mat <- array(NA, dim=c(length(mcmc_index), chains))
-      td_mat <- array(NA, dim=c(length(mcmc_index), chains))
+      mcmc_index <- seq(from = (warmup + 1), to = (warmup + sampling), by = thin)
+      accept_mat <- array(NA, dim = c(length(mcmc_index), chains))
+      td_mat <- array(NA, dim = c(length(mcmc_index), chains))
       eps_vec <- numeric(chains)
 
-      fit <- array(NA, dim=c(length(mcmc_index), chains, P_fixed + 1))
+      fit <- array(NA, dim = c(length(mcmc_index), chains, P_fixed + 1))
       dimnames(fit) <- list(
         iteration = NULL,
         chain = paste0("chain", 1:chains),
@@ -1944,7 +1990,7 @@ RTMB_Model <- R6::R6Class(
       )
 
       if (P_random > 0) {
-        random_fit <- array(NA, dim=c(length(mcmc_index), chains, P_random))
+        random_fit <- array(NA, dim = c(length(mcmc_index), chains, P_random))
         dimnames(random_fit) <- list(
           iteration = NULL,
           chain = paste0("chain", 1:chains),
@@ -1954,17 +2000,18 @@ RTMB_Model <- R6::R6Class(
         random_fit <- NULL
       }
 
-      for(c in 1:chains){
+      for (c in 1:chains) {
         res <- results_list[[c]]
         fit[, c, 1] <- res$lp[mcmc_index]
-        for(j in 1:P_fixed) fit[, c, j+1] <- res$para[mcmc_index, fixed_idx[j]]
+        for (j in 1:P_fixed) fit[, c, j + 1] <- res$para[mcmc_index, fixed_idx[j]]
         if (P_random > 0) {
-          for (j in 1:P_random)
+          for (j in 1:P_random) {
             random_fit[, c, j] <- res$para[mcmc_index, random_idx[j]]
+          }
         }
-        accept_mat[,c] <- res$accept[mcmc_index]
-        td_mat[,c]     <- res$treedepth[mcmc_index]
-        eps_vec[c]     <- res$eps
+        accept_mat[, c] <- res$accept[mcmc_index]
+        td_mat[, c] <- res$treedepth[mcmc_index]
+        eps_vec[c] <- res$eps
       }
 
       eps_chains <- eps_vec
@@ -1993,12 +2040,16 @@ RTMB_Model <- R6::R6Class(
           )
 
           if (!is.null(random_fit)) {
-            df_out <- cbind(df_metrics,
-                            as.data.frame(fit[, c, ]),
-                            as.data.frame(random_fit[, c, ]))
+            df_out <- cbind(
+              df_metrics,
+              as.data.frame(fit[, c, ]),
+              as.data.frame(random_fit[, c, ])
+            )
           } else {
-            df_out <- cbind(df_metrics,
-                            as.data.frame(fit[, c, ]))
+            df_out <- cbind(
+              df_metrics,
+              as.data.frame(fit[, c, ])
+            )
           }
 
           write.csv(df_out, file = backup_file, row.names = FALSE)
@@ -2049,7 +2100,6 @@ RTMB_Model <- R6::R6Class(
                            method = c("meanfield", "fullrank", "hybrid"), parallel = FALSE,
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
                            map = NULL, fixed = NULL) {
-
       if (!is.null(fixed)) {
         return(self$fixed_model(fixed)$variational(
           iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
@@ -2088,16 +2138,16 @@ RTMB_Model <- R6::R6Class(
       }
 
       # --- Data extraction to minimize serialization payload to workers ---
-      local_data       <- self$data
-      local_par_list   <- self$par_list
-      local_pl_full    <- self$pl_full
-      local_map        <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
-      local_log_prob   <- self$log_prob
-      local_transform  <- self$transform
+      local_data <- self$data
+      local_par_list <- self$par_list
+      local_pl_full <- self$pl_full
+      local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
+      local_log_prob <- self$log_prob
+      local_transform <- self$transform
 
       random_flags <- sapply(local_par_list, function(x) isTRUE(x$random))
-      random_effs  <- names(local_par_list)[random_flags]
-      use_random   <- if (laplace && length(random_effs) > 0) random_effs else NULL
+      random_effs <- names(local_par_list)[random_flags]
+      use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
       base_init <- self$prepare_init(init)
 
@@ -2123,17 +2173,20 @@ RTMB_Model <- R6::R6Class(
           return(-(lp + lj))
         }
 
-        ad_obj <- tryCatch({
-          RTMB::MakeADFun(
-            func = f_ad,
-            parameters = unc_init_list_new,
-            random = use_random,
-            map = local_map,
-            silent = TRUE
-          )
-        }, error = function(e) {
-          stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
-        })
+        ad_obj <- tryCatch(
+          {
+            RTMB::MakeADFun(
+              func = f_ad,
+              parameters = unc_init_list_new,
+              random = use_random,
+              map = local_map,
+              silent = TRUE
+            )
+          },
+          error = function(e) {
+            stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
+          }
+        )
 
         if (!is.null(use_random)) {
           orig_fn <- ad_obj$fn
@@ -2164,7 +2217,7 @@ RTMB_Model <- R6::R6Class(
           iter = iter, tol_rel_obj = tol_rel_obj,
           window_size = window_size, num_samples = num_samples, alpha = alpha,
           laplace = laplace,
-          print_freq = if(is.null(p_callback)) print_freq else 0,
+          print_freq = if (is.null(p_callback)) print_freq else 0,
           method = method,
           update_progress = p_callback,
           update_interval = p_interval
@@ -2186,28 +2239,29 @@ RTMB_Model <- R6::R6Class(
           results_list <- progressr::with_progress({
             p <- progressr::progressor(steps = total_steps)
 
-            withCallingHandlers({
-              future.apply::future_lapply(1:num_estimate, function(c) {
-                run_advi_worker(
-                  c = c,
-                  p_callback = function(amount = 1) p(amount = amount),
-                  p_interval = update_interval
-                )
-              }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"), future.globals = FALSE)
-            }, warning = function(w) {
-              if (grepl("BayesRTMB", conditionMessage(w))) {
-                invokeRestart("muffleWarning")
+            withCallingHandlers(
+              {
+                future.apply::future_lapply(1:num_estimate, function(c) {
+                  run_advi_worker(
+                    c = c,
+                    p_callback = function(amount = 1) p(amount = amount),
+                    p_interval = update_interval
+                  )
+                }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = FALSE)
+              },
+              warning = function(w) {
+                if (grepl("BayesRTMB", conditionMessage(w))) {
+                  invokeRestart("muffleWarning")
+                }
               }
-            })
+            )
           })
-
         } else {
           cat("* Install the 'progressr' package to display a progress bar.\n")
           results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
             run_advi_worker(c, p_callback = NULL, p_interval = 0)
-          }, future.seed = TRUE, future.packages = c("RTMB","BayesRTMB"), future.globals = FALSE)
+          }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = FALSE)
         }
-
       } else {
         results_list <- lapply(1:num_estimate, function(c) {
           if (print_freq > 0) cat(sprintf("\n--- Starting VB estimation: est%d ---\n", c))
@@ -2246,7 +2300,7 @@ RTMB_Model <- R6::R6Class(
         fit[, c, ] <- res$fit[, 1, ]
         if (P_random > 0) random_fit[, c, ] <- res$random_fit[, 1, ]
         elbo_history_list[[c]] <- res$elbo_history - self$prior_correction
-        elbo_final_vec[c]      <- res$elbo_final   - self$prior_correction
+        elbo_final_vec[c] <- res$elbo_final - self$prior_correction
         rel_obj_vec[c] <- res$rel_obj_final
       }
 
@@ -2273,7 +2327,7 @@ RTMB_Model <- R6::R6Class(
       posterior_mean[names(fixed_mean)] <- fixed_mean
 
       if (!is.null(random_fit)) {
-        random_mean <- apply(random_fit[, best_chain, , drop=FALSE], 3, mean)
+        random_mean <- apply(random_fit[, best_chain, , drop = FALSE], 3, mean)
         posterior_mean[names(random_mean)] <- random_mean
       }
 
@@ -2282,8 +2336,10 @@ RTMB_Model <- R6::R6Class(
         status <- if (!is.na(rel_obj_vec[c]) && rel_obj_vec[c] < tol_rel_obj) "Converged" else "Not Converged"
         best_marker <- if (c == best_chain) "  <-- BEST" else ""
 
-        cat(sprintf("  est%d: ELBO = %10.2f, Final rel_obj = %.5f (%s)%s\n",
-                    c, elbo_final_vec[c], rel_obj_vec[c], status, best_marker))
+        cat(sprintf(
+          "  est%d: ELBO = %10.2f, Final rel_obj = %.5f (%s)%s\n",
+          c, elbo_final_vec[c], rel_obj_vec[c], status, best_marker
+        ))
       }
       cat("\n")
 
@@ -2305,7 +2361,7 @@ RTMB_Model <- R6::R6Class(
       has_tran <- !is.null(self$transform)
       has_generate <- !is.null(self$generate)
 
-      if (has_tran){
+      if (has_tran) {
         cat("Calculating transformed parameters...\n")
         res_obj$transformed_draws(self$transform)
       }
@@ -2435,12 +2491,18 @@ RTMB_Model <- R6::R6Class(
     #' @description Automatically detect and count the number of independent data points (observations).
     #' @return Integer; total number of observations, or NULL if model code is missing.
     get_n_obs = function() {
-      if (is.null(self$code$model)) return(NULL)
+      if (is.null(self$code$model)) {
+        return(NULL)
+      }
 
       # Helper to get the base name of a variable (e.g., "y" from "y[i]")
       get_base_name <- function(x) {
-        if (is.name(x)) return(as.character(x))
-        if (is.call(x) && identical(x[[1]], as.name("["))) return(get_base_name(x[[2]]))
+        if (is.name(x)) {
+          return(as.character(x))
+        }
+        if (is.call(x) && identical(x[[1]], as.name("["))) {
+          return(get_base_name(x[[2]]))
+        }
         return(NULL)
       }
 
@@ -2455,14 +2517,20 @@ RTMB_Model <- R6::R6Class(
 
             # Only count if it's a data variable (ignore priors on parameters)
             if (!is.null(base_name) && base_name %in% data_names) {
-               return(call("<-", as.name("n_obs"),
-                           call("+", as.name("n_obs"),
-                                call("if", call("is.matrix", target),
-                                     call("nrow", target),
-                                     call("length", target)))))
+              return(call(
+                "<-", as.name("n_obs"),
+                call(
+                  "+", as.name("n_obs"),
+                  call(
+                    "if", call("is.matrix", target),
+                    call("nrow", target),
+                    call("length", target)
+                  )
+                )
+              ))
             } else {
-               # If it's a prior, just skip it in the count
-               return(quote(NULL))
+              # If it's a prior, just skip it in the count
+              return(quote(NULL))
             }
           }
           # Recurse through all elements of the call
@@ -2491,11 +2559,14 @@ RTMB_Model <- R6::R6Class(
       # 3. Execute with current data and initial/test parameters
       test_para <- self$get_par_list()
 
-      n_total <- tryCatch({
-        count_fn(self$data, test_para)
-      }, error = function(e) {
-        return(NA_integer_)
-      })
+      n_total <- tryCatch(
+        {
+          count_fn(self$data, test_para)
+        },
+        error = function(e) {
+          return(NA_integer_)
+        }
+      )
 
       return(n_total)
     },
@@ -2505,11 +2576,11 @@ RTMB_Model <- R6::R6Class(
     #' @return A new `RTMB_Model` object.
     fixed_model = function(fixed_list) {
       if (!is.list(fixed_list)) stop("fixed_list must be a named list (e.g., fixed = list(theta = ...)).")
-      
+
       # 1. Start with current map and init
       new_map <- if (is.null(self$map)) list() else self$map
       new_init_list <- self$get_par_list()
-      
+
       for (name in names(fixed_list)) {
         if (!(name %in% names(self$par_list))) {
           warning(sprintf("Parameter '%s' not found in model. Skipping.", name))
@@ -2517,25 +2588,27 @@ RTMB_Model <- R6::R6Class(
         }
         val <- fixed_list[[name]]
         p <- self$par_list[[name]]
-        
+
         # Validate length
         if (length(val) != p$length) {
-          stop(sprintf("Length of fixed value for '%s' (%d) does not match parameter length (%d).", 
-                       name, length(val), p$length))
+          stop(sprintf(
+            "Length of fixed value for '%s' (%d) does not match parameter length (%d).",
+            name, length(val), p$length
+          ))
         }
-        
+
         # Update init
         new_init_list[[name]] <- val
-        
+
         # Update map to fix all elements
         new_map[[name]] <- factor(rep(NA, p$unc_length))
       }
-      
+
       # 2. Clone and return
       new_model <- self$clone()
       new_model$map <- new_map
       new_model$init <- new_model$prepare_init(new_init_list)
-      
+
       return(new_model)
     },
 
@@ -2544,7 +2617,6 @@ RTMB_Model <- R6::R6Class(
     #' @param value Numeric value to fix parameters to. Default is 0.
     #' @return A new RTMB_Model object with the specified parameters fixed.
     null_model = function(target, value = 0) {
-
       # --- 1. Input validation and auto-completion ---
       # Check if it is a string
       if (!is.character(target) || length(target) != 1) {
@@ -2557,11 +2629,11 @@ RTMB_Model <- R6::R6Class(
         has_index <- is.call(target_ast) && identical(target_ast[[1]], as.name("["))
 
         if (has_index) {
-          base_name  <- as.character(target_ast[[2]])
-          idx_expr   <- target_ast[[3]] # e.g., numeric 2 or symbol X1
+          base_name <- as.character(target_ast[[2]])
+          idx_expr <- target_ast[[3]] # e.g., numeric 2 or symbol X1
         } else {
-          base_name  <- as.character(target_ast)
-          idx_expr   <- NULL
+          base_name <- as.character(target_ast)
+          idx_expr <- NULL
         }
 
         # Internal function to find the prior distribution of the target parameter from the AST
@@ -2572,7 +2644,9 @@ RTMB_Model <- R6::R6Class(
             }
             for (i in seq_along(expr)) {
               res <- find_prior(expr[[i]])
-              if (!is.null(res)) return(res)
+              if (!is.null(res)) {
+                return(res)
+              }
             }
           }
           return(NULL)
@@ -2590,14 +2664,17 @@ RTMB_Model <- R6::R6Class(
           # Fix: Make index value determination safe
           # Evaluate in environment, and adopt if it is a numeric or string of length 1.
           # Otherwise (if it's a vector like a data column), treat the variable name itself as a string
-          idx_val <- tryCatch({
-            res <- eval(idx_expr, envir = eval_env)
-            if (length(res) == 1 && (is.numeric(res) || is.character(res))) {
-              res
-            } else {
-              as.character(idx_expr)
-            }
-          }, error = function(e) as.character(idx_expr))
+          idx_val <- tryCatch(
+            {
+              res <- eval(idx_expr, envir = eval_env)
+              if (length(res) == 1 && (is.numeric(res) || is.character(res))) {
+                res
+              } else {
+                as.character(idx_expr)
+              }
+            },
+            error = function(e) as.character(idx_expr)
+          )
 
           for (i in 2:length(prior_expr)) {
             arg_expr <- prior_expr[[i]]
@@ -2638,21 +2715,25 @@ RTMB_Model <- R6::R6Class(
         stop("Please provide both the left side (parameter) and right side (prior distribution) for 'target' (e.g., 'delta ~ cauchy(0, r)').", call. = FALSE)
       }
 
-      spec <- deparse(f[[2]])        # Left side (e.g., "beta" or "beta[1]")
-      prior_expr <- f[[3]]           # Right side (call object)
+      spec <- deparse(f[[2]]) # Left side (e.g., "beta" or "beta[1]")
+      prior_expr <- f[[3]] # Right side (call object)
       prior_str <- deparse(prior_expr)
 
       # --- 2. Classification of constraint types and construction of flat names ---
-      structural_bounds <- c("ordered", "positive_ordered", "simplex",
-                             "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
-                             "centered", "centered_matrix",
-                             "centered_tri", "positive_centered_tri",
-                             "lower_tri_stz")
+      structural_bounds <- c(
+        "ordered", "positive_ordered", "simplex",
+        "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
+        "centered", "centered_matrix",
+        "centered_tri", "positive_centered_tri",
+        "lower_tri_stz"
+      )
 
-      no_fix_bounds <- c("simplex", "corr_matrix",
-                         "cov_matrix", "CF_cov", "centered",
-                         "centered_matrix", "centered_tri",
-                         "positive_centered_tri")
+      no_fix_bounds <- c(
+        "simplex", "corr_matrix",
+        "cov_matrix", "CF_cov", "centered",
+        "centered_matrix", "centered_tri",
+        "positive_centered_tri"
+      )
 
       elementwise_bounds <- c("none", "lower", "upper", "interval")
 
@@ -2680,8 +2761,10 @@ RTMB_Model <- R6::R6Class(
         info <- flat_to_info[[spec]]
         p <- self$par_list[[info$par]]
         if (p$bounds %in% structural_bounds) {
-          stop(sprintf("Elements of '%s' (type='%s') cannot be individually fixed because they are interdependent. Fix the entire '%s'.",
-                       spec, p$bounds, info$par), call. = FALSE)
+          stop(sprintf(
+            "Elements of '%s' (type='%s') cannot be individually fixed because they are interdependent. Fix the entire '%s'.",
+            spec, p$bounds, info$par
+          ), call. = FALSE)
         }
         if (!(p$bounds %in% elementwise_bounds)) {
           stop(sprintf("Fixing individual elements is not supported for '%s' (type='%s').", spec, p$bounds), call. = FALSE)
@@ -2706,12 +2789,15 @@ RTMB_Model <- R6::R6Class(
         prior_expr <- as.call(append(as.list(prior_expr), call("rep", value, k_fixed), after = 1))
 
         eval_env <- list2env(self$data, parent = parent.frame())
-        correction_val <- tryCatch({
-          # If the evaluated log-density is a vector, sum it using sum()
-          sum(eval(prior_expr, envir = eval_env))
-        }, error = function(e) {
-          stop(sprintf("Failed to evaluate prior '%s'. Error: %s", prior_str, e$message))
-        })
+        correction_val <- tryCatch(
+          {
+            # If the evaluated log-density is a vector, sum it using sum()
+            sum(eval(prior_expr, envir = eval_env))
+          },
+          error = function(e) {
+            stop(sprintf("Failed to evaluate prior '%s'. Error: %s", prior_str, e$message))
+          }
+        )
       } else {
         stop("Priors must be specified as function calls (e.g., cauchy(0, r)).")
       }

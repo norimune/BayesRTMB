@@ -1184,3 +1184,20 @@ AIC.Classic_Fit <- function(object, ..., k = 2) {
 BIC.Classic_Fit <- function(object, ...) {
   object$BIC()
 }
+  object$lsmeans(specs, ...)
+}
+
+#' @export
+logLik.Classic_Fit <- function(object, ...) {
+  object$logLik()
+}
+
+#' @export
+AIC.Classic_Fit <- function(object, ..., k = 2) {
+  object$AIC()
+}
+
+#' @export
+BIC.Classic_Fit <- function(object, ...) {
+  object$BIC()
+}

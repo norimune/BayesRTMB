@@ -664,3 +664,54 @@ MAP_Fit <- R6::R6Class(
     }
   )
 )
+        
+        # Replicate the logic used in build_ad_obj / optimize to identify active indices
+        idx_ran <- if (!is.null(self$sd_rep$env$random)) self$sd_rep$env$random else integer(0)
+        
+        # We can also just use the names from the fixed summary if we know which ones have SEs
+        # But a more robust way is to use the names of the active parameters from the model.
+        if (!is.null(self$model)) {
+          # Use the names of parameters that are NOT in map and NOT random
+          idx_curr <- 1
+          for (name in names(self$model$par_list)) {
+            L_u <- self$model$par_list[[name]]$unc_length
+            if (L_u > 0) {
+              map_f <- if (!is.null(self$map[[name]])) self$map[[name]] else NULL
+              for (j in 1:L_u) {
+                pos_last <- idx_curr + j - 1
+                if (!(pos_last %in% idx_ran)) {
+                  # It's a fixed parameter. Check if it's active.
+                  if (is.null(map_f) || !is.na(map_f[j])) {
+                    # If mapped to a factor, only the FIRST occurrence is active in TMB
+                    if (!is.null(map_f)) {
+                      lvl <- as.character(map_f[j])
+                      # This is slightly complex to re-derive here perfectly.
+                      # Let's use a simpler heuristic: if it has a non-NA Std. Error in df_fixed, it's active.
+                    }
+                  }
+                }
+              }
+              idx_curr <- idx_curr + L_u
+            }
+          }
+        }
+        
+        # Simple and robust heuristic: match rows of df_fixed that have non-NA Std. Error
+        # AND are not random effects.
+        se_vals <- self$df_fixed$`Std. Error`
+        active_mask <- !is.na(se_vals) & (se_vals > 0)
+        p_names_active <- all_fixed_names[active_mask]
+        
+        if (length(p_names_active) == nrow(res)) {
+          rownames(res) <- colnames(res) <- p_names_active
+        } else {
+          # Fallback: if lengths don't match, try to find unique SEs (handling mapped factors)
+          # Actually, the number of columns in cov.fixed MUST match the number of active parameters.
+          # If we have mapped parameters (e.g. b=c(1,1)), they share one entry in cov.fixed.
+        }
+        
+        return(res)
+      }
+    )
+  )
+)
