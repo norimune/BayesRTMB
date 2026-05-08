@@ -12,6 +12,8 @@
 #' @field bootstrap_results A matrix containing bootstrap samples, if applicable.
 #' @field test_results List of additional test results (e.g., chisq.test).
 #' @field view Character vector of parameter names to prioritize in summary.
+#' @field par_unc Numeric vector of unconstrained parameter estimates.
+#' @field vcov_unc Variance-covariance matrix of parameters in unconstrained space.
 #'
 #' @export
 Classic_Fit <- R6::R6Class(
@@ -26,6 +28,8 @@ Classic_Fit <- R6::R6Class(
     se_method = "wald",
     cluster = NULL,
     view = NULL,
+    par_unc = NULL,
+    vcov_unc = NULL,
 
     #' @description Create a new `Classic_Fit` object.
     #' @param model The `RTMB_Model` object.
@@ -35,10 +39,14 @@ Classic_Fit <- R6::R6Class(
     #' @param cluster Character; cluster variable name.
     #' @param test_results List of additional test results (e.g., chisq.test).
     #' @param view Character vector of parameter names to prioritize in summary.
-    initialize = function(model, fit, vcov = NULL, se_method = "wald", cluster = NULL, test_results = list(), view = NULL) {
+    #' @param par_unc Numeric vector of unconstrained parameter estimates.
+    #' @param vcov_unc Variance-covariance matrix of parameters in unconstrained space.
+    initialize = function(model, fit, vcov = NULL, par_unc = NULL, vcov_unc = NULL, se_method = "wald", cluster = NULL, test_results = list(), view = NULL) {
       self$model <- model
       self$fit <- fit
       self$vcov <- vcov
+      self$par_unc <- par_unc
+      self$vcov_unc <- vcov_unc
       self$se_method <- se_method
       self$cluster <- cluster
       self$test_results <- test_results
@@ -515,6 +523,156 @@ Classic_Fit <- R6::R6Class(
 
       class(res) <- "summary_Classic_Fit"
       return(res)
+    },
+
+    #' @description Calculate Bayes Factors using the Savage-Dickey density ratio method.
+    #' @param pars Character vector of parameter names to test.
+    #' @param null Numeric; the null value to test against (in constrained space). Default is 0.
+    #' @param digits Number of decimal places to round results.
+    #' @return A data frame containing the Bayes Factors and evidence descriptors.
+    savage_dickey = function(pars = NULL, null = 0, digits = 3) {
+      if (is.null(self$par_unc) || is.null(self$vcov_unc)) {
+        stop("Savage-Dickey requires unconstrained estimates and covariance. Please refit the model.")
+      }
+
+      # 1. Identify target parameters
+      all_names <- rownames(self$fit)
+      if (is.null(pars)) {
+        # Default to fixed effects (excluding Intercept if requested, but let's include for now)
+        pars <- all_names[grepl("^(Intercept|Intercept_c|b\\[)", all_names)]
+      } else {
+        # Resolve patterns
+        matched <- unlist(lapply(pars, function(p) {
+          p_esc <- gsub("([\\\\\\[\\.\\^\\$\\*\\+\\?\\(\\)\\|\\{\\}])", "\\\\\\1", p)
+          all_names[grepl(paste0("^", p_esc, "($|\\[)"), all_names)]
+        }))
+        pars <- unique(matched)
+      }
+
+      if (length(pars) == 0) {
+        stop("No parameters found matching the criteria.")
+      }
+
+      # 2. Map to unconstrained space indices
+      # par_unc names usually match the flattened parameter names in ad_obj
+      unc_names <- names(self$par_unc)
+      if (is.null(unc_names)) {
+        # Try to recover names from model's pl_full
+        unc_names <- self$model$pl_full$names
+      }
+
+      res_list <- list()
+
+      for (p_name in pars) {
+        # Find index in unconstrained vector
+        # Note: If it's a constrained parameter (e.g. sigma), self$fit shows the constrained version.
+        # But we need to test it in the unconstrained space.
+        
+        p_base <- gsub("\\[.*\\]$", "", p_name)
+        p_info <- self$model$par_list[[p_base]]
+        
+        p_idx <- 1
+        if (grepl("\\[", p_name)) {
+          idx_str <- gsub(".*\\[(.*)\\].*", "\\1", p_name)
+          p_idx <- suppressWarnings(as.integer(idx_str))
+          if (is.na(p_idx)) {
+            # Try to match name
+            p_names <- self$model$par_names[[p_base]]
+            if (!is.null(p_names)) {
+              p_idx <- which(p_names == idx_str)
+              if (length(p_idx) == 0) p_idx <- 1
+            } else {
+              p_idx <- 1
+            }
+          }
+        }
+
+        # Find the starting index in the unconstrained vector
+        u_start <- 0
+        found <- FALSE
+        for (n in names(self$model$par_list)) {
+          if (n == p_base) {
+            found <- TRUE
+            break
+          }
+          u_start <- u_start + self$model$par_list[[n]]$unc_length
+        }
+        
+        if (!found) next
+        
+        u_idx <- u_start + p_idx
+        u_idx <- u_start + p_idx
+        if (is.na(u_idx) || u_idx > length(self$par_unc)) next
+
+        # Unconstrained estimate and SE
+        mode_unc <- self$par_unc[u_idx]
+        se_unc <- sqrt(self$vcov_unc[u_idx, u_idx])
+        df_val <- self$fit[p_name, "df"]
+        if (is.null(df_val) || is.na(df_val) || is.infinite(df_val)) df_val <- 1e6
+
+        # Convert null (constrained) to u_null (unconstrained)
+        lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
+        upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
+        
+        u_null <- null
+        if (is.infinite(lower) && is.infinite(upper)) {
+          u_null <- null
+        } else if (is.finite(lower) && is.infinite(upper)) {
+          u_null <- if (null > lower) log(null - lower) else -100 # Large negative for near-boundary
+        } else if (is.finite(lower) && is.finite(upper)) {
+          p_null <- (null - lower) / (upper - lower)
+          u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else if (p_null <= 0) -100 else 100
+        }
+
+        # (A) Posterior Density at u_null
+        # Using t-distribution approximation
+        post_log_dens <- dt((u_null - mode_unc) / se_unc, df = df_val, log = TRUE) - log(se_unc)
+
+        # (B) Prior Density at u_null
+        prior_log_dens <- self$model$evaluate_univariate_prior(p_name, u_null)
+
+        # (C) Bayes Factor
+        bf10 <- exp(prior_log_dens - post_log_dens)
+        
+        # Evidence descriptor
+        evidence <- if (bf10 > 100) {
+          "Extreme Evidence for H1"
+        } else if (bf10 > 30) {
+          "Very Strong Evidence for H1"
+        } else if (bf10 > 10) {
+          "Strong Evidence for H1"
+        } else if (bf10 > 3) {
+          "Moderate Evidence for H1"
+        } else if (bf10 > 1) {
+          "Anecdotal Evidence for H1"
+        } else if (bf10 > 1/3) {
+          "Anecdotal Evidence for H0"
+        } else if (bf10 > 1/10) {
+          "Moderate Evidence for H0"
+        } else if (bf10 > 1/30) {
+          "Strong Evidence for H0"
+        } else if (bf10 > 1/100) {
+          "Very Strong Evidence for H0"
+        } else {
+          "Extreme Evidence for H0"
+        }
+
+        res_list[[p_name]] <- data.frame(
+          Parameter = p_name,
+          BF10 = round(bf10, digits),
+          BF01 = round(1/bf10, digits),
+          `Log(BF10)` = round(log(bf10), digits),
+          Evidence = evidence,
+          check.names = FALSE
+        )
+      }
+
+      if (length(res_list) == 0) return(NULL)
+      
+      final_df <- do.call(rbind, res_list)
+      rownames(final_df) <- NULL
+      class(final_df) <- c("savage_dickey", "data.frame")
+      return(final_df)
     },
 
 
@@ -1167,23 +1325,6 @@ lsmeans <- function(object, specs, ...) {
 
 #' @export
 lsmeans.Classic_Fit <- function(object, specs, ...) {
-  object$lsmeans(specs, ...)
-}
-
-#' @export
-logLik.Classic_Fit <- function(object, ...) {
-  object$logLik()
-}
-
-#' @export
-AIC.Classic_Fit <- function(object, ..., k = 2) {
-  object$AIC()
-}
-
-#' @export
-BIC.Classic_Fit <- function(object, ...) {
-  object$BIC()
-}
   object$lsmeans(specs, ...)
 }
 

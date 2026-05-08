@@ -1379,14 +1379,14 @@ RTMB_Model <- R6::R6Class(
     # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with automatic Satterthwaite degrees of freedom.
     #' @param df "auto" for Satterthwaite, numeric/Inf for specific degrees of freedom.
-    #' @param df_pars Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "none".
+    #' @param df_pars Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "auto".
     #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
     #' @param view Character vector of parameters to prioritize in the summary output.
     #' @param views Alias for \code{view}.
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
     #' @return A `Classic_Fit` object.
-    classic = function(df = "auto", df_pars = "none", REML = TRUE, view = NULL, views = NULL, map = NULL, fixed = NULL) {
+    classic = function(df = "auto", df_pars = "auto", REML = TRUE, view = NULL, views = NULL, map = NULL, fixed = NULL) {
       if (!is.null(fixed)) {
         return(self$fixed_model(fixed)$classic(
           df = df, df_pars = df_pars, REML = REML, view = view, views = views, map = map
@@ -1750,7 +1750,7 @@ RTMB_Model <- R6::R6Class(
         df_combined <- df_combined[final_idx, , drop = FALSE]
       }
 
-      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, test_results = test_results, view = view)
+      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, par_unc = ad_obj$env$last.par, vcov_unc = V_joint, test_results = test_results, view = view)
       return(res)
     },
 
@@ -2864,6 +2864,95 @@ RTMB_Model <- R6::R6Class(
       cat(sprintf("  Prior correction applied: %f\n", correction_val))
 
       return(new_model)
+    },
+
+    #' @description Evaluate the univariate prior density contribution of a specific parameter.
+    #' @param p_name Flattened parameter name (e.g., "beta[1]").
+    #' @param u_val Value in unconstrained space.
+    #' @return Numeric log-prior density (unconstrained).
+    evaluate_univariate_prior = function(p_name, u_val) {
+      ast <- self$code$model
+      if (is.null(ast)) return(0)
+
+      p_base <- gsub("\\[.*\\]$", "", p_name)
+      p_info <- self$par_list[[p_base]]
+
+      # 1. Extract only lines in AST involving p_base as LHS of ~
+      filter_var_prior <- function(x) {
+        if (is.call(x)) {
+          if (identical(x[[1]], as.name("~"))) {
+            lhs <- x[[2]]
+            vars <- all.vars(lhs)
+            if (p_base %in% vars) return(x)
+            return(NULL)
+          }
+          if (identical(x[[1]], as.name("{"))) {
+            new_args <- list()
+            for (i in 2:length(x)) {
+              sub_e <- filter_var_prior(x[[i]])
+              if (!is.null(sub_e)) new_args <- c(new_args, list(sub_e))
+            }
+            if (length(new_args) == 0) return(NULL)
+            return(as.call(c(list(as.name("{")), new_args)))
+          }
+          if (identical(x[[1]], as.name("for"))) {
+            body <- filter_var_prior(x[[4]])
+            if (is.null(body)) return(NULL)
+            x[[4]] <- body
+            return(x)
+          }
+        }
+        return(NULL)
+      }
+
+      var_prior_ast <- filter_var_prior(ast)
+      if (is.null(var_prior_ast)) return(0) # Default to uniform prior
+
+      # 2. Evaluate AST
+      curr_par_list <- to_constrained(unconstrained_vector_to_list(self$init, self$par_list), self$par_list)
+
+      p_idx <- 1
+      if (grepl("\\[", p_name)) {
+        idx_str <- gsub(".*\\[(.*)\\].*", "\\1", p_name)
+        p_idx <- suppressWarnings(as.integer(idx_str))
+        if (is.na(p_idx)) {
+          p_names <- self$par_names[[p_base]]
+          if (!is.null(p_names)) {
+            p_idx <- which(p_names == idx_str)
+            if (length(p_idx) == 0) p_idx <- 1
+          } else {
+            p_idx <- 1
+          }
+        }
+      }
+
+      c_val <- u_val
+      lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
+      upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
+
+      if (is.infinite(lower) && is.infinite(upper)) {
+        c_val <- u_val
+      } else if (is.finite(lower) && is.infinite(upper)) {
+        c_val <- exp(u_val) + lower
+      } else if (is.finite(lower) && is.finite(upper)) {
+        c_val <- lower + (upper - lower) / (1 + exp(-u_val))
+      }
+
+      curr_par_list[[p_base]][p_idx] <- c_val
+
+      # Use eval(bquote(...)) to pass the AST directly
+      fn <- eval(bquote(model_code(.(var_prior_ast), env = parent.frame())))
+      lp_con_full <- tryCatch(fn(self$data, curr_par_list), error = function(e) -Inf)
+
+      # (F) Jacobian for this element
+      lj <- 0
+      if (is.finite(lower) && is.infinite(upper)) {
+        lj <- u_val
+      } else if (is.finite(lower) && is.finite(upper)) {
+        lj <- log(upper - lower) - u_val - 2 * log(1 + exp(-u_val))
+      }
+
+      return(lp_con_full + lj)
     }
   )
 )
