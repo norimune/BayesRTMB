@@ -987,20 +987,46 @@ Classic_Fit <- R6::R6Class(
         idx <- which(assign_idx == a_id)
         if (length(idx) == 0) next
 
-        L <- matrix(0, nrow = length(idx), ncol = length(beta))
-        for (j in seq_along(idx)) L[j, idx[j]] <- 1
+        # --- 特例: 1自由度の項 (連続変量や2水準因子) は t値を2乗してF値を計算 ---
+        # 対比変換の影響を受けないように、元の beta_full と V_full から直接抽出を試みる
+        is_single <- length(idx) == 1
+        W <- NULL
+        if (is_single) {
+          term_name_in_beta <- names(beta)[idx]
+          # 元の推定結果 (beta_full) から該当する係数を探す
+          # b[name] という形式と、名前そのものの両方を試す
+          orig_match <- which(names(beta_full) == term_name_in_beta | names(beta_full) == paste0("b[", term_name_in_beta, "]"))
+          if (length(orig_match) == 1) {
+            b_val <- beta_full[orig_match]
+            se_val <- sqrt(V_full[orig_match, orig_match])
+            W <- (b_val / se_val)^2
+          }
+        }
 
-        LVL <- L %*% V %*% t(L)
-        inv_LVL <- try(solve(LVL), silent = TRUE)
-        if (inherits(inv_LVL, "try-error")) inv_LVL <- MASS::ginv(LVL)
+        # 1自由度でない場合、または上記で取得できなかった場合は通常の Wald 検定
+        if (is.null(W)) {
+          L <- matrix(0, nrow = length(idx), ncol = length(beta))
+          for (j in seq_along(idx)) L[j, idx[j]] <- 1
 
-        W <- as.numeric(t(L %*% beta) %*% inv_LVL %*% (L %*% beta))
+          LVL <- L %*% V %*% t(L)
+          inv_LVL <- try(solve(LVL), silent = TRUE)
+          if (inherits(inv_LVL, "try-error")) inv_LVL <- MASS::ginv(LVL)
+
+          W <- as.numeric(t(L %*% beta) %*% inv_LVL %*% (L %*% beta))
+        }
+
         df1 <- length(idx)
         f_val <- W / df1
 
         fit_df_col <- if ("df" %in% names(self$fit)) self$fit$df else if ("DF" %in% names(self$fit)) self$fit$DF else NULL
         if (is.data.frame(self$fit) && !is.null(fit_df_col)) {
-          df2 <- min(fit_df_col[fe_idx[idx]], na.rm = TRUE)
+          # beta_full のインデックスに合わせる
+          term_name_in_beta <- names(beta)[idx]
+          orig_match_indices <- sapply(term_name_in_beta, function(nm) {
+            m <- which(names(beta_full) == nm | names(beta_full) == paste0("b[", nm, "]"))
+            if (length(m) > 0) m[1] else NA
+          })
+          df2 <- if (any(!is.na(orig_match_indices))) min(fit_df_col[orig_match_indices], na.rm = TRUE) else Inf
         } else if (inherits(self$fit, "lm")) {
           df2 <- self$fit$df.residual
         } else {
@@ -1027,9 +1053,46 @@ Classic_Fit <- R6::R6Class(
                     symbols = c("***", "**", "*", ".", " "))
       res_df$signif <- as.character(sig)
 
-      class(res_df) <- c("anova", "data.frame")
+      class(res_df) <- c("anova_rtmb", "anova", "data.frame")
       heading <- if ("Chisq" %in% names(res_df)) "ANOVA Table (Wald Chisq tests)" else "ANOVA Table (Wald F-tests)"
       attr(res_df, "heading") <- heading
+
+      # --- 追加: R-squared とモデル全体の検定 (rtmb_lmの場合) ---
+      is_lm <- !is.null(self$model$type) && self$model$type == "lm"
+      if (is_lm && !is.null(self$model$data$Y)) {
+        Y <- self$model$data$Y
+        TSS <- sum((Y - mean(Y))^2)
+        sigma_est <- beta_full["sigma"]
+        if (!is.na(sigma_est) && TSS > 0) {
+          # 残差自由度の取得
+          df_resid <- if (is.null(res_df$den_df)) (length(Y) - sum(res_df$num_df) - 1) else min(res_df$den_df, na.rm = TRUE)
+          if (is.infinite(df_resid)) df_resid <- length(Y) - sum(res_df$num_df) - 1
+          
+          RSS <- (sigma_est^2) * df_resid
+          r2 <- 1 - (RSS / TSS)
+          adj_r2 <- 1 - (1 - r2) * (length(Y) - 1) / pmax(df_resid, 1)
+
+          # モデル全体の Wald 検定 (全予測変数 vs Intercept)
+          all_pred_idx <- which(assign_idx > 0)
+          if (length(all_pred_idx) > 0) {
+            L_all <- matrix(0, nrow = length(all_pred_idx), ncol = length(beta))
+            for (j in seq_along(all_pred_idx)) L_all[j, all_pred_idx[j]] <- 1
+            LVL_all <- L_all %*% V %*% t(L_all)
+            W_all <- as.numeric(t(L_all %*% beta) %*% MASS::ginv(LVL_all) %*% (L_all %*% beta))
+            f_all <- W_all / length(all_pred_idx)
+            p_all <- stats::pf(f_all, length(all_pred_idx), df_resid, lower.tail = FALSE)
+            
+            attr(res_df, "lm_info") <- list(
+              r_squared = r2,
+              adj_r_squared = adj_r2,
+              fstatistic = c(value = f_all, numdf = length(all_pred_idx), dendf = df_resid),
+              p_value = p_all,
+              sigma = sigma_est,
+              df_resid = df_resid
+            )
+          }
+        }
+      }
       return(res_df)
     },
 
@@ -1396,3 +1459,32 @@ AIC.Classic_Fit <- function(object, ..., k = 2) object$AIC()
 
 #' @export
 BIC.Classic_Fit <- function(object, ...) object$BIC()
+
+#' @export
+print.anova_rtmb <- function(x, ...) {
+  if (!is.null(attr(x, "heading"))) {
+    cat(attr(x, "heading"), "\n")
+  }
+  
+  # Use the standard anova print for the table
+  # Temporarily remove class to avoid infinite recursion
+  x_copy <- x
+  class(x_copy) <- c("anova", "data.frame")
+  print(x_copy, ...)
+  
+  # Print LM info if available
+  info <- attr(x, "lm_info")
+  if (!is.null(info)) {
+    cat("---\n")
+    cat(sprintf("Residual standard error: %.4f on %.1f degrees of freedom\n", info$sigma, info$df_resid))
+    cat(sprintf("Multiple R-squared: %.4f,  Adjusted R-squared: %.4f\n", info$r_squared, info$adj_r_squared))
+    if (!is.null(info$fstatistic)) {
+       cat(sprintf("F-statistic: %.4f on %d and %.1f DF,  p-value: %s\n", 
+                   info$fstatistic["value"], 
+                   as.integer(info$fstatistic["numdf"]), 
+                   info$fstatistic["dendf"],
+                   format.pval(info$p_value)))
+    }
+  }
+  invisible(x)
+}
