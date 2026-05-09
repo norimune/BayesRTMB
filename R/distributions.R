@@ -952,6 +952,44 @@ sufficient_multi_normal_CF_lpdf <- function(S_mat, N, y_bar, mean, sd, CF_Omega)
 
   return(lp)
 }
+
+#' Sufficient statistics multivariate normal log-probability density function (covariance parameterization)
+#'
+#' @param S_mat Deviation sum of squares matrix.
+#' @param N Sample size.
+#' @param y_bar Sample mean vector.
+#' @param mean Mean parameter vector.
+#' @param Sigma Covariance matrix.
+#' @return The exact log-likelihood of the N raw observations.
+#' @keywords internal
+sufficient_multi_normal_lpdf <- function(S_mat, N, y_bar, mean, Sigma) {
+  p <- length(y_bar)
+
+  # 1. Calculate log|Sigma|
+  # Ensure positive definiteness with a scale-aware jitter
+  diag_Sigma <- diag(Sigma)
+  safe_Sigma <- Sigma + diag(diag_Sigma * 1e-6 + 1e-8)
+
+  log_det_obj <- determinant(safe_Sigma, logarithm = TRUE)
+  log_det_Sigma <- log_det_obj$modulus
+
+  # 2. Mahalanobis distance of the mean vector
+  resid <- y_bar - mean
+  Sigma_inv <- solve(safe_Sigma)
+  quad_mean <- sum(resid * (Sigma_inv %*% resid))
+
+  # 3. Trace term of the deviation sum of squares matrix (tr(Sigma^-1 S_mat))
+  trace_term <- sum(Sigma_inv * S_mat)
+
+  # 4. Full log-likelihood
+  lp <- -0.5 * N * p * log(2 * pi) -
+    0.5 * N * log_det_Sigma -
+    0.5 * trace_term -
+    0.5 * N * quad_mean
+
+  return(lp)
+}
+
 #' Sufficient statistics factor analysis multivariate normal log-probability density function
 #'
 #' @param S_mat Deviation sum of squares matrix.

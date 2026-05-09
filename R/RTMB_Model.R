@@ -259,7 +259,7 @@ RTMB_Model <- R6::R6Class(
         return(res)
       }
 
-      H0 <- tryCatch(simple_jacobian(ad_obj$gr, par), error = function(e) NULL)
+      H0 <- tryCatch(simple_jacobian(ad_obj$gr, par), warning = function(w) NULL, error = function(e) NULL)
 
       if (is.null(H0) || any(!is.finite(H0))) {
         warning("Hessian computation failed. Using normal approximation.")
@@ -275,7 +275,8 @@ RTMB_Model <- R6::R6Class(
       # Step 2: Compute dV_ii/dtheta_k via central differences of the Hessian
       # Optimized: Compute dH/dtheta_k once per k and vectorize diag(V dH V)
       # Improved: Smaller eps base for better sensitivity to 3rd derivatives
-      eps <- 1e-5 * pmax(abs(par), 0.1)
+      # Improved: Slightly larger eps base to smooth out 3rd derivative noise
+      eps <- 1e-3 * pmax(abs(par), 0.1)
       grad_V_diag <- matrix(0, nrow = P, ncol = P) # grad_V_diag[k, i] = dV_ii / dtheta_k
 
       for (k in 1:P) {
@@ -283,8 +284,8 @@ RTMB_Model <- R6::R6Class(
         par_plus[k] <- par[k] + eps[k]
         par_minus[k] <- par[k] - eps[k]
 
-        H_plus <- tryCatch(simple_jacobian(ad_obj$gr, par_plus), error = function(e) NULL)
-        H_minus <- tryCatch(simple_jacobian(ad_obj$gr, par_minus), error = function(e) NULL)
+        H_plus <- tryCatch(simple_jacobian(ad_obj$gr, par_plus), warning = function(w) NULL, error = function(e) NULL)
+        H_minus <- tryCatch(simple_jacobian(ad_obj$gr, par_minus), warning = function(w) NULL, error = function(e) NULL)
 
         if (is.null(H_plus) || is.null(H_minus)) next
 
@@ -342,13 +343,13 @@ RTMB_Model <- R6::R6Class(
         idx_fixed <- ad_obj$env$lfixed()
         p_full[idx_fixed] <- theta
 
-        H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), error = function(e) NULL)
+        H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), warning = function(w) NULL, error = function(e) NULL)
         if (is.null(H)) {
           return(rep(Inf, length(beta_idx)))
         }
 
         # Convert to dense matrix for solve to ensure diagonal extraction works reliably
-        V_full <- tryCatch(solve(as.matrix(H)), error = function(e) NULL)
+        V_full <- tryCatch(solve(as.matrix(H)), warning = function(w) NULL, error = function(e) NULL)
         if (is.null(V_full)) {
           return(rep(Inf, length(beta_idx)))
         }
@@ -378,7 +379,7 @@ RTMB_Model <- R6::R6Class(
         return(res)
       }
 
-      H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), error = function(e) NULL)
+      H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), warning = function(w) NULL, error = function(e) NULL)
       if (is.null(H_theta)) {
         return(rep(Inf, n_beta))
       }
@@ -399,8 +400,8 @@ RTMB_Model <- R6::R6Class(
         p_plus[k] <- opt_par[k] + eps[k]
         p_minus[k] <- opt_par[k] - eps[k]
 
-        v_plus <- tryCatch(get_beta_vars(p_plus), error = function(e) NULL)
-        v_minus <- tryCatch(get_beta_vars(p_minus), error = function(e) NULL)
+        v_plus <- tryCatch(get_beta_vars(p_plus), warning = function(w) NULL, error = function(e) NULL)
+        v_minus <- tryCatch(get_beta_vars(p_minus), warning = function(w) NULL, error = function(e) NULL)
 
         if (is.null(v_plus) || is.null(v_minus)) next
         grad_V_beta_diag[k, ] <- (v_plus - v_minus) / (2 * eps[k])
@@ -548,8 +549,8 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(self$extra$df_pars)) {
           target_vars <- self$extra$df_pars
         } else {
-          # Default to none if no specific df_pars are provided in the model's extra info
-          target_vars <- character(0)
+          # Default to standard fixed effect names if no specific df_pars are provided
+          target_vars <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
         }
       } else if (identical(df_pars, "none")) {
         target_vars <- character(0)
@@ -694,7 +695,7 @@ RTMB_Model <- R6::R6Class(
       opt <- best_res$opt
       ad_obj$fn(opt$par)
 
-      sd_rep <- if (se) tryCatch(RTMB::sdreport(ad_obj), error = function(e) NULL) else NULL
+      sd_rep <- if (se) tryCatch(RTMB::sdreport(ad_obj), warning = function(w) NULL, error = function(e) NULL) else NULL
 
       unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE)
 
@@ -750,7 +751,7 @@ RTMB_Model <- R6::R6Class(
 
       # For random effects, update with the latest posterior modes from sdreport if available
       if (laplace && !is.null(sd_rep) && length(idx_ran) > 0) {
-        smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL)
+        smry_ran <- tryCatch(summary(sd_rep, select = "random"), warning = function(w) NULL, error = function(e) NULL)
         if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran)) {
           unc_est_vec[idx_ran] <- smry_ran[, "Estimate"]
         }
@@ -800,7 +801,7 @@ RTMB_Model <- R6::R6Class(
 
           # Get standard errors of random effects
           if (laplace && length(idx_ran) > 0) {
-            smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL)
+            smry_ran <- tryCatch(summary(sd_rep, select = "random"), warning = function(w) NULL, error = function(e) NULL)
             if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran)) {
               unc_se_vec[idx_ran] <- smry_ran[, "Std. Error"]
             }
@@ -816,9 +817,9 @@ RTMB_Model <- R6::R6Class(
       if (se && fallback_needed) {
         cat("sdreport failed or produced NAs. Falling back to ginv()...\n")
         eps_jitter <- 1e-6
-        H <- tryCatch(ad_obj$he(opt$par + eps_jitter), error = function(e) NULL)
+        H <- tryCatch(ad_obj$he(opt$par + eps_jitter), warning = function(w) NULL, error = function(e) NULL)
         if (is.null(H) || any(is.na(H) | is.nan(H))) {
-          H <- tryCatch(ad_obj$he(opt$par - eps_jitter), error = function(e) NULL)
+          H <- tryCatch(ad_obj$he(opt$par - eps_jitter), warning = function(w) NULL, error = function(e) NULL)
         }
         if (!is.null(H)) {
           H[!is.finite(H)] <- 0
@@ -826,7 +827,7 @@ RTMB_Model <- R6::R6Class(
           if (!requireNamespace("MASS", quietly = TRUE)) {
             warning("Package 'MASS' is required for ginv(). Standard errors will be NA.")
           } else {
-            Cov_pseudo <- tryCatch(MASS::ginv(H), error = function(e) NULL)
+            Cov_pseudo <- tryCatch(MASS::ginv(H), warning = function(w) NULL, error = function(e) NULL)
             if (!is.null(Cov_pseudo)) {
               se_pseudo <- sqrt(pmax(diag(Cov_pseudo), 0))
 
@@ -1138,9 +1139,29 @@ RTMB_Model <- R6::R6Class(
           if (length(p_info$dim) > 1) dim(c_se) <- p_info$dim
           con_se_list[[name]] <- c_se
 
-          if (p_info$bounds == "corr_matrix") {
-            c_low <- rep(NA, L_c)
-            c_up <- rep(NA, L_c)
+          if (p_info$bounds == "corr_matrix" || p_info$type == "corr_matrix") {
+            # Fisher z-transform based CIs for correlation matrix elements
+            # z = atanh(rho), SE(z) = SE(rho) / (1 - rho^2)
+            rho_val <- as.numeric(c_val)
+            # Clip rho to avoid Inf in atanh
+            rho_clipped <- pmax(pmin(rho_val, 0.9999), -0.9999)
+            z_val <- atanh(rho_clipped)
+            z_se <- c_se / (1 - rho_clipped^2 + 1e-10)
+            
+            u_dfs <- est_dfs_all[u_indices]
+            u_q_95 <- if (any(is.na(u_dfs) | is.infinite(u_dfs))) qnorm(0.975) else qt(0.975, df = pmax(mean(u_dfs, na.rm = TRUE), 2.1))
+            
+            z_low <- z_val - u_q_95 * z_se
+            z_up <- z_val + u_q_95 * z_se
+            c_low <- tanh(z_low)
+            c_up <- tanh(z_up)
+            
+            # Handle diagonals (fixed at 1.0)
+            is_fixed <- c_se < 1e-10 & abs(rho_val - 1) < 1e-8
+            if (any(is_fixed)) {
+              c_low[is_fixed] <- 1.0
+              c_up[is_fixed] <- 1.0
+            }
           } else {
             u_dfs <- est_dfs_all[u_indices]
             u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
@@ -1241,14 +1262,14 @@ RTMB_Model <- R6::R6Class(
 
       tran_list <- NULL
       if (!is.null(self$transform)) {
-        tran_list <- tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL)
+        tran_list <- tryCatch(self$transform(self$data, con_est_list), warning = function(w) NULL, error = function(e) NULL)
       }
 
       gq_list <- NULL
       if (!is.null(self$generate)) {
         tmp_con_list <- con_est_list
         if (!is.null(tran_list)) tmp_con_list <- c(tmp_con_list, tran_list)
-        gq_list <- tryCatch(self$generate(self$data, tmp_con_list), error = function(e) NULL)
+        gq_list <- tryCatch(self$generate(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
       }
 
       build_derived_df <- function(func, base_out, is_generate = FALSE) {
@@ -1269,11 +1290,11 @@ RTMB_Model <- R6::R6Class(
             tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
 
             if (is_generate && !is.null(self$transform)) {
-              user_tran <- tryCatch(self$transform(self$data, tmp_con_list), error = function(e) NULL)
+              user_tran <- tryCatch(self$transform(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
               if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
             }
 
-            res <- tryCatch(func(self$data, tmp_con_list), error = function(e) NULL)
+            res <- tryCatch(func(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
             return(res)
           }
 
@@ -1292,6 +1313,15 @@ RTMB_Model <- R6::R6Class(
         }
 
         # 2. Calculate SE and CI
+        names_vec <- c()
+        for (name in names(base_out)) {
+          val <- base_out[[name]]
+          dim_val <- dim(val)
+          if (is.null(dim_val)) dim_val <- length(val)
+          names_def <- self$par_names[[name]]
+          names_vec <- c(names_vec, generate_flat_names(name, dim_val, names_def))
+        }
+
         if (se_sampling) {
           samps_list <- if (is_generate) samps_gq else samps_tran
           if (length(samps_list) == 0) {
@@ -1313,27 +1343,21 @@ RTMB_Model <- R6::R6Class(
             up_out <- apply(mat_all, 2, quantile, probs = 0.975, na.rm = TRUE)
           }
         } else {
-          smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
+          smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), warning = function(w) NULL, error = function(e) NULL) else NULL
 
           se_out <- rep(NA_real_, L_out)
 
           if (!is.null(smry_rep_all) && nrow(smry_rep_all) > 0) {
-            # build_derived_df の後半で作る names_vec と同じルールで現在のフラット名を作成
-            current_flat_names <- c()
-            for (name in names(base_out)) {
-              val <- base_out[[name]]
-              d_val <- if (is.null(dim(val))) length(val) else dim(val)
-              current_flat_names <- c(current_flat_names, generate_flat_names(name, d_val, self$par_names[[name]]))
-            }
+            # build_derived_df names_vec rule (using the already computed names_vec)
             # sdreportの結果と照合
-            m_idx <- match(current_flat_names, rownames(smry_rep_all))
+            m_idx <- match(names_vec, rownames(smry_rep_all))
             valid_m <- !is.na(m_idx)
             if (any(valid_m)) {
               se_out[valid_m] <- smry_rep_all$`Std. Error`[m_idx[valid_m]]
             }
           }
 
-          # 万が一 sdreport に含まれていない場合は従来のデルタ法でバックアップ
+          # sdreport に含まれていない場合、従来の方法でバックアップを計算
           missing_se <- is.na(se_out)
           if (any(missing_se)) {
             Cov_u_derived <- Cov_u
@@ -1345,17 +1369,27 @@ RTMB_Model <- R6::R6Class(
           }
 
           z_95 <- qnorm(0.975)
+          
+          # Initialize CI vectors
           low_out <- flat_base - z_95 * se_out
           up_out <- flat_base + z_95 * se_out
-        }
-
-        names_vec <- c()
-        for (name in names(base_out)) {
-          val <- base_out[[name]]
-          dim_val <- dim(val)
-          if (is.null(dim_val)) dim_val <- length(val)
-          names_def <- self$par_names[[name]]
-          names_vec <- c(names_vec, generate_flat_names(name, dim_val, names_def))
+          
+          # Apply Fisher z-transform for correlation-like parameters
+          corr_pat <- "^(corr|pcorr|B_corr|W_corr|B_pcorr|W_pcorr)(\\[|$)"
+          is_corr <- grepl(corr_pat, names_vec)
+          if (any(is_corr)) {
+            for (j in which(is_corr)) {
+              r <- flat_base[j]
+              se_r <- se_out[j]
+              if (abs(r) < 1 && se_r > 0 && !is.na(se_r)) {
+                r_clipped <- pmax(pmin(r, 0.9999), -0.9999)
+                z <- atanh(r_clipped)
+                se_z <- se_r / (1 - r_clipped^2 + 1e-10)
+                low_out[j] <- tanh(z - z_95 * se_z)
+                up_out[j] <- tanh(z + z_95 * se_z)
+              }
+            }
+          }
         }
 
         df <- data.frame(
@@ -1396,7 +1430,7 @@ RTMB_Model <- R6::R6Class(
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
         D <- length(opt$par)
         cov_mat <- sd_rep$cov.fixed
-        eig <- tryCatch(eigen(cov_mat, symmetric = TRUE), error = function(e) NULL)
+        eig <- tryCatch(eigen(cov_mat, symmetric = TRUE), warning = function(w) NULL, error = function(e) NULL)
 
         if (!is.null(eig)) {
           vals <- eig$values
@@ -1563,20 +1597,20 @@ RTMB_Model <- R6::R6Class(
       est_dfs_all <- rep(if (is.numeric(df)) df[1] else Inf, L_u_total)
 
       if (identical(df, "auto") && length(target_vars) > 0) {
-        # (A) ML等で最適化対象側にいる固定効果のDF
+        # (A) ML 等で最適化対象となる固定効果の DF
         idx_fix_active <- ad_obj$env$lfixed()
         est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
 
-        # (B) REML等でランダム効果側に積分消去された固定効果のDF
+        # (B) REML 等でランダム効果と共に積分消去された固定効果の DF
         if (length(ad_obj$env$random) > 0) {
           full_par_names <- names(ad_obj$env$last.par)
           target_full_idx <- which(full_par_names %in% target_vars)
 
-          # ランダム効果ベクトル内の相対インデックスに変換
+          # ランダム効果ベクトルに対する相対インデックスに変換
           idx_ran <- ad_obj$env$random
           target_ran_idx <- match(target_full_idx, idx_ran)
 
-          # 最適化対象（NA）を除外
+          # 最適化対象外を除外
           valid_mask <- !is.na(target_ran_idx)
           target_ran_idx <- target_ran_idx[valid_mask]
           valid_full_idx <- target_full_idx[valid_mask]
@@ -1589,79 +1623,185 @@ RTMB_Model <- R6::R6Class(
         ad_obj$fn(opt$par)
       }
 
-      # =====================================================================
-      # 1. SDReportの実行と基本サマリーの抽出
-      # =====================================================================
-
       sd_rep <- tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = laplace_flag), error = function(e) stop("sdreport failed: ", e$message))
 
-      smry_fix <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "fixed"))), error = function(e) data.frame())
-      smry_ran <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "random"))), error = function(e) data.frame())
-      smry_rep <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "report"))), error = function(e) data.frame())
+      # 派生パラメータ計算用の推定値リストを作成
+      unc_est_vec <- ad_obj$env$last.par
+      unc_est_list <- unconstrained_vector_to_list(unc_est_vec, self$par_list)
+      con_est_list <- to_constrained(unc_est_list, self$par_list)
+
+      smry_fix <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "fixed"))), warning = function(w) data.frame(), error = function(e) data.frame())
+      smry_ran <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "random"))), warning = function(w) data.frame(), error = function(e) data.frame())
+      smry_rep <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "report"))), warning = function(w) data.frame(), error = function(e) data.frame())
 
       idx_fix <- ad_obj$env$lfixed()
       idx_ran <- ad_obj$env$random
       if (nrow(smry_fix) > 0) smry_fix$df <- if (length(idx_fix) == nrow(smry_fix)) est_dfs_all[idx_fix] else Inf
       if (nrow(smry_ran) > 0) smry_ran$df <- if (length(idx_ran) == nrow(smry_ran)) est_dfs_all[idx_ran] else Inf
-      if (nrow(smry_rep) > 0) {
-        smry_rep$df <- Inf
 
-        if (identical(df, "auto") && exists("est_dfs_all")) {
-          tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL
-          gen_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, c(con_est_list, tran_list)), error = function(e) NULL) else NULL
-          all_derived <- c(tran_list, gen_list)
+      # --- 推定対象の固定効果インデックスの特定 (Mapを考慮) ---
+      target_map <- self$map
+      idx_fix_active <- integer(0)
+      factor_levels_seen <- list()
+      opt_par_curr <- 1
+      idx_curr <- 1
 
-          if (length(all_derived) > 0) {
-            df_calc <- build_derived_df(function(d, p) c(tran_list, gen_list), all_derived, is_generate = TRUE)
-
-            if (!is.null(df_calc)) {
-              m_idx <- match(rownames(smry_rep), rownames(df_calc))
-              valid_m <- !is.na(m_idx)
-              smry_rep$df[valid_m] <- df_calc$DF[m_idx[valid_m]]
+      for (name in names(self$par_list)) {
+        L_u_sub <- self$par_list[[name]]$unc_length
+        if (L_u_sub > 0) {
+          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+          for (i in 1:L_u_sub) {
+            pos_last <- idx_curr + i - 1
+            # Skip if random effect and NOT using joint covariance
+            if (!laplace_flag && (pos_last %in% idx_ran)) next
+            if (!is.null(map_f) && is.na(map_f[i])) next
+            if (!is.null(map_f)) {
+              lvl <- as.character(map_f[i])
+              if (!(lvl %in% names(factor_levels_seen))) {
+                factor_levels_seen[[lvl]] <- opt_par_curr
+                idx_fix_active <- c(idx_fix_active, pos_last)
+                opt_par_curr <- opt_par_curr + 1
+              }
+            } else {
+              idx_fix_active <- c(idx_fix_active, pos_last)
+              opt_par_curr <- opt_par_curr + 1
             }
+          }
+          idx_curr <- idx_curr + L_u_sub
+        }
+      }
+
+      V_joint <- NULL
+      if (laplace_flag && !is.null(sd_rep$jointPrecision)) {
+        V_joint <- tryCatch(as.matrix(solve(sd_rep$jointPrecision)), warning = function(w) NULL, error = function(e) NULL)
+      } else if (!is.null(sd_rep$cov.fixed)) {
+        V_joint <- sd_rep$cov.fixed
+      }
+
+      L_u_total <- length(unc_est_vec)
+      Cov_u_full <- matrix(0, L_u_total, L_u_total)
+      
+      if (!is.null(V_joint) && length(idx_fix_active) == nrow(V_joint)) {
+        Cov_u_full[idx_fix_active, idx_fix_active] <- V_joint
+        
+        # 重複パラメータ（Mapによる共有）への共分散のコピー
+        idx_curr <- 1
+        for (name in names(self$par_list)) {
+          L_u_sub <- self$par_list[[name]]$unc_length
+          if (L_u_sub > 0) {
+            map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+            for (i in 1:L_u_sub) {
+              pos_last <- idx_curr + i - 1
+              if (!laplace_flag && (pos_last %in% idx_ran)) next
+              if (!is.null(map_f) && !is.na(map_f[i])) {
+                lvl <- as.character(map_f[i])
+                mapped_opt_idx <- factor_levels_seen[[lvl]]
+                if (!is.null(mapped_opt_idx)) {
+                  active_idx <- idx_fix_active[mapped_opt_idx]
+                  Cov_u_full[pos_last, pos_last] <- Cov_u_full[active_idx, active_idx]
+                }
+              }
+            }
+            idx_curr <- idx_curr + L_u_sub
           }
         }
       }
 
+      build_derived_df <- function(func, base_out, is_generate = FALSE) {
+        if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
+        eps_diff <- 1e-5
+        flat_base <- unlist(base_out, use.names = FALSE)
+        L_out <- length(flat_base)
+        u_base <- unc_est_vec
+        L_u_total <- length(u_base)
 
-      V_joint <- NULL
-      if (laplace_flag && !is.null(sd_rep$jointPrecision)) {
-        V_joint <- tryCatch(as.matrix(solve(sd_rep$jointPrecision)), error = function(e) NULL)
-      } else if (!is.null(sd_rep$cov.fixed)) {
-        V_joint <- sd_rep$cov.fixed
+        calc_derived <- function(u) {
+          tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
+          tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
+          if (is_generate && !is.null(self$transform)) {
+            user_tran <- tryCatch(self$transform(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
+            if (!is.null(user_tran)) tmp_con_list <- utils::modifyList(tmp_con_list, user_tran)
+          }
+          tryCatch(func(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
+        }
+
+        # ヤコビアンの計算
+        J <- matrix(0, nrow = L_out, ncol = L_u_total)
+        for (i in 1:L_u_total) {
+          if (i %in% idx_fix_active || (L_u_total < 50)) { # 高速化のため推定対象のみ、または小規模モデルのみ計算
+            u_tmp <- u_base; u_tmp[i] <- u_tmp[i] + eps_diff
+            tmp_out <- calc_derived(u_tmp)
+            if (!is.null(tmp_out)) {
+              out_flat <- unlist(tmp_out, use.names = FALSE)
+              diff_val <- out_flat - flat_base
+              J[, i] <- diff_val / eps_diff
+            }
+          }
+        }
+
+        # デルタ法によるSE計算
+        se_out <- rep(NA_real_, L_out)
+        for (j in 1:L_out) {
+          v_val <- sum((J[j, ] %*% Cov_u_full) * J[j, ])
+          if (!is.na(v_val) && v_val > 0) se_out[j] <- sqrt(v_val) else se_out[j] <- 0
+        }
+
+        # 名前付きデータフレームの構築
+        res_names <- c()
+        for (name in names(base_out)) {
+          val <- base_out[[name]]
+          d_val <- if (is.null(dim(val))) length(val) else dim(val)
+          names_def <- self$par_names[[name]]
+          if (length(d_val) == 2 && is.character(names_def) && length(names_def) == d_val[1]) {
+             names_def <- list(names_def, names_def)
+          }
+          res_names <- c(res_names, generate_flat_names(name, d_val, names_def))
+        }
+        
+        data.frame(
+          Estimate = flat_base,
+          `Std. Error` = se_out,
+          df = Inf,
+          row.names = res_names,
+          check.names = FALSE
+        )
+      }
+
+      # generate/transform ブロックの処理
+      has_derived <- !is.null(self$transform) || !is.null(self$generate)
+      if (has_derived) {
+        tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), warning = function(w) NULL, error = function(e) NULL) else NULL
+        gen_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, c(con_est_list, tran_list)), warning = function(w) NULL, error = function(e) NULL) else NULL
+        all_derived <- c(tran_list, gen_list)
+
+        if (length(all_derived) > 0) {
+          df_calc <- build_derived_df(function(d, p) {
+            t_list <- if (!is.null(self$transform)) tryCatch(self$transform(d, p), warning = function(w) NULL, error = function(e) NULL) else NULL
+            g_list <- if (!is.null(self$generate)) tryCatch(self$generate(d, c(p, t_list)), warning = function(w) NULL, error = function(e) NULL) else NULL
+            c(t_list, g_list)
+          }, all_derived, is_generate = TRUE)
+          if (!is.null(df_calc)) {
+            if (nrow(smry_rep) > 0) {
+              smry_rep$df <- Inf
+              extra_idx <- which(!(rownames(df_calc) %in% rownames(smry_rep)))
+              if (length(extra_idx) > 0) smry_rep <- rbind(smry_rep, df_calc[extra_idx, , drop = FALSE])
+            } else {
+              smry_rep <- df_calc
+            }
+          }
+        }
       }
 
       # =====================================================================
       # 2. フィルタリングと結合
       # =====================================================================
-      par_names_all <- names(self$par_list)
-      if (nrow(smry_rep) > 0) {
-        rep_names_base <- gsub("\\.[0-9]+$", "", rownames(smry_rep))
-        keep_rep <- rep(TRUE, nrow(smry_rep))
-
-        for (name in par_names_all) {
-          p_info <- self$par_list[[name]]
-          is_constrained <- p_info$unc_length > 0 && p_info$unc_length != p_info$length
-
-          if (name %in% rep_names_base) {
-            if (is_constrained) {
-              # For constrained parameters, keep the reported (constrained) version and remove from fixed/random
-              if (nrow(smry_fix) > 0) smry_fix <- smry_fix[gsub("\\.[0-9]+$", "", rownames(smry_fix)) != name, , drop = FALSE]
-              if (nrow(smry_ran) > 0) smry_ran <- smry_ran[gsub("\\.[0-9]+$", "", rownames(smry_ran)) != name, , drop = FALSE]
-            } else {
-              # For unconstrained parameters, keep the original parameter (which has DF) and remove from report
-              keep_rep[rep_names_base == name] <- FALSE
-            }
-          }
-        }
-        smry_rep <- smry_rep[keep_rep, , drop = FALSE]
-      }
-
       df_combined <- rbind(smry_fix, smry_ran, smry_rep)
 
-      if (laplace_flag) {
-        is_blup <- grepl("^(r_re|u)($|\\[|\\.)", rownames(df_combined))
-        df_combined <- df_combined[!is_blup, , drop = FALSE]
+      par_names_all <- names(self$par_list)
+      if (nrow(df_combined) > 0) {
+        rep_names_base <- gsub("\\.[0-9]+$", "", rownames(df_combined))
+        keep_rep <- rep(TRUE, nrow(df_combined))
+        # ここで不要なパラメータ（ identity correlation等）をフィルタリングするロジックがあれば追加可能
       }
 
       # =====================================================================
@@ -1672,7 +1812,12 @@ RTMB_Model <- R6::R6Class(
 
       for (n in unique(base_names)) {
         idx <- which(base_names == n)
-        if (length(idx) > 1) base_names[idx] <- paste0(n, "[", seq_along(idx), "]")
+        if (length(idx) > 1) {
+           # すでにブラケットがある場合はそのまま、ない場合は連番
+           if (!any(grepl("\\[", base_names[idx]))) {
+              base_names[idx] <- paste0(n, "[", seq_along(idx), "]")
+           }
+        }
       }
 
       if (!is.null(self$par_names)) {
@@ -1680,8 +1825,12 @@ RTMB_Model <- R6::R6Class(
           idx <- which(grepl(paste0("^", p, "($|\\[)"), base_names))
           if (length(idx) > 0) {
             labels <- self$par_names[[p]]
-            for (j in seq_along(idx)) {
-              if (j <= length(labels)) base_names[idx[j]] <- paste0(p, "[", labels[j], "]")
+            if (is.list(labels)) {
+               # 行列などの多次元ラベルは generate_flat_names で処理済みのはずなのでスキップ
+            } else {
+              for (j in seq_along(idx)) {
+                if (j <= length(labels)) base_names[idx[j]] <- paste0(p, "[", labels[j], "]")
+              }
             }
           }
         }
@@ -1689,17 +1838,14 @@ RTMB_Model <- R6::R6Class(
       rownames(df_combined) <- make.unique(base_names)
 
       # =====================================================================
-      # 4 & 5. 制約なし空間での統計量計算と制約あり空間への逆変換
+      # 4 & 5. 統計量の計算と信頼区間の構築
       # =====================================================================
-      # まず全パラメータに対して、現在の Estimate と SE を用いて標準的な Wald法で仮計算する。
-      # これは ADREPORT された派生パラメータ（すでに制約あり空間にある）等のためのデフォルト計算となる。
       df_combined$`t value` <- df_combined$Estimate / pmax(df_combined$`Std. Error`, 1e-12)
       df_combined$Pr <- 2 * pt(-abs(df_combined$`t value`), df = pmax(df_combined$df, 1e-6))
       df_combined$`Lower 95%` <- df_combined$Estimate + qt(0.025, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
       df_combined$`Upper 95%` <- df_combined$Estimate + qt(0.975, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
 
-      # 続いて、par_list に登録されている「最適化された元のパラメータ」に対して、
-      # 制約なし空間での推定値 u と SE_u を用いて統計量と信頼区間を再計算し、制約あり空間に逆変換する。
+      # 制約のあるパラメータ（sigma等）の統計量再計算
       for (name in names(self$par_list)) {
         p_info <- self$par_list[[name]]
         row_indices <- which(grepl(paste0("^", name, "($|\\[)"), rownames(df_combined)))
@@ -1717,88 +1863,35 @@ RTMB_Model <- R6::R6Class(
           up_u <- u + crit * se_u
 
           if (all(is.infinite(upper)) && any(is.finite(lower))) {
+            # 対数変換（sigmaなど）
             u_null <- if (lower < 0) log(-lower) else NA
-
             df_combined$Estimate[row_indices] <- exp(u) + lower
             df_combined$`Std. Error`[row_indices] <- exp(u) * se_u
             df_combined$`Lower 95%`[row_indices] <- exp(low_u) + lower
             df_combined$`Upper 95%`[row_indices] <- exp(up_u) + lower
-
+            
             t_val <- (u - u_null) / pmax(se_u, 1e-12)
             df_combined$`t value`[row_indices] <- t_val
             df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
           } else if (any(is.finite(lower)) && any(is.finite(upper))) {
+            # ロジット変換
             p_null <- -lower / (upper - lower)
             u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else NA
-
             il <- function(v) 1 / (1 + exp(-v))
-
             df_combined$Estimate[row_indices] <- lower + (upper - lower) * il(u)
             df_combined$`Std. Error`[row_indices] <- (upper - lower) * il(u) * (1 - il(u)) * se_u
-
             c_low <- lower + (upper - lower) * il(low_u)
             c_up <- lower + (upper - lower) * il(up_u)
             df_combined$`Lower 95%`[row_indices] <- pmin(c_low, c_up)
             df_combined$`Upper 95%`[row_indices] <- pmax(c_low, c_up)
-
+            
             t_val <- (u - u_null) / pmax(se_u, 1e-12)
-            df_combined$`t value`[row_indices] <- t_val
-            df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
-          } else {
-            u_null <- 0
-            t_val <- (u - u_null) / pmax(se_u, 1e-12)
-
-            df_combined$`Lower 95%`[row_indices] <- low_u
-            df_combined$`Upper 95%`[row_indices] <- up_u
             df_combined$`t value`[row_indices] <- t_val
             df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
           }
         }
       }
 
-      # --- 相関分析固有のオーバーライド (相関については解析的な公式が最も正しいため維持) ---
-      if (!is.null(self$type) && self$type == "corr") {
-        pat <- "^(corr|pcorr|B_corr|W_corr|B_pcorr|W_pcorr)(\\[|$)"
-        corr_idx <- grep(pat, rownames(df_combined))
-        if (length(corr_idx) > 0) {
-          for (i in corr_idx) {
-            r <- df_combined$Estimate[i]
-            se_r <- df_combined$`Std. Error`[i]
-
-            if (abs(r) < 0.9999 && se_r > 1e-8) {
-              rn <- rownames(df_combined)[i]
-              N_val <- if (!is.null(self$data$N)) self$data$N else 100
-              df_val <- N_val - 2
-
-              if (grepl("^B_", rn)) {
-                J_val <- self$data$J
-                if (!is.null(J_val)) df_val <- J_val - 2
-              }
-              if (grepl("pcorr", rn)) {
-                Px_val <- self$data$P_x
-                if (!is.null(Px_val)) df_val <- df_val - Px_val
-              }
-              df_val <- pmax(df_val, 1)
-
-              t_val <- r * sqrt(df_val / (1 - r^2))
-              p_val <- 2 * pt(-abs(t_val), df = df_val)
-
-              z <- atanh(r)
-              se_z <- 1 / sqrt(pmax(df_val - 1, 1e-6))
-              z_crit <- qnorm(0.975)
-
-              df_combined$`t value`[i] <- t_val
-              df_combined$Pr[i] <- p_val
-              df_combined$df[i] <- df_val
-              df_combined$`Lower 95%`[i] <- tanh(z - z_crit * se_z)
-              df_combined$`Upper 95%`[i] <- tanh(z + z_crit * se_z)
-            } else {
-              df_combined$`t value`[i] <- NA
-              df_combined$Pr[i] <- NA
-            }
-          }
-        }
-      }
 
       # =====================================================================
       # 6. メタデータの記録と表示順序
@@ -1819,7 +1912,7 @@ RTMB_Model <- R6::R6Class(
         df_combined <- df_combined[final_idx, , drop = FALSE]
       }
 
-      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, par_unc = ad_obj$env$last.par, vcov_unc = V_joint, test_results = test_results, view = view)
+      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, par_unc = unc_est_vec, vcov_unc = Cov_u_full, test_results = test_results, view = view)
       return(res)
     },
 
@@ -2747,7 +2840,7 @@ RTMB_Model <- R6::R6Class(
           for (i in 2:length(prior_expr)) {
             arg_expr <- prior_expr[[i]]
             if (!is.numeric(arg_expr)) {
-              arg_val <- tryCatch(eval(arg_expr, envir = eval_env), error = function(e) NULL)
+              arg_val <- tryCatch(eval(arg_expr, envir = eval_env), warning = function(w) NULL, error = function(e) NULL)
               if (!is.null(arg_val) && length(arg_val) > 1) {
                 ext_val <- arg_val[idx_val]
                 if (length(ext_val) == 1 && !is.na(ext_val)) {
@@ -3141,7 +3234,7 @@ RTMB_Model <- R6::R6Class(
           } else if (res_name == p_name) {
             # Exact match
             full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
-            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), error = function(e) NULL)
+            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
             if (!is.null(log_dens)) total_lp <<- total_lp + sum(log_dens)
           }
         } else {
@@ -3149,9 +3242,9 @@ RTMB_Model <- R6::R6Class(
           # Build the full distribution call by injecting lhs as the first argument
           if (is.call(rhs_expr)) {
             full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
-            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), error = function(e) NULL)
+            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
           } else {
-            log_dens <- tryCatch(eval(rhs_expr, envir = parent.frame()), error = function(e) NULL)
+            log_dens <- tryCatch(eval(rhs_expr, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
           }
 
           if (!is.null(log_dens)) {

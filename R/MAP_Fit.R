@@ -365,10 +365,16 @@ MAP_Fit <- R6::R6Class(
         return(x)
       })
 
-      # For MAP Fit, we typically only show Estimate unless specified (but user wants them gone)
-      # Drop SE and CI columns if they exist
-      cols_to_keep <- setdiff(colnames(df_combined), c("Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%"))
-      df_display <- df_combined[, cols_to_keep, drop = FALSE]
+      # Display all estimated quantities including SE and CI (excluding only metadata if needed)
+      df_display <- df_combined
+      
+      # Ensure consistent column ordering for readability (support both DF and df)
+      # Order: Estimate, Std. Error, [CIs], DF/df, [Other]
+      desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%", "DF", "df")
+      current_names <- colnames(df_display)
+      order_to_use <- intersect(desired_order, current_names)
+      other_names <- setdiff(current_names, desired_order)
+      df_display <- df_display[, c(order_to_use, other_names), drop = FALSE]
 
       out_df <- data.frame(variable = rownames(df_display), df_display, check.names = FALSE, stringsAsFactors = FALSE)
       rownames(out_df) <- NULL
@@ -395,18 +401,22 @@ MAP_Fit <- R6::R6Class(
       }
 
       # 1. Resolve parameters to test
-      all_names <- rownames(self$df_fixed)
+      all_dfs <- list(fixed = self$df_fixed, tran = self$df_transform, gq = self$df_generate)
+      all_dfs <- all_dfs[!sapply(all_dfs, is.null)]
+      all_names <- unique(unlist(lapply(all_dfs, rownames)))
+
       if (is.null(pars)) {
-        # Default to fixed effects (excluding Intercept if requested, but let's include for now)
-        pars <- all_names[grepl("^(Intercept|Intercept_c|b\\[|diff|delta)", all_names)]
+        # Default to typical parameters from any summary table
+        pars_regex <- "^(Intercept|Intercept_c|b\\[|mean|prob|beta|mu|delta|diff|mean_diff|sigma|sd|phi|nu|corr|pcorr|theta|omega)"
+        pars <- all_names[grepl(pars_regex, all_names)]
       } else {
         # Resolve patterns
         matched <- unlist(lapply(pars, function(p) {
           p_esc <- gsub("([\\\\\\^\\$\\*\\+\\?\\(\\)\\|\\{\\}])", "\\\\\\1", p)
-          # Specifically handle brackets if the user didn't escape them
           p_esc <- gsub("\\[", "\\\\[", p_esc)
           p_esc <- gsub("\\]", "\\\\]", p_esc)
-          all_names[grepl(paste0("^", p_esc, "($|\\[)"), all_names)]
+          res <- all_names[grepl(paste0("^", p_esc, "($|\\[)"), all_names)]
+          return(res)
         }))
         pars <- unique(matched)
       }
@@ -421,98 +431,126 @@ MAP_Fit <- R6::R6Class(
         p_base <- gsub("\\[.*\\]$", "", p_name)
         p_info <- self$model$par_list[[p_base]]
         
-        p_idx <- 1
-        if (grepl("\\[", p_name)) {
-          idx_str <- gsub(".*\\[(.*)\\].*", "\\1", p_name)
-          p_idx <- suppressWarnings(as.integer(idx_str))
-          if (is.na(p_idx)) {
-            p_names <- self$model$par_names[[p_base]]
-            if (!is.null(p_names)) {
-              p_idx <- which(p_names == idx_str)
-              if (length(p_idx) == 0) p_idx <- 1
-            } else {
-              p_idx <- 1
+        # Identify if it is a correlation parameter (specifically for rtmb_corr)
+        is_corr_param <- (self$model$type == "corr" && grepl("^(corr|pcorr)\\[", p_name))
+        
+        post_log_dens <- NA
+        prior_log_dens <- NA
+
+        # --- Case A: Correlation Parameters (RTMB_corr) ---
+        if (is_corr_param) {
+          # Use constrained summary for posterior density
+          target_df <- if (!is.null(self$df_generate) && p_name %in% rownames(self$df_generate)) self$df_generate 
+                       else if (!is.null(self$df_fixed) && p_name %in% rownames(self$df_fixed)) self$df_fixed
+                       else NULL
+          
+          if (!is.null(target_df)) {
+            est <- target_df[p_name, "Estimate"]
+            se <- target_df[p_name, "Std. Error"]
+            df_val <- if ("DF" %in% colnames(target_df)) target_df[p_name, "DF"] else 1e6
+            
+            if (!is.na(se) && se > 0) {
+              post_log_dens <- if (df_val < 100000) {
+                dt((null - est) / se, df = df_val, log = TRUE) - log(se)
+              } else {
+                dnorm(null, mean = est, sd = se, log = TRUE)
+              }
+              
+              # Prior: LKJ marginal density at null
+              eta <- if (!is.null(self$model$extra$lkj_eta)) self$model$extra$lkj_eta else 1
+              P_val <- if (!is.null(self$model$data$P)) self$model$data$P else 2
+              alpha_val <- eta + (P_val - 2) / 2
+              prior_log_dens <- dbeta((null + 1) / 2, alpha_val, alpha_val, log = TRUE) - log(2)
+            }
+          }
+        }
+        
+        # --- Case B: Direct Fixed Parameters (Standard Logic) ---
+        if (is.na(post_log_dens) && !is.null(p_info)) {
+          u_start <- 0
+          found <- FALSE
+          for (n in names(self$model$par_list)) {
+            if (n == p_base) { found <- TRUE; break }
+            u_start <- u_start + self$model$par_list[[n]]$unc_length
+          }
+          
+          if (found) {
+            p_idx <- 1
+            if (grepl("\\[", p_name)) {
+              idx_str <- gsub(".*\\[(.*)\\].*", "\\1", p_name)
+              p_idx <- suppressWarnings(as.integer(idx_str))
+              if (is.na(p_idx)) {
+                p_names <- self$model$par_names[[p_base]]
+                if (!is.null(p_names)) p_idx <- which(p_names == idx_str)
+                if (length(p_idx) == 0) p_idx <- 1
+              }
+            }
+            
+            u_idx <- u_start + p_idx
+            if (!is.na(u_idx) && u_idx <= length(self$par_unc)) {
+              mode_unc <- self$par_unc[u_idx]
+              se_unc <- sqrt(pmax(self$vcov_unc[u_idx, u_idx], 0))
+              
+              if (!is.na(se_unc) && se_unc > 0) {
+                df_val <- if (p_name %in% rownames(self$df_fixed)) self$df_fixed[p_name, "DF"] else 1e6
+                if (is.null(df_val) || is.na(df_val) || is.infinite(df_val)) df_val <- 1e6
+                
+                # Convert null to u_null
+                lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
+                upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
+                u_null <- null
+                if (is.infinite(lower) && is.infinite(upper)) { u_null <- null }
+                else if (is.finite(lower) && is.infinite(upper)) { u_null <- if (null > lower) log(null - lower) else -100 }
+                else if (is.finite(lower) && is.finite(upper)) {
+                  p_null <- (null - lower) / (upper - lower)
+                  u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else if (p_null <= 0) -100 else 100
+                }
+                
+                post_log_dens <- if (df_val < 100000) {
+                  dt((u_null - mode_unc) / se_unc, df = df_val, log = TRUE) - log(se_unc)
+                } else {
+                  dnorm(u_null, mean = mode_unc, sd = se_unc, log = TRUE)
+                }
+                prior_log_dens <- self$model$evaluate_univariate_prior(p_name, u_null, par_list = self$par)
+              }
+            }
+          }
+        }
+        
+        # --- Case C: Other Derived Parameters ---
+        if (is.na(post_log_dens)) {
+          target_df <- NULL
+          for (df in all_dfs) { if (p_name %in% rownames(df)) { target_df <- df; break } }
+          
+          if (!is.null(target_df)) {
+            est <- target_df[p_name, "Estimate"]
+            se <- target_df[p_name, "Std. Error"]
+            if (!is.na(se) && se > 0) {
+              post_log_dens <- dnorm(null, mean = est, sd = se, log = TRUE)
+              # Note: For general derived parameters, evaluate_univariate_prior might not work well
+              # but we try it on the constrained value (u_null = null)
+              prior_log_dens <- tryCatch(self$model$evaluate_univariate_prior(p_name, null, par_list = self$par), error = function(e) NA)
             }
           }
         }
 
-        # Find the starting index in the unconstrained vector
-        u_start <- 0
-        found <- FALSE
-        for (n in names(self$model$par_list)) {
-          if (n == p_base) {
-            found <- TRUE
-            break
-          }
-          u_start <- u_start + self$model$par_list[[n]]$unc_length
-        }
-        
-        if (!found) next
-        
-        u_idx <- u_start + p_idx
-        if (is.na(u_idx) || u_idx > length(self$par_unc)) next
+        if (is.na(post_log_dens) || is.na(prior_log_dens)) next
 
-        # Unconstrained estimate and SE
-        mode_unc <- self$par_unc[u_idx]
-        se_unc <- sqrt(pmax(self$vcov_unc[u_idx, u_idx], 0))
-        
-        if (is.na(se_unc) || se_unc <= 0) next
-
-        # Get DF if available from summary table
-        df_val <- self$df_fixed[p_name, "DF"]
-        if (is.null(df_val) || is.na(df_val) || is.infinite(df_val)) df_val <- 1e6
-
-        # Convert null (constrained) to u_null (unconstrained)
-        lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
-        upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
-        
-        u_null <- null
-        if (is.infinite(lower) && is.infinite(upper)) {
-          u_null <- null
-        } else if (is.finite(lower) && is.infinite(upper)) {
-          u_null <- if (null > lower) log(null - lower) else -100 
-        } else if (is.finite(lower) && is.finite(upper)) {
-          p_null <- (null - lower) / (upper - lower)
-          u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else if (p_null <= 0) -100 else 100
-        }
-
-        # (A) Posterior Density at u_null (using t-distribution if DF < 1e5)
-        post_log_dens <- if (df_val < 100000) {
-          dt((u_null - mode_unc) / se_unc, df = df_val, log = TRUE) - log(se_unc)
-        } else {
-          dnorm(u_null, mean = mode_unc, sd = se_unc, log = TRUE)
-        }
-
-        # (B) Prior Density at u_null
-        prior_log_dens <- self$model$evaluate_univariate_prior(p_name, u_null, par_list = self$par)
-
-        # (C) Bayes Factor
+        # Bayes Factor
         bf10 <- exp(prior_log_dens - post_log_dens)
         
         # Evidence descriptor
-        evidence <- if (is.na(bf10)) {
-           "NA"
-        } else if (bf10 > 100) {
-          "Extreme Evidence for H1"
-        } else if (bf10 > 30) {
-          "Very Strong Evidence for H1"
-        } else if (bf10 > 10) {
-          "Strong Evidence for H1"
-        } else if (bf10 > 3) {
-          "Moderate Evidence for H1"
-        } else if (bf10 > 1) {
-          "Anecdotal Evidence for H1"
-        } else if (bf10 > 1/3) {
-          "Anecdotal Evidence for H0"
-        } else if (bf10 > 1/10) {
-          "Moderate Evidence for H0"
-        } else if (bf10 > 1/30) {
-          "Strong Evidence for H0"
-        } else if (bf10 > 1/100) {
-          "Very Strong Evidence for H0"
-        } else {
-          "Extreme Evidence for H0"
-        }
+        evidence <- if (is.na(bf10)) { "NA" }
+        else if (bf10 > 100) { "Extreme Evidence for H1" }
+        else if (bf10 > 30) { "Very Strong Evidence for H1" }
+        else if (bf10 > 10) { "Strong Evidence for H1" }
+        else if (bf10 > 3) { "Moderate Evidence for H1" }
+        else if (bf10 > 1) { "Anecdotal Evidence for H1" }
+        else if (bf10 > 1/3) { "Anecdotal Evidence for H0" }
+        else if (bf10 > 1/10) { "Moderate Evidence for H0" }
+        else if (bf10 > 1/30) { "Strong Evidence for H0" }
+        else if (bf10 > 1/100) { "Very Strong Evidence for H0" }
+        else { "Extreme Evidence for H0" }
 
         res_list[[p_name]] <- data.frame(
           Parameter = p_name,
@@ -839,3 +877,14 @@ MAP_Fit <- R6::R6Class(
     }
   )
 )
+
+#' @export
+summary.map_fit <- function(object, ...) {
+  object$summary(...)
+}
+
+#' @export
+print.map_fit <- function(x, ...) {
+  x$summary()
+  invisible(x)
+}
