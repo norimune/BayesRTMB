@@ -520,7 +520,51 @@ Classic_Fit <- R6::R6Class(
            res$truncated <- FALSE
         }
 
-        res$coefficients <- df_print
+        # --- Add t-test results for classic mode ---
+        if (!is.null(self$sd_rep)) {
+           u_est <- if (!is.null(self$sd_rep$par.fixed)) self$sd_rep$par.fixed else numeric(0)
+           u_se <- if (!is.null(self$sd_rep$cov.fixed)) sqrt(diag(self$sd_rep$cov.fixed)) else rep(NA, length(u_est))
+           u_t <- u_est / pmax(u_se, 1e-12, na.rm = TRUE)
+           
+           # Map to df_print rows
+           u_idx_map <- list()
+           if (length(u_est) > 0) {
+             for (nm in unique(names(u_est))) {
+                u_idx_map[[nm]] <- which(names(u_est) == nm)
+             }
+           }
+           
+           u_counter <- list()
+           row_t <- rep(NA, nrow(df_print))
+           
+           for (i in 1:nrow(df_print)) {
+              row_nm <- rownames(df_print)[i]
+              base_nm <- gsub("\\[.*\\]$", "", row_nm)
+              
+              if (base_nm %in% names(u_idx_map)) {
+                 if (is.null(u_counter[[base_nm]])) u_counter[[base_nm]] <- 1
+                 curr_idx <- u_counter[[base_nm]]
+                 if (curr_idx <= length(u_idx_map[[base_nm]])) {
+                    real_idx <- u_idx_map[[base_nm]][curr_idx]
+                    row_t[i] <- u_t[real_idx]
+                    u_counter[[base_nm]] <- curr_idx + 1
+                 }
+              }
+           }
+           
+           # Fallback to constrained ratio for parameters not in par.fixed (e.g. transformed)
+           missing_t <- is.na(row_t)
+           if (any(missing_t)) {
+              row_t[missing_t] <- df_print$Estimate[missing_t] / pmax(df_print$`Std. Error`[missing_t], 1e-12, na.rm = TRUE)
+           }
+           
+           df_print$`t value` <- row_t
+           if (!is.null(df_print$df)) {
+              df_print$Pr <- 2 * pt(-abs(df_print$`t value`), df = df_print$df)
+           } else {
+              df_print$Pr <- 2 * pnorm(-abs(df_print$`t value`))
+           }
+        }
 
         # 1. Round main numeric columns
         cols_to_round <- setdiff(names(df_print), c("Pr", "df"))
@@ -542,12 +586,12 @@ Classic_Fit <- R6::R6Class(
                         cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
                         symbols = c("***", "**", "*", ".", " "))
 
-          # Format Pr values (e.g., .00000, .01234)
+          # Format Pr values (e.g., .0000, .0123)
           formatted_pr <- sapply(df_print$Pr, function(p) {
             if (is.na(p)) return("")
             p_val <- as.numeric(p)
-            if (p_val < 0.00001) return(".00000")
-            s <- sprintf("%.5f", p_val)
+            if (p_val < 0.0001) return("<.0001")
+            s <- sprintf("%.4f", p_val)
             sub("^0", "", s) # Remove leading zero
           })
 
@@ -558,9 +602,9 @@ Classic_Fit <- R6::R6Class(
         # 4. Reorder columns for consistency
         is_asymptotic <- inherits(self$model, "rtmb_loglinear") || (!is.null(self$model$type) && self$model$type == "table")
         if (is_asymptotic) {
-          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "Pr")
+          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr")
         } else {
-          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "df", "Pr")
+          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "df", "t value", "z value", "Pr")
         }
         current_names <- names(df_print)
 
