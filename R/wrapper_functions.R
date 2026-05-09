@@ -2323,12 +2323,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      init_list$sigma_within <- apply(Y_mat, 2, sd) * 0.5
      init_list$u <- matrix(0, J, P)
 
-     view_order <- c("ICC")
-     if (multivariate) {
-       if (P_x > 0) view_order <- c(view_order, "W_pcorr", "B_pcorr")
-       view_order <- c(view_order, "B_corr", "W_corr")
-     }
-     view_order <- c(view_order, "mu", "sigma_between", "sigma_within")
+     view_order <- c("pcorr", "corr", "ICC", "mu", "sigma")
 
      obj <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
      obj$raw_data <- data
@@ -2461,7 +2456,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        list(mean = colMeans(Y_mat), sd = apply(Y_mat, 2, sd))
      } else init
 
-     view_vars <- if (P_x > 0) "pcorr" else "corr"
+     view_vars <- if (P_x > 0) c("pcorr", "corr", "mean", "sd") else c("corr", "mean", "sd")
      obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
 
      if (!is.null(null)) {

@@ -344,9 +344,12 @@ Classic_Fit <- R6::R6Class(
     },
 
     #' @description Display a summary of the estimation results.
+    #' @param view Character vector of parameter names to prioritize or filter by.
     #' @param digits Number of digits to print for estimates.
     #' @param max_rows Maximum number of rows to display in the coefficient table.
-    summary = function(digits = 5, max_rows = 10) {
+    #' @param ranef Logical; whether to show random effects in the summary.
+    summary = function(view = NULL, digits = 5, max_rows = 10, ranef = FALSE) {
+      if (!is.numeric(digits)) digits <- 5
       res <- list(
         type = self$model$type,
         family = self$model$family,
@@ -362,59 +365,152 @@ Classic_Fit <- R6::R6Class(
       )
 
       if (is.data.frame(self$fit) || inherits(self$fit, "lm")) {
-        # Convert lm to dataframe if needed
-        if (inherits(self$fit, "lm")) {
-          s_lm <- summary(self$fit)
-          is_asymptotic <- inherits(self$model, c("rtmb_loglinear", "rtmb_table"))
-          df_print <- as.data.frame(s_lm$coefficients)
+        # Combine all result dataframes (fixed, random, transform, generate)
+        all_dfs <- list()
+        if (is.data.frame(self$fit)) all_dfs$fixed <- self$fit
+        
+        if (!is.null(self$random_effects) && is.data.frame(self$random_effects)) {
+           all_dfs$random <- self$random_effects
+        }
+        if (!is.null(self$df_transform) && is.data.frame(self$df_transform)) {
+           all_dfs$transform <- self$df_transform
+        }
+        if (!is.null(self$df_generate) && is.data.frame(self$df_generate)) {
+           all_dfs$generate <- self$df_generate
+        }
 
-          # Update with robust vcov if available
-          if (!is.null(self$vcov)) {
-            new_se <- sqrt(diag(self$vcov))
-            n_match <- min(nrow(df_print), length(new_se))
-            df_print[1:n_match, 2] <- new_se[1:n_match]
-            # Recalculate t/z values and p-values
-            df_print[1:n_match, 3] <- df_print$Estimate[1:n_match] / pmax(df_print[1:n_match, 2], 1e-12)
-          }
-
-          if (is_asymptotic) {
-            colnames(df_print) <- c("Estimate", "Std. Error", "z value", "Pr")
-            df_print$df <- Inf
-            crit <- 1.96
-            if (!is.null(self$vcov)) {
-               df_print[1:n_match, 4] <- 2 * stats::pnorm(-abs(df_print[1:n_match, 3]))
-            }
-          } else {
-            colnames(df_print) <- c("Estimate", "Std. Error", "t value", "Pr")
-            df_print$df <- self$fit$df.residual
-            crit <- stats::qt(0.975, df = pmax(df_print$df, 1e-6))
-            if (!is.null(self$vcov)) {
-               df_print[1:n_match, 4] <- 2 * stats::pt(-abs(df_print[1:n_match, 3]), df = df_print$df[1:n_match])
-            }
-          }
-
-          df_print$`Lower 95%` <- df_print$Estimate - crit * df_print$`Std. Error`
-          df_print$`Upper 95%` <- df_print$Estimate + crit * df_print$`Std. Error`
-          rownames(df_print)[rownames(df_print) == "(Intercept)"] <- "Intercept"
+        if (length(all_dfs) > 0) {
+           df_all <- do.call(rbind, unname(all_dfs))
+           # Track which rows are random effects
+           is_re <- rownames(df_all) %in% rownames(self$random_effects)
+        } else if (inherits(self$fit, "lm")) {
+           # Handle lm case specifically
+           s_lm <- summary(self$fit)
+           df_all <- as.data.frame(s_lm$coefficients)
         } else {
-          df_print <- self$fit
+           df_all <- self$fit
+        }
+
+        # --- Correlation Model Filtering ---
+        if (!is.null(self$model$type) && self$model$type == "corr") {
+           keep <- rep(TRUE, nrow(df_all))
+           seen_pairs <- list()
+           for (i in 1:nrow(df_all)) {
+             nm <- rownames(df_all)[i]
+             est <- as.numeric(df_all$Estimate[i])
+             se <- as.numeric(df_all$`Std. Error`[i])
+             if (!is.na(est) && abs(est - 1) < 1e-7 && (is.na(se) || se < 1e-10)) {
+               keep[i] <- FALSE
+               next
+             }
+             if (grepl("\\[.*,.*\\]", nm)) {
+               parts <- gsub(".*\\[(.*)\\]", "\\1", nm); bits <- strsplit(parts, ",")[[1]]
+               if (length(bits) == 2) {
+                 pair_id <- paste(sort(trimws(bits)), collapse = "_")
+                 prefix <- gsub("\\[.*", "", nm); pair_key <- paste0(prefix, "_", pair_id)
+                 if (pair_key %in% names(seen_pairs)) { keep[i] <- FALSE } else {
+                   seen_pairs[[pair_key]] <- TRUE
+                   if (trimws(bits[1]) == trimws(bits[2])) keep[i] <- FALSE
+                 }
+               }
+             }
+           }
+           df_all <- df_all[keep, , drop = FALSE]
+           if (exists("is_re")) is_re <- is_re[keep]
+        }
+
+        df_print <- df_all
+        
+        # --- Handle lm specifically if needed ---
+        if (inherits(self$fit, "lm")) {
+           s_lm <- summary(self$fit)
+           is_asymptotic <- inherits(self$model, c("rtmb_loglinear", "rtmb_table"))
+           df_print <- as.data.frame(s_lm$coefficients)
+           if (!is.null(self$vcov)) {
+             new_se <- sqrt(diag(self$vcov))
+             n_match <- min(nrow(df_print), length(new_se))
+             df_print[1:n_match, 2] <- new_se[1:n_match]
+             df_print[1:n_match, 3] <- df_print$Estimate[1:n_match] / pmax(df_print[1:n_match, 2], 1e-12)
+           }
+           if (is_asymptotic) {
+             colnames(df_print) <- c("Estimate", "Std. Error", "z value", "Pr")
+             df_print$df <- Inf
+           } else {
+             colnames(df_print) <- c("Estimate", "Std. Error", "t value", "Pr")
+             df_print$df <- self$fit$df.residual
+           }
+           rownames(df_print)[rownames(df_print) == "(Intercept)"] <- "Intercept"
         }
 
         # --- View Prioritization Logic ---
-        view_to_use <- if (!is.null(self$view)) self$view else self$model$view
+        # Distinction: if 'view' is explicitly passed, we apply STRICT filtering.
+        view_explicit <- !is.null(view)
+        view_to_use <- if (view_explicit) view else if (!is.null(self$view)) self$view else self$model$view
+        
+        # If it's a correlation model, default is c("corr", "mean", "sd")
+        if (is.null(view_to_use) && !is.null(self$model$type) && self$model$type == "corr") {
+           view_to_use <- c("corr", "mean", "sd")
+        }
+        
+        priority_idx <- integer(0)
+        cf_idx <- integer(0)
+        
         if (!is.null(view_to_use)) {
           var_names <- rownames(df_print)
           base_names <- gsub("\\[.*\\]$", "", var_names)
-          priority_idx <- integer(0)
+          
+          # Pass 1: Exact matches and base names for ALL keywords
           for (v in view_to_use) {
-            match_idx <- which(var_names == v | base_names == v)
-            priority_idx <- c(priority_idx, match_idx)
+            m1 <- which(var_names == v | base_names == v)
+            priority_idx <- c(priority_idx, setdiff(m1, priority_idx))
           }
+          
+          # Pass 2: Standard prefix matches (e.g. corr[...]) for ALL keywords
+          for (v in view_to_use) {
+            # Specifically exclude CF_ prefix here to prevent it from jumping ahead
+            m2 <- which(grepl(paste0("^", v), var_names) & !grepl("^CF_", var_names))
+            priority_idx <- c(priority_idx, setdiff(m2, priority_idx))
+          }
+          
+          # Pass 3: Internal CF_ matches (e.g. CF_corr[...]) for ALL keywords - ALWAYS LAST
+          for (v in view_to_use) {
+            m3 <- which(grepl(paste0("^CF_", v), var_names))
+            cf_idx <- c(cf_idx, setdiff(m3, cf_idx))
+          }
+          
           priority_idx <- unique(priority_idx)
-          other_idx <- setdiff(seq_len(nrow(df_print)), priority_idx)
-          df_print <- df_print[c(priority_idx, other_idx), , drop = FALSE]
+          cf_idx <- setdiff(unique(cf_idx), priority_idx)
+          
+          # Reorder based on hierarchy: Standard matches > CF matches > Others
+          final_order <- c(priority_idx, cf_idx)
+          
+          if (view_explicit) {
+             # STRICT FILTERING: Only keep matched rows
+             other_idx <- integer(0)
+          } else {
+             # PRIORITIZATION ONLY: Keep everything else at the bottom
+             other_idx <- setdiff(seq_len(nrow(df_print)), final_order)
+          }
+          final_order <- c(final_order, other_idx)
+          
+          # Update is_re and df_print
+          if (exists("is_re")) is_re <- is_re[final_order]
+          matched_indices <- seq_along(priority_idx)
+          if (length(cf_idx) > 0) matched_indices <- c(matched_indices, (length(priority_idx)+1):(length(priority_idx)+length(cf_idx)))
+          
+          df_print <- df_print[final_order, , drop = FALSE]
         }
-
+        
+        # --- Random Effect Filtering ---
+        if (!isTRUE(ranef) && exists("is_re")) {
+           # Keep if NOT a random effect OR it was explicitly matched by view
+           keep_mask <- !is_re
+           if (exists("matched_indices") && length(matched_indices) > 0) {
+              keep_mask[matched_indices] <- TRUE
+           }
+           df_print <- df_print[keep_mask, , drop = FALSE]
+        }
+        
         # --- Truncation Logic ---
         if (!is.null(max_rows) && nrow(df_print) > max_rows) {
            res$truncated <- TRUE
@@ -435,25 +531,24 @@ Classic_Fit <- R6::R6Class(
         }
 
         # 2. Round df to 1 decimal place
-        if ("df" %in% names(df_print)) {
+        if ("df" %in% names(df_print) && is.numeric(df_print$df)) {
           df_print$df <- round(df_print$df, 1)
         }
 
         # 3. Format Pr
         if (!is.null(df_print$Pr)) {
           # Standard significance symbols
-          sig <- symnum(df_print$Pr, corr = FALSE, na = FALSE,
+          sig <- symnum(as.numeric(df_print$Pr), corr = FALSE, na = FALSE,
                         cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
                         symbols = c("***", "**", "*", ".", " "))
 
-          # Format Pr values (e.g., .000, .012)
+          # Format Pr values (e.g., .00000, .01234)
           formatted_pr <- sapply(df_print$Pr, function(p) {
             if (is.na(p)) return("")
-            if (is.character(p)) return(p) # Already formatted
-            if (p < 0.001) return(".000")
-            res <- format(round(p, 3), nsmall = 3)
-            if (startsWith(res, "0")) return(substring(res, 2)) # Remove leading zero
-            return(res)
+            p_val <- as.numeric(p)
+            if (p_val < 0.00001) return(".00000")
+            s <- sprintf("%.5f", p_val)
+            sub("^0", "", s) # Remove leading zero
           })
 
           df_print$Pr <- formatted_pr
@@ -592,7 +687,6 @@ Classic_Fit <- R6::R6Class(
         
         if (!found) next
         
-        u_idx <- u_start + p_idx
         u_idx <- u_start + p_idx
         if (is.na(u_idx) || u_idx > length(self$par_unc)) next
 
@@ -955,6 +1049,7 @@ Classic_Fit <- R6::R6Class(
         label_grid[[v]] <- paste0(v, "=", label_grid[[v]])
       }
       groups_full <- interaction(label_grid, drop = TRUE, sep = ":")
+      levels(groups_full) <- unique(as.character(groups_full))
       unique_groups_full <- levels(groups_full)
 
       # Calculate L-vectors for each group
@@ -997,17 +1092,15 @@ Classic_Fit <- R6::R6Class(
             m_label <- paste(sapply(1:ncol(m_vals), function(k) paste0(names(m_vals)[k], "=", m_vals[1, k])), collapse = ":")
             
             # --- Simple Main Effect (SME) ---
-            # Collect all L-vectors for focal levels in this moderator group
             L_group <- list()
             group_names <- c()
             for (i in 1:nrow(focal_grid)) {
-                nm <- paste(c(sapply(1:ncol(focal_grid), function(k) paste0(names(focal_grid)[k], "=", focal_grid[i, k])), 
-                              m_label), collapse = ":")
+                f_label <- paste(sapply(1:ncol(focal_grid), function(k) paste0(names(focal_grid)[k], "=", focal_grid[i, k])), collapse=":")
+                nm <- paste(c(f_label, m_label), collapse = ":")
                 L_group[[i]] <- L_list[[nm]]
                 group_names[i] <- nm
             }
             
-            # SME Wald Test (compare all levels vs first)
             if (length(L_group) > 1) {
               L_sme <- as.matrix(do.call(rbind, lapply(2:length(L_group), function(i) L_group[[i]] - L_group[[1]])))
               V_match_mat <- as.matrix(V_match)
@@ -1029,7 +1122,6 @@ Classic_Fit <- R6::R6Class(
                check.names = FALSE
             )
             
-            # --- Pairwise ---
             group_contrasts <- list()
             for (i in 1:(nrow(focal_grid)-1)) {
               for (j in (i+1):nrow(focal_grid)) {
@@ -1039,22 +1131,12 @@ Classic_Fit <- R6::R6Class(
               }
             }
             pairwise_df <- do.call(rbind, group_contrasts)
-            
-            # Apply Holm adjustment within this moderator group
-            if (adjust != "none") {
-              pairwise_df$Pr <- p.adjust(pairwise_df$Pr, method = adjust)
-            }
-            
-            # Protected Testing Logic
-            if (protect && p_sme > 0.05) {
-              pairwise_df$Pr <- 1.0 # Protected: hide or set to 1 if SME not sig
-            }
+            if (adjust != "none") pairwise_df$Pr <- p.adjust(pairwise_df$Pr, method = adjust)
+            if (protect && !is.na(p_sme) && p_sme > 0.05) pairwise_df$Pr <- 1.0
             
             results_by_group[[m_label]] <- list(sme = sme_row, pairwise = pairwise_df)
           }
         } else {
-           # All pairwise (no simple)
-           # Standard pairwise logic without SME for now
            group_contrasts <- list()
            for (i in 1:(length(unique_groups_full)-1)) {
              for (j in (i+1):length(unique_groups_full)) {
@@ -1077,51 +1159,31 @@ Classic_Fit <- R6::R6Class(
       }
     },
 
-    #' @description (Internal) Calculate metrics for a contrast.
-    #' @param L Contrast matrix.
-    #' @param specs Variable names for lsmeans.
-    #' @return A data frame with estimate, SE, df, t-value, and p-value.
     .calc_contrast = function(L, specs) {
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
       fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
       beta_match <- beta_vals[fe_idx]
       V_match <- self$vcov[fe_idx, fe_idx]
-
       est <- as.numeric(L %*% beta_match)
       se <- sqrt(as.numeric(t(L) %*% V_match %*% L))
       df_val <- self$.get_lsmeans_df(specs)
       t_val <- est / pmax(se, 1e-12)
       p_val <- 2 * pt(-abs(t_val), df = df_val)
-
-      data.frame(
-        estimate = est, `Std. Error` = se, df = df_val,
-        `t value` = t_val, Pr = p_val,
-        check.names = FALSE
-      )
+      data.frame(estimate = est, `Std. Error` = se, df = df_val, `t value` = t_val, Pr = p_val, check.names = FALSE)
     },
 
-    #' @description (Internal) Get representative DF for lsmeans.
-    #' @param specs Variable names for lsmeans.
-    #' @return Degrees of freedom.
     .get_lsmeans_df = function(specs) {
       df_val <- Inf
       if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
         match_pattern <- paste0("^b\\[(", paste(specs, collapse="|"), ")")
         match_idx <- grepl(match_pattern, rownames(self$fit))
-        if (any(match_idx)) {
-          df_val <- min(self$fit$df[match_idx], na.rm = TRUE)
-        } else if (inherits(self$fit, "lm")) {
-          df_val <- self$fit$df.residual
-        }
+        if (any(match_idx)) df_val <- min(self$fit$df[match_idx], na.rm = TRUE)
       } else if (inherits(self$fit, "lm")) {
         df_val <- self$fit$df.residual
       }
       return(df_val)
     },
 
-    #' @description (Internal) Construct a list of parameters from the fit.
-    #' @param fit The fit result (dataframe or lm object).
-    #' @return A named list of parameters.
     .construct_par_list = function(fit) {
       par_list <- list()
       if (inherits(fit, "lm")) {
@@ -1152,284 +1214,100 @@ summary.Classic_Fit <- function(object, ...) {
 }
 
 #' @export
-#' @export
 print.summary_Classic_Fit <- function(x, ...) {
   digits <- if (!is.null(x$digits)) x$digits else 5
-
-  if (!is.null(x$type) && x$type == "table") {
-    cat("\nContingency Table Analysis\n")
-  } else if (!is.null(x$type) && x$type == "loglinear") {
-    cat("\nLog-Linear Model Analysis\n")
-  } else {
-    cat("\nCall:\n")
-    type_label <- if (is.null(x$type)) "Generic Model" else x$type
-    cat(paste("Classical estimation via", type_label), "\n")
-  }
-
+  if (!is.null(x$type) && x$type == "table") { cat("\nContingency Table Analysis\n")
+  } else if (!is.null(x$type) && x$type == "loglinear") { cat("\nLog-Linear Model Analysis\n")
+  } else { cat("\nCall:\n"); type_label <- if (is.null(x$type)) "Generic Model" else x$type; cat(paste("Classical estimation via", type_label), "\n") }
   if (!is.null(x$se_method) && x$se_method != "wald") {
-    method_label <- switch(x$se_method,
-                           robust = if (!is.null(x$cluster)) paste("Robust (Cluster:", x$cluster, ")") else "Robust (HC3)",
-                           bootstrap = paste0("Bootstrap (", x$bootstrap, " samples)"),
-                           "Standard")
+    method_label <- switch(x$se_method, robust = if (!is.null(x$cluster)) paste("Robust (Cluster:", x$cluster, ")") else "Robust (HC3)",
+                           bootstrap = paste0("Bootstrap (", x$bootstrap, " samples)"), "Standard")
     cat(sprintf("Standard Errors: %s\n", method_label))
   }
-
-  if (!is.null(x$logLik) && !is.na(x$logLik)) {
-    cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n",
-                as.numeric(x$logLik), x$AIC, x$BIC))
-  }
-
-  if (!is.null(x$type) && x$type == "ttest") {
-    levs <- x$extra$levs
-    cat(sprintf("(Comparison: %s - %s)\n", levs[1], levs[2]))
-  } else if (!is.null(x$type) && x$type == "table" && !is.null(x$extra$tab)) {
-    cat("\nContingency Table (Observed):\n")
-    print(x$extra$tab)
-  }
-
+  if (!is.null(x$logLik) && !is.na(x$logLik)) cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n", as.numeric(x$logLik), x$AIC, x$BIC))
   if (!is.null(x$coefficients)) {
-    # ---------------------------------------------------------
-    # 分岐 1: TABLE 出力
-    # ---------------------------------------------------------
     if (!is.null(x$type) && x$type == "table") {
-      cat("\n---\n")
-      obs_tab <- x$extra$tab
-      N_tot <- sum(obs_tab)
-      R_dim <- nrow(obs_tab)
-      C_dim <- ncol(obs_tab)
-
+      cat("\n---\n"); obs_tab <- x$extra$tab; N_tot <- sum(obs_tab); R_dim <- nrow(obs_tab); C_dim <- ncol(obs_tab)
       df_mu <- x$coefficients[grepl("^mu\\[", rownames(x$coefficients)), , drop = FALSE]
-
       if (nrow(df_mu) == R_dim * C_dim) {
-        mu_est <- df_mu$Estimate
-        p_est <- mu_est / N_tot
-
-        p_mat <- matrix(p_est, nrow = R_dim, ncol = C_dim)
-        p_row <- rowSums(p_mat)
-        p_col <- colSums(p_mat)
-
-        E_mat <- matrix(0, nrow = R_dim, ncol = C_dim)
-        for (i in 1:R_dim) for (j in 1:C_dim) E_mat[i, j] <- p_row[i] * p_col[j] * N_tot
-
-        E_vec <- as.vector(E_mat)
-        obs_vec <- as.vector(obs_tab)
-
-        cat("Cell Probabilities (p) and Confidence Intervals:\n")
-        df_p <- df_mu
-        df_p$Estimate <- df_p$Estimate / N_tot
-        df_p$`Std. Error` <- df_p$`Std. Error` / N_tot
-        if ("Lower 95%" %in% names(df_p)) {
-          df_p$`Lower 95%` <- df_p$`Lower 95%` / N_tot
-          df_p$`Upper 95%` <- df_p$`Upper 95%` / N_tot
-        }
-        rownames(df_p) <- gsub("^mu\\[", "p[", rownames(df_p))
-        cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_p))
+        p_est <- df_mu$Estimate / N_tot; p_mat <- matrix(p_est, nrow = R_dim, ncol = C_dim); p_row <- rowSums(p_mat); p_col <- colSums(p_mat)
+        E_mat <- matrix(0, nrow = R_dim, ncol = C_dim); for (i in 1:R_dim) for (j in 1:C_dim) E_mat[i, j] <- p_row[i] * p_col[j] * N_tot
+        cat("Cell Probabilities (p) and Confidence Intervals:\n"); df_p <- df_mu; df_p$Estimate <- df_p$Estimate / N_tot; df_p$`Std. Error` <- df_p$`Std. Error` / N_tot
+        if ("Lower 95%" %in% names(df_p)) { df_p$`Lower 95%` <- df_p$`Lower 95%` / N_tot; df_p$`Upper 95%` <- df_p$`Upper 95%` / N_tot }
+        rownames(df_p) <- gsub("^mu\\[", "p[", rownames(df_p)); cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_p))
         print(df_p[, cols_to_show, drop = FALSE], quote = FALSE, right = TRUE)
-
-        cat("\nExpected Counts (Independence) and Pearson Residuals:\n")
-        residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
-        rnames <- gsub("^mu\\[", "E\\[", rownames(df_mu))
-
-        df_resid <- data.frame(
-          Expected = round(E_vec, digits),
-          Residual = round(residuals, digits),
-          row.names = rnames
-        )
+        cat("\nExpected Counts (Independence) and Pearson Residuals:\n"); E_vec <- as.vector(E_mat); obs_vec <- as.vector(obs_tab); residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
+        df_resid <- data.frame(Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = gsub("^mu\\[", "E\\[", rownames(df_mu)))
         print(df_resid, quote = FALSE, right = TRUE)
       }
-
-      # ---------------------------------------------------------
-      # 分岐 2: LOGLINEAR 出力
-      # ---------------------------------------------------------
     } else if (!is.null(x$type) && x$type == "loglinear") {
-      cat("\nLog-linear Parameters and Confidence Intervals:\n")
-      df_params <- x$coefficients[!grepl("^mu\\[", rownames(x$coefficients)), , drop = FALSE]
-      cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_params))
-      print(df_params[, cols_to_show, drop = FALSE], quote = FALSE, right = TRUE)
-
+      cat("\nLog-linear Parameters and Confidence Intervals:\n"); df_params <- x$coefficients[!grepl("^mu\\[", rownames(x$coefficients)), , drop = FALSE]
+      print(df_params[, intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_params)), drop = FALSE], quote = FALSE, right = TRUE)
       df_mu <- x$coefficients[grepl("^mu\\[", rownames(x$coefficients)), , drop = FALSE]
       if (nrow(df_mu) > 0 && !is.null(x$extra$obs_Y)) {
-        cat("\n---\nExpected Counts (Fitted) and Pearson Residuals:\n")
-        E_vec <- df_mu$Estimate
-        obs_vec <- x$extra$obs_Y
-        residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
-
-        df_resid <- data.frame(
-          Observed = obs_vec,
-          Expected = round(E_vec, digits),
-          Residual = round(residuals, digits),
-          row.names = rownames(df_mu)
-        )
-
-        # 行数が多い場合は省略表示する
+        cat("\n---\nExpected Counts (Fitted) and Pearson Residuals:\n"); E_vec <- df_mu$Estimate; obs_vec <- x$extra$obs_Y; residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
+        df_resid <- data.frame(Observed = obs_vec, Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = rownames(df_mu))
         max_r <- if (!is.null(x$max_rows)) x$max_rows else 20
-        if (nrow(df_resid) > max_r) {
-          print(df_resid[1:max_r, , drop=FALSE], quote=FALSE, right=TRUE)
-          cat(sprintf("... (omitted %d rows)\n", nrow(df_resid) - max_r))
-        } else {
-          print(df_resid, quote = FALSE, right = TRUE)
-        }
+        if (nrow(df_resid) > max_r) { print(df_resid[1:max_r, , drop=FALSE], quote=FALSE, right=TRUE); cat(sprintf("... (omitted %d rows)\n", nrow(df_resid) - max_r))
+        } else { print(df_resid, quote = FALSE, right = TRUE) }
       }
-
-      # ---------------------------------------------------------
-      # 分岐 3: 通常の出力 (lm, glm, lmer, corr 等)
-      # ---------------------------------------------------------
     } else {
-      cat("\nPoint Estimates and Confidence Intervals:\n")
-      df_to_print <- x$coefficients
+      cat("\nPoint Estimates and Confidence Intervals:\n"); df_to_print <- x$coefficients
       if (isTRUE(x$truncated)) df_to_print <- df_to_print[1:x$max_rows, , drop = FALSE]
       print(df_to_print, quote = FALSE, right = TRUE)
-      if (isTRUE(x$truncated)) {
-        cat(sprintf("... (omitted %d parameters; use summary(max_rows = ...) to show more)\n",
-                    x$total_rows - x$max_rows))
-      }
+      if (isTRUE(x$truncated)) cat(sprintf("... (omitted %d parameters; use summary(max_rows = ...) to show more)\n", x$total_rows - x$max_rows))
     }
-
     if (!is.null(x$lm_info)) {
-      cat("\n---\n")
-      info <- x$lm_info
-      if (!is.null(info$dispersion)) {
-        cat(sprintf("Dispersion parameter for %s family taken to be %s\n",
-                    x$family, format(round(info$dispersion, digits), nsmall = digits)))
-        cat(sprintf("Null deviance: %s on %d degrees of freedom\n",
-                    format(round(info$null_deviance, 2), nsmall = 2), info$df_null))
-        cat(sprintf("Residual deviance: %s on %d degrees of freedom\n",
-                    format(round(info$deviance, 2), nsmall = 2), info$df_residual))
-      } else if (!is.null(info$sigma)) {
-        cat(sprintf("Residual standard error: %s on %d degrees of freedom\n",
-                    format(round(info$sigma, digits), nsmall = digits), info$df_residual))
-        cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n",
-                    format(round(info$r_squared, 4), nsmall = 4),
-                    format(round(info$adj_r_squared, 4), nsmall = 4)))
-        if (!is.null(info$fstatistic)) {
-          f <- info$fstatistic
-          p_f <- stats::pf(f[1], f[2], f[3], lower.tail = FALSE)
-          cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n",
-                      format(round(f[1], 2), nsmall = 2), f[2], f[3],
-                      if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
+      cat("\n---\n"); info <- x$lm_info
+      if (!is.null(info$dispersion)) { cat(sprintf("Dispersion parameter for %s family taken to be %s\n", x$family, format(round(info$dispersion, digits), nsmall = digits)))
+        cat(sprintf("Null deviance: %s on %d degrees of freedom\n", format(round(info$null_deviance, 2), nsmall = 2), info$df_null))
+        cat(sprintf("Residual deviance: %s on %d degrees of freedom\n", format(round(info$deviance, 2), nsmall = 2), info$df_residual))
+      } else if (!is.null(info$sigma)) { cat(sprintf("Residual standard error: %s on %d degrees of freedom\n", format(round(info$sigma, digits), nsmall = digits), info$df_residual))
+        cat(sprintf("Multiple R-squared: %s, Adjusted R-squared: %s\n", format(round(info$r_squared, 4), nsmall = 4), format(round(info$adj_r_squared, 4), nsmall = 4)))
+        if (!is.null(info$fstatistic)) { f <- info$fstatistic; p_f <- stats::pf(f[1], f[2], f[3], lower.tail = FALSE)
+          cat(sprintf("F-statistic: %s on %d and %d DF, p-value: %s\n", format(round(f[1], 2), nsmall = 2), f[2], f[3], if (p_f < 0.001) "< .001" else format(round(p_f, 4), nsmall = 4)))
         }
       }
     }
-  } else if (!is.null(x$fit_summary)) {
-    print(x$fit_summary)
-  }
-
+  } else if (!is.null(x$fit_summary)) { print(x$fit_summary) }
   invisible(x)
 }
 
 #' @export
-print.anova_rtmb_table <- function(x, ...) {
-  cat("\nContingency Table Analysis Tests\n")
-  cat(rep("-", 40), "\n", sep = "")
-
-  if (!is.null(x$chisq)) {
-    print(x$chisq, row.names = TRUE, right = TRUE)
-  }
-
-  if (!is.null(x$fisher) && !inherits(x$fisher, "try-error")) {
-    cat("\nFisher's Exact Test for Count Data\n")
-    cat(sprintf("p-value = %.5f\n", x$fisher$p.value))
-    if (!is.null(x$fisher$estimate)) {
-      cat(sprintf("alternative hypothesis: %s\n", x$fisher$alternative))
-      cat(sprintf("odds ratio: %.4f\n", x$fisher$estimate))
-    }
-  }
+print.anova_rtmb_table <- function(x, ...) { cat("\nContingency Table Analysis Tests\n- \n"); if (!is.null(x$chisq)) print(x$chisq, row.names = TRUE, right = TRUE)
+  if (!is.null(x$fisher) && !inherits(x$fisher, "try-error")) { cat("\nFisher's Exact Test for Count Data\np-value = ", sprintf("%.5f", x$fisher$p.value), "\n") }
   invisible(x)
 }
 
 #' @export
-anova.Classic_Fit <- function(object, ...) {
-  object$anova(...)
-}
+anova.Classic_Fit <- function(object, ...) object$anova(...)
 
 #' @export
-print.Classic_Fit <- function(x, ...) {
-  x$print(...)
-}
-
-#' Least-squares means (marginal means)
-#'
-#' Generic function to calculate least-squares means (marginal means) for fitted models.
-#'
-#' @param object A fitted model object.
-#' @param specs Variable names to calculate marginal means for.
-#' @param ... Additional arguments.
-#' @export
-lsmeans <- function(object, specs, ...) {
-  UseMethod("lsmeans")
-}
+print.Classic_Fit <- function(x, ...) x$print(...)
 
 #' @export
-lsmeans.Classic_Fit <- function(object, specs, ...) {
-  object$lsmeans(specs, ...)
-}
+lsmeans <- function(object, specs, ...) UseMethod("lsmeans")
+
+#' @export
+lsmeans.Classic_Fit <- function(object, specs, ...) object$lsmeans(specs, ...)
 
 #' @export
 print.rtmb_lsmeans_grouped <- function(x, ...) {
-  adj <- attr(x, "adjustment")
-  prot <- attr(x, "protect")
-  
-  cat("\nPost-hoc Analysis: Simple Main Effects and Pairwise Comparisons\n")
-  cat(sprintf("P-value adjustment: %s (applied within groups)\n", adj))
-  if (prot) cat("Hierarchical testing (Protected): Pairwise results only shown if SME is significant.\n")
-  
-  # Helper for clean DF formatting
-  fmt_df <- function(v) {
-    v_rnd <- round(v, 1)
-    sapply(v_rnd, function(z) sprintf("%g", z))
-  }
-  
-  # Helper for 5-decimal values
-  fmt_5 <- function(v) {
-    sprintf("%.5f", v)
-  }
-  
-  # Helper for P-values (drop leading zero)
-  fmt_p <- function(v) {
-    s <- sprintf("%.5f", v)
-    sub("^0", "", s)
-  }
-
-  for (grp in names(x)) {
-    cat("\n", rep("-", nchar(grp) + 10), "\n", sep="")
-    cat("Group: ", grp, "\n", sep="")
-    cat(rep("-", nchar(grp) + 10), "\n", sep="")
-    
-    # Print SME
-    if (!is.null(x[[grp]]$sme)) {
-      cat("\nSimple Main Effect (Wald F-test):\n")
-      sme_disp <- x[[grp]]$sme
-      sme_disp$`F value` <- fmt_5(sme_disp$`F value`)
-      sme_disp$den_df <- fmt_df(sme_disp$den_df)
-      sme_disp$Pr <- fmt_p(sme_disp$Pr)
-      print(sme_disp, row.names = FALSE)
-    }
-    
-    # Print Pairwise
-    cat("\nPairwise Comparisons:\n")
-    pw_disp <- x[[grp]]$pairwise
-    pw_disp$estimate <- fmt_5(pw_disp$estimate)
-    pw_disp$`Std. Error` <- fmt_5(pw_disp$`Std. Error`)
-    pw_disp$df <- fmt_df(pw_disp$df)
-    pw_disp$`t value` <- fmt_5(pw_disp$`t value`)
-    pw_disp$Pr <- fmt_p(pw_disp$Pr)
-    print(pw_disp)
-    cat("\n")
+  adj <- attr(x, "adjustment"); prot <- attr(x, "protect"); cat("\nPost-hoc Analysis: Simple Main Effects and Pairwise Comparisons\n")
+  cat(sprintf("P-value adjustment: %s (applied within groups)\n", adj)); if (prot) cat("Hierarchical testing (Protected): Pairwise results only shown if SME is significant.\n")
+  fmt_df <- function(v) sapply(round(v, 1), function(z) sprintf("%g", z)); fmt_5 <- function(v) sprintf("%.5f", v); fmt_p <- function(v) sub("^0", "", sprintf("%.5f", v))
+  for (grp in names(x)) { cat("\n", rep("-", nchar(grp) + 10), "\nGroup: ", grp, "\n", rep("-", nchar(grp) + 10), "\n", sep="")
+    if (!is.null(x[[grp]]$sme)) { cat("\nSimple Main Effect (Wald F-test):\n"); sme_disp <- x[[grp]]$sme; sme_disp$`F value` <- fmt_5(sme_disp$`F value`); sme_disp$den_df <- fmt_df(sme_disp$den_df); sme_disp$Pr <- fmt_p(sme_disp$Pr); print(sme_disp, row.names = FALSE) }
+    cat("\nPairwise Comparisons:\n"); pw_disp <- x[[grp]]$pairwise; pw_disp$estimate <- fmt_5(pw_disp$estimate); pw_disp$`Std. Error` <- fmt_5(pw_disp$`Std. Error`); pw_disp$df <- fmt_df(pw_disp$df); pw_disp$`t value` <- fmt_5(pw_disp$`t value`); pw_disp$Pr <- fmt_p(pw_disp$Pr); print(pw_disp); cat("\n")
   }
   invisible(x)
 }
 
 #' @export
-logLik.Classic_Fit <- function(object, ...) {
-  object$logLik()
-}
+logLik.Classic_Fit <- function(object, ...) object$logLik()
 
 #' @export
-AIC.Classic_Fit <- function(object, ..., k = 2) {
-  object$AIC()
-}
+AIC.Classic_Fit <- function(object, ..., k = 2) object$AIC()
 
 #' @export
-BIC.Classic_Fit <- function(object, ...) {
-  object$BIC()
-}
+BIC.Classic_Fit <- function(object, ...) object$BIC()

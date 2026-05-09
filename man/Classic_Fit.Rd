@@ -282,15 +282,19 @@ Get the Log-Likelihood of the fitted model.
 \subsection{Method \code{summary()}}{
 Display a summary of the estimation results.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$summary(digits = 5, max_rows = 10)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$summary(view = NULL, digits = 5, max_rows = 10, ranef = FALSE)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
+\item{\code{view}}{Character vector of parameter names to prioritize or filter by.}
+
 \item{\code{digits}}{Number of digits to print for estimates.}
 
 \item{\code{max_rows}}{Maximum number of rows to display in the coefficient table.}
+
+\item{\code{ranef}}{Logical; whether to show random effects in the summary.}
 }
 \if{html}{\out{</div>}}
 }
@@ -379,63 +383,28 @@ A data frame containing the marginal means or contrasts.
 \if{html}{\out{<a id="method-Classic_Fit-.calc_contrast"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-.calc_contrast}{}}}
 \subsection{Method \code{.calc_contrast()}}{
-(Internal) Calculate metrics for a contrast.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.calc_contrast(L, specs)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{L}}{Contrast matrix.}
-
-\item{\code{specs}}{Variable names for lsmeans.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A data frame with estimate, SE, df, t-value, and p-value.
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-.get_lsmeans_df"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-.get_lsmeans_df}{}}}
 \subsection{Method \code{.get_lsmeans_df()}}{
-(Internal) Get representative DF for lsmeans.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.get_lsmeans_df(specs)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{specs}}{Variable names for lsmeans.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Degrees of freedom.
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-.construct_par_list"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-.construct_par_list}{}}}
 \subsection{Method \code{.construct_par_list()}}{
-(Internal) Construct a list of parameters from the fit.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.construct_par_list(fit)}\if{html}{\out{</div>}}
 }
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{fit}}{The fit result (dataframe or lm object).}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of parameters.
-}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-clone"></a>}}
