@@ -388,11 +388,7 @@ Classic_Fit <- R6::R6Class(
                predictor_vars <- all.vars(delete.response(terms(formula)))
                relevant_data <- self$model$raw_data[, predictor_vars, drop = FALSE]
                # For minimal grid, use levels for factors and mean for numeric
-               levs <- lapply(relevant_data, function(x) {
-                 if (is.factor(x)) levels(x)
-                 else if (is.character(x)) unique(x)
-                 else mean(as.numeric(x), na.rm = TRUE)
-               })
+               levs <- lapply(relevant_data, function(x) if(is.factor(x)) levels(x) else mean(as.numeric(x), na.rm = TRUE))
                grid <- expand.grid(levs)
 
                # X_from (current internal: usually sum)

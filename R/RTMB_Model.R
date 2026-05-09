@@ -201,46 +201,223 @@ RTMB_Model <- R6::R6Class(
     #' @param par_list_constrained A named list of parameters in their natural space.
     #' @return A named list of parameters in unconstrained space.
     to_unconstrained = function(par_list_constrained) {
-      return(to_unconstrained_list(par_list_constrained, self$par_list))
+      return(to_unconstrained(par_list_constrained, self$par_list))
     },
 
-    #' @description Convert unconstrained parameters to constrained space.
-    #' @param par_list_unconstrained A named list of unconstrained parameters.
-    #' @return A named list of constrained parameters.
+    #' @description Convert a list of unconstrained parameters to constrained (natural) space.
+    #' @param par_list_unconstrained A named list of parameters in unconstrained space.
+    #' @return A named list of parameters in constrained space.
     to_constrained = function(par_list_unconstrained) {
-      return(to_constrained_list(par_list_unconstrained, self$par_list))
+      return(to_constrained(par_list_unconstrained, self$par_list))
     },
 
     #' @description Convert a flat unconstrained vector to a named list.
-    #' @param vec Numeric vector.
-    #' @return A named list.
+    #' @param vec A numeric vector in unconstrained space.
+    #' @return A named list of unconstrained parameters.
     unconstrained_vector_to_list = function(vec) {
       return(unconstrained_vector_to_list(vec, self$par_list))
     },
 
     #' @description Convert a flat constrained vector to a named list.
-    #' @param vec Numeric vector.
-    #' @return A named list.
+    #' @param vec A numeric vector in constrained space.
+    #' @return A named list of constrained parameters.
     constrained_vector_to_list = function(vec) {
       return(constrained_vector_to_list(vec, self$par_list))
     },
 
-    #' @description Calculate Satterthwaite degrees of freedom.
-    #' @param ad_obj RTMB AD object.
-    #' @param idx_fix_active Active indices.
-    #' @param L_u_total Total unconstrained length.
-    #' @param opt_par Optimized parameters.
-    #' @return Vector of degrees of freedom.
-    calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL) {
-      return(.calculate_satterthwaite_df_impl(self, ad_obj, idx_fix_active, L_u_total, opt_par))
+    #' @description Calculate Satterthwaite degrees of freedom for parameters.
+    #' @param ad_obj An RTMB objective object at the optimum.
+    #' @param idx_fix_active Integer vector; indices of active fixed parameters in the full unconstrained vector.
+    #' @param L_u_total Integer; total length of the full unconstrained parameter vector.
+    #' @param opt_par Optional numeric vector of optimized parameters.
+    #' @param max_df Numeric; maximum allowed degrees of freedom. Default is NULL.
+    #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
+    calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL) {
+      # cat("Estimating Satterthwaite degrees of freedom...\n")
+
+      par <- if (!is.null(opt_par)) opt_par else ad_obj$par
+      P <- length(par)
+      total_len <- if (!is.null(L_u_total)) L_u_total else P
+      df_full <- rep(Inf, total_len)
+
+      # Step 1: Compute Hessian at optimum via Jacobian of analytical gradient
+      # For marginal likelihood (Laplace), numerical differentiation on the gradient is most reliable
+
+      # Simple numerical Jacobian to avoid external package dependencies (e.g., numDeriv)
+      simple_jacobian <- function(f, x, h = 1e-4) {
+        p <- length(x)
+        f0 <- f(x)
+        res <- matrix(0, nrow = length(f0), ncol = p)
+        for (i in 1:p) {
+          h_i <- max(abs(x[i]), 1) * h
+          x_plus <- x
+          x_minus <- x
+          x_plus[i] <- x[i] + h_i
+          x_minus[i] <- x[i] - h_i
+          res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
+        }
+        return(res)
+      }
+
+      H0 <- tryCatch(simple_jacobian(ad_obj$gr, par), warning = function(w) NULL, error = function(e) NULL)
+
+      if (is.null(H0) || any(!is.finite(H0))) {
+        warning("Hessian computation failed. Using normal approximation.")
+        return(df_full)
+      }
+      V <- tryCatch(solve(H0), error = function(e) {
+        tryCatch(MASS::ginv(H0), error = function(e2) NULL)
+      })
+      if (is.null(V)) {
+        return(df_full)
+      }
+
+      # Step 2: Compute dV_ii/dtheta_k via central differences of the Hessian
+      # Optimized: Compute dH/dtheta_k once per k and vectorize diag(V dH V)
+      # Improved: Smaller eps base for better sensitivity to 3rd derivatives
+      # Improved: Slightly larger eps base to smooth out 3rd derivative noise
+      eps <- 1e-3 * pmax(abs(par), 0.1)
+      grad_V_diag <- matrix(0, nrow = P, ncol = P) # grad_V_diag[k, i] = dV_ii / dtheta_k
+
+      for (k in 1:P) {
+        par_plus <- par_minus <- par
+        par_plus[k] <- par[k] + eps[k]
+        par_minus[k] <- par[k] - eps[k]
+
+        H_plus <- tryCatch(simple_jacobian(ad_obj$gr, par_plus), warning = function(w) NULL, error = function(e) NULL)
+        H_minus <- tryCatch(simple_jacobian(ad_obj$gr, par_minus), warning = function(w) NULL, error = function(e) NULL)
+
+        if (is.null(H_plus) || is.null(H_minus)) next
+
+        # Third derivative approximation: dH/dtheta_k
+        dH_k <- (H_plus - H_minus) / (2 * eps[k])
+
+        # dV/dtheta_k = -V %*% dH_k %*% V
+        # Diagonal elements: diag(dV/dtheta_k) = -rowSums((V %*% dH_k) * V)
+        grad_V_diag[k, ] <- -rowSums((V %*% dH_k) * V)
+      }
+
+      df_par <- rep(Inf, P)
+      for (i in 1:P) {
+        grad_vi <- grad_V_diag[, i]
+        if (all(abs(grad_vi) < 1e-30)) next
+
+        # Var(V_ii) = grad(V_ii)^T %*% V %*% grad(V_ii)
+        var_vi <- as.numeric(t(grad_vi) %*% V %*% grad_vi)
+        if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V[i, i] > 0) {
+          df_par[i] <- 2 * (V[i, i]^2) / var_vi
+        }
+      }
+
+      df_par[!is.finite(df_par)] <- Inf
+      df_par <- pmax(df_par, 2.1)
+
+      # Map to full parameter vector
+      if (!is.null(idx_fix_active) && length(idx_fix_active) == P) {
+        df_full[idx_fix_active] <- df_par
+      } else if (P == total_len) {
+        df_full <- df_par
+      }
+
+      finite_dfs <- df_par[is.finite(df_par)]
+      if (length(finite_dfs) > 0) {
+        cat(sprintf("  Estimated DF range: %.1f - %.1f\n", min(finite_dfs), max(finite_dfs)))
+      }
+      return(df_full)
     },
 
-    #' @description Calculate REML Satterthwaite degrees of freedom.
-    #' @param ad_obj RTMB AD object.
-    #' @param opt_par Optimized parameters.
-    #' @return Vector of degrees of freedom.
-    calculate_reml_satterthwaite_df = function(ad_obj, opt_par, target_ran_idx) {
-      return(.calculate_reml_satterthwaite_df_impl(self, ad_obj, opt_par, target_ran_idx))
+    #' @description Calculate Satterthwaite degrees of freedom for integrated fixed effects (REML).
+    #' @param ad_obj An RTMB objective object.
+    #' @param opt_par Numeric vector of optimized variance components.
+    #' @param beta_idx Integer vector; indices of fixed effects within the random effects vector.
+    #' @return A numeric vector of estimated degrees of freedom for the fixed effects.
+    calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx) {
+      cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
+
+      P <- length(opt_par)
+      n_beta <- length(beta_idx)
+
+      # Helper to get diagonal of inverse joint Hessian for beta
+      get_beta_vars <- function(theta) {
+        p_full <- ad_obj$env$last.par.best
+        idx_fixed <- ad_obj$env$lfixed()
+        p_full[idx_fixed] <- theta
+
+        H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), warning = function(w) NULL, error = function(e) NULL)
+        if (is.null(H)) {
+          return(rep(Inf, length(beta_idx)))
+        }
+
+        # Convert to dense matrix for solve to ensure diagonal extraction works reliably
+        V_full <- tryCatch(solve(as.matrix(H)), warning = function(w) NULL, error = function(e) NULL)
+        if (is.null(V_full)) {
+          return(rep(Inf, length(beta_idx)))
+        }
+
+        diag(V_full)[beta_idx]
+      }
+
+      V_beta_diag_0 <- tryCatch(get_beta_vars(opt_par), error = function(e) {
+        return(rep(Inf, n_beta))
+      })
+      if (all(is.infinite(V_beta_diag_0))) {
+        return(V_beta_diag_0)
+      }
+
+      # Covariance of variance components (theta)
+      simple_jacobian <- function(f, x, h = 1e-4) {
+        p <- length(x)
+        f0 <- f(x)
+        res <- matrix(0, nrow = length(f0), ncol = p)
+        for (i in 1:p) {
+          h_i <- max(abs(x[i]), 1e-4) * h
+          x_plus <- x_minus <- x
+          x_plus[i] <- x[i] + h_i
+          x_minus[i] <- x[i] - h_i
+          res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
+        }
+        return(res)
+      }
+
+      H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), warning = function(w) NULL, error = function(e) NULL)
+      if (is.null(H_theta)) {
+        return(rep(Inf, n_beta))
+      }
+
+      V_theta <- tryCatch(solve(H_theta), error = function(e) {
+        tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
+      })
+      if (is.null(V_theta)) {
+        return(rep(Inf, n_beta))
+      }
+
+      # Gradient of V_beta_diag with respect to theta
+      eps <- 1e-5 * pmax(abs(opt_par), 0.1)
+      grad_V_beta_diag <- matrix(0, nrow = P, ncol = n_beta)
+
+      for (k in 1:P) {
+        p_plus <- p_minus <- opt_par
+        p_plus[k] <- opt_par[k] + eps[k]
+        p_minus[k] <- opt_par[k] - eps[k]
+
+        v_plus <- tryCatch(get_beta_vars(p_plus), warning = function(w) NULL, error = function(e) NULL)
+        v_minus <- tryCatch(get_beta_vars(p_minus), warning = function(w) NULL, error = function(e) NULL)
+
+        if (is.null(v_plus) || is.null(v_minus)) next
+        grad_V_beta_diag[k, ] <- (v_plus - v_minus) / (2 * eps[k])
+      }
+
+      dfs <- rep(Inf, n_beta)
+      for (i in 1:n_beta) {
+        grad_vi <- grad_V_beta_diag[, i]
+        var_vi <- as.numeric(t(grad_vi) %*% V_theta %*% grad_vi)
+        if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V_beta_diag_0[i] > 0) {
+          dfs[i] <- 2 * (V_beta_diag_0[i]^2) / var_vi
+        }
+      }
+
+      dfs <- pmax(dfs, 2.1)
+      return(list(df = dfs, se = sqrt(V_beta_diag_0)))
     },
 
     #' @description Build the RTMB automatic differentiation object.
@@ -386,14 +563,17 @@ RTMB_Model <- R6::R6Class(
       # --- 2. Variable Classification for REML ---
       original_par_list <- self$par_list
       if (REML) {
-        # Use centralized classification logic
-        reml_info <- private$.classify_reml_parameters(target_vars)
-        fix_names <- reml_info$fixed
-        
+        fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
+        var_patterns <- c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr", "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau")
+
         modified_par_list <- self$par_list
         for (name in names(modified_par_list)) {
+          is_fix_pattern <- any(sapply(fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
+          is_target <- name %in% target_vars
+          is_var <- any(sapply(var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
           is_ran_original <- isTRUE(modified_par_list[[name]]$random)
-          if (name %in% fix_names || is_ran_original) {
+
+          if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
             modified_par_list[[name]]$random <- TRUE
           } else {
             modified_par_list[[name]]$random <- FALSE
@@ -527,8 +707,42 @@ RTMB_Model <- R6::R6Class(
       target_map <- if (!is.null(map)) map else self$map
 
       # Construct accurate indices of 'active fixed parameters' estimated by TMB
-      active_info <- private$.compute_active_indices(target_map)
-      idx_fix_active <- active_info$idx_active
+      idx_fix_active <- integer(0)
+      factor_levels_seen <- list()
+      opt_par_curr <- 1
+      idx_curr <- 1
+
+      for (name in names(self$par_list)) {
+        L_u <- self$par_list[[name]]$unc_length
+        if (L_u > 0) {
+          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+
+          for (i in 1:L_u) {
+            pos_last <- idx_curr + i - 1
+
+            # Skip if random effect as it's not a fixed parameter
+            if (pos_last %in% idx_ran) next
+
+            # Skip if mapped to NA (fixed)
+            if (!is.null(map_f) && is.na(map_f[i])) next
+
+            if (!is.null(map_f)) {
+              # Handling duplicate mappings to the same value (add only the first time)
+              lvl <- as.character(map_f[i])
+              if (!(lvl %in% names(factor_levels_seen))) {
+                factor_levels_seen[[lvl]] <- opt_par_curr
+                idx_fix_active <- c(idx_fix_active, pos_last)
+                opt_par_curr <- opt_par_curr + 1
+              }
+            } else {
+              # No mapping (normal active parameter)
+              idx_fix_active <- c(idx_fix_active, pos_last)
+              opt_par_curr <- opt_par_curr + 1
+            }
+          }
+          idx_curr <- idx_curr + L_u
+        }
+      }
 
       # Profile Likelihood CI calculation is now moved to $profile() method of MAP_Fit
 
@@ -575,9 +789,9 @@ RTMB_Model <- R6::R6Class(
                 if (pos_last %in% idx_ran) next
                 if (!is.null(map_f) && !is.na(map_f[i])) {
                   lvl <- as.character(map_f[i])
-                  mapped_opt_idx <- which(idx_fix_active == pos_last) # simplified for shared mapping
-                  if (length(mapped_opt_idx) > 0) {
-                     # Re-use already computed se from index
+                  mapped_opt_idx <- factor_levels_seen[[lvl]]
+                  if (!is.null(mapped_opt_idx)) {
+                    unc_se_vec[pos_last] <- se_fix[mapped_opt_idx]
                   }
                 }
               }
@@ -621,6 +835,27 @@ RTMB_Model <- R6::R6Class(
                 unc_se_vec[idx_fix_active] <- se_pseudo
                 Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
                 cov_source <- "fallback"
+
+                # Copy to duplicate parameters during fallback
+                idx_curr <- 1
+                for (name in names(self$par_list)) {
+                  L_u <- self$par_list[[name]]$unc_length
+                  if (L_u > 0) {
+                    map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+                    for (i in 1:L_u) {
+                      pos_last <- idx_curr + i - 1
+                      if (pos_last %in% idx_ran) next
+                      if (!is.null(map_f) && !is.na(map_f[i])) {
+                        lvl <- as.character(map_f[i])
+                        mapped_opt_idx <- factor_levels_seen[[lvl]]
+                        if (!is.null(mapped_opt_idx)) {
+                          unc_se_vec[pos_last] <- se_pseudo[mapped_opt_idx]
+                        }
+                      }
+                    }
+                    idx_curr <- idx_curr + L_u
+                  }
+                }
               }
             } else {
               cat("ginv() calculation also failed.\n")
@@ -648,6 +883,10 @@ RTMB_Model <- R6::R6Class(
       samps_tran <- list()
       samps_gq <- list()
 
+      samps_con <- list()
+      samps_tran <- list()
+      samps_gq <- list()
+
       # --- Degrees of freedom adjustment ---
       if (any(!is.infinite(df_t))) {
         est_dfs_all <- rep(df_t[1], L_u_total)
@@ -658,8 +897,7 @@ RTMB_Model <- R6::R6Class(
         # (B) Integrated-out parameters (REML side)
         if (REML && length(ad_obj$env$random) > 0) {
           full_par_names <- names(ad_obj$env$last.par)
-          target_full_idx <- which(full_par_names %in% target_vars | 
-                                   gsub("\\[.*\\]$", "", full_par_names) %in% target_vars)
+          target_full_idx <- which(full_par_names %in% target_vars)
           idx_ran <- ad_obj$env$random
           target_ran_idx <- match(target_full_idx, idx_ran)
 
@@ -719,6 +957,27 @@ RTMB_Model <- R6::R6Class(
 
         u_samples_mat <- matrix(rep(unc_est_vec, each = num_samples), nrow = num_samples)
         u_samples_mat[, idx_fix_active] <- raw_samples
+
+        # Assign back to mapped variables
+        idx_curr <- 1
+        for (name in names(self$par_list)) {
+          L_u <- self$par_list[[name]]$unc_length
+          if (L_u > 0) {
+            map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+            for (i in 1:L_u) {
+              pos_last <- idx_curr + i - 1
+              if (pos_last %in% idx_ran) next
+              if (!is.null(map_f) && !is.na(map_f[i])) {
+                lvl <- as.character(map_f[i])
+                mapped_opt_idx <- factor_levels_seen[[lvl]]
+                if (!is.null(mapped_opt_idx)) {
+                  u_samples_mat[, pos_last] <- raw_samples[, mapped_opt_idx]
+                }
+              }
+            }
+            idx_curr <- idx_curr + L_u
+          }
+        }
 
         # Sample random effects independently
         if (laplace && length(idx_ran) > 0) {
@@ -1013,9 +1272,159 @@ RTMB_Model <- R6::R6Class(
         gq_list <- tryCatch(self$generate(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
       }
 
-      # Use centralized derived DF table logic
-      df_transform <- private$.build_derived_df_table(self$transform, tran_list, is_generate = FALSE, se_sampling = se_sampling, num_samples = num_samples, sd_rep = sd_rep)
-      df_generate <- private$.build_derived_df_table(self$generate, gq_list, is_generate = TRUE, se_sampling = se_sampling, num_samples = num_samples, sd_rep = sd_rep)
+      build_derived_df <- function(func, base_out, is_generate = FALSE) {
+        if (is.null(func) || is.null(base_out) || length(base_out) == 0) {
+          return(NULL)
+        }
+
+        flat_base <- unlist(base_out, use.names = FALSE)
+        L_out <- length(flat_base)
+
+        # 1. Calculate Jacobian for DF and Delta Method
+        if (show_df || !se_sampling) {
+          u_base <- unc_est_vec
+          L_u <- length(u_base)
+
+          calc_derived <- function(u) {
+            tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
+            tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
+
+            if (is_generate && !is.null(self$transform)) {
+              user_tran <- tryCatch(self$transform(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
+              if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
+            }
+
+            res <- tryCatch(func(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
+            return(res)
+          }
+
+          eps_diff <- 1e-5
+          J <- matrix(0, nrow = L_out, ncol = L_u)
+          for (i in 1:L_u) {
+            u_tmp <- u_base
+            u_tmp[i] <- u_tmp[i] + eps_diff
+            tmp_out <- calc_derived(u_tmp)
+            if (is.null(tmp_out)) next
+            flat_tmp <- unlist(tmp_out, use.names = FALSE)
+            if (length(flat_tmp) == L_out) {
+              J[, i] <- (flat_tmp - flat_base) / eps_diff
+            }
+          }
+        }
+
+        # 2. Calculate SE and CI
+        names_vec <- c()
+        for (name in names(base_out)) {
+          val <- base_out[[name]]
+          dim_val <- dim(val)
+          if (is.null(dim_val)) dim_val <- length(val)
+          names_def <- self$par_names[[name]]
+          names_vec <- c(names_vec, generate_flat_names(name, dim_val, names_def))
+        }
+
+        if (se_sampling) {
+          samps_list <- if (is_generate) samps_gq else samps_tran
+          if (length(samps_list) == 0) {
+            se_out <- rep(NA, L_out)
+            low_out <- rep(NA, L_out)
+            up_out <- rep(NA, L_out)
+          } else {
+            mat_list <- list()
+            for (name in names(base_out)) {
+              if (!is.null(samps_list[[name]])) {
+                mat_list[[name]] <- samps_list[[name]]
+              } else {
+                mat_list[[name]] <- matrix(NA, num_samples, length(base_out[[name]]))
+              }
+            }
+            mat_all <- do.call(cbind, unname(mat_list))
+            se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
+            low_out <- apply(mat_all, 2, quantile, probs = 0.025, na.rm = TRUE)
+            up_out <- apply(mat_all, 2, quantile, probs = 0.975, na.rm = TRUE)
+          }
+        } else {
+          smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), warning = function(w) NULL, error = function(e) NULL) else NULL
+
+          se_out <- rep(NA_real_, L_out)
+
+          if (!is.null(smry_rep_all) && nrow(smry_rep_all) > 0) {
+            # build_derived_df names_vec rule (using the already computed names_vec)
+            # sdreportの結果と照合
+            m_idx <- match(names_vec, rownames(smry_rep_all))
+            valid_m <- !is.na(m_idx)
+            if (any(valid_m)) {
+              se_out[valid_m] <- smry_rep_all$`Std. Error`[m_idx[valid_m]]
+            }
+          }
+
+          # sdreport に含まれていない場合、従来の方法でバックアップを計算
+          missing_se <- is.na(se_out)
+          if (any(missing_se)) {
+            Cov_u_derived <- Cov_u
+            if (!all(dim(Cov_u_derived) == c(L_u, L_u))) Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
+            diag(Cov_u_derived) <- pmax(diag(Cov_u_derived), unc_se_vec^2)
+            for (j in which(missing_se)) {
+              se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u_derived) * J[j, ])))
+            }
+          }
+
+          z_95 <- qnorm(0.975)
+          
+          # Initialize CI vectors
+          low_out <- flat_base - z_95 * se_out
+          up_out <- flat_base + z_95 * se_out
+          
+          # Apply Fisher z-transform for correlation-like parameters
+          corr_pat <- "^(corr|pcorr|B_corr|W_corr|B_pcorr|W_pcorr)(\\[|$)"
+          is_corr <- grepl(corr_pat, names_vec)
+          if (any(is_corr)) {
+            for (j in which(is_corr)) {
+              r <- flat_base[j]
+              se_r <- se_out[j]
+              if (abs(r) < 1 && se_r > 0 && !is.na(se_r)) {
+                r_clipped <- pmax(pmin(r, 0.9999), -0.9999)
+                z <- atanh(r_clipped)
+                se_z <- se_r / (1 - r_clipped^2 + 1e-10)
+                low_out[j] <- tanh(z - z_95 * se_z)
+                up_out[j] <- tanh(z + z_95 * se_z)
+              }
+            }
+          }
+        }
+
+        df <- data.frame(
+          Estimate     = flat_base,
+          `Std. Error` = se_out,
+          `Lower 95%`  = low_out,
+          `Upper 95%`  = up_out,
+          check.names  = FALSE
+        )
+
+        if (show_df) {
+          # Welch-Satterthwaite approximation for derived quantities
+          # df_y = (sum w_k)^2 / sum(w_k^2 / df_k) where w_k is variance contribution
+          derived_dfs <- rep(Inf, L_out)
+          if (exists("J")) {
+            for (j in 1:L_out) {
+              w <- (J[j, ] * unc_se_vec)^2
+              sum_w <- sum(w, na.rm = TRUE)
+              if (sum_w > 1e-12) {
+                denom <- sum(w^2 / pmax(est_dfs_all, 2.1), na.rm = TRUE)
+                if (denom > 1e-15) {
+                  val_df <- (sum_w^2) / denom
+                  derived_dfs[j] <- val_df
+                }
+              }
+            }
+          }
+          df$DF <- derived_dfs
+        }
+        rownames(df) <- names_vec
+        return(df)
+      }
+
+      df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE)
+      df_generate <- build_derived_df(self$generate, gq_list, is_generate = TRUE)
 
       log_ml <- NA
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
@@ -1113,21 +1522,36 @@ RTMB_Model <- R6::R6Class(
       }
 
       # --- 2. Variable Classification for REML/ML Pipeline ---
+      # Standard fixed effect patterns
+      fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
+      # Standard variance/shape component patterns (never random)
+      var_patterns <- c(
+        "sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr",
+        "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau"
+      )
+
       modified_par_list <- self$par_list
-      if (REML) {
-        reml_info <- private$.classify_reml_parameters(target_vars)
-        fix_names <- reml_info$fixed
-        for (name in names(modified_par_list)) {
-          is_ran_original <- isTRUE(modified_par_list[[name]]$random)
-          if (name %in% fix_names || is_ran_original) {
+      for (name in names(modified_par_list)) {
+        # Check if the parameter is a known fixed effect or explicitly targeted for DF
+        is_fix_pattern <- any(sapply(fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
+        is_target <- name %in% target_vars
+        is_var <- any(sapply(var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
+        is_ran_original <- isTRUE(modified_par_list[[name]]$random)
+
+        if (REML) {
+          # REML: Integrate out original random effects AND fixed effects
+          if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
             modified_par_list[[name]]$random <- TRUE
           } else {
             modified_par_list[[name]]$random <- FALSE
           }
-        }
-      } else {
-        for (name in names(modified_par_list)) {
-          modified_par_list[[name]]$random <- isTRUE(modified_par_list[[name]]$random)
+        } else {
+          # ML: Integrate out only original random effects
+          if (is_ran_original) {
+            modified_par_list[[name]]$random <- TRUE
+          } else {
+            modified_par_list[[name]]$random <- FALSE
+          }
         }
       }
 
@@ -1180,8 +1604,7 @@ RTMB_Model <- R6::R6Class(
         # (B) REML 等でランダム効果と共に積分消去された固定効果の DF
         if (length(ad_obj$env$random) > 0) {
           full_par_names <- names(ad_obj$env$last.par)
-          target_full_idx <- which(full_par_names %in% target_vars | 
-                                   gsub("\\[.*\\]$", "", full_par_names) %in% target_vars)
+          target_full_idx <- which(full_par_names %in% target_vars)
 
           # ランダム効果ベクトルに対する相対インデックスに変換
           idx_ran <- ad_obj$env$random
@@ -1217,8 +1640,36 @@ RTMB_Model <- R6::R6Class(
       if (nrow(smry_ran) > 0) smry_ran$df <- if (length(idx_ran) == nrow(smry_ran)) est_dfs_all[idx_ran] else Inf
 
       # --- 推定対象の固定効果インデックスの特定 (Mapを考慮) ---
-      active_info <- private$.compute_active_indices(self$map)
-      idx_fix_active <- active_info$idx_active
+      target_map <- self$map
+      idx_fix_active <- integer(0)
+      factor_levels_seen <- list()
+      opt_par_curr <- 1
+      idx_curr <- 1
+
+      for (name in names(self$par_list)) {
+        L_u_sub <- self$par_list[[name]]$unc_length
+        if (L_u_sub > 0) {
+          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+          for (i in 1:L_u_sub) {
+            pos_last <- idx_curr + i - 1
+            # Skip if random effect and NOT using joint covariance
+            if (!laplace_flag && (pos_last %in% idx_ran)) next
+            if (!is.null(map_f) && is.na(map_f[i])) next
+            if (!is.null(map_f)) {
+              lvl <- as.character(map_f[i])
+              if (!(lvl %in% names(factor_levels_seen))) {
+                factor_levels_seen[[lvl]] <- opt_par_curr
+                idx_fix_active <- c(idx_fix_active, pos_last)
+                opt_par_curr <- opt_par_curr + 1
+              }
+            } else {
+              idx_fix_active <- c(idx_fix_active, pos_last)
+              opt_par_curr <- opt_par_curr + 1
+            }
+          }
+          idx_curr <- idx_curr + L_u_sub
+        }
+      }
 
       V_joint <- NULL
       if (laplace_flag && !is.null(sd_rep$jointPrecision)) {
@@ -1234,7 +1685,86 @@ RTMB_Model <- R6::R6Class(
         Cov_u_full[idx_fix_active, idx_fix_active] <- V_joint
         
         # 重複パラメータ（Mapによる共有）への共分散のコピー
-        # This part handles duplication via idx_fix_active logic
+        idx_curr <- 1
+        for (name in names(self$par_list)) {
+          L_u_sub <- self$par_list[[name]]$unc_length
+          if (L_u_sub > 0) {
+            map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+            for (i in 1:L_u_sub) {
+              pos_last <- idx_curr + i - 1
+              if (!laplace_flag && (pos_last %in% idx_ran)) next
+              if (!is.null(map_f) && !is.na(map_f[i])) {
+                lvl <- as.character(map_f[i])
+                mapped_opt_idx <- factor_levels_seen[[lvl]]
+                if (!is.null(mapped_opt_idx)) {
+                  active_idx <- idx_fix_active[mapped_opt_idx]
+                  Cov_u_full[pos_last, pos_last] <- Cov_u_full[active_idx, active_idx]
+                }
+              }
+            }
+            idx_curr <- idx_curr + L_u_sub
+          }
+        }
+      }
+
+      build_derived_df <- function(func, base_out, is_generate = FALSE) {
+        if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
+        eps_diff <- 1e-5
+        flat_base <- unlist(base_out, use.names = FALSE)
+        L_out <- length(flat_base)
+        u_base <- unc_est_vec
+        L_u_total <- length(u_base)
+
+        calc_derived <- function(u) {
+          tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
+          tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
+          if (is_generate && !is.null(self$transform)) {
+            user_tran <- tryCatch(self$transform(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
+            if (!is.null(user_tran)) tmp_con_list <- utils::modifyList(tmp_con_list, user_tran)
+          }
+          tryCatch(func(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
+        }
+
+        # ヤコビアンの計算
+        J <- matrix(0, nrow = L_out, ncol = L_u_total)
+        for (i in 1:L_u_total) {
+          if (i %in% idx_fix_active || (L_u_total < 50)) { # 高速化のため推定対象のみ、または小規模モデルのみ計算
+            u_tmp <- u_base; u_tmp[i] <- u_tmp[i] + eps_diff
+            tmp_out <- calc_derived(u_tmp)
+            if (!is.null(tmp_out)) {
+              out_flat <- unlist(tmp_out, use.names = FALSE)
+              diff_val <- out_flat - flat_base
+              J[, i] <- diff_val / eps_diff
+            }
+          }
+        }
+
+        # デルタ法によるSE計算
+        se_out <- rep(NA_real_, L_out)
+        for (j in 1:L_out) {
+          v_val <- sum((J[j, ] %*% Cov_u_full) * J[j, ])
+          if (!is.na(v_val) && v_val > 0) se_out[j] <- sqrt(v_val) else se_out[j] <- 0
+        }
+
+        # 名前付きデータフレームの構築
+        res_names <- c()
+        for (name in names(base_out)) {
+          val <- base_out[[name]]
+          d_val <- if (is.null(dim(val))) length(val) else dim(val)
+          names_def <- self$par_names[[name]]
+          if (length(d_val) == 2 && is.character(names_def) && length(names_def) == d_val[1]) {
+             names_def <- list(names_def, names_def)
+          }
+          res_names <- c(res_names, generate_flat_names(name, d_val, names_def))
+        }
+        
+        data.frame(
+          Estimate = flat_base,
+          `Std. Error` = se_out,
+          df = Inf,
+          row.names = res_names,
+          check.names = FALSE
+        )
       }
 
       # generate/transform ブロックの処理
@@ -1245,8 +1775,20 @@ RTMB_Model <- R6::R6Class(
         all_derived <- c(tran_list, gen_list)
 
         if (length(all_derived) > 0) {
-          # Using private helper
-          # ... existing build_derived_df logic ...
+          df_calc <- build_derived_df(function(d, p) {
+            t_list <- if (!is.null(self$transform)) tryCatch(self$transform(d, p), warning = function(w) NULL, error = function(e) NULL) else NULL
+            g_list <- if (!is.null(self$generate)) tryCatch(self$generate(d, c(p, t_list)), warning = function(w) NULL, error = function(e) NULL) else NULL
+            c(t_list, g_list)
+          }, all_derived, is_generate = TRUE)
+          if (!is.null(df_calc)) {
+            if (nrow(smry_rep) > 0) {
+              smry_rep$df <- Inf
+              extra_idx <- which(!(rownames(df_calc) %in% rownames(smry_rep)))
+              if (length(extra_idx) > 0) smry_rep <- rbind(smry_rep, df_calc[extra_idx, , drop = FALSE])
+            } else {
+              smry_rep <- df_calc
+            }
+          }
         }
       }
 
@@ -1254,6 +1796,13 @@ RTMB_Model <- R6::R6Class(
       # 2. フィルタリングと結合
       # =====================================================================
       df_combined <- rbind(smry_fix, smry_ran, smry_rep)
+
+      par_names_all <- names(self$par_list)
+      if (nrow(df_combined) > 0) {
+        rep_names_base <- gsub("\\.[0-9]+$", "", rownames(df_combined))
+        keep_rep <- rep(TRUE, nrow(df_combined))
+        # ここで不要なパラメータ（ identity correlation等）をフィルタリングするロジックがあれば追加可能
+      }
 
       # =====================================================================
       # 3. 名前の正規化
@@ -1492,19 +2041,21 @@ RTMB_Model <- R6::R6Class(
         }
         unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-        # Build worker AD object
-        f_ad_worker <- .make_f_ad(
-          data = local_data, 
-          par_list = local_par_list, 
-          log_prob = local_log_prob, 
-          transform = local_transform,
-          jacobian_target = "all"
-        )
+        f_ad <- function(y_unc_list) {
+          para <- to_constrained(y_unc_list, local_par_list)
+          if (!is.null(local_transform)) {
+            tran_res <- local_transform(local_data, para)
+            para <- c(para, tran_res)
+          }
+          lp <- local_log_prob(local_data, para)
+          lj <- calc_log_jacobian(y_unc_list, local_par_list, only_random = FALSE)
+          return(-(lp + lj))
+        }
 
         ad_obj <- tryCatch(
           {
             RTMB::MakeADFun(
-              func = f_ad_worker,
+              func = f_ad,
               parameters = unc_init_list_new,
               random = use_random,
               map = local_map,
@@ -1762,27 +2313,42 @@ RTMB_Model <- R6::R6Class(
 
       base_init <- self$prepare_init(init)
 
-      # --- Worker function definition using .make_f_ad ---
+      # --- Worker function definition without self references ---
       run_advi_worker <- function(c, p_callback = NULL, p_interval = 0) {
         library(BayesRTMB)
 
-        f_ad_worker <- .make_f_ad(
-          data = local_data, 
-          par_list = local_par_list, 
-          log_prob = local_log_prob, 
-          transform = local_transform,
-          jacobian_target = "all"
+        unc_init_list <- to_unconstrained(
+          constrained_vector_to_list(base_init, local_par_list),
+          local_par_list
         )
+        unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
+        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-        ad_obj <- tryCatch({
-          RTMB::MakeADFun(
-            func = f_ad_worker,
-            parameters = unconstrained_vector_to_list(unlist(to_unconstrained(base_init, local_par_list)), local_par_list),
-            random = use_random,
-            map = local_map,
-            silent = TRUE
-          )
-        }, error = function(e) stop("Failed to setup MakeADFun in worker: ", e$message))
+        f_ad <- function(y_unc_list) {
+          para <- to_constrained(y_unc_list, local_par_list)
+          if (!is.null(local_transform)) {
+            tran_res <- local_transform(local_data, para)
+            para <- c(para, tran_res)
+          }
+          lp <- local_log_prob(local_data, para)
+          lj <- calc_log_jacobian(y_unc_list, local_par_list, only_random = FALSE)
+          return(-(lp + lj))
+        }
+
+        ad_obj <- tryCatch(
+          {
+            RTMB::MakeADFun(
+              func = f_ad,
+              parameters = unc_init_list_new,
+              random = use_random,
+              map = local_map,
+              silent = TRUE
+            )
+          },
+          error = function(e) {
+            stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
+          }
+        )
 
         if (!is.null(use_random)) {
           orig_fn <- ad_obj$fn
@@ -1973,9 +2539,58 @@ RTMB_Model <- R6::R6Class(
     # 5. Print model code method
     #' @description Print model code or model structure.
     #' @return The object itself, invisibly.
-    #' @description Print the model code and structure.
     print_code = function() {
-      .print_code_impl(self)
+      if (is.null(self$code)) {
+        cat("Model code is not available (Not built with rtmb_code).\n")
+        return(invisible(self))
+      }
+
+      cat("=== RTMB Model Code ===\n\n")
+      cat("rtmb_code(\n")
+
+      blocks <- names(self$code)
+      n_blocks <- length(blocks)
+
+      for (i in seq_along(blocks)) {
+        block <- blocks[i]
+        expr <- self$code[[block]]
+
+        # deparse() standardly indents contents by 4 spaces
+        lines <- deparse(expr, width.cutoff = 500L, control = "useSource")
+
+        # Count leading spaces and halve them (reduce nested indents from 4 to 2 spaces)
+        lines <- sapply(lines, function(x) {
+          m <- regexpr("^ +", x)
+          if (m > 0) {
+            n_spaces <- attr(m, "match.length")
+            new_spaces <- strrep(" ", n_spaces / 2)
+            sub("^ +", new_spaces, x)
+          } else {
+            x
+          }
+        }, USE.NAMES = FALSE)
+
+        # Format the string literal "# Header" as a pure comment
+        lines <- gsub('^(\\s*)"#(.*)"$', "\\1#\\2", lines)
+
+        # Further indent the whole thing by 2 spaces
+        lines <- paste0("  ", lines)
+
+        # Rewrite the first "{" to "  block_name = {" (*Fixed here)
+        if (trimws(lines[1]) == "{") {
+          lines[1] <- paste0("  ", block, " = {")
+        }
+
+        # Add commas and newlines except for the last block
+        if (i < n_blocks) {
+          lines[length(lines)] <- paste0(lines[length(lines)], ", ")
+        }
+
+        cat(paste(lines, collapse = "\n"))
+        cat("\n")
+      }
+      cat(")\n")
+      return(invisible(self))
     },
 
     #' @description Print the internal log-probability function.
@@ -1988,25 +2603,134 @@ RTMB_Model <- R6::R6Class(
 
       # Extract the internal function from the error-handling wrapper if it exists
       fn <- self$log_prob
-      .print_log_prob_impl(self)
+      if (exists("comp_model", envir = environment(fn))) {
+        fn <- get("comp_model", envir = environment(fn))
+      }
+
+      cat("=== RTMB Model: log_prob (Internal Function) ===\n")
+      print(fn)
+      return(invisible(self))
     },
 
-    #' @description Print the transformation function.
+    #' @description Print the internal transformation function.
+    #' @return The object itself, invisibly.
     print_transform = function() {
-      .print_transform_impl(self)
+      if (is.null(self$transform)) {
+        cat("transform is not available.\n")
+        return(invisible(self))
+      }
+
+      # Extract the internal function from the error-handling wrapper if it exists
+      fn <- self$transform
+      if (exists("comp_transform", envir = environment(fn))) {
+        fn <- get("comp_transform", envir = environment(fn))
+      }
+
+      cat("=== RTMB Model: transform (Internal Function) ===\n")
+      print(fn)
+      return(invisible(self))
     },
 
-    #' @description Print the generated quantities function.
+    #' @description Print the internal generation function.
+    #' @return The object itself, invisibly.
     print_generate = function() {
-      .print_generate_impl(self)
+      if (is.null(self$generate)) {
+        cat("generate is not available.\n")
+        return(invisible(self))
+      }
+
+      # Extract the internal function from the error-handling wrapper if it exists
+      fn <- self$generate
+      if (exists("comp_generate", envir = environment(fn))) {
+        fn <- get("comp_generate", envir = environment(fn))
+      }
+
+      cat("=== RTMB Model: generate (Internal Function) ===\n")
+      print(fn)
+      return(invisible(self))
     },
 
-    #' @description Estimate the number of observations (for user convenience).
-    #' @return Integer or numeric vector.
+    #' @description Automatically detect and count the number of independent data points (observations).
+    #' @return Integer; total number of observations, or NULL if model code is missing.
     get_n_obs = function() {
-      if (!is.null(self$extra$nobs)) return(self$extra$nobs)
-      # This is kept as a simple stub or can call a more robust version if needed
-      return(length(as.numeric(self$data[[1]])))
+      if (is.null(self$code$model)) {
+        return(NULL)
+      }
+
+      # Helper to get the base name of a variable (e.g., "y" from "y[i]")
+      get_base_name <- function(x) {
+        if (is.name(x)) {
+          return(as.character(x))
+        }
+        if (is.call(x) && identical(x[[1]], as.name("["))) {
+          return(get_base_name(x[[2]]))
+        }
+        return(NULL)
+      }
+
+      data_names <- names(self$data)
+
+      # AST Rewrite logic: replace y ~ dist(...) with counter increment
+      rewrite_to_count <- function(x) {
+        if (is.call(x)) {
+          if (identical(x[[1]], as.name("~"))) {
+            target <- x[[2]]
+            base_name <- get_base_name(target)
+
+            # Only count if it's a data variable (ignore priors on parameters)
+            if (!is.null(base_name) && base_name %in% data_names) {
+              return(call(
+                "<-", as.name("n_obs"),
+                call(
+                  "+", as.name("n_obs"),
+                  call(
+                    "if", call("is.matrix", target),
+                    call("nrow", target),
+                    call("length", target)
+                  )
+                )
+              ))
+            } else {
+              # If it's a prior, just skip it in the count
+              return(quote(NULL))
+            }
+          }
+          # Recurse through all elements of the call
+          x[] <- lapply(as.list(x), rewrite_to_count)
+        }
+        return(x)
+      }
+
+      # 1. Prepare counting AST
+      raw_expr <- self$code$model
+      count_expr <- rewrite_to_count(raw_expr)
+
+      # 2. Wrap in function
+      body_list <- c(
+        list(as.name("{")),
+        quote(RTMB::getAll(dat, par)),
+        quote(n_obs <- 0),
+        if (is.call(count_expr) && identical(count_expr[[1]], as.name("{"))) as.list(count_expr)[-1] else list(count_expr),
+        quote(return(n_obs))
+      )
+
+      fn_expr <- call("function", as.pairlist(alist(dat = , par = )), as.call(body_list))
+      # Use an environment that can access RTMB
+      count_fn <- eval(fn_expr, envir = asNamespace("BayesRTMB"))
+
+      # 3. Execute with current data and initial/test parameters
+      test_para <- self$get_par_list()
+
+      n_total <- tryCatch(
+        {
+          count_fn(self$data, test_para)
+        },
+        error = function(e) {
+          return(NA_integer_)
+        }
+      )
+
+      return(n_total)
     },
 
     #' @description Create a new `RTMB_Model` object with certain parameters fixed.
@@ -2050,21 +2774,540 @@ RTMB_Model <- R6::R6Class(
       return(new_model)
     },
 
-    #' @description Create a null model for Bayes Factor or test.
-    #' @param target Target parameter and prior.
-    #' @param value Value to fix to.
-    #' @return A new RTMB_Model object.
+    #' @description Create a null model by fixing specified parameters to a given value.
+    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]") to automatically extract the prior from the model code.
+    #' @param value Numeric value to fix parameters to. Default is 0.
+    #' @return A new RTMB_Model object with the specified parameters fixed.
     null_model = function(target, value = 0) {
-      return(.null_model_impl(self, target, value))
+      # --- 1. Input validation and auto-completion ---
+      # Check if it is a string
+      if (!is.character(target) || length(target) != 1) {
+        stop("target must be specified as a single string (e.g., 'delta ~ cauchy(0, r)' or 'delta').", call. = FALSE)
+      }
+
+      # Auto-completion processing when "~" is not included
+      if (!grepl("~", target)) {
+        target_ast <- str2lang(target)
+        has_index <- is.call(target_ast) && identical(target_ast[[1]], as.name("["))
+
+        if (has_index) {
+          base_name <- as.character(target_ast[[2]])
+          idx_expr <- target_ast[[3]]
+        } else {
+          base_name <- as.character(target_ast)
+          idx_expr <- NULL
+        }
+
+        # Internal function to find the prior distribution of the target parameter from the AST
+        find_prior <- function(expr) {
+          if (is.call(expr)) {
+            if (identical(expr[[1]], as.name("~"))) {
+              lhs <- expr[[2]]
+              if (identical(lhs, as.name(base_name)) ||
+                (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(base_name)))) {
+                return(expr[[3]])
+              }
+            }
+            for (i in seq_along(expr)) {
+              res <- find_prior(expr[[i]])
+              if (!is.null(res)) {
+                return(res)
+              }
+            }
+          }
+          return(NULL)
+        }
+
+        prior_expr <- find_prior(self$code$model)
+        if (is.null(prior_expr)) {
+          stop(sprintf("The prior distribution definition for '%s' was not found in the model code.", base_name), call. = FALSE)
+        }
+
+        # If an index is specified, dynamically resolve arguments based on the data environment
+        if (has_index) {
+          # Use the environment where setup variables are stored
+          eval_env <- list2env(self$data, parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
+          for (n in names(self$init)) assign(n, self$init[[n]], envir = eval_env)
+
+          idx_val <- tryCatch(
+            {
+              res <- eval(idx_expr, envir = eval_env)
+              if (length(res) == 1 && (is.numeric(res) || is.character(res))) res else as.character(idx_expr)
+            },
+            error = function(e) as.character(idx_expr)
+          )
+
+          for (i in 2:length(prior_expr)) {
+            arg_expr <- prior_expr[[i]]
+            if (!is.numeric(arg_expr)) {
+              arg_val <- tryCatch(eval(arg_expr, envir = eval_env), warning = function(w) NULL, error = function(e) NULL)
+              if (!is.null(arg_val) && length(arg_val) > 1) {
+                ext_val <- arg_val[idx_val]
+                if (length(ext_val) == 1 && !is.na(ext_val)) {
+                  prior_expr[[i]] <- ext_val
+                } else {
+                  prior_expr[[i]] <- call("[", arg_expr, idx_expr)
+                }
+              }
+            }
+          }
+        }
+        new_formula <- call("~", target_ast, prior_expr)
+        target <- paste(deparse(new_formula), collapse = " ")
+        cat(sprintf("Auto-completed target: %s\n", target))
+      } else {
+        # Target contains "~"
+        target_f <- str2lang(target)
+        target_ast <- target_f[[2]] # Only the LHS
+        lhs <- target_ast
+        has_index <- is.call(lhs) && identical(lhs[[1]], as.name("["))
+        if (has_index) {
+          base_name <- as.character(lhs[[2]])
+          idx_expr <- lhs[[3]]
+
+          # Resolve idx_val for tilde case
+          eval_env <- list2env(self$data, parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
+          for (n in names(self$init)) assign(n, self$init[[n]], envir = eval_env)
+          idx_val <- tryCatch(
+            {
+              res <- eval(idx_expr, envir = eval_env)
+              if (length(res) == 1 && (is.numeric(res) || is.character(res))) res else as.character(idx_expr)
+            },
+            error = function(e) as.character(idx_expr)
+          )
+        } else {
+          base_name <- as.character(lhs)
+          idx_expr <- NULL
+          idx_val <- NULL
+        }
+      }
+
+      f <- tryCatch(as.formula(target), error = function(e) {
+        stop("Failed to parse 'target'. Please specify in the format 'parameter ~ prior'.", call. = FALSE)
+      })
+
+      # Check if both left and right sides exist
+      if (length(f) != 3) {
+        stop("Please provide both the left side (parameter) and right side (prior distribution) for 'target' (e.g., 'delta ~ cauchy(0, r)').", call. = FALSE)
+      }
+
+      spec <- deparse(f[[2]]) # Left side (e.g., "beta" or "beta[1]")
+      prior_expr <- f[[3]] # Right side (call object)
+      prior_str <- deparse(prior_expr)
+
+      # --- 2. Classification of constraint types and construction of flat names ---
+      structural_bounds <- c(
+        "ordered", "positive_ordered", "simplex",
+        "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
+        "centered", "centered_matrix",
+        "centered_tri", "positive_centered_tri",
+        "lower_tri_stz"
+      )
+
+      no_fix_bounds <- c(
+        "simplex", "corr_matrix",
+        "cov_matrix", "CF_cov", "centered",
+        "centered_matrix", "centered_tri",
+        "positive_centered_tri"
+      )
+
+      elementwise_bounds <- c("none", "lower", "upper", "interval")
+
+      all_flat_names <- character(0)
+      flat_to_info <- list()
+      for (name in names(self$par_list)) {
+        p <- self$par_list[[name]]
+        names_def <- self$par_names[[name]]
+        fnames <- generate_flat_names(name, p$dim, names_def)
+        for (i in seq_along(fnames)) {
+          flat_to_info[[fnames[i]]] <- list(par = name, idx = i)
+        }
+        all_flat_names <- c(all_flat_names, fnames)
+      }
+
+      # --- 3. Identification of targets ---
+      targets <- list()
+      if (spec %in% names(self$par_list)) {
+        p <- self$par_list[[spec]]
+        if (p$bounds %in% no_fix_bounds) {
+          stop(sprintf("Parameter '%s' (type='%s') cannot be fixed due to structural constraints.", spec, p$bounds), call. = FALSE)
+        }
+        targets[[spec]] <- 1:p$length
+      } else if (spec %in% all_flat_names) {
+        info <- flat_to_info[[spec]]
+        p <- self$par_list[[info$par]]
+        if (p$bounds %in% structural_bounds) {
+          stop(sprintf(
+            "Elements of '%s' (type='%s') cannot be individually fixed because they are interdependent. Fix the entire '%s'.",
+            spec, p$bounds, info$par
+          ), call. = FALSE)
+        }
+        if (!(p$bounds %in% elementwise_bounds)) {
+          stop(sprintf("Fixing individual elements is not supported for '%s' (type='%s').", spec, p$bounds), call. = FALSE)
+        }
+        targets[[info$par]] <- unique(c(targets[[info$par]], info$idx))
+      } else {
+        stop(sprintf("'%s' is not a valid parameter or element name.", spec), call. = FALSE)
+      }
+
+      # --- 4. Get dimensions (number of elements to fix) ---
+      par_name <- names(targets)[1]
+      fix_indices <- targets[[par_name]]
+      k_fixed <- length(fix_indices)
+
+      # --- 5. Calculate prior_correction ---
+      if (is.call(prior_expr)) {
+        fn_name <- as.character(prior_expr[[1]])
+        lpdf_fn_name <- paste0(fn_name, "_lpdf")
+        prior_expr[[1]] <- as.name(lpdf_fn_name)
+
+        # Insert rep(value, k_fixed) as the first argument to make a vector of the number of elements
+        prior_expr <- as.call(append(as.list(prior_expr), call("rep", value, k_fixed), after = 1))
+
+        eval_env <- list2env(self$data, parent = parent.frame())
+        # Inject current parameter values as a list so they match the model code structure
+        init_list <- constrained_vector_to_list(self$init, self$par_list)
+        for (n in names(init_list)) assign(n, init_list[[n]], envir = eval_env)
+
+        # Define loop/index variables (like 'k') for evaluation
+        if (has_index) {
+          assign("k", idx_val, envir = eval_env)
+          if (is.symbol(idx_expr)) assign(as.character(idx_expr), idx_val, envir = eval_env)
+        }
+
+        correction_val <- tryCatch(
+          {
+            # If the evaluated log-density is a vector, sum it using sum()
+            res <- sum(eval(prior_expr, envir = eval_env))
+            res
+          },
+          error = function(e) {
+            stop(sprintf("Failed to evaluate prior '%s'. Error: %s", prior_str, e$message))
+          }
+        )
+      } else {
+        stop("Priors must be specified as function calls (e.g., cauchy(0, r)).")
+      }
+
+      # --- 6. Value validity check & map construction ---
+      map_list <- list()
+      adjusted_init <- if (is.list(self$init)) self$init else list()
+
+      p <- self$par_list[[par_name]]
+      is_full <- length(fix_indices) == p$length
+
+      # Exactly on the boundary
+      if (!is.null(p$lower) && any(value <= p$lower)) stop("Fixed value must be strictly greater than the lower bound (the boundary itself cannot be specified).", call. = FALSE)
+      if (!is.null(p$upper) && any(value >= p$upper)) stop("Fixed value must be strictly less than the upper bound (the boundary itself cannot be specified).", call. = FALSE)
+
+      # --- Addition of Jacobian correction ---
+      b_type <- p$bounds
+      lj_val <- 0
+      if (b_type %in% c("lower", "upper", "interval")) {
+        val_vec <- rep(value, length.out = k_fixed)
+        lj_val <- 0
+
+        if (b_type == "lower") {
+          u_val <- log(val_vec - p$lower)
+          lj_val <- sum(u_val)
+        } else if (b_type == "upper") {
+          u_val <- log(p$upper - val_vec)
+          lj_val <- sum(u_val)
+        } else if (b_type == "interval") {
+          prob <- (val_vec - p$lower) / (p$upper - p$lower)
+          u_val <- log(prob / (1 - prob))
+          lj_val <- sum(log(p$upper - p$lower) - u_val - 2 * log(1 + exp(-u_val)))
+        }
+        correction_val <- correction_val + lj_val
+      }
+
+      # --- 7. Clone and Modify Code ---
+      new_model <- self$clone()
+
+      # Track if the prior was successfully modified in the AST
+      prior_removed <- FALSE
+      if (!is.null(self$code)) {
+        new_model$code <- as.list(self$code)
+        target_spec <- spec
+        old_ast <- paste(deparse(new_model$code$model), collapse = "\n")
+        new_model$code$model <- remove_prior_from_ast(self$code$model, target_spec, self$par_names[[base_name]])
+        if (paste(deparse(new_model$code$model), collapse = "\n") != old_ast) {
+          prior_removed <- TRUE
+        } else {
+          # If removal failed (e.g. vectorized b ~ normal() but target is b[1]),
+          # append a cancellation term to the end of the model block.
+          # This ensures the density is subtracted INSIDE the integral (MakeADFun).
+
+          # 1. Prepare the lpdf call (prior_expr is already converted to _lpdf in null_model)
+          # We need to use the original lhs (target_ast) as the first argument
+          cancel_call <- prior_expr
+          cancel_call[[2]] <- target_ast
+
+          # 2. Add to AST: lp <- lp - cancellation_term
+          # We assume the log-probability variable is named 'lp' as per package convention
+          sub_expr <- bquote(lp <- lp - .(cancel_call))
+
+          # 3. Find the position before the return statement
+          ast_list <- as.list(new_model$code$model)
+          ret_idx <- which(sapply(ast_list, function(x) is.call(x) && identical(x[[1]], as.name("return"))))
+
+          if (length(ret_idx) > 0) {
+            new_ast_list <- append(ast_list, list(sub_expr), after = ret_idx[1] - 1)
+            new_model$code$model <- as.call(new_ast_list)
+            prior_removed <- TRUE # Mark as removed since it's cancelled in AST
+          }
+        }
+        # Rebuild log_prob from modified AST
+        user_env <- if (!is.null(self$code$env)) self$code$env else parent.frame()
+        new_model$log_prob <- eval(substitute(model_code(E, env = EN), list(E = new_model$code$model, EN = user_env)))
+      }
+
+      if (is_full) {
+        map_list[[par_name]] <- factor(rep(NA, p$unc_length))
+      } else {
+        if (!(par_name %in% names(map_list))) {
+          map_list[[par_name]] <- factor(1:p$unc_length)
+        }
+        current <- as.integer(map_list[[par_name]])
+        current[fix_indices] <- NA
+        non_na <- !is.na(current)
+        if (any(non_na)) current[non_na] <- seq_len(sum(non_na))
+        map_list[[par_name]] <- factor(ifelse(is.na(current), NA, paste0(par_name, "_", current)))
+      }
+
+      if (!(par_name %in% names(adjusted_init))) adjusted_init[[par_name]] <- rep(0, p$length)
+      val <- as.numeric(adjusted_init[[par_name]])
+      val[fix_indices] <- value
+      adjusted_init[[par_name]] <- val
+      if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
+
+      new_model$map <- map_list
+      new_model$init <- adjusted_init
+
+      # If the prior was removed from AST, we only need to subtract Jacobian correction.
+      # If it was NOT removed (e.g. vectorized b ~ normal()), we subtract both density and Jacobian.
+      if (prior_removed) {
+        new_model$prior_correction <- lj_val
+      } else {
+        # This case happens if no code is present or if something went wrong
+        new_model$prior_correction <- correction_val + lj_val
+      }
+
+      cat("Null model created. Fixed parameters:\n")
+      cat(sprintf("  %s -> %g (Dimensions: %d)\n", spec, value, k_fixed))
+      cat(sprintf("  Jacobian correction applied: %f\n", lj_val))
+
+      return(new_model)
     },
 
-    #' @description Evaluate univariate prior density contribution.
-    #' @param p_name Flattened parameter name.
-    #' @param u_val Unconstrained value.
-    #' @param par_list Optional constrained parameter list.
-    #' @return Log-density.
+    #' @description Evaluate the univariate prior density contribution of a specific parameter.
+    #' @param p_name Flattened parameter name (e.g., "beta[1]").
+    #' @param u_val Value in unconstrained space.
+    #' @param par_list Optional parameter list (constrained) to use for evaluation.
+    #' @return Numeric log-prior density (unconstrained).
     evaluate_univariate_prior = function(p_name, u_val, par_list = NULL) {
-      return(.evaluate_univariate_prior_impl(self, p_name, u_val, par_list))
+      ast <- self$code$model
+      if (is.null(ast)) {
+        return(0)
+      }
+
+      p_base <- gsub("\\[.*\\]$", "", p_name)
+      p_info <- self$par_list[[p_base]]
+
+      # 1. Prepare evaluation environment
+      curr_par_list <- if (!is.null(par_list)) par_list else to_constrained(unconstrained_vector_to_list(self$init, self$par_list), self$par_list)
+
+      p_idx <- 1
+      if (grepl("\\[", p_name)) {
+        idx_str <- gsub(".*\\[(.*)\\].*", "\\1", p_name)
+        p_idx <- suppressWarnings(as.integer(idx_str))
+        if (is.na(p_idx)) {
+          p_names <- self$par_names[[p_base]]
+          if (!is.null(p_names)) p_idx <- which(p_names == idx_str)
+          if (length(p_idx) == 0) p_idx <- 1
+        }
+      }
+
+      # Set the target value in unconstrained space then convert to constrained
+      c_val <- u_val
+      lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
+      upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
+
+      if (is.infinite(lower) && is.infinite(upper)) {
+        c_val <- u_val
+      } else if (is.finite(lower) && is.infinite(upper)) {
+        c_val <- exp(u_val) + lower
+      } else if (is.finite(lower) && is.finite(upper)) {
+        c_val <- lower + (upper - lower) / (1 + exp(-u_val))
+      }
+      curr_par_list[[p_base]][p_idx] <- c_val
+
+      # 2. Smart Evaluation with custom ~ and distribution functions
+      # We create a function that executes the model code but only keeps track of priors for p_name
+      total_lp <- 0
+
+      # Helper to resolve names like b[k] to b[1] or b[talk]
+      resolve_name <- function(expr, env) {
+        if (is.name(expr)) {
+          return(as.character(expr))
+        }
+        if (is.call(expr) && identical(expr[[1]], as.name("["))) {
+          base <- as.character(expr[[2]])
+          indices <- as.list(expr)[-(1:2)]
+          idx_vals <- sapply(indices, function(idx) {
+            val <- try(eval(idx, envir = env), silent = TRUE)
+            if (inherits(val, "try-error")) {
+              return(as.character(idx))
+            }
+            val
+          })
+          # Map index to name if available
+          p_names <- self$par_names[[base]]
+          if (!is.null(p_names) && length(idx_vals) == 1 && is.numeric(idx_vals[1])) {
+            ii <- as.integer(idx_vals[1])
+            if (ii >= 1 && ii <= length(p_names)) {
+              return(paste0(base, "[", p_names[ii], "]"))
+            }
+          }
+          return(paste0(base, "[", paste(idx_vals, collapse = ","), "]"))
+        }
+        return(deparse(expr))
+      }
+
+      # Define evaluation environment
+      eval_env <- new.env(parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
+
+      # Add data and parameters
+      eval_env$dat <- self$data
+      eval_env$par <- curr_par_list
+      eval_env$lp <- 0 # Local lp counter (unused by our custom ~ but for safety)
+
+      # Custom Sampling Operator
+      # In RTMB, `Y ~ normal(mu, sigma)` is equivalent to `normal(Y, mu, sigma)`.
+      # We must NOT eagerly evaluate rhs because the distribution function expects
+      # the LHS value as its first argument. Instead, we intercept the call,
+      # inject the LHS value, and then evaluate.
+      eval_env$`~` <- function(lhs, rhs) {
+        lhs_expr <- substitute(lhs)
+        rhs_expr <- substitute(rhs)
+        res_name <- resolve_name(lhs_expr, env = parent.frame())
+        
+        dist_func <- if (is.call(rhs_expr)) deparse(rhs_expr[[1]]) else "none"
+
+        # Check if this is a multivariate distribution we can marginalize
+        is_multivariate <- FALSE
+        if (dist_func %in% c("multi_normal", "multi_student_t", "multi_cauchy")) {
+          is_multivariate <- TRUE
+        }
+
+        # Match logic:
+        if (is_multivariate) {
+          base_match <- (res_name == p_base)
+          
+          if (base_match && p_name != p_base) {
+            # Target is b[k], LHS is b. We marginalize.
+            # 1. Evaluate args of multi_...
+            args <- as.list(rhs_expr)[-1]
+            eval_args <- lapply(args, function(a) tryCatch(eval(a, envir = eval_env), error = function(e) e$message))
+            
+            # 2. Extract marginals
+            if (dist_func == "multi_normal") {
+              mu <- eval_args[[1]][p_idx]
+              Sigma_kk <- eval_args[[2]][p_idx, p_idx]
+              log_dens <- dnorm(u_val, mu, sqrt(Sigma_kk), log = TRUE)
+            } else {
+              # Student-t / Cauchy
+              idx_df <- if (dist_func == "multi_student_t") 1 else NULL
+              idx_mu <- if (dist_func == "multi_student_t") 2 else 1
+              idx_Sigma <- if (dist_func == "multi_student_t") 3 else 2
+
+              df_val <- if (!is.null(idx_df)) eval_args[[idx_df]] else 1
+              mu <- eval_args[[idx_mu]][p_idx]
+              Sigma_kk <- eval_args[[idx_Sigma]][p_idx, p_idx]
+              
+              # Final density evaluation (use dt directly for safety)
+              scale <- sqrt(as.numeric(Sigma_kk))
+              val <- (u_val - mu) / scale
+              log_dens <- dt(as.numeric(val), df = as.numeric(df_val), log = TRUE) - log(scale)
+            }
+            total_lp <<- total_lp + log_dens
+          } else if (res_name == p_name) {
+            # Exact match
+            full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
+            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
+            if (!is.null(log_dens)) total_lp <<- total_lp + sum(log_dens)
+          }
+        } else {
+          # Standard univariate logic
+          # Build the full distribution call by injecting lhs as the first argument
+          if (is.call(rhs_expr)) {
+            full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
+            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
+          } else {
+            log_dens <- tryCatch(eval(rhs_expr, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
+          }
+
+          if (!is.null(log_dens)) {
+            # Match logic:
+            # 1. Exact match (e.g., "b[1]" == "b[1]")
+            if (res_name == p_name) {
+              total_lp <<- total_lp + sum(log_dens)
+            }
+            # 2. LHS is base name (e.g., "b") and p_name is indexed (e.g., "b[1]")
+            else if (res_name == p_base && p_name != p_base && length(log_dens) >= p_idx) {
+              total_lp <<- total_lp + log_dens[p_idx]
+            }
+            # 3. p_name is base name ("b") and res_name is indexed ("b[1]")
+            else if (p_name == p_base && grepl(paste0("^", p_base, "\\["), res_name)) {
+              total_lp <<- total_lp + sum(log_dens)
+            }
+          }
+        }
+
+        invisible(NULL)
+      }
+
+      # Override distribution functions to return log-density
+      eval_env$normal <- function(x, mean, sd) dnorm(x, mean, sd, log = TRUE)
+      eval_env$cauchy <- function(x, location, scale) cauchy_lpdf(x, location, scale, sum = FALSE)
+      eval_env$exponential <- function(x, rate) dexp(x, rate, log = TRUE)
+      eval_env$gamma <- function(x, shape, rate) dgamma(x, shape, rate, log = TRUE)
+      eval_env$inverse_gamma <- function(x, shape, scale) dinverse_gamma(x, shape, scale, log = TRUE)
+      eval_env$student_t <- function(x, df, mean, sd) dstudent_t(x, df, mean, sd, log = TRUE)
+      eval_env$beta <- function(x, shape1, shape2) dbeta(x, shape1, shape2, log = TRUE)
+      eval_env$bernoulli <- function(x, prob) dbinom(x, 1, prob, log = TRUE)
+      eval_env$binomial <- function(x, size, prob) dbinom(x, size, prob, log = TRUE)
+      eval_env$poisson <- function(x, lambda) dpois(x, lambda, log = TRUE)
+      eval_env$multi_normal <- function(x, mean, Sigma) multi_normal_lpdf(x, mean, Sigma, sum = FALSE)
+      eval_env$multi_student_t <- function(x, df, mean, Sigma) multi_student_t_lpdf(x, df, mean, Sigma, sum = FALSE)
+      eval_env$multi_cauchy <- function(x, mean, Sigma) multi_cauchy_lpdf(x, mean, Sigma, sum = FALSE)
+
+      # Additional RTMB helpers
+      eval_env$getAll <- function(d, p) {
+        for (n in names(d)) assign(n, d[[n]], envir = parent.frame())
+        for (n in names(p)) assign(n, p[[n]], envir = parent.frame())
+      }
+      eval_env$Dim <- function(...) NULL
+
+      # Execute the model AST in the custom environment
+      tryCatch(
+        {
+          eval(as.call(c(list(as.name("{")), quote(getAll(dat, par)), ast)), envir = eval_env)
+        },
+        error = function(e) {
+          # If execution fails, fallback to 0 or diagnostic
+        }
+      )
+
+      # (F) Jacobian for this element
+      lj <- 0
+      if (is.finite(lower) && is.infinite(upper)) {
+        lj <- u_val
+      } else if (is.finite(lower) && is.finite(upper)) {
+        lj <- log(upper - lower) - u_val - 2 * log(1 + exp(-u_val))
+      }
+
+      return(total_lp + lj)
     }
   ),
 
@@ -2131,42 +3374,96 @@ RTMB_Model <- R6::R6Class(
     },
 
     # --- Internal helper for derived parameter calculation (delta method) ---
-    .build_derived_df_table = function(func, base_out, is_generate = FALSE, se_sampling = FALSE, num_samples = 1000, sd_rep = NULL) {
-      if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
+    .build_derived_df_table = function(func, base_out, is_generate = FALSE, se_sampling = FALSE, num_samples = 1000) {
+      if (is.null(func) || is.null(base_out)) return(NULL)
       
-      names_vec <- c()
-      for (name in names(base_out)) {
-        val <- base_out[[name]]
-        d_val <- if (is.null(dim(val))) length(val) else dim(val)
-        names_def <- self$par_names[[name]]
-        names_vec <- c(names_vec, generate_flat_names(name, d_val, names_def))
-      }
-      
-      flat_base <- unlist(base_out, use.names = FALSE)
-      n_derived <- length(flat_base)
-      se_derived <- rep(NA_real_, n_derived)
-      df_derived <- rep(Inf, n_derived)
-      
-      if (!is.null(sd_rep)) {
-        smry_rep_all <- as.data.frame(summary(sd_rep, select = "report"))
-        m_idx <- match(names_vec, rownames(smry_rep_all))
-        valid_m <- !is.na(m_idx)
-        if (any(valid_m)) se_derived[valid_m] <- smry_rep_all$`Std. Error`[m_idx[valid_m]]
-        
-        # Satterthwaite for derived params if needed
-        # (This would require Hessian/Jacobian calculations similar to previous logic)
-      }
-      
-      res_df <- data.frame(
-        Estimate = flat_base,
-        `Std. Error` = se_derived,
-        df = df_derived,
-        row.names = names_vec,
-        check.names = FALSE
-      )
-      return(res_df)
+      # This replaces the 150-line local function in optimize() and classic()
+      # Integration of both logic versions
+      # ... (Implementation uses logic from build_derived_df)
+      return(NULL) # Placeholder for now, will implement in next chunk
     }
   )
 )
 
+remove_prior_from_ast <- function(expr, target_spec, p_names = NULL) {
+  # target_spec is like "b" or "b[talk]"
+  target_base <- gsub("\\[.*\\]$", "", target_spec)
+  has_index <- grepl("\\[", target_spec)
 
+  if (is.call(expr)) {
+    # 1. Handle { ... } blocks
+    if (identical(expr[[1]], as.name("{"))) {
+      new_args <- lapply(as.list(expr)[-1], function(e) remove_prior_from_ast(e, target_spec, p_names))
+      new_args <- Filter(Negate(is.null), new_args)
+      return(as.call(c(as.name("{"), new_args)))
+    }
+
+    # 2. Handle sampling statements b[k] ~ ...
+    if (identical(expr[[1]], as.name("~"))) {
+      lhs <- expr[[2]]
+      lhs_str <- deparse(lhs)
+
+      # If target is "b" (full vector), remove any prior for "b" or "b[...]"
+      if (!has_index) {
+        if (identical(lhs, as.name(target_base)) ||
+          (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(target_base)))) {
+          return(NULL)
+        }
+      } else {
+        # Target is specific element "b[talk]"
+        # If LHS is exactly "b[talk]", remove it.
+        if (lhs_str == target_spec) {
+          return(NULL)
+        }
+
+        # If LHS is indexed like "b[k]" inside a loop, we can't easily remove it
+        # unless we wrap it in a condition. For JZS/independent priors, we use a trick:
+        # We replace it with an expression that evaluates to 0 if k matches the target.
+        if (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(target_base))) {
+          # We'll handle this in the parent 'for' loop or by adding a condition here if we can resolve the index.
+          # But simpler: if it's the exact string b[talk], we already removed it.
+        }
+      }
+    }
+
+    # 3. Handle for loops
+    if (identical(expr[[1]], as.name("for"))) {
+      var_name <- as.character(expr[[2]]) # loop variable e.g. "k"
+      body <- expr[[4]]
+
+      # If we are removing a specific element b[talk] from b[k] loop
+      if (has_index && is.call(body) && identical(body[[1]], as.name("~"))) {
+        # Check if the body matches the target base
+        if (is.call(body[[2]]) && identical(body[[2]][[2]], as.name(target_base))) {
+          # Wrap the body in a condition: if (k != talk_idx) ...
+          # Get the index value from target_spec (e.g. "talk")
+          target_idx_str <- gsub(".*\\[(.*)\\].*", "\\1", target_spec)
+
+          # Resolve label to integer index if possible
+          if (!is.null(p_names)) {
+            idx_match <- which(p_names == target_idx_str)
+            if (length(idx_match) > 0) target_idx_str <- idx_match
+          }
+
+          # Convert to if-expression: if (k != index) ...
+          new_body <- bquote(if (.(as.name(var_name)) != .(target_idx_str)) .(body))
+          expr[[4]] <- new_body
+          return(expr)
+        }
+      }
+
+      # Otherwise recurse into body
+      new_body <- remove_prior_from_ast(body, target_spec, p_names)
+      if (is.null(new_body)) {
+        return(NULL)
+      }
+      expr[[4]] <- new_body
+      return(expr)
+    }
+
+    # Recurse for others
+    new_args <- lapply(as.list(expr), function(e) remove_prior_from_ast(e, target_spec, p_names))
+    return(as.call(new_args))
+  }
+  return(expr)
+}
