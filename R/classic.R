@@ -1159,6 +1159,10 @@ Classic_Fit <- R6::R6Class(
       }
     },
 
+    #' @description (Internal) Calculate metrics for a contrast.
+    #' @param L Contrast matrix.
+    #' @param specs Variable names for lsmeans.
+    #' @return A data frame with estimate, SE, df, t-value, and p-value.
     .calc_contrast = function(L, specs) {
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
       fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
@@ -1172,6 +1176,9 @@ Classic_Fit <- R6::R6Class(
       data.frame(estimate = est, `Std. Error` = se, df = df_val, `t value` = t_val, Pr = p_val, check.names = FALSE)
     },
 
+    #' @description (Internal) Get representative DF for lsmeans.
+    #' @param specs Variable names for lsmeans.
+    #' @return Degrees of freedom.
     .get_lsmeans_df = function(specs) {
       df_val <- Inf
       if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
@@ -1184,6 +1191,9 @@ Classic_Fit <- R6::R6Class(
       return(df_val)
     },
 
+    #' @description (Internal) Construct a list of parameters from the fit.
+    #' @param fit The fit result (dataframe or lm object).
+    #' @return A named list of parameters.
     .construct_par_list = function(fit) {
       par_list <- list()
       if (inherits(fit, "lm")) {

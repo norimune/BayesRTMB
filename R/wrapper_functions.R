@@ -1396,7 +1396,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (has_intercept) {
     fixed_effects <- c(ifelse(prior_type %in% c("flat", "uniform"), "Intercept", "Intercept_c"), fixed_effects)
   }
-  obj$extra$df_pars <- fixed_effects
+  obj$extra$marginal <- fixed_effects
 
   return(obj)
 }
@@ -2329,7 +2329,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      obj$raw_data <- data
 
      obj$type <- "corr"
-     obj$extra$df_pars <- "mu"
+     obj$extra$marginal <- "mu"
 
      return(obj)
   } else {
@@ -2465,7 +2465,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
     obj$raw_data <- data
     obj$type <- "corr"
-    obj$extra$df_pars <- "mean"
+    obj$extra$marginal <- "mean"
     obj$extra$lkj_eta <- prior$lkj_eta
 
     return(obj)
@@ -2596,7 +2596,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       model_body[[length(model_body)+1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
     }
     view_vars <- c("diff", "delta", "sd_diff")
-    df_pars <- if (use_delta_param) "delta" else "diff"
+    marginal <- if (use_delta_param) "delta" else "diff"
   } else {
     dat <- list(Y1 = Y1, Y2 = Y2, r = r)
     param_ast <- if (use_delta_param) {
@@ -2617,7 +2617,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       model_body[[length(model_body)+1]] <- quote(sd ~ exponential(sigma_rate_weak))
     }
     view_vars <- c("diff", "delta", "mean", "sd")
-    df_pars <- if (use_delta_param) c("mean", "delta") else c("mean", "diff")
+    marginal <- if (use_delta_param) c("mean", "delta") else c("mean", "diff")
   }
 
   model_ast <- as.call(c(list(as.name("{")), model_body))
@@ -2631,7 +2631,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   obj <- rtmb_model(data = ordered_data, code = code_obj, fixed = fixed, view = view_vars)
 
   obj$type <- "ttest"
-  obj$extra$df_pars <- df_pars
+  obj$extra$marginal <- marginal
   obj$extra$levs <- levs
   if (!is.null(null)) obj <- obj$null_model(target = null)
 
@@ -3958,7 +3958,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   mdl$raw_data <- data
 
   mdl$type <- "mediation"
-  mdl$extra$df_pars <- if (prior_type == "weak") paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
+  mdl$extra$marginal <- if (prior_type == "weak") paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
 
   return(mdl)
 }

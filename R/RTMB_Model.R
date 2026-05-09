@@ -484,7 +484,8 @@ RTMB_Model <- R6::R6Class(
     #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
     #' @param fixed Optional list specifying parameter values to fix.
     #' @param REML Logical; whether to use Restricted Maximum Likelihood (REML). Default is FALSE.
-    #' @param df_pars Character vector of parameters to be treated as fixed effects for REML/DF calculation, or "auto". Default is "auto".
+    #' @param marginal Character vector of parameters to be treated as fixed effects for REML/DF calculation, or "auto". Default is "auto".
+    #' @param df_pars Alias for `marginal` (for backward compatibility).
     #' @param target_vars Character vector of parameters to remove priors from (internal use for classic mode).
     #' @param is_classic Logical; whether this is a frequentist (classic) estimation. Default is FALSE.
     #' @param .return_object Character; "MAP" or "Classic" fit object. Default is "MAP".
@@ -496,11 +497,17 @@ RTMB_Model <- R6::R6Class(
                         optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL, fixed = NULL, REML = FALSE, df_pars = "auto",
-                        target_vars = NULL, is_classic = FALSE, .return_object = "MAP",
-                        view = NULL, views = NULL, ...) {
+                        df = NULL, fixed = NULL, REML = FALSE, marginal = "auto",
+                        df_pars = NULL, target_vars = NULL, is_classic = FALSE, 
+                        .return_object = "MAP", view = NULL, views = NULL, ...) {
       if (is.null(view) && !is.null(views)) view <- views
       
+      # --- Backward Compatibility ---
+      if (!is.null(df_pars)) {
+        if (identical(marginal, "auto")) {
+          marginal <- df_pars
+        }
+      }      
       # --- Contrast Management ---
       dot_args <- list(...)
       requested_contrasts <- dot_args$contrasts
@@ -531,16 +538,18 @@ RTMB_Model <- R6::R6Class(
           laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
-          num_samples = num_samples, seed = seed, df = df, REML = REML, df_pars = df_pars,
-          target_vars = target_vars, is_classic = is_classic, .return_object = .return_object, 
-          view = view, ...
+          num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
+          df_pars = df_pars, target_vars = target_vars, is_classic = is_classic, 
+          .return_object = .return_object, view = view, ...
         ))
       }
 
       # --- 0. Determine target variables for DF calculation ---
       if (is.null(target_vars)) {
-        if (identical(df_pars, "auto")) {
-          if (!is.null(self$extra$df_pars)) {
+        if (identical(marginal, "auto")) {
+          if (!is.null(self$extra$marginal)) {
+            target_vars <- self$extra$marginal
+          } else if (!is.null(self$extra$df_pars)) {
             target_vars <- self$extra$df_pars
           } else {
             # Default patterns for fixed effects
@@ -551,12 +560,12 @@ RTMB_Model <- R6::R6Class(
               (is_fixed_name || is_unbounded) && !isTRUE(p_info$random)
             })]
           }
-        } else if (identical(df_pars, "none")) {
+        } else if (identical(marginal, "none")) {
           target_vars <- character(0)
-        } else if (identical(df_pars, "all")) {
+        } else if (identical(marginal, "all")) {
           target_vars <- names(self$par_list)
         } else {
-          target_vars <- df_pars
+          target_vars <- marginal
         }
       }
 
@@ -568,7 +577,7 @@ RTMB_Model <- R6::R6Class(
           laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
-          num_samples = num_samples, seed = seed, df = df, REML = REML, df_pars = df_pars,
+          num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
           target_vars = target_vars, is_classic = FALSE, .return_object = "Classic", 
           view = view, ...
         ))
@@ -1607,7 +1616,8 @@ RTMB_Model <- R6::R6Class(
     # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with automatic Satterthwaite degrees of freedom.
     #' @param df "auto" for Satterthwaite, numeric/Inf for specific degrees of freedom.
-    #' @param df_pars Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "auto".
+    #' @param marginal Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "auto".
+    #' @param df_pars Alias for `marginal` (for backward compatibility).
     #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
     #' @param view Character vector of parameters to prioritize in the summary output.
     #' @param views Alias for \code{view}.
@@ -1615,12 +1625,13 @@ RTMB_Model <- R6::R6Class(
     #' @param fixed Optional list specifying parameter values to fix.
     #' @param ... Additional arguments passed to $optimize() (e.g. contrasts = "sum").
     #' @return A `Classic_Fit` object.
-    classic = function(df = "auto", df_pars = "auto", REML = TRUE, view = NULL, views = NULL, map = NULL, fixed = NULL, ...) {
+    classic = function(df = "auto", marginal = "auto", df_pars = NULL, REML = TRUE, 
+                       view = NULL, views = NULL, map = NULL, fixed = NULL, ...) {
       if (is.null(view) && !is.null(views)) view <- views
       
       # Use the main optimization engine for all frequentist inference
       return(self$optimize(
-        is_classic = TRUE, df = df, df_pars = df_pars, REML = REML,
+        is_classic = TRUE, df = df, marginal = marginal, df_pars = df_pars, REML = REML,
         view = view, map = map, fixed = fixed, .return_object = "Classic", ...
       ))
     },
