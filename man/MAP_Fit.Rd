@@ -158,9 +158,9 @@ Create a new `MAP_Fit` object.
   objective,
   log_ml,
   convergence,
-  sd_rep = NULL,
-  df_fixed = NULL,
-  random_effects = NULL,
+  sd_rep,
+  df_fixed,
+  random_effects,
   df_transform = NULL,
   df_generate = NULL,
   opt_history = NULL,
@@ -171,8 +171,7 @@ Create a new `MAP_Fit` object.
   vcov_unc = NULL,
   ci_method = "wald",
   laplace = TRUE,
-  map = NULL,
-  ad_obj = NULL
+  map = NULL
 )}\if{html}{\out{</div>}}
 }
 
