@@ -875,8 +875,9 @@ Classic_Fit <- R6::R6Class(
     #' @param pairwise Logical; whether to perform pairwise comparisons.
     #' @param simple Character vector of factors to hold constant for simple main effects.
     #' @param adjust Character; p-value adjustment method (e.g., "bonferroni", "holm", "none").
+    #' @param protect Logical; whether to use hierarchical (protected) testing.
     #' @return A data frame containing the marginal means or contrasts.
-    lsmeans = function(specs, pairwise = FALSE, simple = NULL, adjust = "bonferroni") {
+    lsmeans = function(specs, pairwise = FALSE, simple = NULL, adjust = "holm", protect = FALSE) {
       # Ensure consistent contrasts for reference grid construction
       old_opts <- NULL
       if (!is.null(self$model$contrasts)) {
@@ -945,7 +946,7 @@ Classic_Fit <- R6::R6Class(
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
       fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
       beta_match <- beta_vals[fe_idx]
-      fe_names_match <- names(beta_match)
+      fe_names_match <- rownames(self$fit)[fe_idx]
       V_match <- self$vcov[fe_names_match, fe_names_match, drop = FALSE]
 
       # Group by specs + simple with descriptive labels
@@ -983,62 +984,96 @@ Classic_Fit <- R6::R6Class(
         class(res) <- c("rtmb_lsmeans", class(res))
         return(res)
       } else {
-        # --- Pairwise Comparisons ---
-        contrast_list <- list()
-        # If simple is provided, we only compare within levels of 'simple'
+        # --- Pairwise Comparisons & Simple Main Effects ---
+        results_by_group <- list()
+        
+        # Moderator levels
         if (!is.null(simple)) {
           mod_grid <- unique(ref_grid[simple])
           focal_grid <- unique(ref_grid[specs])
 
           for (row_m in 1:nrow(mod_grid)) {
             m_vals <- mod_grid[row_m, , drop = FALSE]
+            m_label <- paste(sapply(1:ncol(m_vals), function(k) paste0(names(m_vals)[k], "=", m_vals[1, k])), collapse = ":")
+            
+            # --- Simple Main Effect (SME) ---
+            # Collect all L-vectors for focal levels in this moderator group
+            L_group <- list()
+            group_names <- c()
+            for (i in 1:nrow(focal_grid)) {
+                nm <- paste(c(sapply(1:ncol(focal_grid), function(k) paste0(names(focal_grid)[k], "=", focal_grid[i, k])), 
+                              m_label), collapse = ":")
+                L_group[[i]] <- L_list[[nm]]
+                group_names[i] <- nm
+            }
+            
+            # SME Wald Test (compare all levels vs first)
+            if (length(L_group) > 1) {
+              L_sme <- as.matrix(do.call(rbind, lapply(2:length(L_group), function(i) L_group[[i]] - L_group[[1]])))
+              V_match_mat <- as.matrix(V_match)
+              
+              est_sme <- as.numeric(L_sme %*% beta_match)
+              V_sme <- L_sme %*% V_match_mat %*% t(L_sme)
+              W_val <- as.numeric(t(est_sme) %*% MASS::ginv(V_sme) %*% est_sme)
+              num_df <- nrow(L_sme)
+              den_df <- self$.get_lsmeans_df(specs)
+              f_val <- W_val / num_df
+              p_sme <- pf(f_val, num_df, den_df, lower.tail = FALSE)
+            } else {
+              f_val <- NA; num_df <- 0; den_df <- self$.get_lsmeans_df(specs); p_sme <- NA
+            }
+            
+            sme_row <- data.frame(
+               Source = paste("Simple Main Effect of", paste(specs, collapse=":")),
+               `F value` = f_val, num_df = num_df, den_df = den_df, Pr = p_sme,
+               check.names = FALSE
+            )
+            
+            # --- Pairwise ---
+            group_contrasts <- list()
             for (i in 1:(nrow(focal_grid)-1)) {
               for (j in (i+1):nrow(focal_grid)) {
-                # Find indices in unique_groups_full that match focal + moderator
-                # This is more robust than string pasting
-                find_idx <- function(f_row, m_row) {
-                  vals <- character(length(full_specs))
-                  vals[1:length(specs)] <- as.character(unlist(f_row))
-                  vals[(length(specs)+1):length(full_specs)] <- as.character(unlist(m_row))
-                  target_label <- paste(vals, collapse = ":")
-                  idx <- which(unique_groups_full == target_label)
-                  if (length(idx) == 0) return(NULL)
-                  return(idx)
-                }
-
-                idx_i <- find_idx(focal_grid[i,], m_vals)
-                idx_j <- find_idx(focal_grid[j,], m_vals)
-
-                if (!is.null(idx_i) && !is.null(idx_j)) {
-                  name_i <- unique_groups_full[idx_i]
-                  name_j <- unique_groups_full[idx_j]
-                  L_diff <- L_list[[name_i]] - L_list[[name_j]]
-                  contrast_label <- paste0("(", name_i, ") - (", name_j, ")")
-                  contrast_list[[contrast_label]] <- self$.calc_contrast(L_diff, specs)
-                }
+                L_diff <- L_group[[i]] - L_group[[j]]
+                contrast_label <- paste0("(", group_names[i], ") - (", group_names[j], ")")
+                group_contrasts[[contrast_label]] <- self$.calc_contrast(L_diff, specs)
               }
             }
+            pairwise_df <- do.call(rbind, group_contrasts)
+            
+            # Apply Holm adjustment within this moderator group
+            if (adjust != "none") {
+              pairwise_df$Pr <- p.adjust(pairwise_df$Pr, method = adjust)
+            }
+            
+            # Protected Testing Logic
+            if (protect && p_sme > 0.05) {
+              pairwise_df$Pr <- 1.0 # Protected: hide or set to 1 if SME not sig
+            }
+            
+            results_by_group[[m_label]] <- list(sme = sme_row, pairwise = pairwise_df)
           }
         } else {
-          # All pairwise
-          for (i in 1:(length(unique_groups_full)-1)) {
-            for (j in (i+1):length(unique_groups_full)) {
-              name_i <- unique_groups_full[i]
-              name_j <- unique_groups_full[j]
-              L_diff <- L_list[[name_i]] - L_list[[name_j]]
-              contrast_label <- paste0("(", name_i, ") - (", name_j, ")")
-              contrast_list[[contrast_label]] <- self$.calc_contrast(L_diff, specs)
-            }
-          }
+           # All pairwise (no simple)
+           # Standard pairwise logic without SME for now
+           group_contrasts <- list()
+           for (i in 1:(length(unique_groups_full)-1)) {
+             for (j in (i+1):length(unique_groups_full)) {
+               name_i <- unique_groups_full[i]
+               name_j <- unique_groups_full[j]
+               L_diff <- L_list[[name_i]] - L_list[[name_j]]
+               contrast_label <- paste0("(", name_i, ") - (", name_j, ")")
+               group_contrasts[[contrast_label]] <- self$.calc_contrast(L_diff, specs)
+             }
+           }
+           pairwise_df <- do.call(rbind, group_contrasts)
+           if (adjust != "none") pairwise_df$Pr <- p.adjust(pairwise_df$Pr, method = adjust)
+           results_by_group[["All"]] <- list(pairwise = pairwise_df)
         }
 
-        res <- do.call(rbind, contrast_list)
-        if (adjust != "none") {
-          res$Pr <- p.adjust(res$Pr, method = adjust)
-          attr(res, "adjustment") <- adjust
-        }
-        class(res) <- c("rtmb_contrasts", class(res))
-        return(res)
+        class(results_by_group) <- c("rtmb_lsmeans_grouped", "list")
+        attr(results_by_group, "adjustment") <- adjust
+        attr(results_by_group, "protect") <- protect
+        return(results_by_group)
       }
     },
 
@@ -1327,6 +1362,61 @@ lsmeans <- function(object, specs, ...) {
 #' @export
 lsmeans.Classic_Fit <- function(object, specs, ...) {
   object$lsmeans(specs, ...)
+}
+
+#' @export
+print.rtmb_lsmeans_grouped <- function(x, ...) {
+  adj <- attr(x, "adjustment")
+  prot <- attr(x, "protect")
+  
+  cat("\nPost-hoc Analysis: Simple Main Effects and Pairwise Comparisons\n")
+  cat(sprintf("P-value adjustment: %s (applied within groups)\n", adj))
+  if (prot) cat("Hierarchical testing (Protected): Pairwise results only shown if SME is significant.\n")
+  
+  # Helper for clean DF formatting
+  fmt_df <- function(v) {
+    v_rnd <- round(v, 1)
+    sapply(v_rnd, function(z) sprintf("%g", z))
+  }
+  
+  # Helper for 5-decimal values
+  fmt_5 <- function(v) {
+    sprintf("%.5f", v)
+  }
+  
+  # Helper for P-values (drop leading zero)
+  fmt_p <- function(v) {
+    s <- sprintf("%.5f", v)
+    sub("^0", "", s)
+  }
+
+  for (grp in names(x)) {
+    cat("\n", rep("-", nchar(grp) + 10), "\n", sep="")
+    cat("Group: ", grp, "\n", sep="")
+    cat(rep("-", nchar(grp) + 10), "\n", sep="")
+    
+    # Print SME
+    if (!is.null(x[[grp]]$sme)) {
+      cat("\nSimple Main Effect (Wald F-test):\n")
+      sme_disp <- x[[grp]]$sme
+      sme_disp$`F value` <- fmt_5(sme_disp$`F value`)
+      sme_disp$den_df <- fmt_df(sme_disp$den_df)
+      sme_disp$Pr <- fmt_p(sme_disp$Pr)
+      print(sme_disp, row.names = FALSE)
+    }
+    
+    # Print Pairwise
+    cat("\nPairwise Comparisons:\n")
+    pw_disp <- x[[grp]]$pairwise
+    pw_disp$estimate <- fmt_5(pw_disp$estimate)
+    pw_disp$`Std. Error` <- fmt_5(pw_disp$`Std. Error`)
+    pw_disp$df <- fmt_df(pw_disp$df)
+    pw_disp$`t value` <- fmt_5(pw_disp$`t value`)
+    pw_disp$Pr <- fmt_p(pw_disp$Pr)
+    print(pw_disp)
+    cat("\n")
+  }
+  invisible(x)
 }
 
 #' @export

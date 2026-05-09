@@ -351,7 +351,8 @@ Calculate Least Squares Means (Marginal Means) and contrasts.
   specs,
   pairwise = FALSE,
   simple = NULL,
-  adjust = "bonferroni"
+  adjust = "holm",
+  protect = FALSE
 )}\if{html}{\out{</div>}}
 }
 
@@ -365,6 +366,8 @@ Calculate Least Squares Means (Marginal Means) and contrasts.
 \item{\code{simple}}{Character vector of factors to hold constant for simple main effects.}
 
 \item{\code{adjust}}{Character; p-value adjustment method (e.g., "bonferroni", "holm", "none").}
+
+\item{\code{protect}}{Logical; whether to use hierarchical (protected) testing.}
 }
 \if{html}{\out{</div>}}
 }

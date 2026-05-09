@@ -1481,8 +1481,7 @@ RTMB_Model <- R6::R6Class(
 
         # クラシックモード用の分散共分散行列（V）の取得
         V_fixed_full <- NULL
-        cat(sprintf("\nDEBUG: REML=%s, has_sd_rep=%s, has_jointPrec=%s\n", 
-                    REML, !is.null(sd_rep), !is.null(sd_rep$jointPrecision)))
+
         if (REML && !is.null(sd_rep) && !is.null(sd_rep$jointPrecision)) {
            # REML時は結合精度行列の逆行列から抽出（固定効果は内部的にrandom扱い）
            H_joint <- sd_rep$jointPrecision
@@ -1538,7 +1537,7 @@ RTMB_Model <- R6::R6Class(
             
             tmp_vec <- c()
             for (name in names(self$par_list)) {
-              if (!isTRUE(self$par_list[[name]]$random)) {
+              if (name %in% target_vars || identical(target_vars, "fixed")) {
                 tmp_vec <- c(tmp_vec, as.numeric(tmp_con_list[[name]]))
               }
             }
