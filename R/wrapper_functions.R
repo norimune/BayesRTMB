@@ -235,10 +235,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
       p ~ dirichlet(rep(1, R * C))
     },
     generate = {
-      # We only generate what is not already in parameters/report
-      mu <- p * N
-      chisq_val <- sum((Y - mu)^2 / mu)
-      list(mu = mu, chisq_val = chisq_val)
+      # mu and chisq_val are already reported in transform
     }
   )
 

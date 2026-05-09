@@ -381,8 +381,10 @@ Classic_Fit <- R6::R6Class(
 
         if (length(all_dfs) > 0) {
            df_all <- do.call(rbind, unname(all_dfs))
+           # Remove duplicates (preferring earlier ones)
+           df_all <- df_all[!duplicated(rownames(df_all)), , drop = FALSE]
            # Track which rows are random effects
-           is_re <- rownames(df_all) %in% rownames(self$random_effects)
+           is_re <- if (!is.null(self$random_effects)) rownames(df_all) %in% rownames(self$random_effects) else rep(FALSE, nrow(df_all))
         } else if (inherits(self$fit, "lm")) {
            # Handle lm case specifically
            s_lm <- summary(self$fit)
@@ -520,7 +522,9 @@ Classic_Fit <- R6::R6Class(
            res$truncated <- FALSE
         }
 
-        # --- Add t-test results for classic mode ---
+        is_asymptotic <- (!is.null(self$model$type) && self$model$type %in% c("table", "loglinear")) || inherits(self$model, "rtmb_loglinear")
+
+        # --- Add t/z-test results for classic mode ---
         if (!is.null(self$sd_rep)) {
            u_est <- if (!is.null(self$sd_rep$par.fixed)) self$sd_rep$par.fixed else numeric(0)
            u_se <- if (!is.null(self$sd_rep$cov.fixed)) sqrt(diag(self$sd_rep$cov.fixed)) else rep(NA, length(u_est))
@@ -558,12 +562,17 @@ Classic_Fit <- R6::R6Class(
               row_t[missing_t] <- df_print$Estimate[missing_t] / pmax(df_print$`Std. Error`[missing_t], 1e-12, na.rm = TRUE)
            }
            
-           df_print$`t value` <- row_t
-           if (!is.null(df_print$df)) {
-              df_print$Pr <- 2 * pt(-abs(df_print$`t value`), df = df_print$df)
-           } else {
-              df_print$Pr <- 2 * pnorm(-abs(df_print$`t value`))
-           }
+           if (is_asymptotic) {
+               df_print$`z value` <- row_t
+            } else {
+               df_print$`t value` <- row_t
+            }
+            
+            if (!is.null(df_print$df)) {
+               df_print$Pr <- 2 * pt(-abs(row_t), df = df_print$df)
+            } else {
+               df_print$Pr <- 2 * pnorm(-abs(row_t))
+            }
         }
 
         # 1. Round main numeric columns
@@ -591,8 +600,9 @@ Classic_Fit <- R6::R6Class(
             if (is.na(p)) return("")
             p_val <- as.numeric(p)
             if (p_val < 0.0001) return("<.0001")
-            s <- sprintf("%.4f", p_val)
-            sub("^0", "", s) # Remove leading zero
+             fmt <- paste0("%.", digits, "f")
+             s <- sprintf(fmt, p_val)
+             sub("^0", "", s) # Remove leading zero
           })
 
           df_print$Pr <- formatted_pr
@@ -600,11 +610,10 @@ Classic_Fit <- R6::R6Class(
         }
 
         # 4. Reorder columns for consistency
-        is_asymptotic <- inherits(self$model, "rtmb_loglinear") || (!is.null(self$model$type) && self$model$type == "table")
         if (is_asymptotic) {
-          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr")
+          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "df", "z value", "Pr")
         } else {
-          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "df", "t value", "z value", "Pr")
+          desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "df", "t value", "Pr")
         }
         current_names <- names(df_print)
 
@@ -817,7 +826,18 @@ Classic_Fit <- R6::R6Class(
         R_dim <- nrow(obs_tab)
         C_dim <- ncol(obs_tab)
 
-        df_mu <- if (is.data.frame(self$fit)) self$fit[grepl("^mu\\[", rownames(self$fit)), , drop = FALSE] else data.frame()
+        # Combine all result dataframes to find 'mu'
+        all_dfs <- list()
+        if (!is.null(self$df_fixed)) all_dfs$fixed <- self$df_fixed
+        if (!is.null(self$df_transform)) all_dfs$transform <- self$df_transform
+        if (!is.null(self$df_generate)) all_dfs$generate <- self$df_generate
+        
+        df_combined <- if (length(all_dfs) > 0) {
+          tmp <- do.call(rbind, unname(all_dfs))
+          tmp[!duplicated(rownames(tmp)), , drop = FALSE]
+        } else data.frame()
+        
+        df_mu <- df_combined[grepl("^mu(\\[|$)", rownames(df_combined)), , drop = FALSE]
 
         if (nrow(df_mu) == R_dim * C_dim) {
           p_est <- df_mu$Estimate / N_tot
@@ -830,8 +850,13 @@ Classic_Fit <- R6::R6Class(
           df_val <- (R_dim - 1) * (C_dim - 1)
           p_val <- stats::pchisq(chisq_stat, df = df_val, lower.tail = FALSE)
 
-          chisq_res <- data.frame(`X-squared` = chisq_stat, df = df_val, `p-value` = p_val, check.names = FALSE)
-          rownames(chisq_res) <- "Pearson's Chi-squared (from est. prob)"
+           chisq_res <- data.frame(
+             `X-squared` = round(chisq_stat, 5), 
+             df = round(df_val, 1), 
+             `p-value` = round(p_val, 5), 
+             check.names = FALSE
+           )
+           rownames(chisq_res) <- "Pearson's Chi-squared (from est. prob)"
         } else {
           chisq_res <- NULL
         }
@@ -1282,16 +1307,22 @@ print.summary_Classic_Fit <- function(x, ...) {
   if (!is.null(x$coefficients)) {
     if (!is.null(x$type) && x$type == "table") {
       cat("\n---\n"); obs_tab <- x$extra$tab; N_tot <- sum(obs_tab); R_dim <- nrow(obs_tab); C_dim <- ncol(obs_tab)
-      df_mu <- x$coefficients[grepl("^mu\\[", rownames(x$coefficients)), , drop = FALSE]
+      df_mu <- x$coefficients[grepl("^mu(\\[|$)", rownames(x$coefficients)), , drop = FALSE]
       if (nrow(df_mu) == R_dim * C_dim) {
         p_est <- df_mu$Estimate / N_tot; p_mat <- matrix(p_est, nrow = R_dim, ncol = C_dim); p_row <- rowSums(p_mat); p_col <- colSums(p_mat)
         E_mat <- matrix(0, nrow = R_dim, ncol = C_dim); for (i in 1:R_dim) for (j in 1:C_dim) E_mat[i, j] <- p_row[i] * p_col[j] * N_tot
-        cat("Cell Probabilities (p) and Confidence Intervals:\n"); df_p <- df_mu; df_p$Estimate <- df_p$Estimate / N_tot; df_p$`Std. Error` <- df_p$`Std. Error` / N_tot
-        if ("Lower 95%" %in% names(df_p)) { df_p$`Lower 95%` <- df_p$`Lower 95%` / N_tot; df_p$`Upper 95%` <- df_p$`Upper 95%` / N_tot }
-        rownames(df_p) <- gsub("^mu\\[", "p[", rownames(df_p)); cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_p))
-        print(df_p[, cols_to_show, drop = FALSE], quote = FALSE, right = TRUE)
-        cat("\nExpected Counts (Independence) and Pearson Residuals:\n"); E_vec <- as.vector(E_mat); obs_vec <- as.vector(obs_tab); residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
-        df_resid <- data.frame(Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = gsub("^mu\\[", "E\\[", rownames(df_mu)))
+        cat("Cell Probabilities (p) and Confidence Intervals:\n"); df_p <- df_mu
+         # Correct order: Calculate then Round
+         df_p$Estimate <- round(df_mu$Estimate / N_tot, digits)
+         df_p$`Std. Error` <- round(df_mu$`Std. Error` / N_tot, digits)
+         if ("Lower 95%" %in% names(df_p)) { 
+           df_p$`Lower 95%` <- round(df_mu$`Lower 95%` / N_tot, digits)
+           df_p$`Upper 95%` <- round(df_mu$`Upper 95%` / N_tot, digits)
+         }
+         rownames(df_p) <- gsub("^mu\\[", "p[", rownames(df_p)); cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_p))
+         print(df_p[, cols_to_show, drop = FALSE], quote = FALSE, right = TRUE)
+         cat("\nExpected Counts (Independence) and Pearson Residuals:\n"); E_vec <- as.vector(E_mat); obs_vec <- as.vector(obs_tab); residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
+         df_resid <- data.frame(Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = gsub("^mu\\[", "E\\[", rownames(df_mu)))
         print(df_resid, quote = FALSE, right = TRUE)
       }
     } else if (!is.null(x$type) && x$type == "loglinear") {
