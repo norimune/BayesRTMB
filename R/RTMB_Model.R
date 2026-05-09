@@ -415,34 +415,14 @@ RTMB_Model <- R6::R6Class(
       log_prob_local <- self$log_prob
       data_local <- self$data
 
-      f_ad <- function(y_unc_list) {
-        para <- to_constrained(y_unc_list, par_list_local)
-
-        if (!is.null(self$transform)) {
-          tran_res <- self$transform(data_local, para)
-          para <- c(para, tran_res)
-
-          # transform ADREPORT
-          if (length(tran_res) > 0) {
-            for (n in names(tran_res)) {
-              assign(n, tran_res[[n]])
-              eval(substitute(RTMB::ADREPORT(V), list(V = as.name(n))))
-            }
-          }
-        }
-
-        lp <- log_prob_local(data_local, para)
-
-        if (jacobian_target == "all") {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
-          return(-(lp + lj))
-        } else if (jacobian_target == "random") {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
-          return(-(lp + lj))
-        } else {
-          return(-lp)
-        }
-      }
+      f_ad <- private$.build_f_ad(
+        data_local = data_local,
+        par_list_local = par_list_local,
+        log_prob_local = log_prob_local,
+        transform_local = self$transform,
+        jacobian_target = jacobian_target,
+        adreport = TRUE
+      )
 
       ad_obj <- tryCatch(
         {
@@ -534,14 +514,12 @@ RTMB_Model <- R6::R6Class(
       }
       
       if (!is.null(fixed)) {
-        return(self$fixed_model(fixed)$optimize(
-          laplace = laplace, init = init, num_estimate = num_estimate, control = control,
+        return(private$.dispatch_fixed("optimize", laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
           num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
           df_pars = df_pars, target_vars = target_vars, is_classic = is_classic, 
-          .return_object = .return_object, view = view, ...
-        ))
+          .return_object = .return_object, view = view, ...))
       }
 
       # --- 0. Determine target variables for DF calculation ---
@@ -1660,12 +1638,10 @@ RTMB_Model <- R6::R6Class(
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL) {
       if (!is.null(fixed)) {
-        return(self$fixed_model(fixed)$sample(
-          sampling = sampling, warmup = warmup, chains = chains, thin = thin,
+        return(private$.dispatch_fixed("sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
           seed = seed, delta = delta, max_treedepth = max_treedepth,
           parallel = parallel, laplace = laplace, init = init,
-          init_jitter = init_jitter, save_csv = save_csv, map = map
-        ))
+          init_jitter = init_jitter, save_csv = save_csv, map = map))
       }
 
       # if (!is.null(init)) init <- as.numeric(init)
@@ -1761,16 +1737,14 @@ RTMB_Model <- R6::R6Class(
         }
         unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-        f_ad <- function(y_unc_list) {
-          para <- to_constrained(y_unc_list, local_par_list)
-          if (!is.null(local_transform)) {
-            tran_res <- local_transform(local_data, para)
-            para <- c(para, tran_res)
-          }
-          lp <- local_log_prob(local_data, para)
-          lj <- calc_log_jacobian(y_unc_list, local_par_list, only_random = FALSE)
-          return(-(lp + lj))
-        }
+        f_ad <- private$.build_f_ad(
+          data_local = local_data,
+          par_list_local = local_par_list,
+          log_prob_local = local_log_prob,
+          transform_local = local_transform,
+          jacobian_target = "all",
+          adreport = FALSE
+        )
 
         ad_obj <- tryCatch(
           {
@@ -1983,12 +1957,10 @@ RTMB_Model <- R6::R6Class(
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
                            map = NULL, fixed = NULL) {
       if (!is.null(fixed)) {
-        return(self$fixed_model(fixed)$variational(
-          iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
+        return(private$.dispatch_fixed("variational", iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
           num_samples = num_samples, num_estimate = num_estimate, alpha = alpha,
           laplace = laplace, print_freq = print_freq, method = method,
-          parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map
-        ))
+          parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map))
       }
 
       set.seed(seed)
@@ -2044,16 +2016,14 @@ RTMB_Model <- R6::R6Class(
         unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
         unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-        f_ad <- function(y_unc_list) {
-          para <- to_constrained(y_unc_list, local_par_list)
-          if (!is.null(local_transform)) {
-            tran_res <- local_transform(local_data, para)
-            para <- c(para, tran_res)
-          }
-          lp <- local_log_prob(local_data, para)
-          lj <- calc_log_jacobian(y_unc_list, local_par_list, only_random = FALSE)
-          return(-(lp + lj))
-        }
+        f_ad <- private$.build_f_ad(
+          data_local = local_data,
+          par_list_local = local_par_list,
+          log_prob_local = local_log_prob,
+          transform_local = local_transform,
+          jacobian_target = "all",
+          adreport = FALSE
+        )
 
         ad_obj <- tryCatch(
           {
@@ -3129,6 +3099,48 @@ RTMB_Model <- R6::R6Class(
       # Integration of both logic versions
       # ... (Implementation uses logic from build_derived_df)
       return(NULL) # Placeholder for now, will implement in next chunk
+    },
+
+    # --- Internal helper for fixed parameter recursion ---
+    .dispatch_fixed = function(method_name, ...) {
+      args <- list(...)
+      fixed <- args$fixed
+      args$fixed <- NULL
+      new_model <- self$fixed_model(fixed)
+      return(do.call(new_model[[method_name]], args))
+    },
+
+    # --- Internal helper for AD function setup ---
+    .build_f_ad = function(data_local, par_list_local, log_prob_local, transform_local = NULL, jacobian_target = "all", adreport = FALSE) {
+      function(y_unc_list) {
+        para <- to_constrained(y_unc_list, par_list_local)
+
+        if (!is.null(transform_local)) {
+          tran_res <- transform_local(data_local, para)
+          para <- c(para, tran_res)
+
+          # transform ADREPORT (only if requested, e.g. for sdreport)
+          if (adreport && length(tran_res) > 0) {
+            for (n in names(tran_res)) {
+              # Inject into parent environment so ADREPORT can find it by name
+              assign(n, tran_res[[n]])
+              eval(substitute(RTMB::ADREPORT(V), list(V = as.name(n))))
+            }
+          }
+        }
+
+        lp <- log_prob_local(data_local, para)
+
+        if (jacobian_target == "all") {
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
+          return(-(lp + lj))
+        } else if (jacobian_target == "random") {
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
+          return(-(lp + lj))
+        } else {
+          return(-lp)
+        }
+      }
     }
   )
 )
