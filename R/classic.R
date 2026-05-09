@@ -12,8 +12,24 @@
 #' @field bootstrap_results A matrix containing bootstrap samples, if applicable.
 #' @field test_results List of additional test results (e.g., chisq.test).
 #' @field view Character vector of parameter names to prioritize in summary.
+#' @field par_vec Numeric vector of parameter estimates.
+#' @field objective Final objective value.
+#' @field log_ml Log marginal likelihood.
+#' @field convergence Convergence code.
+#' @field sd_rep TMB sdreport object.
+#' @field df_fixed Dataframe of fixed effects results.
+#' @field random_effects Dataframe of random effects results.
+#' @field df_transform Dataframe of transformed parameters.
+#' @field df_generate Dataframe of generated quantities.
+#' @field opt_history Dataframe of optimization history.
+#' @field transform List of transformed parameters.
+#' @field generate List of generated quantities.
+#' @field se_samples List of simulated samples for SE estimation.
 #' @field par_unc Numeric vector of unconstrained parameter estimates.
 #' @field vcov_unc Variance-covariance matrix of parameters in unconstrained space.
+#' @field ci_method Method used for CI estimation.
+#' @field laplace Whether Laplace approximation was used.
+#' @field map Parameter mapping used.
 #'
 #' @export
 Classic_Fit <- R6::R6Class(
@@ -22,36 +38,88 @@ Classic_Fit <- R6::R6Class(
     model = NULL,
     fit = NULL,
     par = NULL,
+    par_vec = NULL,
     vcov = NULL,
+    objective = NULL,
+    log_ml = NULL,
+    convergence = NULL,
+    sd_rep = NULL,
+    df_fixed = NULL,
+    random_effects = NULL,
+    df_transform = NULL,
+    df_generate = NULL,
+    opt_history = NULL,
+    transform = NULL,
+    generate = NULL,
+    se_samples = NULL,
+    par_unc = NULL,
+    vcov_unc = NULL,
     bootstrap_results = NULL,
     test_results = list(),
     se_method = "wald",
+    ci_method = "wald",
+    laplace = TRUE,
+    map = NULL,
     cluster = NULL,
     view = NULL,
-    par_unc = NULL,
-    vcov_unc = NULL,
 
     #' @description Create a new `Classic_Fit` object.
     #' @param model The `RTMB_Model` object.
-    #' @param fit The result of the estimation.
-    #' @param vcov Variance-covariance matrix of fixed effects.
-    #' @param se_method Character; "wald", "robust", or "bootstrap".
-    #' @param cluster Character; cluster variable name.
+    #' @param par_vec Numeric vector of parameter estimates.
+    #' @param par List of parameter estimates.
+    #' @param objective Final objective value.
+    #' @param log_ml Log marginal likelihood.
+    #' @param convergence Convergence code.
+    #' @param sd_rep TMB sdreport object.
+    #' @param df_fixed Dataframe of fixed effects results.
+    #' @param random_effects Dataframe of random effects results.
+    #' @param df_transform Dataframe of transformed parameters.
+    #' @param df_generate Dataframe of generated quantities.
+    #' @param opt_history Dataframe of optimization history.
+    #' @param transform List of transformed parameters.
+    #' @param generate List of generated quantities.
+    #' @param se_samples List of simulated samples for SE estimation.
+    #' @param par_unc Parameter vector on unconstrained scale.
+    #' @param vcov_unc Covariance matrix on unconstrained scale.
+    #' @param ci_method Method used for CI estimation.
+    #' @param laplace Whether Laplace approximation was used.
+    #' @param map Parameter mapping used.
     #' @param test_results List of additional test results (e.g., chisq.test).
     #' @param view Character vector of parameter names to prioritize in summary.
-    #' @param par_unc Numeric vector of unconstrained parameter estimates.
-    #' @param vcov_unc Variance-covariance matrix of parameters in unconstrained space.
-    initialize = function(model, fit, vcov = NULL, par_unc = NULL, vcov_unc = NULL, se_method = "wald", cluster = NULL, test_results = list(), view = NULL) {
+    #' @param fit Legacy argument for backward compatibility (maps to df_fixed).
+    #' @param vcov Variance-covariance matrix of parameters.
+    #' @param ... Additional arguments passed to the constructor.
+    initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_ml = NULL,
+                          convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
+                          df_transform = NULL, df_generate = NULL, opt_history = NULL,
+                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
+                          vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL,
+                          test_results = list(), view = NULL, fit = NULL, vcov = NULL, ...) {
       self$model <- model
-      self$fit <- fit
-      self$vcov <- vcov
+      self$par_vec <- par_vec
+      self$par <- if (!is.null(par)) par else if (!is.null(df_fixed)) self$.construct_par_list(df_fixed) else if (!is.null(fit)) self$.construct_par_list(fit) else NULL
+      self$objective <- objective
+      self$log_ml <- log_ml
+      self$convergence <- convergence
+      self$sd_rep <- sd_rep
+      self$df_fixed <- if (!is.null(df_fixed)) df_fixed else fit
+      self$fit <- self$df_fixed # Legacy compatibility
+      self$random_effects <- random_effects
+      self$df_transform <- df_transform
+      self$df_generate <- df_generate
+      self$opt_history <- opt_history
+      self$transform <- transform
+      self$generate <- generate
+      self$se_samples <- se_samples
       self$par_unc <- par_unc
       self$vcov_unc <- vcov_unc
-      self$se_method <- se_method
-      self$cluster <- cluster
+      self$ci_method <- ci_method
+      self$se_method <- ci_method # Legacy compatibility
+      self$laplace <- laplace
+      self$map <- map
       self$test_results <- test_results
       self$view <- view
-      self$par <- self$.construct_par_list(fit)
+      self$vcov <- vcov
     },
 
     #' @description Compute robust standard errors (sandwich estimator).
@@ -358,82 +426,6 @@ Classic_Fit <- R6::R6Class(
 
         res$coefficients <- df_print
 
-        # --- Internal to Requested Contrast Transformation for Display ---
-        req_ct <- if (!is.null(self$model$requested_contrasts)) self$model$requested_contrasts else "treatment"
-        curr_ct <- if (!is.null(self$model$contrasts)) self$model$contrasts else "sum"
-
-        if (req_ct != curr_ct) {
-          # Use names for safe identification of fixed effects
-          beta_full <- df_print$Estimate
-          names(beta_full) <- rownames(df_print)
-          V_full <- self$vcov
-
-          # Identify fixed effects by name pattern (Strict matching for Intercept and b)
-          fe_names <- names(beta_full)[grepl("^(Intercept|Intercept_c|b($|\\[))", names(beta_full))]
-          # Exclude non-fixed effect parameters
-          fe_names <- setdiff(fe_names, c("sigma", "sd", "rho", "phi", "nu"))
-          fe_names <- fe_names[!grepl("^(r_re|u|z|lambda|tau|p|prob)($|\\[)", fe_names)]
-
-          if (length(fe_names) > 0) {
-            beta <- beta_full[fe_names]
-
-            # Extract corresponding block from V_full by name
-            common_fe <- intersect(fe_names, rownames(V_full))
-            if (length(common_fe) > 0) {
-               V <- V_full[common_fe, common_fe, drop = FALSE]
-               beta <- beta[common_fe]
-               current_fe_names <- common_fe
-
-               formula <- nobars(self$model$formula)
-               predictor_vars <- all.vars(delete.response(terms(formula)))
-               relevant_data <- self$model$raw_data[, predictor_vars, drop = FALSE]
-               # For minimal grid, use levels for factors and mean for numeric
-               levs <- lapply(relevant_data, function(x) if(is.factor(x)) levels(x) else mean(as.numeric(x), na.rm = TRUE))
-               grid <- expand.grid(levs)
-
-               # X_from (current internal: usually sum)
-               old_opts <- options(contrasts = if (curr_ct == "sum") c("contr.sum", "contr.poly") else c("contr.treatment", "contr.poly"))
-               X_from <- model.matrix(delete.response(terms(formula)), grid)
-               options(old_opts)
-
-               # X_to (requested: usually treatment)
-               old_opts <- options(contrasts = if (req_ct == "treatment") c("contr.treatment", "contr.poly") else c("contr.sum", "contr.poly"))
-               X_to <- model.matrix(delete.response(terms(formula)), grid)
-               options(old_opts)
-
-               if (ncol(X_from) == length(beta) && ncol(X_to) == length(beta)) {
-                 M <- MASS::ginv(X_to) %*% X_from
-                 beta_new <- as.numeric(M %*% beta)
-                 V_new <- M %*% V %*% t(M)
-                 se_new <- sqrt(diag(V_new))
-
-                 # Update df_print with new values for fixed effects
-                 df_print$Estimate[current_fe_names] <- beta_new
-                 df_print$`Std. Error`[current_fe_names] <- se_new
-
-                 stat_col <- if ("z value" %in% names(df_print)) "z value" else "t value"
-                 df_print[[stat_col]][current_fe_names] <- beta_new / pmax(se_new, 1e-12)
-
-                 if (!is.null(df_print$Pr)) {
-                   df_print$Pr[current_fe_names] <- 2 * stats::pt(-abs(df_print[[stat_col]][current_fe_names]), df = df_print$df[current_fe_names])
-                 }
-                 if ("Lower 95%" %in% names(df_print)) {
-                   df_print$`Lower 95%`[current_fe_names] <- beta_new - 1.96 * se_new
-                   df_print$`Upper 95%`[current_fe_names] <- beta_new + 1.96 * se_new
-                 }
-                 # Update Row Names to match requested contrast coding
-                 new_names <- colnames(X_to)
-                 new_names[new_names == "(Intercept)"] <- "Intercept"
-                 is_fe <- new_names != "Intercept"
-                 new_names[is_fe] <- paste0("b[", new_names[is_fe], "]")
-
-                 rownames(df_print)[which(rownames(df_print) %in% current_fe_names)] <- new_names
-               }
-            }
-          }
-        }
-
-        res$coefficients <- df_print
         # 1. Round main numeric columns
         cols_to_round <- setdiff(names(df_print), c("Pr", "df"))
         for (col in cols_to_round) {
@@ -736,7 +728,7 @@ Classic_Fit <- R6::R6Class(
 
             res_list[[b]] <- data.frame(
               Chisq = chisq_stat,
-              Df = df_val,
+              df = df_val,
               `Pr(>Chisq)` = p_val,
               check.names = FALSE
             )
@@ -780,7 +772,8 @@ Classic_Fit <- R6::R6Class(
       if (length(fe_idx) == 0) stop("Could not identify fixed effects for ANOVA.")
 
       beta <- beta_full[fe_idx]
-      V <- V_full[fe_idx, fe_idx]
+      fe_names_actual <- names(beta)
+      V <- V_full[fe_names_actual, fe_names_actual, drop = FALSE]
 
       full_assign <- c(0, assign_idx)
 
@@ -790,7 +783,13 @@ Classic_Fit <- R6::R6Class(
         predictor_vars <- all.vars(delete.response(terms(formula)))
         relevant_data <- self$model$raw_data[, predictor_vars, drop = FALSE]
         if (is.null(relevant_data)) relevant_data <- self$model$data[, predictor_vars, drop = FALSE]
-        levs <- lapply(relevant_data, function(x) if(is.factor(x) || is.character(x)) unique(x) else mean(x, na.rm=TRUE))
+        levs <- lapply(relevant_data, function(x) {
+          if (is.factor(x) || is.character(x)) {
+            levels(as.factor(x))
+          } else {
+            mean(x, na.rm = TRUE)
+          }
+        })
         grid <- expand.grid(levs)
 
         old_opts2 <- options(contrasts = if (ct_setting == "treatment")
@@ -836,8 +835,9 @@ Classic_Fit <- R6::R6Class(
         df1 <- length(idx)
         f_val <- W / df1
 
-        if (is.data.frame(self$fit) && !is.null(self$fit$df)) {
-          df2 <- min(self$fit$df[fe_idx[idx]], na.rm = TRUE)
+        fit_df_col <- if ("df" %in% names(self$fit)) self$fit$df else if ("DF" %in% names(self$fit)) self$fit$DF else NULL
+        if (is.data.frame(self$fit) && !is.null(fit_df_col)) {
+          df2 <- min(fit_df_col[fe_idx[idx]], na.rm = TRUE)
         } else if (inherits(self$fit, "lm")) {
           df2 <- self$fit$df.residual
         } else {
@@ -850,10 +850,10 @@ Classic_Fit <- R6::R6Class(
 
         if (df2 == 0 || is.infinite(df2)) {
           p_val <- stats::pchisq(W, df1, lower.tail = FALSE)
-          res_list[[t_name]] <- data.frame(`Df` = df1, `Chisq` = W, `Pr(>Chisq)` = p_val, row.names = t_name, check.names = FALSE)
+          res_list[[t_name]] <- data.frame(`df` = df1, `Chisq` = W, `Pr(>Chisq)` = p_val, row.names = t_name, check.names = FALSE)
         } else {
           p_val <- stats::pf(f_val, df1, df2, lower.tail = FALSE)
-          res_list[[t_name]] <- data.frame(`NumDF` = df1, `DenDF` = df2, `F value` = f_val, `Pr(>F)` = p_val, row.names = t_name, check.names = FALSE)
+          res_list[[t_name]] <- data.frame(`num_df` = df1, `den_df` = df2, `F value` = f_val, `Pr(>F)` = p_val, row.names = t_name, check.names = FALSE)
         }
       }
 
@@ -945,7 +945,8 @@ Classic_Fit <- R6::R6Class(
       beta_vals <- if (is.data.frame(self$fit)) self$fit$Estimate else stats::coef(self$fit)
       fe_idx <- which(grepl("^(Intercept|Intercept_c|b\\[)", rownames(self$fit)))
       beta_match <- beta_vals[fe_idx]
-      V_match <- self$vcov[fe_idx, fe_idx]
+      fe_names_match <- names(beta_match)
+      V_match <- self$vcov[fe_names_match, fe_names_match, drop = FALSE]
 
       # Group by specs + simple with descriptive labels
       label_grid <- ref_grid[full_specs]

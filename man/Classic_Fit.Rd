@@ -27,9 +27,41 @@ An R6 class representing the results of a classical (frequentist) estimation.
 
 \item{\code{view}}{Character vector of parameter names to prioritize in summary.}
 
+\item{\code{par_vec}}{Numeric vector of parameter estimates.}
+
+\item{\code{objective}}{Final objective value.}
+
+\item{\code{log_ml}}{Log marginal likelihood.}
+
+\item{\code{convergence}}{Convergence code.}
+
+\item{\code{sd_rep}}{TMB sdreport object.}
+
+\item{\code{df_fixed}}{Dataframe of fixed effects results.}
+
+\item{\code{random_effects}}{Dataframe of random effects results.}
+
+\item{\code{df_transform}}{Dataframe of transformed parameters.}
+
+\item{\code{df_generate}}{Dataframe of generated quantities.}
+
+\item{\code{opt_history}}{Dataframe of optimization history.}
+
+\item{\code{transform}}{List of transformed parameters.}
+
+\item{\code{generate}}{List of generated quantities.}
+
+\item{\code{se_samples}}{List of simulated samples for SE estimation.}
+
 \item{\code{par_unc}}{Numeric vector of unconstrained parameter estimates.}
 
 \item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
+
+\item{\code{ci_method}}{Method used for CI estimation.}
+
+\item{\code{laplace}}{Whether Laplace approximation was used.}
+
+\item{\code{map}}{Parameter mapping used.}
 }
 \if{html}{\out{</div>}}
 }
@@ -62,14 +94,30 @@ Create a new `Classic_Fit` object.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$new(
   model,
-  fit,
-  vcov = NULL,
+  par_vec = NULL,
+  par = NULL,
+  objective = NULL,
+  log_ml = NULL,
+  convergence = NULL,
+  sd_rep = NULL,
+  df_fixed = NULL,
+  random_effects = NULL,
+  df_transform = NULL,
+  df_generate = NULL,
+  opt_history = NULL,
+  transform = NULL,
+  generate = NULL,
+  se_samples = NULL,
   par_unc = NULL,
   vcov_unc = NULL,
-  se_method = "wald",
-  cluster = NULL,
+  ci_method = "wald",
+  laplace = TRUE,
+  map = NULL,
   test_results = list(),
-  view = NULL
+  view = NULL,
+  fit = NULL,
+  vcov = NULL,
+  ...
 )}\if{html}{\out{</div>}}
 }
 
@@ -78,21 +126,53 @@ Create a new `Classic_Fit` object.
 \describe{
 \item{\code{model}}{The `RTMB_Model` object.}
 
-\item{\code{fit}}{The result of the estimation.}
+\item{\code{par_vec}}{Numeric vector of parameter estimates.}
 
-\item{\code{vcov}}{Variance-covariance matrix of fixed effects.}
+\item{\code{par}}{List of parameter estimates.}
 
-\item{\code{par_unc}}{Numeric vector of unconstrained parameter estimates.}
+\item{\code{objective}}{Final objective value.}
 
-\item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
+\item{\code{log_ml}}{Log marginal likelihood.}
 
-\item{\code{se_method}}{Character; "wald", "robust", or "bootstrap".}
+\item{\code{convergence}}{Convergence code.}
 
-\item{\code{cluster}}{Character; cluster variable name.}
+\item{\code{sd_rep}}{TMB sdreport object.}
+
+\item{\code{df_fixed}}{Dataframe of fixed effects results.}
+
+\item{\code{random_effects}}{Dataframe of random effects results.}
+
+\item{\code{df_transform}}{Dataframe of transformed parameters.}
+
+\item{\code{df_generate}}{Dataframe of generated quantities.}
+
+\item{\code{opt_history}}{Dataframe of optimization history.}
+
+\item{\code{transform}}{List of transformed parameters.}
+
+\item{\code{generate}}{List of generated quantities.}
+
+\item{\code{se_samples}}{List of simulated samples for SE estimation.}
+
+\item{\code{par_unc}}{Parameter vector on unconstrained scale.}
+
+\item{\code{vcov_unc}}{Covariance matrix on unconstrained scale.}
+
+\item{\code{ci_method}}{Method used for CI estimation.}
+
+\item{\code{laplace}}{Whether Laplace approximation was used.}
+
+\item{\code{map}}{Parameter mapping used.}
 
 \item{\code{test_results}}{List of additional test results (e.g., chisq.test).}
 
 \item{\code{view}}{Character vector of parameter names to prioritize in summary.}
+
+\item{\code{fit}}{Legacy argument for backward compatibility (maps to df_fixed).}
+
+\item{\code{vcov}}{Variance-covariance matrix of parameters.}
+
+\item{\code{...}}{Additional arguments passed to the constructor.}
 }
 \if{html}{\out{</div>}}
 }

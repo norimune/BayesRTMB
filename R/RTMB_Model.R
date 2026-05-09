@@ -243,23 +243,7 @@ RTMB_Model <- R6::R6Class(
       # Step 1: Compute Hessian at optimum via Jacobian of analytical gradient
       # For marginal likelihood (Laplace), numerical differentiation on the gradient is most reliable
 
-      # Simple numerical Jacobian to avoid external package dependencies (e.g., numDeriv)
-      simple_jacobian <- function(f, x, h = 1e-4) {
-        p <- length(x)
-        f0 <- f(x)
-        res <- matrix(0, nrow = length(f0), ncol = p)
-        for (i in 1:p) {
-          h_i <- max(abs(x[i]), 1) * h
-          x_plus <- x
-          x_minus <- x
-          x_plus[i] <- x[i] + h_i
-          x_minus[i] <- x[i] - h_i
-          res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
-        }
-        return(res)
-      }
-
-      H0 <- tryCatch(simple_jacobian(ad_obj$gr, par), warning = function(w) NULL, error = function(e) NULL)
+      H0 <- tryCatch(private$.simple_jacobian(ad_obj$gr, par), warning = function(w) NULL, error = function(e) NULL)
 
       if (is.null(H0) || any(!is.finite(H0))) {
         warning("Hessian computation failed. Using normal approximation.")
@@ -284,8 +268,8 @@ RTMB_Model <- R6::R6Class(
         par_plus[k] <- par[k] + eps[k]
         par_minus[k] <- par[k] - eps[k]
 
-        H_plus <- tryCatch(simple_jacobian(ad_obj$gr, par_plus), warning = function(w) NULL, error = function(e) NULL)
-        H_minus <- tryCatch(simple_jacobian(ad_obj$gr, par_minus), warning = function(w) NULL, error = function(e) NULL)
+        H_plus <- tryCatch(private$.simple_jacobian(ad_obj$gr, par_plus), warning = function(w) NULL, error = function(e) NULL)
+        H_minus <- tryCatch(private$.simple_jacobian(ad_obj$gr, par_minus), warning = function(w) NULL, error = function(e) NULL)
 
         if (is.null(H_plus) || is.null(H_minus)) next
 
@@ -365,21 +349,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       # Covariance of variance components (theta)
-      simple_jacobian <- function(f, x, h = 1e-4) {
-        p <- length(x)
-        f0 <- f(x)
-        res <- matrix(0, nrow = length(f0), ncol = p)
-        for (i in 1:p) {
-          h_i <- max(abs(x[i]), 1e-4) * h
-          x_plus <- x_minus <- x
-          x_plus[i] <- x[i] + h_i
-          x_minus[i] <- x[i] - h_i
-          res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
-        }
-        return(res)
-      }
-
-      H_theta <- tryCatch(simple_jacobian(ad_obj$gr, opt_par), warning = function(w) NULL, error = function(e) NULL)
+      H_theta <- tryCatch(private$.simple_jacobian(ad_obj$gr, opt_par), warning = function(w) NULL, error = function(e) NULL)
       if (is.null(H_theta)) {
         return(rep(Inf, n_beta))
       }
@@ -515,18 +485,92 @@ RTMB_Model <- R6::R6Class(
     #' @param fixed Optional list specifying parameter values to fix.
     #' @param REML Logical; whether to use Restricted Maximum Likelihood (REML). Default is FALSE.
     #' @param df_pars Character vector of parameters to be treated as fixed effects for REML/DF calculation, or "auto". Default is "auto".
-    #' @return A fitted `MAP_Fit` object.
+    #' @param target_vars Character vector of parameters to remove priors from (internal use for classic mode).
+    #' @param is_classic Logical; whether this is a frequentist (classic) estimation. Default is FALSE.
+    #' @param .return_object Character; "MAP" or "Classic" fit object. Default is "MAP".
+    #' @param view Character vector of parameter names to prioritize in summary display.
+    #' @param views Alias for `view`.
+    #' @param ... Additional arguments passed to Classic_Fit constructor.
+    #' @return A fitted `MAP_Fit` or `Classic_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL, fixed = NULL, REML = FALSE, df_pars = "auto") {
+                        df = NULL, fixed = NULL, REML = FALSE, df_pars = "auto",
+                        target_vars = NULL, is_classic = FALSE, .return_object = "MAP",
+                        view = NULL, views = NULL, ...) {
+      if (is.null(view) && !is.null(views)) view <- views
+      
+      # --- Contrast Management ---
+      dot_args <- list(...)
+      requested_contrasts <- dot_args$contrasts
+      
+      if (!is.null(requested_contrasts)) {
+        old_contrasts <- options()$contrasts
+        on.exit(options(contrasts = old_contrasts), add = TRUE)
+        
+        if (requested_contrasts == "sum") {
+          options(contrasts = c("contr.sum", "contr.poly"))
+        } else if (requested_contrasts == "treatment") {
+          options(contrasts = c("contr.treatment", "contr.poly"))
+        }
+        self$contrasts <- requested_contrasts
+      } else if (!is.null(self$contrasts)) {
+        # モデルに既に記録されているコントラスト設定を適用
+        old_contrasts <- options()$contrasts
+        on.exit(options(contrasts = old_contrasts), add = TRUE)
+        if (self$contrasts == "sum") {
+          options(contrasts = c("contr.sum", "contr.poly"))
+        } else if (self$contrasts == "treatment") {
+          options(contrasts = c("contr.treatment", "contr.poly"))
+        }
+      }
+      
       if (!is.null(fixed)) {
         return(self$fixed_model(fixed)$optimize(
           laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
-          num_samples = num_samples, seed = seed, df = df, REML = REML, df_pars = df_pars
+          num_samples = num_samples, seed = seed, df = df, REML = REML, df_pars = df_pars,
+          target_vars = target_vars, is_classic = is_classic, .return_object = .return_object, 
+          view = view, ...
+        ))
+      }
+
+      # --- 0. Determine target variables for DF calculation ---
+      if (is.null(target_vars)) {
+        if (identical(df_pars, "auto")) {
+          if (!is.null(self$extra$df_pars)) {
+            target_vars <- self$extra$df_pars
+          } else {
+            # Default patterns for fixed effects
+            target_vars <- names(self$par_list)[sapply(names(self$par_list), function(n) {
+              p_info <- self$par_list[[n]]
+              is_fixed_name <- any(sapply(private$fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), n)))
+              is_unbounded <- identical(p_info$bounds, "none")
+              (is_fixed_name || is_unbounded) && !isTRUE(p_info$random)
+            })]
+          }
+        } else if (identical(df_pars, "none")) {
+          target_vars <- character(0)
+        } else if (identical(df_pars, "all")) {
+          target_vars <- names(self$par_list)
+        } else {
+          target_vars <- df_pars
+        }
+      }
+
+      # --- Classic Frequentist Mode Integration ---
+      if (isTRUE(is_classic)) {
+        # Create a prior-free model using null_model extension
+        model_obj <- self$null_model(target_vars = target_vars)
+        return(model_obj$optimize(
+          laplace = laplace, init = init, num_estimate = num_estimate, control = control,
+          optimizer = optimizer, method = method, map = map, se = se,
+          ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
+          num_samples = num_samples, seed = seed, df = df, REML = REML, df_pars = df_pars,
+          target_vars = target_vars, is_classic = FALSE, .return_object = "Classic", 
+          view = view, ...
         ))
       }
 
@@ -544,33 +588,14 @@ RTMB_Model <- R6::R6Class(
       obj_vals <- numeric(num_estimate)
       conv_codes <- numeric(num_estimate)
 
-      # --- 1. Determine target variables for DF calculation ---
-      if (identical(df_pars, "auto")) {
-        if (!is.null(self$extra$df_pars)) {
-          target_vars <- self$extra$df_pars
-        } else {
-          # Default to standard fixed effect names if no specific df_pars are provided
-          target_vars <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
-        }
-      } else if (identical(df_pars, "none")) {
-        target_vars <- character(0)
-      } else if (identical(df_pars, "all")) {
-        target_vars <- names(self$par_list)
-      } else {
-        target_vars <- df_pars
-      }
-
       # --- 2. Variable Classification for REML ---
       original_par_list <- self$par_list
       if (REML) {
-        fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
-        var_patterns <- c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr", "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau")
-
         modified_par_list <- self$par_list
         for (name in names(modified_par_list)) {
-          is_fix_pattern <- any(sapply(fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
+          is_fix_pattern <- any(sapply(private$fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
           is_target <- name %in% target_vars
-          is_var <- any(sapply(var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
+          is_var <- any(sapply(private$var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
           is_ran_original <- isTRUE(modified_par_list[[name]]$random)
 
           if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
@@ -695,7 +720,8 @@ RTMB_Model <- R6::R6Class(
       opt <- best_res$opt
       ad_obj$fn(opt$par)
 
-      sd_rep <- if (se) tryCatch(RTMB::sdreport(ad_obj), warning = function(w) NULL, error = function(e) NULL) else NULL
+      # REML時は結合精度行列を取得して、固定効果の分散を正確に計算できるようにする
+      sd_rep <- if (se) tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = REML), warning = function(w) NULL, error = function(e) NULL) else NULL
 
       unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE)
 
@@ -743,8 +769,6 @@ RTMB_Model <- R6::R6Class(
           idx_curr <- idx_curr + L_u
         }
       }
-
-      # Profile Likelihood CI calculation is now moved to $profile() method of MAP_Fit
 
       # --- Use optimization results for point estimates to prevent sdreport's Delta method bias ---
       unc_est_vec[idx_fix_active] <- opt$par
@@ -878,10 +902,6 @@ RTMB_Model <- R6::R6Class(
       con_se_list <- list()
       con_lower_list <- list()
       con_upper_list <- list()
-
-      samps_con <- list()
-      samps_tran <- list()
-      samps_gq <- list()
 
       samps_con <- list()
       samps_tran <- list()
@@ -1249,7 +1269,7 @@ RTMB_Model <- R6::R6Class(
           check.names  = FALSE
         )
         if (show_df) {
-          res_df$DF <- df_vec
+          res_df$df <- df_vec
         }
         rownames(res_df) <- names_vec
         return(res_df)
@@ -1344,11 +1364,9 @@ RTMB_Model <- R6::R6Class(
           }
         } else {
           smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), warning = function(w) NULL, error = function(e) NULL) else NULL
-
           se_out <- rep(NA_real_, L_out)
 
           if (!is.null(smry_rep_all) && nrow(smry_rep_all) > 0) {
-            # build_derived_df names_vec rule (using the already computed names_vec)
             # sdreportの結果と照合
             m_idx <- match(names_vec, rownames(smry_rep_all))
             valid_m <- !is.na(m_idx)
@@ -1417,7 +1435,7 @@ RTMB_Model <- R6::R6Class(
               }
             }
           }
-          df$DF <- derived_dfs
+          df$df <- derived_dfs
         }
         rownames(df) <- names_vec
         return(df)
@@ -1451,30 +1469,138 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      opt_history <- data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes)
+      # --- Final Fit Object Selection ---
+      # --- Final Fit Object Selection ---
+      if (.return_object == "Classic") {
+        test_results <- list()
+        if (!is.null(self$type) && self$type == "table") {
+          tab <- self$extra$tab
+          test_results$chisq <- stats::chisq.test(tab, correct = isTRUE(self$extra$correct))
+          test_results$fisher <- try(stats::fisher.test(tab), silent = TRUE)
+        }
 
-      res_obj <- MAP_Fit$new(
-        model          = self,
-        par_vec        = con_est_vec,
-        par            = con_est_list,
-        objective      = opt$objective,
-        log_ml         = log_ml,
-        convergence    = opt$convergence,
-        sd_rep         = sd_rep,
-        df_fixed       = df_fixed,
-        random_effects = df_random,
-        df_transform   = df_transform,
-        df_generate    = df_generate,
-        opt_history    = opt_history,
-        transform      = tran_list,
-        generate       = gq_list,
-        se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
-        par_unc        = unc_est_vec,
-        ci_method      = ci_method,
-        laplace        = laplace,
-        map            = target_map,
-        vcov_unc       = Cov_u
-      )
+        # クラシックモード用の分散共分散行列（V）の取得
+        V_fixed_full <- NULL
+        cat(sprintf("\nDEBUG: REML=%s, has_sd_rep=%s, has_jointPrec=%s\n", 
+                    REML, !is.null(sd_rep), !is.null(sd_rep$jointPrecision)))
+        if (REML && !is.null(sd_rep) && !is.null(sd_rep$jointPrecision)) {
+           # REML時は結合精度行列の逆行列から抽出（固定効果は内部的にrandom扱い）
+           H_joint <- sd_rep$jointPrecision
+           V_joint <- tryCatch(as.matrix(solve(H_joint)), error = function(e) as.matrix(MASS::ginv(as.matrix(H_joint))))
+           
+           # 14x14 の空の行列を作成
+           V_fixed_full <- matrix(0, nrow = nrow(df_fixed), ncol = nrow(df_fixed))
+           rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
+           
+           # 1. 係数ブロック (12x12) の埋め込み
+           # target_vars に一致するものを jointPrecision から取得
+           all_ran_names <- names(sd_rep$par.random)
+           idx_in_joint <- c()
+           for (nm in target_vars) {
+             idx_in_joint <- c(idx_in_joint, which(all_ran_names == nm))
+           }
+           
+           # df_fixed 内で係数に対応する行を特定
+           # (df_fixed の名前は Intercept, b[b1] などになっている)
+           fe_names_in_df <- rownames(df_fixed)
+           idx_in_df_fe <- c()
+           for (nm in target_vars) {
+             # 前方一致または完全一致で検索
+             idx_in_df_fe <- c(idx_in_df_fe, grep(paste0("^", nm, "(\\[|$)"), fe_names_in_df))
+           }
+           
+           if (length(idx_in_joint) > 0 && length(idx_in_joint) == length(idx_in_df_fe)) {
+             V_fixed_full[idx_in_df_fe, idx_in_df_fe] <- V_joint[idx_in_joint, idx_in_joint]
+           }
+           
+           # 2. 分散パラメータブロック (2x2) の埋め込み
+           # 係数でない行を分散パラメータとみなす
+           idx_in_df_var <- setdiff(1:nrow(df_fixed), idx_in_df_fe)
+           if (length(idx_in_df_var) > 0 && !is.null(sd_rep$cov.fixed)) {
+             # TMBの cov.fixed は分散パラメータの共分散行列
+             V_fixed_full[idx_in_df_var, idx_in_df_var] <- sd_rep$cov.fixed
+           }
+        }
+        
+        # REMLでない場合や上記で取得できなかった場合は、デルタ法またはsdreport$cov.fixedを使用
+        if (is.null(V_fixed_full)) {
+          L_fixed <- nrow(df_fixed)
+          L_u_total <- length(unc_est_vec)
+          J_fixed <- matrix(0, nrow = L_fixed, ncol = L_u_total)
+          eps_diff <- 1e-5
+          base_fixed_vec <- df_fixed$Estimate
+          
+          for (i in 1:L_u_total) {
+            u_tmp <- unc_est_vec
+            u_tmp[i] <- u_tmp[i] + eps_diff
+            tmp_unc_list <- unconstrained_vector_to_list(u_tmp, self$par_list)
+            tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
+            
+            tmp_vec <- c()
+            for (name in names(self$par_list)) {
+              if (!isTRUE(self$par_list[[name]]$random)) {
+                tmp_vec <- c(tmp_vec, as.numeric(tmp_con_list[[name]]))
+              }
+            }
+            if (length(tmp_vec) == L_fixed) {
+              J_fixed[, i] <- (tmp_vec - base_fixed_vec) / eps_diff
+            }
+          }
+          V_fixed_full <- J_fixed %*% Cov_u %*% t(J_fixed)
+          rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
+        }
+
+        # クラシックモードでも、MAP_Fitと同じデータ構造を保持することで次元不整合を回避
+        res_obj <- Classic_Fit$new(
+          model          = self,
+          par_vec        = con_est_vec,
+          par            = con_est_list,
+          objective      = opt$objective,
+          log_ml         = log_ml,
+          convergence    = opt$convergence,
+          sd_rep         = sd_rep,
+          df_fixed       = df_fixed,
+          random_effects = df_random,
+          df_transform   = df_transform,
+          df_generate    = df_generate,
+          opt_history    = data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes),
+          transform      = tran_list,
+          generate       = gq_list,
+          se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
+          par_unc        = unc_est_vec,
+          vcov_unc       = Cov_u,
+          ci_method      = ci_method,
+          laplace        = laplace,
+          map            = target_map,
+          test_results   = test_results,
+          view           = view,
+          vcov           = V_fixed_full,
+          ...
+        )
+      } else {
+        res_obj <- MAP_Fit$new(
+          model          = self,
+          par_vec        = con_est_vec,
+          par            = con_est_list,
+          objective      = opt$objective,
+          log_ml         = log_ml,
+          convergence    = opt$convergence,
+          sd_rep         = sd_rep,
+          df_fixed       = df_fixed,
+          random_effects = df_random,
+          df_transform   = df_transform,
+          df_generate    = df_generate,
+          opt_history    = data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes),
+          transform      = tran_list,
+          generate       = gq_list,
+          se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
+          par_unc        = unc_est_vec,
+          ci_method      = ci_method,
+          laplace        = laplace,
+          map            = target_map,
+          vcov_unc       = Cov_u
+        )
+      }
 
       return(res_obj)
     },
@@ -1488,432 +1614,16 @@ RTMB_Model <- R6::R6Class(
     #' @param views Alias for \code{view}.
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
+    #' @param ... Additional arguments passed to $optimize() (e.g. contrasts = "sum").
     #' @return A `Classic_Fit` object.
-    classic = function(df = "auto", df_pars = "auto", REML = TRUE, view = NULL, views = NULL, map = NULL, fixed = NULL) {
-      if (!is.null(fixed)) {
-        return(self$fixed_model(fixed)$classic(
-          df = df, df_pars = df_pars, REML = REML, view = view, views = views, map = map
-        ))
-      }
+    classic = function(df = "auto", df_pars = "auto", REML = TRUE, view = NULL, views = NULL, map = NULL, fixed = NULL, ...) {
       if (is.null(view) && !is.null(views)) view <- views
-
-      # --- 1. Determine target variables for DF calculation ---
-      if (identical(df_pars, "auto")) {
-        if (!is.null(self$extra$df_pars)) {
-          target_vars <- self$extra$df_pars
-        } else {
-          # Default patterns for fixed effects
-          fix_vars_default <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
-          target_vars <- names(self$par_list)[sapply(names(self$par_list), function(n) {
-            p_info <- self$par_list[[n]]
-            is_fixed_name <- any(sapply(fix_vars_default, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), n)))
-            is_unbounded <- identical(p_info$bounds, "none")
-
-            # Target if it's a known fixed name OR if it has no bounds (and is not already marked as random)
-            (is_fixed_name || is_unbounded) && !isTRUE(p_info$random)
-          })]
-        }
-      } else if (identical(df_pars, "none")) {
-        target_vars <- character(0)
-      } else if (identical(df_pars, "all")) {
-        target_vars <- names(self$par_list)
-      } else {
-        target_vars <- df_pars
-      }
-
-      # --- 2. Variable Classification for REML/ML Pipeline ---
-      # Standard fixed effect patterns
-      fix_patterns <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
-      # Standard variance/shape component patterns (never random)
-      var_patterns <- c(
-        "sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr",
-        "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau"
-      )
-
-      modified_par_list <- self$par_list
-      for (name in names(modified_par_list)) {
-        # Check if the parameter is a known fixed effect or explicitly targeted for DF
-        is_fix_pattern <- any(sapply(fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
-        is_target <- name %in% target_vars
-        is_var <- any(sapply(var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
-        is_ran_original <- isTRUE(modified_par_list[[name]]$random)
-
-        if (REML) {
-          # REML: Integrate out original random effects AND fixed effects
-          if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
-            modified_par_list[[name]]$random <- TRUE
-          } else {
-            modified_par_list[[name]]$random <- FALSE
-          }
-        } else {
-          # ML: Integrate out only original random effects
-          if (is_ran_original) {
-            modified_par_list[[name]]$random <- TRUE
-          } else {
-            modified_par_list[[name]]$random <- FALSE
-          }
-        }
-      }
-
-      # --- 3. Additional test results and diagnostics ---
-      test_results <- list()
-      if (!is.null(self$data$prior$type) && self$data$prior$type != "uniform") {
-        warning("Prior distributions are specified. The results are based on Regularized Maximum Likelihood and should be interpreted with caution.", call. = FALSE)
-      }
-
-      if (!is.null(self$type)) {
-        if (self$type == "table") {
-          tab <- self$extra$tab
-          test_results$chisq <- stats::chisq.test(tab, correct = isTRUE(self$extra$correct))
-          test_results$fisher <- try(stats::fisher.test(tab), silent = TRUE)
-        }
-      }
-
-      original_par_list <- self$par_list
-      self$par_list <- modified_par_list
-      on.exit(
-        {
-          self$par_list <- original_par_list
-        },
-        add = TRUE
-      )
-
-      laplace_flag <- REML || any(sapply(modified_par_list, function(x) isTRUE(x$random)))
-
-      ad_setup <- tryCatch(self$build_ad_obj(laplace = laplace_flag, jacobian_target = "none"),
-        error = function(e) stop("MakeADFun failed: ", e$message)
-      )
-      ad_obj <- ad_setup$ad_obj
-
-      if (length(ad_obj$par) > 0) {
-        opt <- tryCatch(suppressWarnings(nlminb(start = ad_obj$par, objective = ad_obj$fn, gradient = ad_obj$gr)),
-          error = function(e) stop("Optimization failed: ", e$message)
-        )
-      } else {
-        opt <- list(par = numeric(0), objective = ad_obj$fn(numeric(0)), convergence = 0)
-      }
-
-      L_u_total <- length(ad_obj$env$last.par)
-      est_dfs_all <- rep(if (is.numeric(df)) df[1] else Inf, L_u_total)
-
-      if (identical(df, "auto") && length(target_vars) > 0) {
-        # (A) ML 等で最適化対象となる固定効果の DF
-        idx_fix_active <- ad_obj$env$lfixed()
-        est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
-
-        # (B) REML 等でランダム効果と共に積分消去された固定効果の DF
-        if (length(ad_obj$env$random) > 0) {
-          full_par_names <- names(ad_obj$env$last.par)
-          target_full_idx <- which(full_par_names %in% target_vars)
-
-          # ランダム効果ベクトルに対する相対インデックスに変換
-          idx_ran <- ad_obj$env$random
-          target_ran_idx <- match(target_full_idx, idx_ran)
-
-          # 最適化対象外を除外
-          valid_mask <- !is.na(target_ran_idx)
-          target_ran_idx <- target_ran_idx[valid_mask]
-          valid_full_idx <- target_full_idx[valid_mask]
-
-          if (length(target_ran_idx) > 0) {
-            reml_dfs <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx)
-            est_dfs_all[valid_full_idx] <- if (is.list(reml_dfs)) reml_dfs$df else reml_dfs
-          }
-        }
-        ad_obj$fn(opt$par)
-      }
-
-      sd_rep <- tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = laplace_flag), error = function(e) stop("sdreport failed: ", e$message))
-
-      # 派生パラメータ計算用の推定値リストを作成
-      unc_est_vec <- ad_obj$env$last.par
-      unc_est_list <- unconstrained_vector_to_list(unc_est_vec, self$par_list)
-      con_est_list <- to_constrained(unc_est_list, self$par_list)
-
-      smry_fix <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "fixed"))), warning = function(w) data.frame(), error = function(e) data.frame())
-      smry_ran <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "random"))), warning = function(w) data.frame(), error = function(e) data.frame())
-      smry_rep <- tryCatch(as.data.frame(suppressWarnings(summary(sd_rep, select = "report"))), warning = function(w) data.frame(), error = function(e) data.frame())
-
-      idx_fix <- ad_obj$env$lfixed()
-      idx_ran <- ad_obj$env$random
-      if (nrow(smry_fix) > 0) smry_fix$df <- if (length(idx_fix) == nrow(smry_fix)) est_dfs_all[idx_fix] else Inf
-      if (nrow(smry_ran) > 0) smry_ran$df <- if (length(idx_ran) == nrow(smry_ran)) est_dfs_all[idx_ran] else Inf
-
-      # --- 推定対象の固定効果インデックスの特定 (Mapを考慮) ---
-      target_map <- self$map
-      idx_fix_active <- integer(0)
-      factor_levels_seen <- list()
-      opt_par_curr <- 1
-      idx_curr <- 1
-
-      for (name in names(self$par_list)) {
-        L_u_sub <- self$par_list[[name]]$unc_length
-        if (L_u_sub > 0) {
-          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-          for (i in 1:L_u_sub) {
-            pos_last <- idx_curr + i - 1
-            # Skip if random effect and NOT using joint covariance
-            if (!laplace_flag && (pos_last %in% idx_ran)) next
-            if (!is.null(map_f) && is.na(map_f[i])) next
-            if (!is.null(map_f)) {
-              lvl <- as.character(map_f[i])
-              if (!(lvl %in% names(factor_levels_seen))) {
-                factor_levels_seen[[lvl]] <- opt_par_curr
-                idx_fix_active <- c(idx_fix_active, pos_last)
-                opt_par_curr <- opt_par_curr + 1
-              }
-            } else {
-              idx_fix_active <- c(idx_fix_active, pos_last)
-              opt_par_curr <- opt_par_curr + 1
-            }
-          }
-          idx_curr <- idx_curr + L_u_sub
-        }
-      }
-
-      V_joint <- NULL
-      if (laplace_flag && !is.null(sd_rep$jointPrecision)) {
-        V_joint <- tryCatch(as.matrix(solve(sd_rep$jointPrecision)), warning = function(w) NULL, error = function(e) NULL)
-      } else if (!is.null(sd_rep$cov.fixed)) {
-        V_joint <- sd_rep$cov.fixed
-      }
-
-      L_u_total <- length(unc_est_vec)
-      Cov_u_full <- matrix(0, L_u_total, L_u_total)
       
-      if (!is.null(V_joint) && length(idx_fix_active) == nrow(V_joint)) {
-        Cov_u_full[idx_fix_active, idx_fix_active] <- V_joint
-        
-        # 重複パラメータ（Mapによる共有）への共分散のコピー
-        idx_curr <- 1
-        for (name in names(self$par_list)) {
-          L_u_sub <- self$par_list[[name]]$unc_length
-          if (L_u_sub > 0) {
-            map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-            for (i in 1:L_u_sub) {
-              pos_last <- idx_curr + i - 1
-              if (!laplace_flag && (pos_last %in% idx_ran)) next
-              if (!is.null(map_f) && !is.na(map_f[i])) {
-                lvl <- as.character(map_f[i])
-                mapped_opt_idx <- factor_levels_seen[[lvl]]
-                if (!is.null(mapped_opt_idx)) {
-                  active_idx <- idx_fix_active[mapped_opt_idx]
-                  Cov_u_full[pos_last, pos_last] <- Cov_u_full[active_idx, active_idx]
-                }
-              }
-            }
-            idx_curr <- idx_curr + L_u_sub
-          }
-        }
-      }
-
-      build_derived_df <- function(func, base_out, is_generate = FALSE) {
-        if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
-        eps_diff <- 1e-5
-        flat_base <- unlist(base_out, use.names = FALSE)
-        L_out <- length(flat_base)
-        u_base <- unc_est_vec
-        L_u_total <- length(u_base)
-
-        calc_derived <- function(u) {
-          tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
-          tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
-          if (is_generate && !is.null(self$transform)) {
-            user_tran <- tryCatch(self$transform(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
-            if (!is.null(user_tran)) tmp_con_list <- utils::modifyList(tmp_con_list, user_tran)
-          }
-          tryCatch(func(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
-        }
-
-        # ヤコビアンの計算
-        J <- matrix(0, nrow = L_out, ncol = L_u_total)
-        for (i in 1:L_u_total) {
-          if (i %in% idx_fix_active || (L_u_total < 50)) { # 高速化のため推定対象のみ、または小規模モデルのみ計算
-            u_tmp <- u_base; u_tmp[i] <- u_tmp[i] + eps_diff
-            tmp_out <- calc_derived(u_tmp)
-            if (!is.null(tmp_out)) {
-              out_flat <- unlist(tmp_out, use.names = FALSE)
-              diff_val <- out_flat - flat_base
-              J[, i] <- diff_val / eps_diff
-            }
-          }
-        }
-
-        # デルタ法によるSE計算
-        se_out <- rep(NA_real_, L_out)
-        for (j in 1:L_out) {
-          v_val <- sum((J[j, ] %*% Cov_u_full) * J[j, ])
-          if (!is.na(v_val) && v_val > 0) se_out[j] <- sqrt(v_val) else se_out[j] <- 0
-        }
-
-        # 名前付きデータフレームの構築
-        res_names <- c()
-        for (name in names(base_out)) {
-          val <- base_out[[name]]
-          d_val <- if (is.null(dim(val))) length(val) else dim(val)
-          names_def <- self$par_names[[name]]
-          if (length(d_val) == 2 && is.character(names_def) && length(names_def) == d_val[1]) {
-             names_def <- list(names_def, names_def)
-          }
-          res_names <- c(res_names, generate_flat_names(name, d_val, names_def))
-        }
-        
-        data.frame(
-          Estimate = flat_base,
-          `Std. Error` = se_out,
-          df = Inf,
-          row.names = res_names,
-          check.names = FALSE
-        )
-      }
-
-      # generate/transform ブロックの処理
-      has_derived <- !is.null(self$transform) || !is.null(self$generate)
-      if (has_derived) {
-        tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), warning = function(w) NULL, error = function(e) NULL) else NULL
-        gen_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, c(con_est_list, tran_list)), warning = function(w) NULL, error = function(e) NULL) else NULL
-        all_derived <- c(tran_list, gen_list)
-
-        if (length(all_derived) > 0) {
-          df_calc <- build_derived_df(function(d, p) {
-            t_list <- if (!is.null(self$transform)) tryCatch(self$transform(d, p), warning = function(w) NULL, error = function(e) NULL) else NULL
-            g_list <- if (!is.null(self$generate)) tryCatch(self$generate(d, c(p, t_list)), warning = function(w) NULL, error = function(e) NULL) else NULL
-            c(t_list, g_list)
-          }, all_derived, is_generate = TRUE)
-          if (!is.null(df_calc)) {
-            if (nrow(smry_rep) > 0) {
-              smry_rep$df <- Inf
-              extra_idx <- which(!(rownames(df_calc) %in% rownames(smry_rep)))
-              if (length(extra_idx) > 0) smry_rep <- rbind(smry_rep, df_calc[extra_idx, , drop = FALSE])
-            } else {
-              smry_rep <- df_calc
-            }
-          }
-        }
-      }
-
-      # =====================================================================
-      # 2. フィルタリングと結合
-      # =====================================================================
-      df_combined <- rbind(smry_fix, smry_ran, smry_rep)
-
-      par_names_all <- names(self$par_list)
-      if (nrow(df_combined) > 0) {
-        rep_names_base <- gsub("\\.[0-9]+$", "", rownames(df_combined))
-        keep_rep <- rep(TRUE, nrow(df_combined))
-        # ここで不要なパラメータ（ identity correlation等）をフィルタリングするロジックがあれば追加可能
-      }
-
-      # =====================================================================
-      # 3. 名前の正規化
-      # =====================================================================
-      base_names <- gsub("\\.[0-9]+$", "", rownames(df_combined))
-      base_names[base_names == "(Intercept)"] <- "Intercept"
-
-      for (n in unique(base_names)) {
-        idx <- which(base_names == n)
-        if (length(idx) > 1) {
-           # すでにブラケットがある場合はそのまま、ない場合は連番
-           if (!any(grepl("\\[", base_names[idx]))) {
-              base_names[idx] <- paste0(n, "[", seq_along(idx), "]")
-           }
-        }
-      }
-
-      if (!is.null(self$par_names)) {
-        for (p in names(self$par_names)) {
-          idx <- which(grepl(paste0("^", p, "($|\\[)"), base_names))
-          if (length(idx) > 0) {
-            labels <- self$par_names[[p]]
-            if (is.list(labels)) {
-               # 行列などの多次元ラベルは generate_flat_names で処理済みのはずなのでスキップ
-            } else {
-              for (j in seq_along(idx)) {
-                if (j <= length(labels)) base_names[idx[j]] <- paste0(p, "[", labels[j], "]")
-              }
-            }
-          }
-        }
-      }
-      rownames(df_combined) <- make.unique(base_names)
-
-      # =====================================================================
-      # 4 & 5. 統計量の計算と信頼区間の構築
-      # =====================================================================
-      df_combined$`t value` <- df_combined$Estimate / pmax(df_combined$`Std. Error`, 1e-12)
-      df_combined$Pr <- 2 * pt(-abs(df_combined$`t value`), df = pmax(df_combined$df, 1e-6))
-      df_combined$`Lower 95%` <- df_combined$Estimate + qt(0.025, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
-      df_combined$`Upper 95%` <- df_combined$Estimate + qt(0.975, df = pmax(df_combined$df, 1e-6)) * df_combined$`Std. Error`
-
-      # 制約のあるパラメータ（sigma等）の統計量再計算
-      for (name in names(self$par_list)) {
-        p_info <- self$par_list[[name]]
-        row_indices <- which(grepl(paste0("^", name, "($|\\[)"), rownames(df_combined)))
-
-        if (length(row_indices) > 0 && length(row_indices) == p_info$length) {
-          lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
-          upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
-
-          u <- df_combined$Estimate[row_indices]
-          se_u <- df_combined$`Std. Error`[row_indices]
-          df_val <- pmax(df_combined$df[row_indices], 1e-6)
-
-          crit <- qt(0.975, df = df_val)
-          low_u <- u - crit * se_u
-          up_u <- u + crit * se_u
-
-          if (all(is.infinite(upper)) && any(is.finite(lower))) {
-            # 対数変換（sigmaなど）
-            u_null <- if (lower < 0) log(-lower) else NA
-            df_combined$Estimate[row_indices] <- exp(u) + lower
-            df_combined$`Std. Error`[row_indices] <- exp(u) * se_u
-            df_combined$`Lower 95%`[row_indices] <- exp(low_u) + lower
-            df_combined$`Upper 95%`[row_indices] <- exp(up_u) + lower
-            
-            t_val <- (u - u_null) / pmax(se_u, 1e-12)
-            df_combined$`t value`[row_indices] <- t_val
-            df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
-          } else if (any(is.finite(lower)) && any(is.finite(upper))) {
-            # ロジット変換
-            p_null <- -lower / (upper - lower)
-            u_null <- if (p_null > 0 && p_null < 1) log(p_null / (1 - p_null)) else NA
-            il <- function(v) 1 / (1 + exp(-v))
-            df_combined$Estimate[row_indices] <- lower + (upper - lower) * il(u)
-            df_combined$`Std. Error`[row_indices] <- (upper - lower) * il(u) * (1 - il(u)) * se_u
-            c_low <- lower + (upper - lower) * il(low_u)
-            c_up <- lower + (upper - lower) * il(up_u)
-            df_combined$`Lower 95%`[row_indices] <- pmin(c_low, c_up)
-            df_combined$`Upper 95%`[row_indices] <- pmax(c_low, c_up)
-            
-            t_val <- (u - u_null) / pmax(se_u, 1e-12)
-            df_combined$`t value`[row_indices] <- t_val
-            df_combined$Pr[row_indices] <- 2 * pt(-abs(t_val), df = df_val)
-          }
-        }
-      }
-
-
-      # =====================================================================
-      # 6. メタデータの記録と表示順序
-      # =====================================================================
-      if (is.null(self$extra)) self$extra <- list()
-      self$extra$loglik <- -opt$objective
-      self$extra$df <- length(opt$par)
-      self$extra$nobs <- if (!is.null(self$data$N)) self$data$N else if (!is.null(self$data$Y)) length(self$data$Y) else NA
-
-      if (nrow(df_combined) > 0) {
-        view_to_use <- if (!is.null(view)) view else if (!is.null(self$view)) self$view else c("Intercept", "b", "tau", "sigma", "sd", "rho", "r_re")
-
-        row_names <- rownames(df_combined)
-        ordered_idx <- unlist(lapply(view_to_use, function(v) which(grepl(paste0("^", v, "($|\\[|\\.)"), row_names))))
-        ordered_idx <- unique(ordered_idx)
-
-        final_idx <- c(ordered_idx, setdiff(seq_len(nrow(df_combined)), ordered_idx))
-        df_combined <- df_combined[final_idx, , drop = FALSE]
-      }
-
-      res <- Classic_Fit$new(self, df_combined, vcov = V_joint, par_unc = unc_est_vec, vcov_unc = Cov_u_full, test_results = test_results, view = view)
-      return(res)
+      # Use the main optimization engine for all frequentist inference
+      return(self$optimize(
+        is_classic = TRUE, df = df, df_pars = df_pars, REML = REML,
+        view = view, map = map, fixed = fixed, .return_object = "Classic", ...
+      ))
     },
 
     # 4. MCMC NUTS Sampling Method
@@ -2774,11 +2484,25 @@ RTMB_Model <- R6::R6Class(
       return(new_model)
     },
 
-    #' @description Create a null model by fixing specified parameters to a given value.
-    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]") to automatically extract the prior from the model code.
+    #' @description Create a null model by fixing specified parameters to a given value, or by removing priors for frequentist inference.
+    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]").
     #' @param value Numeric value to fix parameters to. Default is 0.
-    #' @return A new RTMB_Model object with the specified parameters fixed.
-    null_model = function(target, value = 0) {
+    #' @param target_vars Character vector of parameter names to remove priors from (for frequentist inference).
+    #' @return A new RTMB_Model object.
+    null_model = function(target = NULL, value = 0, target_vars = NULL) {
+      # --- 0. Handle multiple target_vars (Frequentist mode) ---
+      if (!is.null(target_vars)) {
+        new_model <- self$clone()
+        if (!is.null(self$code)) {
+          new_model$code <- as.list(self$code)
+          for (v in target_vars) {
+            # Note: v is expected to be a base parameter name
+            new_model$code$model <- remove_prior_from_ast(new_model$code$model, v, self$par_names[[v]])
+          }
+        }
+        return(new_model)
+      }
+
       # --- 1. Input validation and auto-completion ---
       # Check if it is a string
       if (!is.character(target) || length(target) != 1) {
@@ -3312,9 +3036,23 @@ RTMB_Model <- R6::R6Class(
   ),
 
   private = list(
+    .simple_jacobian = function(f, x, h = 1e-4) {
+      p <- length(x)
+      f0 <- f(x)
+      res <- matrix(0, nrow = length(f0), ncol = p)
+      for (i in 1:p) {
+        h_i <- max(abs(x[i]), 1e-4) * h
+        x_plus <- x
+        x_minus <- x
+        x_plus[i] <- x[i] + h_i
+        x_minus[i] <- x[i] - h_i
+        res[, i] <- (f(x_plus) - f(x_minus)) / (2 * h_i)
+      }
+      return(res)
+    },
     # --- Common patterns for REML and parameter classification ---
     fix_patterns = c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff"),
-    var_patterns = c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr", "cov", "CF_cov", "phi", "tau", "theta", "alpha", "omega", "kappa", "lambda"),
+    var_patterns = c("sigma", "sd", "rho", "rho_resid", "L_resid", "corr", "CF_corr", "cov", "CF_cov", "cutpoints", "shape", "phi", "nu", "z", "lambda", "tau", "theta", "alpha", "omega", "kappa"),
 
     # --- Internal helper for index computation ---
     .compute_active_indices = function(target_map = NULL) {

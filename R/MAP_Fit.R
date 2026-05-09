@@ -101,7 +101,7 @@ MAP_Fit <- R6::R6Class(
        }
        
        # Strict filtering to remove any metadata column names that might have leaked
-       metadata_names <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%", "DF", "t value", "Pr")
+       metadata_names <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%", "df", "t value", "Pr")
        res <- res[!(names(res) %in% metadata_names)]
        
        return(select_parameters(res, pars))
@@ -370,7 +370,7 @@ MAP_Fit <- R6::R6Class(
       
       # Ensure consistent column ordering for readability (support both DF and df)
       # Order: Estimate, Std. Error, [CIs], DF/df, [Other]
-      desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%", "DF", "df")
+      desired_order <- c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "Lower 2.5%", "Upper 97.5%", "df")
       current_names <- colnames(df_display)
       order_to_use <- intersect(desired_order, current_names)
       other_names <- setdiff(current_names, desired_order)
@@ -447,7 +447,7 @@ MAP_Fit <- R6::R6Class(
           if (!is.null(target_df)) {
             est <- target_df[p_name, "Estimate"]
             se <- target_df[p_name, "Std. Error"]
-            df_val <- if ("DF" %in% colnames(target_df)) target_df[p_name, "DF"] else 1e6
+            df_val <- if ("df" %in% colnames(target_df)) target_df[p_name, "df"] else 1e6
             
             if (!is.na(se) && se > 0) {
               post_log_dens <- if (df_val < 100000) {
@@ -492,7 +492,7 @@ MAP_Fit <- R6::R6Class(
               se_unc <- sqrt(pmax(self$vcov_unc[u_idx, u_idx], 0))
               
               if (!is.na(se_unc) && se_unc > 0) {
-                df_val <- if (p_name %in% rownames(self$df_fixed)) self$df_fixed[p_name, "DF"] else 1e6
+                df_val <- if (p_name %in% rownames(self$df_fixed)) self$df_fixed[p_name, "df"] else 1e6
                 if (is.null(df_val) || is.na(df_val) || is.infinite(df_val)) df_val <- 1e6
                 
                 # Convert null to u_null
