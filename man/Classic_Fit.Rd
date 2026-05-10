@@ -352,7 +352,7 @@ A data frame containing the ANOVA table.
 Calculate Least Squares Means (Marginal Means) and contrasts.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$lsmeans(
-  specs,
+  specs = NULL,
   pairwise = FALSE,
   simple = NULL,
   adjust = "holm",

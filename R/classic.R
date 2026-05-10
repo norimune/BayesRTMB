@@ -1138,7 +1138,7 @@ Classic_Fit <- R6::R6Class(
       mf_orig <- model.frame(nobars(formula), data)
       orig_terms <- delete.response(terms(mf_orig))
 
-      ct_setting <- if (!is.null(self$model$obj$contrasts)) self$model$obj$contrasts else "sum"
+      ct_setting <- if (!is.null(self$model$contrasts)) self$model$contrasts else "sum"
       ct_list <- list()
       for (v in cat_vars) {
         ct_list[[v]] <- if (ct_setting == "treatment") "contr.treatment" else "contr.sum"
@@ -1150,12 +1150,18 @@ Classic_Fit <- R6::R6Class(
       orig_cols <- self$model$extra$X_colnames
       if (!is.null(orig_cols)) {
         grid_cols <- colnames(X_grid_raw)
+        # Normalize BOTH to 'Intercept' for matching
         grid_cols[grid_cols == "(Intercept)"] <- "Intercept"
-        col_idx <- match(orig_cols, colnames(X_grid_raw))
-        if (any(is.na(col_idx)) && "Intercept" %in% orig_cols) {
-           col_idx[orig_cols == "Intercept"] <- which(colnames(X_grid_raw) == "(Intercept)")
+        orig_cols_norm <- orig_cols
+        orig_cols_norm[orig_cols_norm == "(Intercept)"] <- "Intercept"
+        
+        col_idx <- match(orig_cols_norm, grid_cols)
+        if (any(is.na(col_idx))) {
+          missing_cols <- orig_cols[is.na(col_idx)]
+          stop(sprintf("Could not match lsmeans grid columns.\nMissing from grid: %s\nAvailable in grid: %s", 
+                       paste(missing_cols, collapse = ", "), 
+                       paste(grid_cols, collapse = ", ")), call. = FALSE)
         }
-        if (any(is.na(col_idx))) stop("Could not match lsmeans grid columns with original model parameters.")
         X_grid <- X_grid_raw[, col_idx, drop = FALSE]
       } else {
         X_grid <- X_grid_raw
