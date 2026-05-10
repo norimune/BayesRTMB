@@ -415,6 +415,7 @@ RTMB_Model <- R6::R6Class(
     #' }
     #' Default is "all".
     #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
+    #' @param .marginal_vars Internal use for profiling marginalized parameters.
     #' @return An RTMB objective object (ad_obj).
     build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL, .marginal_vars = NULL) {
       random_effs <- if (!is.null(.marginal_vars)) .marginal_vars else names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
@@ -2757,6 +2758,7 @@ RTMB_Model <- R6::R6Class(
     #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]").
     #' @param value Numeric value to fix parameters to. Default is 0.
     #' @param target_vars Character vector of parameter names to remove priors from (for frequentist inference).
+    #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
     #' @return A new RTMB_Model object.
     null_model = function(target = NULL, value = 0, target_vars = NULL, silent = FALSE) {
       # --- 0. Handle multiple target_vars (Frequentist mode) ---
