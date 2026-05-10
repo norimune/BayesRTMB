@@ -778,7 +778,7 @@ RTMB_Model <- R6::R6Class(
         cat("\n")
       }
 
-      ad_obj <- best_res$ad_obj
+        ad_obj <- best_res$ad_obj
       opt <- best_res$opt
       ad_obj$fn(opt$par)
 
@@ -794,11 +794,14 @@ RTMB_Model <- R6::R6Class(
 
       target_map <- if (!is.null(map)) map else self$map
 
-      # Construct accurate indices of 'active fixed parameters' estimated by TMB
+      # We need to track the active index in 'last.par' (which excludes mapped elements)
+      # to match it with 'idx_ran'.
       idx_fix_active <- integer(0)
+      idx_ran_full <- integer(0)
       factor_levels_seen <- list()
-      opt_par_curr <- 1
-      idx_curr <- 1
+      opt_par_curr <- 1    # Current index in opt$par (active fixed effects only)
+      idx_mapped_curr <- 1 # Current index in last.par (active fixed + active random)
+      idx_full_curr <- 1   # Current index in unc_est_vec (all parameters including fixed)
 
       for (name in names(self$par_list)) {
         L_u <- self$par_list[[name]]$unc_length
@@ -806,29 +809,40 @@ RTMB_Model <- R6::R6Class(
           map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
 
           for (i in 1:L_u) {
-            pos_last <- idx_curr + i - 1
+            pos_full <- idx_full_curr + i - 1
+            
+            # 1. Skip if mapped to NA (not in last.par at all)
+            if (!is.null(map_f) && is.na(map_f[i])) {
+                # This element is skipped in TMB's AD tape
+                next
+            }
 
-            # Skip if random effect as it's not a fixed parameter
-            if (pos_last %in% idx_ran) next
+            # 2. Check if this is a random effect (using the shifted idx_mapped_curr)
+            if (idx_mapped_curr %in% idx_ran) {
+                # It's a random effect.
+                idx_ran_full <- c(idx_ran_full, pos_full)
+                idx_mapped_curr <- idx_mapped_curr + 1
+                next
+            }
 
-            # Skip if mapped to NA (fixed)
-            if (!is.null(map_f) && is.na(map_f[i])) next
-
+            # 3. It's an active fixed parameter (estimated in opt$par)
             if (!is.null(map_f)) {
               # Handling duplicate mappings to the same value (add only the first time)
               lvl <- as.character(map_f[i])
               if (!(lvl %in% names(factor_levels_seen))) {
                 factor_levels_seen[[lvl]] <- opt_par_curr
-                idx_fix_active <- c(idx_fix_active, pos_last)
+                idx_fix_active <- c(idx_fix_active, pos_full)
                 opt_par_curr <- opt_par_curr + 1
               }
             } else {
               # No mapping (normal active parameter)
-              idx_fix_active <- c(idx_fix_active, pos_last)
+              idx_fix_active <- c(idx_fix_active, pos_full)
               opt_par_curr <- opt_par_curr + 1
             }
+            
+            idx_mapped_curr <- idx_mapped_curr + 1
           }
-          idx_curr <- idx_curr + L_u
+          idx_full_curr <- idx_full_curr + L_u
         }
       }
 
@@ -836,10 +850,10 @@ RTMB_Model <- R6::R6Class(
       unc_est_vec[idx_fix_active] <- opt$par
 
       # For random effects, update with the latest posterior modes from sdreport if available
-      if (laplace && !is.null(sd_rep) && length(idx_ran) > 0) {
+      if (laplace && !is.null(sd_rep) && length(idx_ran_full) > 0) {
         smry_ran <- tryCatch(summary(sd_rep, select = "random"), warning = function(w) NULL, error = function(e) NULL)
-        if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran)) {
-          unc_est_vec[idx_ran] <- smry_ran[, "Estimate"]
+        if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran_full)) {
+          unc_est_vec[idx_ran_full] <- smry_ran[, "Estimate"]
         }
       }
 
@@ -886,10 +900,10 @@ RTMB_Model <- R6::R6Class(
           }
 
           # Get standard errors of random effects
-          if (laplace && length(idx_ran) > 0) {
+          if (laplace && length(idx_ran_full) > 0) {
             smry_ran <- tryCatch(summary(sd_rep, select = "random"), warning = function(w) NULL, error = function(e) NULL)
-            if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran)) {
-              unc_se_vec[idx_ran] <- smry_ran[, "Std. Error"]
+            if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran_full)) {
+              unc_se_vec[idx_ran_full] <- smry_ran[, "Std. Error"]
             }
           }
         } else {
@@ -999,29 +1013,25 @@ RTMB_Model <- R6::R6Class(
         V_theta <- V_opt
 
         if (REML && length(ad_obj$env$random) > 0) {
-          full_par_names <- names(ad_obj$env$last.par)
-          target_full_idx <- which(full_par_names %in% target_vars)
-          idx_ran <- ad_obj$env$random
-          target_ran_idx <- match(target_full_idx, idx_ran)
-
-          valid_mask <- !is.na(target_ran_idx)
-          target_ran_idx <- target_ran_idx[valid_mask]
-          valid_full_idx <- target_full_idx[valid_mask]
+          # Identify which random effects are in the target_vars
+          full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]
+          target_ran_mask <- full_par_names_mapped %in% target_vars
+          target_ran_idx <- which(target_ran_mask)
 
           if (length(target_ran_idx) > 0) {
             reml_res <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = is_silent, return_sensitivities = TRUE)
             if (is.list(reml_res)) {
+              # Map to full parameter vector indices
+              valid_full_idx <- idx_ran_full[target_ran_idx]
               est_dfs_all[valid_full_idx] <- reml_res$df
-              # Capture REML sensitivities for build_derived_df
               dH_beta <- reml_res$sensitivities
               V_beta <- reml_res$V_beta
-              active_idx <- valid_full_idx # Indices of fixed effects in J
+              active_idx <- valid_full_idx
             }
           }
         }
         ad_obj$fn(opt$par)
       } else if (identical(df_method, "bw")) {
-        # --- Robust List-Based BW Assignment ---
         # Initialize a list of Inf values with the same structure as parameters
         df_list_unc <- unconstrained_vector_to_list(rep(Inf, L_u_total), self$par_list)
         
@@ -1164,7 +1174,11 @@ RTMB_Model <- R6::R6Class(
         local_transform <- self$transform
         local_generate <- self$generate
 
-        test_con_list <- to_constrained(unconstrained_vector_to_list(unc_est_vec, local_par_list), local_par_list)
+        # Use the enhanced version that respects mapping to prevent index shifts
+        test_con_list <- to_constrained(
+          unconstrained_vector_to_list(unc_est_vec, local_par_list, map = target_map), 
+          local_par_list
+        )
 
         for (name in names(test_con_list)) {
           samps_con[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_con_list[[name]])))
@@ -1370,6 +1384,7 @@ RTMB_Model <- R6::R6Class(
         # est_dfs_all is on unconstrained scale. For summary, we map it to constrained parameters.
         # For most cases (regression coeffs), 1:1 mapping is fine.
         # For complex constraints, we provide DFs where lengths match.
+        # Use the enhanced version that respects mapping
         df_list_unc <- unconstrained_vector_to_list(est_dfs_all, self$par_list)
         for (name in names(self$par_list)) {
           p <- self$par_list[[name]]
@@ -3060,13 +3075,21 @@ RTMB_Model <- R6::R6Class(
           prior_removed <- TRUE
         }
         
-        # Rebuild log_prob from modified AST (prior_removed is used for Bayes Factor correction)
+        # Rebuild log_prob from modified AST
         user_env <- if (!is.null(self$code$env)) self$code$env else parent.frame()
         new_model$log_prob <- eval(substitute(model_code(E, env = EN), list(E = new_model$code$model, EN = user_env)))
         
-        # Store the correction value for post-optimization adjustment if the prior wasn't removed from AST
-        if (!prior_removed && exists("correction_val")) {
-            new_model$prior_correction <- correction_val
+        if (prior_removed) {
+          if (isTRUE(getOption("BayesRTMB.debug", FALSE))) {
+            cat(sprintf("Smart-Fixed: Prior for '%s' successfully sliced in AST.\n", spec))
+          }
+          # If AST was modified, the AD tape is now correct.
+          # We don't need to add correction_val later because the integral/objective 
+          # will naturally represent the Null model.
+          new_model$prior_correction <- 0
+        } else if (exists("correction_val")) {
+          # Fallback to post-hoc correction for ML stability if AST modification failed
+          new_model$prior_correction <- correction_val
         }
       }
 
@@ -3456,6 +3479,7 @@ remove_prior_from_ast <- function(expr, target_spec, p_names = NULL) {
   # target_spec is like "b" or "b[talk]"
   target_base <- gsub("\\[.*\\]$", "", target_spec)
   has_index <- grepl("\\[", target_spec)
+  target_idx_str <- if (has_index) gsub(".*\\[(.*)\\].*", "\\1", target_spec) else NULL
 
   if (is.call(expr)) {
     # 1. Handle { ... } blocks
@@ -3483,52 +3507,52 @@ remove_prior_from_ast <- function(expr, target_spec, p_names = NULL) {
           return(NULL)
         }
 
-        # If LHS is indexed like "b[k]" inside a loop, we can't easily remove it
-        # unless we wrap it in a condition. For JZS/independent priors, we use a trick:
-        # We replace it with an expression that evaluates to 0 if k matches the target.
-        if (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(target_base))) {
-          # We'll handle this in the parent 'for' loop or by adding a condition here if we can resolve the index.
-          # But simpler: if it's the exact string b[talk], we already removed it.
+        # --- Advanced Slicing for Vectorized Priors ---
+        if (identical(lhs, as.name(target_base))) {
+          rhs <- expr[[3]]
+          idx_val <- target_idx_str
+          if (!is.null(p_names)) {
+              idx_match <- which(p_names == target_idx_str)
+              if (length(idx_match) > 0) idx_val <- idx_match
+          }
+          neg_idx <- bquote(-.(as.numeric(idx_val)))
+          new_lhs <- bquote(.(as.name(target_base))[.(neg_idx)])
+          new_rhs <- rhs
+          for (i in 2:length(rhs)) {
+              arg <- rhs[[i]]
+              if (is.call(arg) || is.symbol(arg) || (is.numeric(arg) && length(arg) > 1)) {
+                  new_rhs[[i]] <- bquote(.(arg)[.(neg_idx)])
+              }
+          }
+          return(as.call(list(as.name("~"), new_lhs, new_rhs)))
         }
       }
     }
 
     # 3. Handle for loops
     if (identical(expr[[1]], as.name("for"))) {
-      var_name <- as.character(expr[[2]]) # loop variable e.g. "k"
+      var_name <- as.character(expr[[2]])
       body <- expr[[4]]
 
-      # If we are removing a specific element b[talk] from b[k] loop
       if (has_index && is.call(body) && identical(body[[1]], as.name("~"))) {
-        # Check if the body matches the target base
         if (is.call(body[[2]]) && identical(body[[2]][[2]], as.name(target_base))) {
-          # Wrap the body in a condition: if (k != talk_idx) ...
-          # Get the index value from target_spec (e.g. "talk")
-          target_idx_str <- gsub(".*\\[(.*)\\].*", "\\1", target_spec)
-
-          # Resolve label to integer index if possible
+          idx_val <- target_idx_str
           if (!is.null(p_names)) {
             idx_match <- which(p_names == target_idx_str)
-            if (length(idx_match) > 0) target_idx_str <- idx_match
+            if (length(idx_match) > 0) idx_val <- idx_match
           }
-
-          # Convert to if-expression: if (k != index) ...
-          new_body <- bquote(if (.(as.name(var_name)) != .(target_idx_str)) .(body))
+          new_body <- bquote(if (.(as.name(var_name)) != .(as.numeric(idx_val))) .(body))
           expr[[4]] <- new_body
           return(expr)
         }
       }
 
-      # Otherwise recurse into body
       new_body <- remove_prior_from_ast(body, target_spec, p_names)
-      if (is.null(new_body)) {
-        return(NULL)
-      }
+      if (is.null(new_body)) return(NULL)
       expr[[4]] <- new_body
       return(expr)
     }
 
-    # Recurse for others
     new_args <- lapply(as.list(expr), function(e) remove_prior_from_ast(e, target_spec, p_names))
     return(as.call(new_args))
   }
