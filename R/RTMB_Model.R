@@ -416,8 +416,8 @@ RTMB_Model <- R6::R6Class(
     #' Default is "all".
     #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
     #' @return An RTMB objective object (ad_obj).
-    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL) {
-      random_effs <- names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
+    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL, .marginal_vars = NULL) {
+      random_effs <- if (!is.null(.marginal_vars)) .marginal_vars else names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
       current_init <- self$prepare_init(init)
@@ -1856,7 +1856,8 @@ RTMB_Model <- R6::R6Class(
           ci_method      = ci_method,
           laplace        = laplace,
           map            = target_map,
-          vcov_unc       = Cov_u
+          vcov_unc       = Cov_u,
+          marginal_vars  = ad_setup$use_random
         )
       }
 

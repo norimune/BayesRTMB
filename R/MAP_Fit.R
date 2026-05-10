@@ -23,6 +23,7 @@
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field vcov_unc Variance-covariance matrix of parameters in unconstrained space.
 #' @field map List; the parameter mapping used.
+#' @field marginal_vars Character vector of parameter names that were marginalized (integrated out).
 #'
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
@@ -50,6 +51,7 @@ MAP_Fit <- R6::R6Class(
     laplace        = NULL,
     map            = NULL,
     vcov_unc       = NULL,
+    marginal_vars  = NULL,
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -135,10 +137,11 @@ MAP_Fit <- R6::R6Class(
     #' @param laplace Logical; whether Laplace approximation was used.
     #' @param vcov_unc Variance-covariance matrix of parameters in unconstrained space.
     #' @param map List; the parameter mapping used.
+    #' @param marginal_vars Character vector of parameter names that were marginalized (integrated out).
     initialize = function(model, par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, 
-                          vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL) {
+                          vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL, marginal_vars = NULL) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -159,6 +162,7 @@ MAP_Fit <- R6::R6Class(
       self$vcov_unc <- vcov_unc
       self$laplace <- laplace
       self$map <- map
+      self$marginal_vars <- marginal_vars
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -720,8 +724,23 @@ MAP_Fit <- R6::R6Class(
       if (!quiet) cat("Estimating confidence intervals via Profile Likelihood...\n")
       
       # 1. Re-build ad_obj using optimized values and specific jacobian adjustment
+      # Use stored marginal_vars to ensure marginal likelihood is profiled if applicable
+      if (jacobian == "none" && isTRUE(self$laplace)) jacobian <- "random"
+      
+      # Check if any target parameters are currently marginalized
+      if (!is.null(pars) && !is.null(self$marginal_vars)) {
+          target_base_names <- unique(gsub("\\[.*\\]$", "", pars))
+          conflicting_vars <- intersect(target_base_names, self$marginal_vars)
+          if (length(conflicting_vars) > 0) {
+              stop(sprintf("Parameter(s) '%s' are marginalized (integrated out) and cannot be profiled. 
+To profile these parameters, please re-run optimize() without including them in 'empirical'.", 
+                           paste(conflicting_vars, collapse = ", ")), call. = FALSE)
+          }
+      }
+      
       ad_setup <- self$model$build_ad_obj(init = self$par, laplace = self$laplace, 
-                                          map = self$map, jacobian_target = jacobian)
+                                          map = self$map, jacobian_target = jacobian,
+                                          .marginal_vars = self$marginal_vars)
       ad_obj <- ad_setup$ad_obj
       
       # Sync internal state
