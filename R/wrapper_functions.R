@@ -2264,36 +2264,36 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
      model_ast <- as.call(model_exprs)
 
-      generate_exprs <- list(as.name("{"))
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(ICC <- (sigma_between^2) / (sigma_between^2 + sigma_within^2))
+      transform_exprs <- list(as.name("{"))
+      transform_exprs[[length(transform_exprs) + 1]] <- quote(ICC <- (sigma_between^2) / (sigma_between^2 + sigma_within^2))
       if (multivariate) {
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(B_corr <- L_corr_between %*% t(L_corr_between))
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(W_corr <- L_corr_within %*% t(L_corr_within))
+        transform_exprs[[length(transform_exprs) + 1]] <- quote(B_corr <- L_corr_between %*% t(L_corr_between))
+        transform_exprs[[length(transform_exprs) + 1]] <- quote(W_corr <- L_corr_within %*% t(L_corr_within))
 
         if (P_x > 0) {
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy <- W_corr[1:P_y, 1:P_y])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx <- W_corr[1:P_y, (P_y+1):P])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx <- W_corr[(P_y+1):P, (P_y+1):P])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov_w <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(D_w <- diag(1 / sqrt(diag(P_cov_w))))
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(W_pcorr <- D_w %*% P_cov_w %*% D_w)
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(R_yy <- W_corr[1:P_y, 1:P_y])
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(R_yx <- W_corr[1:P_y, (P_y+1):P])
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(R_xx <- W_corr[(P_y+1):P, (P_y+1):P])
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(P_cov_w <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(D_w <- diag(1 / sqrt(diag(P_cov_w))))
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(W_pcorr <- D_w %*% P_cov_w %*% D_w)
 
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy_b <- B_corr[1:P_y, 1:P_y])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx_b <- B_corr[1:P_y, (P_y+1):P])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx_b <- B_corr[(P_y+1):P, (P_y+1):P])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov_b <- R_yy_b - R_yx_b %*% solve(R_xx_b) %*% t(R_yx_b))
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(D_b <- diag(1 / sqrt(diag(P_cov_b))))
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(B_pcorr <- D_b %*% P_cov_b %*% D_b)
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(list(ICC = ICC, B_corr = B_corr, W_corr = W_corr, W_pcorr = W_pcorr, B_pcorr = B_pcorr))
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(R_yy_b <- B_corr[1:P_y, 1:P_y])
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(R_yx_b <- B_corr[1:P_y, (P_y+1):P])
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(R_xx_b <- B_corr[(P_y+1):P, (P_y+1):P])
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(P_cov_b <- R_yy_b - R_yx_b %*% solve(R_xx_b) %*% t(R_yx_b))
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(D_b <- diag(1 / sqrt(diag(P_cov_b))))
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(B_pcorr <- D_b %*% P_cov_b %*% D_b)
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(report(ICC, B_corr, W_corr, W_pcorr, B_pcorr))
         } else {
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(list(ICC = ICC, B_corr = B_corr, W_corr = W_corr))
+           transform_exprs[[length(transform_exprs) + 1]] <- quote(report(ICC, B_corr, W_corr))
         }
       } else {
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(list(ICC = ICC))
+        transform_exprs[[length(transform_exprs) + 1]] <- quote(report(ICC))
       }
-      generate_ast <- as.call(generate_exprs)
+      transform_ast <- as.call(transform_exprs)
 
-     mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
+     mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
      class(mdl_code) <- "rtmb_code"
 
      v_names <- list(mu = var_names, sigma_between = var_names, sigma_within = var_names)
@@ -2411,26 +2411,25 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
      model_ast <- as.call(model_exprs)
 
-     generate_exprs <- list(as.name("{"))
-      if (P > 2) {
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(M_CF <- as.matrix(CF_corr))
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- M_CF %*% t(M_CF))
+     transform_exprs <- list(as.name("{"))
+     if (P > 2) {
+       transform_exprs[[length(transform_exprs) + 1]] <- quote(corr <- CF_corr %*% t(CF_corr))
 
-        if (P_x > 0) {
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yy <- corr[1:P_y, 1:P_y])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_yx <- corr[1:P_y, (P_y+1):P])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(R_xx <- corr[(P_y+1):P, (P_y+1):P])
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(D <- diag(1 / sqrt(diag(P_cov))))
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(pcorr <- D %*% P_cov %*% D)
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(list(corr = corr, pcorr = pcorr))
-        } else {
-           generate_exprs[[length(generate_exprs) + 1]] <- quote(list(corr = corr))
-        }
-      }
-      generate_ast <- as.call(generate_exprs)
+       if (P_x > 0) {
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(R_yy <- corr[1:P_y, 1:P_y])
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(R_yx <- corr[1:P_y, (P_y+1):P])
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(R_xx <- corr[(P_y+1):P, (P_y+1):P])
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(P_cov <- R_yy - R_yx %*% solve(R_xx) %*% t(R_yx))
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(D <- diag(1 / sqrt(diag(P_cov))))
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(pcorr <- D %*% P_cov %*% D)
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(report(corr, pcorr))
+       } else {
+          transform_exprs[[length(transform_exprs) + 1]] <- quote(report(corr))
+       }
+     }
+     transform_ast <- as.call(transform_exprs)
 
-     mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
+     mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
      class(mdl_code) <- "rtmb_code"
 
      dat_list <- list(

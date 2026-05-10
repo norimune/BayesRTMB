@@ -945,6 +945,10 @@ RTMB_Model <- R6::R6Class(
       samps_gq <- list()
 
       # --- Degrees of freedom adjustment ---
+      dH_list <- NULL
+      V_opt <- NULL
+      active_idx <- NULL
+
       if (any(!is.infinite(df_t))) {
         est_dfs_all <- rep(df_t[1], L_u_total)
       } else if (auto_df || (REML && (!identical(df_method, "bw") || self$type %in% c("lmer", "glmer")))) {
