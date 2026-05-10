@@ -948,6 +948,7 @@ RTMB_Model <- R6::R6Class(
       dH_list <- NULL
       V_opt <- NULL
       active_idx <- NULL
+      dH_theta <- dH_beta <- V_theta <- V_beta <- NULL
 
       if (any(!is.infinite(df_t))) {
         est_dfs_all <- rep(df_t[1], L_u_total)
@@ -969,6 +970,9 @@ RTMB_Model <- R6::R6Class(
         }
 
         # (B) Integrated-out parameters (REML side)
+        dH_theta <- dH_list
+        V_theta <- V_opt
+
         if (REML && length(ad_obj$env$random) > 0) {
           full_par_names <- names(ad_obj$env$last.par)
           target_full_idx <- which(full_par_names %in% target_vars)
@@ -984,8 +988,8 @@ RTMB_Model <- R6::R6Class(
             if (is.list(reml_res)) {
               est_dfs_all[valid_full_idx] <- reml_res$df
               # Capture REML sensitivities for build_derived_df
-              dH_list <- reml_res$sensitivities
-              V_opt <- reml_res$V_theta
+              dH_beta <- reml_res$sensitivities
+              V_beta <- reml_res$V_beta
               active_idx <- valid_full_idx # Indices of fixed effects in J
             }
           }
@@ -1347,8 +1351,13 @@ RTMB_Model <- R6::R6Class(
           if (p$unc_length == p$length) {
             df_list_con[[name]] <- df_list_unc[[name]]
           } else {
-            # For complex types, we fill with NA or Inf as the mapping is not 1:1
-            df_list_con[[name]] <- rep(Inf, p$length)
+            # For complex types, use the mean of unconstrained DFs as a better default than Inf
+            df_val <- rep(Inf, p$length)
+            if (p$unc_length > 0) {
+              mean_df <- mean(df_list_unc[[name]], na.rm = TRUE)
+              if (is.finite(mean_df)) df_val[] <- mean_df
+            }
+            df_list_con[[name]] <- df_val
           }
         }
       }
@@ -1416,7 +1425,7 @@ RTMB_Model <- R6::R6Class(
         gq_list <- tryCatch(self$generate(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
       }
 
-      build_derived_df <- function(func, base_out, is_generate = FALSE, dH_list = NULL, V_opt = NULL, is_reml = FALSE, active_idx = NULL) {
+      build_derived_df <- function(func, base_out, is_generate = FALSE, dH_list = NULL, V_opt = NULL, is_reml = FALSE, active_idx = NULL, dH_theta = NULL, V_theta = NULL) {
         if (is.null(func) || is.null(base_out) || length(base_out) == 0) {
           return(NULL)
         }
@@ -1567,25 +1576,40 @@ RTMB_Model <- R6::R6Class(
                   vj <- as.numeric(Aj %*% J[j, ]) # J V J^T
                   if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj
                 }
-              } else if (is_reml && !is.null(active_idx)) {
-                # --- REML Mode: Gradient via V_beta sensitivity to variance components ---
-                # Subset J to only include the active fixed effects that match dV_beta dimensions
-                J_active <- J[, active_idx, drop = FALSE]
-                if (ncol(J_active) == nrow(dH_list[[1]])) {
-                  for (j in 1:L_out) {
-                    Jj <- J_active[j, , drop = FALSE]
-                    grad_v <- numeric(P)
-                    for (k in 1:P) {
-                      if (!is.null(dH_list[[k]])) {
-                        # dv_j/dtheta_k = J_j %*% (dV_beta/dtheta_k) %*% J_j^T
-                        grad_v[k] <- as.numeric(Jj %*% dH_list[[k]] %*% t(Jj))
+              } else if (is_reml && (!is.null(active_idx) || !is.null(dH_theta))) {
+                # --- REML Mode: Combined sensitivities ---
+                for (j in 1:L_out) {
+                  var_vj <- 0
+                  vj <- se_out[j]^2
+                  
+                  # (1) Contribution from fixed effects (beta)
+                  if (!is.null(active_idx) && !is.null(dH_list) && !is.null(V_opt) && !is.null(V_theta)) {
+                    J_active <- J[j, active_idx, drop = FALSE]
+                    if (ncol(J_active) == nrow(dH_list[[1]])) {
+                      grad_beta <- numeric(length(dH_list))
+                      for (k in 1:length(dH_list)) {
+                        if (!is.null(dH_list[[k]])) grad_beta[k] <- as.numeric(J_active %*% dH_list[[k]] %*% t(J_active))
                       }
+                      var_vj <- var_vj + as.numeric(t(grad_beta) %*% V_theta %*% grad_beta)
                     }
-                    # Var(v_j) = grad_v^T %*% V_theta %*% grad_v
-                    var_vj <- as.numeric(t(grad_v) %*% V_opt %*% grad_v)
-                    vj <- se_out[j]^2 # Already calculated via Delta Method/sdreport
-                    if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj
                   }
+                  
+                  # (2) Contribution from variance components (theta)
+                  if (!is.null(dH_theta) && !is.null(V_theta)) {
+                    # Indices in J that are NOT beta are theta
+                    theta_idx <- setdiff(1:ncol(J), active_idx)
+                    J_theta <- J[j, theta_idx, drop = FALSE]
+                    if (ncol(J_theta) == nrow(dH_theta[[1]])) {
+                      A_theta <- J_theta %*% V_theta
+                      grad_theta <- numeric(length(dH_theta))
+                      for (k in 1:length(dH_theta)) {
+                        if (!is.null(dH_theta[[k]])) grad_theta[k] <- -as.numeric(A_theta %*% dH_theta[[k]] %*% t(A_theta))
+                      }
+                      var_vj <- var_vj + as.numeric(t(grad_theta) %*% V_theta %*% grad_theta)
+                    }
+                  }
+                  
+                  if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj
                 }
               }
             } else if (identical(df_method, "bw")) {
@@ -1627,7 +1651,12 @@ RTMB_Model <- R6::R6Class(
         return(df)
       }
 
-      df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE, dH_list = dH_list, V_opt = V_opt, is_reml = REML, active_idx = if (REML) active_idx else NULL)
+      df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE, 
+                                       dH_list = if (REML) dH_beta else dH_list, 
+                                       V_opt = if (REML) V_beta else V_opt, 
+                                       is_reml = REML, active_idx = if (REML) active_idx else NULL,
+                                       dH_theta = if (REML) dH_theta else NULL,
+                                       V_theta = if (REML) V_theta else NULL)
       
       # For t-tests in BW mode, override Welch-Satterthwaite with the requested policy
       if (identical(df_method, "bw") && self$type == "ttest") {
@@ -1651,7 +1680,12 @@ RTMB_Model <- R6::R6Class(
         }
       }
 
-      df_generate <- build_derived_df(self$generate, gq_list, is_generate = TRUE, dH_list = dH_list, V_opt = V_opt, is_reml = REML, active_idx = if (REML) active_idx else NULL)
+      df_generate <- build_derived_df(self$generate, gq_list, is_generate = TRUE, 
+                                      dH_list = if (REML) dH_beta else dH_list, 
+                                      V_opt = if (REML) V_beta else V_opt, 
+                                      is_reml = REML, active_idx = if (REML) active_idx else NULL,
+                                      dH_theta = if (REML) dH_theta else NULL,
+                                      V_theta = if (REML) V_theta else NULL)
 
       log_ml <- NA
       if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
