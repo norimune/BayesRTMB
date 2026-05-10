@@ -307,7 +307,10 @@ MAP_Fit <- R6::R6Class(
 
       all_dfs <- list()
       if (!is.null(self$df_fixed) && nrow(self$df_fixed) > 0) all_dfs$fixed <- self$df_fixed
-      if (isTRUE(ranef) && is.data.frame(self$random_effects) && nrow(self$random_effects) > 0) {
+      
+      # Automatically include random effects if specific parameters are requested or ranef=TRUE
+      include_ranef <- isTRUE(ranef) || !is.null(pars)
+      if (include_ranef && is.data.frame(self$random_effects) && nrow(self$random_effects) > 0) {
         all_dfs$random <- self$random_effects
       }
       if (!is.null(self$df_transform) && nrow(self$df_transform) > 0) all_dfs$transform <- self$df_transform
