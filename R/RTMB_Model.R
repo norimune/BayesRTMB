@@ -1043,13 +1043,13 @@ RTMB_Model <- R6::R6Class(
             }
           }
         } else if (type == "corr") {
-          for (v in c("corr", "CF_corr")) {
-            if (v %in% names(df_list_unc)) {
-              df_list_unc[[v]] <- rep(N_obs - 2, length(df_list_unc[[v]]))
-            }
+          if ("corr" %in% names(df_list_unc)) {
+            df_list_unc[["corr"]] <- rep(N_obs - 2, length(df_list_unc[["corr"]]))
           }
-          if ("mean" %in% names(df_list_unc)) {
-            df_list_unc[["mean"]] <- rep(N_obs - 1, length(df_list_unc[["mean"]]))
+          for (v in c("mean", "sd")) {
+            if (v %in% names(df_list_unc)) {
+              df_list_unc[[v]] <- rep(N_obs - 1, length(df_list_unc[[v]]))
+            }
           }
         }
         
@@ -1585,6 +1585,24 @@ RTMB_Model <- R6::R6Class(
                     var_vj <- as.numeric(t(grad_v) %*% V_opt %*% grad_v)
                     vj <- se_out[j]^2 # Already calculated via Delta Method/sdreport
                     if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj
+                  }
+                }
+              }
+            } else if (identical(df_method, "bw")) {
+              # Between-Within method for derived parameters: inherit from the most relevant source
+              # Specifically for 'corr' models, we enforce the theory-based degrees of freedom
+              if (self$type == "corr") {
+                for (j in 1:L_out) {
+                  if (grepl(corr_pat, names_vec[j])) derived_dfs[j] <- N_obs - 2
+                  else if (grepl("^(mean|sd|ICC)(\\[|$)", names_vec[j])) derived_dfs[j] <- N_obs - 1
+                }
+              } else {
+                # General BW fallback: take the minimum DF of contributing parameters
+                # (prevents DF summing behavior of Welch-Satterthwaite for shared sources)
+                for (j in 1:L_out) {
+                  contributing_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]
+                  if (length(contributing_dfs) > 0) {
+                    derived_dfs[j] <- min(contributing_dfs, na.rm = TRUE)
                   }
                 }
               }
