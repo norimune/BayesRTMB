@@ -2758,7 +2758,7 @@ RTMB_Model <- R6::R6Class(
     #' @param value Numeric value to fix parameters to. Default is 0.
     #' @param target_vars Character vector of parameter names to remove priors from (for frequentist inference).
     #' @return A new RTMB_Model object.
-    null_model = function(target = NULL, value = 0, target_vars = NULL) {
+    null_model = function(target = NULL, value = 0, target_vars = NULL, silent = FALSE) {
       # --- 0. Handle multiple target_vars (Frequentist mode) ---
       if (!is.null(target_vars)) {
         new_model <- self$clone()
@@ -2848,7 +2848,7 @@ RTMB_Model <- R6::R6Class(
         }
         new_formula <- call("~", target_ast, prior_expr)
         target <- paste(deparse(new_formula), collapse = " ")
-        cat(sprintf("Auto-completed target: %s\n", target))
+        if (!silent) cat(sprintf("Auto-completed target: %s\n", target))
       } else {
         # Target contains "~"
         target_f <- str2lang(target)
@@ -3124,9 +3124,16 @@ RTMB_Model <- R6::R6Class(
         new_model$prior_correction <- correction_val + lj_val
       }
 
-      cat("Null model created. Fixed parameters:\n")
-      cat(sprintf("  %s -> %g (Dimensions: %d)\n", spec, value, k_fixed))
-      cat(sprintf("  Jacobian correction applied: %f\n", lj_val))
+      if (!silent) {
+        cat("Null model created. Fixed parameters:\n")
+        if (length(value) > 1) {
+           val_summary <- sprintf("(mean: %.4f, range: [%.4f, %.4f])", mean(value), min(value), max(value))
+           cat(sprintf("  %s [1:%d] -> %s\n", spec, length(value), val_summary))
+        } else {
+           cat(sprintf("  %s -> %g (Dimensions: %d)\n", spec, value, k_fixed))
+        }
+        cat(sprintf("  Jacobian correction applied: %f\n", lj_val))
+      }
 
       return(new_model)
     },
