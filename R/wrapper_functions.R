@@ -224,8 +224,6 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
       # Pearson Chi-squared statistic for the estimated probabilities
       # Sum (O - E)^2 / E
       chisq_val <- sum((Y - mu)^2 / mu)
-      report(mu)
-      report(chisq_val)
     },
     model = {
       # Likelihood
@@ -2585,9 +2583,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       quote({ sd_diff = Dim(1, lower = 0); diff = Dim(1) })
     }
     tran_ast <- if (use_delta_param) {
-      quote({ diff <- delta * sd_diff; report(diff) })
+      quote({ diff <- delta * sd_diff })
     } else {
-      quote({ delta <- diff / sd_diff; report(delta) })
+      quote({ delta <- diff / sd_diff })
     }
     model_body <- list(quote(diffs ~ normal(diff, sd_diff)))
     if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
@@ -2609,7 +2607,6 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
         mean <- (mean0 + mean1)/2
         sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
         delta <- diff / sd_pooled
-        report(diff); report(delta)
       })
       model_body <- list(quote(Y1 ~ normal(mean0, sd[1])), quote(Y2 ~ normal(mean1, sd[2])))
       view_vars <- c("diff", "delta", "mean0", "mean1", "sd")
@@ -2622,9 +2619,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
         quote({ mean = Dim(1); sd = Dim(1, lower = 0); diff = Dim(1) })
       }
       tran_ast <- if (use_delta_param) {
-        quote({ diff <- delta * sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(diff) })
+        quote({ diff <- delta * sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2 })
       } else {
-        quote({ delta <- diff / sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(delta) })
+        quote({ delta <- diff / sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2 })
       }
       model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
       view_vars <- c("diff", "delta", "mean", "sd")
