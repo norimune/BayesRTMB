@@ -621,8 +621,11 @@ RTMB_Model <- R6::R6Class(
         } else if (is.numeric(df_method)) {
           df_t <- df_method
         } else if (identical(df_method, "bw")) {
+          if (!identical(.return_object, "Classic")) {
+            warning("df_method = 'bw' is primarily supported in classic(). For optimize(), 'satterthwaite' or 'Inf' is recommended.", call. = FALSE)
+          }
           # Intelligently switch based on type
-          if (!is.null(self$type) && self$type %in% c("lmer", "glmer")) {
+          if (isTRUE(self$type %in% c("lmer", "glmer"))) {
             auto_df <- TRUE
           } else {
             # lm, corr, mediation, etc. will be calculated later in the 'Degrees of freedom adjustment' block
@@ -963,7 +966,7 @@ RTMB_Model <- R6::R6Class(
 
       if (any(!is.infinite(df_t))) {
         est_dfs_all <- rep(df_t[1], L_u_total)
-      } else if (auto_df || (REML && (!identical(df_method, "bw") || self$type %in% c("lmer", "glmer")))) {
+      } else if (auto_df || (REML && (!identical(df_method, "bw") || isTRUE(self$type %in% c("lmer", "glmer"))))) {
         # Determine if we should be silent: only if via classic() and using default 'bw'
         is_silent <- identical(.return_object, "Classic") && identical(df_method, "bw")
         
