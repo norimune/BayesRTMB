@@ -62,6 +62,8 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item{\code{laplace}}{Whether Laplace approximation was used.}
 
 \item{\code{map}}{Parameter mapping used.}
+
+\item{\code{df_method}}{Character string specifying the degrees of freedom calculation method.}
 }
 \if{html}{\out{</div>}}
 }
@@ -117,6 +119,7 @@ Create a new `Classic_Fit` object.
   view = NULL,
   fit = NULL,
   vcov = NULL,
+  df_method = "bw",
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -171,6 +174,8 @@ Create a new `Classic_Fit` object.
 \item{\code{fit}}{Legacy argument for backward compatibility (maps to df_fixed).}
 
 \item{\code{vcov}}{Variance-covariance matrix of parameters.}
+
+\item{\code{df_method}}{Method for degrees of freedom calculation.}
 
 \item{\code{...}}{Additional arguments passed to the constructor.}
 }

@@ -30,6 +30,7 @@
 #' @field ci_method Method used for CI estimation.
 #' @field laplace Whether Laplace approximation was used.
 #' @field map Parameter mapping used.
+#' @field df_method Character string specifying the degrees of freedom calculation method.
 #'
 #' @export
 Classic_Fit <- R6::R6Class(
@@ -62,6 +63,7 @@ Classic_Fit <- R6::R6Class(
     map = NULL,
     cluster = NULL,
     view = NULL,
+    df_method = NULL,
 
     #' @description Create a new `Classic_Fit` object.
     #' @param model The `RTMB_Model` object.
@@ -88,13 +90,15 @@ Classic_Fit <- R6::R6Class(
     #' @param view Character vector of parameter names to prioritize in summary.
     #' @param fit Legacy argument for backward compatibility (maps to df_fixed).
     #' @param vcov Variance-covariance matrix of parameters.
+    #' @param df_method Method for degrees of freedom calculation.
     #' @param ... Additional arguments passed to the constructor.
     initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_ml = NULL,
                           convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
                           df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
                           vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL,
-                          test_results = list(), view = NULL, fit = NULL, vcov = NULL, ...) {
+                          test_results = list(), view = NULL, fit = NULL, vcov = NULL, 
+                          df_method = "bw", ...) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- if (!is.null(par)) par else if (!is.null(df_fixed)) self$.construct_par_list(df_fixed) else if (!is.null(fit)) self$.construct_par_list(fit) else NULL
@@ -120,6 +124,7 @@ Classic_Fit <- R6::R6Class(
       self$test_results <- test_results
       self$view <- view
       self$vcov <- vcov
+      self$df_method <- df_method
     },
 
     #' @description Compute robust standard errors (sandwich estimator).
@@ -522,7 +527,7 @@ Classic_Fit <- R6::R6Class(
            res$truncated <- FALSE
         }
 
-        is_asymptotic <- (!is.null(self$model$type) && self$model$type %in% c("table", "loglinear")) || inherits(self$model, "rtmb_loglinear")
+        is_asymptotic <- (!is.null(self$model$type) && self$model$type %in% c("table", "loglinear", "fa", "irt", "mixture")) || inherits(self$model, "rtmb_loglinear")
 
         # --- Add t/z-test results for classic mode ---
         if (!is.null(self$sd_rep)) {
@@ -563,16 +568,17 @@ Classic_Fit <- R6::R6Class(
            }
            
            if (is_asymptotic) {
-               df_print$`z value` <- row_t
-            } else {
-               df_print$`t value` <- row_t
-            }
-            
-            if (!is.null(df_print$df)) {
-               df_print$Pr <- 2 * pt(-abs(row_t), df = df_print$df)
-            } else {
-               df_print$Pr <- 2 * pnorm(-abs(row_t))
-            }
+                df_print$`z value` <- row_t
+                if ("df" %in% names(df_print)) df_print$df <- NULL # Hide DF for asymptotic models
+             } else {
+                df_print$`t value` <- row_t
+             }
+             
+             if (!is.null(df_print$df)) {
+                df_print$Pr <- 2 * pt(-abs(row_t), df = df_print$df)
+             } else {
+                df_print$Pr <- 2 * pnorm(-abs(row_t))
+             }
         }
 
         # 1. Round main numeric columns
@@ -1003,15 +1009,19 @@ Classic_Fit <- R6::R6Class(
           df2 <- Inf
         }
 
-        # --- 追加: 漸近的なモデルの場合は強制的に Chi-squared 検定にする ---
-        is_asymp <- (!is.null(self$model$family) && self$model$family %in% c("poisson", "binomial", "bernoulli", "multinomial", "ordered")) || (!is.null(self$model$type) && self$model$type %in% c("loglinear", "table"))
-        if (is_asymp) df2 <- Inf
-
-        if (df2 == 0 || is.infinite(df2)) {
+        # --- 判定: F検定形式を使うか、カイ二乗形式を使うか ---
+        # 漸近的なモデル（Poisson, Binomial, Table等）でない限り、F検定形式に統一する
+        is_asymp <- (!is.null(self$model$family) && self$model$family %in% c("poisson", "binomial", "bernoulli", "multinomial", "ordered")) || 
+                    (!is.null(self$model$type) && self$model$type %in% c("loglinear", "table"))
+        
+        if (is_asymp) {
+          # 漸近的モデル: カイ二乗検定形式
           p_val <- stats::pchisq(W, df1, lower.tail = FALSE)
           res_list[[t_name]] <- data.frame(`df` = df1, `Chisq` = W, `Pr(>Chisq)` = p_val, row.names = t_name, check.names = FALSE)
         } else {
-          p_val <- stats::pf(f_val, df1, df2, lower.tail = FALSE)
+          # 回帰系モデル: F検定形式に統一（分母自由度が Inf の場合も含む）
+          p_val <- if (is.infinite(df2) || df2 <= 0) stats::pchisq(W, df1, lower.tail = FALSE) 
+                   else stats::pf(f_val, df1, df2, lower.tail = FALSE)
           res_list[[t_name]] <- data.frame(`num_df` = df1, `den_df` = df2, `F value` = f_val, `Pr(>F)` = p_val, row.names = t_name, check.names = FALSE)
         }
       }
@@ -1460,11 +1470,8 @@ BIC.Classic_Fit <- function(object, ...) object$BIC()
 
 #' @export
 print.anova_rtmb <- function(x, ...) {
-  if (!is.null(attr(x, "heading"))) {
-    cat(attr(x, "heading"), "\n")
-  }
-  
   # Use the standard anova print for the table
+  # stats:::print.anova will handle the 'heading' attribute
   # Temporarily remove class to avoid infinite recursion
   x_copy <- x
   class(x_copy) <- c("anova", "data.frame")

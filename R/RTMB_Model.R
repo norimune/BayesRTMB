@@ -231,9 +231,10 @@ RTMB_Model <- R6::R6Class(
     #' @param L_u_total Integer; total length of the full unconstrained parameter vector.
     #' @param opt_par Optional numeric vector of optimized parameters.
     #' @param max_df Numeric; maximum allowed degrees of freedom. Default is NULL.
+    #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
     #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
-    calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL) {
-      # cat("Estimating Satterthwaite degrees of freedom...\n")
+    calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL, silent = FALSE) {
+      # if (!silent) cat("Estimating Satterthwaite degrees of freedom...\n")
 
       par <- if (!is.null(opt_par)) opt_par else ad_obj$par
       P <- length(par)
@@ -304,7 +305,7 @@ RTMB_Model <- R6::R6Class(
       }
 
       finite_dfs <- df_par[is.finite(df_par)]
-      if (length(finite_dfs) > 0) {
+      if (!silent && length(finite_dfs) > 0) {
         cat(sprintf("  Estimated DF range: %.1f - %.1f\n", min(finite_dfs), max(finite_dfs)))
       }
       return(df_full)
@@ -314,9 +315,10 @@ RTMB_Model <- R6::R6Class(
     #' @param ad_obj An RTMB objective object.
     #' @param opt_par Numeric vector of optimized variance components.
     #' @param beta_idx Integer vector; indices of fixed effects within the random effects vector.
+    #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
     #' @return A numeric vector of estimated degrees of freedom for the fixed effects.
-    calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx) {
-      cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
+    calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx, silent = FALSE) {
+      if (!silent) cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
 
       P <- length(opt_par)
       n_beta <- length(beta_idx)
@@ -490,6 +492,7 @@ RTMB_Model <- R6::R6Class(
       }      
       # --- Contrast Management ---
       dot_args <- list(...)
+      df_method <- dot_args$df_method
       requested_contrasts <- dot_args$contrasts
       
       if (!is.null(requested_contrasts)) {
@@ -551,25 +554,59 @@ RTMB_Model <- R6::R6Class(
       if (isTRUE(is_classic)) {
         # Create a prior-free model using null_model extension
         model_obj <- self$null_model(target_vars = target_vars)
-        return(model_obj$optimize(
+        
+        # Clean up dots for the recursive call
+        rec_args <- dot_args
+        rec_args$df_method <- NULL
+        rec_args$view <- NULL
+        rec_args$views <- NULL
+        
+        return(do.call(model_obj$optimize, c(list(
           laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
           num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
           target_vars = target_vars, is_classic = FALSE, .return_object = "Classic", 
-          view = view, ...
-        ))
+          view = view, df_method = df_method
+        ), rec_args)))
       }
 
       if (!is.null(se_method)) ci_method <- se_method
       ci_method <- match.arg(ci_method)
       if (isTRUE(se_sampling) && ci_method == "wald") ci_method <- "sampling" # Backward compatibility
+      if (isTRUE(se_sampling) && ci_method == "wald") ci_method <- "sampling" # Backward compatibility
       if (ci_method == "sampling") se_sampling <- TRUE
       cat("Starting optimization...\n")
 
-      if (is.null(df)) df <- Inf
-      auto_df <- identical(df, "auto")
-      df_t <- if (is.numeric(df)) df else Inf
+      # --- DF Method Logic ---
+      auto_df <- FALSE
+      df_t <- Inf
+      
+      if (!is.null(df)) {
+        if (identical(df, "auto")) {
+           auto_df <- TRUE
+        } else if (is.numeric(df)) {
+           df_t <- df
+        }
+      } else {
+        # Follow df_method
+        if (identical(df_method, "satterthwaite")) {
+          auto_df <- TRUE
+        } else if (identical(df_method, "Inf")) {
+          df_t <- Inf
+        } else if (is.numeric(df_method)) {
+          df_t <- df_method
+        } else if (identical(df_method, "bw")) {
+          # Intelligently switch based on type
+          if (!is.null(self$type) && self$type %in% c("lmer", "glmer")) {
+            auto_df <- TRUE
+          } else {
+            # lm, corr, mediation, etc. will be calculated later in the 'Degrees of freedom adjustment' block
+            # For now, keep as Inf/non-auto
+            df_t <- Inf
+          }
+        }
+      }
 
       opt_results <- list()
       obj_vals <- numeric(num_estimate)
@@ -897,9 +934,12 @@ RTMB_Model <- R6::R6Class(
       # --- Degrees of freedom adjustment ---
       if (any(!is.infinite(df_t))) {
         est_dfs_all <- rep(df_t[1], L_u_total)
-      } else if (auto_df || REML) {
+      } else if (auto_df || (REML && (!identical(df_method, "bw") || self$type %in% c("lmer", "glmer")))) {
+        # Determine if we should be silent: only if via classic() and using default 'bw'
+        is_silent <- identical(.return_object, "Classic") && identical(df_method, "bw")
+        
         # (A) Active parameters (ML side)
-        est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par)
+        est_dfs_all <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = is_silent)
 
         # (B) Integrated-out parameters (REML side)
         if (REML && length(ad_obj$env$random) > 0) {
@@ -913,11 +953,42 @@ RTMB_Model <- R6::R6Class(
           valid_full_idx <- target_full_idx[valid_mask]
 
           if (length(target_ran_idx) > 0) {
-            reml_dfs <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx)
+            reml_dfs <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = is_silent)
             est_dfs_all[valid_full_idx] <- if (is.list(reml_dfs)) reml_dfs$df else reml_dfs
           }
         }
         ad_obj$fn(opt$par)
+      } else if (identical(df_method, "bw")) {
+        # --- Robust List-Based BW Assignment ---
+        # Initialize a list of Inf values with the same structure as parameters
+        df_list_unc <- unconstrained_vector_to_list(rep(Inf, L_u_total), self$par_list)
+        
+        type <- self$type
+        raw_df <- if (!is.null(self$raw_data)) as.data.frame(self$raw_data) else NULL
+        N_obs <- if (!is.null(raw_df)) nrow(raw_df) else length(self$data$Y)
+        if (is.null(N_obs) || N_obs == 0) N_obs <- if (!is.null(self$data$X)) nrow(self$data$X) else 0
+
+        if (type == "lm" || type == "ttest" || type == "mediation") {
+          # Calculate K (number of fixed effect parameters)
+          K_fixed <- 0
+          for (v in target_vars) if (v %in% names(self$par_list)) K_fixed <- K_fixed + self$par_list[[v]]$unc_length
+          
+          # Assign N-K to all elements of each target parameter
+          for (v in target_vars) {
+            if (v %in% names(df_list_unc)) {
+              df_list_unc[[v]] <- rep(N_obs - K_fixed, length(df_list_unc[[v]]))
+            }
+          }
+        } else if (type == "corr") {
+          for (v in c("corr", "CF_corr")) {
+            if (v %in% names(df_list_unc)) {
+              df_list_unc[[v]] <- rep(N_obs - 2, length(df_list_unc[[v]]))
+            }
+          }
+        }
+        
+        # Flatten the list back to the unconstrained vector
+        est_dfs_all <- unlist(df_list_unc, use.names = FALSE)
       } else {
         est_dfs_all <- rep(Inf, L_u_total)
       }
@@ -1537,7 +1608,12 @@ RTMB_Model <- R6::R6Class(
         }
 
         # クラシックモードでも、MAP_Fitと同じデータ構造を保持することで次元不整合を回避
-        res_obj <- Classic_Fit$new(
+        # Remove df_method from dot_args to avoid double-passing to constructor
+        cf_args <- dot_args
+        cf_args$df_method <- NULL
+        cf_args$contrasts <- NULL # Also remove contrasts as it's handled
+        
+        res_obj <- do.call(Classic_Fit$new, c(list(
           model          = self,
           par_vec        = con_est_vec,
           par            = con_est_list,
@@ -1561,8 +1637,8 @@ RTMB_Model <- R6::R6Class(
           test_results   = test_results,
           view           = view,
           vcov           = V_fixed_full,
-          ...
-        )
+          df_method      = df_method
+        ), cf_args))
       } else {
         res_obj <- MAP_Fit$new(
           model          = self,
@@ -1592,25 +1668,33 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 3.5. Classic Frequentist Inference Method
-    #' @description Perform frequentist inference (REML/ML) with automatic Satterthwaite degrees of freedom.
-    #' @param df "auto" for Satterthwaite, numeric/Inf for specific degrees of freedom.
+    #' @description Perform frequentist inference (REML/ML) with model-appropriate degrees of freedom.
+    #' @param df Numeric/Inf for specific degrees of freedom. If NULL (default), determined by `df_method`.
     #' @param marginal Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "auto".
     #' @param df_pars Alias for `marginal` (for backward compatibility).
     #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
     #' @param view Character vector of parameters to prioritize in the summary output.
     #' @param views Alias for \code{view}.
-    #' @param map Optional list specifying parameters to fix (factors).
+    #' @param map Optional list specifying parameters to fix.
     #' @param fixed Optional list specifying parameter values to fix.
+    #' @param df_method Character; Method for calculating degrees of freedom. Options:
+    #' \itemize{
+    #'   \item \code{"bw"} (default): Between-Within method for simple models, automatically switches to Satterthwaite for mixed models.
+    #'   \item \code{"satterthwaite"}: Satterthwaite approximation (computationally intensive).
+    #'   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+    #' }
     #' @param ... Additional arguments passed to $optimize() (e.g. contrasts = "sum").
     #' @return A `Classic_Fit` object.
-    classic = function(df = "auto", marginal = "auto", df_pars = NULL, REML = TRUE, 
-                       view = NULL, views = NULL, map = NULL, fixed = NULL, ...) {
+    classic = function(df = NULL, marginal = "auto", df_pars = NULL, REML = TRUE, 
+                       view = NULL, views = NULL, map = NULL, fixed = NULL, 
+                       df_method = "bw", ...) {
       if (is.null(view) && !is.null(views)) view <- views
       
       # Use the main optimization engine for all frequentist inference
       return(self$optimize(
         is_classic = TRUE, df = df, marginal = marginal, df_pars = df_pars, REML = REML,
-        view = view, map = map, fixed = fixed, .return_object = "Classic", ...
+        view = view, map = map, fixed = fixed, .return_object = "Classic", 
+        df_method = df_method, ...
       ))
     },
 
