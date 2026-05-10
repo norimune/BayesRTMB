@@ -1743,7 +1743,11 @@ RTMB_Model <- R6::R6Class(
     #' @return A `Classic_Fit` object.
     classic = function(df = NULL, marginal = "auto", df_pars = NULL, REML = TRUE, 
                        view = NULL, views = NULL, map = NULL, fixed = NULL, 
-                       df_method = "bw", ...) {
+                       df_method = NULL, ...) {
+      # Use Satterthwaite by default for t-tests and mixed models
+      if (is.null(df_method)) {
+         df_method <- if (isTRUE(self$type == "ttest") || isTRUE(self$type %in% c("lmer", "glmer"))) "satterthwaite" else "bw"
+      }
       if (is.null(view) && !is.null(views)) view <- views
       
       # Use the main optimization engine for all frequentist inference

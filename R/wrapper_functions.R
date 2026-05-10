@@ -2599,25 +2599,55 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     marginal <- if (use_delta_param) "delta" else "diff"
   } else {
     dat <- list(Y1 = Y1, Y2 = Y2, r = r)
-    param_ast <- if (use_delta_param) {
-      quote({ mean = Dim(1); sd = Dim(1, lower = 0); delta = Dim(1) })
+    
+    # Structure for independent t-tests
+    if (!var.equal) {
+      # Heteroscedastic (Welch style): Use group means as parameters to trigger Satterthwaite on diff
+      param_ast <- quote({ mean0 = Dim(1); mean1 = Dim(1); sd = Dim(2, lower = 0) })
+      tran_ast <- quote({ 
+        diff <- mean0 - mean1
+        mean <- (mean0 + mean1)/2
+        sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
+        delta <- diff / sd_pooled
+        report(diff); report(delta)
+      })
+      model_body <- list(quote(Y1 ~ normal(mean0, sd[1])), quote(Y2 ~ normal(mean1, sd[2])))
+      view_vars <- c("diff", "delta", "mean0", "mean1", "sd")
+      marginal <- c("mean0", "mean1")
     } else {
-      quote({ mean = Dim(1); sd = Dim(1, lower = 0); diff = Dim(1) })
+      # Homoscedastic (Standard pooled): Use mean and diff as parameters to fix DF at N-K
+      param_ast <- if (use_delta_param) {
+        quote({ mean = Dim(1); sd = Dim(1, lower = 0); delta = Dim(1) })
+      } else {
+        quote({ mean = Dim(1); sd = Dim(1, lower = 0); diff = Dim(1) })
+      }
+      tran_ast <- if (use_delta_param) {
+        quote({ diff <- delta * sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(diff) })
+      } else {
+        quote({ delta <- diff / sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(delta) })
+      }
+      model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
+      view_vars <- c("diff", "delta", "mean", "sd")
+      marginal <- if (use_delta_param) c("mean", "delta") else c("mean", "diff")
     }
-    tran_ast <- if (use_delta_param) {
-      quote({ diff <- delta * sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(diff) })
-    } else {
-      quote({ delta <- diff / sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2; report(delta) })
+    
+    if (is_jzs) {
+       if (!var.equal) {
+          model_body[[length(model_body)+1]] <- quote((mean0 - mean1)/sqrt((sd[1]^2 + sd[2]^2)/2) ~ cauchy(0, r))
+       } else if (var.equal) {
+          model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
+       }
     }
-    model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
-    if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
     if (is_weak) {
-      model_body[[length(model_body)+1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
-      model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
+      if (!var.equal) {
+        model_body[[length(model_body)+1]] <- quote(mean0 ~ normal(mid_y, alpha_prior_sd))
+        model_body[[length(model_body)+1]] <- quote(mean1 ~ normal(mid_y, alpha_prior_sd))
+      } else {
+        model_body[[length(model_body)+1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
+        model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
+      }
       model_body[[length(model_body)+1]] <- quote(sd ~ exponential(sigma_rate_weak))
     }
-    view_vars <- c("diff", "delta", "mean", "sd")
-    marginal <- if (use_delta_param) c("mean", "delta") else c("mean", "diff")
   }
 
   model_ast <- as.call(c(list(as.name("{")), model_body))
