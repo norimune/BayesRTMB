@@ -1135,7 +1135,10 @@ Classic_Fit <- R6::R6Class(
       if (!all(full_specs %in% cat_vars)) stop("specs/simple must be categorical factors in the model.")
 
       # 2. Create a reference grid for all categorical factors
-      grid_list <- lapply(data[cat_vars], function(x) levels(as.factor(x)))
+      # Reorder variables so that specs vary fastest and simple varies slowest among the targeted specs
+      other_vars <- setdiff(cat_vars, full_specs)
+      ordered_grid_vars <- c(other_vars, full_specs)
+      grid_list <- lapply(data[ordered_grid_vars], function(x) levels(as.factor(x)))
       ref_grid <- expand.grid(grid_list)
 
       # 3. Handle continuous covariates by setting them to their mean
@@ -1446,6 +1449,22 @@ lsmeans <- function(object, specs, ...) UseMethod("lsmeans")
 
 #' @export
 lsmeans.Classic_Fit <- function(object, specs, ...) object$lsmeans(specs, ...)
+
+#' @export
+print.rtmb_lsmeans <- function(x, ...) {
+  fmt_df <- function(v) sapply(round(v, 1), function(z) sprintf("%g", z))
+  fmt_5 <- function(v) sprintf("%.5f", v)
+  
+  disp <- as.data.frame(x)
+  
+  cols_5 <- intersect(names(disp), c("estimate", "Std. Error", "Lower 95%", "Upper 95%"))
+  for (col in cols_5) disp[[col]] <- fmt_5(disp[[col]])
+  
+  if ("df" %in% names(disp)) disp$df <- fmt_df(disp$df)
+  
+  print(disp, ...)
+  invisible(x)
+}
 
 #' @export
 print.rtmb_lsmeans_grouped <- function(x, ...) {
