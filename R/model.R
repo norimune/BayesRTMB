@@ -350,11 +350,11 @@ extract_report_vars <- function(expr) {
   if (is.atomic(expr) || is.name(expr)) return(vars)
   if (is.call(expr)) {
     if (identical(expr[[1]], as.name("report"))) {
-      for (i in 2:length(expr)) {
+      for (i in seq_along(expr)[-1]) {
         if (is.name(expr[[i]])) vars <- c(vars, as.character(expr[[i]]))
       }
     } else {
-      for (i in 2:length(expr)) {
+      for (i in seq_along(expr)[-1]) {
         vars <- c(vars, extract_report_vars(expr[[i]]))
       }
     }
@@ -382,7 +382,7 @@ get_assigned_vars <- function(expr) {
     if (identical(expr[[1]], as.name("<-")) || identical(expr[[1]], as.name("="))) {
       if (is.name(expr[[2]])) vars <- c(vars, as.character(expr[[2]]))
     }
-    for (i in 2:length(expr)) {
+    for (i in seq_along(expr)[-1]) {
       vars <- c(vars, get_assigned_vars(expr[[i]]))
     }
   }
@@ -512,7 +512,7 @@ env_to_ordered_list <- function(env, orig_list, code_ast = NULL) {
           if (is.name(expr[[2]])) vars <- c(vars, as.character(expr[[2]]))
         } else if (identical(expr[[1]], as.name("{"))) {
           if (length(expr) > 1) {
-            for (i in 2:length(expr)) {
+            for (i in seq_along(expr)[-1]) {
               vars <- c(vars, extract_assigned_vars(expr[[i]]))
             }
           }
@@ -556,7 +556,7 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
     }
 
     if (length(expr) > 1) {
-      for (i in 2:length(expr)) {
+      for (i in seq_along(expr)[-1]) {
         if (!identical(expr[[i]], quote(expr=))) {
           expr[[i]] <- inject_namespace(expr[[i]], pkg)
         }
@@ -866,10 +866,10 @@ transform_code <- function(expr, env = parent.frame()) {
     if (is.call(e)) {
       if (identical(e[[1]], as.name("{"))) {
         new_args <- list()
-        for (i in 2:length(e)) {
+        for (i in seq_along(e)[-1]) {
           sub_e <- e[[i]]
           if (is.call(sub_e) && identical(sub_e[[1]], as.name("report"))) {
-            if (is.name(sub_e[[2]])) {
+            if (length(sub_e) > 1 && is.name(sub_e[[2]])) {
               reported_vars <<- c(reported_vars, as.character(sub_e[[2]]))
             }
             next

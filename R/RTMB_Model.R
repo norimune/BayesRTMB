@@ -128,7 +128,7 @@ RTMB_Model <- R6::R6Class(
           if (!is.list(test_tran)) {
             stop("transform must return a list.", call. = FALSE)
           }
-          if (is.null(names(test_tran)) || any(names(test_tran) == "")) {
+          if (length(test_tran) > 0 && (is.null(names(test_tran)) || any(names(test_tran) == ""))) {
             stop("transform must return a named list.", call. = FALSE)
           }
         }
