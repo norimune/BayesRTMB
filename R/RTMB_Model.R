@@ -232,6 +232,7 @@ RTMB_Model <- R6::R6Class(
     #' @param opt_par Optional numeric vector of optimized parameters.
     #' @param max_df Numeric; maximum allowed degrees of freedom. Default is NULL.
     #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
+    #' @param return_sensitivities Logical; if TRUE, returns Hessian sensitivities and V for delta method.
     #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
     calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL, silent = FALSE, return_sensitivities = FALSE) {
       # if (!silent) cat("Estimating Satterthwaite degrees of freedom...\n")
@@ -322,6 +323,7 @@ RTMB_Model <- R6::R6Class(
     #' @param opt_par Numeric vector of optimized variance components.
     #' @param beta_idx Integer vector; indices of fixed effects within the random effects vector.
     #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
+    #' @param return_sensitivities Logical; if TRUE, returns Hessian sensitivities and delta-method components.
     #' @return A numeric vector of estimated degrees of freedom for the fixed effects.
     calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx, silent = FALSE, return_sensitivities = FALSE) {
       if (!silent) cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
