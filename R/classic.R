@@ -820,6 +820,12 @@ Classic_Fit <- R6::R6Class(
     #' @param type Integer; Type of Sum of Squares (only Type III supported currently).
     #' @return A data frame containing the ANOVA table.
     anova = function(method = c("reml", "ls"), type = 3) {
+      # --- 1. Restricted Model Types ---
+      restricted_types <- c("ttest", "corr", "fa", "irt")
+      if (!is.null(self$model$type) && self$model$type %in% restricted_types) {
+        stop(sprintf("anova() is not supported for '%s' models.", self$model$type), call. = FALSE)
+      }
+
       if (!is.null(self$model$type) && self$model$type == "table") {
         obs_tab <- self$model$extra$tab
         N_tot <- sum(obs_tab)
@@ -865,42 +871,6 @@ Classic_Fit <- R6::R6Class(
         res <- list(chisq = chisq_res, fisher = fisher_res)
         class(res) <- "anova_rtmb_table"
         return(res)
-      }
-
-      # --- 2. Special Case: Correlation Analysis (Overall Independence Test) ---
-      if (!is.null(self$model$type) && self$model$type == "corr") {
-        corr_patterns <- c("corr", "rho", "W_corr", "B_corr", "W_pcorr", "B_pcorr")
-        idx_corr <- which(sapply(rownames(self$fit), function(n) {
-          any(sapply(corr_patterns, function(p) grepl(paste0("^", p, "($|\\[)"), n)))
-        }))
-
-        if (length(idx_corr) > 0) {
-          base_names <- gsub("\\[.*\\]$", "", rownames(self$fit)[idx_corr])
-          unique_bases <- unique(base_names)
-
-          res_list <- list()
-          for (b in unique_bases) {
-            sub_idx <- idx_corr[base_names == b]
-            rho <- self$fit$Estimate[sub_idx]
-            V_rho <- self$vcov[sub_idx, sub_idx, drop = FALSE]
-
-            # Wald test: H0: all rho = 0
-            chisq_stat <- as.numeric(t(rho) %*% MASS::ginv(V_rho) %*% rho)
-            df_val <- length(sub_idx)
-            p_val <- stats::pchisq(chisq_stat, df = df_val, lower.tail = FALSE)
-
-            res_list[[b]] <- data.frame(
-              Chisq = chisq_stat,
-              df = df_val,
-              `Pr(>Chisq)` = p_val,
-              check.names = FALSE
-            )
-          }
-          res <- do.call(rbind, res_list)
-          rownames(res) <- paste0("Overall test for ", unique_bases, " (H0: all zero)")
-          class(res) <- c("anova", "data.frame")
-          return(res)
-        }
       }
 
       old_opts <- NULL
@@ -1103,7 +1073,29 @@ Classic_Fit <- R6::R6Class(
     #' @param adjust Character; p-value adjustment method (e.g., "bonferroni", "holm", "none").
     #' @param protect Logical; whether to use hierarchical (protected) testing.
     #' @return A data frame containing the marginal means or contrasts.
-    lsmeans = function(specs, pairwise = FALSE, simple = NULL, adjust = "holm", protect = FALSE) {
+    lsmeans = function(specs = NULL, pairwise = FALSE, simple = NULL, adjust = "holm", protect = FALSE) {
+      # --- 1. Restricted Model Types ---
+      restricted_types <- c("ttest", "corr", "fa", "irt", "table")
+      if (!is.null(self$model$type) && self$model$type %in% restricted_types) {
+        stop(sprintf("lsmeans() is not supported for '%s' models.", self$model$type), call. = FALSE)
+      }
+
+      # --- 2. Check for missing specs ---
+      if (is.null(specs)) {
+        formula <- self$model$formula
+        data <- if (!is.null(self$model$raw_data)) as.data.frame(self$model$raw_data) else as.data.frame(self$model$data)
+        vars <- all.vars(nobars(formula))[-1]
+        is_cat <- sapply(data[vars], function(x) is.factor(x) || is.character(x))
+        cat_vars <- vars[is_cat]
+        
+        if (length(cat_vars) == 0) {
+          stop("lsmeans() is only available for models with categorical factors.", call. = FALSE)
+        } else {
+          stop(sprintf("Please specify 'specs' (e.g., fit$lsmeans('%s')).\nAvailable factors: %s", 
+                       cat_vars[1], paste(cat_vars, collapse = ", ")), call. = FALSE)
+        }
+      }
+
       # Ensure consistent contrasts for reference grid construction
       old_opts <- NULL
       if (!is.null(self$model$contrasts)) {

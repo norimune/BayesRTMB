@@ -1377,7 +1377,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # --- Metadata for classic inference and other methods ---
   obj$type <- if (has_random || !is.null(resid_corr)) {
-    if (family %in% c("gaussian", "lognormal", "student_t")) "lmer" else "glmm"
+    if (family %in% c("gaussian", "lognormal", "student_t")) "lmer" else "glmer"
   } else {
     if (family %in% c("gaussian", "lognormal", "student_t")) "lm" else "glm"
   }
@@ -1712,6 +1712,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
     }
     obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = c("L", "sd", "fa_cor"), fixed = fixed)
+    obj$type <- "fa"
     return(obj)
 
   } else {
@@ -1799,6 +1800,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     target_view <- if (!is.null(rotate)) c(paste0("L_", rotate), "sd", "fa_cor") else c("L", "sd", "fa_cor")
     obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = target_view, fixed = fixed)
+    obj$type <- "fa"
     return(obj)
   }
 }
@@ -1979,6 +1981,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 
   obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, 
                     init = init, fixed = fixed, view = view_vars)
+  obj$type <- "irt"
 
   return(obj)
 }
@@ -3048,6 +3051,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   if (multivariate && !is_diag) view_order <- c(view_order, "corr")
 
   mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
+  mdl$type <- "mixture"
   return(mdl)
 }
 
@@ -3602,6 +3606,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   if (!is_diag) view_order <- c(view_order, "corr")
 
   mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
+  mdl$type <- "lrt"
   return(mdl)
 }
 
