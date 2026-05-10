@@ -79,7 +79,6 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-logLik}{\code{Classic_Fit$logLik()}}
 \item \href{#method-Classic_Fit-summary}{\code{Classic_Fit$summary()}}
-\item \href{#method-Classic_Fit-savage_dickey}{\code{Classic_Fit$savage_dickey()}}
 \item \href{#method-Classic_Fit-anova}{\code{Classic_Fit$anova()}}
 \item \href{#method-Classic_Fit-lsmeans}{\code{Classic_Fit$lsmeans()}}
 \item \href{#method-Classic_Fit-.calc_contrast}{\code{Classic_Fit$.calc_contrast()}}
@@ -302,30 +301,6 @@ Display a summary of the estimation results.
 \item{\code{ranef}}{Logical; whether to show random effects in the summary.}
 }
 \if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Classic_Fit-savage_dickey"></a>}}
-\if{latex}{\out{\hypertarget{method-Classic_Fit-savage_dickey}{}}}
-\subsection{Method \code{savage_dickey()}}{
-Calculate Bayes Factors using the Savage-Dickey density ratio method.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$savage_dickey(pars = NULL, null = 0, digits = 3)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector of parameter names to test.}
-
-\item{\code{null}}{Numeric; the null value to test against (in constrained space). Default is 0.}
-
-\item{\code{digits}}{Number of decimal places to round results.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A data frame containing the Bayes Factors and evidence descriptors.
 }
 }
 \if{html}{\out{<hr>}}

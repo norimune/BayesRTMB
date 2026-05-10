@@ -57,6 +57,8 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
 
 \item{\code{map}}{List; the parameter mapping used.}
+
+\item{\code{marginal_vars}}{Character vector of parameter names that were marginalized (integrated out).}
 }
 \if{html}{\out{</div>}}
 }
@@ -171,7 +173,8 @@ Create a new `MAP_Fit` object.
   vcov_unc = NULL,
   ci_method = "wald",
   laplace = TRUE,
-  map = NULL
+  map = NULL,
+  marginal_vars = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -217,6 +220,8 @@ Create a new `MAP_Fit` object.
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
 \item{\code{map}}{List; the parameter mapping used.}
+
+\item{\code{marginal_vars}}{Character vector of parameter names that were marginalized (integrated out).}
 }
 \if{html}{\out{</div>}}
 }

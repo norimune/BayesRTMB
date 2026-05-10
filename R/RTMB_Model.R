@@ -541,12 +541,12 @@ RTMB_Model <- R6::R6Class(
       }
       
       if (!is.null(fixed)) {
-        return(private$.dispatch_fixed("optimize", laplace = laplace, init = init, num_estimate = num_estimate, control = control,
+        return(private$.dispatch_fixed(.method_to_call = "optimize", laplace = laplace, init = init, num_estimate = num_estimate, control = control,
           optimizer = optimizer, method = method, map = map, se = se,
           ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
           num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
           df_pars = df_pars, target_vars = target_vars, is_classic = is_classic, 
-          .return_object = .return_object, view = view, ...))
+          .return_object = .return_object, view = view, fixed = fixed, ...))
       }
 
       # --- 0. Determine target variables for DF calculation ---
@@ -746,6 +746,17 @@ RTMB_Model <- R6::R6Class(
 
       best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
       best_res <- opt_results[[best_idx]]
+      
+      # --- Apply Prior Correction for fixed parameters (Smart-Fixed) ---
+      # This adjusts the negative log posterior to remove the fixed parameter's prior density.
+      # Since the prior is a constant for fixed parameters, this correction is numerically
+      # stable when applied after optimization.
+      if (self$prior_correction != 0) {
+        for (i in seq_along(obj_vals)) {
+            if (!is.na(obj_vals[i])) obj_vals[i] <- obj_vals[i] + self$prior_correction
+        }
+        best_res$opt$objective <- best_res$opt$objective + self$prior_correction
+      }
 
       if (num_estimate == 1) {
         status <- if (conv_codes[1] == 0) "converged" else "Not Converged"
@@ -1926,10 +1937,10 @@ RTMB_Model <- R6::R6Class(
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL) {
       if (!is.null(fixed)) {
-        return(private$.dispatch_fixed("sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
+        return(private$.dispatch_fixed(.method_to_call = "sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
           seed = seed, delta = delta, max_treedepth = max_treedepth,
           parallel = parallel, laplace = laplace, init = init,
-          init_jitter = init_jitter, save_csv = save_csv, map = map))
+          init_jitter = init_jitter, save_csv = save_csv, map = map, fixed = fixed))
       }
 
       # if (!is.null(init)) init <- as.numeric(init)
@@ -2245,10 +2256,10 @@ RTMB_Model <- R6::R6Class(
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
                            map = NULL, fixed = NULL) {
       if (!is.null(fixed)) {
-        return(private$.dispatch_fixed("variational", iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
+        return(private$.dispatch_fixed(.method_to_call = "variational", iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
           num_samples = num_samples, num_estimate = num_estimate, alpha = alpha,
           laplace = laplace, print_freq = print_freq, method = method,
-          parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map))
+          parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map, fixed = fixed))
       }
 
       set.seed(seed)
@@ -2717,38 +2728,13 @@ RTMB_Model <- R6::R6Class(
     fixed_model = function(fixed_list) {
       if (!is.list(fixed_list)) stop("fixed_list must be a named list (e.g., fixed = list(theta = ...)).")
 
-      # 1. Start with current map and init
-      new_map <- if (is.null(self$map)) list() else self$map
-      new_init_list <- self$get_par_list()
-
+      # Use null_model() recursively to ensure all Jacobian corrections and prior removals are handled correctly
+      new_model <- self
       for (name in names(fixed_list)) {
-        if (!(name %in% names(self$par_list))) {
-          warning(sprintf("Parameter '%s' not found in model. Skipping.", name))
-          next
-        }
-        val <- fixed_list[[name]]
-        p <- self$par_list[[name]]
-
-        # Validate length
-        if (length(val) != p$length) {
-          stop(sprintf(
-            "Length of fixed value for '%s' (%d) does not match parameter length (%d).",
-            name, length(val), p$length
-          ))
-        }
-
-        # Update init
-        new_init_list[[name]] <- val
-
-        # Update map to fix all elements
-        new_map[[name]] <- factor(rep(NA, p$unc_length))
+          val <- fixed_list[[name]]
+          # Pass the full name (possibly with [idx]) and the full value to null_model
+          new_model <- new_model$null_model(target = name, value = val)
       }
-
-      # 2. Clone and return
-      new_model <- self$clone()
-      new_model$map <- new_map
-      new_model$init <- new_model$prepare_init(new_init_list)
-
       return(new_model)
     },
 
@@ -2814,6 +2800,7 @@ RTMB_Model <- R6::R6Class(
         if (is.null(prior_expr)) {
           stop(sprintf("The prior distribution definition for '%s' was not found in the model code.", base_name), call. = FALSE)
         }
+        orig_prior_ast <- prior_expr # Save original AST
 
         # If an index is specified, dynamically resolve arguments based on the data environment
         if (has_index) {
@@ -2872,6 +2859,7 @@ RTMB_Model <- R6::R6Class(
           idx_expr <- NULL
           idx_val <- NULL
         }
+        orig_prior_ast <- NULL # Will be set from formula
       }
 
       f <- tryCatch(as.formula(target), error = function(e) {
@@ -2885,6 +2873,7 @@ RTMB_Model <- R6::R6Class(
 
       spec <- deparse(f[[2]]) # Left side (e.g., "beta" or "beta[1]")
       prior_expr <- f[[3]] # Right side (call object)
+      if (is.null(orig_prior_ast)) orig_prior_ast <- prior_expr
       prior_str <- deparse(prior_expr)
 
       # --- 2. Classification of constraint types and construction of flat names ---
@@ -2983,14 +2972,26 @@ RTMB_Model <- R6::R6Class(
 
       # --- 6. Value validity check & map construction ---
       map_list <- list()
+      # Use simple init handling that was known to work
       adjusted_init <- if (is.list(self$init)) self$init else list()
+      if (length(adjusted_init) == 0 && !is.null(self$init)) {
+          # Fallback to vector conversion if list is empty
+          adjusted_init <- constrained_vector_to_list(self$init, self$par_list)
+      }
 
       p <- self$par_list[[par_name]]
       is_full <- length(fix_indices) == p$length
+      
+      # Ensure value length matches fix_indices or is scalar
+      if (length(value) != length(fix_indices) && length(value) != 1) {
+          stop(sprintf("Length of 'value' (%d) does not match the number of parameters to fix in '%s' (%d).", 
+               length(value), spec, length(fix_indices)), call. = FALSE)
+      }
+      val_vec <- rep(value, length.out = length(fix_indices))
 
       # Exactly on the boundary
-      if (!is.null(p$lower) && any(value <= p$lower)) stop("Fixed value must be strictly greater than the lower bound (the boundary itself cannot be specified).", call. = FALSE)
-      if (!is.null(p$upper) && any(value >= p$upper)) stop("Fixed value must be strictly less than the upper bound (the boundary itself cannot be specified).", call. = FALSE)
+      if (!is.null(p$lower) && any(val_vec <= p$lower)) stop("Fixed value must be strictly greater than the lower bound (the boundary itself cannot be specified).", call. = FALSE)
+      if (!is.null(p$upper) && any(val_vec >= p$upper)) stop("Fixed value must be strictly less than the upper bound (the boundary itself cannot be specified).", call. = FALSE)
 
       # --- Addition of Jacobian correction ---
       b_type <- p$bounds
@@ -3013,8 +3014,21 @@ RTMB_Model <- R6::R6Class(
         correction_val <- correction_val + lj_val
       }
 
+      # Update init and map
+      p_init <- adjusted_init[[par_name]]
+      p_init[fix_indices] <- val_vec
+      adjusted_init[[par_name]] <- p_init
+
+      new_map <- if (is.null(self$map)) list() else self$map
+      m <- if (!is.null(new_map[[par_name]])) new_map[[par_name]] else factor(1:p$unc_length)
+      m_vec <- as.character(m)
+      m_vec[fix_indices] <- NA
+      new_map[[par_name]] <- factor(m_vec)
+
       # --- 7. Clone and Modify Code ---
       new_model <- self$clone()
+      new_model$map <- new_map
+      new_model$init <- new_model$prepare_init(adjusted_init)
 
       # Track if the prior was successfully modified in the AST
       prior_removed <- FALSE
@@ -3025,33 +3039,16 @@ RTMB_Model <- R6::R6Class(
         new_model$code$model <- remove_prior_from_ast(self$code$model, target_spec, self$par_names[[base_name]])
         if (paste(deparse(new_model$code$model), collapse = "\n") != old_ast) {
           prior_removed <- TRUE
-        } else {
-          # If removal failed (e.g. vectorized b ~ normal() but target is b[1]),
-          # append a cancellation term to the end of the model block.
-          # This ensures the density is subtracted INSIDE the integral (MakeADFun).
-
-          # 1. Prepare the lpdf call (prior_expr is already converted to _lpdf in null_model)
-          # We need to use the original lhs (target_ast) as the first argument
-          cancel_call <- prior_expr
-          cancel_call[[2]] <- target_ast
-
-          # 2. Add to AST: lp <- lp - cancellation_term
-          # We assume the log-probability variable is named 'lp' as per package convention
-          sub_expr <- bquote(lp <- lp - .(cancel_call))
-
-          # 3. Find the position before the return statement
-          ast_list <- as.list(new_model$code$model)
-          ret_idx <- which(sapply(ast_list, function(x) is.call(x) && identical(x[[1]], as.name("return"))))
-
-          if (length(ret_idx) > 0) {
-            new_ast_list <- append(ast_list, list(sub_expr), after = ret_idx[1] - 1)
-            new_model$code$model <- as.call(new_ast_list)
-            prior_removed <- TRUE # Mark as removed since it's cancelled in AST
-          }
         }
-        # Rebuild log_prob from modified AST
+        
+        # Rebuild log_prob from modified AST (prior_removed is used for Bayes Factor correction)
         user_env <- if (!is.null(self$code$env)) self$code$env else parent.frame()
         new_model$log_prob <- eval(substitute(model_code(E, env = EN), list(E = new_model$code$model, EN = user_env)))
+        
+        # Store the correction value for post-optimization adjustment if the prior wasn't removed from AST
+        if (!prior_removed && exists("correction_val")) {
+            new_model$prior_correction <- correction_val
+        }
       }
 
       if (is_full) {
@@ -3390,12 +3387,15 @@ RTMB_Model <- R6::R6Class(
     },
 
     # --- Internal helper for fixed parameter recursion ---
-    .dispatch_fixed = function(method_name, ...) {
+    .dispatch_fixed = function(.method_to_call, ...) {
       args <- list(...)
       fixed <- args$fixed
       args$fixed <- NULL
       new_model <- self$fixed_model(fixed)
-      return(do.call(new_model[[method_name]], args))
+      # Ensure the method is retrieved as a bound function from the R6 object
+      func <- new_model[[.method_to_call]]
+      if (!is.function(func)) stop(sprintf("Method '%s' not found in RTMB_Model.", .method_to_call))
+      return(do.call(func, args))
     },
 
     # --- Internal helper for AD function setup ---
