@@ -965,8 +965,34 @@ RTMB_Model <- R6::R6Class(
         
         type <- self$type
         raw_df <- if (!is.null(self$raw_data)) as.data.frame(self$raw_data) else NULL
-        N_obs <- if (!is.null(raw_df)) nrow(raw_df) else length(self$data$Y)
-        if (is.null(N_obs) || N_obs == 0) N_obs <- if (!is.null(self$data$X)) nrow(self$data$X) else 0
+        
+        # Robust N_obs identification
+        N_obs <- 0
+        if (!is.null(raw_df)) {
+          N_obs <- nrow(raw_df)
+        } else if (!is.null(self$data)) {
+          # Check common data names
+          if (!is.null(self$data$Y)) {
+            N_obs <- length(self$data$Y)
+          } else if (!is.null(self$data$X) && is.matrix(self$data$X)) {
+            N_obs <- nrow(self$data$X)
+          } else if (!is.null(self$data$Y1) && !is.null(self$data$Y2)) {
+            # Independent t-test
+            N_obs <- length(self$data$Y1) + length(self$data$Y2)
+          } else if (!is.null(self$data$diffs)) {
+            # Paired t-test
+            N_obs <- length(self$data$diffs)
+          } else {
+            # Search for any numeric vector that looks like data
+            for (item in self$data) {
+              if (is.numeric(item) && is.vector(item) && length(item) > 1) {
+                N_obs <- length(item)
+                break
+              }
+            }
+          }
+        }
+        if (is.null(N_obs) || N_obs == 0) N_obs <- 0
 
         if (type == "lm" || type == "ttest" || type == "mediation") {
           # Calculate K (number of fixed effect parameters)
@@ -976,7 +1002,11 @@ RTMB_Model <- R6::R6Class(
           # Assign N-K to all elements of each target parameter
           for (v in target_vars) {
             if (v %in% names(df_list_unc)) {
-              df_list_unc[[v]] <- rep(N_obs - K_fixed, length(df_list_unc[[v]]))
+              if (v == "delta") {
+                df_list_unc[[v]] <- rep(Inf, length(df_list_unc[[v]]))
+              } else {
+                df_list_unc[[v]] <- rep(N_obs - K_fixed, length(df_list_unc[[v]]))
+              }
             }
           }
         } else if (type == "corr") {
@@ -984,6 +1014,9 @@ RTMB_Model <- R6::R6Class(
             if (v %in% names(df_list_unc)) {
               df_list_unc[[v]] <- rep(N_obs - 2, length(df_list_unc[[v]]))
             }
+          }
+          if ("mean" %in% names(df_list_unc)) {
+            df_list_unc[["mean"]] <- rep(N_obs - 1, length(df_list_unc[["mean"]]))
           }
         }
         
@@ -1500,6 +1533,29 @@ RTMB_Model <- R6::R6Class(
       }
 
       df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE)
+      
+      # For t-tests in BW mode, override Welch-Satterthwaite with the requested policy
+      if (identical(df_method, "bw") && self$type == "ttest") {
+        if (!is.null(df_transform) && "df" %in% names(df_transform)) {
+          # Calculate t-test DF (N-K)
+          raw_df <- if (!is.null(self$raw_data)) as.data.frame(self$raw_data) else NULL
+          N_val <- if (!is.null(raw_df)) nrow(raw_df) else 0
+          if (N_val == 0 && !is.null(self$data)) {
+            if (!is.null(self$data$Y1) && !is.null(self$data$Y2)) N_val <- length(self$data$Y1) + length(self$data$Y2)
+            else if (!is.null(self$data$diffs)) N_val <- length(self$data$diffs)
+            else if (!is.null(self$data$Y)) N_val <- length(self$data$Y)
+          }
+          K_val <- 0
+          for (v in target_vars) if (v %in% names(self$par_list)) K_val <- K_val + self$par_list[[v]]$unc_length
+          
+          for (i in 1:nrow(df_transform)) {
+            nm <- rownames(df_transform)[i]
+            if (grepl("^delta", nm)) df_transform$df[i] <- Inf
+            else df_transform$df[i] <- pmax(N_val - K_val, 1)
+          }
+        }
+      }
+
       df_generate <- build_derived_df(self$generate, gq_list, is_generate = TRUE)
 
       log_ml <- NA
