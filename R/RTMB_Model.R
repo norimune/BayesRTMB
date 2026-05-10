@@ -308,9 +308,6 @@ RTMB_Model <- R6::R6Class(
       }
 
       finite_dfs <- df_par[is.finite(df_par)]
-      if (!silent && length(finite_dfs) > 0) {
-        cat(sprintf("  Estimated DF range: %.1f - %.1f\n", min(finite_dfs), max(finite_dfs)))
-      }
 
       if (return_sensitivities) {
         return(list(df = df_full, sensitivities = dH_list, V = V))
@@ -480,9 +477,10 @@ RTMB_Model <- R6::R6Class(
     #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
     #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
     #' @param fixed Optional list specifying parameter values to fix.
-    #' @param REML Logical; whether to use Restricted Maximum Likelihood (REML). Default is FALSE.
-    #' @param marginal Character vector of parameters to be treated as fixed effects for REML/DF calculation, or "auto". Default is "auto".
-    #' @param df_pars Alias for `marginal` (for backward compatibility).
+    #' @param empirical Logical or Character vector. If TRUE, enables Empirical Bayes (REML) logic and calculates degrees of freedom. If a character vector, also specifies which parameters to marginalize (equivalent to `marginal`). Default is FALSE.
+    #' @param REML Alias for `empirical`.
+    #' @param marginal Character vector of parameters to be treated as fixed effects for Empirical Bayes/DF calculation. Default is "none". Use "auto" for automatic detection.
+    #' @param df_pars Alias for `marginal`.
     #' @param target_vars Character vector of parameters to remove priors from (internal use for classic mode).
     #' @param is_classic Logical; whether this is a frequentist (classic) estimation. Default is FALSE.
     #' @param .return_object Character; "MAP" or "Classic" fit object. Default is "MAP".
@@ -494,14 +492,25 @@ RTMB_Model <- R6::R6Class(
                         optimizer = "nlminb", method = "BFGS", map = NULL,
                         se = TRUE, ci_method = c("wald", "sampling"),
                         se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL, fixed = NULL, REML = FALSE, marginal = "auto",
+                        df = NULL, fixed = NULL, empirical = FALSE, REML = NULL, marginal = NULL,
                         df_pars = NULL, target_vars = NULL, is_classic = FALSE, 
                         .return_object = "MAP", view = NULL, views = NULL, ...) {
+      # --- Consolidate empirical / REML / marginal ---
+      if (!is.null(REML)) empirical <- REML
+      
+      if (is.character(empirical)) {
+          if (is.null(marginal)) marginal <- empirical
+          REML <- TRUE
+      } else {
+          REML <- isTRUE(empirical)
+      }
+      
+      if (is.null(marginal)) marginal <- "none"
       if (is.null(view) && !is.null(views)) view <- views
       
       # --- Backward Compatibility ---
       if (!is.null(df_pars)) {
-        if (identical(marginal, "auto")) {
+        if (identical(marginal, "none") || identical(marginal, "auto")) {
           marginal <- df_pars
         }
       }      
@@ -1857,7 +1866,7 @@ RTMB_Model <- R6::R6Class(
     # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with model-appropriate degrees of freedom.
     #' @param df Numeric/Inf for specific degrees of freedom. If NULL (default), determined by `df_method`.
-    #' @param marginal Character vector of parameters to estimate degrees of freedom for (or "auto" / "all" / "none"). Default is "auto".
+    #' @param marginal Character vector of parameters to be treated as fixed effects for REML calculation. Default is "auto" (uses wrapper-defined targets if available). Use "none" to disable.
     #' @param df_pars Alias for `marginal` (for backward compatibility).
     #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
     #' @param view Character vector of parameters to prioritize in the summary output.
