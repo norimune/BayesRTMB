@@ -751,7 +751,7 @@ RTMB_Model <- R6::R6Class(
       # This adjusts the negative log posterior to remove the fixed parameter's prior density.
       # Since the prior is a constant for fixed parameters, this correction is numerically
       # stable when applied after optimization.
-      if (self$prior_correction != 0) {
+      if (!is.na(self$prior_correction) && self$prior_correction != 0) {
         for (i in seq_along(obj_vals)) {
             if (!is.na(obj_vals[i])) obj_vals[i] <- obj_vals[i] + self$prior_correction
         }
@@ -2923,6 +2923,19 @@ RTMB_Model <- R6::R6Class(
             spec, p$bounds, info$par
           ), call. = FALSE)
         }
+        
+        # Check for multivariate priors if we are fixing only an element
+        multivariate_priors <- c("multi_normal", "multi_cauchy", "mvnormal", "mvcauchy", "lkj_corr", "wishart", "dirichlet")
+        if (!is.null(prior_expr)) {
+            p_fn <- as.character(prior_expr[[1]])
+            if (p_fn %in% multivariate_priors) {
+                stop(sprintf(
+                    "Element-level fixation ('%s') is not supported for multivariate priors ('%s').\nPlease fix the entire vector '%s' or use independent univariate priors.",
+                    spec, p_fn, info$par
+                ), call. = FALSE)
+            }
+        }
+        
         if (!(p$bounds %in% elementwise_bounds)) {
           stop(sprintf("Fixing individual elements is not supported for '%s' (type='%s').", spec, p$bounds), call. = FALSE)
         }
@@ -2960,10 +2973,16 @@ RTMB_Model <- R6::R6Class(
           {
             # If the evaluated log-density is a vector, sum it using sum()
             res <- sum(eval(prior_expr, envir = eval_env))
-            res
+            if (!is.finite(res)) {
+                warning(sprintf("Prior correction for '%s' resulted in non-finite value (%f). Bayes Factor may be inaccurate.", par_name, res))
+                0
+            } else {
+                res
+            }
           },
           error = function(e) {
-            stop(sprintf("Failed to evaluate prior '%s'. Error: %s", prior_str, e$message))
+            warning(sprintf("Failed to evaluate prior correction for '%s' (Error: %s). Bayes Factor may be inaccurate.", par_name, e$message))
+            0
           }
         )
       } else {

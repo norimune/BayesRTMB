@@ -226,24 +226,58 @@ constrained_vector_to_list <- function(vec, par_list) {
   return(res)
 }
 
-# Function to restore a flat vector in unconstrained space to a list (*Added due to omission)
-unconstrained_vector_to_list <- function(vec, par_list) {
-  res <- list()
+# Function to restore a flat vector in unconstrained space to a list
+# Now handles parameter mapping (fixing elements) by skipping NA indices in map factors.
+unconstrained_vector_to_list <- function(vec, par_list, map = NULL, original_list = NULL) {
+  res <- if (!is.null(original_list)) original_list else list()
   idx <- 1
+  
   for (name in names(par_list)) {
     p <- par_list[[name]]
-    len <- p$unc_length
-    if (len > 0) {
-      val <- vec[idx:(idx + len - 1)]
-      # Restore matrix dimensions for multi-dimensional parameters
-      # whose unc_length matches prod(dim) (e.g., ordered, positive_ordered matrices)
-      if (length(p$dim) > 1 && prod(p$dim) == len) {
-        dim(val) <- p$dim
+    
+    # If this parameter is not in original_list, initialize it
+    if (is.null(res[[name]])) {
+      res[[name]] <- if (p$unc_length > 0) rep(0, p$unc_length) else numeric(0)
+    }
+
+    # Handle mapping
+    m <- if (!is.null(map[[name]])) map[[name]] else NULL
+    
+    if (is.null(m)) {
+      # No mapping: take all elements
+      len <- p$unc_length
+      if (len > 0) {
+        if (idx + len - 1 <= length(vec)) {
+          res[[name]] <- vec[idx:(idx + len - 1)]
+          idx <- idx + len
+        }
       }
-      res[[name]] <- val
-      idx <- idx + len
     } else {
-      res[[name]] <- numeric(0)
+      # Mapping exists: only take elements that are NOT NA in the factor
+      m_vec <- as.integer(m)
+      active_indices <- which(!is.na(m_vec))
+      
+      # Important: TMB maps multiple elements to the same parameter if indices match.
+      # Here we assume 1:1 mapping or unique indices for simplicity in summary.
+      unique_active <- unique(na.omit(m_vec))
+      len <- length(unique_active)
+      
+      if (len > 0) {
+        if (idx + len - 1 <= length(vec)) {
+          active_vals <- vec[idx:(idx + len - 1)]
+          # Map these back to the unconstrained parameter list
+          for (i in seq_along(unique_active)) {
+            target_indices <- which(m_vec == unique_active[i])
+            res[[name]][target_indices] <- active_vals[i]
+          }
+          idx <- idx + len
+        }
+      }
+    }
+    
+    # Restore matrix dimensions if applicable
+    if (length(p$dim) > 1 && length(res[[name]]) == prod(p$dim)) {
+      dim(res[[name]]) <- p$dim
     }
   }
   return(res)
