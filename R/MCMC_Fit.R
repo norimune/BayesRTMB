@@ -71,6 +71,7 @@ dmvnorm_log <- function(x, mean, sigma) {
 #'
 
 
+#' @export
 MCMC_Fit <- R6::R6Class(
   classname = "mcmc_fit",
   inherit = RTMB_Fit_Base,

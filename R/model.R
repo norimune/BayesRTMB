@@ -134,6 +134,7 @@ NULL
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
+#' @export
 rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, fixed = NULL, null_target = NULL, silent = FALSE) {
 
   if (is.null(silent)) silent <- FALSE

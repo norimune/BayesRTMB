@@ -18,6 +18,7 @@
 #' @field best_chain Integer; the index of the chain with the maximum ELBO.
 #' @field mu_history Matrix of the parameter trajectory from the final window.
 #'
+#' @export
 VB_Fit <- R6::R6Class(
   classname = "advi_fit",
   inherit = RTMB_Fit_Base,

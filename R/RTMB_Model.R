@@ -28,6 +28,7 @@
 #' @field extra List; used to store auxiliary data (like term assignments, factors, test results) needed by methods such as classic().
 #'
 #' @import RTMB
+#' @export
 RTMB_Model <- R6::R6Class(
   classname = "RTMB_Model",
   public = list(

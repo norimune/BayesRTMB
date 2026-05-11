@@ -25,6 +25,7 @@
 #' @field map List; the parameter mapping used.
 #' @field marginal_vars Character vector of parameter names that were marginalized (integrated out).
 #'
+#' @export
 MAP_Fit <- R6::R6Class(
   classname = "map_fit",
   inherit = RTMB_Fit_Base,
