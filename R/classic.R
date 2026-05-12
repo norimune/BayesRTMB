@@ -1235,29 +1235,26 @@ print.summary_Classic_Fit <- function(x, ...) {
   if (!is.null(x$logLik) && !is.na(x$logLik)) cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n", as.numeric(x$logLik), x$AIC, x$BIC))
   if (!is.null(x$coefficients)) {
     if (!is.null(x$type) && x$type == "table") {
-      cat("\n---\n"); obs_tab <- x$extra$tab
-      done <- FALSE
-      if (!is.null(obs_tab)) {
-        N_tot <- sum(obs_tab); R_dim <- nrow(obs_tab); C_dim <- ncol(obs_tab)
-        df_mu <- x$coefficients[grepl("^mu(\\[|$)", rownames(x$coefficients)), , drop = FALSE]
-        if (nrow(df_mu) == R_dim * C_dim) {
-          p_est <- df_mu$Estimate / N_tot; p_mat <- matrix(p_est, nrow = R_dim, ncol = C_dim); p_row <- rowSums(p_mat); p_col <- colSums(p_mat)
-          E_mat <- matrix(0, nrow = R_dim, ncol = C_dim); for (i in 1:R_dim) for (j in 1:C_dim) E_mat[i, j] <- p_row[i] * p_col[j] * N_tot
-          cat("Cell Probabilities (p) and Confidence Intervals:\n"); df_p <- df_mu
-          df_p$Estimate <- round(df_mu$Estimate / N_tot, digits)
-          df_p$`Std. Error` <- round(df_mu$`Std. Error` / N_tot, digits)
-          if ("Lower 95%" %in% names(df_p)) { 
-            df_p$`Lower 95%` <- round(df_mu$`Lower 95%` / N_tot, digits)
-            df_p$`Upper 95%` <- round(df_mu$`Upper 95%` / N_tot, digits)
-          }
-          rownames(df_p) <- gsub("^mu\\[", "p[", rownames(df_p)); cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_p))
-          print(df_p[, cols_to_show, drop = FALSE], quote = FALSE, right = TRUE)
-          cat("\nExpected Counts (Independence) and Pearson Residuals:\n"); E_vec <- as.vector(E_mat); obs_vec <- as.vector(obs_tab); residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
-          df_resid <- data.frame(Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = gsub("^mu\\[", "E\\[", rownames(df_mu)))
-          print(df_resid, quote = FALSE, right = TRUE); done <- TRUE
-        }
-      }
-      if (!done) {
+      cat("\n---\n"); obs_tab <- x$extra$tab; N_tot <- sum(obs_tab); R_dim <- nrow(obs_tab); C_dim <- ncol(obs_tab)
+      df_mu <- x$coefficients[grepl("^mu(\\[|$)", rownames(x$coefficients)), , drop = FALSE]
+      if (nrow(df_mu) == R_dim * C_dim) {
+        p_est <- df_mu$Estimate / N_tot; p_mat <- matrix(p_est, nrow = R_dim, ncol = C_dim); p_row <- rowSums(p_mat); p_col <- colSums(p_mat)
+        E_mat <- matrix(0, nrow = R_dim, ncol = C_dim); for (i in 1:R_dim) for (j in 1:C_dim) E_mat[i, j] <- p_row[i] * p_col[j] * N_tot
+        cat("Cell Probabilities (p) and Confidence Intervals:\n"); df_p <- df_mu
+         # Correct order: Calculate then Round
+         df_p$Estimate <- round(df_mu$Estimate / N_tot, digits)
+         df_p$`Std. Error` <- round(df_mu$`Std. Error` / N_tot, digits)
+         if ("Lower 95%" %in% names(df_p)) { 
+           df_p$`Lower 95%` <- round(df_mu$`Lower 95%` / N_tot, digits)
+           df_p$`Upper 95%` <- round(df_mu$`Upper 95%` / N_tot, digits)
+         }
+         rownames(df_p) <- gsub("^mu\\[", "p[", rownames(df_p)); cols_to_show <- intersect(c("Estimate", "Std. Error", "Lower 95%", "Upper 95%", "z value", "t value", "Pr"), names(df_p))
+         print(df_p[, cols_to_show, drop = FALSE], quote = FALSE, right = TRUE)
+         cat("\nExpected Counts (Independence) and Pearson Residuals:\n"); E_vec <- as.vector(E_mat); obs_vec <- as.vector(obs_tab); residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
+         df_resid <- data.frame(Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = gsub("^mu\\[", "E\\[", rownames(df_mu)))
+        print(df_resid, quote = FALSE, right = TRUE)
+      } else {
+        # Fallback for classic mode or models without mu parameters
         cat("\nTest Results:\n")
         print(x$coefficients, quote = FALSE, right = TRUE)
       }

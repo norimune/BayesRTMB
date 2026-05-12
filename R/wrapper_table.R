@@ -56,7 +56,12 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
     fisher_res <- tryCatch(stats::fisher.test(tab), error = function(e) NULL)
     
     res <- Classic_Fit$new(
-      model = list(type = "table", data = list(tab = tab), par_names = list(p = cell_labels)),
+      model = list(
+        type = "table", 
+        extra = list(tab = tab, correct = correct),
+        data = list(tab = tab), 
+        par_names = list(p = cell_labels)
+      ),
       df_fixed = data.frame(
         Statistic = c("Chi-squared", if (!is.null(fisher_res)) "Fisher's Exact" else NULL),
         Estimate = c(chisq_res$statistic, if (!is.null(fisher_res)) NA else NULL),
@@ -67,8 +72,6 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
       test_results = list(chisq = chisq_res, fisher = fisher_res)
     )
     class(res) <- c("rtmb_table", class(res))
-    res$type <- "table"
-    res$extra <- list(tab = tab, correct = correct)
     return(res)
   }
 
@@ -121,9 +124,10 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
     par_names = list(p = cell_labels, mu = cell_labels),
     fixed = fixed
   )
-  class(res) <- c("rtmb_table", class(res))
-
+  # Set metadata for special print/summary dispatch
   res$type <- "table"
   res$extra <- list(tab = tab, correct = correct)
+  
+  class(res) <- c("rtmb_table", class(res))
   return(res)
 }
