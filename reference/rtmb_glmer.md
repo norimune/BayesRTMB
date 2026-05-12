@@ -67,6 +67,10 @@ rtmb_glmer(
   List of initial values (generated automatically based on glm if
   omitted)
 
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
+
 - null:
 
   Character string specifying the target parameter for the null model.
@@ -84,6 +88,10 @@ rtmb_glmer(
 - view:
 
   Character vector of parameter names to prioritize in summary.
+
+- within:
+
+  Optional list for wide-to-long conversion.
 
 - factors:
 
@@ -110,6 +118,14 @@ rtmb_glmer(
 - resid_group:
 
   Variable name for grouping in residual correlation.
+
+- generate:
+
+  Optional expression for generated quantities.
+
+- .force_sum:
+
+  Logical; internal use only.
 
 ## Examples
 

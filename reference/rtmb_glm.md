@@ -15,8 +15,10 @@ rtmb_glm(
   fixed = NULL,
   null = NULL,
   gmc = NULL,
+  view = NULL,
   factors = NULL,
-  contrasts = "treatment"
+  contrasts = "treatment",
+  ...
 )
 ```
 
@@ -51,6 +53,10 @@ rtmb_glm(
 
   List of initial values
 
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
+
 - null:
 
   Character string specifying the target parameter for the null model.
@@ -58,6 +64,23 @@ rtmb_glm(
 - gmc:
 
   Character vector of variable names for GMC
+
+- view:
+
+  Optional character vector of parameter names to show first in summary.
+
+- factors:
+
+  Character vector of variable names to be treated as factors.
+
+- contrasts:
+
+  Character string specifying the contrast type ("treatment" or "sum").
+
+- ...:
+
+  Additional arguments passed to
+  [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md).
 
 ## Examples
 

@@ -48,7 +48,7 @@ It supports simple correlation, multilevel correlation, and classical frequentis
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Fit a Correlation Model using RTMB</h1>
-      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_functions.R" class="external-link"><code>R/wrapper_functions.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_corr.R" class="external-link"><code>R/wrapper_corr.R</code></a></small>
       <div class="d-none name"><code>rtmb_corr.Rd</code></div>
     </div>
 
@@ -68,8 +68,7 @@ It supports simple correlation, multilevel correlation, and classical frequentis
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  null <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -89,6 +88,10 @@ It supports simple correlation, multilevel correlation, and classical frequentis
 <dd><p>A character string or expression specifying the group ID variable for multilevel models.</p></dd>
 
 
+<dt id="arg-covariates">covariates<a class="anchor" aria-label="anchor" href="#arg-covariates"></a></dt>
+<dd><p>Optional numeric matrix or data frame of covariates to be included in the joint MVN model.</p></dd>
+
+
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
 <dd><p>Prior configuration object: <code><a href="prior_uniform.html">prior_uniform()</a></code> or <code><a href="prior_weak.html">prior_weak()</a></code>. Default is <code><a href="prior_uniform.html">prior_uniform()</a></code>.</p></dd>
 
@@ -102,12 +105,12 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <dd><p>Optional list of initial values.</p></dd>
 
 
+<dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
+<dd><p>Optional named list of fixed values for specific parameters.</p></dd>
+
+
 <dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
 <dd><p>Optional list specifying parameters to fix to null values.</p></dd>
-
-
-<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to <code>rtmb_model</code>.</p></dd>
 
 </dl></div>
     <div class="section level2">

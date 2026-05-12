@@ -1,6 +1,6 @@
-# Print method for ce_simple
+# Print simple effects
 
-Print method for ce_simple
+Print simple effects
 
 ## Usage
 
@@ -8,3 +8,17 @@ Print method for ce_simple
 # S3 method for class 'ce_simple'
 print(x, digits = 3, ...)
 ```
+
+## Arguments
+
+- x:
+
+  A \`ce_simple\` object.
+
+- digits:
+
+  Number of digits to print.
+
+- ...:
+
+  Additional arguments.

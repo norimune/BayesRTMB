@@ -1,9 +1,4 @@
-# Multilevel Correlation Analysis (Kenny's Model)
-
-This function fits a multilevel correlation model to estimate
-between-group and within-group covariance/correlation structures, along
-with Intraclass Correlation Coefficients (ICC). RTMB-based Mediation
-Analysis Wrapper
+# RTMB-based Mediation Analysis Wrapper
 
 \`rtmb_mediation\` performs mediation analysis by simultaneously
 estimating multiple GLM regression equations. It automatically
@@ -71,7 +66,7 @@ An \`RTMB_Model\` object.
 The function identifies mediation paths by looking for variables that
 are responses in one equation and predictors in another. Indirect
 effects are calculated as the product of coefficients along these paths
-(\$a b\$).
+(\\a \* b\\).
 
 **Uncertainty Estimation**: When using \`\$optimize(ci_method =
 "sampling")\`, the function provides asymmetric confidence intervals for

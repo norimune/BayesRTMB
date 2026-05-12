@@ -48,7 +48,7 @@ and Gaussian Process smoothing on the mean profiles."></head><body>
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>Fit a Latent Rank Theory (LRT) Model</h1>
-      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_functions.R" class="external-link"><code>R/wrapper_functions.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_lrt.R" class="external-link"><code>R/wrapper_lrt.R</code></a></small>
       <div class="d-none name"><code>rtmb_lrt.Rd</code></div>
     </div>
 
@@ -92,6 +92,14 @@ and Gaussian Process smoothing on the mean profiles.</p>
 <dd><p>A data frame containing the variables.</p></dd>
 
 
+<dt id="arg-rank-coords">rank_coords<a class="anchor" aria-label="anchor" href="#arg-rank-coords"></a></dt>
+<dd><p>Optional numeric vector of coordinates for each rank. Default is 1:k.</p></dd>
+
+
+<dt id="arg-covariance">covariance<a class="anchor" aria-label="anchor" href="#arg-covariance"></a></dt>
+<dd><p>Covariance structure: "diagonal", "diagonal_equal", "full", "full_equal", or "full_equal_corr".</p></dd>
+
+
 <dt id="arg-magnitude">magnitude<a class="anchor" aria-label="anchor" href="#arg-magnitude"></a></dt>
 <dd><p>Signal standard deviation for the GP prior. If NULL, it is estimated.</p></dd>
 
@@ -104,8 +112,20 @@ and Gaussian Process smoothing on the mean profiles.</p>
 <dd><p>Measurement noise for the GP prior (default is 0.01).</p></dd>
 
 
+<dt id="arg-prob-smoothing">prob_smoothing<a class="anchor" aria-label="anchor" href="#arg-prob-smoothing"></a></dt>
+<dd><p>Logical; whether to apply smoothing to the class membership probabilities.</p></dd>
+
+
+<dt id="arg-link">link<a class="anchor" aria-label="anchor" href="#arg-link"></a></dt>
+<dd><p>Link function for class probabilities: "ordered" or "sequential".</p></dd>
+
+
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
 <dd><p>Prior configuration object: <code><a href="prior_uniform.html">prior_uniform()</a></code> (default), <code><a href="prior_weak.html">prior_weak()</a></code>, <code><a href="prior_rhs.html">prior_rhs()</a></code>, or <code><a href="prior_ssp.html">prior_ssp()</a></code>.</p></dd>
+
+
+<dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
+<dd><p>Optional named list of fixed values for specific parameters.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

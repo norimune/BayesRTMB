@@ -162,20 +162,63 @@ mod_basic <- rtmb_model(
   data = data_list,
   code = model_code
 )
-#> Error in rtmb_model(data = data_list, code = model_code): could not find function "rtmb_model"
+#> Pre-checking model code...
+#> Checking RTMB setup...
 
 # Perform Maximum A Posteriori (MAP) estimation
 map_basic <- mod_basic$optimize()
-#> Error: object 'mod_basic' not found
+#> Starting optimization...
+#> 
+#> Optimization converged. Final objective: 46.99
 # The summary displays default parameter names: mu[1], mu[2], mu[3]
 map_basic$summary()
-#> Error: object 'map_basic' not found
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 46.99
+#> Approx. Log Marginal Likelihood (Laplace): -53.43
+#> 
+#> Point Estimates and 95% Wald CI:
+#> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> mu[1]     -0.12319     0.09499   -0.30936    0.06298 
+#> mu[2]      2.15924     0.10806    1.94745    2.37102 
+#> mu[3]     -1.11887     0.09722   -1.30942   -0.92832 
+#> sigma      0.44555     0.04045    0.37292    0.53232 
+#> 
 
 # Perform MCMC sampling using the named model (chains/iters reduced for speed)
 mcmc_basic <- mod_basic$sample(sampling = 500, warmup = 500, chains = 2)
-#> Error: object 'mod_basic' not found
+#> Starting sequential sampling (chains = 2)...
+#> chain 1 started... 
+#> chain 1: iter 100 warmup 
+#> chain 1: iter 200 warmup 
+#> chain 1: iter 300 warmup 
+#> chain 1: iter 400 warmup 
+#> chain 1: iter 500 warmup 
+#> chain 1: iter 600 sampling 
+#> chain 1: iter 700 sampling 
+#> chain 1: iter 800 sampling 
+#> chain 1: iter 900 sampling 
+#> chain 1: iter 1000 sampling 
+#> chain 2 started... 
+#> chain 2: iter 100 warmup 
+#> chain 2: iter 200 warmup 
+#> chain 2: iter 300 warmup 
+#> chain 2: iter 400 warmup 
+#> chain 2: iter 500 warmup 
+#> chain 2: iter 600 sampling 
+#> chain 2: iter 700 sampling 
+#> chain 2: iter 800 sampling 
+#> chain 2: iter 900 sampling 
+#> chain 2: iter 1000 sampling 
 mcmc_basic$summary()
-#> Error: object 'mcmc_basic' not found
+#> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
+#> lp        -49.82  1.39  -49.06  -53.16  -48.04       486       505  1.01 
+#> mu[1]      -0.12  0.10   -0.11   -0.32    0.07       828       634  1.00 
+#> mu[2]       2.16  0.11    2.16    1.93    2.38      1016       692  1.00 
+#> mu[3]      -1.12  0.10   -1.13   -1.31   -0.91       948       733  1.00 
+#> sigma       0.47  0.04    0.45    0.39    0.56      1075       569  1.00 
 
 # --- 2. Optional: Adding Custom Parameter Names and initial values ---
 # You can optionally use 'par_names' to assign meaningful labels
@@ -186,18 +229,61 @@ mod_named <- rtmb_model(
   init = list(mu = rep(0, 3), sigma = 1),
   par_names = list(mu = group_names)
 )
-#> Error in rtmb_model(data = data_list, code = model_code, init = list(mu = rep(0,     3), sigma = 1), par_names = list(mu = group_names)): could not find function "rtmb_model"
+#> Pre-checking model code...
+#> Checking RTMB setup...
 
 map_named <- mod_named$optimize()
-#> Error: object 'mod_named' not found
+#> Starting optimization...
+#> 
+#> Optimization converged. Final objective: 46.99
 # The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]
 map_named$summary()
-#> Error: object 'map_named' not found
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 46.99
+#> Approx. Log Marginal Likelihood (Laplace): -53.43
+#> 
+#> Point Estimates and 95% Wald CI:
+#>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> mu[Control]      -0.12319     0.09499   -0.30936    0.06298 
+#> mu[Treatment_A]   2.15921     0.10806    1.94742    2.37099 
+#> mu[Treatment_B]  -1.11887     0.09722   -1.30942   -0.92832 
+#> sigma             0.44555     0.04045    0.37292    0.53232 
+#> 
 
 # Perform MCMC sampling using the named model (chains/iters reduced for speed)
 mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
-#> Error: object 'mod_named' not found
+#> Starting sequential sampling (chains = 2)...
+#> chain 1 started... 
+#> chain 1: iter 100 warmup 
+#> chain 1: iter 200 warmup 
+#> chain 1: iter 300 warmup 
+#> chain 1: iter 400 warmup 
+#> chain 1: iter 500 warmup 
+#> chain 1: iter 600 sampling 
+#> chain 1: iter 700 sampling 
+#> chain 1: iter 800 sampling 
+#> chain 1: iter 900 sampling 
+#> chain 1: iter 1000 sampling 
+#> chain 2 started... 
+#> chain 2: iter 100 warmup 
+#> chain 2: iter 200 warmup 
+#> chain 2: iter 300 warmup 
+#> chain 2: iter 400 warmup 
+#> chain 2: iter 500 warmup 
+#> chain 2: iter 600 sampling 
+#> chain 2: iter 700 sampling 
+#> chain 2: iter 800 sampling 
+#> chain 2: iter 900 sampling 
+#> chain 2: iter 1000 sampling 
 mcmc_named$summary()
-#> Error: object 'mcmc_named' not found
+#>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
+#> lp               -49.93  1.55  -48.91  -54.37  -48.08       422       432  1.00 
+#> mu[Control]       -0.12  0.10   -0.11   -0.31    0.06       801       588  1.00 
+#> mu[Treatment_A]    2.16  0.12    2.20    1.93    2.39       828       568  1.00 
+#> mu[Treatment_B]   -1.12  0.11   -1.14   -1.32   -0.91       812       605  1.00 
+#> sigma              0.47  0.05    0.47    0.39    0.56       901       511  1.00 
 # }
 ```

@@ -27,6 +27,11 @@ prior_uniform(
   Standard deviation for the coefficients prior (Normal). Default is
   NULL (flat).
 
+- mu_sd:
+
+  Standard deviation for the mean/intercept prior (Normal). Default is
+  NULL (flat).
+
 - sigma_rate:
 
   Rate for the residual standard deviation prior (Exponential). Default

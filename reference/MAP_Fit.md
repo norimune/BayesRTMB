@@ -98,6 +98,11 @@ estimation.
 
   List; the parameter mapping used.
 
+- `marginal_vars`:
+
+  Character vector of parameter names that were marginalized (integrated
+  out).
+
 ## Methods
 
 ### Public methods
@@ -219,7 +224,8 @@ Create a new \`MAP_Fit\` object.
       vcov_unc = NULL,
       ci_method = "wald",
       laplace = TRUE,
-      map = NULL
+      map = NULL,
+      marginal_vars = NULL
     )
 
 #### Arguments
@@ -304,6 +310,11 @@ Create a new \`MAP_Fit\` object.
 - `map`:
 
   List; the parameter mapping used.
+
+- `marginal_vars`:
+
+  Character vector of parameter names that were marginalized (integrated
+  out).
 
 ------------------------------------------------------------------------
 

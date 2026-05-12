@@ -37,6 +37,15 @@ rtmb_lrt(
 
   A data frame containing the variables.
 
+- rank_coords:
+
+  Optional numeric vector of coordinates for each rank. Default is 1:k.
+
+- covariance:
+
+  Covariance structure: "diagonal", "diagonal_equal", "full",
+  "full_equal", or "full_equal_corr".
+
 - magnitude:
 
   Signal standard deviation for the GP prior. If NULL, it is estimated.
@@ -49,6 +58,15 @@ rtmb_lrt(
 
   Measurement noise for the GP prior (default is 0.01).
 
+- prob_smoothing:
+
+  Logical; whether to apply smoothing to the class membership
+  probabilities.
+
+- link:
+
+  Link function for class probabilities: "ordered" or "sequential".
+
 - prior:
 
   Prior configuration object:
@@ -58,6 +76,10 @@ rtmb_lrt(
   [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md),
   or
   [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md).
+
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
 
 - ...:
 

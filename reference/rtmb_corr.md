@@ -16,8 +16,7 @@ rtmb_corr(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
-  ...
+  null = NULL
 )
 ```
 
@@ -36,6 +35,11 @@ rtmb_corr(
 
   A character string or expression specifying the group ID variable for
   multilevel models.
+
+- covariates:
+
+  Optional numeric matrix or data frame of covariates to be included in
+  the joint MVN model.
 
 - prior:
 
@@ -58,13 +62,13 @@ rtmb_corr(
 
   Optional list of initial values.
 
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
+
 - null:
 
   Optional list specifying parameters to fix to null values.
-
-- ...:
-
-  Additional arguments passed to `rtmb_model`.
 
 ## Value
 

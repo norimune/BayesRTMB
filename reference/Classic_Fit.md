@@ -41,6 +41,58 @@ estimation.
 
   Character vector of parameter names to prioritize in summary.
 
+- `par_vec`:
+
+  Numeric vector of parameter estimates.
+
+- `objective`:
+
+  Final objective value.
+
+- `log_ml`:
+
+  Log marginal likelihood.
+
+- `convergence`:
+
+  Convergence code.
+
+- `sd_rep`:
+
+  TMB sdreport object.
+
+- `df_fixed`:
+
+  Dataframe of fixed effects results.
+
+- `random_effects`:
+
+  Dataframe of random effects results.
+
+- `df_transform`:
+
+  Dataframe of transformed parameters.
+
+- `df_generate`:
+
+  Dataframe of generated quantities.
+
+- `opt_history`:
+
+  Dataframe of optimization history.
+
+- `transform`:
+
+  List of transformed parameters.
+
+- `generate`:
+
+  List of generated quantities.
+
+- `se_samples`:
+
+  List of simulated samples for SE estimation.
+
 - `par_unc`:
 
   Numeric vector of unconstrained parameter estimates.
@@ -48,6 +100,22 @@ estimation.
 - `vcov_unc`:
 
   Variance-covariance matrix of parameters in unconstrained space.
+
+- `ci_method`:
+
+  Method used for CI estimation.
+
+- `laplace`:
+
+  Whether Laplace approximation was used.
+
+- `map`:
+
+  Parameter mapping used.
+
+- `df_method`:
+
+  Character string specifying the degrees of freedom calculation method.
 
 ## Methods
 
@@ -71,8 +139,6 @@ estimation.
 
 - [`Classic_Fit$summary()`](#method-Classic_Fit-summary)
 
-- [`Classic_Fit$savage_dickey()`](#method-Classic_Fit-savage_dickey)
-
 - [`Classic_Fit$anova()`](#method-Classic_Fit-anova)
 
 - [`Classic_Fit$lsmeans()`](#method-Classic_Fit-lsmeans)
@@ -95,14 +161,31 @@ Create a new \`Classic_Fit\` object.
 
     Classic_Fit$new(
       model,
-      fit,
-      vcov = NULL,
+      par_vec = NULL,
+      par = NULL,
+      objective = NULL,
+      log_ml = NULL,
+      convergence = NULL,
+      sd_rep = NULL,
+      df_fixed = NULL,
+      random_effects = NULL,
+      df_transform = NULL,
+      df_generate = NULL,
+      opt_history = NULL,
+      transform = NULL,
+      generate = NULL,
+      se_samples = NULL,
       par_unc = NULL,
       vcov_unc = NULL,
-      se_method = "wald",
-      cluster = NULL,
+      ci_method = "wald",
+      laplace = TRUE,
+      map = NULL,
       test_results = list(),
-      view = NULL
+      view = NULL,
+      fit = NULL,
+      vcov = NULL,
+      df_method = "bw",
+      ...
     )
 
 #### Arguments
@@ -111,29 +194,81 @@ Create a new \`Classic_Fit\` object.
 
   The \`RTMB_Model\` object.
 
-- `fit`:
+- `par_vec`:
 
-  The result of the estimation.
+  Numeric vector of parameter estimates.
 
-- `vcov`:
+- `par`:
 
-  Variance-covariance matrix of fixed effects.
+  List of parameter estimates.
+
+- `objective`:
+
+  Final objective value.
+
+- `log_ml`:
+
+  Log marginal likelihood.
+
+- `convergence`:
+
+  Convergence code.
+
+- `sd_rep`:
+
+  TMB sdreport object.
+
+- `df_fixed`:
+
+  Dataframe of fixed effects results.
+
+- `random_effects`:
+
+  Dataframe of random effects results.
+
+- `df_transform`:
+
+  Dataframe of transformed parameters.
+
+- `df_generate`:
+
+  Dataframe of generated quantities.
+
+- `opt_history`:
+
+  Dataframe of optimization history.
+
+- `transform`:
+
+  List of transformed parameters.
+
+- `generate`:
+
+  List of generated quantities.
+
+- `se_samples`:
+
+  List of simulated samples for SE estimation.
 
 - `par_unc`:
 
-  Numeric vector of unconstrained parameter estimates.
+  Parameter vector on unconstrained scale.
 
 - `vcov_unc`:
 
-  Variance-covariance matrix of parameters in unconstrained space.
+  Covariance matrix on unconstrained scale.
 
-- `se_method`:
+- `ci_method`:
 
-  Character; "wald", "robust", or "bootstrap".
+  Method used for CI estimation.
 
-- `cluster`:
+- `laplace`:
 
-  Character; cluster variable name.
+  Whether Laplace approximation was used.
+
+- `map`:
+
+  Parameter mapping used.
 
 - `test_results`:
 
@@ -142,6 +277,22 @@ Create a new \`Classic_Fit\` object.
 - `view`:
 
   Character vector of parameter names to prioritize in summary.
+
+- `fit`:
+
+  Legacy argument for backward compatibility (maps to df_fixed).
+
+- `vcov`:
+
+  Variance-covariance matrix of parameters.
+
+- `df_method`:
+
+  Method for degrees of freedom calculation.
+
+- `...`:
+
+  Additional arguments passed to the constructor.
 
 ------------------------------------------------------------------------
 
@@ -251,9 +402,13 @@ Display a summary of the estimation results.
 
 #### Usage
 
-    Classic_Fit$summary(digits = 5, max_rows = 10)
+    Classic_Fit$summary(view = NULL, digits = 5, max_rows = 10, ranef = FALSE)
 
 #### Arguments
+
+- `view`:
+
+  Character vector of parameter names to prioritize or filter by.
 
 - `digits`:
 
@@ -263,34 +418,9 @@ Display a summary of the estimation results.
 
   Maximum number of rows to display in the coefficient table.
 
-------------------------------------------------------------------------
+- `ranef`:
 
-### Method `savage_dickey()`
-
-Calculate Bayes Factors using the Savage-Dickey density ratio method.
-
-#### Usage
-
-    Classic_Fit$savage_dickey(pars = NULL, null = 0, digits = 3)
-
-#### Arguments
-
-- `pars`:
-
-  Character vector of parameter names to test.
-
-- `null`:
-
-  Numeric; the null value to test against (in constrained space).
-  Default is 0.
-
-- `digits`:
-
-  Number of decimal places to round results.
-
-#### Returns
-
-A data frame containing the Bayes Factors and evidence descriptors.
+  Logical; whether to show random effects in the summary.
 
 ------------------------------------------------------------------------
 
@@ -325,10 +455,11 @@ Calculate Least Squares Means (Marginal Means) and contrasts.
 #### Usage
 
     Classic_Fit$lsmeans(
-      specs,
+      specs = NULL,
       pairwise = FALSE,
       simple = NULL,
-      adjust = "bonferroni"
+      adjust = "holm",
+      protect = FALSE
     )
 
 #### Arguments
@@ -349,6 +480,10 @@ Calculate Least Squares Means (Marginal Means) and contrasts.
 
   Character; p-value adjustment method (e.g., "bonferroni", "holm",
   "none").
+
+- `protect`:
+
+  Logical; whether to use hierarchical (protected) testing.
 
 #### Returns
 

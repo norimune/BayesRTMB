@@ -46,7 +46,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>RTMB-based GLMM wrapper function</h1>
-      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_functions.R" class="external-link"><code>R/wrapper_functions.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_glmer.R" class="external-link"><code>R/wrapper_glmer.R</code></a></small>
       <div class="d-none name"><code>rtmb_glmer.Rd</code></div>
     </div>
 
@@ -113,6 +113,10 @@
 <dd><p>List of initial values (generated automatically based on glm if omitted)</p></dd>
 
 
+<dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
+<dd><p>Optional named list of fixed values for specific parameters.</p></dd>
+
+
 <dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
 <dd><p>Character string specifying the target parameter for the null model.</p></dd>
 
@@ -127,6 +131,10 @@
 
 <dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
+
+
+<dt id="arg-within">within<a class="anchor" aria-label="anchor" href="#arg-within"></a></dt>
+<dd><p>Optional list for wide-to-long conversion.</p></dd>
 
 
 <dt id="arg-factors">factors<a class="anchor" aria-label="anchor" href="#arg-factors"></a></dt>
@@ -151,6 +159,14 @@
 
 <dt id="arg-resid-group">resid_group<a class="anchor" aria-label="anchor" href="#arg-resid-group"></a></dt>
 <dd><p>Variable name for grouping in residual correlation.</p></dd>
+
+
+<dt id="arg-generate">generate<a class="anchor" aria-label="anchor" href="#arg-generate"></a></dt>
+<dd><p>Optional expression for generated quantities.</p></dd>
+
+
+<dt id="arg--force-sum">.force_sum<a class="anchor" aria-label="anchor" href="#arg--force-sum"></a></dt>
+<dd><p>Logical; internal use only.</p></dd>
 
 </dl></div>
 

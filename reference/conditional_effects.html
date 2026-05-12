@@ -59,7 +59,7 @@ potentially conditional on the levels of another variable (interaction).</p>
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">conditional_effects</span><span class="op">(</span><span class="va">fit</span>, <span class="va">effect</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">conditional_effects</span><span class="op">(</span><span class="va">fit</span>, <span class="va">effect</span>, prob <span class="op">=</span> <span class="fl">0.95</span>, sd_multiplier <span class="op">=</span> <span class="fl">1</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -74,12 +74,16 @@ potentially conditional on the levels of another variable (interaction).</p>
 <dd><p>Name of the variable to visualize (e.g., "X1" or "X1:X2").</p></dd>
 
 
-<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments.</p></dd>
+<dt id="arg-prob">prob<a class="anchor" aria-label="anchor" href="#arg-prob"></a></dt>
+<dd><p>Probability for the credible/confidence interval (default is 0.95).</p></dd>
 
 
 <dt id="arg-sd-multiplier">sd_multiplier<a class="anchor" aria-label="anchor" href="#arg-sd-multiplier"></a></dt>
 <dd><p>Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Additional arguments.</p></dd>
 
 </dl></div>
     <div class="section level2">

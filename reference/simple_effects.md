@@ -8,19 +8,23 @@ the slope (simple slopes).
 ## Usage
 
 ``` r
-simple_effects(fit, effect, sd_multiplier = 1, ...)
+simple_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
 ```
 
 ## Arguments
 
 - fit:
 
-  Model fit object (mcmc_fit).
+  Model fit object (e.g., \`map_fit\`, \`mcmc_fit\`).
 
 - effect:
 
   Character string of the interaction (e.g., "A:B"). The first variable
   is the focal variable.
+
+- prob:
+
+  Probability for the credible/confidence interval (default is 0.95).
 
 - sd_multiplier:
 

@@ -7,7 +7,7 @@ variable, potentially conditional on the levels of another variable
 ## Usage
 
 ``` r
-conditional_effects(fit, effect, ...)
+conditional_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
 ```
 
 ## Arguments
@@ -20,14 +20,18 @@ conditional_effects(fit, effect, ...)
 
   Name of the variable to visualize (e.g., "X1" or "X1:X2").
 
-- ...:
+- prob:
 
-  Additional arguments.
+  Probability for the credible/confidence interval (default is 0.95).
 
 - sd_multiplier:
 
   Numeric. Multiplier for standard deviation when splitting continuous
   moderators (default is 1).
+
+- ...:
+
+  Additional arguments.
 
 ## Value
 

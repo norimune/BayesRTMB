@@ -48,6 +48,10 @@ rtmb_mixture(
   or
   [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md).
 
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
+
 - ...:
 
   Additional arguments passed to `rtmb_model`.

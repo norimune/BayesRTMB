@@ -22,6 +22,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/MAP_Fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/MCMC_Fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/RTMB_Model-class.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/RTMB_Model.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/VB_Fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/bayes_factor.html</loc></url>
@@ -145,6 +146,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/stz_basis.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sufficient_multi_normal_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sufficient_multi_normal_fa_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/sufficient_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sum_to_zero.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/summary.ce_rtmb.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/test_info.html</loc></url>

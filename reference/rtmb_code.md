@@ -107,16 +107,45 @@ code <- rtmb_code(
 
 # Create the model object
 mod <- rtmb_model(data = data_list, code = code)
-#> Error in rtmb_model(data = data_list, code = code): could not find function "rtmb_model"
+#> Pre-checking model code...
+#> Checking RTMB setup...
 
 # Fit the model using MAP estimation
 map_res <- mod$optimize()
-#> Error: object 'mod' not found
+#> Starting optimization...
+#> 
+#> Optimization converged. Final objective: 145.34
 map_res$summary(pars = c("alpha", "beta", "sigma"))
-#> Error: object 'map_res' not found
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 145.34
+#> Approx. Log Marginal Likelihood (Laplace): -149.89
+#> 
+#> Point Estimates and 95% Wald CI:
+#> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> alpha      2.02785     0.09564    1.84041    2.21530 
+#> beta       1.44739     0.10530    1.24101    1.65377 
+#> sigma      0.95640     0.06715    0.83345    1.09749 
+#> 
 
 # The generated quantity 'y_pred' can also be summarized
 map_res$summary("y_pred", max_rows = 5)
-#> Error: object 'map_res' not found
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 145.34
+#> Approx. Log Marginal Likelihood (Laplace): -149.89
+#> 
+#> Point Estimates and 95% Wald CI:
+#>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> y_pred[1]   1.08577     0.11766    0.85517    1.31638 
+#> y_pred[2]   1.56384     0.10142    1.36506    1.76262 
+#> y_pred[3]   4.15306     0.18180    3.79674    4.50938 
+#> y_pred[4]   1.99905     0.09566    1.81156    2.18655 
+#> y_pred[5]   2.08413     0.09572    1.89651    2.27175 
+#> 
 # }
 ```

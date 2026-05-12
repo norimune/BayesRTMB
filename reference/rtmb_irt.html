@@ -48,7 +48,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>RTMB-based IRT (Item Response Theory) Wrapper</h1>
-      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_functions.R" class="external-link"><code>R/wrapper_functions.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_irt.R" class="external-link"><code>R/wrapper_irt.R</code></a></small>
       <div class="d-none name"><code>rtmb_irt.Rd</code></div>
     </div>
 
@@ -66,8 +66,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  <span class="va">...</span></span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -104,84 +103,8 @@ Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c
 <dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
-
-<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to <code><a href="RTMB_Model.html">rtmb_model()</a></code>.</p></dd>
-
 </dl></div>
 
-    <div class="section level2">
-    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span>  <span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
-<span class="r-in"><span>  <span class="co"># --- 1. Binary Data (e.g., correct/incorrect answers) ---</span></span></span>
-<span class="r-in"><span>  <span class="co"># Simulate binary response data for 100 persons and 5 items</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">bin_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Binomial.html" class="external-link">rbinom</a></span><span class="op">(</span><span class="fl">500</span>, size <span class="op">=</span> <span class="fl">1</span>, prob <span class="op">=</span> <span class="fl">0.6</span><span class="op">)</span>, nrow <span class="op">=</span> <span class="fl">100</span>, ncol <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">bin_data</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Item"</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Introduce some missing values (NA) to demonstrate automatic handling</span></span></span>
-<span class="r-in"><span>  <span class="co">#bin_data[sample(1:500, 10)] &lt;- NA</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Fit a 2-Parameter Logistic (2PL) model</span></span></span>
-<span class="r-in"><span>  <span class="va">fit_2pl</span> <span class="op">&lt;-</span> <span class="fu">rtmb_irt</span><span class="op">(</span>data <span class="op">=</span> <span class="va">bin_data</span>, model <span class="op">=</span> <span class="st">"2PL"</span>, type <span class="op">=</span> <span class="st">"binary"</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Maximum A Posteriori (MAP) estimation</span></span></span>
-<span class="r-in"><span>  <span class="va">map_2pl</span> <span class="op">&lt;-</span> <span class="va">fit_2pl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">map_2pl</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># --- 2. Ordered Data (e.g., Likert scale) ---</span></span></span>
-<span class="r-in"><span>  <span class="co"># Simulate ordered response data (categories 1 to 5) with a true latent structure</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">100</span></span></span>
-<span class="r-in"><span>  <span class="va">J</span> <span class="op">&lt;-</span> <span class="fl">5</span></span></span>
-<span class="r-in"><span>  <span class="va">K</span> <span class="op">&lt;-</span> <span class="fl">4</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># True parameters</span></span></span>
-<span class="r-in"><span>  <span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span>          <span class="co"># Person abilities (latent traits)</span></span></span>
-<span class="r-in"><span>  <span class="va">a</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Uniform.html" class="external-link">runif</a></span><span class="op">(</span><span class="va">J</span>, <span class="fl">0.8</span>, <span class="fl">2.0</span><span class="op">)</span>          <span class="co"># Item discriminations</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Item-specific thresholds (must be strictly increasing)</span></span></span>
-<span class="r-in"><span>  <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA</span>, nrow <span class="op">=</span> <span class="va">J</span>, ncol <span class="op">=</span> <span class="va">K</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="kw">for</span> <span class="op">(</span><span class="va">j</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">J</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="va">b</span><span class="op">[</span><span class="va">j</span>, <span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="op">-</span><span class="fl">1.5</span>, <span class="fl">0</span>, <span class="fl">1.5</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">3</span>, <span class="fl">0</span>, <span class="fl">0.2</span><span class="op">)</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">ord_data</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA</span>, nrow <span class="op">=</span> <span class="va">N</span>, ncol <span class="op">=</span> <span class="va">J</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/colnames.html" class="external-link">colnames</a></span><span class="op">(</span><span class="va">ord_data</span><span class="op">)</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/paste.html" class="external-link">paste0</a></span><span class="op">(</span><span class="st">"Item"</span>, <span class="fl">1</span><span class="op">:</span><span class="va">J</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Generate responses based on the Graded Response Model</span></span></span>
-<span class="r-in"><span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>    <span class="kw">for</span> <span class="op">(</span><span class="va">j</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">J</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>      <span class="co"># Latent continuous response (eta + standard logistic noise)</span></span></span>
-<span class="r-in"><span>      <span class="va">eta</span> <span class="op">&lt;-</span> <span class="va">a</span><span class="op">[</span><span class="va">j</span><span class="op">]</span> <span class="op">*</span> <span class="va">theta</span><span class="op">[</span><span class="va">i</span><span class="op">]</span></span></span>
-<span class="r-in"><span>      <span class="va">y_star</span> <span class="op">&lt;-</span> <span class="va">eta</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Logistic.html" class="external-link">rlogis</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>      <span class="co"># Apply thresholds to determine the observed category (1 to 4)</span></span></span>
-<span class="r-in"><span>      <span class="va">category</span> <span class="op">&lt;-</span> <span class="fl">1</span></span></span>
-<span class="r-in"><span>      <span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="op">(</span><span class="va">K</span> <span class="op">-</span> <span class="fl">1</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span></span>
-<span class="r-in"><span>        <span class="kw">if</span> <span class="op">(</span><span class="va">y_star</span> <span class="op">&gt;</span> <span class="va">b</span><span class="op">[</span><span class="va">j</span>, <span class="va">k</span><span class="op">]</span><span class="op">)</span> <span class="va">category</span> <span class="op">&lt;-</span> <span class="va">k</span> <span class="op">+</span> <span class="fl">1</span></span></span>
-<span class="r-in"><span>      <span class="op">}</span></span></span>
-<span class="r-in"><span>      <span class="va">ord_data</span><span class="op">[</span><span class="va">i</span>, <span class="va">j</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">category</span></span></span>
-<span class="r-in"><span>    <span class="op">}</span></span></span>
-<span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Fit a Graded Response Model (2PL for ordered data)</span></span></span>
-<span class="r-in"><span>  <span class="va">fit_ord</span> <span class="op">&lt;-</span> <span class="fu">rtmb_irt</span><span class="op">(</span>data <span class="op">=</span> <span class="va">ord_data</span>, model <span class="op">=</span> <span class="st">"2PL"</span>, type <span class="op">=</span> <span class="st">"ordered"</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">fit_ord</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">map_ord</span> <span class="op">&lt;-</span> <span class="va">fit_ord</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">map_ord</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Note: For complex models like the Graded Response Model, the Wald CI from optimize()</span></span></span>
-<span class="r-in"><span>  <span class="co"># may become extremely wide due to parameter transformations.</span></span></span>
-<span class="r-in"><span>  <span class="co"># MCMC sampling is recommended for reliable interval estimation.</span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># MCMC sampling for the ordered model (chains and iterations reduced)</span></span></span>
-<span class="r-in"><span>  <span class="va">mcmc_ord</span> <span class="op">&lt;-</span> <span class="va">fit_ord</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-in"><span>  <span class="va">mcmc_ord</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span> <span class="op">}</span> <span class="co"># }</span></span></span>
-</code></pre></div>
-    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 

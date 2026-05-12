@@ -1,7 +1,8 @@
-# Least-squares means (marginal means)
+# Least Squares Means (Marginal Means)
 
-Generic function to calculate least-squares means (marginal means) for
-fitted models.
+Calculate least squares means (also known as marginal means or predicted
+means) for categorical factors in a fitted model. It also supports
+pairwise comparisons and simple main effects.
 
 ## Usage
 
@@ -13,12 +14,12 @@ lsmeans(object, specs, ...)
 
 - object:
 
-  A fitted model object.
+  A fitted model object (e.g., \`Classic_Fit\`).
 
 - specs:
 
-  Variable names to calculate marginal means for.
+  A character vector of factor names to calculate means for.
 
 - ...:
 
-  Additional arguments.
+  Additional arguments passed to the method.

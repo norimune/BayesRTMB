@@ -56,6 +56,10 @@ rtmb_lmer(
 
   Initial values
 
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
+
 - null:
 
   Null model parameters

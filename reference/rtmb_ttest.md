@@ -66,6 +66,10 @@ rtmb_ttest(
 
   List of initial values.
 
+- fixed:
+
+  Optional named list of fixed values for specific parameters.
+
 - null:
 
   Character string specifying the target parameter for the null model

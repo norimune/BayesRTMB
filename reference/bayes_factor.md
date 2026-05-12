@@ -1,6 +1,7 @@
-# Calculate Bayes factor from log marginal likelihoods
+# Calculate Bayes Factor
 
-Calculate Bayes factor from log marginal likelihoods
+Compare two models by calculating the Bayes Factor based on their
+marginal likelihoods.
 
 ## Usage
 
@@ -12,21 +13,22 @@ bayes_factor(logml1, logml2, error_threshold = 0.2)
 
 - logml1:
 
-  Log marginal likelihood of Model 1, or a fitted model object (e.g.,
-  \`mcmc_fit\`, \`map_fit\`, \`advi_fit\`).
+  The first model fit (e.g., \`mcmc_fit\`) or its log-marginal
+  likelihood.
 
 - logml2:
 
-  Log marginal likelihood of Model 2, or a fitted model object.
+  The second model fit (e.g., \`mcmc_fit\`) or its log-marginal
+  likelihood.
 
 - error_threshold:
 
-  Numeric; threshold for the approximate error warning. Default is 0.2.
+  Threshold for warning about high bridge-sampling error (default 0.2).
 
 ## Value
 
-An object containing Bayes factor, log Bayes factor, estimation error,
-and interpretation
+An object of class \`bayes_factor\` containing the Bayes factor, log
+Bayes factor, approximate estimation error, and interpretation.
 
 ## Examples
 

@@ -46,7 +46,7 @@
   <main id="main" class="col-md-9"><div class="page-header">
 
       <h1>RTMB-based GLM wrapper function (no random effects)</h1>
-      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_functions.R" class="external-link"><code>R/wrapper_functions.R</code></a></small>
+      <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/R/wrapper_lm_glm_lmer.R" class="external-link"><code>R/wrapper_lm_glm_lmer.R</code></a></small>
       <div class="d-none name"><code>rtmb_glm.Rd</code></div>
     </div>
 
@@ -66,8 +66,10 @@
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  contrasts <span class="op">=</span> <span class="st">"treatment"</span></span>
+<span>  contrasts <span class="op">=</span> <span class="st">"treatment"</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -99,12 +101,32 @@
 <dd><p>List of initial values</p></dd>
 
 
+<dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
+<dd><p>Optional named list of fixed values for specific parameters.</p></dd>
+
+
 <dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
 <dd><p>Character string specifying the target parameter for the null model.</p></dd>
 
 
 <dt id="arg-gmc">gmc<a class="anchor" aria-label="anchor" href="#arg-gmc"></a></dt>
 <dd><p>Character vector of variable names for GMC</p></dd>
+
+
+<dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
+<dd><p>Optional character vector of parameter names to show first in summary.</p></dd>
+
+
+<dt id="arg-factors">factors<a class="anchor" aria-label="anchor" href="#arg-factors"></a></dt>
+<dd><p>Character vector of variable names to be treated as factors.</p></dd>
+
+
+<dt id="arg-contrasts">contrasts<a class="anchor" aria-label="anchor" href="#arg-contrasts"></a></dt>
+<dd><p>Character string specifying the contrast type ("treatment" or "sum").</p></dd>
+
+
+<dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
+<dd><p>Additional arguments passed to <code><a href="rtmb_glmer.html">rtmb_glmer()</a></code>.</p></dd>
 
 </dl></div>
 
