@@ -1,5 +1,8 @@
 #' RTMB model object
 #'
+#' @name RTMB_Model-class
+#' @rdname RTMB_Model-class
+#'
 #' @description
 #' An R6 class representing a Bayesian model built with RTMB.
 #' This class stores model components and provides methods for
@@ -276,7 +279,7 @@ RTMB_Model <- R6::R6Class(
         names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
       }
 
-      # fixed/map で全要素が NA になった random component は除外
+      # Exclude random components where all elements are NA in fixed/map
       if (!is.null(target_map)) {
         random_effs <- random_effs[vapply(random_effs, function(nm) {
           m <- target_map[[nm]]
@@ -368,7 +371,7 @@ RTMB_Model <- R6::R6Class(
                         df = NULL, df_method = NULL, 
                         empirical = FALSE, REML = FALSE, marginal = "auto", 
                         view = NULL, 
-                        # --- 以下、内部用および互換性維持のためのエイリアス ---
+                        # --- Internal and compatibility aliases ---
                         is_classic = FALSE, target_vars = NULL, .return_object = "MAP",
                         ci_method = NULL, se_sampling = NULL, df_pars = NULL, views = NULL, ...) {
       .optimize_impl(self, private, laplace, init, num_estimate, control,
@@ -400,7 +403,7 @@ RTMB_Model <- R6::R6Class(
     #' @return A `Classic_Fit` object.
     classic = function(df = NULL, df_method = NULL, REML = TRUE, marginal = "auto", 
                        view = NULL, map = NULL, fixed = NULL, 
-                       # --- 互換性維持のためのエイリアス ---
+                       # --- Compatibility aliases ---
                        df_pars = NULL, views = NULL, ...) {
       .classic_impl(self, private, df, df_method, REML, marginal, 
                     view, map, fixed, df_pars, views, ...)
@@ -707,7 +710,7 @@ RTMB_Model <- R6::R6Class(
       }
     },
 
-    # --- パラメータ固定（fixed引数）の適用ロジック ---
+    # --- Logic for applying parameter fixing (fixed argument) ---
     .has_multivariate_prior_on = function(expr, target_base) {
       if (is.null(expr)) return(FALSE)
 
@@ -794,17 +797,17 @@ RTMB_Model <- R6::R6Class(
         }
 
         if (!grepl("\\[", name)) {
-          # パラメータ全体を固定
+          # Fix the entire parameter
           val_vec <- if (length(val) == 1) rep(val, p_info$length) else val
           new_init[start_idx:(start_idx + p_info$length - 1)] <- as.numeric(val_vec)
 
           if (L_u > 0) {
-            # ここが重要: curr_map[] <- NA ではなく、level なしの factor に作り直す
+            # IMPORTANT: Recreate as a factor with no levels instead of curr_map[] <- NA
             curr_map <- factor(rep(NA_character_, L_u))
           }
 
         } else {
-          # 特定要素を固定
+          # Fix specific elements
           idx_str <- gsub(".*\\[(.*)\\].*", "\\1", name)
           p_names <- self$par_names[[p_base]]
           idx <- suppressWarnings(as.integer(idx_str))
@@ -815,7 +818,7 @@ RTMB_Model <- R6::R6Class(
 
             if (L_u > 0) {
               curr_map[idx] <- NA
-              # 部分固定でも未使用 level を落とす
+              # Drop unused levels even in partial fixing
               curr_map <- normalize_map(curr_map)
             }
           }

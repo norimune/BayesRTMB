@@ -6,11 +6,16 @@
 #'
 #' @param formula A formula specifying the response variable(s).
 #' @param k Number of ranks (mixture components).
+#' @param rank_coords Optional numeric vector of coordinates for each rank. Default is 1:k.
+#' @param covariance Covariance structure: "diagonal", "diagonal_equal", "full", "full_equal", or "full_equal_corr".
 #' @param data A data frame containing the variables.
 #' @param magnitude Signal standard deviation for the GP prior. If NULL, it is estimated.
 #' @param smoothing Length-scale for the GP prior. If NULL, it is estimated.
 #' @param noise Measurement noise for the GP prior (default is 0.01).
+#' @param prob_smoothing Logical; whether to apply smoothing to the class membership probabilities.
+#' @param link Link function for class probabilities: "ordered" or "sequential".
 #' @param prior Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments passed to \code{rtmb_model}.
 #' @return A \code{RTMB_Model} object.
 #' @export

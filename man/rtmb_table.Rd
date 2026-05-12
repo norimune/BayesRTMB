@@ -8,6 +8,7 @@ rtmb_table(
   x,
   y = NULL,
   data = NULL,
+  classic = FALSE,
   correct = TRUE,
   prior = prior_uniform(),
   fixed = NULL,
@@ -21,13 +22,15 @@ rtmb_table(
 
 \item{data}{A data frame.}
 
+\item{classic}{Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.}
+
 \item{correct}{Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).}
 
 \item{prior}{Prior specification (Bayesian mode). Default is `prior_uniform()`.}
 
-\item{...}{Additional arguments.}
+\item{fixed}{Optional named list of fixed values for specific parameters.}
 
-\item{classic}{Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.}
+\item{...}{Additional arguments.}
 }
 \value{
 A `Classic_Fit` or `MCMC_Fit` object.

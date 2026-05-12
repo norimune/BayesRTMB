@@ -25,6 +25,8 @@ rtmb_mixture(
 
 \item{prior}{Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.}
 
+\item{fixed}{Optional named list of fixed values for specific parameters.}
+
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
 \value{

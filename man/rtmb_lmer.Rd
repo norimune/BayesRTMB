@@ -39,6 +39,8 @@ rtmb_lmer(
 
 \item{init}{Initial values}
 
+\item{fixed}{Optional named list of fixed values for specific parameters.}
+
 \item{null}{Null model parameters}
 
 \item{gmc}{Character vector of variable names for GMC}

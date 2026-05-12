@@ -4,12 +4,14 @@
 \alias{simple_effects}
 \title{Calculate Simple Effects}
 \usage{
-simple_effects(fit, effect, sd_multiplier = 1, ...)
+simple_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
 }
 \arguments{
-\item{fit}{Model fit object (mcmc_fit).}
+\item{fit}{Model fit object (e.g., `map_fit`, `mcmc_fit`).}
 
 \item{effect}{Character string of the interaction (e.g., "A:B"). The first variable is the focal variable.}
+
+\item{prob}{Probability for the credible/confidence interval (default is 0.95).}
 
 \item{sd_multiplier}{Multiplier for SD for continuous moderators (default is 1).}
 

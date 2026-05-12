@@ -39,7 +39,7 @@
     else if (self$contrasts == "treatment") options(contrasts = c("contr.treatment", "contr.poly"))
   }
 
-  # --- パラメータ固定（fixed）の適用：修正済み apply_constraints に委譲 ---
+  # Delegate to the corrected apply_constraints
   if (!is.null(fixed)) {
     new_model <- self$fixed_model(fixed)
     reml_to_pass <- if (is.character(empirical)) TRUE else if (!is.null(REML)) REML else isTRUE(empirical)
@@ -71,6 +71,10 @@
     else target_vars <- marginal
   }
 
+  if (is.null(target_vars)) {
+    target_vars <- character(0)
+  }
+
   if (isTRUE(is_classic)) {
     model_obj <- self$null_model(target_vars = target_vars)
     rec_args <- dot_args; rec_args$df_method <- NULL; rec_args$view <- NULL; rec_args$views <- NULL
@@ -90,6 +94,8 @@
   if (!is.null(df)) {
     if (identical(df, "auto")) auto_df <- TRUE else if (is.numeric(df)) df_t <- df
   } else {
+    # --- Effective degrees of freedom calculation for Satterthwaite approximation ---
+    # Calculated when the user specifies df = TRUE and REML / ML estimation is performed
     if (identical(df_method, "satterthwaite")) auto_df <- TRUE
     else if (identical(df_method, "Inf")) df_t <- Inf
     else if (is.numeric(df_method)) df_t <- df_method
@@ -122,6 +128,10 @@
     laplace <- TRUE
   }
 
+  # --- Logic for switching Jacobian adjustment ---
+  # target = "all" : Necessary for finding the posterior mode (MAP)
+  # target = "random" : When calculating Laplace approximation (marginal likelihood), only the random effect parameters need adjustment
+  # target = "none" : Necessary for pure likelihood maximization (ML/REML)
   jac_target <- if (isTRUE(laplace)) "random" else "none"
 
   if (isTRUE(self$silent)) {
@@ -225,10 +235,22 @@
         L_u <- self$par_list[[name]]$unc_length
         if (L_u > 0) {
           map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-          for (i in 1:L_u) { pos_last <- idx_curr + i - 1; if (pos_last %in% idx_ran) next; if (!is.null(map_f) && !is.na(map_f[i])) { lvl <- as.character(map_f[i]); mapped_opt_idx <- factor_levels_seen[[lvl]]; if (!is.null(mapped_opt_idx)) unc_se_vec[pos_last] <- se_fix[mapped_opt_idx] } }
+          for (i in 1:L_u) { 
+            pos_last <- idx_curr + i - 1; 
+            if (pos_last %in% idx_ran) next; 
+            if (!is.null(map_f) && !is.na(map_f[i])) { 
+              lvl <- as.character(map_f[i]); 
+              mapped_opt_idx <- factor_levels_seen[[lvl]]; 
+              if (!is.null(mapped_opt_idx)) unc_se_vec[pos_last] <- se_fix[mapped_opt_idx] 
+            } 
+          }
           idx_curr <- idx_curr + L_u
         }
       }
+      # 1. Extract values from the sdreport object
+      # 2. Calculate degrees of freedom, t-values, and p-values (if df = TRUE)
+      # 3. Construct confidence intervals
+      # 4. Restore original dimensions (dim)
       if (laplace && length(idx_ran_full) > 0) { smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL); if (!is.null(smry_ran)) unc_se_vec[idx_ran_full] <- smry_ran[, "Std. Error"] }
     }
   } else fallback_needed <- TRUE
@@ -433,7 +455,6 @@
   df_map <- self$extra$df_map
   if (!is.null(df_map)) {
     df_fixed    <- .apply_df_map(df_fixed, df_map)
-    # df_random  <- .apply_df_map(df_random, df_map) # Mediation usually doesn't have random
   }
   con_est_vec <- unlist(con_est_list, use.names = FALSE); tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL
   gq_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, if (!is.null(tran_list)) c(con_est_list, tran_list) else con_est_list), error = function(e) NULL) else NULL
@@ -450,6 +471,8 @@
       if (length(samps_list) == 0) { se_out <- low_out <- up_out <- rep(NA, L_out) }
       else { mat_all <- do.call(cbind, unname(samps_list)); se_out <- apply(mat_all, 2, sd, na.rm = TRUE); low_out <- apply(mat_all, 2, quantile, 0.025, na.rm = TRUE); up_out <- apply(mat_all, 2, quantile, 0.975, na.rm = TRUE) }
     } else {
+      # Fallback when the inverse Hessian is not positive definite
+      # Either estimate SE using only diagonal components or return NA
       se_out <- rep(NA_real_, L_out); smry_rep <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
       if (!is.null(smry_rep)) { m_idx <- match(names_vec, rownames(smry_rep)); valid <- !is.na(m_idx); if (any(valid)) se_out[valid] <- smry_rep$`Std. Error`[m_idx[valid]] }
       for (j in which(is.na(se_out))) se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u) * J[j, ])))
@@ -556,6 +579,7 @@
     }
   }
 
+  # Execute calculation if a user-defined generate block exists
   df_generate <- build_derived_summary(self$generate, gq_list, TRUE, if (reml_flag) dH_beta else dH_list, if (reml_flag) V_beta else V_opt, reml_flag, if (reml_flag) active_idx else NULL, if (reml_flag) dH_theta else NULL, if (reml_flag) V_theta else NULL, if (reml_flag) idx_fix_active else NULL)
   if (!is.null(df_map)) df_generate <- .apply_df_map(df_generate, df_map)
 
@@ -628,6 +652,7 @@
     is_classic = TRUE, 
     df = df, 
     df_method = df_method,
+    # --- Hessian correction for REML (when REML=TRUE) ---
     REML = REML, 
     marginal = marginal, 
     view = view, 

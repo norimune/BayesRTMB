@@ -6,6 +6,7 @@
 #'
 #' @param fit Model fit object (e.g., `mcmc_fit`, `map_fit`).
 #' @param effect Name of the variable to visualize (e.g., "X1" or "X1:X2").
+#' @param prob Probability for the credible/confidence interval (default is 0.95).
 #' @param sd_multiplier Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).
 #' @param ... Additional arguments.
 #'
@@ -20,29 +21,28 @@
 #'   summary(ce)
 #' }
 #' @export
-conditional_effects <- function(fit, effect, ...) {
-  if (inherits(fit, "mcmc_fit")) {
-    return(conditional_effects.mcmc_fit(fit, effect = effect, ...))
-  } else if (inherits(fit, "map_fit") || inherits(fit, "advi_fit") || inherits(fit, "vb_fit")) {
-    # Reuse mcmc_fit logic since these classes now provide a draws() method
-    return(conditional_effects.mcmc_fit(fit, effect = effect, ...))
-  } else {
-    stop(sprintf("No conditional_effects method for object of class '%s'.", class(fit)[1]))
-  }
+conditional_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+  UseMethod("conditional_effects")
+}
+
+#' @method conditional_effects default
+#' @export
+conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+  stop(sprintf("No conditional_effects method for object of class '%s'.", class(fit)[1]))
 }
 
 #' Calculate conditional effects for MCMC fit objects
 #' @method conditional_effects mcmc_fit
 #' @param fit An object of class `MCMC_Fit`.
 #' @param effect Name of the explanatory variable to visualize (e.g., "X1" or "X1:X2").
+#' @param prob Probability for the credible/confidence interval (default is 0.95).
+#' @param sd_multiplier Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).
 #' @param resolution Grid resolution to calculate for continuous variables (default is 100).
-#' @param prob Probability for the credible interval (default is 0.95).
-#' @param sd_multiplier Multiplier for SD for continuous moderators.
 #' @param ... Additional arguments.
 #'
 #' @return A `ce_rtmb` object.
 #' @export
-conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0.95, sd_multiplier = 1, ...) {
+conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
   model_obj <- fit$model
   if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
     stop("This model object does not contain a formula or the original data.")
@@ -205,6 +205,18 @@ conditional_effects.mcmc_fit <- function(fit, effect, resolution = 100, prob = 0
   return(res)
 }
 
+#' @method conditional_effects map_fit
+#' @export
+conditional_effects.map_fit <- conditional_effects.mcmc_fit
+
+#' @method conditional_effects advi_fit
+#' @export
+conditional_effects.advi_fit <- conditional_effects.mcmc_fit
+
+#' @method conditional_effects vb_fit
+#' @export
+conditional_effects.vb_fit <- conditional_effects.mcmc_fit
+
 #' Plot method for ce_rtmb class (Base R)
 #' @method plot ce_rtmb
 #' @param x An object of class ce_rtmb
@@ -325,8 +337,9 @@ summary.ce_rtmb <- function(object, ...) {
 #' For categorical focal variables, it calculates pairwise differences (contrasts).
 #' For continuous focal variables, it calculates the slope (simple slopes).
 #'
-#' @param fit Model fit object (mcmc_fit).
+#' @param fit Model fit object (e.g., `map_fit`, `mcmc_fit`).
 #' @param effect Character string of the interaction (e.g., "A:B"). The first variable is the focal variable.
+#' @param prob Probability for the credible/confidence interval (default is 0.95).
 #' @param sd_multiplier Multiplier for SD for continuous moderators (default is 1).
 #' @param ... Additional arguments.
 #'
@@ -341,7 +354,7 @@ summary.ce_rtmb <- function(object, ...) {
 #'   print(se)
 #' }
 #' @export
-simple_effects <- function(fit, effect, sd_multiplier = 1, ...) {
+simple_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
   UseMethod("simple_effects")
 }
 
@@ -563,8 +576,10 @@ simple_effects.advi_fit <- simple_effects.mcmc_fit
 #' @export
 simple_effects.vb_fit <- simple_effects.mcmc_fit
 
-#' Print method for ce_simple
-#' @method print ce_simple
+#' Print simple effects
+#' @param x A `ce_simple` object.
+#' @param digits Number of digits to print.
+#' @param ... Additional arguments.
 #' @export
 print.ce_simple <- function(x, digits = 3, ...) {
   cat("--- Simple Effects Analysis ---\n")

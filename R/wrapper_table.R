@@ -10,6 +10,7 @@
 #' @param classic Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.
 #' @param correct Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).
 #' @param prior Prior specification (Bayesian mode). Default is `prior_uniform()`.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments.
 #'
 #' @return A `Classic_Fit` or `MCMC_Fit` object.
@@ -20,7 +21,7 @@
 #' rtmb_table(skill, cond, data = debate, classic = TRUE)
 #' }
 #' @export
-rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_uniform(), fixed = NULL, ...) {
+rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE, prior = prior_uniform(), fixed = NULL, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -49,7 +50,25 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_u
   grid <- expand.grid(Row = R_names, Col = C_names)
   cell_labels <- paste0(v1_name, ":", grid$Row, ", ", v2_name, ":", grid$Col)
 
-
+  # 2. Classic Mode (Frequentist)
+  if (isTRUE(classic)) {
+    chisq_res <- stats::chisq.test(tab, correct = correct)
+    fisher_res <- tryCatch(stats::fisher.test(tab), error = function(e) NULL)
+    
+    res <- Classic_Fit$new(
+      model = list(type = "table", data = list(tab = tab), par_names = list(p = cell_labels)),
+      df_fixed = data.frame(
+        Statistic = c("Chi-squared", if (!is.null(fisher_res)) "Fisher's Exact" else NULL),
+        Estimate = c(chisq_res$statistic, if (!is.null(fisher_res)) NA else NULL),
+        df = c(chisq_res$parameter, if (!is.null(fisher_res)) NA else NULL),
+        Pr = c(chisq_res$p.value, if (!is.null(fisher_res)) fisher_res$p.value else NULL),
+        check.names = FALSE
+      ),
+      test_results = list(chisq = chisq_res, fisher = fisher_res)
+    )
+    class(res) <- c("rtmb_table", class(res))
+    return(res)
+  }
 
   # 3. Bayes Mode (Multinomial Model)
   # Data for RTMB

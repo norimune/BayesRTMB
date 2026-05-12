@@ -2,10 +2,17 @@
 % Please edit documentation in R/methods_post_estimation.R
 \name{print.ce_simple}
 \alias{print.ce_simple}
-\title{Print method for ce_simple}
+\title{Print simple effects}
 \usage{
 \method{print}{ce_simple}(x, digits = 3, ...)
 }
+\arguments{
+\item{x}{A `ce_simple` object.}
+
+\item{digits}{Number of digits to print.}
+
+\item{...}{Additional arguments.}
+}
 \description{
-Print method for ce_simple
+Print simple effects
 }

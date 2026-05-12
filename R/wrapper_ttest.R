@@ -14,6 +14,7 @@
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta").
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments.
 #' @return An `RTMB_Model` object.
 #' @export

@@ -17,6 +17,7 @@
 #' @param b_sd Standard deviation for the coefficients prior (Normal). Default is NULL (flat).
 #' @param sigma_rate Rate for the residual standard deviation prior (Exponential). Default is NULL (flat).
 #' @param tau_rate Rate for the random effects standard deviation prior (Exponential). Default is NULL (flat).
+#' @param mu_sd Standard deviation for the mean/intercept prior (Normal). Default is NULL (flat).
 #' @param ... Optional hyperparameters
 #' @return A list with class "rtmb_prior"
 #' @export

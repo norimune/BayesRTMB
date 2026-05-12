@@ -18,6 +18,8 @@ prior_uniform(
 
 \item{b_sd}{Standard deviation for the coefficients prior (Normal). Default is NULL (flat).}
 
+\item{mu_sd}{Standard deviation for the mean/intercept prior (Normal). Default is NULL (flat).}
+
 \item{sigma_rate}{Rate for the residual standard deviation prior (Exponential). Default is NULL (flat).}
 
 \item{tau_rate}{Rate for the random effects standard deviation prior (Exponential). Default is NULL (flat).}

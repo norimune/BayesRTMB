@@ -405,8 +405,9 @@ to_unconstrained <- function(para_orig_list, par_list) {
       z_all <- numeric(p$unc_length)
       idx <- 1
       for (k in 1:K) {
+        # --- Logic for restoring parameter matrix dimensions ---
+        # Restores dimensions using info saved during model construction, as RTMB treats them as vectors internally.
         val_slice <- if (K > 1) {
-          # Fix: matrix() で P x P の次元を確実に復元する
           if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
         } else {
           val_orig
@@ -658,7 +659,7 @@ to_constrained <- function(para_unc_list, par_list) {
             res_list[[k]] <- as.vector(L)
           }
         }
-        # Fix: Rの配列のメモリ配置に合わせてインデックスをシャッフルし、K x R x C を復元
+        # Fix: Shuffle indices to match R's array memory layout and restore K x R x C
         res_array_flat <- do.call(c, res_list)
         idx_base <- array(1:(K * R * C), dim = c(R, C, K))
         idx_perm <- as.vector(aperm(idx_base, c(3, 1, 2)))
@@ -907,7 +908,7 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
         idx_u <- 1
         for (i in 2:P_mat) {
           for (j in 1:(i - 1)) {
-            # CF_corr と corr_matrix で正しいヤコビアンを使い分ける修正
+            # Fix: use the correct Jacobian for CF_corr and corr_matrix
             if (b_type == "corr_matrix") {
               lj_term <- lj_term - 2 * (P_mat - i + 1) * log(cosh(v_u[idx_u]))
             } else { # CF_corr

@@ -39,6 +39,8 @@ rtmb_ttest(
 
 \item{init}{List of initial values.}
 
+\item{fixed}{Optional named list of fixed values for specific parameters.}
+
 \item{null}{Character string specifying the target parameter for the null model (e.g., "delta").}
 
 \item{var.equal}{Logical; whether to assume equal variances. Default is TRUE.}

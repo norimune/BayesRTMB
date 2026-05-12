@@ -335,9 +335,9 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
 
 report <- function(...) invisible(NULL)
 
-# --- AST探索用のヘルパー ---
+# --- Helper functions for AST exploration ---
 
-# 式の中に特定の関数呼び出し（"report"など）が含まれているかチェック
+# Check if a specific function call (e.g., "report") is included in the expression
 has_function_call <- function(expr, func_name) {
   if (is.atomic(expr) || is.name(expr)) return(FALSE)
   if (is.call(expr)) {
@@ -364,7 +364,7 @@ extract_report_vars <- function(expr) {
   return(unique(vars))
 }
 
-# 実行時にエラーにならないよう AST から report() 呼び出しを消去する
+# Remove report() calls from AST to avoid runtime errors
 remove_report_calls <- function(expr) {
   if (is.atomic(expr) || is.name(expr)) return(expr)
   if (is.call(expr)) {
@@ -376,7 +376,7 @@ remove_report_calls <- function(expr) {
   return(expr)
 }
 
-# 代入されている変数名をすべて抽出する
+# Extract all assigned variable names
 get_assigned_vars <- function(expr) {
   vars <- character()
   if (is.atomic(expr) || is.name(expr)) return(vars)
@@ -391,27 +391,27 @@ get_assigned_vars <- function(expr) {
   return(unique(vars))
 }
 
-# transformの内容に基づいて model ブロックに ADREPORT を注入する
+# Inject ADREPORT into the model block based on the transform content
 inject_transform_adreports <- function(code) {
   if (is.null(code$transform)) return(code)
 
-  # 1. report() が明示されているかチェック
+  # 1. Check if report() is explicitly specified
   explicit_vars <- extract_report_vars(code$transform)
 
   if (length(explicit_vars) > 0) {
-    # 明示的な場合はその変数のみ。transform内の report() 行は消す
+    # If explicit, target only those variables. Remove the report() call from transform
     target_vars <- explicit_vars
     code$transform <- remove_report_calls(code$transform)
   } else {
-    # 明示されていない場合は transform 内で代入された全変数を対象にする
+    # If not explicitly specified, target all variables assigned in transform
     target_vars <- get_assigned_vars(code$transform)
   }
 
-  # 2. model ブロックの末尾に ADREPORT(var) を追加
+  # 2. Add ADREPORT(var) to the end of the model block
   if (length(target_vars) > 0 && !is.null(code$model)) {
     ad_exprs <- lapply(target_vars, function(v) call("ADREPORT", as.name(v)))
     if (is.call(code$model) && identical(code$model[[1]], as.name("{"))) {
-      # { ... } の中に流し込む
+      # Inject into { ... }
       code$model <- as.call(c(as.list(code$model), ad_exprs))
     }
   }

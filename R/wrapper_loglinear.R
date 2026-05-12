@@ -7,6 +7,7 @@
 #' @param formula A formula (e.g., `~ A + B + A:B`) or a contingency table.
 #' @param data A data frame (required if `formula` is used).
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments passed to `rtmb_glm()`.
 #' @return An `RTMB_Model` object.
 #' @export

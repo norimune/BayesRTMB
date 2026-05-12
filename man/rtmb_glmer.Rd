@@ -43,6 +43,8 @@ rtmb_glmer(
 
 \item{init}{List of initial values (generated automatically based on glm if omitted)}
 
+\item{fixed}{Optional named list of fixed values for specific parameters.}
+
 \item{null}{Character string specifying the target parameter for the null model.}
 
 \item{gmc}{Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.}
@@ -50,6 +52,8 @@ rtmb_glmer(
 \item{cwc}{List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{within}{Optional list for wide-to-long conversion.}
 
 \item{factors}{Character vector of variable names to be treated as factors.}
 
@@ -62,6 +66,10 @@ rtmb_glmer(
 \item{resid_time}{Variable name for time points in residual correlation.}
 
 \item{resid_group}{Variable name for grouping in residual correlation.}
+
+\item{generate}{Optional expression for generated quantities.}
+
+\item{.force_sum}{Logical; internal use only.}
 }
 \description{
 RTMB-based GLMM wrapper function

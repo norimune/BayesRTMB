@@ -14,8 +14,10 @@ rtmb_glm(
   fixed = NULL,
   null = NULL,
   gmc = NULL,
+  view = NULL,
   factors = NULL,
-  contrasts = "treatment"
+  contrasts = "treatment",
+  ...
 )
 }
 \arguments{
@@ -31,9 +33,19 @@ rtmb_glm(
 
 \item{init}{List of initial values}
 
+\item{fixed}{Optional named list of fixed values for specific parameters.}
+
 \item{null}{Character string specifying the target parameter for the null model.}
 
 \item{gmc}{Character vector of variable names for GMC}
+
+\item{view}{Optional character vector of parameter names to show first in summary.}
+
+\item{factors}{Character vector of variable names to be treated as factors.}
+
+\item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
+
+\item{...}{Additional arguments passed to \code{rtmb_glmer()}.}
 }
 \description{
 RTMB-based GLM wrapper function (no random effects)

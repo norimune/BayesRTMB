@@ -10,6 +10,7 @@
 #' @param data A data frame containing the variables in the model.
 #' @param covariance Covariance structure: "diagonal" (default), "diagonal_equal", "full", "full_equal", or "full_equal_corr".
 #' @param prior Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments passed to \code{rtmb_model}.
 #' @return A \code{RTMB_Model} object.
 #' @export

@@ -31,7 +31,7 @@
 #' @field laplace Whether Laplace approximation was used.
 #' @field map Parameter mapping used.
 #' @field df_method Character string specifying the degrees of freedom calculation method.
-#'
+#' @importFrom stats AIC BIC logLik anova
 #' @export
 Classic_Fit <- R6::R6Class(
   classname = "Classic_Fit",
@@ -757,7 +757,7 @@ Classic_Fit <- R6::R6Class(
       if (inherits(self$fit, "lm")) {
         fe_idx <- seq_along(beta_full)
       } else {
-        # 固定効果として識別する名前のパターンを拡充 (beta, mu, delta等を追加)
+        # Expand patterns for identifying fixed effects (adding beta, mu, delta, etc.)
         fix_pats <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
         fe_regex <- paste0("^(", paste(fix_pats, collapse="|"), ")($|\\[)")
         fe_idx <- which(grepl(fe_regex, names(beta_full)))
@@ -818,14 +818,14 @@ Classic_Fit <- R6::R6Class(
         idx <- which(assign_idx == a_id)
         if (length(idx) == 0) next
 
-        # --- 特例: 1自由度の項 (連続変量や2水準因子) は t値を2乗してF値を計算 ---
-        # 対比変換の影響を受けないように、元の beta_full と V_full から直接抽出を試みる
+        # --- Special Case: Calculate F-value by squaring t-value for 1-DF terms (continuous or 2-level factors) ---
+        # Attempt direct extraction from original beta_full and V_full to avoid contrast transformation issues
         is_single <- length(idx) == 1
         W <- NULL
         if (is_single) {
           term_name_in_beta <- names(beta)[idx]
-          # 元の推定結果 (beta_full) から該当する係数を探す
-          # b[name] という形式と、名前そのものの両方を試す
+          # Look for the corresponding coefficient in the original estimation results (beta_full)
+          # Try both b[name] format and the name itself
           orig_match <- which(names(beta_full) == term_name_in_beta | names(beta_full) == paste0("b[", term_name_in_beta, "]"))
           if (length(orig_match) == 1) {
             b_val <- beta_full[orig_match]
@@ -834,7 +834,7 @@ Classic_Fit <- R6::R6Class(
           }
         }
 
-        # 1自由度でない場合、または上記で取得できなかった場合は通常の Wald 検定
+        # Standard Wald test if not 1-DF or if the above failed
         if (is.null(W)) {
           L <- matrix(0, nrow = length(idx), ncol = length(beta))
           for (j in seq_along(idx)) L[j, idx[j]] <- 1
@@ -851,7 +851,7 @@ Classic_Fit <- R6::R6Class(
 
         fit_df_col <- if ("df" %in% names(self$fit)) self$fit$df else if ("DF" %in% names(self$fit)) self$fit$DF else NULL
         if (is.data.frame(self$fit) && !is.null(fit_df_col)) {
-          # beta_full のインデックスに合わせる
+          # Align with beta_full indices
           term_name_in_beta <- names(beta)[idx]
           orig_match_indices <- sapply(term_name_in_beta, function(nm) {
             m <- which(names(beta_full) == nm | names(beta_full) == paste0("b[", nm, "]"))
@@ -864,17 +864,17 @@ Classic_Fit <- R6::R6Class(
           df2 <- Inf
         }
 
-        # --- 判定: F検定形式を使うか、カイ二乗形式を使うか ---
-        # 漸近的なモデル（Poisson, Binomial, Table等）でない限り、F検定形式に統一する
+        # --- Decision: Use F-test or Chi-squared test format ---
+        # Unify to F-test format unless it is an asymptotic model (Poisson, Binomial, Table, etc.)
         is_asymp <- (!is.null(self$model$family) && self$model$family %in% c("poisson", "binomial", "bernoulli", "multinomial", "ordered")) || 
                     (!is.null(self$model$type) && self$model$type %in% c("loglinear", "table"))
         
         if (is_asymp) {
-          # 漸近的モデル: カイ二乗検定形式
+          # Asymptotic model: Chi-squared test format
           p_val <- stats::pchisq(W, df1, lower.tail = FALSE)
           res_list[[t_name]] <- data.frame(`df` = df1, `Chisq` = W, `Pr(>Chisq)` = p_val, row.names = t_name, check.names = FALSE)
         } else {
-          # 回帰系モデル: F検定形式に統一（分母自由度が Inf の場合も含む）
+          # Regression models: Unify to F-test format (including cases where denominator DF is Inf)
           p_val <- if (is.infinite(df2) || df2 <= 0) stats::pchisq(W, df1, lower.tail = FALSE) 
                    else stats::pf(f_val, df1, df2, lower.tail = FALSE)
           res_list[[t_name]] <- data.frame(`num_df` = df1, `den_df` = df2, `F value` = f_val, `Pr(>F)` = p_val, row.names = t_name, check.names = FALSE)
@@ -892,14 +892,14 @@ Classic_Fit <- R6::R6Class(
       heading <- if ("Chisq" %in% names(res_df)) "ANOVA Table (Wald Chisq tests)" else "ANOVA Table (Wald F-tests)"
       attr(res_df, "heading") <- heading
 
-      # --- 追加: R-squared とモデル全体の検定 (rtmb_lmの場合) ---
+      # --- Added: R-squared and overall model test (for rtmb_lm) ---
       is_lm <- !is.null(self$model$type) && self$model$type == "lm"
       if (is_lm && !is.null(self$model$data$Y)) {
         Y <- self$model$data$Y
         TSS <- sum((Y - mean(Y))^2)
         sigma_est <- beta_full["sigma"]
         if (!is.na(sigma_est) && TSS > 0) {
-          # 残差自由度の取得
+          # Obtain residual degrees of freedom
           df_resid <- if (is.null(res_df$den_df)) (length(Y) - sum(res_df$num_df) - 1) else min(res_df$den_df, na.rm = TRUE)
           if (is.infinite(df_resid)) df_resid <- length(Y) - sum(res_df$num_df) - 1
           
@@ -907,7 +907,7 @@ Classic_Fit <- R6::R6Class(
           r2 <- 1 - (RSS / TSS)
           adj_r2 <- 1 - (1 - r2) * (length(Y) - 1) / pmax(df_resid, 1)
 
-          # モデル全体の Wald 検定 (全予測変数 vs Intercept)
+          # Overall model Wald test (all predictors vs. Intercept)
           all_pred_idx <- which(assign_idx > 0)
           if (length(all_pred_idx) > 0) {
             L_all <- matrix(0, nrow = length(all_pred_idx), ncol = length(beta))
@@ -1200,7 +1200,7 @@ Classic_Fit <- R6::R6Class(
         par_list$b <- coefs[names(coefs) != "(Intercept)"]
         return(par_list)
       }
-      if (is.data.frame(fit)) {
+      if (is.data.frame(fit) && "Estimate" %in% names(fit)) {
         est <- fit$Estimate; names(est) <- rownames(fit)
         par_list$Intercept <- est["Intercept"]
         par_list$b <- est[grepl("^b\\[", names(est))]
@@ -1253,6 +1253,10 @@ print.summary_Classic_Fit <- function(x, ...) {
          cat("\nExpected Counts (Independence) and Pearson Residuals:\n"); E_vec <- as.vector(E_mat); obs_vec <- as.vector(obs_tab); residuals <- (obs_vec - E_vec) / pmax(sqrt(E_vec), 1e-8)
          df_resid <- data.frame(Expected = round(E_vec, digits), Residual = round(residuals, digits), row.names = gsub("^mu\\[", "E\\[", rownames(df_mu)))
         print(df_resid, quote = FALSE, right = TRUE)
+      } else {
+        # Fallback for classic mode or models without mu parameters
+        cat("\nTest Results:\n")
+        print(x$coefficients, quote = FALSE, right = TRUE)
       }
     } else if (!is.null(x$type) && x$type == "loglinear") {
       cat("\nLog-linear Parameters and Confidence Intervals:\n"); df_params <- x$coefficients[!grepl("^mu\\[", rownames(x$coefficients)), , drop = FALSE]

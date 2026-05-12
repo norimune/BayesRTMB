@@ -17,6 +17,10 @@
 #' @param resid_corr Residual correlation structure: "ar1" (Autoregressive), "cs" (Compound Symmetry), "toep" (Toeplitz), or "un" (Unstructured).
 #' @param resid_time Variable name for time points in residual correlation.
 #' @param resid_group Variable name for grouping in residual correlation.
+#' @param within Optional list for wide-to-long conversion.
+#' @param generate Optional expression for generated quantities.
+#' @param .force_sum Logical; internal use only.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,

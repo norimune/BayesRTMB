@@ -7,10 +7,12 @@
 #' @param x A matrix, data frame, formula, or expression (e.g., \code{cbind(V1, V2)}) of response variables.
 #' @param data An optional data frame containing the variables.
 #' @param ID A character string or expression specifying the group ID variable for multilevel models.
+#' @param covariates Optional numeric matrix or data frame of covariates to be included in the joint MVN model.
 #' @param prior Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param null Optional list specifying parameters to fix to null values.
 #'
 #' @return A \code{RTMB_Model} object.

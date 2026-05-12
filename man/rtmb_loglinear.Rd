@@ -13,6 +13,8 @@ rtmb_loglinear(formula, data, prior = prior_uniform(), fixed = NULL, ...)
 
 \item{prior}{An object of class "rtmb_prior" specifying the prior distribution.}
 
+\item{fixed}{Optional named list of fixed values for specific parameters.}
+
 \item{...}{Additional arguments passed to `rtmb_glm()`.}
 }
 \value{

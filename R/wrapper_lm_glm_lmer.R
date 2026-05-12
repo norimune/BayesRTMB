@@ -20,6 +20,7 @@
 #' specify the factor names and their levels, e.g., \code{list(Time = 4)} or \code{list(A = 2, B = 3)}.
 #' The total number of levels must match the number of columns in \code{cbind()} on the LHS.
 #' If omitted and the LHS is \code{cbind()}, the within-factor name is inferred from RHS variables not present in the data.
+#' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments passed to \code{rtmb_model()}.
 #'
 #' @return RTMB_Model object
@@ -71,6 +72,11 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param init List of initial values
 #' @param null Character string specifying the target parameter for the null model.
 #' @param gmc Character vector of variable names for GMC
+#' @param factors Character vector of variable names to be treated as factors.
+#' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
+#' @param fixed Optional named list of fixed values for specific parameters.
+#' @param view Optional character vector of parameter names to show first in summary.
+#' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
@@ -78,8 +84,9 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                        y_range = NULL,
                        init = NULL, fixed = NULL, null = NULL,
                        gmc = NULL,
+                       view = NULL,
                        factors = NULL,
-                       contrasts = "treatment") {
+                       contrasts = "treatment", ...) {
   rtmb_glmer(formula = formula, data = data, family = family,
              laplace = FALSE,
              prior = prior,
@@ -88,8 +95,9 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              fixed = fixed,
              null = null,
              gmc = gmc,
+             view = view,
              factors = factors,
-             contrasts = contrasts)
+             contrasts = contrasts, ...)
 }
 
 #' RTMB-based Linear Regression wrapper function
@@ -102,6 +110,10 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param null Character string specifying the target parameter for the null model.
 #' @param gmc Character vector of variable names for GMC
 #' @param factors Character vector of variable names to be treated as factors.
+#' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
+#' @param fixed Optional named list of fixed values for specific parameters.
+#' @param view Optional character vector of parameter names to show first in summary.
+#' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
@@ -109,8 +121,9 @@ rtmb_lm <- function(formula, data,
                     y_range = NULL,
                     init = NULL, fixed = NULL, null = NULL,
                     gmc = NULL,
+                    view = NULL,
                     factors = NULL,
-                    contrasts = "treatment") {
+                    contrasts = "treatment", ...) {
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = FALSE,
              prior = prior,
@@ -119,6 +132,7 @@ rtmb_lm <- function(formula, data,
              fixed = fixed,
              null = null,
              gmc = gmc,
+             view = view,
              factors = factors,
-             contrasts = contrasts)
+             contrasts = contrasts, ...)
 }

@@ -50,7 +50,7 @@
     cat(paste0("Starting sequential sampling (chains = ", chains, ")...\n"))
   }
 
-  # --- [重要] シリアライズ回避のためのデータ抽出 ---
+  # --- [IMPORTANT] Data extraction to avoid serialization ---
   local_data <- self$data
   local_par_list <- self$par_list
   local_pl_full <- self$pl_full
@@ -61,7 +61,7 @@
   use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
   base_init <- self$prepare_init(init)
 
-  # [修正] f_ad を事前に作成（private のキャプチャを避けるため）
+  # [Fix] Prepare f_ad beforehand (to avoid capturing private)
   f_ad_global <- private$.build_f_ad(
     data_local = local_data,
     par_list_local = local_par_list,
@@ -95,7 +95,7 @@
     }
     unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-    # [修正] 外部から渡された f_ad を使用
+    # Use the f_ad provided from outside
     ad_obj <- tryCatch({
       RTMB::MakeADFun(func = f_ad, parameters = unc_init_list_new, random = use_random, map = local_map, silent = TRUE)
     }, error = function(e) stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE))
@@ -211,7 +211,7 @@
     cat(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")...\n"))
   } else { cat(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")...\n")) }
 
-  # --- [重要] シリアライズ回避のためのデータ抽出 ---
+  # --- Data extraction to avoid serialization ---
   local_data <- self$data; local_par_list <- self$par_list; local_pl_full <- self$pl_full
   local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
   local_log_prob <- self$log_prob; local_transform <- self$transform
@@ -219,7 +219,7 @@
   use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
   base_init <- self$prepare_init(init)
 
-  # [修正] f_ad を事前に作成（private のキャプチャを避けるため）
+  # Prepare f_ad beforehand to avoid capturing private environment
   f_ad_global <- private$.build_f_ad(
     data_local = local_data, 
     par_list_local = local_par_list, 
@@ -235,7 +235,7 @@
     unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
     unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
 
-    # [修正] 外部から渡された f_ad を使用
+    # Use the f_ad provided from outside
     ad_obj <- tryCatch({
       RTMB::MakeADFun(func = f_ad, parameters = unc_init_list_new, random = use_random, map = local_map, silent = TRUE)
     }, error = function(e) stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE))
@@ -301,6 +301,10 @@
   
   res_obj <- VB_Fit$new(model = self, fit = fit, random_fit = random_fit, elbo_history = elbo_history_list, laplace = laplace, posterior_mean = posterior_mean, ELBO = elbo_final_vec, rel_obj_vals = rel_obj_vec, best_chain = best_chain, mu_history = results_list[[best_chain]]$mu_history)
   if (!is.null(self$transform)) { cat("Calculating transformed parameters...\n"); res_obj$transformed_draws(self$transform) }
-  if (!is.null(self$generate)) { cat("Calculating generated quantities...\n"); res_obj$generated_quantities(self$code$generate) }
+  if (!is.null(self$generate)) {
+    # --- Post-calculation of generated quantities ---
+    # Execute the model's generate block for each posterior sample
+    cat("Calculating generated quantities...\n"); res_obj$generated_quantities(self$code$generate) 
+  }
   return(res_obj)
 }

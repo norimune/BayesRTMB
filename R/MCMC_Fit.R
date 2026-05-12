@@ -77,7 +77,7 @@ MCMC_Fit <- R6::R6Class(
   inherit = RTMB_Fit_Base,
 
   public = list(
-    # --- Fields ---
+    # --- Validation and aggregation of sampling results ---
     model          = NULL, # Reference to RTMB_Model instance
     fit            = NULL,
     random_fit     = NULL,
@@ -529,6 +529,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param seed Integer; random seed for reproducibility. Default is NULL.
     #' @param max_iter Integer; maximum number of iterations for the estimation algorithm. Default is 100.
     #' @return Bridge sampling result.
+    # Calculation of log marginal likelihood for Bridge Sampling
     bridgesampling = function(method = "normal", use_neff = TRUE, seed = NULL, max_iter = 100) {
       if (!is.null(seed)) set.seed(seed)
 
@@ -1002,7 +1003,7 @@ MCMC_Fit <- R6::R6Class(
         gq_names <- c(gq_names, flat_nms)
       }
 
-      # (前略)
+      # (Omitted)
       new_gq_array <- array(NA, dim = c(iter, chains, length(gq_names)))
       dimnames(new_gq_array) <- list(
         iteration = NULL,

@@ -27,13 +27,23 @@ rtmb_lrt(
 
 \item{data}{A data frame containing the variables.}
 
+\item{rank_coords}{Optional numeric vector of coordinates for each rank. Default is 1:k.}
+
+\item{covariance}{Covariance structure: "diagonal", "diagonal_equal", "full", "full_equal", or "full_equal_corr".}
+
 \item{magnitude}{Signal standard deviation for the GP prior. If NULL, it is estimated.}
 
 \item{smoothing}{Length-scale for the GP prior. If NULL, it is estimated.}
 
 \item{noise}{Measurement noise for the GP prior (default is 0.01).}
 
+\item{prob_smoothing}{Logical; whether to apply smoothing to the class membership probabilities.}
+
+\item{link}{Link function for class probabilities: "ordered" or "sequential".}
+
 \item{prior}{Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.}
+
+\item{fixed}{Optional named list of fixed values for specific parameters.}
 
 \item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
