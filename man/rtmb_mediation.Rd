@@ -44,7 +44,7 @@ indirect, direct, and total effects.
 \details{
 The function identifies mediation paths by looking for variables that are
 responses in one equation and predictors in another. Indirect effects are
-calculated as the product of coefficients along these paths ($a \times b$).
+calculated as the product of coefficients along these paths (\eqn{a * b}).
 
 \strong{Uncertainty Estimation}:
 When using `$optimize(ci_method = "sampling")`, the function provides asymmetric

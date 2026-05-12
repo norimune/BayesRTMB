@@ -2,22 +2,24 @@
 % Please edit documentation in R/methods_post_estimation.R
 \name{bayes_factor}
 \alias{bayes_factor}
-\title{Calculate Bayes factor from log marginal likelihoods}
+\title{Calculate Bayes Factor}
 \usage{
 bayes_factor(logml1, logml2, error_threshold = 0.2)
 }
 \arguments{
-\item{logml1}{Log marginal likelihood of Model 1, or a fitted model object (e.g., `mcmc_fit`, `map_fit`, `advi_fit`).}
+\item{logml1}{The first model fit (e.g., `mcmc_fit`) or its log-marginal likelihood.}
 
-\item{logml2}{Log marginal likelihood of Model 2, or a fitted model object.}
+\item{logml2}{The second model fit (e.g., `mcmc_fit`) or its log-marginal likelihood.}
 
-\item{error_threshold}{Numeric; threshold for the approximate error warning. Default is 0.2.}
+\item{error_threshold}{Threshold for warning about high bridge-sampling error (default 0.2).}
 }
 \value{
-An object containing Bayes factor, log Bayes factor, estimation error, and interpretation
+An object of class `bayes_factor` containing the Bayes factor, log Bayes factor, 
+  approximate estimation error, and interpretation.
 }
 \description{
-Calculate Bayes factor from log marginal likelihoods
+Compare two models by calculating the Bayes Factor based on their
+marginal likelihoods.
 }
 \examples{
 \dontrun{
