@@ -990,12 +990,19 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 
   return(invisible(sorted_mat))
 }
-#' Calculate Bayes factor from log marginal likelihoods
+#' Calculate Bayes Factor
 #'
-#' @param logml1 Log marginal likelihood of Model 1, or a fitted model object (e.g., `mcmc_fit`, `map_fit`, `advi_fit`).
-#' @param logml2 Log marginal likelihood of Model 2, or a fitted model object.
-#' @param error_threshold Numeric; threshold for the approximate error warning. Default is 0.2.
-#' @return An object containing Bayes factor, log Bayes factor, estimation error, and interpretation
+#' @description
+#' Compare two models by calculating the Bayes Factor based on their
+#' marginal likelihoods.
+#'
+#' @param logml1 The first model fit (e.g., `mcmc_fit`) or its log-marginal likelihood.
+#' @param logml2 The second model fit (e.g., `mcmc_fit`) or its log-marginal likelihood.
+#' @param error_threshold Threshold for warning about high bridge-sampling error (default 0.2).
+#'
+#' @return An object of class `bayes_factor` containing the Bayes factor, log Bayes factor, 
+#'   approximate estimation error, and interpretation.
+#'
 #' @examples
 #' \dontrun{
 #'   # Compare two models using Bayes Factor

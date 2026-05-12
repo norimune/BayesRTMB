@@ -1299,6 +1299,16 @@ anova.Classic_Fit <- function(object, ...) object$anova(...)
 #' @export
 print.Classic_Fit <- function(x, ...) x$print(...)
 
+#' Least Squares Means (Marginal Means)
+#'
+#' @description
+#' Calculate least squares means (also known as marginal means or predicted means)
+#' for categorical factors in a fitted model. It also supports pairwise comparisons
+#' and simple main effects.
+#'
+#' @param object A fitted model object (e.g., `Classic_Fit`).
+#' @param specs A character vector of factor names to calculate means for.
+#' @param ... Additional arguments passed to the method.
 #' @export
 lsmeans <- function(object, specs, ...) UseMethod("lsmeans")
 
