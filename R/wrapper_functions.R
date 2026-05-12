@@ -3836,6 +3836,9 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   model_exprs <- list()
   generate_exprs <- list()
 
+  # 追加
+  effect_names <- character(0)
+
   v_names <- list()
   init_list <- list()
   b_vars <- c()
@@ -3924,14 +3927,17 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
             pos_m <- which(X_colnames[[dv_idx]] == m)
             b_val <- bquote(.(as.name(paste0("b", dv_idx)))[.(pos_m)])
             ie_name <- paste0("IE_", iv, "_", m, "_", dv_name)
-            generate_exprs[[ie_name]] <- bquote(.(as.name(ie_name)) <- .(a_val) * .(b_val))
+            tran_exprs[[ie_name]] <- bquote(.(as.name(ie_name)) <- .(a_val) * .(b_val))
+            effect_names <- unique(c(effect_names, ie_name))
             pos_iv_direct <- which(X_colnames[[dv_idx]] == iv)
             if (length(pos_iv_direct) > 0) {
               de_name <- paste0("DE_", iv, "_", dv_name)
               de_val <- bquote(.(as.name(paste0("b", dv_idx)))[.(pos_iv_direct)])
-              generate_exprs[[de_name]] <- bquote(.(as.name(de_name)) <- .(de_val))
+              tran_exprs[[de_name]] <- bquote(.(as.name(de_name)) <- .(de_val))
+              effect_names <- unique(c(effect_names, de_name))
               te_name <- paste0("TE_", iv, "_", m, "_", dv_name)
-              generate_exprs[[te_name]] <- bquote(.(as.name(te_name)) <- .(as.name(ie_name)) + .(de_val))
+              tran_exprs[[te_name]] <- bquote(.(as.name(te_name)) <- .(as.name(ie_name)) + .(de_val))
+              effect_names <- unique(c(effect_names, te_name))
             }
           }
         }
@@ -3972,10 +3978,17 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     mdl_code$transform <- as.call(c(list(as.name("{")), tran_exprs))
   }
   mdl_code$model <- as.call(c(list(as.name("{")), model_exprs))
-  mdl_code$generate <- as.call(c(list(as.name("{")), generate_exprs))
+
+  # generate は空なら作らない
+  if (length(generate_exprs) > 0) {
+    mdl_code$generate <- as.call(c(list(as.name("{")), generate_exprs))
+  }
   mdl_code$env <- tmp_env
 
-  view_order <- c(b_vars, names(generate_exprs), s_vars)
+  view_order <- c(b_vars, effect_names, s_vars)
+  if (!is.null(view)) {
+    view_order <- unique(c(view, view_order))
+  }
 
   # Ensure env is correctly formatted for rtmb_model
   # Using the evaluated objects directly from tmp_env
@@ -3985,6 +3998,14 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
 
   mdl$type <- "mediation"
   mdl$extra$marginal <- if (prior_type == "weak") paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
+
+  # 追加
+  mdl$extra$df_map <- df_map
+  mdl$extra$effect_names <- effect_names
+  mdl$extra$equation_df <- setNames(
+    vapply(seq_len(n_eq), function(i) N - ncol(X_list[[i]]), numeric(1)),
+    paste0("eq", seq_len(n_eq))
+  )
 
   return(mdl)
 }

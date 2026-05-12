@@ -294,7 +294,20 @@
     }
     if (is.null(N_obs) || N_obs == 0) N_obs <- 0
 
-    if (type %in% c("lm", "ttest", "mediation")) {
+    if (type == "mediation" && !is.null(self$extra$df_map)) {
+      df_map <- self$extra$df_map
+
+      for (v in names(df_list_unc)) {
+        v_display <- sub("^b_c", "b", v)
+
+        if (v %in% names(df_map)) {
+          df_list_unc[[v]] <- rep(as.numeric(df_map[[v]]), length(df_list_unc[[v]]))
+        } else if (v_display %in% names(df_map)) {
+          df_list_unc[[v]] <- rep(as.numeric(df_map[[v_display]]), length(df_list_unc[[v]]))
+        }
+      }
+
+    } else if (type %in% c("lm", "ttest", "mediation")) {
       K_fixed <- sum(sapply(target_vars, function(v) if (v %in% names(self$par_list)) self$par_list[[v]]$unc_length else 0))
       for (v in target_vars) if (v %in% names(df_list_unc)) df_list_unc[[v]] <- rep(if (v == "delta") Inf else pmax(N_obs - K_fixed, 1), length(df_list_unc[[v]]))
     } else if (type == "corr") {
@@ -386,6 +399,25 @@
     else { df_val <- rep(Inf, p$length); if (p$unc_length > 0) { m_df <- mean(df_list_unc[[name]], na.rm = TRUE); if (is.finite(m_df)) df_val[] <- m_df }; df_list_con[[name]] <- df_val }
   }
 
+  .apply_df_map <- function(df, df_map) {
+    if (is.null(df) || is.null(df_map) || length(df_map) == 0 || !("df" %in% names(df))) return(df)
+
+    rn <- rownames(df)
+    if (is.null(rn)) return(df)
+
+    for (i in seq_along(rn)) {
+      nm <- rn[i]
+      base <- sub("\\[.*$", "", nm)
+
+      if (nm %in% names(df_map)) {
+        df$df[i] <- as.numeric(df_map[[nm]])
+      } else if (base %in% names(df_map)) {
+        df$df[i] <- as.numeric(df_map[[base]])
+      }
+    }
+    df
+  }
+
   build_summary_df <- function(target_random = FALSE) {
     names_vec <- c(); est_vec <- c(); se_vec <- c(); low_vec <- c(); up_vec <- c(); df_vec <- c()
     for (name in names(self$par_list)) {
@@ -397,6 +429,12 @@
     res_df <- data.frame(Estimate = est_vec, `Std. Error` = se_vec, `Lower 95%` = low_vec, `Upper 95%` = up_vec, check.names = FALSE); if (show_df) res_df$df <- df_vec; rownames(res_df) <- names_vec; return(res_df)
   }
   df_fixed <- build_summary_df(FALSE); df_random <- if (laplace) build_summary_df(TRUE) else NULL
+
+  df_map <- self$extra$df_map
+  if (!is.null(df_map)) {
+    df_fixed    <- .apply_df_map(df_fixed, df_map)
+    # df_random  <- .apply_df_map(df_random, df_map) # Mediation usually doesn't have random
+  }
   con_est_vec <- unlist(con_est_list, use.names = FALSE); tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL
   gq_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, if (!is.null(tran_list)) c(con_est_list, tran_list) else con_est_list), error = function(e) NULL) else NULL
 
@@ -430,7 +468,6 @@
             var_vj <- 0
             vj <- se_out[j]^2
 
-            # (1) beta 側: REMLで random として積分された固定効果
             if (!is.null(active_idx_in) &&
                 !is.null(dH_list_in) &&
                 !is.null(V_theta_in) &&
@@ -455,7 +492,6 @@
               }
             }
 
-            # (2) theta 側: opt$par に対応する active fixed parameter だけを使う
             if (!is.null(dH_theta_in) &&
                 !is.null(V_theta_in) &&
                 length(dH_theta_in) > 0) {
@@ -496,7 +532,13 @@
           else { c_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]; if (length(c_dfs) > 0) derived_dfs[j] <- min(c_dfs) }
         }
       }
-      res_df$df <- derived_dfs
+      
+      if (!is.null(self$extra$df_map)) {
+        res_df$df <- derived_dfs
+        res_df <- .apply_df_map(res_df, self$extra$df_map)
+      } else {
+        res_df$df <- derived_dfs
+      }
     }
     rownames(res_df) <- names_vec; return(res_df)
   }
@@ -515,6 +557,7 @@
   }
 
   df_generate <- build_derived_summary(self$generate, gq_list, TRUE, if (reml_flag) dH_beta else dH_list, if (reml_flag) V_beta else V_opt, reml_flag, if (reml_flag) active_idx else NULL, if (reml_flag) dH_theta else NULL, if (reml_flag) V_theta else NULL, if (reml_flag) idx_fix_active else NULL)
+  if (!is.null(df_map)) df_generate <- .apply_df_map(df_generate, df_map)
 
   log_ml <- NA
   if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
