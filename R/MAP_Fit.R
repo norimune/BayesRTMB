@@ -293,6 +293,11 @@ MAP_Fit <- R6::R6Class(
     #' @param ranef Logical; whether to also display random effect estimates. Default is FALSE.
     #' @return A summary object, typically a data frame.
     summary = function(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE) {
+      # Defensive check for pars
+      vars <- if (is.null(pars)) names(self$par) else pars
+      if (is.numeric(vars) && !is.null(self$par)) vars <- names(self$par)[vars]
+      vars <- as.character(vars) # Fix for environment subsetting error
+
       cat("\nCall:\nMAP Estimation via RTMB\n")
       cat(sprintf("\nNegative Log-Posterior: %.2f\n", self$objective))
 
@@ -329,7 +334,7 @@ MAP_Fit <- R6::R6Class(
         base_names <- gsub("\\[.*\\]$", "", var_names)
         
         ordered_idx <- integer(0)
-        for (p in pars) {
+        for (p in vars) {
           match_idx <- which(var_names == p | base_names == p)
           ordered_idx <- c(ordered_idx, match_idx)
         }

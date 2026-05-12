@@ -11,8 +11,7 @@ rtmb_irt(
   prior = prior_uniform(),
   init = NULL,
   fixed = NULL,
-  view = NULL,
-  ...
+  view = NULL
 )
 }
 \arguments{
@@ -31,8 +30,6 @@ Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c
 \item{fixed}{A named list of parameter values to fix (optional).}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
-
-\item{...}{Additional arguments passed to \code{rtmb_model()}.}
 }
 \description{
 Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model) using RTMB.

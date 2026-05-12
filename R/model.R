@@ -329,6 +329,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     obj <- obj$null_model(target = null_target)
   }
 
+
   return(obj)
 }
 

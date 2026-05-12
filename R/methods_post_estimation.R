@@ -553,6 +553,16 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
   }
 }
 
+#' @method simple_effects map_fit
+#' @export
+simple_effects.map_fit <- simple_effects.mcmc_fit
+#' @method simple_effects advi_fit
+#' @export
+simple_effects.advi_fit <- simple_effects.mcmc_fit
+#' @method simple_effects vb_fit
+#' @export
+simple_effects.vb_fit <- simple_effects.mcmc_fit
+
 #' Print method for ce_simple
 #' @method print ce_simple
 #' @export

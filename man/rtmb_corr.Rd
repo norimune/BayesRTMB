@@ -13,8 +13,7 @@ rtmb_corr(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
-  ...
+  null = NULL
 )
 }
 \arguments{
@@ -32,8 +31,6 @@ Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to
 \item{init}{Optional list of initial values.}
 
 \item{null}{Optional list specifying parameters to fix to null values.}
-
-\item{...}{Additional arguments passed to \code{rtmb_model}.}
 }
 \value{
 A \code{RTMB_Model} object.

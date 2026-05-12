@@ -1818,12 +1818,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 #' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
-#' @param ... Additional arguments passed to \code{rtmb_model()}.
 #' @example inst/examples/ex_irt.R
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = prior_uniform(), 
-                     init = NULL, fixed = NULL, view = NULL, ...) {
+                     init = NULL, fixed = NULL, view = NULL) {
 
   model <- match.arg(model)
   type <- match.arg(type)
@@ -1999,13 +1998,12 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 #' @param init Optional list of initial values.
 #' @param null Optional list specifying parameters to fix to null values.
 
-#' @param ... Additional arguments passed to \code{rtmb_model}.
 #' @return A \code{RTMB_Model} object.
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
                       prior = prior_uniform(), y_range = NULL,
-                      init = NULL, fixed = NULL, null = NULL, ...) {
+                      init = NULL, fixed = NULL, null = NULL) {
 
   x_expr <- substitute(x)
   id_expr <- substitute(ID)

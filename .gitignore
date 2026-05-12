@@ -13,3 +13,5 @@ BWMU_functions.R
 docs
 /..Rcheck/
 scratch/
+/.agent_shared/
+debug.rmd

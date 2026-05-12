@@ -757,7 +757,10 @@ Classic_Fit <- R6::R6Class(
       if (inherits(self$fit, "lm")) {
         fe_idx <- seq_along(beta_full)
       } else {
-        fe_idx <- which(grepl("^(Intercept|Intercept_c|b($|\\[))", names(beta_full)))
+        # 固定効果として識別する名前のパターンを拡充 (beta, mu, delta等を追加)
+        fix_pats <- c("Intercept", "Intercept_c", "b", "mean", "prob", "beta", "mu", "delta", "diff", "mean_diff")
+        fe_regex <- paste0("^(", paste(fix_pats, collapse="|"), ")($|\\[)")
+        fe_idx <- which(grepl(fe_regex, names(beta_full)))
       }
 
       if (length(fe_idx) == 0) stop("Could not identify fixed effects for ANOVA.")

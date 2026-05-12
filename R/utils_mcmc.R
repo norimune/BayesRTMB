@@ -119,7 +119,8 @@ as_summary_df <- function(df) {
 #' @param ... Additional arguments.
 #' @export
 print.summary_BayesRTMB <- function(x, digits = NULL,...) {
-  df <- x
+  # Ensure x is treated as a data frame
+  df <- as.data.frame(x)
 
   if (is.null(digits)) {
     digits <- attr(x, "digits")

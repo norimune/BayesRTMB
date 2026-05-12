@@ -236,84 +236,7 @@ RTMB_Model <- R6::R6Class(
     #' @param return_sensitivities Logical; if TRUE, returns Hessian sensitivities and V for delta method.
     #' @return A numeric vector of estimated degrees of freedom (length = L_u_total). Inf for random effects.
     calculate_satterthwaite_df = function(ad_obj, idx_fix_active = NULL, L_u_total = NULL, opt_par = NULL, max_df = NULL, silent = FALSE, return_sensitivities = FALSE) {
-      # if (!silent) cat("Estimating Satterthwaite degrees of freedom...\n")
-
-      par <- if (!is.null(opt_par)) opt_par else ad_obj$par
-      P <- length(par)
-      total_len <- if (!is.null(L_u_total)) L_u_total else P
-      df_full <- rep(Inf, total_len)
-
-      # Step 1: Compute Hessian at optimum via Jacobian of analytical gradient
-      # For marginal likelihood (Laplace), numerical differentiation on the gradient is most reliable
-
-      H0 <- tryCatch(private$.simple_jacobian(ad_obj$gr, par), warning = function(w) NULL, error = function(e) NULL)
-
-      if (is.null(H0) || any(!is.finite(H0))) {
-        warning("Hessian computation failed. Using normal approximation.")
-        return(df_full)
-      }
-      V <- tryCatch(solve(H0), error = function(e) {
-        tryCatch(MASS::ginv(H0), error = function(e2) NULL)
-      })
-      if (is.null(V)) {
-        return(df_full)
-      }
-
-      # Step 2: Compute dV_ii/dtheta_k via central differences of the Hessian
-      # Optimized: Compute dH/dtheta_k once per k and vectorize diag(V dH V)
-      # Improved: Smaller eps base for better sensitivity to 3rd derivatives
-      # Improved: Slightly larger eps base to smooth out 3rd derivative noise
-      eps <- 1e-3 * pmax(abs(par), 0.1)
-      grad_V_diag <- matrix(0, nrow = P, ncol = P) # grad_V_diag[k, i] = dV_ii / dtheta_k
-      dH_list <- if (return_sensitivities) vector("list", P) else NULL
-
-      for (k in 1:P) {
-        par_plus <- par_minus <- par
-        par_plus[k] <- par[k] + eps[k]
-        par_minus[k] <- par[k] - eps[k]
-
-        H_plus <- tryCatch(private$.simple_jacobian(ad_obj$gr, par_plus), warning = function(w) NULL, error = function(e) NULL)
-        H_minus <- tryCatch(private$.simple_jacobian(ad_obj$gr, par_minus), warning = function(w) NULL, error = function(e) NULL)
-
-        if (is.null(H_plus) || is.null(H_minus)) next
-
-        # Third derivative approximation: dH/dtheta_k
-        dH_k <- (H_plus - H_minus) / (2 * eps[k])
-        if (return_sensitivities) dH_list[[k]] <- dH_k
-
-        # dV/dtheta_k = -V %*% dH_k %*% V
-        # Diagonal elements: diag(dV/dtheta_k) = -rowSums((V %*% dH_k) * V)
-        grad_V_diag[k, ] <- -rowSums((V %*% dH_k) * V)
-      }
-
-      df_par <- rep(Inf, P)
-      for (i in 1:P) {
-        grad_vi <- grad_V_diag[, i]
-        if (all(abs(grad_vi) < 1e-30)) next
-
-        # Var(V_ii) = grad(V_ii)^T %*% V %*% grad(V_ii)
-        var_vi <- as.numeric(t(grad_vi) %*% V %*% grad_vi)
-        if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V[i, i] > 0) {
-          df_par[i] <- 2 * (V[i, i]^2) / var_vi
-        }
-      }
-
-      df_par[!is.finite(df_par)] <- Inf
-      df_par <- pmax(df_par, 2.1)
-
-      # Map to full parameter vector
-      if (!is.null(idx_fix_active) && length(idx_fix_active) == P) {
-        df_full[idx_fix_active] <- df_par
-      } else if (P == total_len) {
-        df_full <- df_par
-      }
-
-      finite_dfs <- df_par[is.finite(df_par)]
-
-      if (return_sensitivities) {
-        return(list(df = df_full, sensitivities = dH_list, V = V))
-      }
-      return(df_full)
+      .calculate_satterthwaite_df_impl(self, private, ad_obj, idx_fix_active, L_u_total, opt_par, max_df, silent, return_sensitivities)
     },
 
     #' @description Calculate Satterthwaite degrees of freedom for integrated fixed effects (REML).
@@ -324,85 +247,7 @@ RTMB_Model <- R6::R6Class(
     #' @param return_sensitivities Logical; if TRUE, returns Hessian sensitivities and delta-method components.
     #' @return A numeric vector of estimated degrees of freedom for the fixed effects.
     calculate_reml_satterthwaite_df = function(ad_obj, opt_par, beta_idx, silent = FALSE, return_sensitivities = FALSE) {
-      if (!silent) cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
-
-      P <- length(opt_par)
-      n_beta <- length(beta_idx)
-
-      # Helper to get covariance of joint Hessian for beta
-      get_beta_cov = function(theta) {
-        p_full <- ad_obj$env$last.par.best
-        idx_fixed <- ad_obj$env$lfixed()
-        p_full[idx_fixed] <- theta
-
-        H <- tryCatch(ad_obj$env$spHess(p_full, random = TRUE), warning = function(w) NULL, error = function(e) NULL)
-        if (is.null(H)) {
-          return(NULL)
-        }
-
-        # Convert to dense matrix for solve to ensure extraction works reliably
-        V_full <- tryCatch(solve(as.matrix(H)), warning = function(w) NULL, error = function(e) NULL)
-        if (is.null(V_full)) {
-          return(NULL)
-        }
-
-        as.matrix(V_full[beta_idx, beta_idx, drop = FALSE])
-      }
-
-      V_beta_0 <- tryCatch(get_beta_cov(opt_par), error = function(e) {
-        return(NULL)
-      })
-      if (is.null(V_beta_0)) {
-        return(list(df = rep(Inf, n_beta), se = rep(NA, n_beta)))
-      }
-      V_beta_diag_0 <- diag(V_beta_0)
-
-      # Covariance of variance components (theta)
-      H_theta <- tryCatch(private$.simple_jacobian(ad_obj$gr, opt_par), warning = function(w) NULL, error = function(e) NULL)
-      if (is.null(H_theta)) {
-        return(rep(Inf, n_beta))
-      }
-
-      V_theta <- tryCatch(solve(H_theta), error = function(e) {
-        tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
-      })
-      if (is.null(V_theta)) {
-        return(rep(Inf, n_beta))
-      }
-
-      # Gradient of V_beta with respect to theta
-      eps <- 1e-5 * pmax(abs(opt_par), 0.1)
-      grad_V_beta_diag <- matrix(0, nrow = P, ncol = n_beta)
-      dV_beta_list <- if (return_sensitivities) vector("list", P) else NULL
-
-      for (k in 1:P) {
-        p_plus <- p_minus <- opt_par
-        p_plus[k] <- opt_par[k] + eps[k]
-        p_minus[k] <- opt_par[k] - eps[k]
-
-        v_plus <- tryCatch(get_beta_cov(p_plus), warning = function(w) NULL, error = function(e) NULL)
-        v_minus <- tryCatch(get_beta_cov(p_minus), warning = function(w) NULL, error = function(e) NULL)
-
-        if (is.null(v_plus) || is.null(v_minus)) next
-        dV_k <- (v_plus - v_minus) / (2 * eps[k])
-        if (return_sensitivities) dV_beta_list[[k]] <- dV_k
-        grad_V_beta_diag[k, ] <- diag(dV_k)
-      }
-
-      dfs <- rep(Inf, n_beta)
-      for (i in 1:n_beta) {
-        grad_vi <- grad_V_beta_diag[, i]
-        var_vi <- as.numeric(t(grad_vi) %*% V_theta %*% grad_vi)
-        if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V_beta_diag_0[i] > 0) {
-          dfs[i] <- 2 * (V_beta_diag_0[i]^2) / var_vi
-        }
-      }
-
-      dfs <- pmax(dfs, 2.1)
-      if (return_sensitivities) {
-        return(list(df = dfs, se = sqrt(V_beta_diag_0), sensitivities = dV_beta_list, V_theta = V_theta, V_beta = V_beta_0))
-      }
-      return(list(df = dfs, se = sqrt(V_beta_diag_0)))
+      .calculate_reml_satterthwaite_df_impl(self, private, ad_obj, opt_par, beta_idx, silent, return_sensitivities)
     },
 
     #' @description Build the RTMB automatic differentiation object.
@@ -414,12 +259,37 @@ RTMB_Model <- R6::R6Class(
     #'   \item \code{"random"}: Apply only to parameters with \code{random = TRUE} (standard for Laplace approximation/REML).
     #'   \item \code{"none"}: No Jacobian adjustment (standard for Maximum Likelihood estimation).
     #' }
-    #' Default is "all".
+    #' Default is "none".
     #' @param map Optional list specifying parameters to fix. Passed directly to MakeADFun. Default is NULL.
     #' @param .marginal_vars Internal use for profiling marginalized parameters.
     #' @return An RTMB objective object (ad_obj).
-    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "all", map = NULL, .marginal_vars = NULL) {
-      random_effs <- if (!is.null(.marginal_vars)) .marginal_vars else names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
+    build_ad_obj = function(init = NULL, laplace = FALSE, jacobian_target = "none", map = NULL, .marginal_vars = NULL) {
+      target_map <- if (is.null(map)) {
+        self$map
+      } else {
+        utils::modifyList(as.list(self$map), as.list(map))
+      }
+
+      random_effs <- if (!is.null(.marginal_vars)) {
+        .marginal_vars
+      } else {
+        names(self$par_list)[sapply(self$par_list, function(x) isTRUE(x$random))]
+      }
+
+      # fixed/map で全要素が NA になった random component は除外
+      if (!is.null(target_map)) {
+        random_effs <- random_effs[vapply(random_effs, function(nm) {
+          m <- target_map[[nm]]
+          if (is.null(m)) return(self$par_list[[nm]]$unc_length > 0)
+          any(!is.na(m))
+        }, logical(1))]
+        
+        target_map <- lapply(target_map, function(m) {
+          if (is.null(m)) return(NULL)
+          factor(as.character(m))
+        })
+      }
+
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
 
       current_init <- self$prepare_init(init)
@@ -446,7 +316,7 @@ RTMB_Model <- R6::R6Class(
             func = f_ad,
             parameters = init_unc_list,
             random = use_random,
-            map = if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map)),
+            map = target_map,
             silent = TRUE
           )
         },
@@ -463,1437 +333,52 @@ RTMB_Model <- R6::R6Class(
     },
 
     # 3. Maximum Likelihood / MAP Estimation Method
-    #' @param laplace Logical; whether to use Laplace approximation. Default is TRUE.
-    #' @param init Optional initial values for parameters.
+    #' @description Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
+    #' @param laplace Logical; whether to use Laplace approximation for random effects. Default is TRUE.
+    #' @param init Optional initial values for parameters (numeric vector or list).
     #' @param num_estimate Integer; Number of multi-start optimization runs. Default is 1.
     #' @param control A list of control settings passed to the optimizer.
-    #' @param optimizer Character; The optimizer to use, either "optim" or "nlminb". Default is "nlminb".
-    #' @param method Character; The method for "optim" (e.g. "BFGS", "L-BFGS-B"). Default is "BFGS".
-    #' @param map Optional list specifying parameters to fix. Default is NULL.
+    #' @param optimizer Character; The optimizer to use: "nlminb" (default) or "optim".
+    #' @param method Character; The method for "optim" (e.g., "BFGS", "L-BFGS-B").
+    #' @param map Optional list specifying parameters to fix (factors).
+    #' @param fixed Optional list specifying parameter values to fix.
     #' @param se Logical; whether to estimate standard errors and confidence intervals. Default is TRUE.
-    #' @param ci_method Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based). Default is "wald". Note: Profile Likelihood is now available via the `$profile()` method of the returned fit object.
-    #' @param se_method Alias for `ci_method` (for backward compatibility).
-    #' @param se_sampling Logical; Alias for `ci_method = "sampling"` (for backward compatibility).
+    #' @param se_method Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based).
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
     #' @param seed Integer; random seed for sampling.
     #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
-    #' Can be a numeric value, NULL (for Inf/Normal), or "auto" for automatic Satterthwaite approximation. Default is NULL.
-    #' @param fixed Optional list specifying parameter values to fix.
-    #' @param empirical Logical or Character vector. If TRUE, enables Empirical Bayes (REML) logic and calculates degrees of freedom. If a character vector, also specifies which parameters to marginalize (equivalent to `marginal`). Default is FALSE.
-    #' @param REML Alias for `empirical`.
-    #' @param marginal Character vector of parameters to be treated as fixed effects for Empirical Bayes/DF calculation. Default is "none". Use "auto" for automatic detection.
-    #' @param df_pars Alias for `marginal`.
-    #' @param target_vars Character vector of parameters to remove priors from (internal use for classic mode).
-    #' @param is_classic Logical; whether this is a frequentist (classic) estimation. Default is FALSE.
-    #' @param .return_object Character; "MAP" or "Classic" fit object. Default is "MAP".
+    #' @param df_method Character; Method for calculating degrees of freedom ("bw", "satterthwaite", "Inf").
+    #' @param empirical Logical or character; whether to use empirical Bayes / REML.
+    #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is FALSE.
+    #' @param marginal Character vector of parameters to marginalize out (random effects).
     #' @param view Character vector of parameter names to prioritize in summary display.
+    #' @param is_classic Logical; Internal use.
+    #' @param target_vars Character vector; Internal use.
+    #' @param .return_object Character; Internal use.
+    #' @param ci_method Alias for `se_method`.
+    #' @param se_sampling Alias for `se_method = "sampling"`.
+    #' @param df_pars Alias for `marginal`.
     #' @param views Alias for `view`.
     #' @param ... Additional arguments passed to Classic_Fit constructor.
     #' @return A fitted `MAP_Fit` or `Classic_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
-                        optimizer = "nlminb", method = "BFGS", map = NULL,
-                        se = TRUE, ci_method = c("wald", "sampling"),
-                        se_method = NULL, se_sampling = FALSE, num_samples = 1000, seed = 123,
-                        df = NULL, fixed = NULL, empirical = FALSE, REML = NULL, marginal = NULL,
-                        df_pars = NULL, target_vars = NULL, is_classic = FALSE, 
-                        .return_object = "MAP", view = NULL, views = NULL, ...) {
-      # --- Consolidate empirical / REML / marginal ---
-      if (!is.null(REML)) empirical <- REML
-      
-      if (is.character(empirical)) {
-          if (is.null(marginal)) marginal <- empirical
-          REML <- TRUE
-      } else {
-          REML <- isTRUE(empirical)
-      }
-      
-      if (is.null(marginal)) marginal <- "none"
-      if (is.null(view) && !is.null(views)) view <- views
-      
-      # --- Backward Compatibility ---
-      if (!is.null(df_pars)) {
-        if (identical(marginal, "none") || identical(marginal, "auto")) {
-          marginal <- df_pars
-        }
-      }      
-      # --- Contrast Management ---
-      dot_args <- list(...)
-      df_method <- dot_args$df_method
-      requested_contrasts <- dot_args$contrasts
-      
-      if (!is.null(requested_contrasts)) {
-        old_contrasts <- options()$contrasts
-        on.exit(options(contrasts = old_contrasts), add = TRUE)
-        
-        if (requested_contrasts == "sum") {
-          options(contrasts = c("contr.sum", "contr.poly"))
-        } else if (requested_contrasts == "treatment") {
-          options(contrasts = c("contr.treatment", "contr.poly"))
-        }
-        self$contrasts <- requested_contrasts
-      } else if (!is.null(self$contrasts)) {
-        # モデルに既に記録されているコントラスト設定を適用
-        old_contrasts <- options()$contrasts
-        on.exit(options(contrasts = old_contrasts), add = TRUE)
-        if (self$contrasts == "sum") {
-          options(contrasts = c("contr.sum", "contr.poly"))
-        } else if (self$contrasts == "treatment") {
-          options(contrasts = c("contr.treatment", "contr.poly"))
-        }
-      }
-      
-      if (!is.null(fixed)) {
-        return(private$.dispatch_fixed(.method_to_call = "optimize", laplace = laplace, init = init, num_estimate = num_estimate, control = control,
-          optimizer = optimizer, method = method, map = map, se = se,
-          ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
-          num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
-          df_pars = df_pars, target_vars = target_vars, is_classic = is_classic, 
-          .return_object = .return_object, view = view, fixed = fixed, ...))
-      }
-
-      # --- 0. Determine target variables for DF calculation ---
-      if (is.null(target_vars)) {
-        if (identical(marginal, "auto")) {
-          if (!is.null(self$extra$marginal)) {
-            target_vars <- self$extra$marginal
-          } else if (!is.null(self$extra$df_pars)) {
-            target_vars <- self$extra$df_pars
-          } else {
-            # Default patterns for fixed effects
-            target_vars <- names(self$par_list)[sapply(names(self$par_list), function(n) {
-              p_info <- self$par_list[[n]]
-              is_fixed_name <- any(sapply(private$fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), n)))
-              is_unbounded <- identical(p_info$bounds, "none")
-              (is_fixed_name || is_unbounded) && !isTRUE(p_info$random)
-            })]
-          }
-        } else if (identical(marginal, "none")) {
-          target_vars <- character(0)
-        } else if (identical(marginal, "all")) {
-          target_vars <- names(self$par_list)
-        } else {
-          target_vars <- marginal
-        }
-      }
-
-      # --- Classic Frequentist Mode Integration ---
-      if (isTRUE(is_classic)) {
-        # Create a prior-free model using null_model extension
-        model_obj <- self$null_model(target_vars = target_vars)
-        
-        # Clean up dots for the recursive call
-        rec_args <- dot_args
-        rec_args$df_method <- NULL
-        rec_args$view <- NULL
-        rec_args$views <- NULL
-        
-        return(do.call(model_obj$optimize, c(list(
-          laplace = laplace, init = init, num_estimate = num_estimate, control = control,
-          optimizer = optimizer, method = method, map = map, se = se,
-          ci_method = ci_method, se_method = se_method, se_sampling = se_sampling,
-          num_samples = num_samples, seed = seed, df = df, REML = REML, marginal = marginal,
-          target_vars = target_vars, is_classic = FALSE, .return_object = "Classic", 
-          view = view, df_method = df_method
-        ), rec_args)))
-      }
-
-      if (!is.null(se_method)) ci_method <- se_method
-      ci_method <- match.arg(ci_method)
-      if (isTRUE(se_sampling) && ci_method == "wald") ci_method <- "sampling" # Backward compatibility
-      if (isTRUE(se_sampling) && ci_method == "wald") ci_method <- "sampling" # Backward compatibility
-      if (ci_method == "sampling") se_sampling <- TRUE
-      cat("Starting optimization...\n")
-
-      # --- DF Method Logic ---
-      auto_df <- FALSE
-      df_t <- Inf
-      
-      if (!is.null(df)) {
-        if (identical(df, "auto")) {
-           auto_df <- TRUE
-        } else if (is.numeric(df)) {
-           df_t <- df
-        }
-      } else {
-        # Follow df_method
-        if (identical(df_method, "satterthwaite")) {
-          auto_df <- TRUE
-        } else if (identical(df_method, "Inf")) {
-          df_t <- Inf
-        } else if (is.numeric(df_method)) {
-          df_t <- df_method
-        } else if (identical(df_method, "bw")) {
-          if (!identical(.return_object, "Classic")) {
-            warning("df_method = 'bw' is primarily supported in classic(). For optimize(), 'satterthwaite' or 'Inf' is recommended.", call. = FALSE)
-          }
-          # Intelligently switch based on type
-          if (isTRUE(self$type %in% c("lmer", "glmer"))) {
-            auto_df <- TRUE
-          } else {
-            # lm, corr, mediation, etc. will be calculated later in the 'Degrees of freedom adjustment' block
-            # For now, keep as Inf/non-auto
-            df_t <- Inf
-          }
-        }
-      }
-
-      opt_results <- list()
-      obj_vals <- numeric(num_estimate)
-      conv_codes <- numeric(num_estimate)
-
-      # --- 2. Variable Classification for REML ---
-      original_par_list <- self$par_list
-      if (REML) {
-        modified_par_list <- self$par_list
-        for (name in names(modified_par_list)) {
-          is_fix_pattern <- any(sapply(private$fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
-          is_target <- name %in% target_vars
-          is_var <- any(sapply(private$var_patterns, function(v) grepl(paste0("^", v, "(_[0-9]+)?$"), name)))
-          is_ran_original <- isTRUE(modified_par_list[[name]]$random)
-
-          if (is_target || (is_fix_pattern && !is_var) || is_ran_original) {
-            modified_par_list[[name]]$random <- TRUE
-          } else {
-            modified_par_list[[name]]$random <- FALSE
-          }
-        }
-        self$par_list <- modified_par_list
-        on.exit(
-          {
-            self$par_list <- original_par_list
-          },
-          add = TRUE
-        )
-        laplace <- TRUE
-      }
-
-      # Jacobian is not required for MAP estimation
-      jac_target <- if (laplace) "random" else "none"
-
-      ad_setup <- self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jac_target, map = map)
-      base_ad_obj <- ad_setup$ad_obj
-
-      for (i in 1:num_estimate) {
-        if (num_estimate > 1) {
-          cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
-        }
-
-        res <- tryCatch(
-          {
-            if (i > 1 && is.null(init)) {
-              base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), mean = 0, sd = 0.5)
-            }
-
-            if (length(base_ad_obj$par) == 0) {
-              # No parameters to optimize (all fixed and/or random effects integrated out)
-              cat("No fixed effects to optimize. Returning initial values.\n")
-              opt <- list(
-                par = numeric(0),
-                objective = base_ad_obj$fn(numeric(0)),
-                convergence = 0,
-                message = "all parameters fixed",
-                iterations = 0,
-                evaluations = c(obj = 1, grad = 0)
-              )
-            } else if (optimizer == "nlminb") {
-              if (is.null(control$iter.max)) control$iter.max <- 5000
-              if (is.null(control$eval.max)) control$eval.max <- 5000
-              if (is.null(control$rel.tol)) control$rel.tol <- 1e-8
-
-              opt <- suppressWarnings(nlminb(
-                start     = base_ad_obj$par,
-                objective = base_ad_obj$fn,
-                gradient  = base_ad_obj$gr,
-                control   = control
-              ))
-            } else if (optimizer == "optim") {
-              if (is.null(control$maxit)) control$maxit <- 5000
-
-              opt <- optim(
-                par     = base_ad_obj$par,
-                fn      = base_ad_obj$fn,
-                gr      = base_ad_obj$gr,
-                method  = method,
-                control = control
-              )
-              opt$objective <- opt$value
-            } else {
-              stop("optimizer must be either 'optim' or 'nlminb'.")
-            }
-
-            list(opt = opt, ad_obj = base_ad_obj)
-          },
-          error = function(e) {
-            warning("Optimization error: ", e$message, call. = FALSE)
-            NULL
-          }
-        )
-
-        if (!is.null(res)) {
-          opt_results[[i]] <- res
-          obj_vals[i] <- res$opt$objective
-          conv_codes[i] <- res$opt$convergence
-        } else {
-          opt_results[[i]] <- NULL
-          obj_vals[i] <- NA
-          conv_codes[i] <- NA
-        }
-      }
-      cat("\n")
-
-      valid_idx <- which(!is.na(obj_vals))
-      if (length(valid_idx) == 0) {
-        stop("All optimization attempts failed. Check the initial values and model definition.")
-      }
-
-      best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
-      best_res <- opt_results[[best_idx]]
-      
-      # --- Apply Prior Correction for fixed parameters (Smart-Fixed) ---
-      # This adjusts the negative log posterior to remove the fixed parameter's prior density.
-      # Since the prior is a constant for fixed parameters, this correction is numerically
-      # stable when applied after optimization.
-      if (!is.na(self$prior_correction) && self$prior_correction != 0) {
-        for (i in seq_along(obj_vals)) {
-            if (!is.na(obj_vals[i])) obj_vals[i] <- obj_vals[i] + self$prior_correction
-        }
-        best_res$opt$objective <- best_res$opt$objective + self$prior_correction
-      }
-
-      if (num_estimate == 1) {
-        status <- if (conv_codes[1] == 0) "converged" else "Not Converged"
-        cat(sprintf("Optimization %s. Final objective: %.2f\n", status, obj_vals[1]))
-      } else {
-        cat("\nOptimization Diagnostics per estimate:\n")
-        for (i in 1:num_estimate) {
-          if (is.na(obj_vals[i])) {
-            status_str <- "Failed"
-          } else {
-            status_str <- if (conv_codes[i] == 0) "Converged" else "Not Converged"
-          }
-          best_marker <- if (i == best_idx) "  <-- BEST" else ""
-          cat(sprintf(
-            "  est%d: Objective = %10.2f, Code = %s (%s)%s\n",
-            i, obj_vals[i], as.character(conv_codes[i]), status_str, best_marker
-          ))
-        }
-        cat("\n")
-      }
-
-        ad_obj <- best_res$ad_obj
-      opt <- best_res$opt
-      ad_obj$fn(opt$par)
-
-      # REML時は結合精度行列を取得して、固定効果の分散を正確に計算できるようにする
-      sd_rep <- if (se) tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = REML), warning = function(w) NULL, error = function(e) NULL) else NULL
-
-      unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE)
-
-      # --- Core correction: Accurate mapping between opt$par and last.par ---
-      L_u_total <- length(unc_est_vec)
-      idx_ran <- ad_obj$env$random
-      if (is.null(idx_ran)) idx_ran <- integer(0)
-
-      target_map <- if (!is.null(map)) map else self$map
-
-      # We need to track the active index in 'last.par' (which excludes mapped elements)
-      # to match it with 'idx_ran'.
-      idx_fix_active <- integer(0)
-      idx_ran_full <- integer(0)
-      factor_levels_seen <- list()
-      opt_par_curr <- 1    # Current index in opt$par (active fixed effects only)
-      idx_mapped_curr <- 1 # Current index in last.par (active fixed + active random)
-      idx_full_curr <- 1   # Current index in unc_est_vec (all parameters including fixed)
-
-      for (name in names(self$par_list)) {
-        L_u <- self$par_list[[name]]$unc_length
-        if (L_u > 0) {
-          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-
-          for (i in 1:L_u) {
-            pos_full <- idx_full_curr + i - 1
-            
-            # 1. Skip if mapped to NA (not in last.par at all)
-            if (!is.null(map_f) && is.na(map_f[i])) {
-                # This element is skipped in TMB's AD tape
-                next
-            }
-
-            # 2. Check if this is a random effect (using the shifted idx_mapped_curr)
-            if (idx_mapped_curr %in% idx_ran) {
-                # It's a random effect.
-                idx_ran_full <- c(idx_ran_full, pos_full)
-                idx_mapped_curr <- idx_mapped_curr + 1
-                next
-            }
-
-            # 3. It's an active fixed parameter (estimated in opt$par)
-            if (!is.null(map_f)) {
-              # Handling duplicate mappings to the same value (add only the first time)
-              lvl <- as.character(map_f[i])
-              if (!(lvl %in% names(factor_levels_seen))) {
-                factor_levels_seen[[lvl]] <- opt_par_curr
-                idx_fix_active <- c(idx_fix_active, pos_full)
-                opt_par_curr <- opt_par_curr + 1
-              }
-            } else {
-              # No mapping (normal active parameter)
-              idx_fix_active <- c(idx_fix_active, pos_full)
-              opt_par_curr <- opt_par_curr + 1
-            }
-            
-            idx_mapped_curr <- idx_mapped_curr + 1
-          }
-          idx_full_curr <- idx_full_curr + L_u
-        }
-      }
-
-      # --- Use optimization results for point estimates to prevent sdreport's Delta method bias ---
-      unc_est_vec[idx_fix_active] <- opt$par
-
-      # For random effects, update with the latest posterior modes from sdreport if available
-      if (laplace && !is.null(sd_rep) && length(idx_ran_full) > 0) {
-        smry_ran <- tryCatch(summary(sd_rep, select = "random"), warning = function(w) NULL, error = function(e) NULL)
-        if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran_full)) {
-          unc_est_vec[idx_ran_full] <- smry_ran[, "Estimate"]
-        }
-      }
-
-      unc_se_vec <- rep(0, L_u_total)
-      Cov_u <- diag(0, nrow = L_u_total, ncol = L_u_total)
-      fallback_needed <- FALSE
-      cov_source <- "none"
-
-      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
-        # Extract standard errors directly from the diagonal of the cov.fixed matrix without using summary
-        se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
-        if (!isTRUE(sd_rep$pdHess) || any(is.na(se_fix)) || any(is.nan(se_fix))) {
-          fallback_needed <- TRUE
-          cat("Warning: sdreport produced NAs or non-positive-definite Hessian. Falling back to ginv().\n")
-        }
-        # Safety check: Ensure the number of calculated indices perfectly matches the TMB output size
-        if (length(idx_fix_active) == length(se_fix)) {
-          # 1. Assign standard errors to independent parameters
-          unc_se_vec[idx_fix_active] <- se_fix
-
-          # 2. Assign to the corresponding locations in the covariance matrix
-          Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
-          cov_source <- "sdreport"
-
-          # 3. Copy standard errors to shared (duplicate) parameters
-          idx_curr <- 1
-          for (name in names(self$par_list)) {
-            L_u <- self$par_list[[name]]$unc_length
-            if (L_u > 0) {
-              map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-              for (i in 1:L_u) {
-                pos_last <- idx_curr + i - 1
-                if (pos_last %in% idx_ran) next
-                if (!is.null(map_f) && !is.na(map_f[i])) {
-                  lvl <- as.character(map_f[i])
-                  mapped_opt_idx <- factor_levels_seen[[lvl]]
-                  if (!is.null(mapped_opt_idx)) {
-                    unc_se_vec[pos_last] <- se_fix[mapped_opt_idx]
-                  }
-                }
-              }
-              idx_curr <- idx_curr + L_u
-            }
-          }
-
-          # Get standard errors of random effects
-          if (laplace && length(idx_ran_full) > 0) {
-            smry_ran <- tryCatch(summary(sd_rep, select = "random"), warning = function(w) NULL, error = function(e) NULL)
-            if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran_full)) {
-              unc_se_vec[idx_ran_full] <- smry_ran[, "Std. Error"]
-            }
-          }
-        } else {
-          fallback_needed <- TRUE
-          cat("Warning: Computed active parameter indices mismatch TMB output. Falling back to ginv().\n")
-        }
-      } else {
-        fallback_needed <- TRUE
-      }
-
-      if (se && fallback_needed) {
-        cat("sdreport failed or produced NAs. Falling back to ginv()...\n")
-        eps_jitter <- 1e-6
-        H <- tryCatch(ad_obj$he(opt$par + eps_jitter), warning = function(w) NULL, error = function(e) NULL)
-        if (is.null(H) || any(is.na(H) | is.nan(H))) {
-          H <- tryCatch(ad_obj$he(opt$par - eps_jitter), warning = function(w) NULL, error = function(e) NULL)
-        }
-        if (!is.null(H)) {
-          H[!is.finite(H)] <- 0
-          diag(H) <- diag(H) + 1e-6
-          if (!requireNamespace("MASS", quietly = TRUE)) {
-            warning("Package 'MASS' is required for ginv(). Standard errors will be NA.")
-          } else {
-            Cov_pseudo <- tryCatch(MASS::ginv(H), warning = function(w) NULL, error = function(e) NULL)
-            if (!is.null(Cov_pseudo)) {
-              se_pseudo <- sqrt(pmax(diag(Cov_pseudo), 0))
-
-              if (length(idx_fix_active) == length(se_pseudo)) {
-                unc_se_vec[idx_fix_active] <- se_pseudo
-                Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
-                cov_source <- "fallback"
-
-                # Copy to duplicate parameters during fallback
-                idx_curr <- 1
-                for (name in names(self$par_list)) {
-                  L_u <- self$par_list[[name]]$unc_length
-                  if (L_u > 0) {
-                    map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-                    for (i in 1:L_u) {
-                      pos_last <- idx_curr + i - 1
-                      if (pos_last %in% idx_ran) next
-                      if (!is.null(map_f) && !is.na(map_f[i])) {
-                        lvl <- as.character(map_f[i])
-                        mapped_opt_idx <- factor_levels_seen[[lvl]]
-                        if (!is.null(mapped_opt_idx)) {
-                          unc_se_vec[pos_last] <- se_pseudo[mapped_opt_idx]
-                        }
-                      }
-                    }
-                    idx_curr <- idx_curr + L_u
-                  }
-                }
-              }
-            } else {
-              cat("ginv() calculation also failed.\n")
-            }
-          }
-        } else {
-          cat("Hessian calculation failed even after adding jitter.\n")
-        }
-      }
-
-      unc_est_list <- unconstrained_vector_to_list(unc_est_vec, self$par_list)
-      unc_se_list <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
-      con_est_list <- to_constrained(unc_est_list, self$par_list)
-
-      # Fill diagonal for parameters without covariance information while preserving any
-      # covariance matrix obtained from sdreport() or the fallback ginv() route.
-      diag(Cov_u) <- pmax(diag(Cov_u), unc_se_vec^2)
-      Cov_u[is.na(Cov_u)] <- 0
-
-      con_se_list <- list()
-      con_lower_list <- list()
-      con_upper_list <- list()
-
-      samps_con <- list()
-      samps_tran <- list()
-      samps_gq <- list()
-
-      # --- Degrees of freedom adjustment ---
-      dH_list <- NULL
-      V_opt <- NULL
-      active_idx <- NULL
-      dH_theta <- dH_beta <- V_theta <- V_beta <- NULL
-
-      if (any(!is.infinite(df_t))) {
-        est_dfs_all <- rep(df_t[1], L_u_total)
-      } else if (auto_df || (REML && (!identical(df_method, "bw") || isTRUE(self$type %in% c("lmer", "glmer"))))) {
-        # Determine if we should be silent: only if via classic() and using default 'bw'
-        is_silent <- identical(.return_object, "Classic") && identical(df_method, "bw")
-        
-        # (A) Active parameters (ML side)
-        # Calculate DFs and capture sensitivities for derived quantities
-        satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = is_silent, return_sensitivities = TRUE)
-        if (is.list(satt_res)) {
-          est_dfs_all <- satt_res$df
-          dH_list <- satt_res$sensitivities
-          V_opt <- satt_res$V
-        } else {
-          est_dfs_all <- satt_res
-          dH_list <- NULL
-          V_opt <- NULL
-        }
-
-        # (B) Integrated-out parameters (REML side)
-        dH_theta <- dH_list
-        V_theta <- V_opt
-
-        if (REML && length(ad_obj$env$random) > 0) {
-          # Identify which random effects are in the target_vars
-          full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]
-          target_ran_mask <- full_par_names_mapped %in% target_vars
-          target_ran_idx <- which(target_ran_mask)
-
-          if (length(target_ran_idx) > 0) {
-            reml_res <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = is_silent, return_sensitivities = TRUE)
-            if (is.list(reml_res)) {
-              # Map to full parameter vector indices
-              valid_full_idx <- idx_ran_full[target_ran_idx]
-              est_dfs_all[valid_full_idx] <- reml_res$df
-              dH_beta <- reml_res$sensitivities
-              V_beta <- reml_res$V_beta
-              active_idx <- valid_full_idx
-            }
-          }
-        }
-        ad_obj$fn(opt$par)
-      } else if (identical(df_method, "bw")) {
-        # Initialize a list of Inf values with the same structure as parameters
-        df_list_unc <- unconstrained_vector_to_list(rep(Inf, L_u_total), self$par_list)
-        
-        type <- self$type
-        raw_df <- if (!is.null(self$raw_data)) as.data.frame(self$raw_data) else NULL
-        
-        # Robust N_obs identification
-        N_obs <- 0
-        if (!is.null(raw_df)) {
-          N_obs <- nrow(raw_df)
-        } else if (!is.null(self$data)) {
-          # Check common data names
-          if (!is.null(self$data$Y)) {
-            N_obs <- length(self$data$Y)
-          } else if (!is.null(self$data$X) && is.matrix(self$data$X)) {
-            N_obs <- nrow(self$data$X)
-          } else if (!is.null(self$data$Y1) && !is.null(self$data$Y2)) {
-            # Independent t-test
-            N_obs <- length(self$data$Y1) + length(self$data$Y2)
-          } else if (!is.null(self$data$diffs)) {
-            # Paired t-test
-            N_obs <- length(self$data$diffs)
-          } else {
-            # Search for any numeric vector that looks like data
-            for (item in self$data) {
-              if (is.numeric(item) && is.vector(item) && length(item) > 1) {
-                N_obs <- length(item)
-                break
-              }
-            }
-          }
-        }
-        if (is.null(N_obs) || N_obs == 0) N_obs <- 0
-
-        if (type == "lm" || type == "ttest" || type == "mediation") {
-          # Calculate K (number of fixed effect parameters)
-          K_fixed <- 0
-          for (v in target_vars) if (v %in% names(self$par_list)) K_fixed <- K_fixed + self$par_list[[v]]$unc_length
-          
-          # Assign N-K to all elements of each target parameter
-          for (v in target_vars) {
-            if (v %in% names(df_list_unc)) {
-              if (v == "delta") {
-                df_list_unc[[v]] <- rep(Inf, length(df_list_unc[[v]]))
-              } else {
-                df_list_unc[[v]] <- rep(N_obs - K_fixed, length(df_list_unc[[v]]))
-              }
-            }
-          }
-        } else if (type == "corr") {
-          if ("corr" %in% names(df_list_unc)) {
-            df_list_unc[["corr"]] <- rep(N_obs - 2, length(df_list_unc[["corr"]]))
-          }
-          for (v in c("mean", "sd")) {
-            if (v %in% names(df_list_unc)) {
-              df_list_unc[[v]] <- rep(N_obs - 1, length(df_list_unc[[v]]))
-            }
-          }
-        }
-        
-        # Flatten the list back to the unconstrained vector
-        est_dfs_all <- unlist(df_list_unc, use.names = FALSE)
-      } else {
-        est_dfs_all <- rep(Inf, L_u_total)
-      }
-
-      # --- SE Sampling Logic ---
-      if (se_sampling) {
-        cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
-        set.seed(seed)
-        if (!requireNamespace("MASS", quietly = TRUE)) {
-          stop("Package 'MASS' is required for se_sampling=TRUE.")
-        }
-
-        Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]
-        mu_valid <- unc_est_vec[idx_fix_active]
-
-        Cov_u_valid[!is.finite(Cov_u_valid)] <- 0
-        mu_valid[!is.finite(mu_valid)] <- 0
-
-        # Ensure Positive Definite for MASS::mvrnorm
-        eig <- eigen(Cov_u_valid, symmetric = TRUE)
-        eig$values <- pmax(eig$values, 1e-8)
-        Cov_u_pd <- eig$vectors %*% diag(eig$values, nrow = length(eig$values)) %*% t(eig$vectors)
-
-        raw_samples <- MASS::mvrnorm(num_samples, mu = mu_valid, Sigma = Cov_u_pd)
-        if (!is.matrix(raw_samples)) raw_samples <- as.matrix(raw_samples)
-
-        # --- Multivariate t-distribution (or Satterthwaite) scaling ---
-        active_dfs <- est_dfs_all[idx_fix_active]
-
-        # Transform Normal samples to t-samples while preserving the correlation structure
-        # Formula: t = mu + (z * sigma) * sqrt(df / chisq(df))
-        for (j in 1:ncol(raw_samples)) {
-          df_j <- active_dfs[j]
-          if (!is.na(df_j) && !is.infinite(df_j)) {
-            sigma_j <- sqrt(Cov_u_pd[j, j])
-            # Standardized z-scores from MVN
-            z <- (raw_samples[, j] - mu_valid[j]) / (sigma_j + 1e-12)
-            # Sample chi-square factors for this parameter
-            w <- rchisq(num_samples, df = df_j)
-            # Rescale to match t-distribution marginals
-            raw_samples[, j] <- mu_valid[j] + z * sigma_j * sqrt(df_j / pmax(w, 1e-6))
-          }
-        }
-
-        u_samples_mat <- matrix(rep(unc_est_vec, each = num_samples), nrow = num_samples)
-        u_samples_mat[, idx_fix_active] <- raw_samples
-
-        # Assign back to mapped variables
-        idx_curr <- 1
-        for (name in names(self$par_list)) {
-          L_u <- self$par_list[[name]]$unc_length
-          if (L_u > 0) {
-            map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
-            for (i in 1:L_u) {
-              pos_last <- idx_curr + i - 1
-              if (pos_last %in% idx_ran) next
-              if (!is.null(map_f) && !is.na(map_f[i])) {
-                lvl <- as.character(map_f[i])
-                mapped_opt_idx <- factor_levels_seen[[lvl]]
-                if (!is.null(mapped_opt_idx)) {
-                  u_samples_mat[, pos_last] <- raw_samples[, mapped_opt_idx]
-                }
-              }
-            }
-            idx_curr <- idx_curr + L_u
-          }
-        }
-
-        # Sample random effects independently
-        if (laplace && length(idx_ran) > 0) {
-          for (ridx in idx_ran) {
-            u_samples_mat[, ridx] <- rnorm(num_samples, mean = unc_est_vec[ridx], sd = unc_se_vec[ridx])
-          }
-        }
-
-        local_data <- self$data
-        local_par_list <- self$par_list
-        local_transform <- self$transform
-        local_generate <- self$generate
-
-        # Use the enhanced version that respects mapping to prevent index shifts
-        test_con_list <- to_constrained(
-          unconstrained_vector_to_list(unc_est_vec, local_par_list, map = target_map), 
-          local_par_list
-        )
-
-        for (name in names(test_con_list)) {
-          samps_con[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_con_list[[name]])))
-        }
-
-        if (!is.null(local_transform)) {
-          test_tran <- local_transform(local_data, test_con_list)
-          if (!is.null(test_tran)) {
-            for (name in names(test_tran)) {
-              samps_tran[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_tran[[name]])))
-            }
-            test_con_list <- c(test_con_list, test_tran)
-          }
-        }
-
-        if (!is.null(local_generate)) {
-          test_gq <- local_generate(local_data, test_con_list)
-          if (!is.null(test_gq)) {
-            for (name in names(test_gq)) {
-              samps_gq[[name]] <- matrix(NA_real_, nrow = num_samples, ncol = length(as.numeric(test_gq[[name]])))
-            }
-          }
-        }
-
-        process_sample <- function(s, u_vec) {
-          tmp_unc_list <- unconstrained_vector_to_list(u_vec, local_par_list)
-          tmp_con_list <- to_constrained(tmp_unc_list, local_par_list)
-
-          for (name in names(tmp_con_list)) {
-            samps_con[[name]][s, ] <<- as.numeric(tmp_con_list[[name]])
-          }
-
-          if (!is.null(local_transform)) {
-            tmp_tran <- local_transform(local_data, tmp_con_list)
-            if (!is.null(tmp_tran)) {
-              for (name in names(tmp_tran)) {
-                samps_tran[[name]][s, ] <<- as.numeric(tmp_tran[[name]])
-              }
-              tmp_con_list <- c(tmp_con_list, tmp_tran)
-            }
-          }
-
-          if (!is.null(local_generate)) {
-            tmp_gq <- local_generate(local_data, tmp_con_list)
-            if (!is.null(tmp_gq)) {
-              for (name in names(tmp_gq)) {
-                samps_gq[[name]][s, ] <<- as.numeric(tmp_gq[[name]])
-              }
-            }
-          }
-        }
-
-        # Progress reporting for transformation
-        if (requireNamespace("progressr", quietly = TRUE)) {
-          progressr::with_progress({
-            p <- progressr::progressor(steps = num_samples)
-
-            update_interval <- max(1, floor(num_samples / 100))
-
-            for (s in 1:num_samples) {
-              process_sample(s, u_samples_mat[s, ])
-              if (s %% update_interval == 0) {
-                p(amount = update_interval)
-              }
-            }
-            remainder <- num_samples %% update_interval
-            if (remainder != 0) {
-              p(amount = remainder)
-            }
-          })
-        } else {
-          for (s in 1:num_samples) {
-            process_sample(s, u_samples_mat[s, ])
-          }
-        }
-
-        # Compute SE and CI
-        for (name in names(self$par_list)) {
-          p_info <- self$par_list[[name]]
-          mat <- samps_con[[name]]
-
-          if (is.null(mat)) {
-            c_se <- rep(NA, p_info$length)
-            c_low <- rep(NA, p_info$length)
-            c_up <- rep(NA, p_info$length)
-          } else {
-            c_se <- apply(mat, 2, sd, na.rm = TRUE)
-            c_low <- apply(mat, 2, quantile, probs = 0.025, na.rm = TRUE)
-            c_up <- apply(mat, 2, quantile, probs = 0.975, na.rm = TRUE)
-          }
-
-          if (length(p_info$dim) > 1) {
-            dim(c_se) <- p_info$dim
-            dim(c_low) <- p_info$dim
-            dim(c_up) <- p_info$dim
-          }
-          con_se_list[[name]] <- c_se
-          con_lower_list[[name]] <- c_low
-          con_upper_list[[name]] <- c_up
-        }
-      } else {
-        # Standard SE calculation (Wald)
-        eps_diff <- 1e-5
-        u_idx_current <- 1
-
-        for (name in names(self$par_list)) {
-          p_info <- self$par_list[[name]]
-          u_val <- unc_est_list[[name]]
-          u_se <- unc_se_list[[name]]
-          c_val <- con_est_list[[name]]
-
-          L_u <- p_info$unc_length
-          L_c <- p_info$length
-
-          if (L_u > 0) {
-            u_indices <- u_idx_current:(u_idx_current + L_u - 1)
-            u_idx_current <- u_idx_current + L_u
-          } else {
-            u_indices <- integer(0)
-          }
-
-          transform_single <- function(u) {
-            tmp_list <- unc_est_list
-            tmp_list[[name]] <- u
-            tmp_con <- to_constrained(tmp_list, self$par_list)
-            return(as.numeric(tmp_con[[name]]))
-          }
-
-          J <- matrix(0, nrow = L_c, ncol = L_u)
-          for (i in seq_len(L_u)) {
-            u_tmp <- u_val
-            u_tmp[i] <- u_tmp[i] + eps_diff
-            c_tmp <- transform_single(u_tmp)
-            J[, i] <- (c_tmp - as.numeric(c_val)) / eps_diff
-          }
-
-          c_se <- numeric(L_c)
-          if (L_u > 0) {
-            Cov_sub <- Cov_u[u_indices, u_indices, drop = FALSE]
-            for (j in 1:L_c) {
-              c_se[j] <- sqrt(sum((J[j, ] %*% Cov_sub) * J[j, ], na.rm = TRUE))
-            }
-          }
-
-          if (length(p_info$dim) > 1) dim(c_se) <- p_info$dim
-          con_se_list[[name]] <- c_se
-
-          if (p_info$bounds == "corr_matrix" || p_info$type == "corr_matrix") {
-            # Fisher z-transform based CIs for correlation matrix elements
-            # z = atanh(rho), SE(z) = SE(rho) / (1 - rho^2)
-            rho_val <- as.numeric(c_val)
-            # Clip rho to avoid Inf in atanh
-            rho_clipped <- pmax(pmin(rho_val, 0.9999), -0.9999)
-            z_val <- atanh(rho_clipped)
-            z_se <- c_se / (1 - rho_clipped^2 + 1e-10)
-            
-            u_dfs <- est_dfs_all[u_indices]
-            u_q_95 <- if (any(is.na(u_dfs) | is.infinite(u_dfs))) qnorm(0.975) else qt(0.975, df = pmax(mean(u_dfs, na.rm = TRUE), 2.1))
-            
-            z_low <- z_val - u_q_95 * z_se
-            z_up <- z_val + u_q_95 * z_se
-            c_low <- tanh(z_low)
-            c_up <- tanh(z_up)
-            
-            # Handle diagonals (fixed at 1.0)
-            is_fixed <- c_se < 1e-10 & abs(rho_val - 1) < 1e-8
-            if (any(is_fixed)) {
-              c_low[is_fixed] <- 1.0
-              c_up[is_fixed] <- 1.0
-            }
-          } else {
-            u_dfs <- est_dfs_all[u_indices]
-            u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
-            u_low <- u_val - u_q_95 * u_se
-            u_up <- u_val + u_q_95 * u_se
-            c_low <- transform_single(u_low)
-            c_up <- transform_single(u_up)
-
-            c_low_final <- pmin(c_low, c_up)
-            c_up_final <- pmax(c_low, c_up)
-            c_low <- c_low_final
-            c_up <- c_up_final
-          }
-
-          if (length(p_info$dim) > 1) {
-            dim(c_low) <- p_info$dim
-            dim(c_up) <- p_info$dim
-          }
-          con_lower_list[[name]] <- c_low
-          con_upper_list[[name]] <- c_up
-        }
-      }
-
-      # Restore original par_list before result categorization
-      if (REML) self$par_list <- original_par_list
-
-      # Map unconstrained DFs back to parameter list structure
-      df_list_con <- list()
-      # Determine if we should include DF in the output
-      show_df <- auto_df || REML || !is.infinite(df_t)
-
-      if (exists("est_dfs_all")) {
-        # est_dfs_all is on unconstrained scale. For summary, we map it to constrained parameters.
-        # For most cases (regression coeffs), 1:1 mapping is fine.
-        # For complex constraints, we provide DFs where lengths match.
-        # Use the enhanced version that respects mapping
-        df_list_unc <- unconstrained_vector_to_list(est_dfs_all, self$par_list)
-        for (name in names(self$par_list)) {
-          p <- self$par_list[[name]]
-          if (p$unc_length == p$length) {
-            df_list_con[[name]] <- df_list_unc[[name]]
-          } else {
-            # For complex types, use the mean of unconstrained DFs as a better default than Inf
-            df_val <- rep(Inf, p$length)
-            if (p$unc_length > 0) {
-              mean_df <- mean(df_list_unc[[name]], na.rm = TRUE)
-              if (is.finite(mean_df)) df_val[] <- mean_df
-            }
-            df_list_con[[name]] <- df_val
-          }
-        }
-      }
-
-      # Compile output format
-      build_df <- function(target_random = FALSE) {
-        names_vec <- c()
-        est_vec <- c()
-        se_vec <- c()
-        low_vec <- c()
-        up_vec <- c()
-        df_vec <- c()
-
-        for (name in names(self$par_list)) {
-          p_info <- self$par_list[[name]]
-          if (p_info$random == target_random) {
-            names_def <- self$par_names[[name]]
-            f_names <- generate_flat_names(name, p_info$dim, names_def)
-
-            names_vec <- c(names_vec, f_names)
-            est_vec <- c(est_vec, as.numeric(con_est_list[[name]]))
-            se_vec <- c(se_vec, as.numeric(con_se_list[[name]]))
-            low_vec <- c(low_vec, as.numeric(con_lower_list[[name]]))
-            up_vec <- c(up_vec, as.numeric(con_upper_list[[name]]))
-            if (!is.null(df_list_con[[name]])) {
-              df_vec <- c(df_vec, as.numeric(df_list_con[[name]]))
-            } else {
-              df_vec <- c(df_vec, rep(Inf, p_info$length))
-            }
-          }
-        }
-
-        if (length(names_vec) == 0) {
-          return(NULL)
-        }
-
-        res_df <- data.frame(
-          Estimate     = est_vec,
-          `Std. Error` = se_vec,
-          `Lower 95%`  = low_vec,
-          `Upper 95%`  = up_vec,
-          check.names  = FALSE
-        )
-        if (show_df) {
-          res_df$df <- df_vec
-        }
-        rownames(res_df) <- names_vec
-        return(res_df)
-      }
-
-      df_fixed <- build_df(target_random = FALSE)
-      df_random <- if (laplace) build_df(target_random = TRUE) else NULL
-
-      con_est_vec <- unlist(con_est_list, use.names = FALSE)
-
-      tran_list <- NULL
-      if (!is.null(self$transform)) {
-        tran_list <- tryCatch(self$transform(self$data, con_est_list), warning = function(w) NULL, error = function(e) NULL)
-      }
-
-      gq_list <- NULL
-      if (!is.null(self$generate)) {
-        tmp_con_list <- con_est_list
-        if (!is.null(tran_list)) tmp_con_list <- c(tmp_con_list, tran_list)
-        gq_list <- tryCatch(self$generate(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
-      }
-
-      build_derived_df <- function(func, base_out, is_generate = FALSE, dH_list = NULL, V_opt = NULL, is_reml = FALSE, active_idx = NULL, dH_theta = NULL, V_theta = NULL) {
-        if (is.null(func) || is.null(base_out) || length(base_out) == 0) {
-          return(NULL)
-        }
-
-        flat_base <- unlist(base_out, use.names = FALSE)
-        L_out <- length(flat_base)
-
-        # 1. Calculate Jacobian for DF and Delta Method
-        if (show_df || !se_sampling) {
-          u_base <- unc_est_vec
-          L_u <- length(u_base)
-
-          calc_derived <- function(u) {
-            tmp_unc_list <- unconstrained_vector_to_list(u, self$par_list)
-            tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
-
-            if (is_generate && !is.null(self$transform)) {
-              user_tran <- tryCatch(self$transform(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
-              if (!is.null(user_tran)) tmp_con_list <- c(tmp_con_list, user_tran)
-            }
-
-            res <- tryCatch(func(self$data, tmp_con_list), warning = function(w) NULL, error = function(e) NULL)
-            return(res)
-          }
-
-          eps_diff <- 1e-5
-          J <- matrix(0, nrow = L_out, ncol = L_u)
-          for (i in 1:L_u) {
-            u_tmp <- u_base
-            u_tmp[i] <- u_tmp[i] + eps_diff
-            tmp_out <- calc_derived(u_tmp)
-            if (is.null(tmp_out)) next
-            flat_tmp <- unlist(tmp_out, use.names = FALSE)
-            if (length(flat_tmp) == L_out) {
-              J[, i] <- (flat_tmp - flat_base) / eps_diff
-            }
-          }
-        }
-
-        # 2. Calculate SE and CI
-        names_vec <- c()
-        for (name in names(base_out)) {
-          val <- base_out[[name]]
-          dim_val <- dim(val)
-          if (is.null(dim_val)) dim_val <- length(val)
-          names_def <- self$par_names[[name]]
-          names_vec <- c(names_vec, generate_flat_names(name, dim_val, names_def))
-        }
-
-        if (se_sampling) {
-          samps_list <- if (is_generate) samps_gq else samps_tran
-          if (length(samps_list) == 0) {
-            se_out <- rep(NA, L_out)
-            low_out <- rep(NA, L_out)
-            up_out <- rep(NA, L_out)
-          } else {
-            mat_list <- list()
-            for (name in names(base_out)) {
-              if (!is.null(samps_list[[name]])) {
-                mat_list[[name]] <- samps_list[[name]]
-              } else {
-                mat_list[[name]] <- matrix(NA, num_samples, length(base_out[[name]]))
-              }
-            }
-            mat_all <- do.call(cbind, unname(mat_list))
-            se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
-            low_out <- apply(mat_all, 2, quantile, probs = 0.025, na.rm = TRUE)
-            up_out <- apply(mat_all, 2, quantile, probs = 0.975, na.rm = TRUE)
-          }
-        } else {
-          smry_rep_all <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), warning = function(w) NULL, error = function(e) NULL) else NULL
-          se_out <- rep(NA_real_, L_out)
-
-          if (!is.null(smry_rep_all) && nrow(smry_rep_all) > 0) {
-            # sdreportの結果と照合
-            m_idx <- match(names_vec, rownames(smry_rep_all))
-            valid_m <- !is.na(m_idx)
-            if (any(valid_m)) {
-              se_out[valid_m] <- smry_rep_all$`Std. Error`[m_idx[valid_m]]
-            }
-          }
-
-          # sdreport に含まれていない場合、従来の方法でバックアップを計算
-          missing_se <- is.na(se_out)
-          if (any(missing_se)) {
-            Cov_u_derived <- Cov_u
-            if (!all(dim(Cov_u_derived) == c(L_u, L_u))) Cov_u_derived <- diag(unc_se_vec^2, nrow = L_u, ncol = L_u)
-            diag(Cov_u_derived) <- pmax(diag(Cov_u_derived), unc_se_vec^2)
-            for (j in which(missing_se)) {
-              se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u_derived) * J[j, ])))
-            }
-          }
-
-          z_95 <- qnorm(0.975)
-          
-          # Initialize CI vectors
-          low_out <- flat_base - z_95 * se_out
-          up_out <- flat_base + z_95 * se_out
-          
-          # Apply Fisher z-transform for correlation-like parameters
-          corr_pat <- "^(corr|pcorr|B_corr|W_corr|B_pcorr|W_pcorr)(\\[|$)"
-          is_corr <- grepl(corr_pat, names_vec)
-          if (any(is_corr)) {
-            for (j in which(is_corr)) {
-              r <- flat_base[j]
-              se_r <- se_out[j]
-              if (abs(r) < 1 && se_r > 0 && !is.na(se_r)) {
-                r_clipped <- pmax(pmin(r, 0.9999), -0.9999)
-                z <- atanh(r_clipped)
-                se_z <- se_r / (1 - r_clipped^2 + 1e-10)
-                low_out[j] <- tanh(z - z_95 * se_z)
-                up_out[j] <- tanh(z + z_95 * se_z)
-              }
-            }
-          }
-        }
-
-        df <- data.frame(
-          Estimate     = flat_base,
-          `Std. Error` = se_out,
-          `Lower 95%`  = low_out,
-          `Upper 95%`  = up_out,
-          check.names  = FALSE
-        )
-
-        if (show_df) {
-          # Welch-Satterthwaite approximation for derived quantities
-          derived_dfs <- rep(Inf, L_out)
-          if (exists("J")) {
-            if (!is.null(dH_list) && !is.null(V_opt)) {
-              P <- length(dH_list)
-              # Check dimensions to ensure compatibility
-              # In ML mode, dH_list length usually matches ncol(J)
-              # In REML mode, dH_list length matches ncol(V_opt)
-              
-              if (!is_reml && P == ncol(J)) {
-                # --- ML Mode: Gradient via Hessian sensitivity ---
-                A <- J %*% V_opt # (L_out x L_u)
-                for (j in 1:L_out) {
-                  Aj <- A[j, , drop = FALSE]
-                  grad_v <- numeric(P)
-                  for (k in 1:P) {
-                    if (!is.null(dH_list[[k]])) {
-                      grad_v[k] <- -as.numeric(Aj %*% dH_list[[k]] %*% t(Aj))
-                    }
-                  }
-                  var_vj <- as.numeric(t(grad_v) %*% V_opt %*% grad_v)
-                  vj <- as.numeric(Aj %*% J[j, ]) # J V J^T
-                  if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj
-                }
-              } else if (is_reml && (!is.null(active_idx) || !is.null(dH_theta))) {
-                # --- REML Mode: Combined sensitivities ---
-                for (j in 1:L_out) {
-                  var_vj <- 0
-                  vj <- se_out[j]^2
-                  
-                  # (1) Contribution from fixed effects (beta)
-                  if (!is.null(active_idx) && !is.null(dH_list) && !is.null(V_opt) && !is.null(V_theta)) {
-                    J_active <- J[j, active_idx, drop = FALSE]
-                    if (ncol(J_active) == nrow(dH_list[[1]])) {
-                      grad_beta <- numeric(length(dH_list))
-                      for (k in 1:length(dH_list)) {
-                        if (!is.null(dH_list[[k]])) grad_beta[k] <- as.numeric(J_active %*% dH_list[[k]] %*% t(J_active))
-                      }
-                      var_vj <- var_vj + as.numeric(t(grad_beta) %*% V_theta %*% grad_beta)
-                    }
-                  }
-                  
-                  # (2) Contribution from variance components (theta)
-                  if (!is.null(dH_theta) && !is.null(V_theta)) {
-                    # Indices in J that are NOT beta are theta
-                    theta_idx <- setdiff(1:ncol(J), active_idx)
-                    J_theta <- J[j, theta_idx, drop = FALSE]
-                    if (ncol(J_theta) == nrow(dH_theta[[1]])) {
-                      A_theta <- J_theta %*% V_theta
-                      grad_theta <- numeric(length(dH_theta))
-                      for (k in 1:length(dH_theta)) {
-                        if (!is.null(dH_theta[[k]])) grad_theta[k] <- -as.numeric(A_theta %*% dH_theta[[k]] %*% t(A_theta))
-                      }
-                      var_vj <- var_vj + as.numeric(t(grad_theta) %*% V_theta %*% grad_theta)
-                    }
-                  }
-                  
-                  if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj
-                }
-              }
-            } else if (identical(df_method, "bw")) {
-              # Between-Within method for derived parameters: inherit from the most relevant source
-              # Specifically for 'corr' models, we enforce the theory-based degrees of freedom
-              if (self$type == "corr") {
-                for (j in 1:L_out) {
-                  if (grepl(corr_pat, names_vec[j])) derived_dfs[j] <- N_obs - 2
-                  else if (grepl("^(mean|sd|ICC)(\\[|$)", names_vec[j])) derived_dfs[j] <- N_obs - 1
-                }
-              } else {
-                # General BW fallback: take the minimum DF of contributing parameters
-                # (prevents DF summing behavior of Welch-Satterthwaite for shared sources)
-                for (j in 1:L_out) {
-                  contributing_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]
-                  if (length(contributing_dfs) > 0) {
-                    derived_dfs[j] <- min(contributing_dfs, na.rm = TRUE)
-                  }
-                }
-              }
-            } else {
-              # Fallback: Standard Welch-Satterthwaite formula (assumes independent components)
-              for (j in 1:L_out) {
-                w <- (J[j, ] * unc_se_vec)^2
-                sum_w <- sum(w, na.rm = TRUE)
-                if (sum_w > 1e-12) {
-                  denom <- sum(w^2 / pmax(est_dfs_all, 2.1), na.rm = TRUE)
-                  if (denom > 1e-15) {
-                    val_df <- (sum_w^2) / denom
-                    derived_dfs[j] <- val_df
-                  }
-                }
-              }
-            }
-          }
-          df$df <- derived_dfs
-        }
-        rownames(df) <- names_vec
-        return(df)
-      }
-
-      df_transform <- build_derived_df(self$transform, tran_list, is_generate = FALSE, 
-                                       dH_list = if (REML) dH_beta else dH_list, 
-                                       V_opt = if (REML) V_beta else V_opt, 
-                                       is_reml = REML, active_idx = if (REML) active_idx else NULL,
-                                       dH_theta = if (REML) dH_theta else NULL,
-                                       V_theta = if (REML) V_theta else NULL)
-      
-      # For t-tests in BW mode, override Welch-Satterthwaite with the requested policy
-      if (identical(df_method, "bw") && self$type == "ttest") {
-        if (!is.null(df_transform) && "df" %in% names(df_transform)) {
-          # Calculate t-test DF (N-K)
-          raw_df <- if (!is.null(self$raw_data)) as.data.frame(self$raw_data) else NULL
-          N_val <- if (!is.null(raw_df)) nrow(raw_df) else 0
-          if (N_val == 0 && !is.null(self$data)) {
-            if (!is.null(self$data$Y1) && !is.null(self$data$Y2)) N_val <- length(self$data$Y1) + length(self$data$Y2)
-            else if (!is.null(self$data$diffs)) N_val <- length(self$data$diffs)
-            else if (!is.null(self$data$Y)) N_val <- length(self$data$Y)
-          }
-          K_val <- 0
-          for (v in target_vars) if (v %in% names(self$par_list)) K_val <- K_val + self$par_list[[v]]$unc_length
-          
-          for (i in 1:nrow(df_transform)) {
-            nm <- rownames(df_transform)[i]
-            if (grepl("^delta", nm)) df_transform$df[i] <- Inf
-            else df_transform$df[i] <- pmax(N_val - K_val, 1)
-          }
-        }
-      }
-
-      df_generate <- build_derived_df(self$generate, gq_list, is_generate = TRUE, 
-                                      dH_list = if (REML) dH_beta else dH_list, 
-                                      V_opt = if (REML) V_beta else V_opt, 
-                                      is_reml = REML, active_idx = if (REML) active_idx else NULL,
-                                      dH_theta = if (REML) dH_theta else NULL,
-                                      V_theta = if (REML) V_theta else NULL)
-
-      log_ml <- NA
-      if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
-        D <- length(opt$par)
-        cov_mat <- sd_rep$cov.fixed
-        eig <- tryCatch(eigen(cov_mat, symmetric = TRUE), warning = function(w) NULL, error = function(e) NULL)
-
-        if (!is.null(eig)) {
-          vals <- eig$values
-          if (any(vals <= 1e-8)) {
-            cat("Hessian is singular or not positive definite. Marginal likelihood (Laplace) is not reliable and set to NA.\n")
-          } else {
-            if (laplace) {
-              lj_all <- calc_log_jacobian(unc_est_list, self$par_list, only_random = FALSE)
-              lj_ran <- calc_log_jacobian(unc_est_list, self$par_list, only_random = TRUE)
-              lj_missing <- lj_all - lj_ran
-            } else {
-              lj_missing <- calc_log_jacobian(unc_est_list, self$par_list, only_random = FALSE)
-            }
-
-            log_det_cov <- sum(log(vals))
-            log_ml <- -opt$objective + lj_missing + (D / 2) * log(2 * pi) + 0.5 * log_det_cov - self$prior_correction
-          }
-        }
-      }
-
-      # --- Final Fit Object Selection ---
-      # --- Final Fit Object Selection ---
-      if (.return_object == "Classic") {
-        test_results <- list()
-        if (!is.null(self$type) && self$type == "table") {
-          tab <- self$extra$tab
-          test_results$chisq <- stats::chisq.test(tab, correct = isTRUE(self$extra$correct))
-          test_results$fisher <- try(stats::fisher.test(tab), silent = TRUE)
-        }
-
-        # クラシックモード用の分散共分散行列（V）の取得
-        V_fixed_full <- NULL
-
-        if (REML && !is.null(sd_rep) && !is.null(sd_rep$jointPrecision)) {
-           # REML時は結合精度行列の逆行列から抽出（固定効果は内部的にrandom扱い）
-           H_joint <- sd_rep$jointPrecision
-           V_joint <- tryCatch(as.matrix(solve(H_joint)), error = function(e) as.matrix(MASS::ginv(as.matrix(H_joint))))
-           
-           # 14x14 の空の行列を作成
-           V_fixed_full <- matrix(0, nrow = nrow(df_fixed), ncol = nrow(df_fixed))
-           rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
-           
-           # 1. 係数ブロック (12x12) の埋め込み
-           # target_vars に一致するものを jointPrecision から取得
-           all_ran_names <- names(sd_rep$par.random)
-           idx_in_joint <- c()
-           for (nm in target_vars) {
-             idx_in_joint <- c(idx_in_joint, which(all_ran_names == nm))
-           }
-           
-           # df_fixed 内で係数に対応する行を特定
-           # (df_fixed の名前は Intercept, b[b1] などになっている)
-           fe_names_in_df <- rownames(df_fixed)
-           idx_in_df_fe <- c()
-           for (nm in target_vars) {
-             # 前方一致または完全一致で検索
-             idx_in_df_fe <- c(idx_in_df_fe, grep(paste0("^", nm, "(\\[|$)"), fe_names_in_df))
-           }
-           
-           if (length(idx_in_joint) > 0 && length(idx_in_joint) == length(idx_in_df_fe)) {
-             V_fixed_full[idx_in_df_fe, idx_in_df_fe] <- V_joint[idx_in_joint, idx_in_joint]
-           }
-           
-           # 2. 分散パラメータブロック (2x2) の埋め込み
-           # 係数でない行を分散パラメータとみなす
-           idx_in_df_var <- setdiff(1:nrow(df_fixed), idx_in_df_fe)
-           if (length(idx_in_df_var) > 0 && !is.null(sd_rep$cov.fixed)) {
-             # TMBの cov.fixed は分散パラメータの共分散行列
-             V_fixed_full[idx_in_df_var, idx_in_df_var] <- sd_rep$cov.fixed
-           }
-        }
-        
-        # REMLでない場合や上記で取得できなかった場合は、デルタ法またはsdreport$cov.fixedを使用
-        if (is.null(V_fixed_full)) {
-          L_fixed <- nrow(df_fixed)
-          L_u_total <- length(unc_est_vec)
-          J_fixed <- matrix(0, nrow = L_fixed, ncol = L_u_total)
-          eps_diff <- 1e-5
-          base_fixed_vec <- df_fixed$Estimate
-          
-          for (i in 1:L_u_total) {
-            u_tmp <- unc_est_vec
-            u_tmp[i] <- u_tmp[i] + eps_diff
-            tmp_unc_list <- unconstrained_vector_to_list(u_tmp, self$par_list)
-            tmp_con_list <- to_constrained(tmp_unc_list, self$par_list)
-            
-            tmp_vec <- c()
-            for (name in names(self$par_list)) {
-              if (name %in% target_vars || identical(target_vars, "fixed")) {
-                tmp_vec <- c(tmp_vec, as.numeric(tmp_con_list[[name]]))
-              }
-            }
-            if (length(tmp_vec) == L_fixed) {
-              J_fixed[, i] <- (tmp_vec - base_fixed_vec) / eps_diff
-            }
-          }
-          V_fixed_full <- J_fixed %*% Cov_u %*% t(J_fixed)
-          rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
-        }
-
-        # クラシックモードでも、MAP_Fitと同じデータ構造を保持することで次元不整合を回避
-        # Remove df_method from dot_args to avoid double-passing to constructor
-        cf_args <- dot_args
-        cf_args$df_method <- NULL
-        cf_args$contrasts <- NULL # Also remove contrasts as it's handled
-        
-        res_obj <- do.call(Classic_Fit$new, c(list(
-          model          = self,
-          par_vec        = con_est_vec,
-          par            = con_est_list,
-          objective      = opt$objective,
-          log_ml         = log_ml,
-          convergence    = opt$convergence,
-          sd_rep         = sd_rep,
-          df_fixed       = df_fixed,
-          random_effects = df_random,
-          df_transform   = df_transform,
-          df_generate    = df_generate,
-          opt_history    = data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes),
-          transform      = tran_list,
-          generate       = gq_list,
-          se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
-          par_unc        = unc_est_vec,
-          vcov_unc       = Cov_u,
-          ci_method      = ci_method,
-          laplace        = laplace,
-          map            = target_map,
-          test_results   = test_results,
-          view           = view,
-          vcov           = V_fixed_full,
-          df_method      = df_method
-        ), cf_args))
-      } else {
-        res_obj <- MAP_Fit$new(
-          model          = self,
-          par_vec        = con_est_vec,
-          par            = con_est_list,
-          objective      = opt$objective,
-          log_ml         = log_ml,
-          convergence    = opt$convergence,
-          sd_rep         = sd_rep,
-          df_fixed       = df_fixed,
-          random_effects = df_random,
-          df_transform   = df_transform,
-          df_generate    = df_generate,
-          opt_history    = data.frame(estimate = 1:num_estimate, objective = obj_vals, code = conv_codes),
-          transform      = tran_list,
-          generate       = gq_list,
-          se_samples     = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
-          par_unc        = unc_est_vec,
-          ci_method      = ci_method,
-          laplace        = laplace,
-          map            = target_map,
-          vcov_unc       = Cov_u,
-          marginal_vars  = ad_setup$use_random
-        )
-      }
-
-      return(res_obj)
+                        optimizer = "nlminb", method = "BFGS", map = NULL, fixed = NULL,
+                        se = TRUE, se_method = c("wald", "sampling"), 
+                        num_samples = 1000, seed = 123,
+                        df = NULL, df_method = NULL, 
+                        empirical = FALSE, REML = FALSE, marginal = "auto", 
+                        view = NULL, 
+                        # --- 以下、内部用および互換性維持のためのエイリアス ---
+                        is_classic = FALSE, target_vars = NULL, .return_object = "MAP",
+                        ci_method = NULL, se_sampling = NULL, df_pars = NULL, views = NULL, ...) {
+      .optimize_impl(self, private, laplace, init, num_estimate, control,
+                     optimizer, method, map, fixed, se, se_method, 
+                     num_samples, seed, df, df_method, 
+                     empirical, REML, marginal, view, 
+                     is_classic, target_vars, .return_object,
+                     ci_method, se_sampling, df_pars, views, ...)
     },
+
 
     # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with model-appropriate degrees of freedom.
@@ -1911,23 +396,14 @@ RTMB_Model <- R6::R6Class(
     #'   \item \code{"satterthwaite"}: Satterthwaite approximation (computationally intensive).
     #'   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
     #' }
-    #' @param ... Additional arguments passed to $optimize() (e.g. contrasts = "sum").
+    #' @param ... Additional arguments passed to $optimize().
     #' @return A `Classic_Fit` object.
-    classic = function(df = NULL, marginal = "auto", df_pars = NULL, REML = TRUE, 
-                       view = NULL, views = NULL, map = NULL, fixed = NULL, 
-                       df_method = NULL, ...) {
-      # Use Satterthwaite by default for t-tests and mixed models
-      if (is.null(df_method)) {
-         df_method <- if (isTRUE(self$type == "ttest") || isTRUE(self$type %in% c("lmer", "glmer"))) "satterthwaite" else "bw"
-      }
-      if (is.null(view) && !is.null(views)) view <- views
-      
-      # Use the main optimization engine for all frequentist inference
-      return(self$optimize(
-        is_classic = TRUE, df = df, marginal = marginal, df_pars = df_pars, REML = REML,
-        view = view, map = map, fixed = fixed, .return_object = "Classic", 
-        df_method = df_method, ...
-      ))
+    classic = function(df = NULL, df_method = NULL, REML = TRUE, marginal = "auto", 
+                       view = NULL, map = NULL, fixed = NULL, 
+                       # --- 互換性維持のためのエイリアス ---
+                       df_pars = NULL, views = NULL, ...) {
+      .classic_impl(self, private, df, df_method, REML, marginal, 
+                    view, map, fixed, df_pars, views, ...)
     },
 
     # 4. MCMC NUTS Sampling Method
@@ -1953,299 +429,9 @@ RTMB_Model <- R6::R6Class(
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL) {
-      if (!is.null(fixed)) {
-        return(private$.dispatch_fixed(.method_to_call = "sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
-          seed = seed, delta = delta, max_treedepth = max_treedepth,
-          parallel = parallel, laplace = laplace, init = init,
-          init_jitter = init_jitter, save_csv = save_csv, map = map, fixed = fixed))
-      }
-
-      # if (!is.null(init)) init <- as.numeric(init)
-      set.seed(seed)
-      orig_pl <- self$par_list
-
-      # --- Prepare information for CSV saving and create directory ---
-      if (!is.null(save_csv)) {
-        if (!is.list(save_csv)) stop("save_csv must be specified in the format list(name='...', dir='...').")
-        save_name <- if (!is.null(save_csv$name)) save_csv$name else "model"
-        save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_mcmc"
-
-        # Added: Save frequency (0 means save all at once at the end of the chain)
-        save_freq <- if (!is.null(save_csv$freq)) save_csv$freq else 0
-
-        if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
-        save_info <- list(name = save_name, dir = save_dir, freq = save_freq)
-      } else {
-        save_info <- NULL
-      }
-
-      random_flags <- vapply(orig_pl, function(x) isTRUE(x$random), logical(1))
-
-      if (laplace && any(random_flags)) {
-        pl_fixed <- parse_parameters(orig_pl[!random_flags], self$par_names)
-        pl_random <- parse_parameters(orig_pl[random_flags], self$par_names)
-
-        fixed_idx <- which(self$pl_full$names %in% pl_fixed$names)
-        random_idx <- which(self$pl_full$names %in% pl_random$names)
-      } else {
-        pl_fixed <- self$pl_full
-        pl_random <- NULL
-        fixed_idx <- 1:length(self$pl_full$names)
-        random_idx <- integer(0)
-      }
-
-      P_fixed <- length(pl_fixed$names)
-      P_random <- if (!is.null(pl_random)) length(pl_random$names) else 0
-
-      # --- Set up parallel plan early to allow messaging ---
-      if (parallel) {
-        if (inherits(future::plan(), "sequential")) {
-          if (.Platform$OS.type == "unix") {
-            future::plan(future::multicore, workers = chains)
-          } else {
-            future::plan(future::multisession, workers = chains)
-          }
-        }
-        cat(paste0("Starting parallel sampling (chains = ", chains, ")...\n"))
-      } else {
-        cat(paste0("Starting sequential sampling (chains = ", chains, ")...\n"))
-      }
-
-      # --- Data extraction to minimize serialization payload to workers ---
-      local_data <- self$data
-      local_par_list <- self$par_list
-      local_pl_full <- self$pl_full
-      local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
-      local_log_prob <- self$log_prob
-      local_transform <- self$transform
-
-      random_effs <- names(local_par_list)[random_flags]
-      use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
-
-      base_init <- self$prepare_init(init)
-
-      # --- Worker function definition without self references ---
-      run_chain <- function(c, p_callback = NULL) {
-        library(BayesRTMB)
-
-        unc_init_list <- to_unconstrained(
-          constrained_vector_to_list(base_init, local_par_list),
-          local_par_list
-        )
-        unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
-
-        if (init_jitter > 0) {
-          jitter_vec <- rnorm(length(unc_init_vec), mean = 0, sd = init_jitter)
-          if (!is.null(local_map)) {
-            idx <- 1
-            for (name in names(local_par_list)) {
-              L_unc <- local_par_list[[name]]$unc_length
-              if (L_unc > 0) {
-                if (!is.null(local_map[[name]])) {
-                  is_fixed <- is.na(local_map[[name]])
-                  jitter_vec[idx:(idx + L_unc - 1)][is_fixed] <- 0
-                }
-                idx <- idx + L_unc
-              }
-            }
-          }
-          unc_init_vec <- unc_init_vec + jitter_vec
-        }
-        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
-
-        f_ad <- private$.build_f_ad(
-          data_local = local_data,
-          par_list_local = local_par_list,
-          log_prob_local = local_log_prob,
-          transform_local = local_transform,
-          jacobian_target = "all",
-          adreport = FALSE
-        )
-
-        ad_obj <- tryCatch(
-          {
-            RTMB::MakeADFun(
-              func = f_ad,
-              parameters = unc_init_list_new,
-              random = use_random,
-              map = local_map,
-              silent = TRUE
-            )
-          },
-          error = function(e) {
-            stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
-          }
-        )
-
-        res <- NUTS_method(
-          model = ad_obj,
-          sampling = sampling,
-          warmup = warmup,
-          delta = delta,
-          max_treedepth = max_treedepth,
-          chain = c,
-          update_progress = p_callback,
-          laplace = laplace,
-          save_info = save_info
-        )
-
-        P_all_true <- length(local_pl_full$names)
-        iter_total <- sampling + warmup
-        para_final <- array(NA, dim = c(iter_total, P_all_true))
-
-        for (i in 1:iter_total) {
-          x_in <- as.numeric(res$para_fixed[i, ])
-
-          if (laplace && length(ad_obj$env$random) > 0) {
-            ad_obj$fn(x_in)
-            para_list <- ad_obj$env$parList()
-          } else {
-            para_list <- ad_obj$env$parList(x = x_in)
-          }
-
-          con_list <- to_constrained(para_list, local_par_list)
-          para_final[i, ] <- unlist(con_list, use.names = FALSE)
-        }
-        res$para <- para_final
-        res$para_full <- NULL
-        return(res)
-      }
-
-      # --- Execution block ---
-      results_list <- list()
-      if (parallel) {
-        iter <- sampling + warmup
-        total_updates <- chains * (1 + floor(iter / 100))
-
-        progressr::with_progress({
-          p <- progressr::progressor(steps = total_updates)
-          results_list <- withCallingHandlers(
-            {
-              future.apply::future_lapply(1:chains, function(c) {
-                run_chain(c, p_callback = function(msg = "", amt = 1, ...) {
-                  if (is.numeric(msg)) {
-                    amt <- msg
-                    msg <- ""
-                  }
-                  p(amount = amt, message = as.character(msg))
-                })
-              },
-              future.seed = TRUE,
-              future.packages = c("RTMB", "BayesRTMB"),
-              future.globals = FALSE # Automatic global search disabled for performance
-              )
-            },
-            warning = function(w) {
-              if (grepl("package:BayesRTMB", conditionMessage(w))) {
-                invokeRestart("muffleWarning")
-              }
-            }
-          )
-        })
-      } else {
-        results_list <- lapply(1:chains, function(c) {
-          run_chain(c, p_callback = NULL)
-        })
-      }
-
-      # --- Compile outputs ---
-      mcmc_index <- seq(from = (warmup + 1), to = (warmup + sampling), by = thin)
-      accept_mat <- array(NA, dim = c(length(mcmc_index), chains))
-      td_mat <- array(NA, dim = c(length(mcmc_index), chains))
-      eps_vec <- numeric(chains)
-
-      fit <- array(NA, dim = c(length(mcmc_index), chains, P_fixed + 1))
-      dimnames(fit) <- list(
-        iteration = NULL,
-        chain = paste0("chain", 1:chains),
-        variable = c("lp", pl_fixed$names)
-      )
-
-      if (P_random > 0) {
-        random_fit <- array(NA, dim = c(length(mcmc_index), chains, P_random))
-        dimnames(random_fit) <- list(
-          iteration = NULL,
-          chain = paste0("chain", 1:chains),
-          variable = pl_random$names
-        )
-      } else {
-        random_fit <- NULL
-      }
-
-      for (c in 1:chains) {
-        res <- results_list[[c]]
-        fit[, c, 1] <- res$lp[mcmc_index]
-        for (j in 1:P_fixed) fit[, c, j + 1] <- res$para[mcmc_index, fixed_idx[j]]
-        if (P_random > 0) {
-          for (j in 1:P_random) {
-            random_fit[, c, j] <- res$para[mcmc_index, random_idx[j]]
-          }
-        }
-        accept_mat[, c] <- res$accept[mcmc_index]
-        td_mat[, c] <- res$treedepth[mcmc_index]
-        eps_vec[c] <- res$eps
-      }
-
-      eps_chains <- eps_vec
-      accept_chains <- apply(accept_mat, 2, mean)
-      treedepth_chains <- apply(td_mat, 2, max)
-      names(eps_chains) <- names(accept_chains) <- names(treedepth_chains) <- paste0("chain", 1:chains)
-
-      posterior_mean <- numeric(length(self$pl_full$names))
-      names(posterior_mean) <- self$pl_full$names
-      fixed_mean <- apply(fit[, , -1, drop = FALSE], 3, mean)
-      posterior_mean[names(fixed_mean)] <- fixed_mean
-      if (!is.null(random_fit)) {
-        random_mean <- apply(random_fit, 3, mean)
-        posterior_mean[names(random_mean)] <- random_mean
-      }
-
-      if (!is.null(save_info)) {
-        for (c in 1:chains) {
-          backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
-
-          df_metrics <- data.frame(
-            iteration = mcmc_index,
-            accept    = accept_mat[, c],
-            treedepth = td_mat[, c],
-            eps       = eps_vec[c]
-          )
-
-          if (!is.null(random_fit)) {
-            df_out <- cbind(
-              df_metrics,
-              as.data.frame(fit[, c, ]),
-              as.data.frame(random_fit[, c, ])
-            )
-          } else {
-            df_out <- cbind(
-              df_metrics,
-              as.data.frame(fit[, c, ])
-            )
-          }
-
-          write.csv(df_out, file = backup_file, row.names = FALSE)
-        }
-      }
-
-      res_obj <- MCMC_Fit$new(
-        model          = self,
-        fit            = fit,
-        random_fit     = random_fit,
-        eps            = eps_chains,
-        accept         = accept_chains,
-        treedepth      = treedepth_chains,
-        laplace        = laplace,
-        posterior_mean = posterior_mean
-      )
-
-      has_tran <- !is.null(self$transform)
-      has_generate <- !is.null(self$generate)
-
-      if (has_tran) res_obj$transformed_draws(self$transform)
-      if (has_generate) res_obj$generated_quantities(self$code$generate)
-
-      return(res_obj)
+      .sample_impl(self, private, sampling, warmup, chains, thin, seed, delta, 
+                   max_treedepth, parallel, laplace, init, init_jitter, 
+                   save_csv, map, fixed)
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).
@@ -2272,273 +458,9 @@ RTMB_Model <- R6::R6Class(
                            method = c("meanfield", "fullrank", "hybrid"), parallel = FALSE,
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
                            map = NULL, fixed = NULL) {
-      if (!is.null(fixed)) {
-        return(private$.dispatch_fixed(.method_to_call = "variational", iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
-          num_samples = num_samples, num_estimate = num_estimate, alpha = alpha,
-          laplace = laplace, print_freq = print_freq, method = method,
-          parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map, fixed = fixed))
-      }
-
-      set.seed(seed)
-      method <- match.arg(method)
-
-      # --- Prepare information for CSV saving and create directory ---
-      if (!is.null(save_csv)) {
-        if (!is.list(save_csv)) stop("save_csv must be specified in the format list(name='...', dir='...').")
-        save_name <- if (!is.null(save_csv$name)) save_csv$name else "model_vb"
-        save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_vb"
-        if (!dir.exists(save_dir)) dir.create(save_dir, recursive = TRUE, showWarnings = FALSE)
-        save_info <- list(name = save_name, dir = save_dir)
-      } else {
-        save_info <- NULL
-      }
-
-      # --- Set up parallel plan early to allow messaging ---
-      if (parallel && num_estimate > 1) {
-        if (inherits(future::plan(), "sequential")) {
-          if (.Platform$OS.type == "unix") {
-            future::plan(future::multicore, workers = num_estimate)
-          } else {
-            future::plan(future::multisession, workers = num_estimate)
-          }
-        }
-        cat(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")...\n"))
-      } else {
-        cat(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")...\n"))
-      }
-
-      # --- Data extraction to minimize serialization payload to workers ---
-      local_data <- self$data
-      local_par_list <- self$par_list
-      local_pl_full <- self$pl_full
-      local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
-      local_log_prob <- self$log_prob
-      local_transform <- self$transform
-
-      random_flags <- sapply(local_par_list, function(x) isTRUE(x$random))
-      random_effs <- names(local_par_list)[random_flags]
-      use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
-
-      base_init <- self$prepare_init(init)
-
-      # --- Worker function definition without self references ---
-      run_advi_worker <- function(c, p_callback = NULL, p_interval = 0) {
-        library(BayesRTMB)
-
-        unc_init_list <- to_unconstrained(
-          constrained_vector_to_list(base_init, local_par_list),
-          local_par_list
-        )
-        unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
-        unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
-
-        f_ad <- private$.build_f_ad(
-          data_local = local_data,
-          par_list_local = local_par_list,
-          log_prob_local = local_log_prob,
-          transform_local = local_transform,
-          jacobian_target = "all",
-          adreport = FALSE
-        )
-
-        ad_obj <- tryCatch(
-          {
-            RTMB::MakeADFun(
-              func = f_ad,
-              parameters = unc_init_list_new,
-              random = use_random,
-              map = local_map,
-              silent = TRUE
-            )
-          },
-          error = function(e) {
-            stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE)
-          }
-        )
-
-        if (!is.null(use_random)) {
-          orig_fn <- ad_obj$fn
-          orig_gr <- ad_obj$gr
-          idx_fixed_mask <- ad_obj$env$lfixed()
-          n_fixed <- sum(idx_fixed_mask)
-
-          ad_obj$fn <- function(x, ...) {
-            if (length(x) != n_fixed) {
-              x <- x[idx_fixed_mask]
-            }
-            orig_fn(x, ...)
-          }
-          ad_obj$gr <- function(x, ...) {
-            is_wrong_len <- (length(x) != n_fixed)
-            if (is_wrong_len) {
-              g <- orig_gr(x[idx_fixed_mask], ...)
-              g_full <- rep(0, length(x))
-              g_full[idx_fixed_mask] <- g
-              return(g_full)
-            }
-            return(orig_gr(x, ...))
-          }
-        }
-
-        res <- ADVI_method(
-          model = ad_obj, par_list = local_par_list, pl_full = local_pl_full,
-          iter = iter, tol_rel_obj = tol_rel_obj,
-          window_size = window_size, num_samples = num_samples, alpha = alpha,
-          laplace = laplace,
-          print_freq = if (is.null(p_callback)) print_freq else 0,
-          method = method,
-          update_progress = p_callback,
-          update_interval = p_interval
-        )
-        return(res)
-      }
-
-      # --- Execution block ---
-      results_list <- list()
-      if (parallel && num_estimate > 1) {
-        if (requireNamespace("progressr", quietly = TRUE)) {
-          progressr::handlers(global = TRUE)
-
-          # Dynamically scale update interval (minimum 1)
-          update_interval <- max(1, floor(iter / 100))
-          steps_per_chain <- ceiling(iter / update_interval)
-          total_steps <- steps_per_chain * num_estimate
-
-          results_list <- progressr::with_progress({
-            p <- progressr::progressor(steps = total_steps)
-
-            withCallingHandlers(
-              {
-                future.apply::future_lapply(1:num_estimate, function(c) {
-                  run_advi_worker(
-                    c = c,
-                    p_callback = function(amount = 1) p(amount = amount),
-                    p_interval = update_interval
-                  )
-                }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = FALSE)
-              },
-              warning = function(w) {
-                if (grepl("BayesRTMB", conditionMessage(w))) {
-                  invokeRestart("muffleWarning")
-                }
-              }
-            )
-          })
-        } else {
-          cat("* Install the 'progressr' package to display a progress bar.\n")
-          results_list <- future.apply::future_lapply(1:num_estimate, function(c) {
-            run_advi_worker(c, p_callback = NULL, p_interval = 0)
-          }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = FALSE)
-        }
-      } else {
-        results_list <- lapply(1:num_estimate, function(c) {
-          if (print_freq > 0) cat(sprintf("\n--- Starting VB estimation: est%d ---\n", c))
-          run_advi_worker(c, p_callback = NULL, p_interval = 0)
-        })
-      }
-
-      # --- Summarize estimation results ---
-      P_fixed <- dim(results_list[[1]]$fit)[3] - 1
-      P_random <- if (!is.null(results_list[[1]]$random_fit)) dim(results_list[[1]]$random_fit)[3] else 0
-
-      fit <- array(NA, dim = c(num_samples, num_estimate, P_fixed + 1))
-      dimnames(fit) <- list(
-        iteration = NULL,
-        chain = paste0("est", 1:num_estimate),
-        variable = dimnames(results_list[[1]]$fit)[[3]]
-      )
-
-      if (P_random > 0) {
-        random_fit <- array(NA, dim = c(num_samples, num_estimate, P_random))
-        dimnames(random_fit) <- list(
-          iteration = NULL,
-          chain = paste0("est", 1:num_estimate),
-          variable = dimnames(results_list[[1]]$random_fit)[[3]]
-        )
-      } else {
-        random_fit <- NULL
-      }
-
-      elbo_history_list <- list()
-      elbo_final_vec <- numeric(num_estimate)
-      rel_obj_vec <- numeric(num_estimate)
-
-      for (c in 1:num_estimate) {
-        res <- results_list[[c]]
-        fit[, c, ] <- res$fit[, 1, ]
-        if (P_random > 0) random_fit[, c, ] <- res$random_fit[, 1, ]
-        elbo_history_list[[c]] <- res$elbo_history - self$prior_correction
-        elbo_final_vec[c] <- res$elbo_final - self$prior_correction
-        rel_obj_vec[c] <- res$rel_obj_final
-      }
-
-      # --- Save posterior samples of each estimate to CSV ---
-      if (!is.null(save_info)) {
-        for (c in 1:num_estimate) {
-          backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
-
-          if (!is.null(random_fit)) {
-            df_out <- cbind(iteration = 1:num_samples, as.data.frame(fit[, c, ]), as.data.frame(random_fit[, c, ]))
-          } else {
-            df_out <- cbind(iteration = 1:num_samples, as.data.frame(fit[, c, ]))
-          }
-
-          write.csv(df_out, file = backup_file, row.names = FALSE)
-        }
-      }
-
-      best_chain <- which.max(elbo_final_vec)
-
-      posterior_mean <- numeric(length(self$pl_full$names))
-      names(posterior_mean) <- self$pl_full$names
-      fixed_mean <- apply(fit[, best_chain, -1, drop = FALSE], 3, mean)
-      posterior_mean[names(fixed_mean)] <- fixed_mean
-
-      if (!is.null(random_fit)) {
-        random_mean <- apply(random_fit[, best_chain, , drop = FALSE], 3, mean)
-        posterior_mean[names(random_mean)] <- random_mean
-      }
-
-      cat("\nConvergence Diagnostics per estimate:\n")
-      for (c in 1:num_estimate) {
-        status <- if (!is.na(rel_obj_vec[c]) && rel_obj_vec[c] < tol_rel_obj) "Converged" else "Not Converged"
-        best_marker <- if (c == best_chain) "  <-- BEST" else ""
-
-        cat(sprintf(
-          "  est%d: ELBO = %10.2f, Final rel_obj = %.5f (%s)%s\n",
-          c, elbo_final_vec[c], rel_obj_vec[c], status, best_marker
-        ))
-      }
-      cat("\n")
-
-      best_mu_history <- results_list[[best_chain]]$mu_history
-
-      res_obj <- VB_Fit$new(
-        model          = self,
-        fit            = fit,
-        random_fit     = random_fit,
-        elbo_history   = elbo_history_list,
-        laplace        = laplace,
-        posterior_mean = posterior_mean,
-        ELBO           = elbo_final_vec,
-        rel_obj_vals   = rel_obj_vec,
-        best_chain     = best_chain,
-        mu_history     = best_mu_history
-      )
-
-      has_tran <- !is.null(self$transform)
-      has_generate <- !is.null(self$generate)
-
-      if (has_tran) {
-        cat("Calculating transformed parameters...\n")
-        res_obj$transformed_draws(self$transform)
-      }
-      if (has_generate) {
-        cat("Calculating generated quantities...\n")
-        res_obj$generated_quantities(self$code$generate)
-      }
-
-      return(res_obj)
+      .variational_impl(self, private, iter, tol_rel_obj, window_size, num_samples, 
+                        num_estimate, alpha, laplace, print_freq, method, 
+                        parallel, seed, init, save_csv, map, fixed)
     },
 
 
@@ -2546,57 +468,7 @@ RTMB_Model <- R6::R6Class(
     #' @description Print model code or model structure.
     #' @return The object itself, invisibly.
     print_code = function() {
-      if (is.null(self$code)) {
-        cat("Model code is not available (Not built with rtmb_code).\n")
-        return(invisible(self))
-      }
-
-      cat("=== RTMB Model Code ===\n\n")
-      cat("rtmb_code(\n")
-
-      blocks <- names(self$code)
-      n_blocks <- length(blocks)
-
-      for (i in seq_along(blocks)) {
-        block <- blocks[i]
-        expr <- self$code[[block]]
-
-        # deparse() standardly indents contents by 4 spaces
-        lines <- deparse(expr, width.cutoff = 500L, control = "useSource")
-
-        # Count leading spaces and halve them (reduce nested indents from 4 to 2 spaces)
-        lines <- sapply(lines, function(x) {
-          m <- regexpr("^ +", x)
-          if (m > 0) {
-            n_spaces <- attr(m, "match.length")
-            new_spaces <- strrep(" ", n_spaces / 2)
-            sub("^ +", new_spaces, x)
-          } else {
-            x
-          }
-        }, USE.NAMES = FALSE)
-
-        # Format the string literal "# Header" as a pure comment
-        lines <- gsub('^(\\s*)"#(.*)"$', "\\1#\\2", lines)
-
-        # Further indent the whole thing by 2 spaces
-        lines <- paste0("  ", lines)
-
-        # Rewrite the first "{" to "  block_name = {" (*Fixed here)
-        if (trimws(lines[1]) == "{") {
-          lines[1] <- paste0("  ", block, " = {")
-        }
-
-        # Add commas and newlines except for the last block
-        if (i < n_blocks) {
-          lines[length(lines)] <- paste0(lines[length(lines)], ", ")
-        }
-
-        cat(paste(lines, collapse = "\n"))
-        cat("\n")
-      }
-      cat(")\n")
-      return(invisible(self))
+      .print_code_impl(self, private)
     },
 
     #' @description Print the internal log-probability function.
@@ -2659,486 +531,39 @@ RTMB_Model <- R6::R6Class(
     #' @description Automatically detect and count the number of independent data points (observations).
     #' @return Integer; total number of observations, or NULL if model code is missing.
     get_n_obs = function() {
-      if (is.null(self$code$model)) {
-        return(NULL)
-      }
-
-      # Helper to get the base name of a variable (e.g., "y" from "y[i]")
-      get_base_name <- function(x) {
-        if (is.name(x)) {
-          return(as.character(x))
-        }
-        if (is.call(x) && identical(x[[1]], as.name("["))) {
-          return(get_base_name(x[[2]]))
-        }
-        return(NULL)
-      }
-
-      data_names <- names(self$data)
-
-      # AST Rewrite logic: replace y ~ dist(...) with counter increment
-      rewrite_to_count <- function(x) {
-        if (is.call(x)) {
-          if (identical(x[[1]], as.name("~"))) {
-            target <- x[[2]]
-            base_name <- get_base_name(target)
-
-            # Only count if it's a data variable (ignore priors on parameters)
-            if (!is.null(base_name) && base_name %in% data_names) {
-              return(call(
-                "<-", as.name("n_obs"),
-                call(
-                  "+", as.name("n_obs"),
-                  call(
-                    "if", call("is.matrix", target),
-                    call("nrow", target),
-                    call("length", target)
-                  )
-                )
-              ))
-            } else {
-              # If it's a prior, just skip it in the count
-              return(quote(NULL))
-            }
-          }
-          # Recurse through all elements of the call
-          x[] <- lapply(as.list(x), rewrite_to_count)
-        }
-        return(x)
-      }
-
-      # 1. Prepare counting AST
-      raw_expr <- self$code$model
-      count_expr <- rewrite_to_count(raw_expr)
-
-      # 2. Wrap in function
-      body_list <- c(
-        list(as.name("{")),
-        quote(RTMB::getAll(dat, par)),
-        quote(n_obs <- 0),
-        if (is.call(count_expr) && identical(count_expr[[1]], as.name("{"))) as.list(count_expr)[-1] else list(count_expr),
-        quote(return(n_obs))
-      )
-
-      fn_expr <- call("function", as.pairlist(alist(dat = , par = )), as.call(body_list))
-      # Use an environment that can access RTMB
-      count_fn <- eval(fn_expr, envir = asNamespace("BayesRTMB"))
-
-      # 3. Execute with current data and initial/test parameters
-      test_para <- self$get_par_list()
-
-      n_total <- tryCatch(
-        {
-          count_fn(self$data, test_para)
-        },
-        error = function(e) {
-          return(NA_integer_)
-        }
-      )
-
-      return(n_total)
+      .get_n_obs_impl(self, private)
     },
 
-    #' @description Create a new `RTMB_Model` object with certain parameters fixed.
-    #' @param fixed_list A named list of parameter values to fix.
-    #' @return A new `RTMB_Model` object.
-    fixed_model = function(fixed_list) {
-      if (!is.list(fixed_list)) stop("fixed_list must be a named list (e.g., fixed = list(theta = ...)).")
-
-      # Use null_model() recursively to ensure all Jacobian corrections and prior removals are handled correctly
-      new_model <- self
-      for (name in names(fixed_list)) {
-          val <- fixed_list[[name]]
-          # Pass the full name (possibly with [idx]) and the full value to null_model
-          new_model <- new_model$null_model(target = name, value = val)
-      }
-      return(new_model)
+    #' @description Create a model with fixed parameters.
+    #' @param fixed A named list of parameter values to fix.
+    #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
+    #' @return A new RTMB_Model object.
+    fixed_model = function(fixed = list(), silent = FALSE) {
+      return(private$.apply_constraints(fixed, silent = silent))
     },
 
-    #' @description Create a null model by fixing specified parameters to a given value, or by removing priors for frequentist inference.
-    #' @param target Character string specifying the target parameter and its prior (e.g., "delta ~ cauchy(0, r)"). Alternatively, just the parameter name (e.g., "delta" or "beta[1]").
-    #' @param value Numeric value to fix parameters to. Default is 0.
+    #' @description Create a null model by fixing specified parameters.
+    #' @param target Parameter name to fix.
+    #' @param value Numeric value to fix parameter to. Default is 0.
     #' @param target_vars Character vector of parameter names to remove priors from (for frequentist inference).
     #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
     #' @return A new RTMB_Model object.
     null_model = function(target = NULL, value = 0, target_vars = NULL, silent = FALSE) {
-      # --- 0. Handle multiple target_vars (Frequentist mode) ---
       if (!is.null(target_vars)) {
         new_model <- self$clone()
         if (!is.null(self$code)) {
           new_model$code <- as.list(self$code)
           for (v in target_vars) {
-            # Note: v is expected to be a base parameter name
             new_model$code$model <- remove_prior_from_ast(new_model$code$model, v, self$par_names[[v]])
           }
         }
         return(new_model)
       }
-
-      # --- 1. Input validation and auto-completion ---
-      # Check if it is a string
-      if (!is.character(target) || length(target) != 1) {
-        stop("target must be specified as a single string (e.g., 'delta ~ cauchy(0, r)' or 'delta').", call. = FALSE)
-      }
-
-      # Auto-completion processing when "~" is not included
-      if (!grepl("~", target)) {
-        target_ast <- str2lang(target)
-        has_index <- is.call(target_ast) && identical(target_ast[[1]], as.name("["))
-
-        if (has_index) {
-          base_name <- as.character(target_ast[[2]])
-          idx_expr <- target_ast[[3]]
-        } else {
-          base_name <- as.character(target_ast)
-          idx_expr <- NULL
-        }
-
-        # Internal function to find the prior distribution of the target parameter from the AST
-        find_prior <- function(expr) {
-          if (is.call(expr)) {
-            if (identical(expr[[1]], as.name("~"))) {
-              lhs <- expr[[2]]
-              if (identical(lhs, as.name(base_name)) ||
-                (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(base_name)))) {
-                return(expr[[3]])
-              }
-            }
-            for (i in seq_along(expr)) {
-              res <- find_prior(expr[[i]])
-              if (!is.null(res)) {
-                return(res)
-              }
-            }
-          }
-          return(NULL)
-        }
-
-        prior_expr <- find_prior(self$code$model)
-        if (is.null(prior_expr)) {
-          stop(sprintf("The prior distribution definition for '%s' was not found in the model code.", base_name), call. = FALSE)
-        }
-        orig_prior_ast <- prior_expr # Save original AST
-
-        # If an index is specified, dynamically resolve arguments based on the data environment
-        if (has_index) {
-          # Use the environment where setup variables are stored
-          eval_env <- list2env(self$data, parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
-          for (n in names(self$init)) assign(n, self$init[[n]], envir = eval_env)
-
-          idx_val <- tryCatch(
-            {
-              res <- eval(idx_expr, envir = eval_env)
-              if (length(res) == 1 && (is.numeric(res) || is.character(res))) res else as.character(idx_expr)
-            },
-            error = function(e) as.character(idx_expr)
-          )
-
-          for (i in 2:length(prior_expr)) {
-            arg_expr <- prior_expr[[i]]
-            if (!is.numeric(arg_expr)) {
-              arg_val <- tryCatch(eval(arg_expr, envir = eval_env), warning = function(w) NULL, error = function(e) NULL)
-              if (!is.null(arg_val) && length(arg_val) > 1) {
-                ext_val <- arg_val[idx_val]
-                if (length(ext_val) == 1 && !is.na(ext_val)) {
-                  prior_expr[[i]] <- ext_val
-                } else {
-                  prior_expr[[i]] <- call("[", arg_expr, idx_expr)
-                }
-              }
-            }
-          }
-        }
-        new_formula <- call("~", target_ast, prior_expr)
-        target <- paste(deparse(new_formula), collapse = " ")
-        if (!silent) cat(sprintf("Auto-completed target: %s\n", target))
-      } else {
-        # Target contains "~"
-        target_f <- str2lang(target)
-        target_ast <- target_f[[2]] # Only the LHS
-        lhs <- target_ast
-        has_index <- is.call(lhs) && identical(lhs[[1]], as.name("["))
-        if (has_index) {
-          base_name <- as.character(lhs[[2]])
-          idx_expr <- lhs[[3]]
-
-          # Resolve idx_val for tilde case
-          eval_env <- list2env(self$data, parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
-          for (n in names(self$init)) assign(n, self$init[[n]], envir = eval_env)
-          idx_val <- tryCatch(
-            {
-              res <- eval(idx_expr, envir = eval_env)
-              if (length(res) == 1 && (is.numeric(res) || is.character(res))) res else as.character(idx_expr)
-            },
-            error = function(e) as.character(idx_expr)
-          )
-        } else {
-          base_name <- as.character(lhs)
-          idx_expr <- NULL
-          idx_val <- NULL
-        }
-        orig_prior_ast <- NULL # Will be set from formula
-      }
-
-      f <- tryCatch(as.formula(target), error = function(e) {
-        stop("Failed to parse 'target'. Please specify in the format 'parameter ~ prior'.", call. = FALSE)
-      })
-
-      # Check if both left and right sides exist
-      if (length(f) != 3) {
-        stop("Please provide both the left side (parameter) and right side (prior distribution) for 'target' (e.g., 'delta ~ cauchy(0, r)').", call. = FALSE)
-      }
-
-      spec <- deparse(f[[2]]) # Left side (e.g., "beta" or "beta[1]")
-      prior_expr <- f[[3]] # Right side (call object)
-      if (is.null(orig_prior_ast)) orig_prior_ast <- prior_expr
-      prior_str <- deparse(prior_expr)
-
-      # --- 2. Classification of constraint types and construction of flat names ---
-      structural_bounds <- c(
-        "ordered", "positive_ordered", "simplex",
-        "corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
-        "centered", "centered_matrix",
-        "centered_tri", "positive_centered_tri",
-        "lower_tri_stz"
-      )
-
-      no_fix_bounds <- c(
-        "simplex", "corr_matrix",
-        "cov_matrix", "CF_cov", "centered",
-        "centered_matrix", "centered_tri",
-        "positive_centered_tri"
-      )
-
-      elementwise_bounds <- c("none", "lower", "upper", "interval")
-
-      all_flat_names <- character(0)
-      flat_to_info <- list()
-      for (name in names(self$par_list)) {
-        p <- self$par_list[[name]]
-        names_def <- self$par_names[[name]]
-        fnames <- generate_flat_names(name, p$dim, names_def)
-        for (i in seq_along(fnames)) {
-          flat_to_info[[fnames[i]]] <- list(par = name, idx = i)
-        }
-        all_flat_names <- c(all_flat_names, fnames)
-      }
-
-      # --- 3. Identification of targets ---
-      targets <- list()
-      if (spec %in% names(self$par_list)) {
-        p <- self$par_list[[spec]]
-        if (p$bounds %in% no_fix_bounds) {
-          stop(sprintf("Parameter '%s' (type='%s') cannot be fixed due to structural constraints.", spec, p$bounds), call. = FALSE)
-        }
-        targets[[spec]] <- 1:p$length
-      } else if (spec %in% all_flat_names) {
-        info <- flat_to_info[[spec]]
-        p <- self$par_list[[info$par]]
-        if (p$bounds %in% structural_bounds) {
-          stop(sprintf(
-            "Elements of '%s' (type='%s') cannot be individually fixed because they are interdependent. Fix the entire '%s'.",
-            spec, p$bounds, info$par
-          ), call. = FALSE)
-        }
-        
-        # Check for multivariate priors if we are fixing only an element
-        multivariate_priors <- c("multi_normal", "multi_cauchy", "mvnormal", "mvcauchy", "lkj_corr", "wishart", "dirichlet")
-        if (!is.null(prior_expr)) {
-            p_fn <- as.character(prior_expr[[1]])
-            if (p_fn %in% multivariate_priors) {
-                stop(sprintf(
-                    "Element-level fixation ('%s') is not supported for multivariate priors ('%s').\nPlease fix the entire vector '%s' or use independent univariate priors.",
-                    spec, p_fn, info$par
-                ), call. = FALSE)
-            }
-        }
-        
-        if (!(p$bounds %in% elementwise_bounds)) {
-          stop(sprintf("Fixing individual elements is not supported for '%s' (type='%s').", spec, p$bounds), call. = FALSE)
-        }
-        targets[[info$par]] <- unique(c(targets[[info$par]], info$idx))
-      } else {
-        stop(sprintf("'%s' is not a valid parameter or element name.", spec), call. = FALSE)
-      }
-
-      # --- 4. Get dimensions (number of elements to fix) ---
-      par_name <- names(targets)[1]
-      fix_indices <- targets[[par_name]]
-      k_fixed <- length(fix_indices)
-
-      # --- 5. Calculate prior_correction ---
-      if (is.call(prior_expr)) {
-        fn_name <- as.character(prior_expr[[1]])
-        lpdf_fn_name <- paste0(fn_name, "_lpdf")
-        prior_expr[[1]] <- as.name(lpdf_fn_name)
-
-        # Insert rep(value, k_fixed) as the first argument to make a vector of the number of elements
-        prior_expr <- as.call(append(as.list(prior_expr), call("rep", value, k_fixed), after = 1))
-
-        eval_env <- list2env(self$data, parent = parent.frame())
-        # Inject current parameter values as a list so they match the model code structure
-        init_list <- constrained_vector_to_list(self$init, self$par_list)
-        for (n in names(init_list)) assign(n, init_list[[n]], envir = eval_env)
-
-        # Define loop/index variables (like 'k') for evaluation
-        if (has_index) {
-          assign("k", idx_val, envir = eval_env)
-          if (is.symbol(idx_expr)) assign(as.character(idx_expr), idx_val, envir = eval_env)
-        }
-
-        correction_val <- tryCatch(
-          {
-            # If the evaluated log-density is a vector, sum it using sum()
-            res <- sum(eval(prior_expr, envir = eval_env))
-            if (!is.finite(res)) {
-                warning(sprintf("Prior correction for '%s' resulted in non-finite value (%f). Bayes Factor may be inaccurate.", par_name, res))
-                0
-            } else {
-                res
-            }
-          },
-          error = function(e) {
-            warning(sprintf("Failed to evaluate prior correction for '%s' (Error: %s). Bayes Factor may be inaccurate.", par_name, e$message))
-            0
-          }
-        )
-      } else {
-        stop("Priors must be specified as function calls (e.g., cauchy(0, r)).")
-      }
-
-      # --- 6. Value validity check & map construction ---
-      map_list <- list()
-      # Use simple init handling that was known to work
-      adjusted_init <- if (is.list(self$init)) self$init else list()
-      if (length(adjusted_init) == 0 && !is.null(self$init)) {
-          # Fallback to vector conversion if list is empty
-          adjusted_init <- constrained_vector_to_list(self$init, self$par_list)
-      }
-
-      p <- self$par_list[[par_name]]
-      is_full <- length(fix_indices) == p$length
       
-      # Ensure value length matches fix_indices or is scalar
-      if (length(value) != length(fix_indices) && length(value) != 1) {
-          stop(sprintf("Length of 'value' (%d) does not match the number of parameters to fix in '%s' (%d).", 
-               length(value), spec, length(fix_indices)), call. = FALSE)
-      }
-      val_vec <- rep(value, length.out = length(fix_indices))
-
-      # Exactly on the boundary
-      if (!is.null(p$lower) && any(val_vec <= p$lower)) stop("Fixed value must be strictly greater than the lower bound (the boundary itself cannot be specified).", call. = FALSE)
-      if (!is.null(p$upper) && any(val_vec >= p$upper)) stop("Fixed value must be strictly less than the upper bound (the boundary itself cannot be specified).", call. = FALSE)
-
-      # --- Addition of Jacobian correction ---
-      b_type <- p$bounds
-      lj_val <- 0
-      if (b_type %in% c("lower", "upper", "interval")) {
-        val_vec <- rep(value, length.out = k_fixed)
-        lj_val <- 0
-
-        if (b_type == "lower") {
-          u_val <- log(val_vec - p$lower)
-          lj_val <- sum(u_val)
-        } else if (b_type == "upper") {
-          u_val <- log(p$upper - val_vec)
-          lj_val <- sum(u_val)
-        } else if (b_type == "interval") {
-          prob <- (val_vec - p$lower) / (p$upper - p$lower)
-          u_val <- log(prob / (1 - prob))
-          lj_val <- sum(log(p$upper - p$lower) - u_val - 2 * log(1 + exp(-u_val)))
-        }
-        correction_val <- correction_val + lj_val
-      }
-
-      # Update init and map
-      p_init <- adjusted_init[[par_name]]
-      p_init[fix_indices] <- val_vec
-      adjusted_init[[par_name]] <- p_init
-
-      new_map <- if (is.null(self$map)) list() else self$map
-      m <- if (!is.null(new_map[[par_name]])) new_map[[par_name]] else factor(1:p$unc_length)
-      m_vec <- as.character(m)
-      m_vec[fix_indices] <- NA
-      new_map[[par_name]] <- factor(m_vec)
-
-      # --- 7. Clone and Modify Code ---
-      new_model <- self$clone()
-      new_model$map <- new_map
-      new_model$init <- new_model$prepare_init(adjusted_init)
-
-      # Track if the prior was successfully modified in the AST
-      prior_removed <- FALSE
-      if (!is.null(self$code)) {
-        new_model$code <- as.list(self$code)
-        target_spec <- spec
-        old_ast <- paste(deparse(new_model$code$model), collapse = "\n")
-        new_model$code$model <- remove_prior_from_ast(self$code$model, target_spec, self$par_names[[base_name]])
-        if (paste(deparse(new_model$code$model), collapse = "\n") != old_ast) {
-          prior_removed <- TRUE
-        }
-        
-        # Rebuild log_prob from modified AST
-        user_env <- if (!is.null(self$code$env)) self$code$env else parent.frame()
-        new_model$log_prob <- eval(substitute(model_code(E, env = EN), list(E = new_model$code$model, EN = user_env)))
-        
-        if (prior_removed) {
-          if (isTRUE(getOption("BayesRTMB.debug", FALSE))) {
-            cat(sprintf("Smart-Fixed: Prior for '%s' successfully sliced in AST.\n", spec))
-          }
-          # If AST was modified, the AD tape is now correct.
-          # We don't need to add correction_val later because the integral/objective 
-          # will naturally represent the Null model.
-          new_model$prior_correction <- 0
-        } else if (exists("correction_val")) {
-          # Fallback to post-hoc correction for ML stability if AST modification failed
-          new_model$prior_correction <- correction_val
-        }
-      }
-
-      if (is_full) {
-        map_list[[par_name]] <- factor(rep(NA, p$unc_length))
-      } else {
-        if (!(par_name %in% names(map_list))) {
-          map_list[[par_name]] <- factor(1:p$unc_length)
-        }
-        current <- as.integer(map_list[[par_name]])
-        current[fix_indices] <- NA
-        non_na <- !is.na(current)
-        if (any(non_na)) current[non_na] <- seq_len(sum(non_na))
-        map_list[[par_name]] <- factor(ifelse(is.na(current), NA, paste0(par_name, "_", current)))
-      }
-
-      if (!(par_name %in% names(adjusted_init))) adjusted_init[[par_name]] <- rep(0, p$length)
-      val <- as.numeric(adjusted_init[[par_name]])
-      val[fix_indices] <- value
-      adjusted_init[[par_name]] <- val
-      if (length(p$dim) > 1) dim(adjusted_init[[par_name]]) <- p$dim
-
-      new_model$map <- map_list
-      new_model$init <- adjusted_init
-
-      # If the prior was removed from AST, we only need to subtract Jacobian correction.
-      # If it was NOT removed (e.g. vectorized b ~ normal()), we subtract both density and Jacobian.
-      if (prior_removed) {
-        new_model$prior_correction <- lj_val
-      } else {
-        # This case happens if no code is present or if something went wrong
-        new_model$prior_correction <- correction_val + lj_val
-      }
-
-      if (!silent) {
-        cat("Null model created. Fixed parameters:\n")
-        if (length(value) > 1) {
-           val_summary <- sprintf("(mean: %.4f, range: [%.4f, %.4f])", mean(value), min(value), max(value))
-           cat(sprintf("  %s [1:%d] -> %s\n", spec, length(value), val_summary))
-        } else {
-           cat(sprintf("  %s -> %g (Dimensions: %d)\n", spec, value, k_fixed))
-        }
-        cat(sprintf("  Jacobian correction applied: %f\n", lj_val))
-      }
-
-      return(new_model)
+      if (is.null(target)) return(self)
+      fixed <- list()
+      fixed[[target]] <- value
+      return(self$fixed_model(fixed, silent = silent))
     },
 
     #' @description Evaluate the univariate prior density contribution of a specific parameter.
@@ -3147,208 +572,7 @@ RTMB_Model <- R6::R6Class(
     #' @param par_list Optional parameter list (constrained) to use for evaluation.
     #' @return Numeric log-prior density (unconstrained).
     evaluate_univariate_prior = function(p_name, u_val, par_list = NULL) {
-      ast <- self$code$model
-      if (is.null(ast)) {
-        return(0)
-      }
-
-      p_base <- gsub("\\[.*\\]$", "", p_name)
-      p_info <- self$par_list[[p_base]]
-
-      # 1. Prepare evaluation environment
-      curr_par_list <- if (!is.null(par_list)) par_list else to_constrained(unconstrained_vector_to_list(self$init, self$par_list), self$par_list)
-
-      p_idx <- 1
-      if (grepl("\\[", p_name)) {
-        idx_str <- gsub(".*\\[(.*)\\].*", "\\1", p_name)
-        p_idx <- suppressWarnings(as.integer(idx_str))
-        if (is.na(p_idx)) {
-          p_names <- self$par_names[[p_base]]
-          if (!is.null(p_names)) p_idx <- which(p_names == idx_str)
-          if (length(p_idx) == 0) p_idx <- 1
-        }
-      }
-
-      # Set the target value in unconstrained space then convert to constrained
-      c_val <- u_val
-      lower <- if (is.numeric(p_info$lower)) p_info$lower else -Inf
-      upper <- if (is.numeric(p_info$upper)) p_info$upper else Inf
-
-      if (is.infinite(lower) && is.infinite(upper)) {
-        c_val <- u_val
-      } else if (is.finite(lower) && is.infinite(upper)) {
-        c_val <- exp(u_val) + lower
-      } else if (is.finite(lower) && is.finite(upper)) {
-        c_val <- lower + (upper - lower) / (1 + exp(-u_val))
-      }
-      curr_par_list[[p_base]][p_idx] <- c_val
-
-      # 2. Smart Evaluation with custom ~ and distribution functions
-      # We create a function that executes the model code but only keeps track of priors for p_name
-      total_lp <- 0
-
-      # Helper to resolve names like b[k] to b[1] or b[talk]
-      resolve_name <- function(expr, env) {
-        if (is.name(expr)) {
-          return(as.character(expr))
-        }
-        if (is.call(expr) && identical(expr[[1]], as.name("["))) {
-          base <- as.character(expr[[2]])
-          indices <- as.list(expr)[-(1:2)]
-          idx_vals <- sapply(indices, function(idx) {
-            val <- try(eval(idx, envir = env), silent = TRUE)
-            if (inherits(val, "try-error")) {
-              return(as.character(idx))
-            }
-            val
-          })
-          # Map index to name if available
-          p_names <- self$par_names[[base]]
-          if (!is.null(p_names) && length(idx_vals) == 1 && is.numeric(idx_vals[1])) {
-            ii <- as.integer(idx_vals[1])
-            if (ii >= 1 && ii <= length(p_names)) {
-              return(paste0(base, "[", p_names[ii], "]"))
-            }
-          }
-          return(paste0(base, "[", paste(idx_vals, collapse = ","), "]"))
-        }
-        return(deparse(expr))
-      }
-
-      # Define evaluation environment
-      eval_env <- new.env(parent = if (!is.null(self$code$env)) self$code$env else parent.frame())
-
-      # Add data and parameters
-      eval_env$dat <- self$data
-      eval_env$par <- curr_par_list
-      eval_env$lp <- 0 # Local lp counter (unused by our custom ~ but for safety)
-
-      # Custom Sampling Operator
-      # In RTMB, `Y ~ normal(mu, sigma)` is equivalent to `normal(Y, mu, sigma)`.
-      # We must NOT eagerly evaluate rhs because the distribution function expects
-      # the LHS value as its first argument. Instead, we intercept the call,
-      # inject the LHS value, and then evaluate.
-      eval_env$`~` <- function(lhs, rhs) {
-        lhs_expr <- substitute(lhs)
-        rhs_expr <- substitute(rhs)
-        res_name <- resolve_name(lhs_expr, env = parent.frame())
-        
-        dist_func <- if (is.call(rhs_expr)) deparse(rhs_expr[[1]]) else "none"
-
-        # Check if this is a multivariate distribution we can marginalize
-        is_multivariate <- FALSE
-        if (dist_func %in% c("multi_normal", "multi_student_t", "multi_cauchy")) {
-          is_multivariate <- TRUE
-        }
-
-        # Match logic:
-        if (is_multivariate) {
-          base_match <- (res_name == p_base)
-          
-          if (base_match && p_name != p_base) {
-            # Target is b[k], LHS is b. We marginalize.
-            # 1. Evaluate args of multi_...
-            args <- as.list(rhs_expr)[-1]
-            eval_args <- lapply(args, function(a) tryCatch(eval(a, envir = eval_env), error = function(e) e$message))
-            
-            # 2. Extract marginals
-            if (dist_func == "multi_normal") {
-              mu <- eval_args[[1]][p_idx]
-              Sigma_kk <- eval_args[[2]][p_idx, p_idx]
-              log_dens <- dnorm(u_val, mu, sqrt(Sigma_kk), log = TRUE)
-            } else {
-              # Student-t / Cauchy
-              idx_df <- if (dist_func == "multi_student_t") 1 else NULL
-              idx_mu <- if (dist_func == "multi_student_t") 2 else 1
-              idx_Sigma <- if (dist_func == "multi_student_t") 3 else 2
-
-              df_val <- if (!is.null(idx_df)) eval_args[[idx_df]] else 1
-              mu <- eval_args[[idx_mu]][p_idx]
-              Sigma_kk <- eval_args[[idx_Sigma]][p_idx, p_idx]
-              
-              # Final density evaluation (use dt directly for safety)
-              scale <- sqrt(as.numeric(Sigma_kk))
-              val <- (u_val - mu) / scale
-              log_dens <- dt(as.numeric(val), df = as.numeric(df_val), log = TRUE) - log(scale)
-            }
-            total_lp <<- total_lp + log_dens
-          } else if (res_name == p_name) {
-            # Exact match
-            full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
-            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
-            if (!is.null(log_dens)) total_lp <<- total_lp + sum(log_dens)
-          }
-        } else {
-          # Standard univariate logic
-          # Build the full distribution call by injecting lhs as the first argument
-          if (is.call(rhs_expr)) {
-            full_call <- as.call(c(rhs_expr[[1]], lhs_expr, as.list(rhs_expr)[-1]))
-            log_dens <- tryCatch(eval(full_call, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
-          } else {
-            log_dens <- tryCatch(eval(rhs_expr, envir = parent.frame()), warning = function(w) NULL, error = function(e) NULL)
-          }
-
-          if (!is.null(log_dens)) {
-            # Match logic:
-            # 1. Exact match (e.g., "b[1]" == "b[1]")
-            if (res_name == p_name) {
-              total_lp <<- total_lp + sum(log_dens)
-            }
-            # 2. LHS is base name (e.g., "b") and p_name is indexed (e.g., "b[1]")
-            else if (res_name == p_base && p_name != p_base && length(log_dens) >= p_idx) {
-              total_lp <<- total_lp + log_dens[p_idx]
-            }
-            # 3. p_name is base name ("b") and res_name is indexed ("b[1]")
-            else if (p_name == p_base && grepl(paste0("^", p_base, "\\["), res_name)) {
-              total_lp <<- total_lp + sum(log_dens)
-            }
-          }
-        }
-
-        invisible(NULL)
-      }
-
-      # Override distribution functions to return log-density
-      eval_env$normal <- function(x, mean, sd) dnorm(x, mean, sd, log = TRUE)
-      eval_env$cauchy <- function(x, location, scale) cauchy_lpdf(x, location, scale, sum = FALSE)
-      eval_env$exponential <- function(x, rate) dexp(x, rate, log = TRUE)
-      eval_env$gamma <- function(x, shape, rate) dgamma(x, shape, rate, log = TRUE)
-      eval_env$inverse_gamma <- function(x, shape, scale) dinverse_gamma(x, shape, scale, log = TRUE)
-      eval_env$student_t <- function(x, df, mean, sd) dstudent_t(x, df, mean, sd, log = TRUE)
-      eval_env$beta <- function(x, shape1, shape2) dbeta(x, shape1, shape2, log = TRUE)
-      eval_env$bernoulli <- function(x, prob) dbinom(x, 1, prob, log = TRUE)
-      eval_env$binomial <- function(x, size, prob) dbinom(x, size, prob, log = TRUE)
-      eval_env$poisson <- function(x, lambda) dpois(x, lambda, log = TRUE)
-      eval_env$multi_normal <- function(x, mean, Sigma) multi_normal_lpdf(x, mean, Sigma, sum = FALSE)
-      eval_env$multi_student_t <- function(x, df, mean, Sigma) multi_student_t_lpdf(x, df, mean, Sigma, sum = FALSE)
-      eval_env$multi_cauchy <- function(x, mean, Sigma) multi_cauchy_lpdf(x, mean, Sigma, sum = FALSE)
-
-      # Additional RTMB helpers
-      eval_env$getAll <- function(d, p) {
-        for (n in names(d)) assign(n, d[[n]], envir = parent.frame())
-        for (n in names(p)) assign(n, p[[n]], envir = parent.frame())
-      }
-      eval_env$Dim <- function(...) NULL
-
-      # Execute the model AST in the custom environment
-      tryCatch(
-        {
-          eval(as.call(c(list(as.name("{")), quote(getAll(dat, par)), ast)), envir = eval_env)
-        },
-        error = function(e) {
-          # If execution fails, fallback to 0 or diagnostic
-        }
-      )
-
-      # (F) Jacobian for this element
-      lj <- 0
-      if (is.finite(lower) && is.infinite(upper)) {
-        lj <- u_val
-      } else if (is.finite(lower) && is.finite(upper)) {
-        lj <- log(upper - lower) - u_val - 2 * log(1 + exp(-u_val))
-      }
-
-      return(total_lp + lj)
+      .evaluate_univariate_prior_impl(self, private, p_name, u_val, par_list, caller_env = parent.frame())
     }
   ),
 
@@ -3481,90 +705,129 @@ RTMB_Model <- R6::R6Class(
           return(-lp)
         }
       }
+    },
+
+    # --- パラメータ固定（fixed引数）の適用ロジック ---
+    .has_multivariate_prior_on = function(expr, target_base) {
+      if (is.null(expr)) return(FALSE)
+
+      get_base_name <- function(x) {
+        if (is.name(x)) return(as.character(x))
+        if (is.call(x) && identical(x[[1]], as.name("["))) {
+          return(get_base_name(x[[2]]))
+        }
+        NULL
+      }
+
+      is_multi_dist <- function(rhs) {
+        if (!is.call(rhs)) return(FALSE)
+        fn <- as.character(rhs[[1]])
+        length(fn) == 1 && fn %in% c("multi_normal", "multi_student_t", "multi_cauchy")
+      }
+
+      walk <- function(x) {
+        if (!is.call(x)) return(FALSE)
+
+        if (identical(x[[1]], as.name("~"))) {
+          lhs_base <- get_base_name(x[[2]])
+          rhs <- x[[3]]
+          if (identical(lhs_base, target_base) && is_multi_dist(rhs)) {
+            return(TRUE)
+          }
+        }
+
+        any(vapply(as.list(x)[-1], walk, logical(1)))
+      }
+
+      walk(expr)
+    },
+
+    .apply_constraints = function(fixed = list(), silent = FALSE) {
+      new_model <- self$clone()
+      if (length(fixed) == 0) return(new_model)
+
+      new_map <- as.list(new_model$map)
+      new_init <- new_model$init 
+
+      if (is.null(names(new_init))) {
+        names(new_init) <- self$pl_full$names
+      }
+
+      normalize_map <- function(m) {
+        if (is.null(m)) return(NULL)
+        factor(as.character(m))
+      }
+
+      for (name in names(fixed)) {
+        val <- fixed[[name]]
+        p_base <- gsub("\\[.*\\]$", "", name)
+        has_index <- grepl("\\[", name)
+
+        if (!(p_base %in% names(self$par_list))) stop("Parameter not found: ", p_base)
+
+        if (has_index && !is.null(self$code$model)) {
+          if (private$.has_multivariate_prior_on(self$code$model, p_base)) {
+            stop(
+              sprintf(
+                "Cannot use fixed = list('%s' = ...) because '%s' has a multivariate prior. ",
+                name, p_base
+              ),
+              "Partial fixing of a multivariate prior is not supported. ",
+              "Use a reduced model instead, e.g. remove the corresponding predictor from the formula.",
+              call. = FALSE
+            )
+          }
+        }
+
+        p_info <- self$par_list[[p_base]]
+        L_u <- p_info$unc_length
+
+        if (is.null(new_map[[p_base]])) {
+          new_map[[p_base]] <- if (L_u > 0) factor(seq_len(L_u)) else factor(integer(0))
+        }
+        curr_map <- new_map[[p_base]]
+
+        start_idx <- 1
+        for (n in names(self$par_list)) {
+          if (n == p_base) break
+          start_idx <- start_idx + self$par_list[[n]]$length
+        }
+
+        if (!grepl("\\[", name)) {
+          # パラメータ全体を固定
+          val_vec <- if (length(val) == 1) rep(val, p_info$length) else val
+          new_init[start_idx:(start_idx + p_info$length - 1)] <- as.numeric(val_vec)
+
+          if (L_u > 0) {
+            # ここが重要: curr_map[] <- NA ではなく、level なしの factor に作り直す
+            curr_map <- factor(rep(NA_character_, L_u))
+          }
+
+        } else {
+          # 特定要素を固定
+          idx_str <- gsub(".*\\[(.*)\\].*", "\\1", name)
+          p_names <- self$par_names[[p_base]]
+          idx <- suppressWarnings(as.integer(idx_str))
+          if (is.na(idx) && !is.null(p_names)) idx <- which(p_names == idx_str)
+
+          if (length(idx) > 0) {
+            new_init[start_idx + idx - 1] <- as.numeric(val)
+
+            if (L_u > 0) {
+              curr_map[idx] <- NA
+              # 部分固定でも未使用 level を落とす
+              curr_map <- normalize_map(curr_map)
+            }
+          }
+        }
+
+        new_map[[p_base]] <- curr_map
+      }
+
+      new_model$init <- new_init
+      new_model$map <- new_map
+      return(new_model)
     }
   )
 )
 
-remove_prior_from_ast <- function(expr, target_spec, p_names = NULL) {
-  # target_spec is like "b" or "b[talk]"
-  target_base <- gsub("\\[.*\\]$", "", target_spec)
-  has_index <- grepl("\\[", target_spec)
-  target_idx_str <- if (has_index) gsub(".*\\[(.*)\\].*", "\\1", target_spec) else NULL
-
-  if (is.call(expr)) {
-    # 1. Handle { ... } blocks
-    if (identical(expr[[1]], as.name("{"))) {
-      new_args <- lapply(as.list(expr)[-1], function(e) remove_prior_from_ast(e, target_spec, p_names))
-      new_args <- Filter(Negate(is.null), new_args)
-      return(as.call(c(as.name("{"), new_args)))
-    }
-
-    # 2. Handle sampling statements b[k] ~ ...
-    if (identical(expr[[1]], as.name("~"))) {
-      lhs <- expr[[2]]
-      lhs_str <- deparse(lhs)
-
-      # If target is "b" (full vector), remove any prior for "b" or "b[...]"
-      if (!has_index) {
-        if (identical(lhs, as.name(target_base)) ||
-          (is.call(lhs) && identical(lhs[[1]], as.name("[")) && identical(lhs[[2]], as.name(target_base)))) {
-          return(NULL)
-        }
-      } else {
-        # Target is specific element "b[talk]"
-        # If LHS is exactly "b[talk]", remove it.
-        if (lhs_str == target_spec) {
-          return(NULL)
-        }
-
-        # --- Advanced Slicing for Vectorized Priors ---
-        if (identical(lhs, as.name(target_base))) {
-          rhs <- expr[[3]]
-          idx_val <- target_idx_str
-          if (!is.null(p_names)) {
-              idx_match <- which(p_names == target_idx_str)
-              if (length(idx_match) > 0) idx_val <- idx_match
-          }
-          neg_idx <- bquote(-.(as.numeric(idx_val)))
-          new_lhs <- bquote(.(as.name(target_base))[.(neg_idx)])
-          new_rhs <- rhs
-          for (i in 2:length(rhs)) {
-              arg <- rhs[[i]]
-              if (is.call(arg) || is.symbol(arg) || (is.numeric(arg) && length(arg) > 1)) {
-                  new_rhs[[i]] <- bquote(.(arg)[.(neg_idx)])
-              }
-          }
-          return(as.call(list(as.name("~"), new_lhs, new_rhs)))
-        }
-      }
-    }
-
-    # 3. Handle for loops
-    if (identical(expr[[1]], as.name("for"))) {
-      var_name <- as.character(expr[[2]])
-      body <- expr[[4]]
-
-      if (has_index && is.call(body) && identical(body[[1]], as.name("~"))) {
-        if (is.call(body[[2]]) && identical(body[[2]][[2]], as.name(target_base))) {
-          idx_val <- target_idx_str
-          if (!is.null(p_names)) {
-            idx_match <- which(p_names == target_idx_str)
-            if (length(idx_match) > 0) idx_val <- idx_match
-          }
-          new_body <- bquote(if (.(as.name(var_name)) != .(as.numeric(idx_val))) .(body))
-          expr[[4]] <- new_body
-          return(expr)
-        }
-      }
-
-      new_body <- remove_prior_from_ast(body, target_spec, p_names)
-      if (is.null(new_body)) return(NULL)
-      expr[[4]] <- new_body
-      return(expr)
-    }
-
-    new_args <- lapply(as.list(expr), function(e) remove_prior_from_ast(e, target_spec, p_names))
-    return(as.call(new_args))
-  }
-  return(expr)
-}
