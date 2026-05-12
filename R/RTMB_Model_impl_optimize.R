@@ -455,6 +455,7 @@
   df_map <- self$extra$df_map
   if (!is.null(df_map)) {
     df_fixed    <- .apply_df_map(df_fixed, df_map)
+    df_random   <- .apply_df_map(df_random, df_map)
   }
   con_est_vec <- unlist(con_est_list, use.names = FALSE); tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL
   gq_list <- if (!is.null(self$generate)) tryCatch(self$generate(self$data, if (!is.null(tran_list)) c(con_est_list, tran_list) else con_est_list), error = function(e) NULL) else NULL
@@ -556,9 +557,9 @@
         }
       }
       
-      if (!is.null(self$extra$df_map)) {
+      if (!is.null(df_map)) {
         res_df$df <- derived_dfs
-        res_df <- .apply_df_map(res_df, self$extra$df_map)
+        res_df <- .apply_df_map(res_df, df_map)
       } else {
         res_df$df <- derived_dfs
       }
@@ -567,6 +568,7 @@
   }
 
   df_transform <- build_derived_summary(self$transform, tran_list, FALSE, if (reml_flag) dH_beta else dH_list, if (reml_flag) V_beta else V_opt, reml_flag, if (reml_flag) active_idx else NULL, if (reml_flag) dH_theta else NULL, if (reml_flag) V_theta else NULL, if (reml_flag) idx_fix_active else NULL)
+  if (!is.null(df_map)) df_transform <- .apply_df_map(df_transform, df_map)
   
   if (identical(df_method, "bw") && self$type == "ttest") {
     if (!is.null(df_transform) && "df" %in% names(df_transform)) {

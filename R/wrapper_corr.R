@@ -114,7 +114,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
   # Parse ID (NSE support for ID = group)
   id_val <- NULL
-  if (!is.null(ID)) {
+  if (!is.null(id_expr)) {
     if (!is.null(data)) {
       # Try to evaluate ID in data
       id_val <- try(eval(id_expr, data, parent.frame()), silent = TRUE)
@@ -336,13 +336,32 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      init_list$sigma_within <- apply(Y_mat, 2, sd) * 0.5
      init_list$u <- matrix(0, J, P)
 
-     view_order <- c("pcorr", "corr", "ICC", "mu", "sigma")
+     view_order <- c("pcorr", "B_corr", "W_corr", "corr", "ICC", "mu", "sigma_between", "sigma_within", "sigma")
 
      obj <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
      obj$raw_data <- data
 
      obj$type <- "corr"
      obj$extra$marginal <- "mu"
+
+     # Set degrees of freedom map for BW method
+     # Between: J, Within: N - J - P
+     df_map <- list()
+     # Level-2 (Between)
+     df_between <- pmax(J, 1)
+     df_map$mu <- df_between
+     df_map$sigma_between <- df_between
+     df_map$B_corr <- df_between
+     df_map$B_pcorr <- df_between
+     df_map$ICC <- df_between
+     
+     # Level-1 (Within)
+     df_within <- pmax(N - J - P, 1)
+     df_map$sigma_within <- df_within
+     df_map$W_corr <- df_within
+     df_map$W_pcorr <- df_within
+     
+     obj$extra$df_map <- df_map
 
      return(obj)
   } else {
@@ -468,7 +487,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        list(mean = colMeans(Y_mat), sd = apply(Y_mat, 2, sd))
      } else init
 
-     view_vars <- if (P_x > 0) c("pcorr", "corr", "mean", "sd") else c("corr", "mean", "sd")
+     view_vars <- if (P_x > 0) c("pcorr", "B_corr", "W_corr", "corr", "mean", "sd") else c("B_corr", "W_corr", "corr", "mean", "sd")
      obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
 
      if (!is.null(null)) {
