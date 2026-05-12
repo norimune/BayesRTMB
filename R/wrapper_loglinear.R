@@ -1,0 +1,122 @@
+#' RTMB-based Log-linear analysis (Poisson regression)
+#'
+#' @description
+#' Performs Bayesian or Frequentist log-linear analysis (Poisson regression)
+#' on a contingency table or raw data.
+#'
+#' @param formula A formula (e.g., `~ A + B + A:B`) or a contingency table.
+#' @param data A data frame (required if `formula` is used).
+#' @param prior An object of class "rtmb_prior" specifying the prior distribution.
+#' @param ... Additional arguments passed to `rtmb_glm()`.
+#' @return An `RTMB_Model` object.
+#' @export
+rtmb_loglinear <- function(formula, data, prior = prior_uniform(), fixed = NULL, ...) {
+
+  # 1. Data Preparation
+  # Convert table or matrix to long data frame
+  was_table <- FALSE
+  if (inherits(data, c("table", "matrix"))) {
+    data <- as.data.frame(as.table(data))
+    was_table <- TRUE
+  }
+
+  # Identify variables and frequency column
+  all_vars <- all.vars(formula)
+  response_var <- NULL
+
+  # Check if formula has a response
+  if (length(formula) == 3) {
+    response_var <- as.character(formula[[2]])
+  }
+
+  # If no response is specified
+  if (is.null(response_var)) {
+    if (was_table && "Freq" %in% names(data)) {
+      # For tables/matrices, we automatically use the Freq column
+      formula <- update(formula, Freq ~ .)
+      response_var <- "Freq"
+    } else {
+      # For raw data frames, we aggregate
+      # Check if variables exist in data
+      missing_vars <- setdiff(all_vars, names(data))
+      if (length(missing_vars) > 0) {
+        stop(sprintf("Variables not found in data: %s", paste(missing_vars, collapse = ", ")))
+      }
+
+      # Aggregate raw observations into counts
+      data_counts <- as.data.frame(table(data[all_vars]))
+      # Update formula to include 'Freq' as response
+      formula <- update(formula, Freq ~ .)
+      data <- data_counts
+      response_var <- "Freq"
+    }
+  }
+
+
+  # Ensure response is numeric (counts)
+  data[[response_var]] <- as.numeric(data[[response_var]])
+
+  # 2. Invoke rtmb_glmer (or internal logic) with family = "poisson"
+  # Since rtmb_glmer is already robust, we leverage it.
+  # However, we override some defaults to better suit table analysis.
+
+  # For rtmb_table, we default to prior_weak with Stan-style values if requested
+  if (inherits(prior, "prior_weak")) {
+    # Stan-style defaults for log-linear (Poisson)
+    if (is.null(prior$sd_ratio)) prior$sd_ratio <- 5.0 # For Intercept (alpha_prior_sd)
+    if (is.null(prior$max_beta)) prior$max_beta <- 2.5 # For coefficients
+  }
+
+  # Call the engine
+  # We use rtmb_glmer which handles formulas, random effects, and priors.
+
+  # 2. Determine centering and predictors (to keep generate block clean in print_code)
+  args <- list(...)
+  is_weak_triggered <- !is.null(args$y_range) && prior$type == "uniform"
+  is_centered <- (!prior$type %in% c("flat", "uniform")) || is_weak_triggered
+
+  # Identify if there are predictors
+  X_tmp <- stats::model.matrix(nobars(formula), data[1, , drop = FALSE])
+  K <- ncol(X_tmp) - (if (attr(stats::terms(nobars(formula)), "intercept")) 1 else 0)
+
+  if (is_centered) {
+    int_name <- as.name("Intercept_c")
+    x_name <- as.name("X_c")
+  } else {
+    int_name <- as.name("Intercept")
+    x_name <- as.name("X")
+  }
+
+  if (K > 0) {
+    gen_block <- bquote({
+      eta <- .(int_name) + .(x_name) %*% b
+      mu <- exp(eta)
+      list(mu = mu)
+    })
+  } else {
+    gen_block <- bquote({
+      eta <- rep(.(int_name), N)
+      mu <- exp(eta)
+      list(mu = mu)
+    })
+  }
+
+  res <- rtmb_glmer(
+    formula = formula,
+    data = data,
+    family = "poisson",
+    prior = prior,
+    generate = gen_block, fixed = fixed,
+    ...
+  )
+
+  # Tag as loglinear
+  res$type <- "loglinear"
+  res$extra$obs_Y <- data[[response_var]]
+  fit <- res
+
+  # Tag as rtmb_loglinear for potential custom methods
+  class(fit) <- c("rtmb_loglinear", class(fit))
+
+  return(fit)
+}
