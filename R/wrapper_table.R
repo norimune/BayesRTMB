@@ -67,6 +67,8 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
       test_results = list(chisq = chisq_res, fisher = fisher_res)
     )
     class(res) <- c("rtmb_table", class(res))
+    res$type <- "table"
+    res$extra <- list(tab = tab, correct = correct)
     return(res)
   }
 
