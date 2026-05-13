@@ -49,6 +49,7 @@
     grad_V_diag[k, ] <- -rowSums((V %*% dH_k) * V)
   }
 
+  rel_tol <- 1e-10
   df_par <- rep(Inf, P)
   for (i in 1:P) {
     grad_vi <- grad_V_diag[, i]
@@ -56,11 +57,19 @@
 
     # Var(V_ii) = grad(V_ii)^T %*% V %*% grad(V_ii)
     var_vi <- as.numeric(t(grad_vi) %*% V %*% grad_vi)
-    if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V[i, i] > 0) {
+    
+    # Numerical stability: If variance of V_ii is extremely small relative to V_ii^2, 
+    # it means sensitivity is negligible, so DF should be Infinite.
+    if (!is.na(var_vi) && is.finite(var_vi) && var_vi > rel_tol * (V[i, i]^2) && V[i, i] > 0) {
       df_par[i] <- 2 * (V[i, i]^2) / var_vi
+    } else {
+      df_par[i] <- Inf
     }
   }
 
+  if (!is.null(max_df)) {
+    df_par[df_par > max_df] <- Inf
+  }
   df_par[!is.finite(df_par)] <- Inf
   df_par <- pmax(df_par, 2.1)
 

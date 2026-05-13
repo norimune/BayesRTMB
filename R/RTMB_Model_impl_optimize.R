@@ -11,18 +11,13 @@
   marginal_flag <- length(target_vars) > 0L
 
   dot_args <- list(...)
-  requested_contrasts <- dot_args$contrasts
+  requested_contrasts <- dot_args$contrasts %||% self$contrasts
   if (!is.null(requested_contrasts)) {
     old_contrasts <- options()$contrasts
     on.exit(options(contrasts = old_contrasts), add = TRUE)
     if (requested_contrasts == "sum") options(contrasts = c("contr.sum", "contr.poly"))
     else if (requested_contrasts == "treatment") options(contrasts = c("contr.treatment", "contr.poly"))
     self$contrasts <- requested_contrasts
-  } else if (!is.null(self$contrasts)) {
-    old_contrasts <- options()$contrasts
-    on.exit(options(contrasts = old_contrasts), add = TRUE)
-    if (self$contrasts == "sum") options(contrasts = c("contr.sum", "contr.poly"))
-    else if (self$contrasts == "treatment") options(contrasts = c("contr.treatment", "contr.poly"))
   }
 
   # Delegate to the corrected apply_constraints
@@ -38,79 +33,29 @@
     ))
   }
 
-  dot_args <- list(...)
-  requested_contrasts <- dot_args$contrasts
+  if (se_method == "sampling") se_sampling <- TRUE else se_sampling <- FALSE
 
-  ci_method <- se_method
-  if (ci_method == "sampling") se_sampling <- TRUE else se_sampling <- FALSE
+  # Resolve DF settings using helper
+  df_settings <- .resolve_optimize_df_settings(df_method, marginal_flag, se_method, marginal)
+  auto_df <- df_settings$auto_df
+  show_df <- df_settings$show_df
+  df_t <- df_settings$df_t
+  df_method_l <- df_settings$df_method_norm
 
-  auto_df <- FALSE
-  df_t <- Inf
-
-  if (identical(se_method, "none")) {
-    auto_df <- FALSE
-    show_df <- FALSE
-    df_t <- Inf
-  } else if (is.numeric(df_method)) {
-    if (marginal_flag) {
-      df_t <- df_method
-      show_df <- TRUE
-    } else {
-      df_t <- Inf
-      show_df <- FALSE
-    }
-  } else {
-    if (is.null(df_method)) df_method <- "auto"
-    df_method_l <- tolower(df_method)
-
-    if (identical(df_method_l, "auto")) {
-      if (marginal_flag) {
-        auto_df <- TRUE
-        show_df <- TRUE
-      } else {
-        df_t <- Inf
-        show_df <- FALSE
-      }
-    } else if (df_method_l %in% c("inf", "infinite", "none")) {
-      df_t <- Inf
-      show_df <- FALSE
-    } else if (df_method_l %in% c("satterthwaite")) {
-      if (marginal_flag) {
-        auto_df <- TRUE
-        show_df <- TRUE
-      } else {
-        df_t <- Inf
-        show_df <- FALSE
-      }
-    } else {
-      stop("Invalid df_method.", call. = FALSE)
-    }
-  }
-
-  # --- Warning for ignored df_method ---
-  if (se_enabled && !marginal_flag) {
-    if (is.numeric(df_method)) {
-      if (identical(marginal, "auto")) {
-        warning("Numeric `df_method` is ignored because `marginal = 'auto'` resolved to no parameters.", call. = FALSE)
-      } else if (identical(marginal, "none")) {
-        warning("Numeric `df_method` is ignored when `marginal = 'none'` in optimize(). Use `marginal` to enable finite-df adjustment.", call. = FALSE)
-      }
-    } else {
-      df_method_l <- tolower(df_method %||% "auto")
-      explicit_df <- !(df_method_l %in% c("auto", "inf", "infinite", "none"))
-      if (explicit_df) {
-        if (identical(marginal, "auto")) {
-          warning("`df_method` is ignored because `marginal = 'auto'` resolved to no parameters. Set `model$extra$marginal` or specify `marginal = c(...)` explicitly.", call. = FALSE)
-        } else if (identical(marginal, "none")) {
-          warning("`df_method` is ignored when `marginal = 'none'` in optimize(). Use `marginal` to enable finite-df adjustment, or set `df_method = 'none'`.", call. = FALSE)
-        }
-      }
-    }
-  } else if (!se_enabled) {
-    df_method_l <- if (is.character(df_method)) tolower(df_method) else df_method
-    explicit_df_requested <- is.numeric(df_method) || (is.character(df_method_l) && !(df_method_l %in% c("auto", "inf", "infinite", "none")))
+  # --- Warnings for ignored df_method ---
+  if (!se_enabled) {
+    explicit_df_requested <- is.numeric(df_method) || (is.character(df_method) && !(tolower(df_method) %in% c("auto", "inf", "infinite", "none")))
     if (explicit_df_requested) {
-      warning("`df_method` is ignored when `se_method = 'none'`.", call. = FALSE)
+      warning("df_method is ignored when se_method = 'none'.", call. = FALSE)
+    }
+  } else if (!marginal_flag) {
+    explicit_df_requested <- is.numeric(df_method) || (is.character(df_method) && !(tolower(df_method) %in% c("auto", "inf", "infinite", "none")))
+    if (explicit_df_requested) {
+      if (identical(marginal, "auto")) {
+        warning("df_method is ignored because marginal = 'auto' resolved to no parameters. Set model$extra$marginal or specify marginal = c(...) explicitly.", call. = FALSE)
+      } else if (identical(marginal, "none")) {
+        warning("df_method is ignored when marginal = 'none' in optimize(). Use marginal to enable finite-df adjustment, or set df_method = 'none'.", call. = FALSE)
+      }
     }
   }
 
@@ -151,63 +96,32 @@
   if (any(!is.infinite(df_t))) {
     est_dfs_all <- rep(df_t[1], L_u_total)
   } else if (auto_df) {
-    # Determine the actual method to use (Satterthwaite or BW)
-    # Default to Satterthwaite if 'auto' is specified and it's a marginalized model
-    use_satt <- (df_method_l == "satterthwaite") || 
-                (df_method_l == "auto" && marginal_flag)
-    
-    if (use_satt) {
-      satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = FALSE, return_sensitivities = TRUE)
-      if (is.list(satt_res)) { est_dfs_all <- satt_res$df; dH_list <- satt_res$sensitivities; V_opt <- satt_res$V } else est_dfs_all <- satt_res
-      dH_theta <- dH_list; V_theta <- V_opt
-      if (marginal_flag && length(ad_obj$env$random) > 0) {
-        full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]; target_ran_idx <- which(full_par_names_mapped %in% target_vars)
-        if (length(target_ran_idx) > 0) {
-          reml_res <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = FALSE, return_sensitivities = TRUE)
-          if (is.list(reml_res)) { active_idx <- idx_ran_full[target_ran_idx]; est_dfs_all[active_idx] <- reml_res$df; dH_beta <- reml_res$sensitivities; V_beta <- reml_res$V_beta }
-        }
-      }
-      ad_obj$fn(opt$par)
+    # Perform Satterthwaite approximation
+    satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = FALSE, return_sensitivities = TRUE)
+    if (is.list(satt_res)) {
+      est_dfs_all <- satt_res$df
+      dH_list <- satt_res$sensitivities
+      V_opt <- satt_res$V
     } else {
-      # BW logic
-      df_list_unc <- unconstrained_vector_to_list(rep(Inf, L_u_total), self$par_list); type <- self$type
-
-      raw_df <- if (!is.null(self$raw_data)) as.data.frame(self$raw_data) else NULL
-      N_obs <- 0
-      if (!is.null(raw_df)) {
-        N_obs <- nrow(raw_df)
-      } else if (!is.null(self$data)) {
-        if (!is.null(self$data$Y)) N_obs <- length(self$data$Y)
-        else if (!is.null(self$data$X) && is.matrix(self$data$X)) N_obs <- nrow(self$data$X)
-        else if (!is.null(self$data$Y1) && !is.null(self$data$Y2)) N_obs <- length(self$data$Y1) + length(self$data$Y2)
-        else if (!is.null(self$data$diffs)) N_obs <- length(self$data$diffs)
-        else {
-          for (item in self$data) {
-            if (is.numeric(item) && is.vector(item) && length(item) > 1) { N_obs <- length(item); break }
-          }
-        }
-      }
-      if (is.null(N_obs) || N_obs == 0) N_obs <- 0
-
-      if (type == "mediation" && !is.null(self$extra$df_map)) {
-        df_map <- self$extra$df_map
-        for (v in names(df_list_unc)) {
-          v_display <- sub("^b_c", "b", v)
-          if (v %in% names(df_map)) {
-            df_list_unc[[v]] <- rep(as.numeric(df_map[[v]]), length(df_list_unc[[v]]))
-          } else if (v_display %in% names(df_map)) {
-            df_list_unc[[v]] <- rep(as.numeric(df_map[[v_display]]), length(df_list_unc[[v]]))
-          }
-        }
-      } else if (type %in% c("lm", "ttest", "mediation")) {
-        K_fixed <- sum(sapply(target_vars, function(v) if (v %in% names(self$par_list)) self$par_list[[v]]$unc_length else 0))
-        for (v in target_vars) if (v %in% names(df_list_unc)) df_list_unc[[v]] <- rep(if (v == "delta") Inf else pmax(N_obs - K_fixed, 1), length(df_list_unc[[v]]))
-      } else if (type == "corr") {
-        if ("corr" %in% names(df_list_unc)) df_list_unc[["corr"]] <- rep(N_obs - 2, length(df_list_unc[["corr"]]))
-        for (v in c("mean", "sd")) if (v %in% names(df_list_unc)) df_list_unc[[v]] <- rep(N_obs - 1, length(df_list_unc[[v]]))
-      }
-      est_dfs_all <- unlist(df_list_unc, use.names = FALSE)
+      est_dfs_all <- satt_res
     }
+    dH_theta <- dH_list
+    V_theta <- V_opt
+
+    if (marginal_flag && length(ad_obj$env$random) > 0) {
+      full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]
+      target_ran_idx <- which(full_par_names_mapped %in% target_vars)
+      if (length(target_ran_idx) > 0) {
+        reml_res <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = FALSE, return_sensitivities = TRUE)
+        if (is.list(reml_res)) {
+          active_idx <- idx_ran_full[target_ran_idx]
+          est_dfs_all[active_idx] <- reml_res$df
+          dH_beta <- reml_res$sensitivities
+          V_beta <- reml_res$V_beta
+        }
+      }
+    }
+    ad_obj$fn(opt$par)
   } else {
     est_dfs_all <- rep(Inf, L_u_total)
   }
@@ -347,6 +261,9 @@
     if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
     flat_base <- unlist(base_out, use.names = FALSE); L_out <- length(flat_base); names_vec <- c()
     for (name in names(base_out)) names_vec <- c(names_vec, generate_flat_names(name, if (is.null(dim(base_out[[name]]))) length(base_out[[name]]) else dim(base_out[[name]]), self$par_names[[name]]))
+    
+    # 1. Delta method Jacobian calculation (needed for both SE and DF if not sampling)
+    J <- NULL
     if (se_enabled && (show_df || !se_sampling)) {
       J <- matrix(0, L_out, L_u_total)
       for (i in 1:L_u_total) {
@@ -362,20 +279,30 @@
       }
     }
 
+    # 2. Uncertainty (SE/CI)
     if (!se_enabled) {
       se_out <- low_out <- up_out <- rep(NA_real_, L_out)
     } else if (se_sampling) {
+      # FIXED Sampling Branch: match samples to specific output names
       samps_list <- if (is_generate) samps_gq else samps_tran
-      if (length(samps_list) == 0) {
+      target_names <- names(base_out)
+      samps_sub <- samps_list[target_names]
+      samps_sub <- samps_sub[!vapply(samps_sub, is.null, logical(1))]
+      
+      if (length(samps_sub) == 0L) {
         se_out <- low_out <- up_out <- rep(NA_real_, L_out)
       } else {
-        mat_all <- do.call(cbind, unname(samps_list))
-        se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
-        low_out <- apply(mat_all, 2, quantile, 0.025, na.rm = TRUE)
-        up_out <- apply(mat_all, 2, quantile, 0.975, na.rm = TRUE)
+        mat_all <- do.call(cbind, unname(samps_sub))
+        if (ncol(mat_all) != L_out) {
+          se_out <- low_out <- up_out <- rep(NA_real_, L_out)
+        } else {
+          se_out <- apply(mat_all, 2, stats::sd, na.rm = TRUE)
+          low_out <- apply(mat_all, 2, stats::quantile, 0.025, na.rm = TRUE)
+          up_out <- apply(mat_all, 2, stats::quantile, 0.975, na.rm = TRUE)
+        }
       }
     } else {
-      # delta method
+      # delta method SE
       se_out <- rep(NA_real_, L_out)
       smry_rep <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
       if (!is.null(smry_rep)) {
@@ -398,90 +325,31 @@
         up_out[j] <- tanh(z + 1.96 * se_z)
       }
     }
+    
+    # 3. Degrees of Freedom
+    derived_dfs <- rep(Inf, L_out)
+    if (show_df && se_enabled && auto_df && !is.null(dH_theta_in) && !is.null(V_theta_in) && !is.null(J)) {
+       # Use the new Satterthwaite delta method helper
+       derived_dfs <- .satterthwaite_df_delta(
+         J_full = J,
+         V_theta = V_theta_in,
+         dH_theta = dH_theta_in,
+         idx_theta_full = theta_idx_in %||% idx_fix_active,
+         V_beta = if (is_reml_in) V_opt_in else NULL,
+         dH_beta = if (is_reml_in) dH_list_in else NULL,
+         idx_beta_full = if (is_reml_in) active_idx_in else NULL,
+         max_df = NULL
+       )
+    } else if (show_df && !is.infinite(df_t[1])) {
+       derived_dfs <- rep(df_t[1], L_out)
+    }
+
     res_df <- data.frame(Estimate = flat_base, `Std. Error` = se_out, `Lower 95%` = low_out, `Upper 95%` = up_out, check.names = FALSE)
     if (show_df) {
-      derived_dfs <- rep(Inf, L_out)
-      if (!is.null(dH_list_in) && !is.null(V_opt_in)) {
-        if (!is_reml_in && length(dH_list_in) == ncol(J)) {
-          A <- J %*% V_opt_in; for (j in 1:L_out) { Aj <- A[j, , drop = FALSE]; grad_v <- sapply(dH_list_in, function(dh) -as.numeric(Aj %*% dh %*% t(Aj))); var_vj <- as.numeric(t(grad_v) %*% V_opt_in %*% grad_v); vj <- as.numeric(Aj %*% J[j, ]); if (var_vj > 1e-30 && vj > 0) derived_dfs[j] <- 2 * (vj^2) / var_vj }
-        } else if (is_reml_in) {
-          for (j in 1:L_out) {
-            var_vj <- 0
-            vj <- se_out[j]^2
-
-            if (!is.null(active_idx_in) &&
-                !is.null(dH_list_in) &&
-                !is.null(V_theta_in) &&
-                length(dH_list_in) > 0) {
-
-              Ja <- J[j, active_idx_in, drop = FALSE]
-              first_dh <- dH_list_in[[which(!vapply(dH_list_in, is.null, logical(1)))[1]]]
-
-              if (!is.null(first_dh) && ncol(Ja) == nrow(first_dh)) {
-                grad_beta <- numeric(length(dH_list_in))
-
-                for (k in seq_along(dH_list_in)) {
-                  dh <- dH_list_in[[k]]
-                  if (!is.null(dh) && ncol(Ja) == nrow(dh)) {
-                    grad_beta[k] <- as.numeric(Ja %*% dh %*% t(Ja))
-                  }
-                }
-
-                if (length(grad_beta) == nrow(V_theta_in)) {
-                  var_vj <- var_vj + as.numeric(t(grad_beta) %*% V_theta_in %*% grad_beta)
-                }
-              }
-            }
-
-            if (!is.null(dH_theta_in) &&
-                !is.null(V_theta_in) &&
-                length(dH_theta_in) > 0) {
-
-              theta_idx <- theta_idx_in
-              if (is.null(theta_idx)) {
-                theta_idx <- seq_len(nrow(V_theta_in))
-              }
-
-              Jt <- J[j, theta_idx, drop = FALSE]
-              first_dh <- dH_theta_in[[which(!vapply(dH_theta_in, is.null, logical(1)))[1]]]
-
-              if (!is.null(first_dh) && ncol(Jt) == nrow(first_dh)) {
-                At <- Jt %*% V_theta_in
-                grad_theta <- numeric(length(dH_theta_in))
-
-                for (k in seq_along(dH_theta_in)) {
-                  dh <- dH_theta_in[[k]]
-                  if (!is.null(dh) && ncol(At) == nrow(dh)) {
-                    grad_theta[k] <- -as.numeric(At %*% dh %*% t(At))
-                  }
-                }
-
-                if (length(grad_theta) == nrow(V_theta_in)) {
-                  var_vj <- var_vj + as.numeric(t(grad_theta) %*% V_theta_in %*% grad_theta)
-                }
-              }
-            }
-
-            if (!is.na(var_vj) && var_vj > 1e-30 && vj > 0) {
-              derived_dfs[j] <- 2 * (vj^2) / var_vj
-            }
-          }
-        }
-      } else if (identical(df_method, "bw")) {
-        for (j in 1:L_out) {
-          if (self$type == "corr") { if (grepl(corr_pat, names_vec[j])) derived_dfs[j] <- N_obs - 2 else derived_dfs[j] <- N_obs - 1 }
-          else { c_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]; if (length(c_dfs) > 0) derived_dfs[j] <- min(c_dfs) }
-        }
-      }
-
-      if (!is.null(df_map)) {
-        res_df$df <- derived_dfs
-        res_df <- .apply_df_map(res_df, df_map)
-      } else {
-        res_df$df <- derived_dfs
-      }
+      res_df$df <- derived_dfs
     }
-    rownames(res_df) <- names_vec; return(res_df)
+    rownames(res_df) <- names_vec
+    return(res_df)
   }
 
   df_transform <- build_derived_summary(self$transform, tran_list, FALSE, if (marginal_flag) dH_beta else dH_list, if (marginal_flag) V_beta else V_opt, marginal_flag, if (marginal_flag) active_idx else NULL, if (marginal_flag) dH_theta else NULL, if (marginal_flag) V_theta else NULL, if (marginal_flag) idx_fix_active else NULL)
@@ -513,8 +381,121 @@
     opt_history = opt_history, transform = tran_list, generate = gq_list,
     se_samples = if (is_se_sampling && se_enabled) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
     par_unc = unc_est_vec, ci_method = se_method, laplace = laplace,
-    map = target_map, vcov_unc = Cov_u, marginal_vars = ad_setup$use_random,
+    map = target_map,
+    marginal_vars = target_vars,
+    laplace_random_vars = ad_setup$use_random,
     idx_fix_active = idx_fix_active, show_df = show_df
   )
   return(res_obj)
+}
+
+.resolve_optimize_df_settings <- function(df_method, marginal_flag, se_method, marginal) {
+  if (is.null(df_method)) df_method <- "auto"
+  df_method_l <- if (is.character(df_method)) tolower(df_method) else "numeric"
+
+  if (identical(df_method_l, "bw")) {
+    stop(
+      "`df_method = 'bw'` is not supported in optimize(). ",
+      "Use `df_method = 'satterthwaite'`, 'auto', 'inf', or 'none'.",
+      call. = FALSE
+    )
+  }
+
+  auto_df <- FALSE
+  show_df <- FALSE
+  df_t <- Inf
+
+  if (identical(se_method, "none")) {
+    # se_method = "none" always disables finite-df
+  } else if (!marginal_flag) {
+    # No marginalization means no finite-df by default in MAP
+  } else if (is.numeric(df_method)) {
+    df_t <- as.numeric(df_method)
+    show_df <- TRUE
+  } else if (df_method_l %in% c("auto", "satterthwaite")) {
+    auto_df <- TRUE
+    show_df <- TRUE
+  } else if (df_method_l %in% c("inf", "infinite", "none")) {
+    # Keep defaults (Inf, FALSE)
+  } else {
+    stop("Invalid df_method.", call. = FALSE)
+  }
+
+  return(list(
+    auto_df = auto_df,
+    show_df = show_df,
+    df_t = df_t,
+    df_method_norm = if (is.numeric(df_method)) "numeric" else df_method_l
+  ))
+}
+
+.satterthwaite_df_delta <- function(J_full, V_theta, dH_theta, idx_theta_full, V_beta = NULL, dH_beta = NULL, idx_beta_full = NULL, max_df = NULL) {
+  L_out <- nrow(J_full)
+  df_out <- rep(Inf, L_out)
+  rel_tol <- 1e-10
+
+  # Optimized block (theta)
+  j_theta <- J_full[, idx_theta_full, drop = FALSE]
+  P_theta <- length(idx_theta_full)
+  
+  # Optional marginalized block (beta)
+  has_beta <- !is.null(V_beta) && is.matrix(V_beta) && 
+              !is.null(dH_beta) && is.list(dH_beta) &&
+              !is.null(idx_beta_full) && length(idx_beta_full) > 0L
+
+  if (has_beta) {
+    j_beta <- J_full[, idx_beta_full, drop = FALSE]
+    P_beta <- length(idx_beta_full)
+  }
+
+  for (i in 1:L_out) {
+    ji_t <- j_theta[i, , drop = FALSE]
+    v_i <- as.numeric(ji_t %*% V_theta %*% t(ji_t))
+    
+    grad_v <- rep(0, P_theta)
+    for (k in 1:P_theta) {
+      dh <- dH_theta[[k]]
+      
+      # Guard against NULL or dimension mismatch in numerical sensitivities
+      if (is.null(dh)) next
+      if (!is.matrix(dh)) next
+      if (nrow(dh) != nrow(V_theta) || ncol(dh) != ncol(V_theta)) next
+
+      # dV_theta/dtheta_k = -V_theta %*% dh %*% V_theta
+      dV_k <- - V_theta %*% dh %*% V_theta
+      grad_v[k] <- as.numeric(ji_t %*% dV_k %*% t(ji_t))
+    }
+    
+    if (has_beta) {
+      ji_b <- j_beta[i, , drop = FALSE]
+      v_i <- v_i + as.numeric(ji_b %*% V_beta %*% t(ji_b))
+      
+      for (k in 1:P_theta) {
+         # dV_beta/dtheta_k is directly provided in dH_beta
+         dV_b_k <- dH_beta[[k]]
+         
+         if (is.null(dV_b_k)) next
+         if (!is.matrix(dV_b_k)) next
+         if (nrow(dV_b_k) != nrow(V_beta) || ncol(dV_b_k) != ncol(V_beta)) next
+
+         grad_v[k] <- grad_v[k] + as.numeric(ji_b %*% dV_b_k %*% t(ji_b))
+      }
+    }
+
+    if (all(abs(grad_v) < 1e-30)) next
+    
+    var_vi <- as.numeric(t(grad_v) %*% V_theta %*% grad_v)
+    
+    # Numerical stability: If variance of v_i is extremely small relative to v_i^2, 
+    # it means sensitivity is negligible, so DF should be Infinite.
+    if (!is.na(var_vi) && is.finite(var_vi) && var_vi > rel_tol * (v_i^2) && v_i > 0) {
+      df_out[i] <- 2 * (v_i^2) / var_vi
+    }
+  }
+
+  if (!is.null(max_df)) df_out[df_out > max_df] <- Inf
+  df_out[!is.finite(df_out)] <- Inf
+  df_out <- pmax(df_out, 2.1)
+  
+  return(df_out)
 }

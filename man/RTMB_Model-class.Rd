@@ -394,8 +394,7 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
   method = "BFGS",
   map = NULL,
   fixed = NULL,
-  se = TRUE,
-  se_method = c("wald", "sampling"),
+  se_method = c("wald", "sampling", "none"),
   num_samples = 1000,
   seed = 123,
   marginal = "none",
@@ -424,15 +423,18 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
 
 \item{\code{fixed}}{Optional list specifying parameter values to fix.}
 
-\item{\code{se}}{Logical; whether to estimate standard errors and confidence intervals. Default is TRUE.}
-
-\item{\code{se_method}}{Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based).}
+\item{\code{se_method}}{Character; method for uncertainty estimation.
+\itemize{
+  \item \code{"wald"}: Wald standard errors and Wald confidence intervals.
+  \item \code{"sampling"}: Simulation-based error propagation.
+  \item \code{"none"}: Do not compute standard errors, confidence intervals, or degrees of freedom.
+}}
 
 \item{\code{num_samples}}{Integer; number of samples to draw when se_method is "sampling". Default is 1000.}
 
 \item{\code{seed}}{Integer; random seed for sampling.}
 
-\item{\code{marginal}}{Character vector of model parameters to marginalize out via Laplace approximation.
+\item{\code{marginal}}{Character vector or "auto" or "none"; specifies which parameters to marginalize out via Laplace approximation.
 \itemize{
   \item \code{"none"} (default): No additional marginalization.
   \item \code{"auto"}: Uses variables specified by the model wrapper (e.g., fixed effects in lmer).
@@ -440,11 +442,13 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
   \item \code{character vector}: Specific parameter names to marginalize.
 }}
 
-\item{\code{df_method}}{Character; Method for calculating degrees of freedom (only active if marginal is not "none"). Default is "auto".
+\item{\code{df_method}}{Character or numeric; method for finite degrees-of-freedom approximation.
+Used only when `marginal` resolves to one or more parameters and `se_method != "none"`.
 \itemize{
-  \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for marginalization).
+  \item \code{"auto"}: Uses Satterthwaite approximation when marginalization is active.
   \item \code{"satterthwaite"}: Satterthwaite approximation.
-  \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+  \item \code{"inf"} or \code{"none"}: Use infinite degrees of freedom.
+  \item numeric: Use the supplied fixed degrees of freedom.
 }}
 
 \item{\code{view}}{Character vector of parameter names to prioritize in summary display.}
@@ -454,7 +458,7 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A fitted `MAP_Fit` or `Classic_Fit` object.
+A fitted `MAP_Fit` object.
 }
 }
 \if{html}{\out{<hr>}}

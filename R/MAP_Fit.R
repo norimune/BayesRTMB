@@ -23,7 +23,8 @@
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field vcov_unc Variance-covariance matrix of parameters in unconstrained space.
 #' @field map List; the parameter mapping used.
-#' @field marginal_vars Character vector of parameter names that were marginalized (integrated out).
+#' @field marginal_vars Character vector of parameter names requested through `optimize(marginal = ...)`.
+#' @field laplace_random_vars Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.
 #' @field idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
 #' @field show_df Logical; whether to display degrees of freedom in the summary output.
 #'
@@ -55,6 +56,7 @@ MAP_Fit <- R6::R6Class(
     map            = NULL,
     vcov_unc       = NULL,
     marginal_vars  = NULL,
+    laplace_random_vars = NULL,
     idx_fix_active = NULL,
     show_df        = TRUE,
 
@@ -142,14 +144,16 @@ MAP_Fit <- R6::R6Class(
     #' @param laplace Logical; whether Laplace approximation was used.
     #' @param vcov_unc Variance-covariance matrix of parameters in unconstrained space.
     #' @param map List; the parameter mapping used.
-    #' @param marginal_vars Character vector of parameter names that were marginalized (integrated out).
+    #' @param marginal_vars Character vector of parameter names requested through `optimize(marginal = ...)`.
+    #' @param laplace_random_vars Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.
     #' @param idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
     #' @param show_df Logical; whether to display degrees of freedom in the summary output. Default is TRUE.
     initialize = function(model, par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, 
-                          vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL, 
-                          marginal_vars = NULL, idx_fix_active = NULL, show_df = TRUE) {
+                           vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL, 
+                           marginal_vars = NULL, laplace_random_vars = NULL,
+                           idx_fix_active = NULL, show_df = TRUE) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -170,8 +174,9 @@ MAP_Fit <- R6::R6Class(
       self$vcov_unc <- vcov_unc
       self$laplace <- laplace
       self$map <- map
-      self$marginal_vars <- marginal_vars
-      self$idx_fix_active <- idx_fix_active
+       self$marginal_vars <- marginal_vars
+       self$laplace_random_vars <- laplace_random_vars
+       self$idx_fix_active <- idx_fix_active
       self$show_df <- show_df
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
@@ -762,9 +767,12 @@ To profile these parameters, please re-run optimize() without including them in 
           }
       }
       
+      # Use stored laplace_random_vars to ensure all random components are integrated in the re-built object
+      profile_random_vars <- self$laplace_random_vars %||% self$marginal_vars
+      
       ad_setup <- self$model$build_ad_obj(init = self$par, laplace = self$laplace, 
                                           map = self$map, jacobian_target = jacobian,
-                                          .marginal_vars = self$marginal_vars)
+                                          .marginal_vars = profile_random_vars)
       ad_obj <- ad_setup$ad_obj
       
       # Sync internal state
