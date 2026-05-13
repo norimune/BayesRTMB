@@ -24,6 +24,8 @@
 #' @field vcov_unc Variance-covariance matrix of parameters in unconstrained space.
 #' @field map List; the parameter mapping used.
 #' @field marginal_vars Character vector of parameter names that were marginalized (integrated out).
+#' @field idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
+#' @field show_df Logical; whether to display degrees of freedom in the summary output.
 #'
 #' @export
 MAP_Fit <- R6::R6Class(
@@ -53,6 +55,8 @@ MAP_Fit <- R6::R6Class(
     map            = NULL,
     vcov_unc       = NULL,
     marginal_vars  = NULL,
+    idx_fix_active = NULL,
+    show_df        = TRUE,
 
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
@@ -139,10 +143,13 @@ MAP_Fit <- R6::R6Class(
     #' @param vcov_unc Variance-covariance matrix of parameters in unconstrained space.
     #' @param map List; the parameter mapping used.
     #' @param marginal_vars Character vector of parameter names that were marginalized (integrated out).
+    #' @param idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
+    #' @param show_df Logical; whether to display degrees of freedom in the summary output. Default is TRUE.
     initialize = function(model, par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
                           random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, 
-                          vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL, marginal_vars = NULL) {
+                          vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL, 
+                          marginal_vars = NULL, idx_fix_active = NULL, show_df = TRUE) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -164,6 +171,8 @@ MAP_Fit <- R6::R6Class(
       self$laplace <- laplace
       self$map <- map
       self$marginal_vars <- marginal_vars
+      self$idx_fix_active <- idx_fix_active
+      self$show_df <- show_df
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -390,6 +399,12 @@ MAP_Fit <- R6::R6Class(
       df_display <- df_display[, c(order_to_use, other_names), drop = FALSE]
 
       out_df <- data.frame(variable = rownames(df_display), df_display, check.names = FALSE, stringsAsFactors = FALSE)
+      
+      # --- Hide DF column if requested ---
+      if (!isTRUE(self$show_df) && "df" %in% names(out_df)) {
+         out_df$df <- NULL
+      }
+      
       rownames(out_df) <- NULL
 
       if (!is.null(max_rows) && nrow(out_df) > max_rows) {
@@ -742,7 +757,7 @@ MAP_Fit <- R6::R6Class(
           conflicting_vars <- intersect(target_base_names, self$marginal_vars)
           if (length(conflicting_vars) > 0) {
               stop(sprintf("Parameter(s) '%s' are marginalized (integrated out) and cannot be profiled. 
-To profile these parameters, please re-run optimize() without including them in 'empirical'.", 
+To profile these parameters, please re-run optimize() without including them in 'marginal'.", 
                            paste(conflicting_vars, collapse = ", ")), call. = FALSE)
           }
       }
@@ -794,32 +809,11 @@ To profile these parameters, please re-run optimize() without including them in 
       colnames(res_mat) <- c(low_label, up_label)
       rownames(res_mat) <- target_names
 
-      # Reconstruct idx_fix_active to map between active parameters and full unconstrained vector
-      idx_ran <- ad_obj$env$random
-      if (is.null(idx_ran)) idx_ran <- integer(0)
-      idx_fix_active <- integer(0)
-      factor_levels_seen <- list()
-      idx_curr <- 1
-      for (name in names(self$model$par_list)) {
-        L_u <- self$model$par_list[[name]]$unc_length
-        if (L_u > 0) {
-          map_f <- if (!is.null(self$map[[name]])) self$map[[name]] else NULL
-          for (j in 1:L_u) {
-            pos_last <- idx_curr + j - 1
-            if (pos_last %in% idx_ran) next
-            if (!is.null(map_f) && is.na(map_f[j])) next
-            if (!is.null(map_f)) {
-              lvl <- as.character(map_f[j])
-              if (!(lvl %in% names(factor_levels_seen))) {
-                factor_levels_seen[[lvl]] <- TRUE
-                idx_fix_active <- c(idx_fix_active, pos_last)
-              }
-            } else {
-              idx_fix_active <- c(idx_fix_active, pos_last)
-            }
-          }
-          idx_curr <- idx_curr + L_u
-        }
+      # Use the stored idx_fix_active for reliable index mapping
+      idx_fix_active <- self$idx_fix_active
+      
+      if (is.null(idx_fix_active)) {
+        stop("idx_fix_active not found in MAP_Fit object. Profile calculation unavailable.")
       }
 
       prof_list <- list()

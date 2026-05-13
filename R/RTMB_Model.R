@@ -287,10 +287,7 @@ RTMB_Model <- R6::R6Class(
           any(!is.na(m))
         }, logical(1))]
         
-        target_map <- lapply(target_map, function(m) {
-          if (is.null(m)) return(NULL)
-          factor(as.character(m))
-        })
+        target_map <- lapply(target_map, private$.normalize_map_factor)
       }
 
       use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
@@ -349,64 +346,104 @@ RTMB_Model <- R6::R6Class(
     #' @param se_method Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based).
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
     #' @param seed Integer; random seed for sampling.
-    #' @param df Degrees of freedom for the t-distribution used in confidence intervals and summary.
-    #' @param df_method Character; Method for calculating degrees of freedom ("bw", "satterthwaite", "Inf").
-    #' @param empirical Logical or character; whether to use empirical Bayes / REML.
-    #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is FALSE.
-    #' @param marginal Character vector of parameters to marginalize out (random effects).
+    #' @param marginal Character vector of model parameters to marginalize out via Laplace approximation.
+    #' \itemize{
+    #'   \item \code{"none"} (default): No additional marginalization.
+    #'   \item \code{"auto"}: Uses variables specified by the model wrapper (e.g., fixed effects in lmer).
+    #'   \item \code{"all"}: Marginalize all parameters (advanced use).
+    #'   \item \code{character vector}: Specific parameter names to marginalize.
+    #' }
+    #' @param df_method Character; Method for calculating degrees of freedom (only active if marginal is not "none"). Default is "auto".
+    #' \itemize{
+    #'   \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for marginalization).
+    #'   \item \code{"satterthwaite"}: Satterthwaite approximation.
+    #'   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+    #' }
     #' @param view Character vector of parameter names to prioritize in summary display.
-    #' @param is_classic Logical; Internal use.
-    #' @param target_vars Character vector; Internal use.
-    #' @param .return_object Character; Internal use.
-    #' @param ci_method Alias for `se_method`.
-    #' @param se_sampling Alias for `se_method = "sampling"`.
-    #' @param df_pars Alias for `marginal`.
-    #' @param views Alias for `view`.
-    #' @param ... Additional arguments passed to Classic_Fit constructor.
+    #' @param ... Additional arguments.
     #' @return A fitted `MAP_Fit` or `Classic_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL, fixed = NULL,
                         se = TRUE, se_method = c("wald", "sampling"), 
                         num_samples = 1000, seed = 123,
-                        df = NULL, df_method = NULL, 
-                        empirical = FALSE, REML = FALSE, marginal = "auto", 
-                        view = NULL, 
-                        # --- Internal and compatibility aliases ---
-                        is_classic = FALSE, target_vars = NULL, .return_object = "MAP",
-                        ci_method = NULL, se_sampling = NULL, df_pars = NULL, views = NULL, ...) {
-      .optimize_impl(self, private, laplace, init, num_estimate, control,
-                     optimizer, method, map, fixed, se, se_method, 
-                     num_samples, seed, df, df_method, 
-                     empirical, REML, marginal, view, 
-                     is_classic, target_vars, .return_object,
-                     ci_method, se_sampling, df_pars, views, ...)
+                        marginal = "none", df_method = "auto", view = NULL, ...) {
+      
+      # --- Strict check for deprecated arguments ---
+      dot_args <- list(...)
+      reserved_old_args <- c(
+        "empirical", "REML", "df", "df_pars",
+        "target_vars", "is_classic", ".return_object",
+        "ci_method", "se_sampling", "views"
+      )
+      bad_args <- intersect(names(dot_args), reserved_old_args)
+      if (length(bad_args) > 0L) {
+        stop(
+          "Unsupported argument(s) in optimize(): ",
+          paste(bad_args, collapse = ", "), "\n",
+          "Use `marginal` for Laplace marginalization. ",
+          "`empirical`, `REML`, and `df` are no longer optimize() arguments.",
+          call. = FALSE
+        )
+      }
+
+      .inference_pipeline(self, private, laplace, init, num_estimate, control,
+                         optimizer, method, map, fixed, se, se_method, 
+                         num_samples, seed, marginal, view, 
+                         is_classic = FALSE, df_method = df_method, 
+                         .return_object = "MAP", ...)
     },
 
 
-    # 3.5. Classic Frequentist Inference Method
     #' @description Perform frequentist inference (REML/ML) with model-appropriate degrees of freedom.
-    #' @param df Numeric/Inf for specific degrees of freedom. If NULL (default), determined by `df_method`.
-    #' @param marginal Character vector of parameters to be treated as fixed effects for REML calculation. Default is "auto" (uses wrapper-defined targets if available). Use "none" to disable.
-    #' @param df_pars Alias for `marginal` (for backward compatibility).
-    #' @param REML Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.
-    #' @param view Character vector of parameters to prioritize in the summary output.
-    #' @param views Alias for \code{view}.
-    #' @param map Optional list specifying parameters to fix.
-    #' @param fixed Optional list specifying parameter values to fix.
-    #' @param df_method Character; Method for calculating degrees of freedom. Options:
+    #' @param df_method Character; Method for calculating degrees of freedom. Default is "auto".
     #' \itemize{
-    #'   \item \code{"bw"} (default): Between-Within method for simple models, automatically switches to Satterthwaite for mixed models.
-    #'   \item \code{"satterthwaite"}: Satterthwaite approximation (computationally intensive).
+    #'   \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for mixed models).
+    #'   \item \code{"bw"}: Between-Within method (fast, for simple designs).
+    #'   \item \code{"satterthwaite"}: Satterthwaite approximation (robust for mixed models).
     #'   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
     #' }
-    #' @param ... Additional arguments passed to $optimize().
+    #' @param se_method Character; The method for CI estimation: "wald" (default) or "sampling".
+    #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
+    #' @param seed Integer; random seed for sampling.
+    #' @param view Character vector of parameters to prioritize in the summary output.
+    #' @param map Optional list specifying parameters to fix.
+    #' @param fixed Optional list specifying parameter values to fix.
+    #' @param ... Additional arguments.
     #' @return A `Classic_Fit` object.
-    classic = function(df = NULL, df_method = NULL, REML = TRUE, marginal = "auto", 
-                       view = NULL, map = NULL, fixed = NULL, 
-                       # --- Compatibility aliases ---
-                       df_pars = NULL, views = NULL, ...) {
-      .classic_impl(self, private, df, df_method, REML, marginal, 
-                    view, map, fixed, df_pars, views, ...)
+    classic = function(df_method = "auto", se_method = c("wald", "sampling"),
+                       num_samples = 1000, seed = 123,
+                       view = NULL, map = NULL, fixed = NULL, ...) {
+      
+      # --- Internal determination of REML and marginalization ---
+      # REML is standard for mixed models and t-tests in this package.
+      REML_val <- isTRUE(self$type %in% c("lmer", "glmer", "ttest"))
+      marginal_val <- "auto"
+
+      # --- Check for unsupported/deprecated arguments ---
+      dot_args <- list(...)
+      reserved_classic_args <- c(
+        "df", "REML", "marginal", "df_pars", "views",
+        "empirical", "target_vars", "is_classic", ".return_object",
+        "ci_method", "se_sampling"
+      )
+      bad_args <- intersect(names(dot_args), reserved_classic_args)
+      if (length(bad_args) > 0L) {
+        stop(
+          "Unsupported argument(s) in classic(): ",
+          paste(bad_args, collapse = ", "), "\n",
+          "Use `df_method` for degrees of freedom and `view` for display selection.",
+          call. = FALSE
+        )
+      }
+
+      .inference_pipeline(self, private, 
+                         laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
+                         optimizer = "nlminb", method = "BFGS", map = map, fixed = fixed, 
+                         se = TRUE, se_method = se_method, 
+                         num_samples = num_samples, seed = seed,
+                         marginal = marginal_val, view = view,
+                         is_classic = TRUE, df = NULL, df_method = df_method, 
+                         REML = REML_val, .return_object = "Classic", ...)
     },
 
     # 4. MCMC NUTS Sampling Method
@@ -580,6 +617,334 @@ RTMB_Model <- R6::R6Class(
   ),
 
   private = list(
+    # --- Internal helper: merge self$map and user supplied map consistently ---
+    .merge_map_arg = function(map = NULL) {
+      if (is.null(self$map) && is.null(map)) return(NULL)
+      if (is.null(self$map)) return(as.list(map))
+      if (is.null(map)) return(self$map)
+      utils::modifyList(as.list(self$map), as.list(map))
+    },
+
+    # --- Internal helper: ensure map factor levels follow first-seen order ---
+    .normalize_map_factor = function(m) {
+      if (is.null(m)) return(NULL)
+      vals <- as.character(m)
+      factor(vals, levels = unique(vals[!is.na(vals)]))
+    },
+
+    # --- Internal helper: compute full unconstrained indices for active fixed and random parameters ---
+    .compute_rtmb_index_map = function(ad_obj, target_map = NULL) {
+      idx_ran <- ad_obj$env$random
+      if (is.null(idx_ran)) idx_ran <- integer(0)
+
+      idx_fix_active <- integer(0)
+      idx_ran_full <- integer(0)
+      factor_levels_seen <- list()
+
+      opt_par_curr <- 1L
+      idx_mapped_curr <- 1L
+      idx_full_curr <- 1L
+
+      for (name in names(self$par_list)) {
+        L_u <- self$par_list[[name]]$unc_length
+        if (L_u > 0) {
+          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+          for (i in seq_len(L_u)) {
+            pos_full <- idx_full_curr + i - 1L
+            if (!is.null(map_f) && is.na(map_f[i])) next
+
+            if (idx_mapped_curr %in% idx_ran) {
+              idx_ran_full <- c(idx_ran_full, pos_full)
+              idx_mapped_curr <- idx_mapped_curr + 1L
+              next
+            }
+
+            if (!is.null(map_f)) {
+              lvl <- as.character(map_f[i])
+              if (!(lvl %in% names(factor_levels_seen))) {
+                factor_levels_seen[[lvl]] <- opt_par_curr
+                idx_fix_active <- c(idx_fix_active, pos_full)
+                opt_par_curr <- opt_par_curr + 1L
+              }
+            } else {
+              idx_fix_active <- c(idx_fix_active, pos_full)
+              opt_par_curr <- opt_par_curr + 1L
+            }
+            idx_mapped_curr <- idx_mapped_curr + 1L
+          }
+          idx_full_curr <- idx_full_curr + L_u
+        }
+      }
+
+      list(idx_fix_active = idx_fix_active, idx_ran_full = idx_ran_full, 
+           idx_ran = idx_ran, factor_levels_seen = factor_levels_seen)
+    },
+
+    # --- Internal helper: copy SEs to duplicated mapped parameters ---
+    .copy_mapped_se = function(unc_se_vec, se_fix, target_map, factor_levels_seen, idx_ran_full) {
+      idx_curr <- 1L
+      for (name in names(self$par_list)) {
+        L_u <- self$par_list[[name]]$unc_length
+        if (L_u > 0) {
+          map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+          for (i in seq_len(L_u)) {
+            pos_full <- idx_curr + i - 1L
+            if (pos_full %in% idx_ran_full) next
+            if (!is.null(map_f) && !is.na(map_f[i])) {
+              lvl <- as.character(map_f[i])
+              mapped_opt_idx <- factor_levels_seen[[lvl]]
+              if (!is.null(mapped_opt_idx) && mapped_opt_idx <= length(se_fix)) {
+                unc_se_vec[pos_full] <- se_fix[mapped_opt_idx]
+              }
+            }
+          }
+          idx_curr <- idx_curr + L_u
+        }
+      }
+      unc_se_vec
+    },
+
+    # --- Internal helper: resolve marginalization targets ---
+    .resolve_marginal_vars = function(marginal = "none") {
+      if (is.null(marginal)) {
+        marginal <- "none"
+      }
+
+      if (!is.character(marginal)) {
+        stop(
+          "`marginal` must be 'none', 'auto', 'all', or a character vector of parameter names.",
+          call. = FALSE
+        )
+      }
+
+      if (length(marginal) == 0L) {
+        return(character(0))
+      }
+
+      if (length(marginal) == 1L && identical(marginal, "none")) {
+        return(character(0))
+      }
+
+      if (length(marginal) == 1L && identical(marginal, "auto")) {
+        target_vars <- self$extra$marginal
+
+        if (is.null(target_vars) || length(target_vars) == 0L) {
+          return(character(0))
+        }
+
+        if (!is.character(target_vars)) {
+          stop(
+            "Wrapper-defined marginal variables must be a character vector.",
+            call. = FALSE
+          )
+        }
+
+        missing <- setdiff(target_vars, names(self$par_list))
+        if (length(missing) > 0L) {
+          stop(
+            "Wrapper-defined marginal variables are not model parameters: ",
+            paste(missing, collapse = ", "), "\n",
+            "`marginal` can only contain variables declared in the parameters block.",
+            call. = FALSE
+          )
+        }
+
+        return(unique(target_vars))
+      }
+
+      if (length(marginal) == 1L && identical(marginal, "all")) {
+        return(names(self$par_list))
+      }
+
+      reserved <- c("none", "auto", "all")
+      if (any(marginal %in% reserved)) {
+        stop(
+          "`marginal` must be exactly one of 'none', 'auto', 'all', ",
+          "or a character vector of parameter names. Do not mix reserved keywords with parameter names.",
+          call. = FALSE
+        )
+      }
+
+      target_vars <- unique(marginal)
+      missing <- setdiff(target_vars, names(self$par_list))
+
+      if (length(missing) > 0L) {
+        stop(
+          "The following variables specified in `marginal` are not model parameters: ",
+          paste(missing, collapse = ", "), "\n",
+          "`marginal` can only contain variables declared in the parameters block.",
+          call. = FALSE
+        )
+      }
+
+      target_vars
+    },
+
+    # --- Internal helper: temporary marginal classification by changing random flags ---
+    .with_marginal_par_list = function(target_vars = NULL, map = NULL) {
+      original_par_list <- self$par_list
+      modified_par_list <- self$par_list
+      target_map <- private$.merge_map_arg(map)
+
+      for (name in names(modified_par_list)) {
+        is_mapped_out <- !is.null(target_map[[name]]) && all(is.na(target_map[[name]]))
+        is_target <- !is.null(target_vars) && name %in% target_vars
+        is_random_original <- isTRUE(modified_par_list[[name]]$random)
+
+        if (!is_mapped_out && (is_target || is_random_original)) {
+          modified_par_list[[name]]$random <- TRUE
+        } else {
+          modified_par_list[[name]]$random <- FALSE
+        }
+      }
+
+      list(original = original_par_list, modified = modified_par_list)
+    },
+
+    # --- Low-level RTMB fitting engine shared by optimize() and classic() ---
+    .fit_rtmb = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
+                         optimizer = "nlminb", method = "BFGS", map = NULL, se = TRUE,
+                         reml = FALSE, target_vars = NULL, jacobian_target = NULL,
+                         apply_prior_correction = TRUE,
+                         verbose = !getOption("BayesRTMB.silent", FALSE)) {
+
+      if (is.null(control)) control <- list()
+      optimizer <- match.arg(optimizer, c("nlminb", "optim"))
+      if (!is.numeric(num_estimate) || length(num_estimate) != 1L || num_estimate < 1) stop("num_estimate must be a positive integer.", call. = FALSE)
+
+      reml_state <- NULL
+      if (isTRUE(reml)) {
+        reml_state <- private$.with_marginal_par_list(target_vars = target_vars, map = map)
+        self$par_list <- reml_state$modified
+        on.exit({ self$par_list <- reml_state$original }, add = TRUE)
+        laplace <- TRUE
+      }
+
+      # Decide jacobian target after potential REML -> laplace conversion
+      if (is.null(jacobian_target)) jacobian_target <- if (isTRUE(laplace)) "random" else "none"
+      jacobian_target <- match.arg(jacobian_target, c("all", "random", "none"))
+
+      target_map <- private$.merge_map_arg(map)
+      if (!is.null(target_map)) {
+        target_map <- lapply(target_map, private$.normalize_map_factor)
+      }
+
+      if (verbose) cat("Starting RTMB optimization...\n")
+
+      ad_setup <- if (isTRUE(self$silent) || getOption("BayesRTMB.silent", FALSE)) {
+        suppressMessages(suppressWarnings(self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jacobian_target, map = map)))
+      } else {
+        self$build_ad_obj(init = init, laplace = laplace, jacobian_target = jacobian_target, map = map)
+      }
+      base_ad_obj <- ad_setup$ad_obj
+
+      opt_results <- vector("list", num_estimate); obj_vals <- rep(NA_real_, num_estimate)
+      conv_codes <- rep(NA_integer_, num_estimate); messages <- rep(NA_character_, num_estimate)
+
+      for (i in seq_len(num_estimate)) {
+        if (num_estimate > 1L && verbose) cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
+        res <- tryCatch({
+          if (i > 1L && is.null(init) && length(base_ad_obj$par) > 0L) base_ad_obj$par <- base_ad_obj$par + rnorm(length(base_ad_obj$par), 0, 0.5)
+          if (length(base_ad_obj$par) == 0L) {
+            opt <- list(par = numeric(0), objective = base_ad_obj$fn(numeric(0)), convergence = 0L, message = "all parameters fixed")
+          } else if (optimizer == "nlminb") {
+            if (is.null(control$iter.max)) control$iter.max <- 5000
+            opt <- suppressWarnings(nlminb(base_ad_obj$par, base_ad_obj$fn, base_ad_obj$gr, control = control))
+          } else {
+            if (is.null(control$maxit)) control$maxit <- 5000
+            opt <- optim(base_ad_obj$par, base_ad_obj$fn, base_ad_obj$gr, method = method, control = control); opt$objective <- opt$value
+          }
+          list(opt = opt, ad_obj = base_ad_obj)
+        }, error = function(e) { warning("Optimization error: ", e$message, call. = FALSE); NULL })
+
+        if (!is.null(res)) {
+          opt_results[[i]] <- res; obj_vals[i] <- res$opt$objective
+          conv_codes[i] <- res$opt$convergence; messages[i] <- if (!is.null(res$opt$message)) as.character(res$opt$message) else NA_character_
+        }
+      }
+      if (verbose) cat("\n")
+      valid_idx <- which(!is.na(obj_vals))
+      if (length(valid_idx) == 0L) stop("All optimization attempts failed.", call. = FALSE)
+      best_idx <- valid_idx[which.min(obj_vals[valid_idx])]; best_res <- opt_results[[best_idx]]
+
+      if (isTRUE(apply_prior_correction) && !is.na(self$prior_correction) && self$prior_correction != 0) {
+        for (i in seq_along(obj_vals)) if (!is.na(obj_vals[i])) obj_vals[i] <- obj_vals[i] + self$prior_correction
+        best_res$opt$objective <- best_res$opt$objective + self$prior_correction
+      }
+
+      ad_obj <- best_res$ad_obj; opt <- best_res$opt; ad_obj$fn(opt$par)
+
+      opt_history <- data.frame(
+        estimate = seq_len(num_estimate),
+        objective = obj_vals,
+        code = conv_codes,
+        message = messages,
+        stringsAsFactors = FALSE
+      )
+
+      sd_rep <- if (isTRUE(se)) {
+        tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = isTRUE(reml)), warning = function(w) NULL, error = function(e) NULL)
+      } else NULL
+
+      unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE); L_u_total <- length(unc_est_vec)
+      index_map <- private$.compute_rtmb_index_map(ad_obj, target_map)
+      idx_fix_active <- index_map$idx_fix_active; idx_ran_full <- index_map$idx_ran_full
+      if (length(opt$par) > 0L && length(idx_fix_active) == length(opt$par)) unc_est_vec[idx_fix_active] <- opt$par
+
+      if (isTRUE(laplace) && !is.null(sd_rep) && length(idx_ran_full) > 0L) {
+        smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL)
+        if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran_full)) unc_est_vec[idx_ran_full] <- smry_ran[, "Estimate"]
+      }
+
+      unc_se_vec <- rep(0, L_u_total); Cov_u <- matrix(0, L_u_total, L_u_total); fallback_needed <- FALSE
+      if (isTRUE(se) && !is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
+        se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
+        if (!isTRUE(sd_rep$pdHess) || any(!is.finite(se_fix)) || length(idx_fix_active) != length(se_fix)) fallback_needed <- TRUE
+        else {
+          unc_se_vec[idx_fix_active] <- se_fix; Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
+          unc_se_vec <- private$.copy_mapped_se(unc_se_vec, se_fix, target_map, index_map$factor_levels_seen, idx_ran_full)
+        }
+      } else if (isTRUE(se)) fallback_needed <- TRUE
+
+      if (isTRUE(se) && isTRUE(reml) && !is.null(sd_rep) && !is.null(sd_rep$jointPrecision) && length(idx_ran_full) > 0L) {
+        V_joint <- tryCatch(solve(as.matrix(sd_rep$jointPrecision)), error = function(e) if (requireNamespace("MASS", quietly = TRUE)) MASS::ginv(as.matrix(sd_rep$jointPrecision)) else NULL)
+        if (!is.null(V_joint) && nrow(V_joint) == length(idx_ran_full) && ncol(V_joint) == length(idx_ran_full)) {
+          Cov_u[idx_ran_full, idx_ran_full] <- as.matrix(V_joint)
+          unc_se_vec[idx_ran_full] <- sqrt(pmax(diag(as.matrix(V_joint)), 0))
+        }
+      }
+
+      if (isTRUE(se) && isTRUE(laplace) && !is.null(sd_rep) && length(idx_ran_full) > 0L) {
+        smry_ran <- tryCatch(summary(sd_rep, select = "random"), error = function(e) NULL)
+        if (!is.null(smry_ran) && nrow(smry_ran) == length(idx_ran_full) && "Std. Error" %in% colnames(smry_ran)) unc_se_vec[idx_ran_full] <- smry_ran[, "Std. Error"]
+      }
+
+      if (isTRUE(se) && isTRUE(fallback_needed) && length(opt$par) > 0L) {
+        H <- tryCatch(ad_obj$he(opt$par), error = function(e) tryCatch(ad_obj$he(opt$par + 1e-6), error = function(e2) NULL))
+        if (!is.null(H)) {
+          Cov_pseudo <- tryCatch(solve(H), error = function(e) if (requireNamespace("MASS", quietly = TRUE)) MASS::ginv(H) else NULL)
+          if (!is.null(Cov_pseudo) && length(idx_fix_active) == length(sqrt(pmax(diag(Cov_pseudo), 0)))) {
+            se_pseudo <- sqrt(pmax(diag(Cov_pseudo), 0)); unc_se_vec[idx_fix_active] <- se_pseudo; Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
+            unc_se_vec <- private$.copy_mapped_se(unc_se_vec, se_pseudo, target_map, index_map$factor_levels_seen, idx_ran_full)
+          }
+        }
+      }
+
+      diag(Cov_u) <- pmax(diag(Cov_u), unc_se_vec^2); Cov_u[is.na(Cov_u)] <- 0
+      unc_est_list <- unconstrained_vector_to_list(unc_est_vec, self$par_list)
+      unc_se_list <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
+      con_est_list <- to_constrained(unc_est_list, self$par_list)
+
+      list(ad_setup = ad_setup, ad_obj = ad_obj, opt = opt, best_index = best_idx, opt_history = opt_history,
+           objective = opt$objective, log_ml = -opt$objective, convergence = opt$convergence,
+           sd_rep = sd_rep, par_unc = unc_est_vec, se_unc = unc_se_vec, vcov_unc = Cov_u,
+           par_unc_list = unc_est_list, se_unc_list = unc_se_list, par = con_est_list,
+           idx_fix_active = idx_fix_active, idx_ran_full = idx_ran_full, idx_ran = index_map$idx_ran,
+           factor_levels_seen = index_map$factor_levels_seen, L_u_total = L_u_total,
+           fallback_needed = fallback_needed,
+           map = target_map, laplace = laplace, reml = reml, jacobian_target = jacobian_target)
+    },
+
     .simple_jacobian = function(f, x, h = 1e-4) {
       p <- length(x)
       f0 <- f(x)
@@ -630,29 +995,6 @@ RTMB_Model <- R6::R6Class(
         }
       }
       return(list(idx_active = sort(unique(idx_fix_active)), n_opt = opt_par_curr - 1))
-    },
-
-    # --- Internal helper for REML parameter classification ---
-    .classify_reml_parameters = function(target_vars = NULL) {
-      fix_names <- character(0)
-      var_names <- character(0)
-      
-      for (name in names(self$par_list)) {
-        is_fix_pattern <- any(sapply(private$fix_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
-        is_var_pattern <- any(sapply(private$var_patterns, function(v) grepl(paste0("^", v, "($|\\[|\\.|_)"), name)))
-        
-        if (is_fix_pattern && !is_var_pattern) {
-          fix_names <- c(fix_names, name)
-        } else if (is_var_pattern) {
-          var_names <- c(var_names, name)
-        } else if (!is.null(target_vars) && name %in% target_vars) {
-          fix_names <- c(fix_names, name)
-        } else {
-          # Default to fixed if unknown
-          fix_names <- c(fix_names, name)
-        }
-      }
-      return(list(fixed = fix_names, variance = var_names))
     },
 
     # --- Internal helper for derived parameter calculation (delta method) ---

@@ -59,6 +59,10 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{map}}{List; the parameter mapping used.}
 
 \item{\code{marginal_vars}}{Character vector of parameter names that were marginalized (integrated out).}
+
+\item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
+
+\item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output.}
 }
 \if{html}{\out{</div>}}
 }
@@ -174,7 +178,9 @@ Create a new `MAP_Fit` object.
   ci_method = "wald",
   laplace = TRUE,
   map = NULL,
-  marginal_vars = NULL
+  marginal_vars = NULL,
+  idx_fix_active = NULL,
+  show_df = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -222,6 +228,10 @@ Create a new `MAP_Fit` object.
 \item{\code{map}}{List; the parameter mapping used.}
 
 \item{\code{marginal_vars}}{Character vector of parameter names that were marginalized (integrated out).}
+
+\item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
+
+\item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output. Default is TRUE.}
 }
 \if{html}{\out{</div>}}
 }

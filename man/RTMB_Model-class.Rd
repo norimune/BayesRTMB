@@ -398,19 +398,9 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
   se_method = c("wald", "sampling"),
   num_samples = 1000,
   seed = 123,
-  df = NULL,
-  df_method = NULL,
-  empirical = FALSE,
-  REML = FALSE,
-  marginal = "auto",
+  marginal = "none",
+  df_method = "auto",
   view = NULL,
-  is_classic = FALSE,
-  target_vars = NULL,
-  .return_object = "MAP",
-  ci_method = NULL,
-  se_sampling = NULL,
-  df_pars = NULL,
-  views = NULL,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -442,33 +432,24 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
 
 \item{\code{seed}}{Integer; random seed for sampling.}
 
-\item{\code{df}}{Degrees of freedom for the t-distribution used in confidence intervals and summary.}
+\item{\code{marginal}}{Character vector of model parameters to marginalize out via Laplace approximation.
+\itemize{
+  \item \code{"none"} (default): No additional marginalization.
+  \item \code{"auto"}: Uses variables specified by the model wrapper (e.g., fixed effects in lmer).
+  \item \code{"all"}: Marginalize all parameters (advanced use).
+  \item \code{character vector}: Specific parameter names to marginalize.
+}}
 
-\item{\code{df_method}}{Character; Method for calculating degrees of freedom ("bw", "satterthwaite", "Inf").}
-
-\item{\code{empirical}}{Logical or character; whether to use empirical Bayes / REML.}
-
-\item{\code{REML}}{Logical; whether to use Restricted Maximum Likelihood. Default is FALSE.}
-
-\item{\code{marginal}}{Character vector of parameters to marginalize out (random effects).}
+\item{\code{df_method}}{Character; Method for calculating degrees of freedom (only active if marginal is not "none"). Default is "auto".
+\itemize{
+  \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for marginalization).
+  \item \code{"satterthwaite"}: Satterthwaite approximation.
+  \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+}}
 
 \item{\code{view}}{Character vector of parameter names to prioritize in summary display.}
 
-\item{\code{is_classic}}{Logical; Internal use.}
-
-\item{\code{target_vars}}{Character vector; Internal use.}
-
-\item{\code{.return_object}}{Character; Internal use.}
-
-\item{\code{ci_method}}{Alias for `se_method`.}
-
-\item{\code{se_sampling}}{Alias for `se_method = "sampling"`.}
-
-\item{\code{df_pars}}{Alias for `marginal`.}
-
-\item{\code{views}}{Alias for `view`.}
-
-\item{\code{...}}{Additional arguments passed to Classic_Fit constructor.}
+\item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
@@ -483,15 +464,13 @@ A fitted `MAP_Fit` or `Classic_Fit` object.
 Perform frequentist inference (REML/ML) with model-appropriate degrees of freedom.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{RTMB_Model$classic(
-  df = NULL,
-  df_method = NULL,
-  REML = TRUE,
-  marginal = "auto",
+  df_method = "auto",
+  se_method = c("wald", "sampling"),
+  num_samples = 1000,
+  seed = 123,
   view = NULL,
   map = NULL,
   fixed = NULL,
-  df_pars = NULL,
-  views = NULL,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -499,18 +478,19 @@ Perform frequentist inference (REML/ML) with model-appropriate degrees of freedo
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{df}}{Numeric/Inf for specific degrees of freedom. If NULL (default), determined by `df_method`.}
-
-\item{\code{df_method}}{Character; Method for calculating degrees of freedom. Options:
+\item{\code{df_method}}{Character; Method for calculating degrees of freedom. Default is "auto".
 \itemize{
-  \item \code{"bw"} (default): Between-Within method for simple models, automatically switches to Satterthwaite for mixed models.
-  \item \code{"satterthwaite"}: Satterthwaite approximation (computationally intensive).
+  \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for mixed models).
+  \item \code{"bw"}: Between-Within method (fast, for simple designs).
+  \item \code{"satterthwaite"}: Satterthwaite approximation (robust for mixed models).
   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
 }}
 
-\item{\code{REML}}{Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.}
+\item{\code{se_method}}{Character; The method for CI estimation: "wald" (default) or "sampling".}
 
-\item{\code{marginal}}{Character vector of parameters to be treated as fixed effects for REML calculation. Default is "auto" (uses wrapper-defined targets if available). Use "none" to disable.}
+\item{\code{num_samples}}{Integer; number of samples to draw when se_method is "sampling". Default is 1000.}
+
+\item{\code{seed}}{Integer; random seed for sampling.}
 
 \item{\code{view}}{Character vector of parameters to prioritize in the summary output.}
 
@@ -518,11 +498,7 @@ Perform frequentist inference (REML/ML) with model-appropriate degrees of freedo
 
 \item{\code{fixed}}{Optional list specifying parameter values to fix.}
 
-\item{\code{df_pars}}{Alias for `marginal` (for backward compatibility).}
-
-\item{\code{views}}{Alias for \code{view}.}
-
-\item{\code{...}}{Additional arguments passed to $optimize().}
+\item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }

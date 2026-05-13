@@ -64,6 +64,10 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item{\code{map}}{Parameter mapping used.}
 
 \item{\code{df_method}}{Character string specifying the degrees of freedom calculation method.}
+
+\item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
+
+\item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output.}
 }
 \if{html}{\out{</div>}}
 }
@@ -119,6 +123,8 @@ Create a new `Classic_Fit` object.
   fit = NULL,
   vcov = NULL,
   df_method = "bw",
+  idx_fix_active = NULL,
+  show_df = TRUE,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -175,6 +181,10 @@ Create a new `Classic_Fit` object.
 \item{\code{vcov}}{Variance-covariance matrix of parameters.}
 
 \item{\code{df_method}}{Method for degrees of freedom calculation.}
+
+\item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
+
+\item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output.}
 
 \item{\code{...}}{Additional arguments passed to the constructor.}
 }

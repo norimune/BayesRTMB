@@ -31,6 +31,8 @@
 #' @field laplace Whether Laplace approximation was used.
 #' @field map Parameter mapping used.
 #' @field df_method Character string specifying the degrees of freedom calculation method.
+#' @field idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
+#' @field show_df Logical; whether to display degrees of freedom in the summary output.
 #' @importFrom stats AIC BIC logLik anova
 #' @export
 Classic_Fit <- R6::R6Class(
@@ -64,6 +66,8 @@ Classic_Fit <- R6::R6Class(
     cluster = NULL,
     view = NULL,
     df_method = NULL,
+    idx_fix_active = NULL,
+    show_df = TRUE,
 
     #' @description Create a new `Classic_Fit` object.
     #' @param model The `RTMB_Model` object.
@@ -91,6 +95,8 @@ Classic_Fit <- R6::R6Class(
     #' @param fit Legacy argument for backward compatibility (maps to df_fixed).
     #' @param vcov Variance-covariance matrix of parameters.
     #' @param df_method Method for degrees of freedom calculation.
+    #' @param idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
+    #' @param show_df Logical; whether to display degrees of freedom in the summary output.
     #' @param ... Additional arguments passed to the constructor.
     initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_ml = NULL,
                           convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
@@ -98,7 +104,7 @@ Classic_Fit <- R6::R6Class(
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
                           vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL,
                           test_results = list(), view = NULL, fit = NULL, vcov = NULL, 
-                          df_method = "bw", ...) {
+                          df_method = "bw", idx_fix_active = NULL, show_df = TRUE, ...) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- if (!is.null(par)) par else if (!is.null(df_fixed)) self$.construct_par_list(df_fixed) else if (!is.null(fit)) self$.construct_par_list(fit) else NULL
@@ -125,6 +131,8 @@ Classic_Fit <- R6::R6Class(
       self$view <- view
       self$vcov <- vcov
       self$df_method <- df_method
+      self$idx_fix_active <- idx_fix_active
+      self$show_df <- show_df
     },
 
     #' @description Compute robust standard errors (sandwich estimator).
@@ -579,6 +587,11 @@ Classic_Fit <- R6::R6Class(
              } else {
                 df_print$Pr <- 2 * pnorm(-abs(row_t))
              }
+        }
+
+        # --- Hide DF column if requested ---
+        if (!isTRUE(self$show_df) && "df" %in% names(df_print)) {
+           df_print$df <- NULL
         }
 
         # 1. Round main numeric columns
