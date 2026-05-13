@@ -22,27 +22,35 @@ wrapper function provides the following methods:
 - `$variational()`: Performs Variational Inference (ADVI) for fast
   posterior approximation.
 
-**2. Regularization and Variable Selection:** For rtmb_lm, rtmb_glm, and
-rtmb_glmer, you can handle high-dimensional predictors (where the number
-of variables is large relative to the sample size) using the penalty
-argument:
+**2. Prior API and Regularization:** You can specify the prior
+distribution using the \`prior\` argument:
 
-- `"none"`: Standard flat or weakly informative priors.
+- [`prior_flat()`](https://norimune.github.io/BayesRTMB/reference/prior_flat.md):
+  No additional prior (default). Required for `classic()` inference.
 
-- `"rhs"`: Regularized Horseshoe prior for continuous shrinkage.
+- [`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md):
+  Manual normal/exponential priors for parameters.
 
-- `"ssp"`: Spike-and-Slab prior for sparse variable selection.
+- [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md):
+  Weakly informative priors based on `y_range`.
 
-*Note: When using regularization, you must specify
-`y_range = c(min, max)` to let the model set appropriate global scales
-for the priors.*
+- [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md):
+  Regularized Horseshoe prior for continuous shrinkage.
+
+- [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md):
+  Spike-and-Slab prior for sparse variable selection.
+
+*Note: When using \`prior_weak()\`, \`prior_rhs()\`, or \`prior_ssp()\`,
+you must specify `y_range = c(min, max)` to let the model set
+appropriate global scales for the priors.*
 
 **3. Weakly Informative Priors (`y_range`):** By providing the
-theoretical range of your response variable via `y_range`, the wrappers
-automatically construct "Weakly Informative Priors". These priors are
-designed to be broad enough to cover any reasonable value but narrow
-enough to stabilize the estimation and prevent the sampler from
-wandering into non-sensical parameter space.
+theoretical range of your response variable via `y_range` while keeping
+the default `prior = prior_flat()`, the wrappers automatically switch to
+[`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
+These priors are designed to be broad enough to cover any reasonable
+value but narrow enough to stabilize the estimation and prevent the
+sampler from wandering into non-sensical parameter space.
 
 **4. Fixed vs. Random Effects:** For mixed-effect models (e.g.,
 `rtmb_glmer`), random effects are marginalized using the Laplace
@@ -50,7 +58,7 @@ approximation during `$optimize(laplace = TRUE)`. When using
 `$sample()`, random effects are treated as unknown parameters and
 sampled alongside fixed effects.
 
-**5. Null Model Creation (`null`):** You can specify a `null` argument
-(e.g., `null = "x1 ~ normal(0, 0.1)"`) in the wrappers to simultaneously
-create a restricted version of your model. This is particularly useful
-for computing Bayes Factors or performing model comparisons.
+**5. Fixed parameters:** Use `fixed = list(...)` to fix model parameters
+to specified values. For example, `fixed = list(delta = 0)` fixes the
+parameter `delta` to zero, and `fixed = list("b[x]" = 0)` fixes one
+element of a vector parameter.

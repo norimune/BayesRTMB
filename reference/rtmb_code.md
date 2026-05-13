@@ -112,9 +112,8 @@ mod <- rtmb_model(data = data_list, code = code)
 
 # Fit the model using MAP estimation
 map_res <- mod$optimize()
-#> Starting optimization...
+#> Starting RTMB optimization...
 #> 
-#> Optimization converged. Final objective: 145.34
 map_res$summary(pars = c("alpha", "beta", "sigma"))
 #> 
 #> Call:
@@ -125,9 +124,9 @@ map_res$summary(pars = c("alpha", "beta", "sigma"))
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> alpha      2.02785     0.09564    1.84041    2.21530 
-#> beta       1.44739     0.10530    1.24101    1.65377 
-#> sigma      0.95640     0.06715    0.83345    1.09749 
+#> alpha      2.02788     0.09564    1.84044    2.21532 
+#> beta       1.44737     0.10530    1.24099    1.65375 
+#> sigma      0.95640     0.06715    0.83344    1.09749 
 #> 
 
 # The generated quantity 'y_pred' can also be summarized
@@ -141,11 +140,11 @@ map_res$summary("y_pred", max_rows = 5)
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> y_pred[1]   1.08577     0.11766    0.85517    1.31638 
-#> y_pred[2]   1.56384     0.10142    1.36506    1.76262 
-#> y_pred[3]   4.15306     0.18180    3.79674    4.50938 
-#> y_pred[4]   1.99905     0.09566    1.81156    2.18655 
-#> y_pred[5]   2.08413     0.09572    1.89651    2.27175 
+#> y_pred[1]   1.08581     0.11766    0.85520    1.31642 
+#> y_pred[2]   1.56387     0.10142    1.36510    1.76265 
+#> y_pred[3]   4.15305     0.18179    3.79673    4.50937 
+#> y_pred[4]   1.99908     0.09566    1.81159    2.18657 
+#> y_pred[5]   2.08415     0.09572    1.89654    2.27177 
 #> 
 # }
 ```

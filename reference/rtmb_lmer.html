@@ -60,11 +60,10 @@
 <span>  <span class="va">formula</span>,</span>
 <span>  <span class="va">data</span>,</span>
 <span>  laplace <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cwc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -96,7 +95,10 @@
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>An object of class "rtmb_prior" specifying the prior distribution. Default is NULL (flat prior).</p></dd>
+<dd><p>An object of class `"rtmb_prior"`.
+Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+Default is `prior_flat()`.</p></dd>
 
 
 <dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
@@ -109,10 +111,6 @@
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
 <dd><p>Optional named list of fixed values for specific parameters.</p></dd>
-
-
-<dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
-<dd><p>Null model parameters</p></dd>
 
 
 <dt id="arg-gmc">gmc<a class="anchor" aria-label="anchor" href="#arg-gmc"></a></dt>

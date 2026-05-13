@@ -302,8 +302,8 @@ opt_lmer$summary()
 また、[`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
 を使うと、ベイジアン t
 検定が簡単に実行できます。[`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
-メソッドで `null_model` 引数に「0
-に固定したいパラメータ名」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。
+メソッドで `fixed` 引数にリスト形式で「0
+に固定したいパラメータと値」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。
 
 ``` r
 
@@ -311,8 +311,8 @@ data(debate)
 mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
-# 効果量(delta)を0に固定した帰無モデルとの比較
-bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+# delta = 0 の帰無モデルと比較
+bf_ttest <- mcmc_ttest$bayes_factor(fixed = list(delta = 0))
 bf_ttest
 ```
 

@@ -374,15 +374,15 @@ By using
 [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md),
 you can compare the marginal likelihood of the estimated model with a
 null model, calculating the **Bayes factor**. For example, specifying
-`null_model = "beta[1]"` internally creates and compares against a null
-model where that coefficient is fixed at 0.
+`fixed = list("beta[1]" = 0)` internally creates and compares against a
+null model where that coefficient is fixed at 0.
 
 This is useful when you want to evaluate the presence or absence of an
 effect using a Bayesian approach.
 
 ``` r
 
-bf_result <- mcmc_reg$bayes_factor(null_model = "beta[1]")
+bf_result <- mcmc_reg$bayes_factor(fixed = list("beta[1]" = 0))
 bf_result
 ```
 

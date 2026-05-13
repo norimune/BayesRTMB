@@ -127,7 +127,7 @@ posterior, and drawing posterior samples.</p>
 
 
 <dt><code>map</code></dt>
-<dd><p>A list specifying parameter mappings for fixing values (e.g., via null_model).</p></dd>
+<dd><p>A list specifying parameter mappings for fixing values (e.g., via <code>fixed_model()</code>).</p></dd>
 
 
 <dt><code>prior_correction</code></dt>
@@ -171,8 +171,6 @@ posterior, and drawing posterior samples.</p>
 <li><p><a href="#method-RTMB_Model-print_generate"><code>RTMB_Model$print_generate()</code></a></p></li>
 <li><p><a href="#method-RTMB_Model-get_n_obs"><code>RTMB_Model$get_n_obs()</code></a></p></li>
 <li><p><a href="#method-RTMB_Model-fixed_model"><code>RTMB_Model$fixed_model()</code></a></p></li>
-<li><p><a href="#method-RTMB_Model-null_model"><code>RTMB_Model$null_model()</code></a></p></li>
-<li><p><a href="#method-RTMB_Model-evaluate_univariate_prior"><code>RTMB_Model$evaluate_univariate_prior()</code></a></p></li>
 <li><p><a href="#method-RTMB_Model-clone"><code>RTMB_Model$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-RTMB_Model-new"></a><div class="section">
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
@@ -432,6 +430,7 @@ posterior, and drawing posterior samples.</p>
 <span>  <span class="va">ad_obj</span>,</span>
 <span>  <span class="va">opt_par</span>,</span>
 <span>  <span class="va">beta_idx</span>,</span>
+<span>  max_df <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  silent <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  return_sensitivities <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
@@ -451,12 +450,20 @@ posterior, and drawing posterior samples.</p>
 <dd><p>Integer vector; indices of fixed effects within the random effects vector.</p></dd>
 
 
+<dt><code>max_df</code></dt>
+<dd><p>Numeric; maximum allowed degrees of freedom. Default is NULL.</p></dd>
+
+
 <dt><code>silent</code></dt>
 <dd><p>Logical; whether to suppress informational messages. Default is FALSE.</p></dd>
 
 
 <dt><code>return_sensitivities</code></dt>
 <dd><p>Logical; if TRUE, returns Hessian sensitivities and delta-method components.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
@@ -524,23 +531,12 @@ posterior, and drawing posterior samples.</p>
 <span>  method <span class="op">=</span> <span class="st">"BFGS"</span>,</span>
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  se <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  se_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"sampling"</span><span class="op">)</span>,</span>
+<span>  se_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"sampling"</span>, <span class="st">"none"</span><span class="op">)</span>,</span>
 <span>  num_samples <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
-<span>  df <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  df_method <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  empirical <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  REML <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  marginal <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  marginal <span class="op">=</span> <span class="st">"none"</span>,</span>
+<span>  df_method <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  is_classic <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  target_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  .return_object <span class="op">=</span> <span class="st">"MAP"</span>,</span>
-<span>  ci_method <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  se_sampling <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  df_pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  views <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
@@ -579,12 +575,11 @@ posterior, and drawing posterior samples.</p>
 <dd><p>Optional list specifying parameter values to fix.</p></dd>
 
 
-<dt><code>se</code></dt>
-<dd><p>Logical; whether to estimate standard errors and confidence intervals. Default is TRUE.</p></dd>
-
-
 <dt><code>se_method</code></dt>
-<dd><p>Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based).</p></dd>
+<dd><p>Character; method for uncertainty estimation.</p><ul><li><p><code>"wald"</code>: Wald standard errors and Wald confidence intervals.</p></li>
+<li><p><code>"sampling"</code>: Simulation-based error propagation.</p></li>
+<li><p><code>"none"</code>: Do not compute standard errors, confidence intervals, or degrees of freedom.</p></li>
+</ul></dd>
 
 
 <dt><code>num_samples</code></dt>
@@ -595,67 +590,36 @@ posterior, and drawing posterior samples.</p>
 <dd><p>Integer; random seed for sampling.</p></dd>
 
 
-<dt><code>df</code></dt>
-<dd><p>Degrees of freedom for the t-distribution used in confidence intervals and summary.</p></dd>
+<dt><code>marginal</code></dt>
+<dd><p>Character vector or "auto" or "none"; specifies which parameters to marginalize out via Laplace approximation.</p><ul><li><p><code>"none"</code> (default): No additional marginalization.</p></li>
+<li><p><code>"auto"</code>: Uses variables specified by the model wrapper (e.g., fixed effects in lmer).</p></li>
+<li><p><code>"all"</code>: Marginalize all parameters (advanced use).</p></li>
+<li><p><code>character vector</code>: Specific parameter names to marginalize.</p></li>
+</ul></dd>
 
 
 <dt><code>df_method</code></dt>
-<dd><p>Character; Method for calculating degrees of freedom ("bw", "satterthwaite", "Inf").</p></dd>
-
-
-<dt><code>empirical</code></dt>
-<dd><p>Logical or character; whether to use empirical Bayes / REML.</p></dd>
-
-
-<dt><code>REML</code></dt>
-<dd><p>Logical; whether to use Restricted Maximum Likelihood. Default is FALSE.</p></dd>
-
-
-<dt><code>marginal</code></dt>
-<dd><p>Character vector of parameters to marginalize out (random effects).</p></dd>
+<dd><p>Character or numeric; method for finite degrees-of-freedom approximation.
+Used only when `marginal` resolves to one or more parameters and `se_method != "none"`.</p><ul><li><p><code>"auto"</code>: Uses Satterthwaite approximation when marginalization is active.</p></li>
+<li><p><code>"satterthwaite"</code>: Satterthwaite approximation.</p></li>
+<li><p><code>"inf"</code> or <code>"none"</code>: Use infinite degrees of freedom.</p></li>
+<li><p>numeric: Use the supplied fixed degrees of freedom.</p></li>
+</ul></dd>
 
 
 <dt><code>view</code></dt>
 <dd><p>Character vector of parameter names to prioritize in summary display.</p></dd>
 
 
-<dt><code>is_classic</code></dt>
-<dd><p>Logical; Internal use.</p></dd>
-
-
-<dt><code>target_vars</code></dt>
-<dd><p>Character vector; Internal use.</p></dd>
-
-
-<dt><code>.return_object</code></dt>
-<dd><p>Character; Internal use.</p></dd>
-
-
-<dt><code>ci_method</code></dt>
-<dd><p>Alias for `se_method`.</p></dd>
-
-
-<dt><code>se_sampling</code></dt>
-<dd><p>Alias for `se_method = "sampling"`.</p></dd>
-
-
-<dt><code>df_pars</code></dt>
-<dd><p>Alias for `marginal`.</p></dd>
-
-
-<dt><code>views</code></dt>
-<dd><p>Alias for `view`.</p></dd>
-
-
 <dt><code>...</code></dt>
-<dd><p>Additional arguments passed to Classic_Fit constructor.</p></dd>
+<dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
 </div>
 <div class="section">
 <h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
-<p>A fitted `MAP_Fit` or `Classic_Fit` object.</p>
+<p>A fitted `MAP_Fit` object.</p>
 </div>
 
 </div><p></p><hr><a id="method-RTMB_Model-classic"></a><div class="section">
@@ -663,38 +627,37 @@ posterior, and drawing posterior samples.</p>
 <p>Perform frequentist inference (REML/ML) with model-appropriate degrees of freedom.</p><div class="section">
 <h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Model</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span></span>
-<span>  df <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  df_method <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  REML <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  marginal <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  df_method <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  se_method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"wald"</span>, <span class="st">"sampling"</span><span class="op">)</span>,</span>
+<span>  num_samples <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  df_pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  views <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>df</code></dt>
-<dd><p>Numeric/Inf for specific degrees of freedom. If NULL (default), determined by `df_method`.</p></dd>
-
-
-<dt><code>df_method</code></dt>
-<dd><p>Character; Method for calculating degrees of freedom. Options:</p><ul><li><p><code>"bw"</code> (default): Between-Within method for simple models, automatically switches to Satterthwaite for mixed models.</p></li>
-<li><p><code>"satterthwaite"</code>: Satterthwaite approximation (computationally intensive).</p></li>
-<li><p><code>"Inf"</code>: Use z-distribution (infinite degrees of freedom).</p></li>
+<p></p><div class="arguments"><dl><dt><code>df_method</code></dt>
+<dd><p>Character; Method for calculating degrees of freedom. Default is "auto".</p><ul><li><p><code>"auto"</code>: Determined based on model type (e.g., Satterthwaite for mixed models).</p></li>
+<li><p><code>"residual"</code>: Residual degrees of freedom.</p></li>
+<li><p><code>"satterthwaite"</code>: Satterthwaite approximation (robust for mixed models).</p></li>
+<li><p><code>"inf"</code>: Use z-distribution (infinite degrees of freedom).</p></li>
 </ul></dd>
 
 
-<dt><code>REML</code></dt>
-<dd><p>Logical; whether to use Restricted Maximum Likelihood. Default is TRUE.</p></dd>
+<dt><code>se_method</code></dt>
+<dd><p>Character; The method for CI estimation: "wald" (default) or "sampling".</p></dd>
 
 
-<dt><code>marginal</code></dt>
-<dd><p>Character vector of parameters to be treated as fixed effects for REML calculation. Default is "auto" (uses wrapper-defined targets if available). Use "none" to disable.</p></dd>
+<dt><code>num_samples</code></dt>
+<dd><p>Integer; number of samples to draw when se_method is "sampling". Default is 1000.</p></dd>
+
+
+<dt><code>seed</code></dt>
+<dd><p>Integer; random seed for sampling.</p></dd>
 
 
 <dt><code>view</code></dt>
@@ -709,16 +672,8 @@ posterior, and drawing posterior samples.</p>
 <dd><p>Optional list specifying parameter values to fix.</p></dd>
 
 
-<dt><code>df_pars</code></dt>
-<dd><p>Alias for `marginal` (for backward compatibility).</p></dd>
-
-
-<dt><code>views</code></dt>
-<dd><p>Alias for <code>view</code>.</p></dd>
-
-
 <dt><code>...</code></dt>
-<dd><p>Additional arguments passed to $optimize().</p></dd>
+<dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
@@ -991,80 +946,15 @@ posterior, and drawing posterior samples.</p>
 <p>A new RTMB_Model object.</p>
 </div>
 
-</div><p></p><hr><a id="method-RTMB_Model-null_model"></a><div class="section">
-<h3 id="method-null-model-">Method <code>null_model()</code><a class="anchor" aria-label="anchor" href="#method-null-model-"></a></h3>
-<p>Create a null model by fixing specified parameters.</p><div class="section">
-<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Model</span><span class="op">$</span><span class="fu">null_model</span><span class="op">(</span></span>
-<span>  target <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  value <span class="op">=</span> <span class="fl">0</span>,</span>
-<span>  target_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  silent <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>target</code></dt>
-<dd><p>Parameter name to fix.</p></dd>
-
-
-<dt><code>value</code></dt>
-<dd><p>Numeric value to fix parameter to. Default is 0.</p></dd>
-
-
-<dt><code>target_vars</code></dt>
-<dd><p>Character vector of parameter names to remove priors from (for frequentist inference).</p></dd>
-
-
-<dt><code>silent</code></dt>
-<dd><p>Logical; whether to suppress informational messages. Default is FALSE.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-<div class="section">
-<h4 id="returns-20">Returns<a class="anchor" aria-label="anchor" href="#returns-20"></a></h4>
-<p>A new RTMB_Model object.</p>
-</div>
-
-</div><p></p><hr><a id="method-RTMB_Model-evaluate_univariate_prior"></a><div class="section">
-<h3 id="method-evaluate-univariate-prior-">Method <code>evaluate_univariate_prior()</code><a class="anchor" aria-label="anchor" href="#method-evaluate-univariate-prior-"></a></h3>
-<p>Evaluate the univariate prior density contribution of a specific parameter.</p><div class="section">
-<h4 id="usage-22">Usage<a class="anchor" aria-label="anchor" href="#usage-22"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Model</span><span class="op">$</span><span class="fu">evaluate_univariate_prior</span><span class="op">(</span><span class="va">p_name</span>, <span class="va">u_val</span>, par_list <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-17">Arguments<a class="anchor" aria-label="anchor" href="#arguments-17"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>p_name</code></dt>
-<dd><p>Flattened parameter name (e.g., "beta[1]").</p></dd>
-
-
-<dt><code>u_val</code></dt>
-<dd><p>Value in unconstrained space.</p></dd>
-
-
-<dt><code>par_list</code></dt>
-<dd><p>Optional parameter list (constrained) to use for evaluation.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-<div class="section">
-<h4 id="returns-21">Returns<a class="anchor" aria-label="anchor" href="#returns-21"></a></h4>
-<p>Numeric log-prior density (unconstrained).</p>
-</div>
-
 </div><p></p><hr><a id="method-RTMB_Model-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-23">Usage<a class="anchor" aria-label="anchor" href="#usage-23"></a></h4>
+<h4 id="usage-21">Usage<a class="anchor" aria-label="anchor" href="#usage-21"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Model</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-18">Arguments<a class="anchor" aria-label="anchor" href="#arguments-18"></a></h4>
+<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

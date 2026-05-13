@@ -100,8 +100,8 @@ mdl_ttest$print_code()
 
 ``` r
 
-# 効果量 delta = 0 のモデルと比較
-bf <- fit_ttest$bayes_factor(null_model = "delta")
+# 効果量 delta = 0 とするモデルと比較
+bf <- fit_ttest$bayes_factor(fixed = list(delta = 0))
 bf
 ```
 
@@ -431,8 +431,8 @@ mcmc_corr2$summary()
 
 ``` r
 
-# 相関 = 0 のモデル（null_model = "corr"）と比較
-bf_corr <- mcmc_corr2$bayes_factor(null_model = "corr")
+# 相関ゼロのモデルと比較 (fixed = list(corr = 0))
+bf_corr <- mcmc_corr2$bayes_factor(fixed = list(corr = 0))
 bf_corr
 ```
 

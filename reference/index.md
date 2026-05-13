@@ -265,20 +265,26 @@ Functions used within rtmb_code for stability and transformations.
   : Plot MCMC trace plots
 - [`print(`*`<bayes_factor>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.bayes_factor.md)
   : Print method for bayes_factor objects
+- [`print(`*`<bayes_factor_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.bayes_factor_rtmb.md)
+  : Print method for bayes_factor_rtmb objects
 - [`print(`*`<ce_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.ce_rtmb.md)
   : Print method for ce_rtmb class (automatically calls plot)
 - [`print(`*`<ce_simple>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.ce_simple.md)
   : Print simple effects
 - [`print(`*`<summary_BayesRTMB>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.summary_BayesRTMB.md)
   : print for summary_BayesRTMB class
+- [`prior_flat()`](https://norimune.github.io/BayesRTMB/reference/prior_flat.md)
+  : Specify a flat prior
 - [`prior_jzs()`](https://norimune.github.io/BayesRTMB/reference/prior_jzs.md)
   : Specify a JZS (Jeffrey-Zellner-Siow) prior for t-tests
+- [`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
+  : Specify normal/exponential priors for MAP and Bayesian inference
 - [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md)
   : Specify a Regularized Horseshoe prior for continuous shrinkage
 - [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md)
   : Specify a Spike-and-Slab prior for variable selection
 - [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
-  : Specify a uniform or manual prior
+  : Specify a flat prior
 - [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md)
   : Specify a weakly informative prior
 - [`quad_form_chol()`](https://norimune.github.io/BayesRTMB/reference/quad_form_chol.md)

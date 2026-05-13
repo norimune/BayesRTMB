@@ -12,11 +12,10 @@ rtmb_corr(
   data = NULL,
   ID = NULL,
   covariates = NULL,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   init = NULL,
-  fixed = NULL,
-  null = NULL
+  fixed = NULL
 )
 ```
 
@@ -43,12 +42,8 @@ rtmb_corr(
 
 - prior:
 
-  Prior configuration object:
-  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
-  or
-  [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
-  Default is
-  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md).
+  Prior configuration object: \`prior_flat()\`, \`prior_normal()\`, or
+  \`prior_weak()\`. Default is \`prior_flat()\`.
 
 - y_range:
 
@@ -65,10 +60,6 @@ rtmb_corr(
 - fixed:
 
   Optional named list of fixed values for specific parameters.
-
-- null:
-
-  Optional list specifying parameters to fix to null values.
 
 ## Value
 

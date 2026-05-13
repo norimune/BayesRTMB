@@ -63,7 +63,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
 <span>  <span class="va">data</span>,</span>
 <span>  model <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"2PL"</span>, <span class="st">"1PL"</span>, <span class="st">"3PL"</span><span class="op">)</span>,</span>
 <span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"binary"</span>, <span class="st">"ordered"</span><span class="op">)</span>,</span>
-<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span></span>
@@ -87,8 +87,8 @@ Missing values (NA) in the data are automatically removed internally for efficie
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
-Hyperparameters can be specified within these functions (e.g., `prior_weak(b_sd = 5)`).
+<dd><p>Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
+Hyperparameters can be specified within these functions (e.g., `prior_normal(b_sd = 5)`).
 Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c_alpha`/`c_beta` (guessing).</p></dd>
 
 

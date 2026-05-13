@@ -103,7 +103,7 @@ where the effect size is $`\delta = 0`$.
 ``` r
 
 # Compare with the model where effect size delta = 0
-bf <- fit_ttest$bayes_factor(null_model = "delta")
+bf <- fit_ttest$bayes_factor(fixed = list(delta = 0))
 bf
 ```
 
@@ -429,8 +429,8 @@ mcmc_corr2$summary()
 
 ``` r
 
-# Compare against the zero-correlation model (null_model = "corr")
-bf_corr <- mcmc_corr2$bayes_factor(null_model = "corr")
+# Compare against the zero-correlation model (fixed = list(corr = 0))
+bf_corr <- mcmc_corr2$bayes_factor(fixed = list(corr = 0))
 bf_corr
 ```
 

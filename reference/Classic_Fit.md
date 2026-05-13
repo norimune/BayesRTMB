@@ -117,6 +117,15 @@ estimation.
 
   Character string specifying the degrees of freedom calculation method.
 
+- `idx_fix_active`:
+
+  Numeric vector; mapping between active parameters and full
+  unconstrained vector.
+
+- `show_df`:
+
+  Logical; whether to display degrees of freedom in the summary output.
+
 ## Methods
 
 ### Public methods
@@ -185,6 +194,8 @@ Create a new \`Classic_Fit\` object.
       fit = NULL,
       vcov = NULL,
       df_method = "bw",
+      idx_fix_active = NULL,
+      show_df = TRUE,
       ...
     )
 
@@ -289,6 +300,15 @@ Create a new \`Classic_Fit\` object.
 - `df_method`:
 
   Method for degrees of freedom calculation.
+
+- `idx_fix_active`:
+
+  Numeric vector; mapping between active parameters and full
+  unconstrained vector.
+
+- `show_df`:
+
+  Logical; whether to display degrees of freedom in the summary output.
 
 - `...`:
 

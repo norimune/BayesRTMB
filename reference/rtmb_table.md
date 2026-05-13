@@ -13,7 +13,7 @@ rtmb_table(
   data = NULL,
   classic = FALSE,
   correct = TRUE,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   fixed = NULL,
   ...
 )
@@ -45,7 +45,7 @@ rtmb_table(
 
 - prior:
 
-  Prior specification (Bayesian mode). Default is \`prior_uniform()\`.
+  Prior specification (Bayesian mode). Default is \`prior_flat()\`.
 
 - fixed:
 

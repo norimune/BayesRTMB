@@ -150,7 +150,19 @@ MAP fit object"></head><body>
 
 
 <dt><code>marginal_vars</code></dt>
-<dd><p>Character vector of parameter names that were marginalized (integrated out).</p></dd>
+<dd><p>Character vector of parameter names requested through `optimize(marginal = ...)`.</p></dd>
+
+
+<dt><code>laplace_random_vars</code></dt>
+<dd><p>Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.</p></dd>
+
+
+<dt><code>idx_fix_active</code></dt>
+<dd><p>Numeric vector; mapping between active parameters and full unconstrained vector.</p></dd>
+
+
+<dt><code>show_df</code></dt>
+<dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
 
 
 </dl><p></p></div>
@@ -168,7 +180,6 @@ MAP fit object"></head><body>
 <li><p><a href="#method-map_fit-ranef"><code>MAP_Fit$ranef()</code></a></p></li>
 <li><p><a href="#method-map_fit-draws"><code>MAP_Fit$draws()</code></a></p></li>
 <li><p><a href="#method-map_fit-summary"><code>MAP_Fit$summary()</code></a></p></li>
-<li><p><a href="#method-map_fit-savage_dickey"><code>MAP_Fit$savage_dickey()</code></a></p></li>
 <li><p><a href="#method-map_fit-print"><code>MAP_Fit$print()</code></a></p></li>
 <li><p><a href="#method-map_fit-generated_quantities"><code>MAP_Fit$generated_quantities()</code></a></p></li>
 <li><p><a href="#method-map_fit-profile"><code>MAP_Fit$profile()</code></a></p></li>
@@ -260,7 +271,10 @@ MAP fit object"></head><body>
 <span>  ci_method <span class="op">=</span> <span class="st">"wald"</span>,</span>
 <span>  laplace <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  marginal_vars <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  marginal_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  laplace_random_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  idx_fix_active <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  show_df <span class="op">=</span> <span class="cn">TRUE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -347,7 +361,19 @@ MAP fit object"></head><body>
 
 
 <dt><code>marginal_vars</code></dt>
-<dd><p>Character vector of parameter names that were marginalized (integrated out).</p></dd>
+<dd><p>Character vector of parameter names requested through `optimize(marginal = ...)`.</p></dd>
+
+
+<dt><code>laplace_random_vars</code></dt>
+<dd><p>Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.</p></dd>
+
+
+<dt><code>idx_fix_active</code></dt>
+<dd><p>Numeric vector; mapping between active parameters and full unconstrained vector.</p></dd>
+
+
+<dt><code>show_df</code></dt>
+<dd><p>Logical; whether to display degrees of freedom in the summary output. Default is TRUE.</p></dd>
 
 
 </dl><p></p></div>
@@ -439,43 +465,15 @@ MAP fit object"></head><body>
 <p>A summary object, typically a data frame.</p>
 </div>
 
-</div><p></p><hr><a id="method-map_fit-savage_dickey"></a><div class="section">
-<h3 id="method-savage-dickey-">Method <code>savage_dickey()</code><a class="anchor" aria-label="anchor" href="#method-savage-dickey-"></a></h3>
-<p>Calculate Bayes Factors using the Savage-Dickey density ratio.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">savage_dickey</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, null <span class="op">=</span> <span class="fl">0</span>, digits <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
-<dd><p>Optional character vector of parameter names to test. If NULL, tests all fixed effects.</p></dd>
-
-
-<dt><code>null</code></dt>
-<dd><p>The null hypothesis value (on the constrained scale). Default is 0.</p></dd>
-
-
-<dt><code>digits</code></dt>
-<dd><p>Number of decimal places in the output.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-<div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
-<p>A data frame containing Bayes Factors and evidence descriptions.</p>
-</div>
-
 </div><p></p><hr><a id="method-map_fit-print"></a><div class="section">
 <h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
 <p>Print a brief summary of the fitted object.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector specifying the names of parameters to summarize.</p></dd>
 
@@ -495,19 +493,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-generated_quantities"></a><div class="section">
 <h3 id="method-generated-quantities-">Method <code>generated_quantities()</code><a class="anchor" aria-label="anchor" href="#method-generated-quantities-"></a></h3>
 <p>Compute generated quantities from the MAP estimate.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">code</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
 <dd><p>An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.</p></dd>
 
@@ -515,14 +513,14 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-profile"></a><div class="section">
 <h3 id="method-profile-">Method <code><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile()</a></code><a class="anchor" aria-label="anchor" href="#method-profile-"></a></h3>
 <p>Calculate Profile Likelihood confidence intervals for specific parameters.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">profile</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
@@ -536,7 +534,7 @@ MAP fit object"></head><body>
 </div>
 
 <div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector of parameter names to profile. If NULL, all fixed parameters are profiled.</p></dd>
 
@@ -572,19 +570,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

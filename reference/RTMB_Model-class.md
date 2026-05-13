@@ -72,7 +72,7 @@ samples.
 - `map`:
 
   A list specifying parameter mappings for fixing values (e.g., via
-  null_model).
+  `fixed_model()`).
 
 - `prior_correction`:
 
@@ -134,10 +134,6 @@ samples.
 - [`RTMB_Model$get_n_obs()`](#method-RTMB_Model-get_n_obs)
 
 - [`RTMB_Model$fixed_model()`](#method-RTMB_Model-fixed_model)
-
-- [`RTMB_Model$null_model()`](#method-RTMB_Model-null_model)
-
-- [`RTMB_Model$evaluate_univariate_prior()`](#method-RTMB_Model-evaluate_univariate_prior)
 
 - [`RTMB_Model$clone()`](#method-RTMB_Model-clone)
 
@@ -410,6 +406,7 @@ Calculate Satterthwaite degrees of freedom for integrated fixed effects
       ad_obj,
       opt_par,
       beta_idx,
+      max_df = NULL,
       silent = FALSE,
       return_sensitivities = FALSE
     )
@@ -429,6 +426,10 @@ Calculate Satterthwaite degrees of freedom for integrated fixed effects
   Integer vector; indices of fixed effects within the random effects
   vector.
 
+- `max_df`:
+
+  Numeric; maximum allowed degrees of freedom. Default is NULL.
+
 - `silent`:
 
   Logical; whether to suppress informational messages. Default is FALSE.
@@ -437,6 +438,10 @@ Calculate Satterthwaite degrees of freedom for integrated fixed effects
 
   Logical; if TRUE, returns Hessian sensitivities and delta-method
   components.
+
+- `...`:
+
+  Additional arguments.
 
 #### Returns
 
@@ -515,23 +520,12 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
       method = "BFGS",
       map = NULL,
       fixed = NULL,
-      se = TRUE,
-      se_method = c("wald", "sampling"),
+      se_method = c("wald", "sampling", "none"),
       num_samples = 1000,
       seed = 123,
-      df = NULL,
-      df_method = NULL,
-      empirical = FALSE,
-      REML = FALSE,
-      marginal = "auto",
+      marginal = "none",
+      df_method = "auto",
       view = NULL,
-      is_classic = FALSE,
-      target_vars = NULL,
-      .return_object = "MAP",
-      ci_method = NULL,
-      se_sampling = NULL,
-      df_pars = NULL,
-      views = NULL,
       ...
     )
 
@@ -570,15 +564,16 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
 
   Optional list specifying parameter values to fix.
 
-- `se`:
-
-  Logical; whether to estimate standard errors and confidence intervals.
-  Default is TRUE.
-
 - `se_method`:
 
-  Character; The method for CI estimation: "wald" (Wald CI) or
-  "sampling" (Simulation-based).
+  Character; method for uncertainty estimation.
+
+  - `"wald"`: Wald standard errors and Wald confidence intervals.
+
+  - `"sampling"`: Simulation-based error propagation.
+
+  - `"none"`: Do not compute standard errors, confidence intervals, or
+    degrees of freedom.
 
 - `num_samples`:
 
@@ -589,68 +584,46 @@ Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
 
   Integer; random seed for sampling.
 
-- `df`:
+- `marginal`:
 
-  Degrees of freedom for the t-distribution used in confidence intervals
-  and summary.
+  Character vector or "auto" or "none"; specifies which parameters to
+  marginalize out via Laplace approximation.
+
+  - `"none"` (default): No additional marginalization.
+
+  - `"auto"`: Uses variables specified by the model wrapper (e.g., fixed
+    effects in lmer).
+
+  - `"all"`: Marginalize all parameters (advanced use).
+
+  - `character vector`: Specific parameter names to marginalize.
 
 - `df_method`:
 
-  Character; Method for calculating degrees of freedom ("bw",
-  "satterthwaite", "Inf").
+  Character or numeric; method for finite degrees-of-freedom
+  approximation. Used only when \`marginal\` resolves to one or more
+  parameters and \`se_method != "none"\`.
 
-- `empirical`:
+  - `"auto"`: Uses Satterthwaite approximation when marginalization is
+    active.
 
-  Logical or character; whether to use empirical Bayes / REML.
+  - `"satterthwaite"`: Satterthwaite approximation.
 
-- `REML`:
+  - `"inf"` or `"none"`: Use infinite degrees of freedom.
 
-  Logical; whether to use Restricted Maximum Likelihood. Default is
-  FALSE.
-
-- `marginal`:
-
-  Character vector of parameters to marginalize out (random effects).
+  - numeric: Use the supplied fixed degrees of freedom.
 
 - `view`:
 
   Character vector of parameter names to prioritize in summary display.
 
-- `is_classic`:
-
-  Logical; Internal use.
-
-- `target_vars`:
-
-  Character vector; Internal use.
-
-- `.return_object`:
-
-  Character; Internal use.
-
-- `ci_method`:
-
-  Alias for \`se_method\`.
-
-- `se_sampling`:
-
-  Alias for \`se_method = "sampling"\`.
-
-- `df_pars`:
-
-  Alias for \`marginal\`.
-
-- `views`:
-
-  Alias for \`view\`.
-
 - `...`:
 
-  Additional arguments passed to Classic_Fit constructor.
+  Additional arguments.
 
 #### Returns
 
-A fitted \`MAP_Fit\` or \`Classic_Fit\` object.
+A fitted \`MAP_Fit\` object.
 
 ------------------------------------------------------------------------
 
@@ -662,47 +635,46 @@ of freedom.
 #### Usage
 
     RTMB_Model$classic(
-      df = NULL,
-      df_method = NULL,
-      REML = TRUE,
-      marginal = "auto",
+      df_method = "auto",
+      se_method = c("wald", "sampling"),
+      num_samples = 1000,
+      seed = 123,
       view = NULL,
       map = NULL,
       fixed = NULL,
-      df_pars = NULL,
-      views = NULL,
       ...
     )
 
 #### Arguments
 
-- `df`:
-
-  Numeric/Inf for specific degrees of freedom. If NULL (default),
-  determined by \`df_method\`.
-
 - `df_method`:
 
-  Character; Method for calculating degrees of freedom. Options:
+  Character; Method for calculating degrees of freedom. Default is
+  "auto".
 
-  - `"bw"` (default): Between-Within method for simple models,
-    automatically switches to Satterthwaite for mixed models.
+  - `"auto"`: Determined based on model type (e.g., Satterthwaite for
+    mixed models).
 
-  - `"satterthwaite"`: Satterthwaite approximation (computationally
-    intensive).
+  - `"residual"`: Residual degrees of freedom.
 
-  - `"Inf"`: Use z-distribution (infinite degrees of freedom).
+  - `"satterthwaite"`: Satterthwaite approximation (robust for mixed
+    models).
 
-- `REML`:
+  - `"inf"`: Use z-distribution (infinite degrees of freedom).
 
-  Logical; whether to use Restricted Maximum Likelihood. Default is
-  TRUE.
+- `se_method`:
 
-- `marginal`:
+  Character; The method for CI estimation: "wald" (default) or
+  "sampling".
 
-  Character vector of parameters to be treated as fixed effects for REML
-  calculation. Default is "auto" (uses wrapper-defined targets if
-  available). Use "none" to disable.
+- `num_samples`:
+
+  Integer; number of samples to draw when se_method is "sampling".
+  Default is 1000.
+
+- `seed`:
+
+  Integer; random seed for sampling.
 
 - `view`:
 
@@ -716,17 +688,9 @@ of freedom.
 
   Optional list specifying parameter values to fix.
 
-- `df_pars`:
-
-  Alias for \`marginal\` (for backward compatibility).
-
-- `views`:
-
-  Alias for `view`.
-
 - `...`:
 
-  Additional arguments passed to \$optimize().
+  Additional arguments.
 
 #### Returns
 
@@ -1016,73 +980,6 @@ Create a model with fixed parameters.
 #### Returns
 
 A new RTMB_Model object.
-
-------------------------------------------------------------------------
-
-### Method `null_model()`
-
-Create a null model by fixing specified parameters.
-
-#### Usage
-
-    RTMB_Model$null_model(
-      target = NULL,
-      value = 0,
-      target_vars = NULL,
-      silent = FALSE
-    )
-
-#### Arguments
-
-- `target`:
-
-  Parameter name to fix.
-
-- `value`:
-
-  Numeric value to fix parameter to. Default is 0.
-
-- `target_vars`:
-
-  Character vector of parameter names to remove priors from (for
-  frequentist inference).
-
-- `silent`:
-
-  Logical; whether to suppress informational messages. Default is FALSE.
-
-#### Returns
-
-A new RTMB_Model object.
-
-------------------------------------------------------------------------
-
-### Method `evaluate_univariate_prior()`
-
-Evaluate the univariate prior density contribution of a specific
-parameter.
-
-#### Usage
-
-    RTMB_Model$evaluate_univariate_prior(p_name, u_val, par_list = NULL)
-
-#### Arguments
-
-- `p_name`:
-
-  Flattened parameter name (e.g., "beta\[1\]").
-
-- `u_val`:
-
-  Value in unconstrained space.
-
-- `par_list`:
-
-  Optional parameter list (constrained) to use for evaluation.
-
-#### Returns
-
-Numeric log-prior density (unconstrained).
 
 ------------------------------------------------------------------------
 

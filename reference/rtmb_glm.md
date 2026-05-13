@@ -9,11 +9,10 @@ rtmb_glm(
   formula,
   data,
   family = "gaussian",
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
   gmc = NULL,
   view = NULL,
   factors = NULL,
@@ -39,9 +38,11 @@ rtmb_glm(
 
 - prior:
 
-  An object of class "rtmb_prior" specifying the prior distribution. Use
-  prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat
-  prior).
+  An object of class \`"rtmb_prior"\`. Use \`prior_flat()\` for no
+  prior, \`prior_normal()\` for default normal/exponential priors, or
+  \`prior_weak()\`, \`prior_rhs()\`, \`prior_ssp()\` for weakly
+  informative or regularized Bayesian inference. Default is
+  \`prior_flat()\`.
 
 - y_range:
 
@@ -56,10 +57,6 @@ rtmb_glm(
 - fixed:
 
   Optional named list of fixed values for specific parameters.
-
-- null:
-
-  Character string specifying the target parameter for the null model.
 
 - gmc:
 

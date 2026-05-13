@@ -70,15 +70,18 @@ summary, and expansion remains consistent.</p>
 Every model object returned by a wrapper function provides the following methods:</p><ul><li><p><code>$optimize()</code>: Performs MAP estimation (comparable to MLE).</p></li>
 <li><p><code>$sample()</code>: Performs MCMC sampling (NUTS) for full Bayesian inference.</p></li>
 <li><p><code>$variational()</code>: Performs Variational Inference (ADVI) for fast posterior approximation.</p></li>
-</ul><p><strong>2. Regularization and Variable Selection:</strong>
-For rtmb_lm, rtmb_glm, and rtmb_glmer, you can handle high-dimensional predictors (where the number of variables is large relative to the sample size) using the penalty argument:</p><ul><li><p><code>"none"</code>: Standard flat or weakly informative priors.</p></li>
-<li><p><code>"rhs"</code>: Regularized Horseshoe prior for continuous shrinkage.</p></li>
-<li><p><code>"ssp"</code>: Spike-and-Slab prior for sparse variable selection.</p></li>
-</ul><p><em>Note: When using regularization, you must specify <code>y_range = c(min, max)</code>
+</ul><p><strong>2. Prior API and Regularization:</strong>
+You can specify the prior distribution using the `prior` argument:</p><ul><li><p><code><a href="prior_flat.html">prior_flat()</a></code>: No additional prior (default). Required for <code>classic()</code> inference.</p></li>
+<li><p><code><a href="prior_normal.html">prior_normal()</a></code>: Manual normal/exponential priors for parameters.</p></li>
+<li><p><code><a href="prior_weak.html">prior_weak()</a></code>: Weakly informative priors based on <code>y_range</code>.</p></li>
+<li><p><code><a href="prior_rhs.html">prior_rhs()</a></code>: Regularized Horseshoe prior for continuous shrinkage.</p></li>
+<li><p><code><a href="prior_ssp.html">prior_ssp()</a></code>: Spike-and-Slab prior for sparse variable selection.</p></li>
+</ul><p><em>Note: When using `prior_weak()`, `prior_rhs()`, or `prior_ssp()`, you must specify <code>y_range = c(min, max)</code>
 to let the model set appropriate global scales for the priors.</em></p>
 <p><strong>3. Weakly Informative Priors (<code>y_range</code>):</strong>
-By providing the theoretical range of your response variable via <code>y_range</code>,
-the wrappers automatically construct "Weakly Informative Priors". These priors
+By providing the theoretical range of your response variable via <code>y_range</code>
+while keeping the default <code>prior = prior_flat()</code>,
+the wrappers automatically switch to <code><a href="prior_weak.html">prior_weak()</a></code>. These priors
 are designed to be broad enough to cover any reasonable value but narrow enough
 to stabilize the estimation and prevent the sampler from wandering into
 non-sensical parameter space.</p>
@@ -87,11 +90,11 @@ For mixed-effect models (e.g., <code>rtmb_glmer</code>), random effects are marg
 using the Laplace approximation during <code>$optimize(laplace = TRUE)</code>.
 When using <code>$sample()</code>, random effects are treated as unknown parameters
 and sampled alongside fixed effects.</p>
-<p><strong>5. Null Model Creation (<code>null</code>):</strong>
-You can specify a <code>null</code> argument (e.g., <code>null = "x1 ~ normal(0, 0.1)"</code>)
-in the wrappers to simultaneously create a restricted version of your model.
-This is particularly useful for computing Bayes Factors or performing
-model comparisons.</p>
+<p><strong>5. Fixed parameters:</strong>
+Use <code>fixed = list(...)</code> to fix model parameters to specified values.
+For example, <code>fixed = list(delta = 0)</code> fixes the parameter
+<code>delta</code> to zero, and <code>fixed = list("b[x]" = 0)</code>
+fixes one element of a vector parameter.</p>
     </div>
 
   </main></div>

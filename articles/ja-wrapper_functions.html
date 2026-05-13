@@ -162,8 +162,8 @@
 <math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>δ</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">\delta = 0</annotation></semantics></math>
 とする帰無モデルとの比較（ベイズファクター）を算出できます。</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 効果量 delta = 0 のモデルと比較</span></span>
-<span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_ttest</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"delta"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># 効果量 delta = 0 とするモデルと比較</span></span>
+<span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_ttest</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bf</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Bayes Factor (BF12) : 4777.563 </span></span>
 <span><span class="co">## Log Bayes Factor    : 8.4717 (Approx. Error = 0.0039)</span></span>
@@ -488,8 +488,8 @@ BF6）の間の相関を推定し、無相関（<math display="inline" xmlns="ht
 <span><span class="co">## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 </span></span>
 <span><span class="co">## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 </span></span></code></pre>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 相関 = 0 のモデル（null_model = "corr"）と比較</span></span>
-<span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>null_model <span class="op">=</span> <span class="st">"corr"</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="co"># 相関ゼロのモデルと比較 (fixed = list(corr = 0))</span></span>
+<span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>corr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bf_corr</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Bayes Factor (BF12) : 6.839475e+15 </span></span>
 <span><span class="co">## Log Bayes Factor    : 36.4615 (Approx. Error = 0.0043)</span></span>

@@ -7,14 +7,7 @@ user-friendly hints.
 ## Usage
 
 ``` r
-safe_rtmb_model(
-  data,
-  code,
-  par_names = list(),
-  init = NULL,
-  view = NULL,
-  null_target = NULL
-)
+safe_rtmb_model(data, code, par_names = list(), init = NULL, view = NULL)
 ```
 
 ## Arguments
@@ -40,11 +33,6 @@ safe_rtmb_model(
 
   Character vector of parameter names to be displayed preferentially in
   summary outputs (optional).
-
-- null_target:
-
-  A character string specifying the parameter to fix and the prior to
-  disable for creating a null model (optional).
 
 ## Value
 

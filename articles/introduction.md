@@ -316,10 +316,10 @@ for factor analysis.
 Also, using
 [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md),
 a Bayesian t-test can be performed easily. By simply specifying the
-“parameter name to fix at 0” in the `null_model` argument of the
+parameters to fix in the `fixed` argument of the
 [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
-method, the estimation of the null model and the calculation of the
-Bayes factor are done automatically.
+method (as a list), the estimation of the null model and the calculation
+of the Bayes factor are done automatically.
 
 ``` r
 
@@ -327,8 +327,8 @@ data(debate)
 mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
-# Comparison with the null model where effect size (delta) is fixed at 0
-bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+# Compare against the null model where delta = 0
+bf_ttest <- mcmc_ttest$bayes_factor(fixed = list(delta = 0))
 bf_ttest
 ```
 

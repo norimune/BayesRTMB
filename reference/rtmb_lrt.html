@@ -70,7 +70,8 @@ and Gaussian Process smoothing on the mean profiles.</p>
 <span>  noise <span class="op">=</span> <span class="fl">0.01</span>,</span>
 <span>  prob_smoothing <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  link <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"ordered"</span>, <span class="st">"sequential"</span><span class="op">)</span>,</span>
-<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -120,8 +121,9 @@ and Gaussian Process smoothing on the mean profiles.</p>
 <dd><p>Link function for class probabilities: "ordered" or "sequential".</p></dd>
 
 
-<dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>Prior configuration object: <code><a href="prior_uniform.html">prior_uniform()</a></code> (default), <code><a href="prior_weak.html">prior_weak()</a></code>, <code><a href="prior_rhs.html">prior_rhs()</a></code>, or <code><a href="prior_ssp.html">prior_ssp()</a></code>.</p></dd>
+<dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
+<dd><p>Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
+Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.</p></dd>
 
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
@@ -129,7 +131,7 @@ and Gaussian Process smoothing on the mean profiles.</p>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to <code>rtmb_model</code>.</p></dd>
+<dd><p>Additional arguments passed to `rtmb_model`.</p></dd>
 
 </dl></div>
     <div class="section level2">

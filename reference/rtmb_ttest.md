@@ -13,10 +13,9 @@ rtmb_ttest(
   paired = FALSE,
   ID = NULL,
   y_range = NULL,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   init = NULL,
   fixed = NULL,
-  null = NULL,
   var.equal = TRUE,
   ...
 )
@@ -59,8 +58,10 @@ rtmb_ttest(
 
 - prior:
 
-  An object of class "rtmb_prior" (e.g., \`prior_uniform()\`,
-  \`prior_jzs()\`, or \`prior_weak()\`).
+  An object of class \`"rtmb_prior"\`. Use \`prior_flat()\` for no
+  prior, \`prior_normal()\` for default normal/exponential priors, or
+  \`prior_weak()\` for weakly informative Bayesian inference. Default is
+  \`prior_flat()\`.
 
 - init:
 
@@ -69,11 +70,6 @@ rtmb_ttest(
 - fixed:
 
   Optional named list of fixed values for specific parameters.
-
-- null:
-
-  Character string specifying the target parameter for the null model
-  (e.g., "delta").
 
 - var.equal:
 

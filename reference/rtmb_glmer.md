@@ -10,11 +10,10 @@ rtmb_glmer(
   data,
   family = "gaussian",
   laplace = FALSE,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
   gmc = NULL,
   cwc = NULL,
   view = NULL,
@@ -53,8 +52,8 @@ rtmb_glmer(
 - prior:
 
   An object of class "rtmb_prior" specifying the prior distribution. Use
-  prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat
-  prior).
+  prior_weak(), prior_rhs(), or prior_ssp(). Default is
+  \`prior_flat()\`.
 
 - y_range:
 
@@ -70,10 +69,6 @@ rtmb_glmer(
 - fixed:
 
   Optional named list of fixed values for specific parameters.
-
-- null:
-
-  Character string specifying the target parameter for the null model.
 
 - gmc:
 

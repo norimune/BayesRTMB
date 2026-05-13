@@ -303,14 +303,14 @@ mcmc_reg
 
 [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 を使うと、推定したモデルと帰無モデルの周辺尤度を比較し、**ベイズファクター**を計算できます。
-`null_model = "beta[talk]"` のように指定すると、その係数を 0
+`fixed = list("beta[talk]" = 0)` のように指定すると、その係数を 0
 に固定した帰無モデルを内部で作成して比較します。
 
 係数の予測に対する寄与をベイズ的に評価したいときに便利です。
 
 ``` r
 
-bf_result <- mcmc_reg$bayes_factor(null_model = "beta[talk]")
+bf_result <- mcmc_reg$bayes_factor(fixed = list("beta[talk]" = 0))
 bf_result
 ```
 

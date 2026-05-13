@@ -100,8 +100,22 @@ estimation.
 
 - `marginal_vars`:
 
-  Character vector of parameter names that were marginalized (integrated
-  out).
+  Character vector of parameter names requested through
+  \`optimize(marginal = ...)\`.
+
+- `laplace_random_vars`:
+
+  Character vector of all parameter names passed to \`MakeADFun(random =
+  ...)\` during Laplace approximation.
+
+- `idx_fix_active`:
+
+  Numeric vector; mapping between active parameters and full
+  unconstrained vector.
+
+- `show_df`:
+
+  Logical; whether to display degrees of freedom in the summary output.
 
 ## Methods
 
@@ -120,8 +134,6 @@ estimation.
 - [`MAP_Fit$draws()`](#method-map_fit-draws)
 
 - [`MAP_Fit$summary()`](#method-map_fit-summary)
-
-- [`MAP_Fit$savage_dickey()`](#method-map_fit-savage_dickey)
 
 - [`MAP_Fit$print()`](#method-map_fit-print)
 
@@ -225,7 +237,10 @@ Create a new \`MAP_Fit\` object.
       ci_method = "wald",
       laplace = TRUE,
       map = NULL,
-      marginal_vars = NULL
+      marginal_vars = NULL,
+      laplace_random_vars = NULL,
+      idx_fix_active = NULL,
+      show_df = TRUE
     )
 
 #### Arguments
@@ -313,8 +328,23 @@ Create a new \`MAP_Fit\` object.
 
 - `marginal_vars`:
 
-  Character vector of parameter names that were marginalized (integrated
-  out).
+  Character vector of parameter names requested through
+  \`optimize(marginal = ...)\`.
+
+- `laplace_random_vars`:
+
+  Character vector of all parameter names passed to \`MakeADFun(random =
+  ...)\` during Laplace approximation.
+
+- `idx_fix_active`:
+
+  Numeric vector; mapping between active parameters and full
+  unconstrained vector.
+
+- `show_df`:
+
+  Logical; whether to display degrees of freedom in the summary output.
+  Default is TRUE.
 
 ------------------------------------------------------------------------
 
@@ -406,35 +436,6 @@ Summarize MAP estimates.
 #### Returns
 
 A summary object, typically a data frame.
-
-------------------------------------------------------------------------
-
-### Method `savage_dickey()`
-
-Calculate Bayes Factors using the Savage-Dickey density ratio.
-
-#### Usage
-
-    MAP_Fit$savage_dickey(pars = NULL, null = 0, digits = 3)
-
-#### Arguments
-
-- `pars`:
-
-  Optional character vector of parameter names to test. If NULL, tests
-  all fixed effects.
-
-- `null`:
-
-  The null hypothesis value (on the constrained scale). Default is 0.
-
-- `digits`:
-
-  Number of decimal places in the output.
-
-#### Returns
-
-A data frame containing Bayes Factors and evidence descriptions.
 
 ------------------------------------------------------------------------
 

@@ -169,6 +169,14 @@
 <dd><p>Character string specifying the degrees of freedom calculation method.</p></dd>
 
 
+<dt><code>idx_fix_active</code></dt>
+<dd><p>Numeric vector; mapping between active parameters and full unconstrained vector.</p></dd>
+
+
+<dt><code>show_df</code></dt>
+<dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -222,6 +230,8 @@
 <span>  fit <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  vcov <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  df_method <span class="op">=</span> <span class="st">"bw"</span>,</span>
+<span>  idx_fix_active <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  show_df <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
@@ -326,6 +336,14 @@
 
 <dt><code>df_method</code></dt>
 <dd><p>Method for degrees of freedom calculation.</p></dd>
+
+
+<dt><code>idx_fix_active</code></dt>
+<dd><p>Numeric vector; mapping between active parameters and full unconstrained vector.</p></dd>
+
+
+<dt><code>show_df</code></dt>
+<dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
 
 
 <dt><code>...</code></dt>

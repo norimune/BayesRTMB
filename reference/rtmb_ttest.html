@@ -64,10 +64,9 @@
 <span>  paired <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  ID <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_uniform.html">prior_uniform</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  null <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  var.equal <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -106,7 +105,10 @@
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>An object of class "rtmb_prior" (e.g., `prior_uniform()`, `prior_jzs()`, or `prior_weak()`).</p></dd>
+<dd><p>An object of class `"rtmb_prior"`.
+Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+or `prior_weak()` for weakly informative Bayesian inference.
+Default is `prior_flat()`.</p></dd>
 
 
 <dt id="arg-init">init<a class="anchor" aria-label="anchor" href="#arg-init"></a></dt>
@@ -115,10 +117,6 @@
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
 <dd><p>Optional named list of fixed values for specific parameters.</p></dd>
-
-
-<dt id="arg-null">null<a class="anchor" aria-label="anchor" href="#arg-null"></a></dt>
-<dd><p>Character string specifying the target parameter for the null model (e.g., "delta").</p></dd>
 
 
 <dt id="arg-var-equal">var.equal<a class="anchor" aria-label="anchor" href="#arg-var-equal"></a></dt>

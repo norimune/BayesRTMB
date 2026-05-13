@@ -12,7 +12,8 @@ rtmb_mixture(
   k = 2,
   data = NULL,
   covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-  prior = prior_uniform(),
+  prior = prior_flat(),
+  y_range = NULL,
   fixed = NULL,
   ...
 )
@@ -38,15 +39,11 @@ rtmb_mixture(
   Covariance structure: "diagonal" (default), "diagonal_equal", "full",
   "full_equal", or "full_equal_corr".
 
-- prior:
+- y_range:
 
-  Prior configuration object:
-  [`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
-  (default),
-  [`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md),
-  [`prior_rhs()`](https://norimune.github.io/BayesRTMB/reference/prior_rhs.md),
-  or
-  [`prior_ssp()`](https://norimune.github.io/BayesRTMB/reference/prior_ssp.md).
+  Optional numeric vector or matrix defining the theoretical range (min,
+  max) of response variables. Specifying this automatically enables
+  weakly informative priors if \`prior\` is \`prior_flat()\`.
 
 - fixed:
 
@@ -54,7 +51,7 @@ rtmb_mixture(
 
 - ...:
 
-  Additional arguments passed to `rtmb_model`.
+  Additional arguments passed to \`rtmb_model\`.
 
 ## Value
 

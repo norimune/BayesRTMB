@@ -9,6 +9,12 @@ MCMC fit object
 An R6 class storing posterior samples and related information from MCMC
 estimation.
 
+Bayes factors are computed as ratios of marginal likelihoods estimated
+by bridge sampling. The comparison model can be constructed by fixing
+parameters with \`fixed = list(...)\`, or supplied as an already fitted
+\`MCMC_Fit\` object via \`comparison_fit\`. Bayes factors are computed
+only by marginal-likelihood model comparison.
+
 ## Super class
 
 [`BayesRTMB::RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
@@ -69,11 +75,9 @@ estimation.
   Numeric value storing the calculated log marginal likelihood from
   bridge sampling.
 
-- `null_fit`:
+- `comparison_fit`:
 
-  An `MCMC_Fit` object containing the fitted null model. This is
-  automatically cached when calculating a Bayes factor using a target
-  string.
+  An `MCMC_Fit` object containing the fitted comparison model.
 
 ## Methods
 
@@ -445,12 +449,13 @@ Bridge sampling result.
 
 ### Method [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 
-Calculate the Bayes Factor against a null model or another fit object.
+Calculate the Bayes factor by marginal-likelihood model comparison.
 
 #### Usage
 
     MCMC_Fit$bayes_factor(
-      null_model,
+      fixed = NULL,
+      comparison_fit = NULL,
       bs_method = "normal",
       error_threshold = 0.2,
       ...
@@ -458,24 +463,32 @@ Calculate the Bayes Factor against a null model or another fit object.
 
 #### Arguments
 
-- `null_model`:
+- `fixed`:
 
-  Either a character string specifying the null target (e.g., "rho ~
-  uniform(-1, 1)") or another MCMC_Fit object.
+  Named list of parameter values used to construct the comparison model.
+  For example, `fixed = list(delta = 0)` or `fixed = list("b[x]" = 0)`.
+
+- `comparison_fit`:
+
+  Optional \`MCMC_Fit\` object for an already fitted comparison model.
 
 - `bs_method`:
 
   Character; the method to use for bridge sampling ("normal" or
-  "warp3"). Default is "normal".
+  "warp3").
 
 - `error_threshold`:
 
-  Numeric; threshold for the approximate error warning. Default is 0.2.
+  Numeric; threshold for the approximate error warning.
 
 - `...`:
 
-  Additional arguments passed to the sample() method when fitting a null
-  model (e.g., `chains = 4`, `sampling = 4000`).
+  Additional arguments passed to \`sample()\` when fitting the
+  comparison model (e.g., `chains = 4`, `sampling = 4000`).
+
+#### Returns
+
+A list of class `bayes_factor_rtmb` containing Bayes factor results.
 
 ------------------------------------------------------------------------
 

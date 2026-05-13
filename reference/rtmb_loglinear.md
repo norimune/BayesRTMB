@@ -6,7 +6,7 @@ regression) on a contingency table or raw data.
 ## Usage
 
 ``` r
-rtmb_loglinear(formula, data, prior = prior_uniform(), fixed = NULL, ...)
+rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
 ```
 
 ## Arguments

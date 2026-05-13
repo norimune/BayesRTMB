@@ -17,7 +17,6 @@ rtmb_model(
   init = NULL,
   view = NULL,
   fixed = NULL,
-  null_target = NULL,
   silent = FALSE
 )
 ```
@@ -55,12 +54,6 @@ rtmb_model(
   A named list of parameter values to fix (optional). Useful for scoring
   or plug-in estimation where some parameters (e.g., item parameters)
   are fixed to known values.
-
-- null_target:
-
-  Character string. To simultaneously create a null model, specify the
-  target parameter to fix and the prior distribution to disable as a
-  formula string (e.g., `"delta ~ cauchy(0, r)"`). Default is `NULL`.
 
 - silent:
 
@@ -118,10 +111,6 @@ improving the readability of summary outputs and trace plots.
   Differentiation Variational Inference (ADVI). Returns a `VB_Fit`
   object.
 
-- `$null_model(target, ...)`: Creates a restricted model by fixing
-  specific parameters (e.g., an effect size to zero), which is useful
-  for Bayes Factor calculation.
-
 ## Examples
 
 ``` r
@@ -167,9 +156,8 @@ mod_basic <- rtmb_model(
 
 # Perform Maximum A Posteriori (MAP) estimation
 map_basic <- mod_basic$optimize()
-#> Starting optimization...
+#> Starting RTMB optimization...
 #> 
-#> Optimization converged. Final objective: 46.99
 # The summary displays default parameter names: mu[1], mu[2], mu[3]
 map_basic$summary()
 #> 
@@ -182,7 +170,7 @@ map_basic$summary()
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 #> mu[1]     -0.12319     0.09499   -0.30936    0.06298 
-#> mu[2]      2.15924     0.10806    1.94745    2.37102 
+#> mu[2]      2.15920     0.10806    1.94742    2.37099 
 #> mu[3]     -1.11887     0.09722   -1.30942   -0.92832 
 #> sigma      0.44555     0.04045    0.37292    0.53232 
 #> 
@@ -233,9 +221,8 @@ mod_named <- rtmb_model(
 #> Checking RTMB setup...
 
 map_named <- mod_named$optimize()
-#> Starting optimization...
+#> Starting RTMB optimization...
 #> 
-#> Optimization converged. Final objective: 46.99
 # The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]
 map_named$summary()
 #> 
@@ -248,7 +235,7 @@ map_named$summary()
 #> Point Estimates and 95% Wald CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 #> mu[Control]      -0.12319     0.09499   -0.30936    0.06298 
-#> mu[Treatment_A]   2.15921     0.10806    1.94742    2.37099 
+#> mu[Treatment_A]   2.15920     0.10806    1.94742    2.37099 
 #> mu[Treatment_B]  -1.11887     0.09722   -1.30942   -0.92832 
 #> sigma             0.44555     0.04045    0.37292    0.53232 
 #> 

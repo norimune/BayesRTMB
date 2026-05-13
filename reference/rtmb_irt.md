@@ -11,7 +11,7 @@ rtmb_irt(
   data,
   model = c("2PL", "1PL", "3PL"),
   type = c("binary", "ordered"),
-  prior = prior_uniform(),
+  prior = prior_flat(),
   init = NULL,
   fixed = NULL,
   view = NULL
@@ -34,9 +34,9 @@ rtmb_irt(
 
 - prior:
 
-  Prior configuration: \`prior_uniform()\` (default) or
+  Prior configuration: \`prior_flat()\`, \`prior_normal()\`, or
   \`prior_weak()\`. Hyperparameters can be specified within these
-  functions (e.g., \`prior_weak(b_sd = 5)\`). Available parameters for
+  functions (e.g., \`prior_normal(b_sd = 5)\`). Available parameters for
   IRT: \`a_rate\` (discrimination), \`b_sd\` (difficulty),
   \`c_alpha\`/\`c_beta\` (guessing).
 
