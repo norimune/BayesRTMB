@@ -21,19 +21,22 @@ Every model object returned by a wrapper function provides the following methods
   \item \code{$variational()}: Performs Variational Inference (ADVI) for fast posterior approximation.
 }
 
-\strong{2. Regularization and Variable Selection:}
-For rtmb_lm, rtmb_glm, and rtmb_glmer, you can handle high-dimensional predictors (where the number of variables is large relative to the sample size) using the penalty argument:
+\strong{2. Prior API and Regularization:}
+You can specify the prior distribution using the `prior` argument:
 \itemize{
-  \item \code{"none"}: Standard flat or weakly informative priors.
-  \item \code{"rhs"}: Regularized Horseshoe prior for continuous shrinkage.
-  \item \code{"ssp"}: Spike-and-Slab prior for sparse variable selection.
+  \item \code{prior_flat()}: No additional prior (default). Required for \code{classic()} inference.
+  \item \code{prior_normal()}: Manual normal/exponential priors for parameters.
+  \item \code{prior_weak()}: Weakly informative priors based on \code{y_range}.
+  \item \code{prior_rhs()}: Regularized Horseshoe prior for continuous shrinkage.
+  \item \code{prior_ssp()}: Spike-and-Slab prior for sparse variable selection.
 }
-\emph{Note: When using regularization, you must specify \code{y_range = c(min, max)}
+\emph{Note: When using `prior_weak()`, `prior_rhs()`, or `prior_ssp()`, you must specify \code{y_range = c(min, max)}
 to let the model set appropriate global scales for the priors.}
 
 \strong{3. Weakly Informative Priors (\code{y_range}):}
-By providing the theoretical range of your response variable via \code{y_range},
-the wrappers automatically construct "Weakly Informative Priors". These priors
+By providing the theoretical range of your response variable via \code{y_range}
+while keeping the default \code{prior = prior_flat()},
+the wrappers automatically switch to \code{prior_weak()}. These priors
 are designed to be broad enough to cover any reasonable value but narrow enough
 to stabilize the estimation and prevent the sampler from wandering into
 non-sensical parameter space.

@@ -9,7 +9,7 @@ rtmb_glmer(
   data,
   family = "gaussian",
   laplace = FALSE,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   init = NULL,
   fixed = NULL,

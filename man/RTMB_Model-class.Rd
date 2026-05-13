@@ -481,9 +481,9 @@ Perform frequentist inference (REML/ML) with model-appropriate degrees of freedo
 \item{\code{df_method}}{Character; Method for calculating degrees of freedom. Default is "auto".
 \itemize{
   \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for mixed models).
-  \item \code{"bw"}: Between-Within method (fast, for simple designs).
+  \item \code{"residual"}: Residual degrees of freedom.
   \item \code{"satterthwaite"}: Satterthwaite approximation (robust for mixed models).
-  \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+  \item \code{"inf"}: Use z-distribution (infinite degrees of freedom).
 }}
 
 \item{\code{se_method}}{Character; The method for CI estimation: "wald" (default) or "sampling".}

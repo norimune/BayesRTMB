@@ -8,7 +8,7 @@ rtmb_mediation(
   formula,
   data,
   family = "gaussian",
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   fixed = NULL,
   view = NULL,

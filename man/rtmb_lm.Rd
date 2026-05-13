@@ -7,7 +7,7 @@
 rtmb_lm(
   formula,
   data,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   init = NULL,
   fixed = NULL,
@@ -24,7 +24,10 @@ rtmb_lm(
 
 \item{data}{Data frame}
 
-\item{prior}{An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).}
+\item{prior}{An object of class `"rtmb_prior"`.
+Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+Default is `prior_flat()`.}
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.}
 

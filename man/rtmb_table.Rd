@@ -10,7 +10,7 @@ rtmb_table(
   data = NULL,
   classic = FALSE,
   correct = TRUE,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   fixed = NULL,
   ...
 )
@@ -26,7 +26,7 @@ rtmb_table(
 
 \item{correct}{Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).}
 
-\item{prior}{Prior specification (Bayesian mode). Default is `prior_uniform()`.}
+\item{prior}{Prior specification (Bayesian mode). Default is `prior_flat()`.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 

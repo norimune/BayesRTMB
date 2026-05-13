@@ -425,7 +425,7 @@ MAP_Fit <- R6::R6Class(
     #' @return A data frame containing Bayes Factors and evidence descriptions.
     savage_dickey = function(pars = NULL, null = 0, digits = 3) {
       if (is.null(self$par_unc) || is.null(self$vcov_unc)) {
-        stop("Unconstrained estimates and covariance are required for Savage-Dickey. Ensure the model was fitted with se = TRUE.")
+        stop("Unconstrained estimates and covariance are required for Savage-Dickey. Ensure the model was fitted with `se_method = 'wald'` or `se_method = 'sampling'`.", call. = FALSE)
       }
 
       # 1. Resolve parameters to test

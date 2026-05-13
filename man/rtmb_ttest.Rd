@@ -12,7 +12,7 @@ rtmb_ttest(
   paired = FALSE,
   ID = NULL,
   y_range = NULL,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   init = NULL,
   fixed = NULL,
   null = NULL,
@@ -35,7 +35,10 @@ rtmb_ttest(
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.}
 
-\item{prior}{An object of class "rtmb_prior" (e.g., `prior_uniform()`, `prior_jzs()`, or `prior_weak()`).}
+\item{prior}{An object of class `"rtmb_prior"`.
+Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+or `prior_weak()` for weakly informative Bayesian inference.
+Default is `prior_flat()`.}
 
 \item{init}{List of initial values.}
 

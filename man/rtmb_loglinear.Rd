@@ -4,7 +4,7 @@
 \alias{rtmb_loglinear}
 \title{RTMB-based Log-linear analysis (Poisson regression)}
 \usage{
-rtmb_loglinear(formula, data, prior = prior_uniform(), fixed = NULL, ...)
+rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
 }
 \arguments{
 \item{formula}{A formula (e.g., `~ A + B + A:B`) or a contingency table.}

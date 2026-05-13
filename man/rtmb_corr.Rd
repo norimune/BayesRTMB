@@ -9,7 +9,7 @@ rtmb_corr(
   data = NULL,
   ID = NULL,
   covariates = NULL,
-  prior = prior_uniform(),
+  prior = prior_flat(),
   y_range = NULL,
   init = NULL,
   fixed = NULL,
@@ -25,7 +25,7 @@ rtmb_corr(
 
 \item{covariates}{Optional numeric matrix or data frame of covariates to be included in the joint MVN model.}
 
-\item{prior}{Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.}
+\item{prior}{Prior configuration object: `prior_flat()`, `prior_normal()`, or `prior_weak()`. Default is `prior_flat()`.}
 
 \item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.}

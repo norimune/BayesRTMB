@@ -1,37 +1,14 @@
 .inference_pipeline <- function(self, private, laplace, init, num_estimate, control,
-                              optimizer, method, map, fixed, se, se_method,
-                              num_samples, seed, marginal, view,
-                              is_classic = FALSE, df = NULL, df_method = NULL,
-                              REML = FALSE, .return_object = "MAP", target_vars = NULL, ...) {
+                               optimizer, method, map, fixed, se, se_method,
+                               num_samples, seed, marginal, df_method, view, ...) {
 
-  se_method <- match.arg(se_method, c("wald", "sampling"))
+  se_method <- match.arg(se_method, c("wald", "sampling", "none"))
+  se_enabled <- !identical(se_method, "none")
+  se <- isTRUE(se) && se_enabled
 
   if (is.null(marginal)) marginal <- "none"
-
-  # For classic fits, marginalization targets are only active if REML is TRUE
-  if (isTRUE(is_classic) && !isTRUE(REML)) {
-    target_vars <- character(0)
-  }
-
-  if (is.null(target_vars)) {
-    target_vars <- private$.resolve_marginal_vars(marginal)
-  }
+  target_vars <- private$.resolve_marginal_vars(marginal)
   marginal_flag <- length(target_vars) > 0L
-
-  if (isTRUE(is_classic)) {
-    model_obj <- self$null_model(target_vars = target_vars)
-    # Recursively run the pipeline on the restricted model (without priors)
-    # Set is_classic = FALSE to avoid infinite recursion
-    return(.inference_pipeline(
-      self = model_obj, private = model_obj$.__enclos_env__$private,
-      laplace = laplace, init = init, num_estimate = num_estimate, control = control,
-      optimizer = optimizer, method = method, map = map, fixed = fixed,
-      se = se, se_method = se_method, num_samples = num_samples, seed = seed,
-      marginal = marginal, view = view,
-      is_classic = FALSE, df = df, df_method = df_method,
-      REML = REML, .return_object = .return_object, target_vars = target_vars, ...
-    ))
-  }
 
   dot_args <- list(...)
   requested_contrasts <- dot_args$contrasts
@@ -57,9 +34,7 @@
       laplace = laplace, init = new_model$init, num_estimate = num_estimate, control = control,
       optimizer = optimizer, method = method, map = map, fixed = NULL,
       se = se, se_method = se_method, num_samples = num_samples, seed = seed,
-      marginal = marginal, view = view,
-      is_classic = is_classic, df = df, df_method = df_method,
-      REML = REML, .return_object = .return_object, target_vars = target_vars, ...
+      marginal = marginal, df_method = df_method, view = view, ...
     ))
   }
 
@@ -69,12 +44,15 @@
   ci_method <- se_method
   if (ci_method == "sampling") se_sampling <- TRUE else se_sampling <- FALSE
 
-  df_t <- Inf
   auto_df <- FALSE
-  show_df <- FALSE
+  df_t <- Inf
 
-  if (is.numeric(df_method)) {
-    if (marginal_flag || isTRUE(is_classic) || identical(.return_object, "Classic")) {
+  if (identical(se_method, "none")) {
+    auto_df <- FALSE
+    show_df <- FALSE
+    df_t <- Inf
+  } else if (is.numeric(df_method)) {
+    if (marginal_flag) {
       df_t <- df_method
       show_df <- TRUE
     } else {
@@ -86,7 +64,7 @@
     df_method_l <- tolower(df_method)
 
     if (identical(df_method_l, "auto")) {
-      if (marginal_flag || isTRUE(is_classic) || identical(.return_object, "Classic")) {
+      if (marginal_flag) {
         auto_df <- TRUE
         show_df <- TRUE
       } else {
@@ -96,8 +74,8 @@
     } else if (df_method_l %in% c("inf", "infinite", "none")) {
       df_t <- Inf
       show_df <- FALSE
-    } else if (df_method_l %in% c("satterthwaite", "bw")) {
-      if (marginal_flag || isTRUE(is_classic) || identical(.return_object, "Classic")) {
+    } else if (df_method_l %in% c("satterthwaite")) {
+      if (marginal_flag) {
         auto_df <- TRUE
         show_df <- TRUE
       } else {
@@ -109,23 +87,30 @@
     }
   }
 
-  # --- Warning for ignored df_method when marginal = "none" ---
-  if (!marginal_flag && !isTRUE(is_classic) && !identical(.return_object, "Classic")) {
+  # --- Warning for ignored df_method ---
+  if (se_enabled && !marginal_flag) {
     if (is.numeric(df_method)) {
-      warning(
-        "Numeric `df_method` is ignored when `marginal = 'none'` in optimize(). ",
-        "Use `marginal` to enable finite-df adjustment.",
-        call. = FALSE
-      )
+      if (identical(marginal, "auto")) {
+        warning("Numeric `df_method` is ignored because `marginal = 'auto'` resolved to no parameters.", call. = FALSE)
+      } else if (identical(marginal, "none")) {
+        warning("Numeric `df_method` is ignored when `marginal = 'none'` in optimize(). Use `marginal` to enable finite-df adjustment.", call. = FALSE)
+      }
     } else {
       df_method_l <- tolower(df_method %||% "auto")
-      if (!(df_method_l %in% c("auto", "inf", "infinite", "none"))) {
-        warning(
-          "`df_method` is ignored when `marginal = 'none'` in optimize(). ",
-          "Use `marginal` to enable finite-df adjustment, or set `df_method = 'none'`.",
-          call. = FALSE
-        )
+      explicit_df <- !(df_method_l %in% c("auto", "inf", "infinite", "none"))
+      if (explicit_df) {
+        if (identical(marginal, "auto")) {
+          warning("`df_method` is ignored because `marginal = 'auto'` resolved to no parameters. Set `model$extra$marginal` or specify `marginal = c(...)` explicitly.", call. = FALSE)
+        } else if (identical(marginal, "none")) {
+          warning("`df_method` is ignored when `marginal = 'none'` in optimize(). Use `marginal` to enable finite-df adjustment, or set `df_method = 'none'`.", call. = FALSE)
+        }
       }
+    }
+  } else if (!se_enabled) {
+    df_method_l <- if (is.character(df_method)) tolower(df_method) else df_method
+    explicit_df_requested <- is.numeric(df_method) || (is.character(df_method_l) && !(df_method_l %in% c("auto", "inf", "infinite", "none")))
+    if (explicit_df_requested) {
+      warning("`df_method` is ignored when `se_method = 'none'`.", call. = FALSE)
     }
   }
 
@@ -144,10 +129,11 @@
   ad_setup       <- raw$ad_setup
   ad_obj         <- raw$ad_obj
   opt            <- raw$opt
-  sd_rep         <- raw$sd_rep
+  sd_rep         <- if (se_enabled) raw$sd_rep else NULL
   unc_est_vec    <- raw$par_unc
-  unc_se_vec     <- raw$se_unc
-  Cov_u          <- raw$vcov_unc
+  L_u_total      <- raw$L_u_total
+  unc_se_vec     <- if (se_enabled) raw$se_unc else rep(NA_real_, L_u_total)
+  Cov_u          <- if (se_enabled) raw$vcov_unc else matrix(NA_real_, L_u_total, L_u_total)
   con_est_list   <- raw$par
   target_map     <- raw$map
   idx_fix_active <- raw$idx_fix_active
@@ -156,7 +142,6 @@
   factor_levels_seen <- raw$factor_levels_seen
   unc_est_list   <- raw$par_unc_list
   unc_se_list    <- raw$se_unc_list
-  L_u_total      <- raw$L_u_total
   opt_history    <- raw$opt_history
   fallback_needed <- raw$fallback_needed
 
@@ -172,14 +157,13 @@
                 (df_method_l == "auto" && marginal_flag)
     
     if (use_satt) {
-      is_silent <- identical(.return_object, "Classic") && identical(df_method, "bw")
-      satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = is_silent, return_sensitivities = TRUE)
+      satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = FALSE, return_sensitivities = TRUE)
       if (is.list(satt_res)) { est_dfs_all <- satt_res$df; dH_list <- satt_res$sensitivities; V_opt <- satt_res$V } else est_dfs_all <- satt_res
       dH_theta <- dH_list; V_theta <- V_opt
       if (marginal_flag && length(ad_obj$env$random) > 0) {
         full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]; target_ran_idx <- which(full_par_names_mapped %in% target_vars)
         if (length(target_ran_idx) > 0) {
-          reml_res <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = is_silent, return_sensitivities = TRUE)
+          reml_res <- self$calculate_reml_satterthwaite_df(ad_obj, opt$par, target_ran_idx, silent = FALSE, return_sensitivities = TRUE)
           if (is.list(reml_res)) { active_idx <- idx_ran_full[target_ran_idx]; est_dfs_all[active_idx] <- reml_res$df; dH_beta <- reml_res$sensitivities; V_beta <- reml_res$V_beta }
         }
       }
@@ -228,7 +212,7 @@
     est_dfs_all <- rep(Inf, L_u_total)
   }
 
-  if (se_sampling) {
+  if (se_sampling && se_enabled) {
     if (!getOption("BayesRTMB.silent", FALSE)) cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
     Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]; mu_valid <- unc_est_vec[idx_fix_active]
     eig <- eigen(Cov_u_valid, symmetric = TRUE); eig$values <- pmax(eig$values, 1e-8); Cov_u_pd <- eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
@@ -280,7 +264,7 @@
       con_upper_list[[name]] <- if (is.null(mat)) rep(NA, p_info$length) else apply(mat, 2, quantile, 0.975, na.rm = TRUE)
       if (length(p_info$dim) > 1) { dim(con_se_list[[name]]) <- dim(con_lower_list[[name]]) <- dim(con_upper_list[[name]]) <- p_info$dim }
     }
-  } else {
+  } else if (se_enabled) {
     u_idx_current <- 1
     for (name in names(self$par_list)) {
       p_info <- self$par_list[[name]]; u_val <- unc_est_list[[name]]; u_se <- unc_se_list[[name]]; c_val <- con_est_list[[name]]
@@ -298,6 +282,18 @@
       }
       con_lower_list[[name]] <- if (length(p_info$dim) > 1) structure(c_low, dim = p_info$dim) else c_low
       con_upper_list[[name]] <- if (length(p_info$dim) > 1) structure(c_up, dim = p_info$dim) else c_up
+    }
+  } else {
+    # SE disabled: use point estimates and NA for uncertainty
+    for (name in names(self$par_list)) {
+      p_info <- self$par_list[[name]]
+      L_c <- p_info$length
+      con_se_list[[name]] <- rep(NA_real_, L_c)
+      con_lower_list[[name]] <- rep(NA_real_, L_c)
+      con_upper_list[[name]] <- rep(NA_real_, L_c)
+      if (length(p_info$dim) > 1) {
+        dim(con_se_list[[name]]) <- dim(con_lower_list[[name]]) <- dim(con_upper_list[[name]]) <- p_info$dim
+      }
     }
   }
 
@@ -351,22 +347,56 @@
     if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
     flat_base <- unlist(base_out, use.names = FALSE); L_out <- length(flat_base); names_vec <- c()
     for (name in names(base_out)) names_vec <- c(names_vec, generate_flat_names(name, if (is.null(dim(base_out[[name]]))) length(base_out[[name]]) else dim(base_out[[name]]), self$par_names[[name]]))
-    if (show_df || !se_sampling) {
-      J <- matrix(0, L_out, L_u_total); for (i in 1:L_u_total) { u_tmp <- unc_est_vec; u_tmp[i] <- u_tmp[i] + 1e-5; tmp_con <- self$to_constrained(unconstrained_vector_to_list(u_tmp, self$par_list)); if (is_generate && !is.null(self$transform)) { ut <- tryCatch(self$transform(self$data, tmp_con), error = function(e) NULL); if (!is.null(ut)) tmp_con <- c(tmp_con, ut) }; tmp_out <- tryCatch(func(self$data, tmp_con), error = function(e) NULL); if (!is.null(tmp_out)) J[, i] <- (unlist(tmp_out, use.names = FALSE) - flat_base) / 1e-5 }
+    if (se_enabled && (show_df || !se_sampling)) {
+      J <- matrix(0, L_out, L_u_total)
+      for (i in 1:L_u_total) {
+        u_tmp <- unc_est_vec
+        u_tmp[i] <- u_tmp[i] + 1e-5
+        tmp_con <- self$to_constrained(unconstrained_vector_to_list(u_tmp, self$par_list))
+        if (is_generate && !is.null(self$transform)) {
+          ut <- tryCatch(self$transform(self$data, tmp_con), error = function(e) NULL)
+          if (!is.null(ut)) tmp_con <- c(tmp_con, ut)
+        }
+        tmp_out <- tryCatch(func(self$data, tmp_con), error = function(e) NULL)
+        if (!is.null(tmp_out)) J[, i] <- (unlist(tmp_out, use.names = FALSE) - flat_base) / 1e-5
+      }
     }
-    if (se_sampling) {
+
+    if (!se_enabled) {
+      se_out <- low_out <- up_out <- rep(NA_real_, L_out)
+    } else if (se_sampling) {
       samps_list <- if (is_generate) samps_gq else samps_tran
-      if (length(samps_list) == 0) { se_out <- low_out <- up_out <- rep(NA, L_out) }
-      else { mat_all <- do.call(cbind, unname(samps_list)); se_out <- apply(mat_all, 2, sd, na.rm = TRUE); low_out <- apply(mat_all, 2, quantile, 0.025, na.rm = TRUE); up_out <- apply(mat_all, 2, quantile, 0.975, na.rm = TRUE) }
+      if (length(samps_list) == 0) {
+        se_out <- low_out <- up_out <- rep(NA_real_, L_out)
+      } else {
+        mat_all <- do.call(cbind, unname(samps_list))
+        se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
+        low_out <- apply(mat_all, 2, quantile, 0.025, na.rm = TRUE)
+        up_out <- apply(mat_all, 2, quantile, 0.975, na.rm = TRUE)
+      }
     } else {
-      # Fallback when the inverse Hessian is not positive definite
-      # Either estimate SE using only diagonal components or return NA
-      se_out <- rep(NA_real_, L_out); smry_rep <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
-      if (!is.null(smry_rep)) { m_idx <- match(names_vec, rownames(smry_rep)); valid <- !is.na(m_idx); if (any(valid)) se_out[valid] <- smry_rep$`Std. Error`[m_idx[valid]] }
-      for (j in which(is.na(se_out))) se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u) * J[j, ])))
-      low_out <- flat_base - 1.96 * se_out; up_out <- flat_base + 1.96 * se_out
-      corr_pat <- "^(corr|pcorr|B_corr|W_corr)(\\[|$)"; is_corr <- grepl(corr_pat, names_vec)
-      for (j in which(is_corr)) { r <- pmax(pmin(flat_base[j], 0.9999), -0.9999); z <- atanh(r); se_z <- se_out[j] / (1 - r^2 + 1e-10); low_out[j] <- tanh(z - 1.96 * se_z); up_out[j] <- tanh(z + 1.96 * se_z) }
+      # delta method
+      se_out <- rep(NA_real_, L_out)
+      smry_rep <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
+      if (!is.null(smry_rep)) {
+        m_idx <- match(names_vec, rownames(smry_rep))
+        valid <- !is.na(m_idx)
+        if (any(valid)) se_out[valid] <- smry_rep$`Std. Error`[m_idx[valid]]
+      }
+      for (j in which(is.na(se_out))) {
+        se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u) * J[j, ])))
+      }
+      low_out <- flat_base - 1.96 * se_out
+      up_out <- flat_base + 1.96 * se_out
+      corr_pat <- "^(corr|pcorr|B_corr|W_corr)(\\[|$)"
+      is_corr <- grepl(corr_pat, names_vec)
+      for (j in which(is_corr)) {
+        r <- pmax(pmin(flat_base[j], 0.9999), -0.9999)
+        z <- atanh(r)
+        se_z <- se_out[j] / (1 - r^2 + 1e-10)
+        low_out[j] <- tanh(z - 1.96 * se_z)
+        up_out[j] <- tanh(z + 1.96 * se_z)
+      }
     }
     res_df <- data.frame(Estimate = flat_base, `Std. Error` = se_out, `Lower 95%` = low_out, `Upper 95%` = up_out, check.names = FALSE)
     if (show_df) {
@@ -457,16 +487,6 @@
   df_transform <- build_derived_summary(self$transform, tran_list, FALSE, if (marginal_flag) dH_beta else dH_list, if (marginal_flag) V_beta else V_opt, marginal_flag, if (marginal_flag) active_idx else NULL, if (marginal_flag) dH_theta else NULL, if (marginal_flag) V_theta else NULL, if (marginal_flag) idx_fix_active else NULL)
   if (!is.null(df_map)) df_transform <- .apply_df_map(df_transform, df_map)
 
-  if (identical(df_method, "bw") && self$type == "ttest") {
-    if (!is.null(df_transform) && "df" %in% names(df_transform)) {
-      K_val <- sum(sapply(target_vars, function(v) if (v %in% names(self$par_list)) self$par_list[[v]]$unc_length else 0))
-      for (i in 1:nrow(df_transform)) {
-        nm <- rownames(df_transform)[i]
-        if (grepl("^delta", nm)) df_transform$df[i] <- Inf
-        else df_transform$df[i] <- pmax(N_obs - K_val, 1)
-      }
-    }
-  }
 
   # Execute calculation if a user-defined generate block exists
   df_generate <- build_derived_summary(self$generate, gq_list, TRUE, if (marginal_flag) dH_beta else dH_list, if (marginal_flag) V_beta else V_opt, marginal_flag, if (marginal_flag) active_idx else NULL, if (marginal_flag) dH_theta else NULL, if (marginal_flag) V_theta else NULL, if (marginal_flag) idx_fix_active else NULL)
@@ -485,57 +505,16 @@
 
   is_se_sampling <- identical(se_method, "sampling")
 
-  if (.return_object == "Classic") {
-    V_fixed_full <- NULL; test_results <- list()
-    if (self$type == "table") { tab <- self$extra$tab; test_results$chisq <- chisq.test(tab); test_results$fisher <- try(fisher.test(tab), silent = TRUE) }
-
-    if (marginal_flag && !is.null(sd_rep$jointPrecision)) {
-      V_joint <- tryCatch(solve(as.matrix(sd_rep$jointPrecision)), error = function(e) MASS::ginv(as.matrix(sd_rep$jointPrecision)))
-      V_fixed_full <- matrix(0, nrow(df_fixed), nrow(df_fixed), dimnames = list(rownames(df_fixed), rownames(df_fixed)))
-      idx_joint <- unlist(lapply(target_vars, function(nm) which(names(sd_rep$par.random) == nm)))
-      idx_df_fe <- unlist(lapply(target_vars, function(nm) grep(paste0("^", nm, "(\\[|$)"), rownames(df_fixed))))
-      if (length(idx_joint) > 0 && length(idx_joint) == length(idx_df_fe)) V_fixed_full[idx_df_fe, idx_df_fe] <- V_joint[idx_joint, idx_joint]
-      idx_df_var <- setdiff(1:nrow(df_fixed), idx_df_fe)
-      if (length(idx_df_var) > 0 && !is.null(sd_rep$cov.fixed)) {
-        if (length(idx_df_var) == nrow(sd_rep$cov.fixed)) {
-           V_fixed_full[idx_df_var, idx_df_var] <- sd_rep$cov.fixed
-        } else {
-           V_fixed_full <- NULL
-        }
-      }
-    }
-
-    if (is.null(V_fixed_full)) {
-      L_fixed <- nrow(df_fixed)
-      J_fixed <- matrix(0, L_fixed, L_u_total)
-      base_f <- df_fixed$Estimate
-      for (i in 1:L_u_total) {
-        u_tmp <- unc_est_vec; u_tmp[i] <- u_tmp[i] + 1e-5
-        tmp_con <- self$to_constrained(unconstrained_vector_to_list(u_tmp, self$par_list))
-        tmp_vec <- c()
-        for (name in names(self$par_list)) {
-          if (!isTRUE(self$par_list[[name]]$random)) {
-            tmp_vec <- c(tmp_vec, as.numeric(tmp_con[[name]]))
-          }
-        }
-        if (length(tmp_vec) == L_fixed) J_fixed[, i] <- (tmp_vec - base_f) / 1e-5
-      }
-      V_fixed_full <- J_fixed %*% Cov_u %*% t(J_fixed)
-      rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
-    }
-
-    cf_args <- dot_args; cf_args$df_method <- NULL; cf_args$contrasts <- NULL
-    res_obj <- do.call(Classic_Fit$new, c(list(
-      model = self, par_vec = con_est_vec, par = con_est_list, objective = opt$objective,
-      log_ml = log_ml, convergence = opt$convergence, sd_rep = sd_rep,
-      df_fixed = df_fixed, random_effects = df_random, df_transform = df_transform,
-      df_generate = df_generate, opt_history = opt_history,
-      transform = tran_list, generate = gq_list, se_samples = if (is_se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
-      par_unc = unc_est_vec, vcov_unc = Cov_u, ci_method = se_method, laplace = laplace, map = target_map,
-      test_results = test_results, view = view, vcov = V_fixed_full, df_method = df_method,
-      idx_fix_active = idx_fix_active, show_df = show_df), cf_args))
-  } else {
-    res_obj <- MAP_Fit$new(model = self, par_vec = con_est_vec, par = con_est_list, objective = opt$objective, log_ml = log_ml, convergence = opt$convergence, sd_rep = sd_rep, df_fixed = df_fixed, random_effects = df_random, df_transform = df_transform, df_generate = df_generate, opt_history = opt_history, transform = tran_list, generate = gq_list, se_samples = if (is_se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL, par_unc = unc_est_vec, ci_method = se_method, laplace = laplace, map = target_map, vcov_unc = Cov_u, marginal_vars = ad_setup$use_random, idx_fix_active = idx_fix_active, show_df = show_df)
-  }
+  res_obj <- MAP_Fit$new(
+    model = self, par_vec = con_est_vec, par = con_est_list,
+    objective = opt$objective, log_ml = log_ml, convergence = opt$convergence,
+    sd_rep = sd_rep, df_fixed = df_fixed, random_effects = df_random,
+    df_transform = df_transform, df_generate = df_generate,
+    opt_history = opt_history, transform = tran_list, generate = gq_list,
+    se_samples = if (is_se_sampling && se_enabled) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
+    par_unc = unc_est_vec, ci_method = se_method, laplace = laplace,
+    map = target_map, vcov_unc = Cov_u, marginal_vars = ad_setup$use_random,
+    idx_fix_active = idx_fix_active, show_df = show_df
+  )
   return(res_obj)
 }

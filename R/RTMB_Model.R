@@ -342,55 +342,78 @@ RTMB_Model <- R6::R6Class(
     #' @param method Character; The method for "optim" (e.g., "BFGS", "L-BFGS-B").
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
-    #' @param se Logical; whether to estimate standard errors and confidence intervals. Default is TRUE.
-    #' @param se_method Character; The method for CI estimation: "wald" (Wald CI) or "sampling" (Simulation-based).
+    #' @param se_method Character; method for uncertainty estimation.
+    #' \itemize{
+    #'   \item \code{"wald"}: Wald standard errors and Wald confidence intervals.
+    #'   \item \code{"sampling"}: Simulation-based error propagation.
+    #'   \item \code{"none"}: Do not compute standard errors, confidence intervals, or degrees of freedom.
+    #' }
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
     #' @param seed Integer; random seed for sampling.
-    #' @param marginal Character vector of model parameters to marginalize out via Laplace approximation.
+    #' @param marginal Character vector or "auto" or "none"; specifies which parameters to marginalize out via Laplace approximation.
     #' \itemize{
     #'   \item \code{"none"} (default): No additional marginalization.
     #'   \item \code{"auto"}: Uses variables specified by the model wrapper (e.g., fixed effects in lmer).
     #'   \item \code{"all"}: Marginalize all parameters (advanced use).
     #'   \item \code{character vector}: Specific parameter names to marginalize.
     #' }
-    #' @param df_method Character; Method for calculating degrees of freedom (only active if marginal is not "none"). Default is "auto".
+    #' @param df_method Character or numeric; method for finite degrees-of-freedom approximation.
+    #' Used only when `marginal` resolves to one or more parameters and `se_method != "none"`.
     #' \itemize{
-    #'   \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for marginalization).
+    #'   \item \code{"auto"}: Uses Satterthwaite approximation when marginalization is active.
     #'   \item \code{"satterthwaite"}: Satterthwaite approximation.
-    #'   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+    #'   \item \code{"inf"} or \code{"none"}: Use infinite degrees of freedom.
+    #'   \item numeric: Use the supplied fixed degrees of freedom.
     #' }
     #' @param view Character vector of parameter names to prioritize in summary display.
     #' @param ... Additional arguments.
-    #' @return A fitted `MAP_Fit` or `Classic_Fit` object.
+    #' @return A fitted `MAP_Fit` object.
     optimize = function(laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
                         optimizer = "nlminb", method = "BFGS", map = NULL, fixed = NULL,
-                        se = TRUE, se_method = c("wald", "sampling"), 
+                        se_method = c("wald", "sampling", "none"), 
                         num_samples = 1000, seed = 123,
                         marginal = "none", df_method = "auto", view = NULL, ...) {
       
+      se_method <- match.arg(se_method)
+      se_flag <- !identical(se_method, "none")
+
       # --- Strict check for deprecated arguments ---
       dot_args <- list(...)
       reserved_old_args <- c(
         "empirical", "REML", "df", "df_pars",
         "target_vars", "is_classic", ".return_object",
-        "ci_method", "se_sampling", "views"
+        "ci_method", "se_sampling", "views", "se"
       )
       bad_args <- intersect(names(dot_args), reserved_old_args)
       if (length(bad_args) > 0L) {
         stop(
           "Unsupported argument(s) in optimize(): ",
           paste(bad_args, collapse = ", "), "\n",
-          "Use `marginal` for Laplace marginalization. ",
-          "`empirical`, `REML`, and `df` are no longer optimize() arguments.",
+          "Use `se_method = 'none'`, `se_method = 'wald'`, or `se_method = 'sampling'`.",
           call. = FALSE
         )
       }
 
-      .inference_pipeline(self, private, laplace, init, num_estimate, control,
-                         optimizer, method, map, fixed, se, se_method, 
-                         num_samples, seed, marginal, view, 
-                         is_classic = FALSE, df_method = df_method, 
-                         .return_object = "MAP", ...)
+      .inference_pipeline(
+        self = self,
+        private = private,
+        laplace = laplace,
+        init = init,
+        num_estimate = num_estimate,
+        control = control,
+        optimizer = optimizer,
+        method = method,
+        map = map,
+        fixed = fixed,
+        se = se_flag,
+        se_method = se_method,
+        num_samples = num_samples,
+        seed = seed,
+        marginal = marginal,
+        df_method = df_method,
+        view = view,
+        ...
+      )
     },
 
 

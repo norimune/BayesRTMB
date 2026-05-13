@@ -15,7 +15,8 @@ rtmb_lrt(
   noise = 0.01,
   prob_smoothing = FALSE,
   link = c("ordered", "sequential"),
-  prior = prior_uniform(),
+  prior = prior_flat(),
+  y_range = NULL,
   fixed = NULL,
   ...
 )
@@ -41,11 +42,12 @@ rtmb_lrt(
 
 \item{link}{Link function for class probabilities: "ordered" or "sequential".}
 
-\item{prior}{Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.}
+\item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
+Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 
-\item{...}{Additional arguments passed to \code{rtmb_model}.}
+\item{...}{Additional arguments passed to `rtmb_model`.}
 }
 \value{
 A \code{RTMB_Model} object.
