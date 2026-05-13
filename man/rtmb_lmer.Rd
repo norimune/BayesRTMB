@@ -12,7 +12,6 @@ rtmb_lmer(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
   gmc = NULL,
   cwc = NULL,
   view = NULL,
@@ -43,8 +42,6 @@ Default is `prior_flat()`.}
 \item{init}{Initial values}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
-
-\item{null}{Null model parameters}
 
 \item{gmc}{Character vector of variable names for GMC}
 

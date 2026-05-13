@@ -4,14 +4,7 @@
 \alias{safe_rtmb_model}
 \title{Safe RTMB model construction (with error message translation)}
 \usage{
-safe_rtmb_model(
-  data,
-  code,
-  par_names = list(),
-  init = NULL,
-  view = NULL,
-  null_target = NULL
-)
+safe_rtmb_model(data, code, par_names = list(), init = NULL, view = NULL)
 }
 \arguments{
 \item{data}{A list of data that has passed `validate_data`.}
@@ -23,8 +16,6 @@ safe_rtmb_model(
 \item{init}{A list or numeric vector of initial values (optional).}
 
 \item{view}{Character vector of parameter names to be displayed preferentially in summary outputs (optional).}
-
-\item{null_target}{A character string specifying the parameter to fix and the prior to disable for creating a null model (optional).}
 }
 \value{
 Returns an `rtmb_model` object (R6 class instance) upon successful compilation.

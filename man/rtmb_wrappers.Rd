@@ -47,10 +47,10 @@ using the Laplace approximation during \code{$optimize(laplace = TRUE)}.
 When using \code{$sample()}, random effects are treated as unknown parameters
 and sampled alongside fixed effects.
 
-\strong{5. Null Model Creation (\code{null}):}
-You can specify a \code{null} argument (e.g., \code{null = "x1 ~ normal(0, 0.1)"})
-in the wrappers to simultaneously create a restricted version of your model.
-This is particularly useful for computing Bayes Factors or performing
-model comparisons.
+\strong{5. Fixed parameters:}
+Use \code{fixed = list(...)} to fix model parameters to specified values.
+For example, \code{fixed = list(delta = 0)} fixes the parameter
+\code{delta} to zero, and \code{fixed = list("b[x]" = 0)}
+fixes one element of a vector parameter.
 }
 \concept{wrappers}

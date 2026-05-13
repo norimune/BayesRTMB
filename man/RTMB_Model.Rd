@@ -11,7 +11,6 @@ rtmb_model(
   init = NULL,
   view = NULL,
   fixed = NULL,
-  null_target = NULL,
   silent = FALSE
 )
 }
@@ -27,8 +26,6 @@ rtmb_model(
 \item{view}{Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).}
 
 \item{fixed}{A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.}
-
-\item{null_target}{Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.}
 
 \item{silent}{Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.}
 }
@@ -77,7 +74,6 @@ The returned \code{RTMB_Model} instance provides the following core methods:
   \item \code{$optimize(...)}: Performs Maximum A Posteriori (MAP) or Maximum Likelihood estimation. Returns a \code{MAP_Fit} object.
   \item \code{$sample(...)}: Draws posterior samples using the NUTS (No-U-Turn Sampler) algorithm. Returns an \code{MCMC_Fit} object.
   \item \code{$variational(...)}: Performs Mean-field or Full-rank Automatic Differentiation Variational Inference (ADVI). Returns a \code{VB_Fit} object.
-  \item \code{$null_model(target, ...)}: Creates a restricted model by fixing specific parameters (e.g., an effect size to zero), which is useful for Bayes Factor calculation.
 }
 }
 \examples{

@@ -11,6 +11,13 @@ MCMC fit object
 \details{
 An R6 class storing posterior samples and related information
 from MCMC estimation.
+
+
+Bayes factors are computed as ratios of marginal likelihoods estimated
+by bridge sampling. The comparison model can be constructed by fixing
+parameters with `fixed = list(...)`, or supplied as an already fitted
+`MCMC_Fit` object via `comparison_fit`.
+Bayes factors are computed only by marginal-likelihood model comparison.
 }
 \section{Super class}{
 \code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{mcmc_fit}
@@ -44,7 +51,7 @@ from MCMC estimation.
 
 \item{\code{log_ml}}{Numeric value storing the calculated log marginal likelihood from bridge sampling.}
 
-\item{\code{null_fit}}{An \code{MCMC_Fit} object containing the fitted null model. This is automatically cached when calculating a Bayes factor using a target string.}
+\item{\code{comparison_fit}}{An \code{MCMC_Fit} object containing the fitted comparison model.}
 }
 \if{html}{\out{</div>}}
 }
@@ -344,10 +351,11 @@ Bridge sampling result.
 \if{html}{\out{<a id="method-mcmc_fit-bayes_factor"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-bayes_factor}{}}}
 \subsection{Method \code{bayes_factor()}}{
-Calculate the Bayes Factor against a null model or another fit object.
+Calculate the Bayes factor by marginal-likelihood model comparison.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bayes_factor(
-  null_model,
+  fixed = NULL,
+  comparison_fit = NULL,
   bs_method = "normal",
   error_threshold = 0.2,
   ...
@@ -357,15 +365,22 @@ Calculate the Bayes Factor against a null model or another fit object.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{null_model}}{Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.}
+\item{\code{fixed}}{Named list of parameter values used to construct the comparison model.
+For example, \code{fixed = list(delta = 0)} or
+\code{fixed = list("b[x]" = 0)}.}
 
-\item{\code{bs_method}}{Character; the method to use for bridge sampling ("normal" or "warp3"). Default is "normal".}
+\item{\code{comparison_fit}}{Optional `MCMC_Fit` object for an already fitted comparison model.}
 
-\item{\code{error_threshold}}{Numeric; threshold for the approximate error warning. Default is 0.2.}
+\item{\code{bs_method}}{Character; the method to use for bridge sampling ("normal" or "warp3").}
 
-\item{\code{...}}{Additional arguments passed to the sample() method when fitting a null model (e.g., \code{chains = 4}, \code{sampling = 4000}).}
+\item{\code{error_threshold}}{Numeric; threshold for the approximate error warning.}
+
+\item{\code{...}}{Additional arguments passed to `sample()` when fitting the comparison model (e.g., \code{chains = 4}, \code{sampling = 4000}).}
 }
 \if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A list of class \code{bayes_factor_rtmb} containing Bayes factor results.
 }
 }
 \if{html}{\out{<hr>}}

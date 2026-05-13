@@ -12,7 +12,6 @@ rtmb_glm(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
   gmc = NULL,
   view = NULL,
   factors = NULL,
@@ -37,8 +36,6 @@ Default is `prior_flat()`.}
 \item{init}{List of initial values}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
-
-\item{null}{Character string specifying the target parameter for the null model.}
 
 \item{gmc}{Character vector of variable names for GMC}
 

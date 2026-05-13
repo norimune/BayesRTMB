@@ -58,7 +58,9 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{map}}{List; the parameter mapping used.}
 
-\item{\code{marginal_vars}}{Character vector of parameter names that were marginalized (integrated out).}
+\item{\code{marginal_vars}}{Character vector of parameter names requested through `optimize(marginal = ...)`.}
+
+\item{\code{laplace_random_vars}}{Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.}
 
 \item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
 
@@ -76,7 +78,6 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-ranef}{\code{MAP_Fit$ranef()}}
 \item \href{#method-map_fit-draws}{\code{MAP_Fit$draws()}}
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
-\item \href{#method-map_fit-savage_dickey}{\code{MAP_Fit$savage_dickey()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
 \item \href{#method-map_fit-profile}{\code{MAP_Fit$profile()}}
@@ -179,6 +180,7 @@ Create a new `MAP_Fit` object.
   laplace = TRUE,
   map = NULL,
   marginal_vars = NULL,
+  laplace_random_vars = NULL,
   idx_fix_active = NULL,
   show_df = TRUE
 )}\if{html}{\out{</div>}}
@@ -227,7 +229,9 @@ Create a new `MAP_Fit` object.
 
 \item{\code{map}}{List; the parameter mapping used.}
 
-\item{\code{marginal_vars}}{Character vector of parameter names that were marginalized (integrated out).}
+\item{\code{marginal_vars}}{Character vector of parameter names requested through `optimize(marginal = ...)`.}
+
+\item{\code{laplace_random_vars}}{Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.}
 
 \item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
 
@@ -307,30 +311,6 @@ Summarize MAP estimates.
 }
 \subsection{Returns}{
 A summary object, typically a data frame.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-map_fit-savage_dickey"></a>}}
-\if{latex}{\out{\hypertarget{method-map_fit-savage_dickey}{}}}
-\subsection{Method \code{savage_dickey()}}{
-Calculate Bayes Factors using the Savage-Dickey density ratio.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$savage_dickey(pars = NULL, null = 0, digits = 3)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Optional character vector of parameter names to test. If NULL, tests all fixed effects.}
-
-\item{\code{null}}{The null hypothesis value (on the constrained scale). Default is 0.}
-
-\item{\code{digits}}{Number of decimal places in the output.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A data frame containing Bayes Factors and evidence descriptions.
 }
 }
 \if{html}{\out{<hr>}}

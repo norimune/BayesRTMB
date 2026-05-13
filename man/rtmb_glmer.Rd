@@ -13,7 +13,6 @@ rtmb_glmer(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  null = NULL,
   gmc = NULL,
   cwc = NULL,
   view = NULL,
@@ -37,15 +36,13 @@ rtmb_glmer(
 
 \item{laplace}{Logical; whether to marginalize random effects using Laplace approximation}
 
-\item{prior}{An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).}
+\item{prior}{An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is `prior_flat()`.}
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.}
 
 \item{init}{List of initial values (generated automatically based on glm if omitted)}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
-
-\item{null}{Character string specifying the target parameter for the null model.}
 
 \item{gmc}{Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.}
 
