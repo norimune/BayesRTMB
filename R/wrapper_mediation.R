@@ -27,7 +27,7 @@
 #'
 #' @return An `RTMB_Model` object.
 #' @export
-rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uniform(), y_range = NULL, fixed = NULL, view = NULL, ...) {
+rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_flat(), y_range = NULL, fixed = NULL, view = NULL, ...) {
 
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
@@ -40,12 +40,19 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     }
   }
 
-  if (is.null(prior)) prior <- prior_uniform()
+  if (is.null(prior)) prior <- prior_flat()
 
-  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
-  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
-      is.null(prior$Intercept_sd) && is.null(prior$b_sd) && is.null(prior$sigma_rate)) {
+  # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
+  }
+
+  if (!inherits(prior, "rtmb_prior")) {
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use prior_flat(), prior_normal(), or prior_weak().",
+      call. = FALSE
+    )
   }
 
   # Prepare family list
@@ -93,7 +100,12 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     }
   }
 
-  prior_type <- if (inherits(prior, "rtmb_prior")) prior$type else "uniform"
+  prior_type <- prior$type
+  if (prior_type == "normal") {
+    if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
+      prior$mu_sd <- prior$Intercept_sd
+    }
+  }
   if (prior_type == "weak") {
     if (is.null(prior$max_beta)) prior$max_beta <- 1.0
     if (is.null(prior$sd_ratio)) prior$sd_ratio <- 0.5
@@ -108,8 +120,8 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     p_name <- paste0("b", i)
     X_name <- as.name(paste0("X_", i))
 
-    has_b_prior <- prior_type == "weak" || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)
-    has_sigma_prior <- f_type == "gaussian" && (prior_type == "weak" || !is.null(prior$sigma_rate))
+    has_b_prior <- prior_type %in% c("weak", "normal") || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)
+    has_sigma_prior <- f_type == "gaussian" && (prior_type %in% c("weak", "normal") || !is.null(prior$sigma_rate))
 
     if (has_b_prior) {
       X_sd_name <- as.name(paste0("X_sd_", i))
@@ -159,12 +171,27 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
            idx <- which(X_colnames[[i]] == "Intercept")
            setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_mean_name)[.(idx)] <- .(mid_y_name))
         }
-      } else {
-        # Uniform with explicit SDs
+      } else if (prior_type == "normal") {
+        # Manual prior with explicit SDs
         b_sd_val <- if (!is.null(prior$b_sd)) prior$b_sd else 10
-        int_sd_val <- if (!is.null(prior$Intercept_sd)) prior$Intercept_sd else 10
+        int_sd_val <- if (!is.null(prior$mu_sd)) prior$mu_sd else 10
         setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(b_prior_sd_name) <- rep(.(b_sd_val), ncol(.(X_name))))
         setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(intercept_prior_sd_name) <- .(int_sd_val))
+        
+        X_mean_name <- as.name(paste0("X_mean_", i))
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name) <- apply(.(X_name), 2, mean))
+        has_intercept <- "Intercept" %in% X_colnames[[i]]
+        if (has_intercept) {
+           idx <- which(X_colnames[[i]] == "Intercept")
+           setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_mean_name)[.(idx)] <- 0)
+        }
+        X_c_name <- as.name(paste0("X_c_", i))
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_c_name) <- .(X_name) - rep(1, N) %*% t(.(X_mean_name)))
+      } else {
+        # flat: No prior added by setup_exprs (handled by prior_exprs check later if any)
+        # However, in current logic, if has_b_prior is FALSE, we don't enter here.
+        # If it's flat, has_b_prior will be FALSE.
+        NULL
       }
       # Overwrite intercept SD if needed
       has_intercept <- "Intercept" %in% X_colnames[[i]]
@@ -174,7 +201,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
       }
     }
 
-    if (has_sigma_prior && prior_type != "weak") {
+    if (has_sigma_prior && prior_type == "normal") {
        sigma_rate_val <- if (!is.null(prior$sigma_rate)) prior$sigma_rate else 1
        sigma_rate_name <- as.name(paste0("sigma", i, "_rate"))
        setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(sigma_rate_name) <- .(sigma_rate_val))
@@ -208,7 +235,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     P_dim <- ncol(X_list[[i]])
 
     has_intercept <- "Intercept" %in% X_colnames[[i]]
-    is_centered <- (prior_type == "weak" && has_intercept)
+    is_centered <- (prior_type %in% c("weak", "normal") && has_intercept)
     target_p_name <- if (is_centered) p_c_name else p_name
 
     param_exprs[[length(param_exprs) + 1]] <- bquote(.(as.name(target_p_name)) <- Dim(.(P_dim)))
@@ -241,7 +268,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ poisson_log(.(lin_pred_expr)))
     }
 
-    has_b_prior <- prior_type == "weak" || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)
+    has_b_prior <- prior_type %in% c("weak", "normal")
     if (has_b_prior) {
       b_prior_sd_name <- as.name(paste0(p_name, "_prior_sd"))
       b_prior_mean_name <- as.name(paste0(p_name, "_prior_mean"))
@@ -249,7 +276,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
     }
 
     if (f_type == "gaussian") {
-      has_sigma_prior <- prior_type == "weak" || !is.null(prior$sigma_rate)
+      has_sigma_prior <- prior_type %in% c("weak", "normal")
       if (has_sigma_prior) {
         rate_name <- as.name(paste0(s_name, "_rate"))
         model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(s_name)) ~ exponential(.(rate_name)))
@@ -349,7 +376,11 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_uni
   mdl$raw_data <- data
 
   mdl$type <- "mediation"
-  mdl$extra$marginal <- if (prior_type == "weak") paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
+  mdl$extra <- list(
+    source = "wrapper",
+    prior_type = prior$type,
+    marginal = if (prior_type %in% c("weak", "normal")) paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
+  )
 
   mdl$extra$df_map <- df_map
   mdl$extra$effect_names <- effect_names

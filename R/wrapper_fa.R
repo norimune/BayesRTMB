@@ -9,8 +9,8 @@
 #' @param nfactors Number of factors (K).
 #' @param rotate String specifying the rotation method (e.g., "varimax", "promax", "ssp"). If NULL, no rotation is applied. Specifying "ssp" performs regularized factor analysis.
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
-#' @param prior Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
-#'   Hyperparameters can be specified within these functions (e.g., `prior_uniform(mean_sd = 10, sd_rate = 10)`).
+#' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
+#'   Hyperparameters can be specified within these functions (e.g., `prior_normal(mean_sd = 10, sd_rate = 10)`).
 #'   Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).
 #' @param y_range A numeric vector of length 2 specifying the theoretical min and max values of the items.
 #'   Used to construct weakly informative priors when `prior = prior_weak()`.
@@ -19,7 +19,7 @@
 #' @example inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
-                    prior = prior_uniform(),
+                    prior = prior_flat(),
                     y_range = NULL,
                     init = NULL, fixed = NULL) {
 
@@ -43,13 +43,22 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   }
 
   # --- 2. Prior Handling (Extracting from prior object) ---
-  if (is.null(prior)) prior <- prior_uniform()
-  prior_type <- if (inherits(prior, "rtmb_prior")) prior$type else "weak"
-  
-  # New logic: If y_range is specified, automatically treat as "weak"
-  if (!is.null(y_range)) {
-    prior_type <- "weak"
+  if (is.null(prior)) prior <- prior_flat()
+
+  # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
+    prior <- prior_weak()
   }
+
+  if (!inherits(prior, "rtmb_prior")) {
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use prior_flat(), prior_normal(), or prior_weak().",
+      call. = FALSE
+    )
+  }
+
+  prior_type <- prior$type
   
   # Error handling: if weak is requested but y_range is missing
   if (prior_type == "weak" && is.null(y_range)) {
@@ -58,9 +67,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   # Default/Initial settings
   prior_mean_center <- 0
-  prior_mean_sd <- prior$mean_sd
-  prior_sd_rate <- prior$sd_rate
-  prior_loadings_sd <- prior$loadings_sd
+  prior_mean_sd <- if (prior_type == "normal") prior$mu_sd else prior$mean_sd
+  prior_sd_rate <- if (prior_type == "normal") prior$sigma_rate else prior$sd_rate
+  prior_loadings_sd <- if (prior_type == "normal") prior$b_sd else prior$loadings_sd
   ssp_ratio <- if (!is.null(prior$ssp_ratio)) prior$ssp_ratio else 0.25
 
   # Weak Information Prior Logic (GLMER style)
@@ -151,8 +160,13 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     # S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega)
     # Note: Lambda here is the loadings *before* correlation matrix rotation.
     model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega))
-    if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(prior_mean_center, prior_mean_sd))
-    if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(prior_sd_rate))
+    if (prior_type == "normal") {
+       if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior_mean_sd)))
+       if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior_sd_rate)))
+    } else if (prior_type == "weak") {
+       if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(prior_mean_center, prior_mean_sd))
+       if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(prior_sd_rate))
+    }
     model_exprs[[length(model_exprs) + 1]] <- quote(CF_Omega ~ lkj_CF_corr(1))
     model_exprs[[length(model_exprs) + 1]] <- bquote(mu_r <- log(ssp_ratio / (1 - ssp_ratio)))
     model_exprs[[length(model_exprs) + 1]] <- quote(r ~ logit_normal(mu_r, 3))
@@ -185,6 +199,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     }
     obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = c("L", "sd", "fa_cor"), fixed = fixed)
     obj$type <- "fa"
+    obj$extra <- list(
+      source = "wrapper",
+      prior_type = prior$type,
+      marginal = "mean"
+    )
     return(obj)
 
   } else {
@@ -218,9 +237,15 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     model_exprs <- list()
     # Standard FA case: L_raw is a parameter (lower triangular matrix)
     model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw))
-    if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, prior_mean_sd))
-    if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(prior_sd_rate))
-    if (!is.null(prior_loadings_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(L_raw ~ lower_tri_normal(0, prior_loadings_sd))
+    if (prior_type == "normal") {
+       if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior_mean_sd)))
+       if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior_sd_rate)))
+       if (!is.null(prior_loadings_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(L_raw ~ lower_tri_normal(0, .(prior_loadings_sd)))
+    } else if (prior_type == "weak") {
+       if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, prior_mean_sd))
+       if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(prior_sd_rate))
+       if (!is.null(prior_loadings_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(L_raw ~ lower_tri_normal(0, prior_loadings_sd))
+    }
     model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
     base_gq <- quote({
@@ -273,6 +298,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     target_view <- if (!is.null(rotate)) c(paste0("L_", rotate), "sd", "fa_cor") else c("L", "sd", "fa_cor")
     obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = target_view, fixed = fixed)
     obj$type <- "fa"
+    obj$extra <- list(
+      source = "wrapper",
+      prior_type = prior$type,
+      marginal = "mean"
+    )
     return(obj)
   }
 }

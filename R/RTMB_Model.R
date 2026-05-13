@@ -398,9 +398,9 @@ RTMB_Model <- R6::R6Class(
     #' @param df_method Character; Method for calculating degrees of freedom. Default is "auto".
     #' \itemize{
     #'   \item \code{"auto"}: Determined based on model type (e.g., Satterthwaite for mixed models).
-    #'   \item \code{"bw"}: Between-Within method (fast, for simple designs).
+    #'   \item \code{"residual"}: Residual degrees of freedom.
     #'   \item \code{"satterthwaite"}: Satterthwaite approximation (robust for mixed models).
-    #'   \item \code{"Inf"}: Use z-distribution (infinite degrees of freedom).
+    #'   \item \code{"inf"}: Use z-distribution (infinite degrees of freedom).
     #' }
     #' @param se_method Character; The method for CI estimation: "wald" (default) or "sampling".
     #' @param num_samples Integer; number of samples to draw when se_method is "sampling". Default is 1000.
@@ -414,11 +414,6 @@ RTMB_Model <- R6::R6Class(
                        num_samples = 1000, seed = 123,
                        view = NULL, map = NULL, fixed = NULL, ...) {
       
-      # --- Internal determination of REML and marginalization ---
-      # REML is standard for mixed models and t-tests in this package.
-      REML_val <- isTRUE(self$type %in% c("lmer", "glmer", "ttest"))
-      marginal_val <- "auto"
-
       # --- Check for unsupported/deprecated arguments ---
       dot_args <- list(...)
       reserved_classic_args <- c(
@@ -436,14 +431,16 @@ RTMB_Model <- R6::R6Class(
         )
       }
 
-      .inference_pipeline(self, private, 
-                         laplace = TRUE, init = NULL, num_estimate = 1, control = list(),
-                         optimizer = "nlminb", method = "BFGS", map = map, fixed = fixed, 
-                         se = TRUE, se_method = se_method, 
-                         num_samples = num_samples, seed = seed,
-                         marginal = marginal_val, view = view,
-                         is_classic = TRUE, df = NULL, df_method = df_method, 
-                         REML = REML_val, .return_object = "Classic", ...)
+      private$.classic_pipeline(
+        df_method = df_method,
+        se_method = se_method,
+        num_samples = num_samples,
+        seed = seed,
+        view = view,
+        map = map,
+        fixed = fixed,
+        ...
+      )
     },
 
     # 4. MCMC NUTS Sampling Method
@@ -617,6 +614,32 @@ RTMB_Model <- R6::R6Class(
   ),
 
   private = list(
+    # --- Classic pipeline implementation ---
+    .validate_classic_model = function() {
+      .validate_classic_model(self, private)
+    },
+    .resolve_classic_settings = function(df_method = "auto") {
+      .resolve_classic_settings(self, private, df_method)
+    },
+    .classic_pipeline = function(...) {
+      .classic_pipeline(self, private, ...)
+    },
+    .build_classic_components = function(...) {
+      .build_classic_components(self, private, ...)
+    },
+    .get_unc_indices = function(name) {
+      idx_curr <- 1L
+      for (nm in names(self$par_list)) {
+        L_u <- self$par_list[[nm]]$unc_length
+        if (nm == name) {
+          if (L_u == 0) return(integer(0))
+          return(idx_curr:(idx_curr + L_u - 1L))
+        }
+        idx_curr <- idx_curr + L_u
+      }
+      integer(0)
+    },
+
     # --- Internal helper: merge self$map and user supplied map consistently ---
     .merge_map_arg = function(map = NULL) {
       if (is.null(self$map) && is.null(map)) return(NULL)

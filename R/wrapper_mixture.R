@@ -9,21 +9,31 @@
 #' @param k Number of mixture components.
 #' @param data A data frame containing the variables in the model.
 #' @param covariance Covariance structure: "diagonal" (default), "diagonal_equal", "full", "full_equal", or "full_equal_corr".
-#' @param prior Prior configuration object: \code{prior_uniform()} (default), \code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}.
+#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
+#'   Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
-#' @param ... Additional arguments passed to \code{rtmb_model}.
+#' @param ... Additional arguments passed to `rtmb_model`.
 #' @return A \code{RTMB_Model} object.
 #' @export
 rtmb_mixture <- function(formula, k = 2, data = NULL,
                          covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-                         prior = prior_uniform(), fixed = NULL, ...) {
+                         prior = prior_flat(), y_range = NULL, fixed = NULL, ...) {
 
   if (is.null(prior)) {
-    prior <- prior_uniform()
+    prior <- prior_flat()
+  }
+
+  # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
+    prior <- prior_weak()
   }
 
   if (!inherits(prior, "rtmb_prior")) {
-    stop("prior must be an object of class 'rtmb_prior'. Use prior_weak(), prior_rhs(), or prior_ssp().")
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use prior_flat(), prior_normal(), prior_weak(), prior_rhs(), or prior_ssp().",
+      call. = FALSE
+    )
   }
 
   # NSE for formula: handle case where formula is just a variable name in data
@@ -47,14 +57,33 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   covariance <- match.arg(covariance)
   K_mix <- k
   prior_type <- prior$type
+
+  if (prior_type == "flat") {
+    # no merge
+  } else if (prior_type == "normal") {
+    normal_defaults <- list(
+      Intercept_sd = NULL,
+      mu_sd = NULL,
+      b_sd = NULL,
+      sigma_rate = NULL,
+      lkj_eta = NULL,
+      dirichlet_alpha = NULL
+    )
+    prior <- .merge_prior(normal_defaults, prior)
+  } else {
+    default_prior <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 1, lkj_eta = 1.0, dirichlet_alpha = 1.0)
+    prior <- .merge_prior(default_prior, prior)
+  }
+
+  # Sync mu_sd and Intercept_sd
+  if (prior_type == "normal") {
+    if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
+      prior$mu_sd <- prior$Intercept_sd
+    }
+  }
+
   regularization <- if (prior_type %in% c("rhs", "ssp")) prior_type else "none"
   use_weak_info <- prior_type %in% c("weak", "rhs", "ssp")
-
-  default_prior <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 1, lkj_eta = 1.0, dirichlet_alpha = 1.0)
-  prior <- .merge_prior(default_prior, prior)
-  # Sync mu_sd and Intercept_sd
-  if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
-  if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
 
   if (use_weak_info) {
     if (is.null(prior$max_beta)) prior$max_beta <- 1.0
@@ -260,11 +289,30 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     } else {
       model_exprs[[length(model_exprs) + 1]] <- bquote(theta ~ dirichlet(rep(.(prior$dirichlet_alpha), K)))
     }
-  } else if (prior_type == "uniform") {
-    if (!is.null(prior$Intercept_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior$Intercept_sd)))
-    if (!is.null(prior$sigma_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
-    if (has_cov_prob && !is.null(prior$b_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
-  }
+    } else if (prior_type == "normal") {
+      if (!is.null(prior$Intercept_sd) || !is.null(prior$mu_sd)) {
+        mu_sd_val <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
+        model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(mu_sd_val)))
+      }
+
+      if (!is.null(prior$sigma_rate)) {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
+      }
+
+      if (has_cov_prob && !is.null(prior$b_sd)) {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
+      }
+
+      if (!is.null(prior$lkj_eta) && multivariate && !is_diag) {
+        if (covariance == "full") {
+          model_exprs[[length(model_exprs) + 1]] <-
+            bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        } else {
+          model_exprs[[length(model_exprs) + 1]] <-
+            bquote(L_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
+        }
+      }
+    }
 
   model_ast <- as.call(model_exprs)
 
@@ -407,5 +455,10 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 
   mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
   mdl$type <- "mixture"
+  mdl$extra <- list(
+    source = "wrapper",
+    prior_type = prior$type,
+    marginal = "mu"
+  )
   return(mdl)
 }

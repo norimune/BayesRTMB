@@ -9,7 +9,7 @@
 #' @param data A data frame.
 #' @param classic Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.
 #' @param correct Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).
-#' @param prior Prior specification (Bayesian mode). Default is `prior_uniform()`.
+#' @param prior Prior specification (Bayesian mode). Default is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments.
 #'
@@ -21,7 +21,7 @@
 #' rtmb_table(skill, cond, data = debate, classic = TRUE)
 #' }
 #' @export
-rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE, prior = prior_uniform(), fixed = NULL, ...) {
+rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE, prior = prior_flat(), fixed = NULL, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -109,8 +109,15 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
       # Likelihood
       Y ~ multinomial(N, p)
 
-      # Prior (Flat Dirichlet by default)
-      p ~ dirichlet(rep(1, R * C))
+      # Prior
+      if (inherits(prior, "rtmb_prior") && prior$type == "normal") {
+        # Treat prior_normal(dirichlet_alpha=...)
+        alpha_val <- if (!is.null(prior$dirichlet_alpha)) prior$dirichlet_alpha else 1
+        p ~ dirichlet(rep(alpha_val, R * C))
+      } else {
+        # Default flat
+        p ~ dirichlet(rep(1, R * C))
+      }
     },
     generate = {
       # mu and chisq_val are already reported in transform
@@ -126,7 +133,13 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
   )
   # Set metadata for special print/summary dispatch
   res$type <- "table"
-  res$extra <- list(tab = tab, correct = correct)
+  res$extra <- list(
+    source = "wrapper",
+    prior_type = if (inherits(prior, "rtmb_prior")) prior$type else "flat",
+    marginal = "p",
+    tab = tab, 
+    correct = correct
+  )
   
   class(res) <- c("rtmb_table", class(res))
   return(res)

@@ -24,7 +24,7 @@
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
-                       prior = prior_uniform(),
+                       prior = prior_flat(),
                        y_range = NULL,
                        init = NULL,
                        fixed = NULL,
@@ -187,23 +187,41 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   if (is.null(prior)) {
-    prior <- prior_uniform()
+    prior <- prior_flat()
   }
 
-  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
-  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
-      is.null(prior$Intercept_sd) && is.null(prior$b_sd) &&
-      is.null(prior$sigma_rate) && is.null(prior$tau_rate)) {
+  # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
   }
 
   if (!inherits(prior, "rtmb_prior")) {
-    stop("prior must be an object of class 'rtmb_prior'. Use prior_weak(), prior_rhs(), or prior_ssp().")
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use prior_flat(), prior_normal(), prior_weak(), prior_rhs(), or prior_ssp().",
+      call. = FALSE
+    )
   }
 
   prior_type <- prior$type
+
+  is_flat <- identical(prior_type, "flat")
+  is_normal <- identical(prior_type, "normal")
+  is_weak <- identical(prior_type, "weak")
+  is_jzs <- identical(prior_type, "jzs")
+
   regularization <- if (prior_type %in% c("rhs", "ssp")) prior_type else "none"
+
+  use_centering <- prior_type %in% c("normal", "weak", "rhs", "ssp", "jzs")
   use_weak_info <- prior_type %in% c("weak", "rhs", "ssp", "jzs")
+  use_normal_prior <- identical(prior_type, "normal")
+
+  if (use_normal_prior) {
+    if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
+      prior$mu_sd <- prior$Intercept_sd
+    }
+  }
+
   has_random <- !is.null(findbars(formula))
 
   # If classic mode and random effects are present (or forced), we internally
@@ -220,9 +238,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       on.exit(options(old_opts), add = TRUE)
     }
   }
-
-  default_prior <- list(Intercept_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, nu_rate = 0.1, cutpoint_sd = 2.5, shape_rate = 1.0, phi_rate = 1.0, lkj_eta = 1.0)
-  prior <- .merge_prior(default_prior, prior)
 
   if (use_weak_info) {
     if (is.null(prior$max_beta)) prior$max_beta <- 1.0
@@ -433,10 +448,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
       init <- list()
       if (has_intercept) {
-        if (prior_type %in% c("flat", "uniform")) {
-          init$Intercept <- init_coef[1]
-        } else {
+        if (use_centering) {
           init$Intercept_c <- init_coef[1]
+        } else {
+          init$Intercept <- init_coef[1]
         }
       }
 
@@ -565,15 +580,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_rate <- 1.0 / base_scale)
 
     if (K_tmp > 0) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- .(prior$max_beta) * base_scale / X_sd)
-      if (has_intercept && !prior_type %in% c("flat", "uniform")) {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
-      } else if (prior_type == "jzs") {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
-      }
-
+      
       if (prior_type == "jzs") {
         # Calculate (X_c' X_c / N)^-1 for multivariate JZS
         # X_c is centered X.
@@ -588,8 +597,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
           # Force symmetry and add a tiny jitter to ensure PD
           jzs_V_val <- 0.5 * (XtX_inv + t(XtX_inv))
           diag(jzs_V_val) <- diag(jzs_V_val) + 1e-10
-          
-          jzs_scales <- sqrt(diag(jzs_V_val))
           
           setup_exprs[[length(setup_exprs) + 1]] <- bquote(jzs_V <- .(jzs_V_val))
         } else {
@@ -608,10 +615,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- base_scale / X_sd)
       }
     }
-  } else {
-    # Minimal calculations for fixed prior distributions
-    # No centering or scaling for flat/uniform priors
-    NULL
+  }
+
+  if (use_centering && K_tmp > 0) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
+    if (has_intercept) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))
+    }
   }
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
@@ -623,10 +633,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   # --- Parameters AST ---
   param_exprs <- list()
   if (has_intercept) {
-    if (prior_type %in% c("flat", "uniform")) {
-      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept <- Dim(1))
-    } else {
+    if (use_centering) {
       param_exprs[[length(param_exprs) + 1]] <- quote(Intercept_c <- Dim(1))
+    } else {
+      param_exprs[[length(param_exprs) + 1]] <- quote(Intercept <- Dim(1))
     }
   }
   if (K > 0) {
@@ -696,7 +706,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   }
   if (has_intercept) {
-    if (!prior_type %in% c("flat", "uniform")) {
+    if (use_centering) {
       if (K > 0) tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c - sum(X_mean * b))
       else tran_exprs[[length(tran_exprs) + 1]] <- quote(Intercept <- Intercept_c)
     }
@@ -710,17 +720,17 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       }
     }
   }
-  tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
+      tran_ast <- if (length(tran_exprs) > 0) as.call(c(list(as.name("{")), tran_exprs)) else NULL
 
   # --- Model AST ---
   transform_exprs <- list()
   if (has_intercept) {
-    if (prior_type %in% c("flat", "uniform")) {
-      if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept + X %*% b)
-      else transform_exprs[[1]] <- quote(eta <- rep(Intercept, N))
-    } else {
+    if (use_centering) {
       if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept_c + X_c %*% b)
       else transform_exprs[[1]] <- quote(eta <- rep(Intercept_c, N))
+    } else {
+      if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept + X %*% b)
+      else transform_exprs[[1]] <- quote(eta <- rep(Intercept, N))
     }
   } else {
     if (K > 0) transform_exprs[[1]] <- quote(eta <- X %*% b)
@@ -813,7 +823,9 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         num_ranef_name <- as.name(paste0("num_ranef", suffix(b)))
         num_groups_name <- as.name(paste0("num_groups", suffix(b)))
 
-        ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(CF_corr_name) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        if (!is_flat && !is.null(prior$lkj_eta)) {
+          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(CF_corr_name) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        }
         ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(for (j in 1:.(num_groups_name)) .(r_re_name)[j, ] ~ multi_normal_CF(rep(0, .(num_ranef_name)), rep(1, .(num_ranef_name)), .(CF_corr_name)))
       } else {
         ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(r_re_name) ~ normal(0, 1))
@@ -889,27 +901,35 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         sd_name <- as.name(paste0("sd", suffix(b)))
         if (use_weak_info && prior_type == "weak") {
           prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(tau_rate))
-        } else if (!is.null(prior$sd_rate)) {
+        } else if (!is_flat && !is.null(prior$sd_rate)) {
           prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(.(prior$sd_rate)))
         }
       }
     }
-  } else if (prior_type == "uniform") {
-    if (!is.null(prior$sigma_rate)) {
+  } else if (prior_type == "normal") {
+    if (family %in% c("gaussian", "lognormal", "student_t") && !is.null(prior$sigma_rate)) {
       prior_exprs[[length(prior_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
     }
-    if (has_intercept && !is.null(prior$Intercept_sd)) {
-      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept ~ normal(0, .(prior$Intercept_sd)))
+
+    if (has_intercept && !is.null(prior$mu_sd)) {
+      prior_exprs[[length(prior_exprs) + 1]] <- bquote(Intercept_c ~ normal(0, .(prior$mu_sd)))
     }
+
     if (K > 0 && !is.null(prior$b_sd)) {
       prior_exprs[[length(prior_exprs) + 1]] <- bquote(b ~ normal(0, .(prior$b_sd)))
     }
+
     if (has_random && !is.null(prior$tau_rate)) {
       for (b in 1:num_bars) {
         sd_name <- as.name(paste0("sd", suffix(b)))
         prior_exprs[[length(prior_exprs) + 1]] <- bquote(.(sd_name) ~ exponential(.(prior$tau_rate)))
       }
     }
+
+    if (family == "student_t" && !is.null(prior$nu_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(nu ~ exponential(.(prior$nu_rate)))
+    if (family == "gamma" && !is.null(prior$shape_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(shape ~ exponential(.(prior$shape_rate)))
+    if (family == "neg_binomial" && !is.null(prior$phi_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(phi ~ exponential(.(prior$phi_rate)))
+    if (family == "ordered" && !is.null(prior$cutpoint_sd)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
   }
 
   model_exprs <- list()
@@ -955,7 +975,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   view_vars <- c()
-  if (has_intercept) view_vars <- c("Intercept")
+  if (has_intercept) view_vars <- c(if (use_centering) "Intercept_c" else "Intercept")
   if (K > 0) view_vars <- c(view_vars, "b")
   view_vars <- c(view_vars, "sigma")
   if (has_random) {
@@ -991,6 +1011,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (family %in% c("gaussian", "lognormal", "student_t")) "lm" else "glm"
   }
   obj$extra <- list(
+    source = "wrapper",
+    prior_type = prior$type,
     X_assign = X_assign, 
     X_terms = X_terms, 
     X_colnames = fixed_colnames,
@@ -1000,7 +1022,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   fixed_effects <- if (K > 0) "b" else character(0)
   if (has_intercept) {
-    fixed_effects <- c(ifelse(prior_type %in% c("flat", "uniform"), "Intercept", "Intercept_c"), fixed_effects)
+    fixed_effects <- c(if (use_centering) "Intercept_c" else "Intercept", fixed_effects)
   }
   obj$extra$marginal <- fixed_effects
 

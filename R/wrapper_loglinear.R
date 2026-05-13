@@ -11,7 +11,7 @@
 #' @param ... Additional arguments passed to `rtmb_glm()`.
 #' @return An `RTMB_Model` object.
 #' @export
-rtmb_loglinear <- function(formula, data, prior = prior_uniform(), fixed = NULL, ...) {
+rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL, ...) {
 
   # 1. Data Preparation
   # Convert table or matrix to long data frame
@@ -57,12 +57,15 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), fixed = NULL,
   # Ensure response is numeric (counts)
   data[[response_var]] <- as.numeric(data[[response_var]])
 
-  # 2. Invoke rtmb_glmer (or internal logic) with family = "poisson"
-  # Since rtmb_glmer is already robust, we leverage it.
-  # However, we override some defaults to better suit table analysis.
+  # Call the engine
+  # We use rtmb_glmer which handles formulas, random effects, and priors.
+  args <- list(...)
+  if (!is.null(args$y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
+    prior <- prior_weak()
+  }
 
   # For rtmb_table, we default to prior_weak with Stan-style values if requested
-  if (inherits(prior, "prior_weak")) {
+  if (inherits(prior, "rtmb_prior") && identical(prior$type, "weak")) {
     # Stan-style defaults for log-linear (Poisson)
     if (is.null(prior$sd_ratio)) prior$sd_ratio <- 5.0 # For Intercept (alpha_prior_sd)
     if (is.null(prior$max_beta)) prior$max_beta <- 2.5 # For coefficients
@@ -72,9 +75,8 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), fixed = NULL,
   # We use rtmb_glmer which handles formulas, random effects, and priors.
 
   # 2. Determine centering and predictors (to keep generate block clean in print_code)
-  args <- list(...)
-  is_weak_triggered <- !is.null(args$y_range) && prior$type == "uniform"
-  is_centered <- (!prior$type %in% c("flat", "uniform")) || is_weak_triggered
+  use_centering <- prior$type %in% c("normal", "weak", "rhs", "ssp", "jzs")
+  is_centered <- use_centering
 
   # Identify if there are predictors
   X_tmp <- stats::model.matrix(nobars(formula), data[1, , drop = FALSE])
@@ -113,6 +115,10 @@ rtmb_loglinear <- function(formula, data, prior = prior_uniform(), fixed = NULL,
 
   # Tag as loglinear
   res$type <- "loglinear"
+  res$extra$source <- "wrapper"
+  # res$extra$prior_type is maintained from rtmb_glmer
+  res$extra$marginal <- if (is_centered) "Intercept_c" else "Intercept"
+  if (K > 0) res$extra$marginal <- c(res$extra$marginal, "b")
   res$extra$obs_Y <- data[[response_var]]
   fit <- res
 

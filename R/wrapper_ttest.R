@@ -10,7 +10,10 @@
 #' @param paired Logical; whether to perform a paired t-test.
 #' @param ID Character; name of the ID variable for paired t-tests (required for formula input with paired = TRUE).
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.
-#' @param prior An object of class "rtmb_prior" (e.g., `prior_uniform()`, `prior_jzs()`, or `prior_weak()`).
+#' @param prior An object of class `"rtmb_prior"`.
+#' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+#' or `prior_weak()` for weakly informative Bayesian inference.
+#' Default is `prior_flat()`.
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model (e.g., "delta").
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
@@ -21,7 +24,7 @@
 rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        paired = FALSE, ID = NULL,
                        y_range = NULL,
-                       prior = prior_uniform(),
+                       prior = prior_flat(),
                        init = NULL, fixed = NULL, null = NULL,
                        var.equal = TRUE, ...) {
 
@@ -58,17 +61,31 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   levs <- c(x_label, y_label)
 
   # --- 2. Prior Setup ---
-  if (is.null(prior)) prior <- prior_uniform()
+  if (is.null(prior)) prior <- prior_flat()
 
-  # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
-  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform") {
+  # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
+  }
+  if (!inherits(prior, "rtmb_prior")) {
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use prior_flat(), prior_normal(), prior_jzs(), or prior_weak().",
+      call. = FALSE
+    )
   }
   prior_type <- prior$type
   is_jzs <- prior_type == "jzs"
   is_weak <- prior_type == "weak"
+  is_normal <- prior_type == "normal"
   use_delta_param <- is_jzs
   if (is_jzs) r <- prior$r
+  
+  if (is_normal) {
+    if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
+      prior$mu_sd <- prior$Intercept_sd
+    }
+  }
 
   # --- 3. AST Construction ---
   setup_ast <- quote({})
@@ -122,6 +139,14 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
       model_body[[length(model_body)+1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
     }
+    if (is_normal) {
+      if (!is.null(prior$b_sd)) {
+        model_body[[length(model_body)+1]] <- bquote(diff ~ normal(0, .(prior$b_sd)))
+      }
+      if (!is.null(prior$sigma_rate)) {
+        model_body[[length(model_body)+1]] <- bquote(sd_diff ~ exponential(.(prior$sigma_rate)))
+      }
+    }
     view_vars <- c("diff", "delta", "sd_diff")
     marginal <- if (use_delta_param) "delta" else "diff"
   } else {
@@ -174,6 +199,20 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       }
       model_body[[length(model_body)+1]] <- quote(sd ~ exponential(sigma_rate_weak))
     }
+    if (is_normal) {
+      if (!var.equal) {
+        mu_sd <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
+        if (!is.null(mu_sd)) {
+          model_body[[length(model_body)+1]] <- bquote(mean0 ~ normal(0, .(mu_sd)))
+          model_body[[length(model_body)+1]] <- bquote(mean1 ~ normal(0, .(mu_sd)))
+        }
+      } else {
+        mu_sd <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
+        if (!is.null(mu_sd)) model_body[[length(model_body)+1]] <- bquote(mean ~ normal(0, .(mu_sd)))
+        if (!is.null(prior$b_sd)) model_body[[length(model_body)+1]] <- bquote(diff ~ normal(0, .(prior$b_sd)))
+      }
+      if (!is.null(prior$sigma_rate)) model_body[[length(model_body)+1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))
+    }
   }
 
   model_ast <- as.call(c(list(as.name("{")), model_body))
@@ -187,8 +226,12 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   obj <- rtmb_model(data = ordered_data, code = code_obj, fixed = fixed, view = view_vars)
 
   obj$type <- "ttest"
-  obj$extra$marginal <- marginal
-  obj$extra$levs <- levs
+  obj$extra <- list(
+    source = "wrapper",
+    prior_type = prior$type,
+    marginal = marginal,
+    levs = levs
+  )
   if (!is.null(null)) obj <- obj$null_model(target = null)
 
   return(obj)

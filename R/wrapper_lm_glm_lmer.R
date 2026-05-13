@@ -3,7 +3,10 @@
 #' @param formula Formula
 #' @param data Data frame
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
-#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Default is NULL (flat prior).
+#' @param prior An object of class `"rtmb_prior"`.
+#' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+#' or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+#' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable
 #' @param init Initial values
 #' @param null Null model parameters
@@ -27,7 +30,7 @@
 #' @export
 #' @example inst/examples/ex_lm.R
 rtmb_lmer <- function(formula, data, laplace = TRUE,
-                       prior = prior_uniform(),
+                       prior = prior_flat(),
                        y_range = NULL,
                        init = NULL,
                        fixed = NULL,
@@ -67,7 +70,10 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param formula Formula
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
-#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).
+#' @param prior An object of class `"rtmb_prior"`.
+#' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+#' or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+#' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values
 #' @param null Character string specifying the target parameter for the null model.
@@ -80,7 +86,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glm <- function(formula, data, family = "gaussian",
-                       prior = prior_uniform(),
+                       prior = prior_flat(),
                        y_range = NULL,
                        init = NULL, fixed = NULL, null = NULL,
                        gmc = NULL,
@@ -104,7 +110,10 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #'
 #' @param formula Formula (e.g., Y ~ X1 + X2)
 #' @param data Data frame
-#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).
+#' @param prior An object of class `"rtmb_prior"`.
+#' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
+#' or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+#' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values.
 #' @param null Character string specifying the target parameter for the null model.
@@ -117,7 +126,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_lm <- function(formula, data,
-                    prior = prior_uniform(),
+                    prior = prior_flat(),
                     y_range = NULL,
                     init = NULL, fixed = NULL, null = NULL,
                     gmc = NULL,

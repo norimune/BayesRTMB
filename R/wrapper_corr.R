@@ -8,7 +8,7 @@
 #' @param data An optional data frame containing the variables.
 #' @param ID A character string or expression specifying the group ID variable for multilevel models.
 #' @param covariates Optional numeric matrix or data frame of covariates to be included in the joint MVN model.
-#' @param prior Prior configuration object: \code{prior_uniform()} or \code{prior_weak()}. Default is \code{prior_uniform()}.
+#' @param prior Prior configuration object: `prior_flat()`, `prior_normal()`, or `prior_weak()`. Default is `prior_flat()`.
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
@@ -19,7 +19,7 @@
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
-                      prior = prior_uniform(), y_range = NULL,
+                      prior = prior_flat(), y_range = NULL,
                       init = NULL, fixed = NULL, null = NULL) {
 
   x_expr <- substitute(x)
@@ -181,7 +181,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
   # --- RTMB Implementation ---
   if (is.null(prior)) {
-    prior <- prior_uniform()
+    prior <- prior_flat()
   }
 
   if (!is.null(id_val)) {
@@ -191,24 +191,31 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      group_names <- levels(group_factor)
      J <- length(group_names)
 
-     # Automatically switch to prior_weak() if y_range is provided and prior is default uniform
-     if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
-         is.null(prior$Intercept_sd) && is.null(prior$b_sd) &&
-         is.null(prior$sigma_rate) && is.null(prior$tau_rate)) {
+     # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+     if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
        prior <- prior_weak()
      }
 
      if (!inherits(prior, "rtmb_prior")) {
-       stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
+       stop(
+         "prior must be an object of class 'rtmb_prior'. ",
+         "Use prior_flat(), prior_normal(), or prior_weak().",
+         call. = FALSE
+       )
      }
 
-     default_prior_settings <- list(Intercept_sd = 10, mu_sd = 10, b_sd = 10, sigma_rate = 5, sd_rate = 5, lkj_eta = 1.0, sd_ratio = 0.5)
-     prior <- .merge_prior(default_prior_settings, prior)
-
-     if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
-     if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
-
      prior_type <- prior$type
+
+     is_flat <- identical(prior_type, "flat")
+     is_normal <- identical(prior_type, "normal")
+     is_weak <- identical(prior_type, "weak")
+
+     if (is_normal) {
+       if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
+         prior$mu_sd <- prior$Intercept_sd
+       }
+     }
+
      use_weak_info <- prior_type %in% c("weak")
      multivariate <- P > 1
 
@@ -249,11 +256,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      param_ast <- as.call(param_exprs)
 
      model_exprs <- list(as.name("{"))
-     if (multivariate) {
-       model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior$lkj_eta)))
-       model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_within ~ lkj_CF_corr(.(prior$lkj_eta)))
-       model_exprs[[length(model_exprs) + 1]] <- quote(u ~ multi_normal_CF(mean = rep(0, P), sd = sigma_between, CF_Omega = L_corr_between))
-     } else {
+      if (multivariate) {
+        if (!is.null(prior$lkj_eta)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior$lkj_eta)))
+          model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_within ~ lkj_CF_corr(.(prior$lkj_eta)))
+        }
+        model_exprs[[length(model_exprs) + 1]] <- quote(u ~ multi_normal_CF(mean = rep(0, P), sd = sigma_between, CF_Omega = L_corr_between))
+      } else {
        model_exprs[[length(model_exprs) + 1]] <- quote(u ~ normal(0, sigma_between))
      }
 
@@ -268,15 +277,16 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        model_exprs[[length(model_exprs) + 1]] <- quote(sigma_between ~ exponential(sigma_rate_vec))
        model_exprs[[length(model_exprs) + 1]] <- quote(sigma_within ~ exponential(sigma_rate_vec))
        model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(mid_y, alpha_prior_sd))
-     } else if (prior_type == "uniform") {
-       if (!is.null(prior$sigma_rate)) {
-         model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_between ~ exponential(.(prior$sigma_rate)))
-         model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_within ~ exponential(.(prior$sigma_rate)))
-       }
-       if (!is.null(prior$Intercept_sd)) {
-         model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior$Intercept_sd)))
-       }
-     }
+      } else if (prior_type == "normal") {
+        if (!is.null(prior$sigma_rate)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_between ~ exponential(.(prior$sigma_rate)))
+          model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_within ~ exponential(.(prior$sigma_rate)))
+        }
+        if (!is.null(prior$mu_sd) || !is.null(prior$Intercept_sd)) {
+          mu_sd_val <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
+          model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(mu_sd_val)))
+        }
+      }
      model_ast <- as.call(model_exprs)
 
       transform_exprs <- list(as.name("{"))
@@ -342,7 +352,11 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      obj$raw_data <- data
 
      obj$type <- "corr"
-     obj$extra$marginal <- "mu"
+     obj$extra <- list(
+       source = "wrapper",
+       prior_type = prior$type,
+       marginal = "mu"
+     )
 
      # Set degrees of freedom map for BW method
      # Between: J, Within: N - J - P
@@ -366,21 +380,30 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      return(obj)
   } else {
      # Simple correlation mode
-     if (!is.null(y_range) && inherits(prior, "rtmb_prior") && prior$type == "uniform" &&
-         is.null(prior$Intercept_sd) && is.null(prior$mu_sd) && is.null(prior$b_sd) &&
-         is.null(prior$sigma_rate)) {
+     # Automatically switch to prior_weak() if y_range is provided and prior is default flat
+     if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
        prior <- prior_weak()
      }
 
      if (!inherits(prior, "rtmb_prior")) {
-       stop("prior must be an object of class 'rtmb_prior'. Use prior_weak() or prior_uniform().")
+       stop(
+         "prior must be an object of class 'rtmb_prior'. ",
+         "Use prior_flat(), prior_normal(), or prior_weak().",
+         call. = FALSE
+       )
      }
 
      prior_type <- prior$type
-     default_prior <- list(Intercept_sd = 10, mu_sd = 10, sigma_rate = 1.0, lkj_eta = 1.0)
-     prior <- .merge_prior(default_prior, prior)
-     if (!is.null(prior$Intercept_sd) && prior$Intercept_sd != 10) prior$mu_sd <- prior$Intercept_sd
-     if (!is.null(prior$mu_sd) && prior$mu_sd != 10) prior$Intercept_sd <- prior$mu_sd
+
+     is_flat <- identical(prior_type, "flat")
+     is_normal <- identical(prior_type, "normal")
+     is_weak <- identical(prior_type, "weak")
+
+     if (is_normal) {
+       if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
+         prior$mu_sd <- prior$Intercept_sd
+       }
+     }
 
      setup_exprs <- list(as.name("{"))
      setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- N)
@@ -423,24 +446,29 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      if (prior_type == "weak") {
        model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
        model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate_vec))
-     } else {
-       if (!is.null(prior$mu_sd)) {
-         model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior$mu_sd)))
-       }
-       if (!is.null(prior$sigma_rate)) {
-         model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))
-       }
-     }
+      } else if (prior_type == "normal") {
+        if (!is.null(prior$mu_sd) || !is.null(prior$Intercept_sd)) {
+          mu_sd_val <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
+          model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(mu_sd_val)))
+        }
+        if (!is.null(prior$sigma_rate)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))
+        }
+      }
 
-     if (P == 2) {
-       model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior$lkj_eta)))
-       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- matrix(corr * 0, nrow = 2, ncol = 2))
-       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[1, 1] <- 1)
-       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 1] <- corr)
-       model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 2] <- sqrt(1 - corr^2))
-     } else {
-       model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
-     }
+      if (P == 2) {
+        if (!is.null(prior$lkj_eta)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior$lkj_eta)))
+        }
+        model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- matrix(corr * 0, nrow = 2, ncol = 2))
+        model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[1, 1] <- 1)
+        model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 1] <- corr)
+        model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 2] <- sqrt(1 - corr^2))
+      } else {
+        if (!is.null(prior$lkj_eta)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
+        }
+      }
 
      model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
      model_ast <- as.call(model_exprs)
@@ -496,8 +524,11 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
     obj$raw_data <- data
     obj$type <- "corr"
-    obj$extra$marginal <- "mean"
-    obj$extra$lkj_eta <- prior$lkj_eta
+    obj$extra <- list(
+      source = "wrapper",
+      prior_type = prior$type,
+      marginal = "mean"
+    )
 
     return(obj)
   }

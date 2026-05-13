@@ -11,20 +11,68 @@
 }
 
 
-#' Specify a uniform or manual prior
+#' Specify a flat prior
 #'
-#' @param Intercept_sd Standard deviation for the intercept prior (Normal). Default is NULL (flat).
-#' @param b_sd Standard deviation for the coefficients prior (Normal). Default is NULL (flat).
-#' @param sigma_rate Rate for the residual standard deviation prior (Exponential). Default is NULL (flat).
-#' @param tau_rate Rate for the random effects standard deviation prior (Exponential). Default is NULL (flat).
-#' @param mu_sd Standard deviation for the mean/intercept prior (Normal). Default is NULL (flat).
-#' @param ... Optional hyperparameters
-#' @return A list with class "rtmb_prior"
+#' @description
+#' `prior_flat()` specifies that no additional prior density is added by the
+#' wrapper. This is the only prior type allowed for `classic()`.
+#'
+#' @return A list with class `"rtmb_prior"` and `type = "flat"`.
 #' @export
-prior_uniform <- function(Intercept_sd = NULL, b_sd = NULL, mu_sd = NULL, sigma_rate = NULL, tau_rate = NULL, ...) {
-  res <- list(type = "uniform", Intercept_sd = Intercept_sd, b_sd = b_sd, mu_sd = mu_sd, sigma_rate = sigma_rate, tau_rate = tau_rate, ...)
+prior_flat <- function() {
+  res <- list(type = "flat")
   class(res) <- "rtmb_prior"
-  return(res)
+  res
+}
+
+
+#' Specify normal/exponential priors for MAP and Bayesian inference
+#'
+#' @description
+#' `prior_normal()` specifies normal priors for location parameters and
+#' exponential priors for scale parameters. It is intended for MAP and Bayesian
+#' inference, not for `classic()`.
+#'
+#' @param Intercept_sd Standard deviation for the intercept prior. If `NULL`, no intercept prior is added.
+#' @param b_sd Standard deviation for coefficient priors. If `NULL`, no coefficient prior is added.
+#' @param mu_sd Standard deviation for mean/intercept priors. If `NULL`, no mean prior is added.
+#' @param sigma_rate Rate for residual standard deviation priors. If `NULL`, no sigma prior is added.
+#' @param tau_rate Rate for random-effect standard deviation priors. If `NULL`, no tau prior is added.
+#' @param ... Optional wrapper-specific hyperparameters.
+#'
+#' @return A list with class `"rtmb_prior"` and `type = "normal"`.
+#' @export
+prior_normal <- function(
+  Intercept_sd = 10,
+  mu_sd = 10,
+  b_sd = 10,
+  sigma_rate = 5,
+  tau_rate = 5,
+  ...
+) {
+  res <- list(
+    type = "normal",
+    Intercept_sd = Intercept_sd,
+    mu_sd = mu_sd,
+    b_sd = b_sd,
+    sigma_rate = sigma_rate,
+    tau_rate = tau_rate,
+    ...
+  )
+  class(res) <- "rtmb_prior"
+  res
+}
+
+
+#' Specify a flat prior
+#'
+#' @description
+#' Deprecated alias of `prior_flat()`.
+#'
+#' @return A list with class `"rtmb_prior"` and `type = "flat"`.
+#' @export
+prior_uniform <- function() {
+  prior_flat()
 }
 
 #' Specify a weakly informative prior

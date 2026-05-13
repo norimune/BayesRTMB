@@ -7,15 +7,15 @@
 #' @param data A data frame or matrix of item responses (N persons x J items).
 #' @param model Character string for the model type: "1PL", "2PL", or "3PL".
 #' @param type Character string for the data type: "binary" or "ordered".
-#' @param prior Prior configuration: `prior_uniform()` (default) or `prior_weak()`.
-#'   Hyperparameters can be specified within these functions (e.g., `prior_weak(b_sd = 5)`).
+#' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
+#'   Hyperparameters can be specified within these functions (e.g., `prior_normal(b_sd = 5)`).
 #'   Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c_alpha`/`c_beta` (guessing).
 #' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
-                     prior = prior_uniform(), 
+                     prior = prior_flat(), 
                      init = NULL, fixed = NULL, view = NULL) {
 
   model <- match.arg(model)
@@ -34,12 +34,21 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   if (is.null(person_names)) person_names <- paste0("Person", 1:nrow(Y))
 
   # Prior Handling
-  if (is.null(prior)) prior <- prior_uniform()
-  prior_type <- if (inherits(prior, "rtmb_prior")) prior$type else "weak"
+  if (is.null(prior)) prior <- prior_flat()
+
+  if (!inherits(prior, "rtmb_prior")) {
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use prior_flat(), prior_normal(), or prior_weak().",
+      call. = FALSE
+    )
+  }
+
+  prior_type <- prior$type
   
   # Extract hyperparameters from prior object if they exist
   a_rate  <- prior$a_rate
-  b_sd    <- prior$b_sd
+  b_sd    <- if (!is.null(prior$b_sd)) prior$b_sd else prior$mu_sd
   c_alpha <- prior$c_alpha
   c_beta  <- prior$c_beta
 
@@ -124,18 +133,20 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   model_exprs[[length(model_exprs) + 1]] <- loop_ast
 
   model_exprs[[length(model_exprs) + 1]] <- "# Priors"
-  if (model %in% c("2PL", "3PL") && !is.null(a_rate)) {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(a ~ exponential(.(a_rate)))
-  }
-  if (!is.null(b_sd)) {
-    if (type == "binary") {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(b_sd)))
-    } else {
-      model_exprs[[length(model_exprs) + 1]] <- bquote(for (j in 1:N_items) b[j, ] ~ normal(0, .(b_sd)))
+  if (prior_type %in% c("normal", "weak")) {
+    if (model %in% c("2PL", "3PL") && !is.null(a_rate)) {
+      model_exprs[[length(model_exprs) + 1]] <- bquote(a ~ exponential(.(a_rate)))
     }
-  }
-  if (model == "3PL" && !is.null(c_alpha) && !is.null(c_beta)) {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(c ~ beta(.(c_alpha), .(c_beta)))
+    if (!is.null(b_sd)) {
+      if (type == "binary") {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(b ~ normal(0, .(b_sd)))
+      } else {
+        model_exprs[[length(model_exprs) + 1]] <- bquote(for (j in 1:N_items) b[j, ] ~ normal(0, .(b_sd)))
+      }
+    }
+    if (model == "3PL" && !is.null(c_alpha) && !is.null(c_beta)) {
+      model_exprs[[length(model_exprs) + 1]] <- bquote(c ~ beta(.(c_alpha), .(c_beta)))
+    }
   }
   model_exprs[[length(model_exprs) + 1]] <- bquote(theta ~ normal(0, .(theta_sd)))
 
@@ -172,6 +183,11 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, 
                     init = init, fixed = fixed, view = view_vars)
   obj$type <- "irt"
+  obj$extra <- list(
+    source = "wrapper",
+    prior_type = prior$type,
+    marginal = "theta"
+  )
 
   return(obj)
 }

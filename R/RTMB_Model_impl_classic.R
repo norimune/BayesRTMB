@@ -1,0 +1,639 @@
+.validate_classic_model <- function(self, private) {
+  if (is.null(self$extra) || !isTRUE(self$extra$source == "wrapper")) {
+    stop(
+      "classic() is available only for models created by wrapper functions.",
+      call. = FALSE
+    )
+  }
+
+  if (!identical(self$extra$prior_type, "flat")) {
+    stop(
+      "classic() is available only for models created with prior_flat(). ",
+      "Use optimize() or sample() for models with informative priors.",
+      call. = FALSE
+    )
+  }
+
+  invisible(TRUE)
+}
+
+.resolve_classic_settings <- function(self, private, df_method = "auto") {
+  type <- self$type %||% "generic"
+
+  if (is.numeric(df_method)) {
+    return(list(
+      use_reml = type %in% c("lmer"),
+      df_method = "numeric",
+      df_value = as.numeric(df_method),
+      target_vars = if (type %in% c("lmer") && !is.null(self$extra$marginal)) self$extra$marginal else character(0),
+      show_df = TRUE
+    ))
+  }
+
+  if (is.null(df_method)) df_method <- "auto"
+  df_method <- tolower(df_method)
+
+  if (df_method %in% c("infinite", "none")) {
+    df_method <- "inf"
+  }
+
+  valid <- c("auto", "residual", "satterthwaite", "inf")
+  if (!df_method %in% valid) {
+    stop(
+      "Invalid df_method in classic(). ",
+      "Use 'auto', 'residual', 'satterthwaite', or 'inf'.",
+      call. = FALSE
+    )
+  }
+
+  use_reml <- type %in% c("lmer")
+
+  if (identical(df_method, "auto")) {
+    df_method <- if (type %in% c("lmer")) {
+      "satterthwaite"
+    } else if (type %in% c("lm", "ttest", "corr", "mediation")) {
+      "residual"
+    } else {
+      "inf"
+    }
+  }
+
+  target_vars <- if (use_reml && !is.null(self$extra$marginal)) {
+    self$extra$marginal
+  } else {
+    character(0)
+  }
+
+  list(
+    use_reml = use_reml,
+    df_method = df_method,
+    df_value = NULL,
+    target_vars = target_vars,
+    show_df = !identical(df_method, "inf")
+  )
+}
+
+.classic_pipeline <- function(self, private,
+                             df_method = "auto",
+                             se_method = c("wald", "sampling"),
+                             num_samples = 1000,
+                             seed = 123,
+                             view = NULL,
+                             map = NULL,
+                             fixed = NULL,
+                             ...) {
+  se_method <- match.arg(se_method)
+
+  if (!is.null(fixed)) {
+    return(private$.dispatch_fixed(
+      .method_to_call = "classic",
+      df_method = df_method,
+      se_method = se_method,
+      num_samples = num_samples,
+      seed = seed,
+      view = view,
+      map = map,
+      fixed = fixed,
+      ...
+    ))
+  }
+
+  private$.validate_classic_model()
+  settings <- private$.resolve_classic_settings(df_method)
+
+  # For classic mode, we want a frequentist-like optimization.
+  # We use self$null_model to potentially strip priors if any were defined (though validate checks for flat).
+  model_to_fit <- if (settings$use_reml && length(settings$target_vars) > 0) {
+    self$null_model(target_vars = settings$target_vars)
+  } else {
+    self
+  }
+
+  raw <- model_to_fit$.__enclos_env__$private$.fit_rtmb(
+    laplace = settings$use_reml,
+    init = NULL,
+    num_estimate = 1,
+    control = list(),
+    optimizer = "nlminb",
+    method = "BFGS",
+    map = map,
+    se = TRUE,
+    reml = settings$use_reml,
+    target_vars = settings$target_vars,
+    jacobian_target = NULL,
+    apply_prior_correction = FALSE
+  )
+
+  comp <- private$.build_classic_components(
+    raw = raw,
+    settings = settings,
+    se_method = se_method,
+    num_samples = num_samples,
+    seed = seed
+  )
+
+  fit <- Classic_Fit$new(
+    model = self,
+    par_vec = unlist(raw$par, use.names = FALSE),
+    par = raw$par,
+    objective = raw$opt$objective,
+    log_ml = comp$log_ml,
+    convergence = raw$opt$convergence,
+    sd_rep = raw$sd_rep,
+    df_fixed = comp$df_fixed,
+    random_effects = comp$random_effects,
+    df_transform = comp$df_transform,
+    df_generate = comp$df_generate,
+    opt_history = raw$opt_history,
+    transform = comp$transform,
+    generate = comp$generate,
+    se_samples = comp$se_samples,
+    par_unc = raw$par_unc,
+    vcov_unc = raw$vcov_unc,
+    ci_method = se_method,
+    laplace = settings$use_reml,
+    map = raw$map,
+    test_results = comp$test_results,
+    view = view,
+    vcov = comp$vcov,
+    df_method = settings$df_method,
+    idx_fix_active = raw$idx_fix_active,
+    show_df = settings$show_df
+  )
+
+  class(fit) <- unique(c(
+    paste0("rtmb_", self$type),
+    "Classic_Fit",
+    class(fit)
+  ))
+
+  fit
+}
+
+.build_classic_components <- function(self, private, raw, settings, se_method, num_samples, seed) {
+  # Extract components from raw
+  ad_obj         <- raw$ad_obj
+  opt            <- raw$opt
+  sd_rep         <- raw$sd_rep
+  unc_est_vec    <- raw$par_unc
+  unc_se_vec     <- raw$se_unc
+  Cov_u          <- raw$vcov_unc
+  con_est_list   <- raw$par
+  target_map     <- raw$map
+  idx_fix_active <- raw$idx_fix_active
+  idx_ran_full   <- raw$idx_ran_full
+  idx_ran        <- raw$idx_ran
+  factor_levels_seen <- raw$factor_levels_seen
+  unc_est_list   <- raw$par_unc_list
+  unc_se_list    <- raw$se_unc_list
+  L_u_total      <- raw$L_u_total
+  
+  se_sampling <- (se_method == "sampling")
+  
+  # 1. Degrees of Freedom
+  est_dfs_all <- rep(Inf, L_u_total)
+  
+  if (identical(settings$df_method, "numeric")) {
+    est_dfs_all <- rep(settings$df_value, L_u_total)
+  } else if (identical(settings$df_method, "inf")) {
+    est_dfs_all <- rep(Inf, L_u_total)
+  } else if (identical(settings$df_method, "residual")) {
+    n_obs <- self$get_n_obs()
+    
+    if (is.null(n_obs) || length(n_obs) == 0 || is.na(n_obs) || n_obs <= 0) {
+      if (!is.null(self$extra$nobs)) {
+        n_obs <- self$extra$nobs
+      } else if (!is.null(self$raw_data)) {
+        n_obs <- nrow(as.data.frame(self$raw_data))
+      } else if (!is.null(self$data$Y)) {
+        n_obs <- length(self$data$Y)
+      } else {
+        n_obs <- NA_integer_
+      }
+    }
+    
+    if (is.na(n_obs) || n_obs <= 0) {
+      warning("Could not determine residual degrees of freedom; using infinite df.", call. = FALSE)
+      df_res <- Inf
+    } else {
+      # Calculate effective parameters (fixed effects)
+      p_eff <- length(settings$target_vars)
+      if (p_eff == 0 && !is.null(self$extra$marginal)) {
+        p_eff <- sum(vapply(self$extra$marginal, function(nm) {
+          if (nm %in% names(self$par_list)) self$par_list[[nm]]$unc_length else 0
+        }, numeric(1)))
+      }
+      
+      if (p_eff == 0) {
+        # Fallback to sum of lengths of fixed parameters
+        p_eff <- sum(vapply(names(self$par_list), function(nm) {
+          p <- self$par_list[[nm]]
+          if (!isTRUE(p$random)) p$unc_length else 0
+        }, numeric(1)))
+      }
+      df_res <- pmax(n_obs - p_eff, 1)
+    }
+    
+    # Apply to all non-random parameters
+    for (name in names(self$par_list)) {
+      if (!isTRUE(self$par_list[[name]]$random)) {
+        u_indices <- private$.get_unc_indices(name)
+        if (length(u_indices) > 0) est_dfs_all[u_indices] <- df_res
+      }
+    }
+    
+    # Apply df_map if present (e.g. for mediation)
+    if (!is.null(self$extra$df_map)) {
+      df_map <- self$extra$df_map
+      df_list_unc <- unconstrained_vector_to_list(est_dfs_all, self$par_list)
+      for (v in names(df_list_unc)) {
+        v_display <- sub("^b_c", "b", v)
+        if (v %in% names(df_map)) {
+          df_list_unc[[v]] <- rep(as.numeric(df_map[[v]]), length(df_list_unc[[v]]))
+        } else if (v_display %in% names(df_map)) {
+          df_list_unc[[v]] <- rep(as.numeric(df_map[[v_display]]), length(df_list_unc[[v]]))
+        }
+      }
+      est_dfs_all <- unlist(df_list_unc, use.names = FALSE)
+    }
+  } else if (identical(settings$df_method, "satterthwaite")) {
+    satt_res <- self$calculate_satterthwaite_df(
+      ad_obj, idx_fix_active, L_u_total, opt$par, 
+      silent = FALSE, return_sensitivities = TRUE
+    )
+    est_dfs_all <- if (is.list(satt_res)) satt_res$df else satt_res
+    
+    if (settings$use_reml && length(settings$target_vars) > 0 && length(idx_ran) > 0) {
+      full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]
+      target_ran_idx <- which(full_par_names_mapped %in% settings$target_vars)
+      if (length(target_ran_idx) > 0) {
+        reml_res <- self$calculate_reml_satterthwaite_df(
+          ad_obj, opt$par, target_ran_idx, 
+          silent = FALSE, return_sensitivities = TRUE
+        )
+        if (is.list(reml_res)) {
+          active_idx <- idx_ran_full[target_ran_idx]
+          est_dfs_all[active_idx] <- reml_res$df
+        }
+      }
+    }
+    # Important: Reset ad_obj after sensitivity runs
+    ad_obj$fn(opt$par)
+  }
+
+  # 2. Standard Errors and Confidence Intervals
+  con_se_list <- list()
+  con_lower_list <- list()
+  con_upper_list <- list()
+  samps_con <- list()
+  samps_tran <- list()
+  samps_gq <- list()
+
+  if (se_sampling) {
+    # Ported from .inference_pipeline (simplified for readability)
+    set.seed(seed)
+    # Ensure PD covariance for sampling
+    Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]
+    mu_valid <- unc_est_vec[idx_fix_active]
+    eig <- eigen(Cov_u_valid, symmetric = TRUE)
+    eig$values <- pmax(eig$values, 1e-8)
+    Cov_u_pd <- eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
+    
+    raw_samples <- MASS::mvrnorm(num_samples, mu = mu_valid, Sigma = Cov_u_pd)
+    active_dfs <- est_dfs_all[idx_fix_active]
+    
+    for (j in seq_len(ncol(raw_samples))) {
+      df_j <- active_dfs[j]
+      if (is.finite(df_j)) {
+        sigma_j <- sqrt(Cov_u_pd[j, j])
+        z <- (raw_samples[, j] - mu_valid[j]) / (sigma_j + 1e-12)
+        w <- rchisq(num_samples, df = df_j)
+        raw_samples[, j] <- mu_valid[j] + z * sigma_j * sqrt(df_j / pmax(w, 1e-6))
+      }
+    }
+    
+    u_samples_mat <- matrix(rep(unc_est_vec, each = num_samples), nrow = num_samples)
+    u_samples_mat[, idx_fix_active] <- raw_samples
+    
+    # Handle mapped parameters in samples
+    idx_curr <- 1
+    for (name in names(self$par_list)) {
+      L_u <- self$par_list[[name]]$unc_length
+      if (L_u > 0) {
+        map_f <- if (!is.null(target_map[[name]])) target_map[[name]] else NULL
+        for (i in seq_len(L_u)) {
+          pos_full <- idx_curr + i - 1
+          if (pos_full %in% idx_ran_full) next
+          if (!is.null(map_f) && !is.na(map_f[i])) {
+            lvl <- as.character(map_f[i])
+            mapped_opt_idx <- factor_levels_seen[[lvl]]
+            if (!is.null(mapped_opt_idx)) u_samples_mat[, pos_full] <- raw_samples[, mapped_opt_idx]
+          }
+        }
+        idx_curr <- idx_curr + L_u
+      }
+    }
+    
+    # Handle random effects in samples (Laplace)
+    if (settings$use_reml && length(idx_ran_full) > 0) {
+      for (ridx in idx_ran_full) {
+        u_samples_mat[, ridx] <- rnorm(num_samples, mean = unc_est_vec[ridx], sd = unc_se_vec[ridx])
+      }
+    }
+    
+    # Transform samples to constrained space and derived variables
+    local_data <- self$data
+    local_par_list <- self$par_list
+    local_transform <- self$transform
+    local_generate <- self$generate
+    
+    for (s in seq_len(num_samples)) {
+      u_vec <- u_samples_mat[s, ]
+      tmp_con_list <- self$to_constrained(unconstrained_vector_to_list(u_vec, local_par_list))
+      
+      if (s == 1) {
+        for (name in names(tmp_con_list)) samps_con[[name]] <- matrix(NA_real_, num_samples, length(as.numeric(tmp_con_list[[name]])))
+      }
+      for (name in names(tmp_con_list)) samps_con[[name]][s, ] <- as.numeric(tmp_con_list[[name]])
+      
+      if (!is.null(local_transform)) {
+        tmp_tran <- tryCatch(local_transform(local_data, tmp_con_list), error = function(e) NULL)
+        if (!is.null(tmp_tran)) {
+          if (s == 1) {
+            for (name in names(tmp_tran)) samps_tran[[name]] <- matrix(NA_real_, num_samples, length(as.numeric(tmp_tran[[name]])))
+          }
+          for (name in names(tmp_tran)) samps_tran[[name]][s, ] <- as.numeric(tmp_tran[[name]])
+          tmp_con_list <- c(tmp_con_list, tmp_tran)
+        }
+      }
+      
+      if (!is.null(local_generate)) {
+        tmp_gq <- tryCatch(local_generate(local_data, tmp_con_list), error = function(e) NULL)
+        if (!is.null(tmp_gq)) {
+          if (s == 1) {
+            for (name in names(tmp_gq)) samps_gq[[name]] <- matrix(NA_real_, num_samples, length(as.numeric(tmp_gq[[name]])))
+          }
+          for (name in names(tmp_gq)) samps_gq[[name]][s, ] <- as.numeric(tmp_gq[[name]])
+        }
+      }
+    }
+    
+    # Aggregate sample statistics
+    for (name in names(self$par_list)) {
+      mat <- samps_con[[name]]
+      p_info <- self$par_list[[name]]
+      con_se_list[[name]] <- apply(mat, 2, sd, na.rm = TRUE)
+      con_lower_list[[name]] <- apply(mat, 2, quantile, 0.025, na.rm = TRUE)
+      con_upper_list[[name]] <- apply(mat, 2, quantile, 0.975, na.rm = TRUE)
+      if (length(p_info$dim) > 1) {
+        dim(con_se_list[[name]]) <- dim(con_lower_list[[name]]) <- dim(con_upper_list[[name]]) <- p_info$dim
+      }
+    }
+  } else {
+    # Wald CI
+    u_idx_current <- 1
+    for (name in names(self$par_list)) {
+      p_info <- self$par_list[[name]]
+      u_val <- unc_est_list[[name]]
+      u_se <- unc_se_list[[name]]
+      c_val <- con_est_list[[name]]
+      L_u <- p_info$unc_length
+      L_c <- p_info$length
+      u_indices <- if (L_u > 0) u_idx_current:(u_idx_current + L_u - 1) else integer(0)
+      u_idx_current <- u_idx_current + L_u
+      
+      # Delta method for SE
+      transform_single <- function(u) {
+        tmp_list <- unc_est_list
+        tmp_list[[name]] <- u
+        as.numeric(self$to_constrained(tmp_list)[[name]])
+      }
+      
+      J <- matrix(0, L_c, L_u)
+      for (i in seq_len(L_u)) {
+        u_tmp <- u_val
+        u_tmp[i] <- u_tmp[i] + 1e-5
+        J[, i] <- (transform_single(u_tmp) - as.numeric(c_val)) / 1e-5
+      }
+      
+      c_se <- numeric(L_c)
+      if (L_u > 0) {
+        Cov_sub <- Cov_u[u_indices, u_indices, drop = FALSE]
+        for (j in seq_len(L_c)) {
+          c_se[j] <- sqrt(sum((J[j, ] %*% Cov_sub) * J[j, ], na.rm = TRUE))
+        }
+      }
+      con_se_list[[name]] <- if (length(p_info$dim) > 1) structure(c_se, dim = p_info$dim) else c_se
+      
+      # CI using t-distribution
+      u_dfs <- est_dfs_all[u_indices]
+      u_q_95 <- ifelse(is.na(u_dfs) | is.infinite(u_dfs), qnorm(0.975), qt(0.975, df = pmax(u_dfs, 2.1)))
+      
+      if (p_info$bounds == "corr_matrix" || p_info$type == "corr_matrix") {
+        # Fisher's z transform for correlations
+        rho_val <- as.numeric(c_val)
+        rho_clipped <- pmax(pmin(rho_val, 0.9999), -0.9999)
+        z_val <- atanh(rho_clipped)
+        z_se <- c_se / (1 - rho_clipped^2 + 1e-10)
+        u_q_95_m <- if (any(is.na(u_dfs) | is.infinite(u_dfs))) qnorm(0.975) else qt(0.975, df = pmax(mean(u_dfs, na.rm = TRUE), 2.1))
+        c_low <- tanh(z_val - u_q_95_m * z_se)
+        c_up <- tanh(z_val + u_q_95_m * z_se)
+        is_fixed <- c_se < 1e-10 & abs(rho_val - 1) < 1e-8
+        if (any(is_fixed)) { c_low[is_fixed] <- 1.0; c_up[is_fixed] <- 1.0 }
+      } else {
+        u_low <- u_val - u_q_95 * u_se
+        u_up <- u_val + u_q_95 * u_se
+        c_low_raw <- transform_single(u_low)
+        c_up_raw <- transform_single(u_up)
+        c_low <- pmin(c_low_raw, c_up_raw)
+        c_up <- pmax(c_low_raw, c_up_raw)
+      }
+      con_lower_list[[name]] <- if (length(p_info$dim) > 1) structure(c_low, dim = p_info$dim) else c_low
+      con_upper_list[[name]] <- if (length(p_info$dim) > 1) structure(c_up, dim = p_info$dim) else c_up
+    }
+  }
+
+  # 3. Build Summary Tables
+  df_list_con <- list()
+  df_list_unc <- unconstrained_vector_to_list(est_dfs_all, self$par_list)
+  for (name in names(self$par_list)) {
+    p <- self$par_list[[name]]
+    if (p$unc_length == p$length) {
+      df_list_con[[name]] <- df_list_unc[[name]]
+    } else {
+      df_val <- rep(Inf, p$length)
+      if (p$unc_length > 0) {
+        m_df <- mean(df_list_unc[[name]], na.rm = TRUE)
+        if (is.finite(m_df)) df_val[] <- m_df
+      }
+      df_list_con[[name]] <- df_val
+    }
+  }
+
+  build_summary_df <- function(target_random = FALSE) {
+    names_vec <- c(); est_vec <- c(); se_vec <- c(); low_vec <- c(); up_vec <- c(); df_vec <- c()
+    for (name in names(self$par_list)) {
+      p_info <- self$par_list[[name]]
+      if (isTRUE(p_info$random) == target_random) {
+        f_names <- generate_flat_names(name, p_info$dim, self$par_names[[name]])
+        names_vec <- c(names_vec, f_names)
+        est_vec <- c(est_vec, as.numeric(con_est_list[[name]]))
+        se_vec <- c(se_vec, as.numeric(con_se_list[[name]]))
+        low_vec <- c(low_vec, as.numeric(con_lower_list[[name]]))
+        up_vec <- c(up_vec, as.numeric(con_upper_list[[name]]))
+        df_vec <- c(df_vec, if (!is.null(df_list_con[[name]])) as.numeric(df_list_con[[name]]) else rep(Inf, p_info$length))
+      }
+    }
+    if (length(names_vec) == 0) return(NULL)
+    res_df <- data.frame(
+      Estimate = est_vec, 
+      `Std. Error` = se_vec, 
+      `Lower 95%` = low_vec, 
+      `Upper 95%` = up_vec, 
+      check.names = FALSE
+    )
+    if (settings$show_df) res_df$df <- df_vec
+    rownames(res_df) <- names_vec
+    return(res_df)
+  }
+  
+  df_fixed <- build_summary_df(FALSE)
+  df_random <- if (settings$use_reml) build_summary_df(TRUE) else NULL
+
+  # 4. Transform and Generate Tables
+  tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL
+  gq_list <- if (!is.null(self$generate)) {
+    full_con <- if (!is.null(tran_list)) c(con_est_list, tran_list) else con_est_list
+    tryCatch(self$generate(self$data, full_con), error = function(e) NULL)
+  } else NULL
+
+  # Helper for derived summaries (simplified from .inference_pipeline)
+  build_derived_summary <- function(func, base_out, is_generate = FALSE) {
+    if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
+    flat_base <- unlist(base_out, use.names = FALSE)
+    L_out <- length(flat_base)
+    names_vec <- c()
+    for (name in names(base_out)) {
+      names_vec <- c(names_vec, generate_flat_names(name, if (is.null(dim(base_out[[name]]))) length(base_out[[name]]) else dim(base_out[[name]]), self$par_names[[name]]))
+    }
+    
+    # J for Delta method
+    J <- matrix(0, L_out, L_u_total)
+    for (i in seq_len(L_u_total)) {
+      u_tmp <- unc_est_vec
+      u_tmp[i] <- u_tmp[i] + 1e-5
+      tmp_con <- self$to_constrained(unconstrained_vector_to_list(u_tmp, self$par_list))
+      if (is_generate && !is.null(self$transform)) {
+        ut <- tryCatch(self$transform(self$data, tmp_con), error = function(e) NULL)
+        if (!is.null(ut)) tmp_con <- c(tmp_con, ut)
+      }
+      tmp_out <- tryCatch(func(self$data, tmp_con), error = function(e) NULL)
+      if (!is.null(tmp_out)) J[, i] <- (unlist(tmp_out, use.names = FALSE) - flat_base) / 1e-5
+    }
+    
+    if (se_sampling) {
+      samps_list <- if (is_generate) samps_gq else samps_tran
+      target_names <- names(base_out)
+      samps_sub <- samps_list[target_names]
+      samps_sub <- samps_sub[!vapply(samps_sub, is.null, logical(1))]
+
+      if (length(samps_sub) == 0) {
+        se_out <- low_out <- up_out <- rep(NA_real_, L_out)
+      } else {
+        mat_all <- do.call(cbind, unname(samps_sub))
+        if (ncol(mat_all) != L_out) {
+          se_out <- low_out <- up_out <- rep(NA_real_, L_out)
+        } else {
+          se_out <- apply(mat_all, 2, sd, na.rm = TRUE)
+          low_out <- apply(mat_all, 2, quantile, 0.025, na.rm = TRUE)
+          up_out <- apply(mat_all, 2, quantile, 0.975, na.rm = TRUE)
+        }
+      }
+    } else {
+      se_out <- sqrt(abs(rowSums((J %*% Cov_u) * J)))
+      low_out <- flat_base - 1.96 * se_out # Use z-critical for derived if df logic is complex
+      up_out <- flat_base + 1.96 * se_out
+    }
+    
+    res_df <- data.frame(
+      Estimate = flat_base, 
+      `Std. Error` = se_out, 
+      `Lower 95%` = low_out, 
+      `Upper 95%` = up_out, 
+      check.names = FALSE
+    )
+    if (settings$show_df) {
+      derived_dfs <- rep(Inf, L_out)
+      if (identical(settings$df_method, "residual")) {
+        for (j in seq_len(L_out)) {
+          c_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]
+          if (length(c_dfs) > 0) derived_dfs[j] <- min(c_dfs)
+        }
+      }
+      res_df$df <- derived_dfs
+    }
+    rownames(res_df) <- names_vec
+    return(res_df)
+  }
+
+  df_transform <- build_derived_summary(self$transform, tran_list, FALSE)
+  df_generate <- build_derived_summary(self$generate, gq_list, TRUE)
+
+  # 5. Log Marginal Likelihood and Vcov
+  log_ml <- NA
+  if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !isTRUE(raw$fallback_needed)) {
+    eig <- tryCatch(eigen(sd_rep$cov.fixed, symmetric = TRUE), error = function(e) NULL)
+    if (!is.null(eig) && all(eig$values > 1e-8)) {
+      lj_missing <- if (settings$use_reml) {
+        calc_log_jacobian(unc_est_list, self$par_list, FALSE) - calc_log_jacobian(unc_est_list, self$par_list, TRUE)
+      } else {
+        calc_log_jacobian(unc_est_list, self$par_list, FALSE)
+      }
+      log_ml <- -opt$objective + lj_missing + (length(opt$par) / 2) * log(2 * pi) + 0.5 * sum(log(eig$values))
+    }
+  }
+
+  # Build V_fixed_full (vcov)
+  if (is.null(df_fixed) || nrow(df_fixed) == 0) {
+    V_fixed_full <- matrix(0, 0, 0)
+  } else {
+    L_fixed <- nrow(df_fixed)
+    J_fixed <- matrix(0, L_fixed, L_u_total)
+    base_f <- df_fixed$Estimate
+    for (i in seq_len(L_u_total)) {
+      u_tmp <- unc_est_vec
+      u_tmp[i] <- u_tmp[i] + 1e-5
+      tmp_con <- self$to_constrained(unconstrained_vector_to_list(u_tmp, self$par_list))
+      tmp_vec <- c()
+      for (name in names(self$par_list)) {
+        if (!isTRUE(self$par_list[[name]]$random)) {
+          tmp_vec <- c(tmp_vec, as.numeric(tmp_con[[name]]))
+        }
+      }
+      if (length(tmp_vec) == L_fixed) J_fixed[, i] <- (tmp_vec - base_f) / 1e-5
+    }
+    V_fixed_full <- J_fixed %*% Cov_u %*% t(J_fixed)
+  }
+  rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
+
+  # 6. Additional test results (e.g. for table)
+  test_results <- list()
+  if (isTRUE(self$type == "table") && !is.null(self$extra$tab)) {
+    tab <- self$extra$tab
+    test_results$chisq <- stats::chisq.test(tab)
+    test_results$fisher <- tryCatch(stats::fisher.test(tab), error = function(e) NULL)
+  }
+
+  list(
+    df_fixed = df_fixed,
+    random_effects = df_random,
+    df_transform = df_transform,
+    df_generate = df_generate,
+    transform = tran_list,
+    generate = gq_list,
+    se_samples = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
+    vcov = V_fixed_full,
+    log_ml = log_ml,
+    test_results = test_results
+  )
+}
