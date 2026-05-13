@@ -13,14 +13,14 @@
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
 #' @param fixed Optional named list of fixed values for specific parameters.
-#' @param null Optional list specifying parameters to fix to null values.
+
 #'
 #' @return A \code{RTMB_Model} object.
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
-                      prior = prior_flat(), y_range = NULL,
-                      init = NULL, fixed = NULL, null = NULL) {
+                       prior = prior_flat(), y_range = NULL,
+                       init = NULL, fixed = NULL) {
 
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
@@ -517,10 +517,6 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
      view_vars <- if (P_x > 0) c("pcorr", "B_corr", "W_corr", "corr", "mean", "sd") else c("B_corr", "W_corr", "corr", "mean", "sd")
      obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
-
-     if (!is.null(null)) {
-       obj <- obj$null_model(target = null)
-     }
 
     obj$raw_data <- data
     obj$type <- "corr"

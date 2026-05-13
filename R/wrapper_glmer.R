@@ -4,10 +4,10 @@
 #' @param data Data frame
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
-#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is NULL (flat prior).
+#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.
 #' @param init List of initial values (generated automatically based on glm if omitted)
-#' @param null Character string specifying the target parameter for the null model.
+
 #' @param gmc Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #' @param view Character vector of parameter names to prioritize in summary.
@@ -28,7 +28,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        y_range = NULL,
                        init = NULL,
                        fixed = NULL,
-                       null = NULL,
                        gmc = NULL,
                        cwc = NULL,
                        view = NULL,
@@ -1000,9 +999,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   obj$contrasts <- actual_contrasts
   obj$requested_contrasts <- contrasts
 
-  if (!is.null(null)) {
-    obj <- obj$null_model(pars = null)
-  }
 
   # --- Metadata for classic inference and other methods ---
   obj$type <- if (has_random || !is.null(resid_corr)) {

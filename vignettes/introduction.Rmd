@@ -261,15 +261,15 @@ map_lm$summary()
 
 Functions tailored to analysis goals are available, such as `rtmb_glmer()` for generalized linear mixed models, and `rtmb_fa()` for factor analysis.
 
-Also, using `rtmb_ttest()`, a Bayesian t-test can be performed easily. By simply specifying the "parameter name to fix at 0" in the `null_model` argument of the `bayes_factor()` method, the estimation of the null model and the calculation of the Bayes factor are done automatically.
+Also, using `rtmb_ttest()`, a Bayesian t-test can be performed easily. By simply specifying the parameters to fix in the `fixed` argument of the `bayes_factor()` method (as a list), the estimation of the null model and the calculation of the Bayes factor are done automatically.
 
 ```{r eval=FALSE}
 data(debate)
 mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
 mcmc_ttest <- mdl_ttest$sample()
 
-# Comparison with the null model where effect size (delta) is fixed at 0
-bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+# Compare against the null model where delta = 0
+bf_ttest <- mcmc_ttest$bayes_factor(fixed = list(delta = 0))
 bf_ttest
 ```
 

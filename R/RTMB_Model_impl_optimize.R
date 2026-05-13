@@ -97,7 +97,7 @@
     est_dfs_all <- rep(df_t[1], L_u_total)
   } else if (auto_df) {
     # Perform Satterthwaite approximation
-    satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, silent = FALSE, return_sensitivities = TRUE)
+    satt_res <- self$calculate_satterthwaite_df(ad_obj, idx_fix_active, L_u_total, opt$par, max_df = 1e6, silent = FALSE, return_sensitivities = TRUE)
     if (is.list(satt_res)) {
       est_dfs_all <- satt_res$df
       dH_list <- satt_res$sensitivities

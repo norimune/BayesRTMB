@@ -13,7 +13,7 @@
   mcmc_ttest$summary()
 
   # Calculate Bayes factor against the null hypothesis (effect size delta = 0)
-  # Specifying "delta" automatically fixes the parameter to 0 and drops its prior
-  bf_ttest <- mcmc_ttest$bayes_factor(null_model = "delta")
+  # Specifying fixed = list(delta = 0) compares against a model with delta fixed to 0
+  bf_ttest <- mcmc_ttest$bayes_factor(fixed = list(delta = 0))
   print(bf_ttest)
 }

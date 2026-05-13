@@ -15,7 +15,7 @@
 #' or `prior_weak()` for weakly informative Bayesian inference.
 #' Default is `prior_flat()`.
 #' @param init List of initial values.
-#' @param null Character string specifying the target parameter for the null model (e.g., "delta").
+
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments.
@@ -25,7 +25,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        paired = FALSE, ID = NULL,
                        y_range = NULL,
                        prior = prior_flat(),
-                       init = NULL, fixed = NULL, null = NULL,
+                       init = NULL, fixed = NULL,
                        var.equal = TRUE, ...) {
 
   x_expr <- substitute(x)
@@ -232,7 +232,6 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     marginal = marginal,
     levs = levs
   )
-  if (!is.null(null)) obj <- obj$null_model(target = null)
 
   return(obj)
 }

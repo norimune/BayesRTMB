@@ -67,7 +67,7 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field posterior_mean Posterior mean estimates.
 #' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
-#' @field null_fit An \code{MCMC_Fit} object containing the fitted null model. This is automatically cached when calculating a Bayes factor using a target string.
+#' @field comparison_fit An \code{MCMC_Fit} object containing the fitted comparison model.
 #'
 
 
@@ -91,7 +91,7 @@ MCMC_Fit <- R6::R6Class(
     laplace        = NULL,
     posterior_mean = NULL,
     log_ml          = NULL,
-    null_fit       = NULL,
+    comparison_fit = NULL,
 
     # 1. Constructor
     #' @description Get point estimate for a target parameter (internal use).
@@ -706,32 +706,72 @@ MCMC_Fit <- R6::R6Class(
       return(res)
     },
 
-    #' @description Calculate the Bayes Factor against a null model or another fit object.
-    #' @param null_model Either a character string specifying the null target (e.g., "rho ~ uniform(-1, 1)") or another MCMC_Fit object.
-    #' @param bs_method Character; the method to use for bridge sampling ("normal" or "warp3"). Default is "normal".
-    #' @param error_threshold Numeric; threshold for the approximate error warning. Default is 0.2.
-    #' @param ... Additional arguments passed to the sample() method when fitting a null model (e.g., \code{chains = 4}, \code{sampling = 4000}).
-    bayes_factor = function(null_model, bs_method = "normal", error_threshold = 0.2, ...) {
+    #' @description Calculate the Bayes factor by marginal-likelihood model comparison.
+    #'
+    #' @details
+    #' Bayes factors are computed as ratios of marginal likelihoods estimated
+    #' by bridge sampling. The comparison model can be constructed by fixing
+    #' parameters with `fixed = list(...)`, or supplied as an already fitted
+    #' `MCMC_Fit` object via `comparison_fit`.
+    #' Bayes factors are computed only by marginal-likelihood model comparison.
+    #'
+    #' @param fixed Named list of parameter values used to construct the comparison model.
+    #'   For example, \code{fixed = list(delta = 0)} or
+    #'   \code{fixed = list("b[x]" = 0)}.
+    #' @param comparison_fit Optional `MCMC_Fit` object for an already fitted comparison model.
+    #' @param bs_method Character; the method to use for bridge sampling ("normal" or "warp3").
+    #' @param error_threshold Numeric; threshold for the approximate error warning.
+    #' @param ... Additional arguments passed to `sample()` when fitting the comparison model (e.g., \code{chains = 4}, \code{sampling = 4000}).
+    #' @return A list of class \code{bayes_factor_rtmb} containing Bayes factor results.
+    bayes_factor = function(
+      fixed = NULL,
+      comparison_fit = NULL,
+      bs_method = "normal",
+      error_threshold = 0.2,
+      ...
+    ) {
+      fixed_supplied <- !is.null(fixed)
+      fit_supplied <- !is.null(comparison_fit)
 
-      # 1. Calculate and assign marginal likelihood if not already calculated
+      if (identical(fixed_supplied, fit_supplied)) {
+        stop(
+          "Specify exactly one of `fixed` or `comparison_fit`.",
+          call. = FALSE
+        )
+      }
+
+      if (fixed_supplied) {
+        if (!is.list(fixed) || is.null(names(fixed)) || any(names(fixed) == "")) {
+          stop(
+            "`fixed` must be a named list, e.g. `fixed = list(delta = 0)` ",
+            "or `fixed = list(\"b[x]\" = 0)`.",
+            call. = FALSE
+          )
+        }
+      }
+
+      if (fit_supplied) {
+        if (!(inherits(comparison_fit, "R6") && "bridgesampling" %in% names(comparison_fit))) {
+          stop(
+            "`comparison_fit` must be an MCMC_Fit-like object with a `bridgesampling()` method.",
+            call. = FALSE
+          )
+        }
+      }
+
+      # 1. Full model marginal likelihood
       if (is.null(self$log_ml)) {
         cat("Calculating marginal likelihood for the full model...\n")
         self$log_ml <- self$bridgesampling(method = bs_method)
       }
       log_ml1 <- self$log_ml
 
-      log_ml2 <- NULL
+      # 2. Comparison model marginal likelihood
+      if (fixed_supplied) {
+        mdl_comp <- self$model$fixed_model(fixed = fixed)
 
-      # 2. Branch by the type of comparison target (null_model)
-      if (is.character(null_model) && length(null_model) == 1) {
-        cat(sprintf("\n--- Preparing and Sampling Null Model (%s) ---\n", null_model))
+        sample_args <- list(...)
 
-        mdl_null <- self$model$null_model(target = null_model)
-
-        # --- Modified: Inherit full model settings ---
-        sample_args <- list(...) # List of arguments specified by the user
-
-        # If not specified, obtain iterations and chains from own fit array dimensions to supplement
         if (is.null(sample_args$sampling)) {
           sample_args$sampling <- dim(self$fit)[1]
         }
@@ -739,29 +779,29 @@ MCMC_Fit <- R6::R6Class(
           sample_args$chains <- dim(self$fit)[2]
         }
 
-        # Sample null model using supplemented argument list
-        fit_null <- do.call(mdl_null$sample, sample_args)
+        cat("\n--- Sampling from the comparison model ---\n")
+        fit_comp <- do.call(mdl_comp$sample, sample_args)
 
-        cat("\n--- Calculating marginal likelihood for the null model ---\n")
-        fit_null$log_ml <- fit_null$bridgesampling(method = bs_method)
-        log_ml2 <- fit_null$log_ml
+        cat("\n--- Calculating marginal likelihood for the comparison model ---\n")
+        fit_comp$log_ml <- fit_comp$bridgesampling(method = bs_method)
 
-        self$null_fit <- fit_null
-
-      } else if (inherits(null_model, "R6") && "bridgesampling" %in% names(null_model)) {
-        if (is.null(null_model$log_ml)) {
-          cat("Calculating marginal likelihood for the comparison model...\n")
-          null_model$log_ml <- null_model$bridgesampling(method = bs_method)
-        }
-        log_ml2 <- null_model$log_ml
+        log_ml2 <- fit_comp$log_ml
+        self$comparison_fit <- fit_comp
 
       } else {
-        stop("The 'null_model' argument must be a null_model string or another MCMC_Fit object.")
+        if (is.null(comparison_fit$log_ml)) {
+          cat("Calculating marginal likelihood for the comparison model...\n")
+          comparison_fit$log_ml <- comparison_fit$bridgesampling(method = bs_method)
+        }
+
+        log_ml2 <- comparison_fit$log_ml
+        self$comparison_fit <- comparison_fit
       }
 
-      # 3. Calculation of Bayes factor and evaluation of error
+      # 3. Bayes factor
       val1 <- as.numeric(log_ml1)
       val2 <- as.numeric(log_ml2)
+
       log_bf <- val1 - val2
       bf <- exp(log_bf)
 
@@ -771,21 +811,23 @@ MCMC_Fit <- R6::R6Class(
 
       if (has_error) {
         log_bf_err <- sqrt(err1^2 + err2^2)
+
         if (log_bf_err > error_threshold) {
           warning(
             sprintf(
-              "The estimation error of the log Bayes factor (%.3f) exceeds the threshold (%g). Interpretation of the results may be unstable.\n",
-              log_bf_err, error_threshold
+              "The estimation error of the log Bayes factor (%.3f) exceeds the threshold (%g). ",
+              log_bf_err,
+              error_threshold
             ),
-            "Consider increasing the number of MCMC samples or ESS to improve precision.\n",
-            call. = FALSE, immediate. = TRUE
+            "Consider increasing the number of MCMC samples or ESS.",
+            call. = FALSE,
+            immediate. = TRUE
           )
         }
       } else {
         log_bf_err <- NA_real_
       }
 
-      # 4. Assignment of interpretation
       if (is.na(bf) || is.nan(bf)) {
         evidence <- "Indeterminate"
       } else if (bf > 100) {
@@ -798,11 +840,11 @@ MCMC_Fit <- R6::R6Class(
         evidence <- "Anecdotal evidence for Model 1"
       } else if (bf == 1) {
         evidence <- "No evidence"
-      } else if (bf >= 1/3) {
+      } else if (bf >= 1 / 3) {
         evidence <- "Anecdotal evidence for Model 2"
-      } else if (bf >= 1/10) {
+      } else if (bf >= 1 / 10) {
         evidence <- "Substantial evidence for Model 2"
-      } else if (bf >= 1/100) {
+      } else if (bf >= 1 / 100) {
         evidence <- "Strong evidence for Model 2"
       } else {
         evidence <- "Decisive evidence for Model 2"
@@ -811,12 +853,16 @@ MCMC_Fit <- R6::R6Class(
       res <- list(
         BF12 = bf,
         log_BF12 = log_bf,
+        log_ml_model1 = val1,
+        log_ml_model2 = val2,
         log_BF_error = log_bf_err,
-        interpretation = evidence
+        evidence = evidence,
+        fixed = fixed,
+        comparison_fit = self$comparison_fit
       )
 
-      class(res) <- "bayes_factor"
-      return(res)
+      class(res) <- "bayes_factor_rtmb"
+      res
     },
 
 

@@ -1111,7 +1111,7 @@ bayes_factor <- function(logml1, logml2, error_threshold = 0.2) {
     BF12 = bf,
     log_BF12 = log_bf,
     log_BF_error = log_bf_err,
-    interpretation = evidence
+    evidence = evidence
   )
 
   class(res) <- "bayes_factor"
@@ -1132,6 +1132,31 @@ print.bayes_factor <- function(x, digits = 4, ...) {
     cat(sprintf("Log Bayes Factor    : %.4f\n", x$log_BF12))
   }
 
-  cat("Interpretation      :", x$interpretation, "\n")
+  cat("Evidence            :", x$evidence, "\n")
+  invisible(x)
+}
+
+#' Print method for bayes_factor_rtmb objects
+#' @param x An object of class bayes_factor_rtmb.
+#' @param digits Number of decimal places to display (default is 4).
+#' @param ... Additional arguments.
+#' @export
+print.bayes_factor_rtmb <- function(x, digits = 4, ...) {
+  cat("--- Bayes Factor Analysis (Bridge Sampling) ---\n")
+  cat("Bayes Factor (BF12) :", round(x$BF12, digits), "\n")
+
+  if (!is.na(x$log_BF_error)) {
+    cat(sprintf("Log Bayes Factor    : %.4f (Approx. Error = %.4f)\n", x$log_BF12, x$log_BF_error))
+  } else {
+    cat(sprintf("Log Bayes Factor    : %.4f\n", x$log_BF12))
+  }
+
+  cat("Evidence            :", x$evidence, "\n")
+  
+  if (!is.null(x$fixed)) {
+    cat("Comparison model    : Parameters fixed at", deparse(x$fixed), "\n")
+  }
+  
+  cat("\n")
   invisible(x)
 }

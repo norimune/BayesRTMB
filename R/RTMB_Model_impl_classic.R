@@ -101,13 +101,9 @@
   private$.validate_classic_model()
   settings <- private$.resolve_classic_settings(df_method)
 
-  # For classic mode, we want a frequentist-like optimization.
-  # We use self$null_model to potentially strip priors if any were defined (though validate checks for flat).
-  model_to_fit <- if (settings$use_reml && length(settings$target_vars) > 0) {
-    self$null_model(target_vars = settings$target_vars)
-  } else {
-    self
-  }
+  # For classic mode, we use .fit_rtmb with apply_prior_correction = FALSE.
+  # Constraint targets (fixed parameters for REML) are handled via target_vars.
+  model_to_fit <- self
 
   raw <- model_to_fit$.__enclos_env__$private$.fit_rtmb(
     laplace = settings$use_reml,

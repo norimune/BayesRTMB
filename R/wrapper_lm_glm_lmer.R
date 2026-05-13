@@ -9,7 +9,7 @@
 #' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable
 #' @param init Initial values
-#' @param null Null model parameters
+
 #' @param gmc Character vector of variable names for GMC
 #' @param cwc List for CWC
 #' @param view Character vector of parameter names to prioritize in summary.
@@ -34,7 +34,6 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        y_range = NULL,
                        init = NULL,
                        fixed = NULL,
-                       null = NULL,
                        gmc = NULL,
                        cwc = NULL,
                        view = NULL,
@@ -51,7 +50,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              prior = prior,
              y_range = y_range,
              init = init,
-             null = null,
+             fixed = fixed,
              gmc = gmc,
              cwc = cwc,
              view = view,
@@ -76,7 +75,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values
-#' @param null Character string specifying the target parameter for the null model.
+
 #' @param gmc Character vector of variable names for GMC
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
@@ -88,7 +87,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 rtmb_glm <- function(formula, data, family = "gaussian",
                        prior = prior_flat(),
                        y_range = NULL,
-                       init = NULL, fixed = NULL, null = NULL,
+                       init = NULL, fixed = NULL,
                        gmc = NULL,
                        view = NULL,
                        factors = NULL,
@@ -99,7 +98,6 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              y_range = y_range,
              init = init,
              fixed = fixed,
-             null = null,
              gmc = gmc,
              view = view,
              factors = factors,
@@ -116,7 +114,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values.
-#' @param null Character string specifying the target parameter for the null model.
+
 #' @param gmc Character vector of variable names for GMC
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
@@ -128,7 +126,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 rtmb_lm <- function(formula, data,
                     prior = prior_flat(),
                     y_range = NULL,
-                    init = NULL, fixed = NULL, null = NULL,
+                    init = NULL, fixed = NULL,
                     gmc = NULL,
                     view = NULL,
                     factors = NULL,
@@ -139,7 +137,6 @@ rtmb_lm <- function(formula, data,
              y_range = y_range,
              init = init,
              fixed = fixed,
-             null = null,
              gmc = gmc,
              view = view,
              factors = factors,

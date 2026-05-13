@@ -51,7 +51,7 @@ NULL
 #'   \item \code{$optimize(...)}: Performs Maximum A Posteriori (MAP) or Maximum Likelihood estimation. Returns a \code{MAP_Fit} object.
 #'   \item \code{$sample(...)}: Draws posterior samples using the NUTS (No-U-Turn Sampler) algorithm. Returns an \code{MCMC_Fit} object.
 #'   \item \code{$variational(...)}: Performs Mean-field or Full-rank Automatic Differentiation Variational Inference (ADVI). Returns a \code{VB_Fit} object.
-#'   \item \code{$null_model(target, ...)}: Creates a restricted model by fixing specific parameters (e.g., an effect size to zero), which is useful for Bayes Factor calculation.
+
 #' }
 #'
 #' @param data A named list containing observation data and constants (e.g., sample size, matrices) used in the model.
@@ -60,7 +60,7 @@ NULL
 #' @param init A list or numeric vector of initial values for parameters (optional). If not specified, initialized randomly.
 #' @param view Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).
 #' @param fixed A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.
-#' @param null_target Character string. To simultaneously create a null model, specify the target parameter to fix and the prior distribution to disable as a formula string (e.g., \code{"delta ~ cauchy(0, r)"}). Default is \code{NULL}.
+
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
@@ -135,7 +135,7 @@ NULL
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
 #' @export
-rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, fixed = NULL, null_target = NULL, silent = FALSE) {
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, fixed = NULL, silent = FALSE) {
 
   if (is.null(silent)) silent <- FALSE
   if (getOption("BayesRTMB.silent", FALSE)) silent <- TRUE
@@ -322,12 +322,6 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     obj <- obj$fixed_model(fixed)
   }
 
-  if (!is.null(null_target)) {
-    if (!is.character(null_target) || length(null_target) != 1) {
-      stop("The argument 'null_target' must be a single character string (e.g., null_target = 'delta ~ cauchy(0, r)' or 'delta').", call. = FALSE)
-    }
-    obj <- obj$null_model(target = null_target)
-  }
 
 
   return(obj)
@@ -1011,17 +1005,17 @@ validate_data <- function(dat_list) {
 #' @param par_names A list of variable names corresponding to the dimensions of each parameter (optional).
 #' @param init A list or numeric vector of initial values (optional).
 #' @param view Character vector of parameter names to be displayed preferentially in summary outputs (optional).
-#' @param null_target A character string specifying the parameter to fix and the prior to disable for creating a null model (optional).
+
 #'
 #' @return Returns an `rtmb_model` object (R6 class instance) upon successful compilation.
 #'
 #' @export
-safe_rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, null_target = NULL) {
+safe_rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL) {
   data <- validate_data(data)
 
   tryCatch({
     obj <- rtmb_model(data = data, code = code, par_names = par_names,
-                      init = init, view = view, null_target = null_target)
+                      init = init, view = view)
     return(obj)
 
   }, error = function(e) {

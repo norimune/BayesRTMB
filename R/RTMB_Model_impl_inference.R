@@ -88,7 +88,7 @@
   return(df_full)
 }
 
-.calculate_reml_satterthwaite_df_impl <- function(self, private, ad_obj, opt_par, beta_idx, silent = FALSE, return_sensitivities = FALSE) {
+.calculate_reml_satterthwaite_df_impl <- function(self, private, ad_obj, opt_par, beta_idx, max_df = NULL, silent = FALSE, return_sensitivities = FALSE) {
   if (!silent) cat("Estimating Satterthwaite degrees of freedom for fixed effects (REML)...\n")
 
   P <- length(opt_par)
@@ -114,25 +114,42 @@
     as.matrix(V_full[beta_idx, beta_idx, drop = FALSE])
   }
 
+  # Early return helper to ensure consistent return types
+  fallback_reml_result <- function() {
+    if (return_sensitivities) {
+      return(list(
+        df = rep(Inf, n_beta),
+        se = rep(NA_real_, n_beta),
+        sensitivities = vector("list", P), # Keep list structure
+        V_theta = NULL,
+        V_beta = NULL
+      ))
+    }
+    list(
+      df = rep(Inf, n_beta),
+      se = rep(NA_real_, n_beta)
+    )
+  }
+
   V_beta_0 <- tryCatch(get_beta_cov(opt_par), error = function(e) {
     return(NULL)
   })
   if (is.null(V_beta_0)) {
-    return(list(df = rep(Inf, n_beta), se = rep(NA, n_beta)))
+    return(fallback_reml_result())
   }
   V_beta_diag_0 <- diag(V_beta_0)
 
   # Covariance of variance components (theta)
   H_theta <- tryCatch(private$.simple_jacobian(ad_obj$gr, opt_par), warning = function(w) NULL, error = function(e) NULL)
   if (is.null(H_theta)) {
-    return(rep(Inf, n_beta))
+    return(fallback_reml_result())
   }
 
   V_theta <- tryCatch(solve(H_theta), error = function(e) {
     tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
   })
   if (is.null(V_theta)) {
-    return(rep(Inf, n_beta))
+    return(fallback_reml_result())
   }
 
   # Gradient of V_beta with respect to theta
@@ -155,14 +172,23 @@
   }
 
   dfs <- rep(Inf, n_beta)
+  rel_tol <- 1e-10
   for (i in 1:n_beta) {
     grad_vi <- grad_V_beta_diag[, i]
     var_vi <- as.numeric(t(grad_vi) %*% V_theta %*% grad_vi)
-    if (!is.na(var_vi) && is.finite(var_vi) && var_vi > 1e-30 && V_beta_diag_0[i] > 0) {
-      dfs[i] <- 2 * (V_beta_diag_0[i]^2) / var_vi
+    v_ii <- V_beta_diag_0[i]
+    
+    if (!is.na(var_vi) && is.finite(var_vi) && var_vi > rel_tol * (v_ii^2) && v_ii > 0) {
+      dfs[i] <- 2 * (v_ii^2) / var_vi
+    } else {
+      dfs[i] <- Inf
     }
   }
 
+  if (!is.null(max_df)) {
+    dfs[dfs > max_df] <- Inf
+  }
+  dfs[!is.finite(dfs)] <- Inf
   dfs <- pmax(dfs, 2.1)
   if (return_sensitivities) {
     return(list(df = dfs, se = sqrt(V_beta_diag_0), sensitivities = dV_beta_list, V_theta = V_theta, V_beta = V_beta_0))
