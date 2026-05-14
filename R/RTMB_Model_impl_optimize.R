@@ -279,7 +279,25 @@
       }
     }
 
-    # 2. Uncertainty (SE/CI)
+    # 2. Degrees of Freedom
+    derived_dfs <- rep(Inf, L_out)
+    if (show_df && se_enabled && auto_df && !is.null(dH_theta_in) && !is.null(V_theta_in) && !is.null(J)) {
+       # Use the new Satterthwaite delta method helper
+       derived_dfs <- .satterthwaite_df_delta(
+         J_full = J,
+         V_theta = V_theta_in,
+         dH_theta = dH_theta_in,
+         idx_theta_full = theta_idx_in %||% idx_fix_active,
+         V_beta = if (is_reml_in) V_opt_in else NULL,
+         dH_beta = if (is_reml_in) dH_list_in else NULL,
+         idx_beta_full = if (is_reml_in) active_idx_in else NULL,
+         max_df = NULL
+       )
+    } else if (show_df && !is.infinite(df_t[1])) {
+       derived_dfs <- rep(df_t[1], L_out)
+    }
+
+    # 3. Uncertainty (SE/CI)
     if (!se_enabled) {
       se_out <- low_out <- up_out <- rep(NA_real_, L_out)
     } else if (se_sampling) {
@@ -313,37 +331,26 @@
       for (j in which(is.na(se_out))) {
         se_out[j] <- sqrt(abs(sum((J[j, ] %*% Cov_u) * J[j, ])))
       }
-      low_out <- flat_base - 1.96 * se_out
-      up_out <- flat_base + 1.96 * se_out
+      
+      crit <- ifelse(is.finite(derived_dfs), 
+                     qt(0.975, df = pmax(derived_dfs, 2.1)), 
+                     qnorm(0.975))
+      low_out <- flat_base - crit * se_out
+      up_out <- flat_base + crit * se_out
+      
       corr_pat <- "^(corr|pcorr|B_corr|W_corr)(\\[|$)"
       is_corr <- grepl(corr_pat, names_vec)
       for (j in which(is_corr)) {
         r <- pmax(pmin(flat_base[j], 0.9999), -0.9999)
         z <- atanh(r)
         se_z <- se_out[j] / (1 - r^2 + 1e-10)
-        low_out[j] <- tanh(z - 1.96 * se_z)
-        up_out[j] <- tanh(z + 1.96 * se_z)
+        
+        cj <- crit[j]
+        low_out[j] <- tanh(z - cj * se_z)
+        up_out[j] <- tanh(z + cj * se_z)
       }
     }
     
-    # 3. Degrees of Freedom
-    derived_dfs <- rep(Inf, L_out)
-    if (show_df && se_enabled && auto_df && !is.null(dH_theta_in) && !is.null(V_theta_in) && !is.null(J)) {
-       # Use the new Satterthwaite delta method helper
-       derived_dfs <- .satterthwaite_df_delta(
-         J_full = J,
-         V_theta = V_theta_in,
-         dH_theta = dH_theta_in,
-         idx_theta_full = theta_idx_in %||% idx_fix_active,
-         V_beta = if (is_reml_in) V_opt_in else NULL,
-         dH_beta = if (is_reml_in) dH_list_in else NULL,
-         idx_beta_full = if (is_reml_in) active_idx_in else NULL,
-         max_df = NULL
-       )
-    } else if (show_df && !is.infinite(df_t[1])) {
-       derived_dfs <- rep(df_t[1], L_out)
-    }
-
     res_df <- data.frame(Estimate = flat_base, `Std. Error` = se_out, `Lower 95%` = low_out, `Upper 95%` = up_out, check.names = FALSE)
     if (show_df) {
       res_df$df <- derived_dfs

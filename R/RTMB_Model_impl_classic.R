@@ -21,11 +21,12 @@
   type <- self$type %||% "generic"
 
   if (is.numeric(df_method)) {
+    use_reml <- type %in% c("lmer", "ttest")
     return(list(
-      use_reml = type %in% c("lmer"),
+      use_reml = use_reml,
       df_method = "numeric",
       df_value = as.numeric(df_method),
-      target_vars = if (type %in% c("lmer") && !is.null(self$extra$marginal)) self$extra$marginal else character(0),
+      target_vars = if (use_reml && !is.null(self$extra$marginal)) self$extra$marginal else character(0),
       show_df = TRUE
     ))
   }
@@ -46,12 +47,19 @@
     )
   }
 
-  use_reml <- type %in% c("lmer")
+  use_reml <- type %in% c("lmer", "ttest")
 
   if (identical(df_method, "auto")) {
     df_method <- if (type %in% c("lmer")) {
       "satterthwaite"
-    } else if (type %in% c("lm", "ttest", "corr", "mediation")) {
+    } else if (type == "ttest") {
+      # Satterthwaite for independent unequal-variance t-tests
+      if (isFALSE(self$extra$paired) && isFALSE(self$extra$var_equal)) {
+        "satterthwaite"
+      } else {
+        "residual"
+      }
+    } else if (type %in% c("lm", "corr", "mediation")) {
       "residual"
     } else {
       "inf"
@@ -186,6 +194,15 @@
   
   se_sampling <- (se_method == "sampling")
   
+  # Initialize sensitivity variables for Satterthwaite/delta-method
+  dH_list <- NULL
+  V_opt <- NULL
+  active_idx <- NULL
+  dH_theta <- NULL
+  V_theta <- NULL
+  dH_beta <- NULL
+  V_beta <- NULL
+  
   # 1. Degrees of Freedom
   est_dfs_all <- rep(Inf, L_u_total)
   
@@ -257,7 +274,15 @@
       ad_obj, idx_fix_active, L_u_total, opt$par, 
       silent = FALSE, return_sensitivities = TRUE
     )
-    est_dfs_all <- if (is.list(satt_res)) satt_res$df else satt_res
+    if (is.list(satt_res)) {
+      est_dfs_all <- satt_res$df
+      dH_list <- satt_res$sensitivities
+      V_opt <- satt_res$V
+    } else {
+      est_dfs_all <- satt_res
+    }
+    dH_theta <- dH_list
+    V_theta <- V_opt
     
     if (settings$use_reml && length(settings$target_vars) > 0 && length(idx_ran) > 0) {
       full_par_names_mapped <- names(ad_obj$env$last.par)[idx_ran]
@@ -270,6 +295,8 @@
         if (is.list(reml_res)) {
           active_idx <- idx_ran_full[target_ran_idx]
           est_dfs_all[active_idx] <- reml_res$df
+          dH_beta <- reml_res$sensitivities
+          V_beta <- reml_res$V_beta
         }
       }
     }
@@ -503,8 +530,13 @@
     tryCatch(self$generate(self$data, full_con), error = function(e) NULL)
   } else NULL
 
-  # Helper for derived summaries (simplified from .inference_pipeline)
-  build_derived_summary <- function(func, base_out, is_generate = FALSE) {
+  # Helper for derived summaries (aligned with .inference_pipeline)
+  build_derived_summary <- function(
+    func, base_out, is_generate = FALSE, 
+    dH_list_in = NULL, V_opt_in = NULL, is_reml_in = FALSE, 
+    active_idx_in = NULL, dH_theta_in = NULL, V_theta_in = NULL, 
+    theta_idx_in = NULL
+  ) {
     if (is.null(func) || is.null(base_out) || length(base_out) == 0) return(NULL)
     flat_base <- unlist(base_out, use.names = FALSE)
     L_out <- length(flat_base)
@@ -527,6 +559,31 @@
       if (!is.null(tmp_out)) J[, i] <- (unlist(tmp_out, use.names = FALSE) - flat_base) / 1e-5
     }
     
+    # 1. Degrees of Freedom for derived quantities
+    derived_dfs <- rep(Inf, L_out)
+    if (settings$show_df) {
+      if (identical(settings$df_method, "satterthwaite") && !is.null(dH_theta_in) && !is.null(V_theta_in)) {
+        # Use the Satterthwaite delta method helper
+        derived_dfs <- .satterthwaite_df_delta(
+          J_full = J,
+          V_theta = V_theta_in,
+          dH_theta = dH_theta_in,
+          idx_theta_full = theta_idx_in %||% idx_fix_active,
+          V_beta = if (is_reml_in) V_opt_in else NULL,
+          dH_beta = if (is_reml_in) dH_list_in else NULL,
+          idx_beta_full = if (is_reml_in) active_idx_in else NULL,
+          max_df = NULL
+        )
+      } else if (identical(settings$df_method, "residual")) {
+        for (j in seq_len(L_out)) {
+          c_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]
+          if (length(c_dfs) > 0) derived_dfs[j] <- min(c_dfs)
+        }
+      } else if (identical(settings$df_method, "numeric")) {
+        derived_dfs[] <- settings$df_value
+      }
+    }
+
     if (se_sampling) {
       samps_list <- if (is_generate) samps_gq else samps_tran
       target_names <- names(base_out)
@@ -547,8 +604,13 @@
       }
     } else {
       se_out <- sqrt(abs(rowSums((J %*% Cov_u) * J)))
-      low_out <- flat_base - 1.96 * se_out # Use z-critical for derived if df logic is complex
-      up_out <- flat_base + 1.96 * se_out
+      
+      # Use t-critical if finite df is available
+      crit <- ifelse(is.finite(derived_dfs), 
+                     qt(0.975, df = pmax(derived_dfs, 2.1)), 
+                     qnorm(0.975))
+      low_out <- flat_base - crit * se_out
+      up_out <- flat_base + crit * se_out
     }
     
     res_df <- data.frame(
@@ -559,21 +621,33 @@
       check.names = FALSE
     )
     if (settings$show_df) {
-      derived_dfs <- rep(Inf, L_out)
-      if (identical(settings$df_method, "residual")) {
-        for (j in seq_len(L_out)) {
-          c_dfs <- est_dfs_all[abs(J[j, ]) > 1e-8]
-          if (length(c_dfs) > 0) derived_dfs[j] <- min(c_dfs)
-        }
-      }
       res_df$df <- derived_dfs
     }
     rownames(res_df) <- names_vec
     return(res_df)
   }
 
-  df_transform <- build_derived_summary(self$transform, tran_list, FALSE)
-  df_generate <- build_derived_summary(self$generate, gq_list, TRUE)
+  df_transform <- build_derived_summary(
+    self$transform, tran_list, FALSE,
+    if (settings$use_reml) dH_beta else dH_list,
+    if (settings$use_reml) V_beta else V_opt,
+    settings$use_reml,
+    if (settings$use_reml) active_idx else NULL,
+    if (settings$use_reml) dH_theta else NULL,
+    if (settings$use_reml) V_theta else NULL,
+    if (settings$use_reml) idx_fix_active else NULL
+  )
+
+  df_generate <- build_derived_summary(
+    self$generate, gq_list, TRUE,
+    if (settings$use_reml) dH_beta else dH_list,
+    if (settings$use_reml) V_beta else V_opt,
+    settings$use_reml,
+    if (settings$use_reml) active_idx else NULL,
+    if (settings$use_reml) dH_theta else NULL,
+    if (settings$use_reml) V_theta else NULL,
+    if (settings$use_reml) idx_fix_active else NULL
+  )
 
   # 5. Log Marginal Likelihood and Vcov
   log_ml <- NA

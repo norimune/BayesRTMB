@@ -15,11 +15,19 @@
 #' or `prior_weak()` for weakly informative Bayesian inference.
 #' Default is `prior_flat()`.
 #' @param init List of initial values.
-
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments.
 #' @return An `RTMB_Model` object.
+#'
+#' @details
+#' For classic inference, heteroscedastic two-sample t-tests use the same
+#' RTMB Satterthwaite machinery as `optimize(marginal = ..., df_method = "satterthwaite")`.
+#' The result is model-based and reproducible from the printed model code.
+#' This corresponds to the Welch-type unequal-variance t-test, but the
+#' degrees of freedom are computed by the package's internal Satterthwaite
+#' procedure rather than by a separate closed-form formula.
+#'
 #' @export
 rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        paired = FALSE, ID = NULL,
@@ -230,7 +238,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     source = "wrapper",
     prior_type = prior$type,
     marginal = marginal,
-    levs = levs
+    levs = levs,
+    paired = paired,
+    var_equal = var.equal
   )
 
   return(obj)
