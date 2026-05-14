@@ -45,7 +45,9 @@ posterior, and drawing posterior samples.
 
 \item{\code{map}}{A list specifying parameter mappings for fixing values (e.g., via \code{fixed_model()}).}
 
-\item{\code{prior_correction}}{Numeric value storing the log-density of the fixed parameter for Bayes Factor correction.}
+\item{\code{prior_correction}}{Numeric value for legacy or low-level marginal-likelihood correction. Fixed-parameter prior removal is handled during AD objective construction.}
+
+\item{\code{fixed_prior_specs}}{Internal specification for removing fixed-parameter prior contributions during AD evaluation.}
 
 \item{\code{type}}{Character; the type of the model (e.g. 'lmer', 'glm', 'table', 'ttest', 'corr', 'mediation').}
 

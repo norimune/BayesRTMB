@@ -57,6 +57,26 @@
   local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
   local_log_prob <- self$log_prob
   local_transform <- self$transform
+  local_fixed_prior_specs <- self$fixed_prior_specs
+  local_code_model <- self$code$model
+  
+  # Pre-calculate shadow list for fixed-prior removal
+  env_shadow_local <- list2env(local_data, parent = asNamespace("BayesRTMB"))
+  idx_s <- 1
+  for (nm in names(local_par_list)) {
+    p <- local_par_list[[nm]]
+    shadow_vec <- local_pl_full$names[idx_s:(idx_s + p$length - 1)]
+    if (length(p$dim) > 1) dim(shadow_vec) <- p$dim
+    env_shadow_local[[nm]] <- shadow_vec
+    idx_s <- idx_s + p$length
+  }
+  if (!is.null(local_transform)) {
+    par_only <- mget(names(local_par_list), envir = env_shadow_local, inherits = FALSE)
+    tran_res_shadow <- tryCatch(suppressMessages(local_transform(local_data, par_only)), error = function(e) list())
+    for (nm in names(tran_res_shadow)) env_shadow_local[[nm]] <- tran_res_shadow[[nm]]
+  }
+  local_shadow_list <- as.list(env_shadow_local)
+
   random_effs <- names(local_par_list)[random_flags]
   use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
   base_init <- self$prepare_init(init)
@@ -68,7 +88,10 @@
     log_prob_local = local_log_prob,
     transform_local = local_transform,
     jacobian_target = "all",
-    adreport = FALSE
+    adreport = FALSE,
+    fixed_prior_specs_local = local_fixed_prior_specs,
+    code_model_local = local_code_model,
+    shadow_list_local = local_shadow_list
   )
 
   run_chain <- function(c, f_ad, p_callback = NULL) {
@@ -215,6 +238,26 @@
   local_data <- self$data; local_par_list <- self$par_list; local_pl_full <- self$pl_full
   local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
   local_log_prob <- self$log_prob; local_transform <- self$transform
+  local_fixed_prior_specs <- self$fixed_prior_specs
+  local_code_model <- self$code$model
+  
+  # Pre-calculate shadow list for fixed-prior removal
+  env_shadow_local <- list2env(local_data, parent = asNamespace("BayesRTMB"))
+  idx_s <- 1
+  for (nm in names(local_par_list)) {
+    p <- local_par_list[[nm]]
+    shadow_vec <- local_pl_full$names[idx_s:(idx_s + p$length - 1)]
+    if (length(p$dim) > 1) dim(shadow_vec) <- p$dim
+    env_shadow_local[[nm]] <- shadow_vec
+    idx_s <- idx_s + p$length
+  }
+  if (!is.null(local_transform)) {
+    par_only <- mget(names(local_par_list), envir = env_shadow_local, inherits = FALSE)
+    tran_res_shadow <- tryCatch(suppressMessages(local_transform(local_data, par_only)), error = function(e) list())
+    for (nm in names(tran_res_shadow)) env_shadow_local[[nm]] <- tran_res_shadow[[nm]]
+  }
+  local_shadow_list <- as.list(env_shadow_local)
+
   random_effs <- names(local_par_list)[sapply(local_par_list, function(x) isTRUE(x$random))]
   use_random <- if (laplace && length(random_effs) > 0) random_effs else NULL
   base_init <- self$prepare_init(init)
@@ -226,7 +269,10 @@
     log_prob_local = local_log_prob, 
     transform_local = local_transform, 
     jacobian_target = "all", 
-    adreport = FALSE
+    adreport = FALSE,
+    fixed_prior_specs_local = local_fixed_prior_specs,
+    code_model_local = local_code_model,
+    shadow_list_local = local_shadow_list
   )
 
   run_advi_worker <- function(c, f_ad, p_callback = NULL, p_interval = 0) {
