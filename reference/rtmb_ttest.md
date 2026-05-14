@@ -82,3 +82,13 @@ rtmb_ttest(
 ## Value
 
 An \`RTMB_Model\` object.
+
+## Details
+
+For classic inference, heteroscedastic two-sample t-tests use the same
+RTMB Satterthwaite machinery as \`optimize(marginal = ..., df_method =
+"satterthwaite")\`. The result is model-based and reproducible from the
+printed model code. This corresponds to the Welch-type unequal-variance
+t-test, but the degrees of freedom are computed by the package's
+internal Satterthwaite procedure rather than by a separate closed-form
+formula.

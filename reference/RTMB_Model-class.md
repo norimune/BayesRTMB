@@ -76,8 +76,14 @@ samples.
 
 - `prior_correction`:
 
-  Numeric value storing the log-density of the fixed parameter for Bayes
-  Factor correction.
+  Numeric value for legacy or low-level marginal-likelihood correction.
+  Fixed-parameter prior removal is handled during AD objective
+  construction.
+
+- `fixed_prior_specs`:
+
+  Internal specification for removing fixed-parameter prior
+  contributions during AD evaluation.
 
 - `type`:
 
