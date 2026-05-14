@@ -44,11 +44,11 @@ VB_Fit <- R6::R6Class(
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
     #' @return Matrix or array of point estimate.
-    get_point_estimate = function(target) {
-      target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
+    get_point_estimate = function(target, chains = NULL, best_chains = NULL) {
+      target_draws <- self$draws(pars = target, chains = chains, best_chains = best_chains, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)
 
-      lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
+      lp_draws <- self$draws(pars = "lp", chains = chains, best_chains = best_chains, inc_transform = FALSE, inc_generate = FALSE)
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
       best_iter <- max_idx[1, 1]
       best_chain <- max_idx[1, 2]
@@ -101,57 +101,6 @@ VB_Fit <- R6::R6Class(
       class(self) <- c(class(self), "RTMB_Fit_Base")
     },
 
-    #' @description Calculate Expected A Posteriori (EAP) estimates (posterior means).
-    #' @param pars Optional character or numeric vector of parameter names/indices to extract.
-    #' @return A named list of EAP estimates.
-    EAP = function(pars = NULL) {
-      eap_list <- constrained_vector_to_list(self$posterior_mean, self$model$par_list)
-      
-      if (!is.null(self$transform_fit)) {
-        t_means <- apply(self$transform_fit, 3, mean, na.rm = TRUE)
-        t_list <- list()
-        for (name in names(self$transform_dims)) {
-          idx <- grep(paste0("^", name, "(\\[|$)"), names(t_means))
-          if (length(idx) > 0) {
-            val <- t_means[idx]
-            d <- self$transform_dims[[name]]
-            if (length(d) > 1) dim(val) <- d
-            t_list[[name]] <- val
-          }
-        }
-        eap_list <- c(eap_list, t_list)
-      }
-      
-      if (!is.null(self$generate_fit)) {
-        g_means <- apply(self$generate_fit, 3, mean, na.rm = TRUE)
-        g_list <- list()
-        for (name in names(self$generate_dims)) {
-          idx <- grep(paste0("^", name, "(\\[|$)"), names(g_means))
-          if (length(idx) > 0) {
-            val <- g_means[idx]
-            d <- self$generate_dims[[name]]
-            if (length(d) > 1) dim(val) <- d
-            g_list[[name]] <- val
-          }
-        }
-        eap_list <- c(eap_list, g_list)
-      }
-
-      return(select_parameters(eap_list, pars))
-    },
-
-    #' @description Calculate Maximum A Posteriori (MAP) estimates (joint mode iteration).
-    #' @param pars Optional character vector of parameter names to extract.
-    #' @return A named list of MAP estimates.
-    MAP = function(pars = NULL) {
-      all_vars <- unique(c(names(self$model$par_list), names(self$transform_dims), names(self$generate_dims)))
-      
-      res <- list()
-      for (p in all_vars) {
-        res[[p]] <- self$get_point_estimate(p)
-      }
-      return(select_parameters(res, pars))
-    },
 
     #' @description Print a brief summary of the fitted object.
     #' @param ... Additional arguments passed to the `summary` method.

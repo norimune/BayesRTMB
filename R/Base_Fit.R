@@ -5,6 +5,140 @@
 #' @field model The `RTMB_Model` object used for estimation.
 #'
 #' @importFrom R6 R6Class
+`%||%` <- function(a, b) if (!is.null(a)) a else b
+
+#' @keywords internal
+#' @noRd
+.names0 <- function(x) {
+  n <- names(x)
+  if (is.null(n)) character(0L) else n
+}
+
+#' @keywords internal
+#' @noRd
+.estimate_component_names <- function(fit, component) {
+  if (component == "parameters") return(.names0(fit$model$par_list))
+
+  if (component == "transform") {
+    n <- .names0(fit$transform_dims)
+    if (length(n) == 0L) n <- .names0(fit$transform)
+    return(n)
+  }
+
+  if (component == "generate") {
+    n <- .names0(fit$generate_dims)
+    if (length(n) == 0L) n <- .names0(fit$generate)
+    return(n)
+  }
+
+  stop("Unknown component: ", component, call. = FALSE)
+}
+
+#' @keywords internal
+#' @noRd
+.get_marginal_mode <- function(x) {
+  x <- x[is.finite(x)]
+  if (length(x) == 0L) return(NA_real_)
+  if (length(unique(x)) == 1L) return(x[1L])
+  d <- density(x)
+  d$x[which.max(d$y)]
+}
+
+#' @keywords internal
+#' @noRd
+.collect_point_estimates <- function(fit, type = "EAP", chains = NULL, best_chains = NULL, ...) {
+  if (inherits(fit, c("Classic_Fit", "map_fit"))) {
+    # Combine par, transform, and generate fields from optimization result
+    res <- c(fit$par %||% list(), fit$transform %||% list(), fit$generate %||% list())
+    return(res)
+  }
+
+  if (inherits(fit, c("mcmc_fit", "advi_fit"))) {
+    # Fetch draws for all variables (respecting chains/best_chains)
+    samps <- fit$draws(chains = chains, best_chains = best_chains, 
+                       inc_random = TRUE, inc_transform = TRUE, inc_generate = TRUE)
+    
+    if (type == "joint_map") {
+      # Returns the sample with the highest log-posterior (joint MAP)
+      # Find the iteration/chain with max lp
+      lp_idx <- which(dimnames(samps)[[3]] == "lp")
+      if (length(lp_idx) == 0) lp_idx <- 1
+      
+      lp_vals <- samps[, , lp_idx]
+      max_idx <- which(lp_vals == max(lp_vals, na.rm = TRUE), arr.ind = TRUE)
+      iter_idx <- max_idx[1, 1]
+      chain_idx <- max_idx[1, 2]
+      
+      # This is our point estimate vector (flattened)
+      flat_ests <- samps[iter_idx, chain_idx, ]
+      names(flat_ests) <- dimnames(samps)[[3]]
+    } else {
+      # EAP or marginal_map
+      d <- dim(samps)
+      samps_flat <- matrix(samps, nrow = d[1] * d[2], ncol = d[3])
+      colnames(samps_flat) <- dimnames(samps)[[3]]
+      
+      if (type == "EAP") {
+        flat_ests <- colMeans(samps_flat, na.rm = TRUE)
+      } else {
+        flat_ests <- apply(samps_flat, 2, .get_marginal_mode)
+      }
+    }
+    
+    # Group back into structured list
+    res <- list()
+    
+    # Helper to group by base name
+    group_by_name <- function(base_names, dims_list = NULL) {
+      for (name in base_names) {
+        idx <- grep(paste0("^", name, "(\\[|$)"), names(flat_ests))
+        if (length(idx) > 0) {
+          val <- flat_ests[idx]
+          dims <- if (!is.null(dims_list)) dims_list[[name]] else fit$model$par_list[[name]]$dim
+          if (length(dims) > 1) dim(val) <- dims
+          res[[name]] <<- val
+        }
+      }
+    }
+    
+    group_by_name(names(fit$model$par_list))
+    group_by_name(names(fit$transform_dims), fit$transform_dims)
+    group_by_name(names(fit$generate_dims), fit$generate_dims)
+    
+    return(res)
+  }
+  stop("Unsupported fit object type.")
+}
+
+#' @keywords internal
+#' @noRd
+.select_estimates <- function(fit, est_list, pars = NULL, component = "all", drop = FALSE) {
+  component <- match.arg(component, c("all", "parameters", "transform", "generate"))
+
+  # 1. Parameter selection keywords
+  if (identical(pars, "all")) {
+    pars <- NULL
+  } else if (identical(pars, "parameters")) {
+    pars <- .estimate_component_names(fit, "parameters")
+  } else if (identical(pars, "transform")) {
+    pars <- .estimate_component_names(fit, "transform")
+  } else if (identical(pars, "generate")) {
+    pars <- .estimate_component_names(fit, "generate")
+  }
+
+  res <- select_parameters(est_list, pars)
+
+  # 2. Component filtering
+  if (component != "all") {
+    keep <- .estimate_component_names(fit, component)
+    res <- res[names(res) %in% keep]
+  }
+
+  if (length(res) == 0L) return(list())
+  if (isTRUE(drop) && length(res) == 1L) return(res[[1L]])
+  return(res)
+}
+
 #' @export
 RTMB_Fit_Base <- R6::R6Class(
   classname = "RTMB_Fit_Base",
@@ -14,189 +148,90 @@ RTMB_Fit_Base <- R6::R6Class(
 
     #' @description Abstract method to get a point estimate for a target parameter.
     #' @param target Character string specifying the target parameter name.
+    #' @param ... Additional arguments.
     #' @return A numeric array or matrix of the point estimate.
-    get_point_estimate = function(target) {
+    get_point_estimate = function(target, ...) {
       stop("get_point_estimate must be implemented by subclasses.")
     },
 
-    #' @description Calculate Expected A Posteriori (EAP) estimates from posterior samples.
-    #' @param pars Character vector specifying the names of parameters to extract.
-    #'        Use "parameters" for only model parameters, "all" for all variables
-    #'        including transformed and generated quantities, or a character vector
-    #'        of specific variable names. Default is "parameters".
-    #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
-    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
-    #' @return A named list of EAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
-    EAP = function(pars = "parameters", chains = NULL, best_chains = NULL) {
-      inc_tran <- TRUE
-      inc_gen <- TRUE
+    #' @description Get point estimates for parameters, transformed parameters, and generated quantities.
+    #' @param pars Optional character or numeric vector of parameter names or indices to extract.
+    #'        Supports special keywords: "parameters", "transform", "generate", and "all".
+    #' @param type Character string specifying the estimation type.
+    #' @param component Character string specifying the component to filter by.
+    #' @param chains Numeric vector of chains to include.
+    #' @param best_chains Number of best chains to include.
+    #' @param drop Logical; if TRUE and only one parameter is selected, return the value directly instead of a list.
+    #' @param ... Additional arguments passed to draws().
+    #' @return A named list of point estimates, or a single value if `drop = TRUE`.
+    estimate = function(pars = NULL, 
+                        type = c("mean", "EAP", "marginal_map", "joint_map", "MAP"), 
+                        component = c("all", "parameters", "transform", "generate"), 
+                        chains = NULL, 
+                        best_chains = NULL, 
+                        drop = TRUE, 
+                        ...) {
+      type <- match.arg(type)
+      component <- match.arg(component)
+      
+      # Normalization
+      if (type == "mean") type <- "EAP"
+      if (type == "MAP") type <- "marginal_map"
 
-      if (identical(pars, "parameters")) {
-        target_vars <- names(self$model$par_list)
-        inc_tran <- FALSE
-        inc_gen <- FALSE
-      } else if (identical(pars, "all")) {
-        target_vars <- c(names(self$model$par_list),
-                         if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
-                         if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
-      } else {
-        if (is.character(pars) && any(grepl("^-", pars))) {
-          exclude_names <- gsub("^-", "", pars)
-          all_vars <- c(names(self$model$par_list),
-                        if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
-                        if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
-          target_vars <- all_vars[!(all_vars %in% exclude_names)]
+      # Determine default pars if NULL
+      if (is.null(pars)) {
+        if (!identical(component, "all")) {
+          pars <- component
+        } else if (inherits(self, c("mcmc_fit", "advi_fit"))) {
+          pars <- "parameters"
         } else {
-          target_vars <- pars
-        }
-        inc_tran <- any(target_vars %in% names(self$transform_dims))
-        inc_gen <- any(target_vars %in% names(self$generate_dims))
-      }
-
-      samps <- self$draws(pars = target_vars, chains = chains, best_chains = best_chains,
-                          inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
-
-      if (dim(samps)[3] == 0) stop("No matching parameters found.")
-
-      flat_names <- dimnames(samps)[[3]]
-      if (any(duplicated(flat_names))) {
-        # Keep the last (latest) index if there are duplicate names
-        keep_idx <- !rev(duplicated(rev(flat_names)))
-        samps <- samps[, , keep_idx, drop = FALSE]
-        flat_names <- dimnames(samps)[[3]]
-      }
-
-      # Calculate mean over iterations and chains
-      eap_flat <- apply(samps, 3, mean, na.rm = TRUE)
-
-      res <- list()
-      for (v in target_vars) {
-        if (v %in% names(self$model$par_list)) {
-          v_dim <- self$model$par_list[[v]]$dim
-        } else if (!is.null(self$transform_dims) && v %in% names(self$transform_dims)) {
-          v_dim <- self$transform_dims[[v]]
-        } else if (!is.null(self$generate_dims) && v %in% names(self$generate_dims)) {
-          v_dim <- self$generate_dims[[v]]
-        } else {
-          next
-        }
-
-        pattern <- paste0("^", v, "(\\[.*\\])?$")
-        match_idx <- grep(pattern, flat_names)
-
-        if (length(match_idx) > 0) {
-          val <- unname(eap_flat[match_idx])
-          if (length(v_dim) > 1) {
-            dim(val) <- v_dim
-          }
-          res[[v]] <- val
+          pars <- "all"
         }
       }
 
+      est_all <- .collect_point_estimates(self, type = type, chains = chains, best_chains = best_chains, ...)
+      
+      # Validate pars existence if character and not keywords/regex/exclusion
+      if (is.character(pars) && !any(grepl("^-", pars)) && 
+          !all(pars %in% c("parameters", "transform", "generate", "all"))) {
+        missing <- setdiff(pars, names(est_all))
+        if (length(missing) > 0L) {
+          stop(
+            "Unknown estimate variable(s): ", paste(missing, collapse = ", "),
+            "\nAvailable variables: ", paste(names(est_all), collapse = ", "),
+            call. = FALSE
+          )
+        }
+      }
+      
+      res <- .select_estimates(self, est_all, pars = pars, component = component, drop = drop)
       return(res)
     },
 
-    #' @description Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
-    #' @param pars Character vector specifying the names of parameters to extract.
-    #'        Use "parameters" for only model parameters, "all" for all variables
-    #'        including transformed and generated quantities, or a character vector
-    #'        of specific variable names. Default is "parameters".
-    #' @param chains Numeric vector specifying the chains to use. Default is NULL (all chains).
-    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.
-    #' @param type Character string specifying the type of MAP estimate.
-    #'        "marginal" (default) calculates the peak of the marginal posterior density for each parameter.
-    #'        "joint" returns the parameter values from the iteration with the highest log-posterior.
-    #' @return A named list of MAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
-    MAP = function(pars = "parameters", chains = NULL, best_chains = NULL, type = c("marginal", "joint")) {
+    #' @description Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+    #' @param pars Optional character vector of parameter names to extract.
+    #' @param chains Numeric vector of chains to include.
+    #' @param best_chains Number of best chains to include.
+    #' @param drop Logical; whether to drop the list if only one parameter is selected.
+    #' @param ... Additional arguments passed to `estimate()`.
+    #' @return A named list of EAP estimates.
+    EAP = function(pars = "parameters", chains = NULL, best_chains = NULL, drop = FALSE, ...) {
+      return(self$estimate(pars = pars, type = "EAP", chains = chains, best_chains = best_chains, drop = drop, ...))
+    },
+
+    #' @description Calculate Maximum A Posteriori (MAP) estimates.
+    #' @param pars Optional character vector of parameter names to extract.
+    #' @param chains Numeric vector of chains to include.
+    #' @param best_chains Number of best chains to include.
+    #' @param type Character string; "marginal" or "joint" MAP.
+    #' @param drop Logical; whether to drop the list if only one parameter is selected.
+    #' @param ... Additional arguments passed to `estimate()`.
+    #' @return A named list of MAP estimates.
+    MAP = function(pars = "parameters", chains = NULL, best_chains = NULL, 
+                   type = c("marginal", "joint"), drop = FALSE, ...) {
       type <- match.arg(type)
-
-      inc_tran <- TRUE
-      inc_gen <- TRUE
-
-      if (identical(pars, "parameters")) {
-        target_vars <- names(self$model$par_list)
-        inc_tran <- FALSE
-        inc_gen <- FALSE
-      } else if (identical(pars, "all")) {
-        target_vars <- c(names(self$model$par_list),
-                         if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
-                         if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
-      } else {
-        if (is.character(pars) && any(grepl("^-", pars))) {
-          exclude_names <- gsub("^-", "", pars)
-          all_vars <- c(names(self$model$par_list),
-                        if(!is.null(self$transform_dims)) names(self$transform_dims) else NULL,
-                        if(!is.null(self$generate_dims)) names(self$generate_dims) else NULL)
-          target_vars <- all_vars[!(all_vars %in% exclude_names)]
-        } else {
-          target_vars <- pars
-        }
-        inc_tran <- any(target_vars %in% names(self$transform_dims))
-        inc_gen <- any(target_vars %in% names(self$generate_dims))
-      }
-
-      samps <- self$draws(pars = target_vars, chains = chains, best_chains = best_chains,
-                          inc_random = TRUE, inc_transform = inc_tran, inc_generate = inc_gen)
-
-      if (dim(samps)[3] == 0) stop("No matching parameters found.")
-
-      flat_names <- dimnames(samps)[[3]]
-      if (any(duplicated(flat_names))) {
-        keep_idx <- !rev(duplicated(rev(flat_names)))
-        samps <- samps[, , keep_idx, drop = FALSE]
-        flat_names <- dimnames(samps)[[3]]
-      }
-
-      if (type == "joint") {
-        # Joint MAP estimation (adopt the sample with the maximum lp)
-        lp_samps <- self$draws(pars = "lp", chains = chains, best_chains = best_chains,
-                               inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE)
-        if (dim(lp_samps)[3] == 0) stop("Log-probability ('lp') not found. Cannot determine joint MAP.")
-
-        if (all(is.na(lp_samps))) stop("Log-probability ('lp') contains only NAs.")
-        max_idx <- which(lp_samps == max(lp_samps, na.rm = TRUE), arr.ind = TRUE)
-        if (nrow(max_idx) == 0) stop("Failed to find the maximum log-probability.")
-        best_i <- max_idx[1, 1]
-        best_c <- max_idx[1, 2]
-
-        map_flat <- samps[best_i, best_c, ]
-
-      } else {
-        # Marginal MAP estimation (adopt the peak of each parameter's distribution: default)
-        map_flat <- apply(samps, 3, function(z) {
-          valid_z <- z[is.finite(z)]
-          if (length(valid_z) == 0) return(NA)
-          if (abs(max(valid_z) - min(valid_z)) < 1e-10) return(valid_z[1])
-          d <- density(valid_z)
-          return(d$x[which.max(d$y)])
-        })
-      }
-
-      res <- list()
-      for (v in target_vars) {
-        if (v %in% names(self$model$par_list)) {
-          v_dim <- self$model$par_list[[v]]$dim
-        } else if (!is.null(self$transform_dims) && v %in% names(self$transform_dims)) {
-          v_dim <- self$transform_dims[[v]]
-        } else if (!is.null(self$generate_dims) && v %in% names(self$generate_dims)) {
-          v_dim <- self$generate_dims[[v]]
-        } else {
-          next
-        }
-
-        pattern <- paste0("^", v, "(\\[.*\\])?$")
-        match_idx <- grep(pattern, flat_names)
-
-        if (length(match_idx) > 0) {
-          val <- unname(map_flat[match_idx])
-          if (length(v_dim) > 1) {
-            dim(val) <- v_dim
-          }
-          res[[v]] <- val
-        }
-      }
-
-      return(res)
+      est_type <- if (type == "joint") "joint_map" else "marginal_map"
+      return(self$estimate(pars = pars, type = est_type, chains = chains, best_chains = best_chains, drop = drop, ...))
     },
 
     #' @description Rotate sampled parameters.

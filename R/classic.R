@@ -37,12 +37,23 @@
 #' @export
 Classic_Fit <- R6::R6Class(
   classname = "Classic_Fit",
+  inherit = RTMB_Fit_Base,
   public = list(
     model = NULL,
     fit = NULL,
     par = NULL,
     par_vec = NULL,
     vcov = NULL,
+
+    #' @description Get point estimate for a target parameter (internal use).
+    #' @param target Target parameter name.
+    #' @return Matrix or array of point estimate.
+    get_point_estimate = function(target, ...) {
+      if (!is.null(self$par[[target]])) return(self$par[[target]])
+      if (!is.null(self$transform[[target]])) return(self$transform[[target]])
+      if (!is.null(self$generate[[target]])) return(self$generate[[target]])
+      stop("Parameter not found: ", target)
+    },
     objective = NULL,
     log_ml = NULL,
     convergence = NULL,

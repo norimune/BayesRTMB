@@ -97,11 +97,11 @@ MCMC_Fit <- R6::R6Class(
     #' @description Get point estimate for a target parameter (internal use).
     #' @param target Target parameter name.
     #' @return Matrix or array of point estimate.
-    get_point_estimate = function(target) {
-      target_draws <- self$draws(pars = target, inc_transform = TRUE, inc_generate = TRUE)
+    get_point_estimate = function(target, chains = NULL, best_chains = NULL) {
+      target_draws <- self$draws(pars = target, chains = chains, best_chains = best_chains, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)
 
-      lp_draws <- self$draws(pars = "lp", inc_transform = FALSE, inc_generate = FALSE)
+      lp_draws <- self$draws(pars = "lp", chains = chains, best_chains = best_chains, inc_transform = FALSE, inc_generate = FALSE)
       if (all(is.na(lp_draws))) stop("Log-probability ('lp') contains only NAs.")
       max_idx <- which(lp_draws == max(lp_draws, na.rm = TRUE), arr.ind = TRUE)
       if (nrow(max_idx) == 0) stop("Failed to find the maximum log-probability.")
@@ -126,59 +126,6 @@ MCMC_Fit <- R6::R6Class(
       return(target_map)
     },
 
-    #' @description Calculate the Expected A Posteriori (EAP) estimates.
-    #' @param pars Optional character vector of parameter names to extract.
-    #' @return A named list of EAP estimates (posterior means).
-    EAP = function(pars = NULL) {
-      # Use the structured posterior mean for base parameters
-      eap_list <- constrained_vector_to_list(self$posterior_mean, self$model$par_list)
-      
-      # Also calculate means for transform and generate if they exist
-      if (!is.null(self$transform_fit)) {
-        t_means <- apply(self$transform_fit, 3, mean)
-        t_list <- list()
-        for (name in names(self$transform_dims)) {
-          idx <- grep(paste0("^", name, "(\\[|$)"), names(t_means))
-          if (length(idx) > 0) {
-            val <- t_means[idx]
-            d <- self$transform_dims[[name]]
-            if (length(d) > 1) dim(val) <- d
-            t_list[[name]] <- val
-          }
-        }
-        eap_list <- c(eap_list, t_list)
-      }
-      
-      if (!is.null(self$generate_fit)) {
-        g_means <- apply(self$generate_fit, 3, mean)
-        g_list <- list()
-        for (name in names(self$generate_dims)) {
-          idx <- grep(paste0("^", name, "(\\[|$)"), names(g_means))
-          if (length(idx) > 0) {
-            val <- g_means[idx]
-            d <- self$generate_dims[[name]]
-            if (length(d) > 1) dim(val) <- d
-            g_list[[name]] <- val
-          }
-        }
-        eap_list <- c(eap_list, g_list)
-      }
-
-      return(select_parameters(eap_list, pars))
-    },
-
-    #' @description Calculate the Maximum A Posteriori (MAP) estimates from samples.
-    #' @param pars Optional character vector of parameter names to extract.
-    #' @return A named list of MAP estimates (samples with highest log-posterior).
-    MAP = function(pars = NULL) {
-      all_vars <- unique(c(names(self$model$par_list), names(self$transform_dims), names(self$generate_dims)))
-      
-      res <- list()
-      for (p in all_vars) {
-        res[[p]] <- self$get_point_estimate(p)
-      }
-      return(select_parameters(res, pars))
-    },
 
     #' @description Create a new `MCMC_Fit` object.
     initialize = function(model, fit, random_fit, eps, accept, treedepth, laplace, posterior_mean) {
