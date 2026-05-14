@@ -7,7 +7,7 @@
 An R6 class representing the results of a classical (frequentist) estimation.
 }
 \section{Super class}{
-\code{BayesRTMB::RTMB_Fit_Base} -> \code{Classic_Fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{Classic_Fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -23,6 +23,8 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item{\code{se_method}}{Character string specifying the method used for standard errors.}
 
 \item{\code{cluster}}{Character string specifying the cluster variable name, if any.}
+
+\item{\code{robust_type}}{Character string specifying the robust standard error correction type, if used.}
 
 \item{\code{bootstrap_results}}{A matrix containing bootstrap samples, if applicable.}
 
@@ -79,7 +81,10 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \itemize{
 \item \href{#method-Classic_Fit-get_point_estimate}{\code{Classic_Fit$get_point_estimate()}}
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
+\item \href{#method-Classic_Fit-robust_se}{\code{Classic_Fit$robust_se()}}
+\item \href{#method-Classic_Fit-rbust_se}{\code{Classic_Fit$rbust_se()}}
 \item \href{#method-Classic_Fit-compute_robust}{\code{Classic_Fit$compute_robust()}}
+\item \href{#method-Classic_Fit-bootstrap}{\code{Classic_Fit$bootstrap()}}
 \item \href{#method-Classic_Fit-compute_bootstrap}{\code{Classic_Fit$compute_bootstrap()}}
 \item \href{#method-Classic_Fit-.update_fit_with_vcov}{\code{Classic_Fit$.update_fit_with_vcov()}}
 \item \href{#method-Classic_Fit-AIC}{\code{Classic_Fit$AIC()}}
@@ -229,18 +234,89 @@ Create a new `Classic_Fit` object.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Classic_Fit-compute_robust"></a>}}
-\if{latex}{\out{\hypertarget{method-Classic_Fit-compute_robust}{}}}
-\subsection{Method \code{compute_robust()}}{
+\if{html}{\out{<a id="method-Classic_Fit-robust_se"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-robust_se}{}}}
+\subsection{Method \code{robust_se()}}{
 Compute robust standard errors (sandwich estimator).
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$compute_robust(cluster = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$robust_se(
+  cluster = NULL,
+  type = c("CR1", "CR0"),
+  update = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{cluster}}{Character; variable name for clustering.}
+
+\item{\code{type}}{Character; "CR1" (default) or "CR0".}
+
+\item{\code{update}}{Logical; whether to update the internal fit summary.}
+
+\item{\code{...}}{Additional arguments.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Self.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-rbust_se"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-rbust_se}{}}}
+\subsection{Method \code{rbust_se()}}{
+Alias for robust_se().
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$rbust_se(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Arguments passed to robust_se().}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Self.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-compute_robust"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-compute_robust}{}}}
+\subsection{Method \code{compute_robust()}}{
+(Deprecated) Use robust_se() instead.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$compute_robust(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Arguments passed to robust_se().}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Self.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-bootstrap"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-bootstrap}{}}}
+\subsection{Method \code{bootstrap()}}{
+Compute bootstrap standard errors.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$bootstrap(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Arguments passed to compute_bootstrap().}
 }
 \if{html}{\out{</div>}}
 }

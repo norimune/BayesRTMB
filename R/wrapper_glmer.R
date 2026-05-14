@@ -388,6 +388,15 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     } else Y <- as.numeric(Y)
   }
 
+  # --- Robust SE Weights ---
+  dat_weights <- list(robust_obs_weight = rep(1, N))
+  if (has_random && num_bars > 0) {
+    for (b in 1:num_bars) {
+      weight_name <- paste0("robust_re_weight", suffix(b))
+      dat_weights[[weight_name]] <- rep(1, num_groups_list[[b]])
+    }
+  }
+
   # --- Automatic generation of initial values for SSP ---
   if (regularization == "ssp" && is.null(init) && K_tmp > 0) {
     rhs_mod <- NULL
@@ -801,34 +810,36 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     )
   } else {
     ll_data_exprs[[1]] <- switch(family,
-                                 "gaussian" = if (!is.null(sigma_idx)) quote(Y ~ normal(eta, sigma[sigma_idx])) else quote(Y ~ normal(eta, sigma)),
-                                 "lognormal" = if (!is.null(sigma_idx)) quote(Y ~ lognormal(eta, sigma[sigma_idx])) else quote(Y ~ lognormal(eta, sigma)),
-                                 "student_t" = if (!is.null(sigma_idx)) quote(Y ~ student_t(nu, eta, sigma[sigma_idx])) else quote(Y ~ student_t(nu, eta, sigma)),
-                                 "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
-                                 "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
-                                 "binomial" = quote(Y ~ binomial_logit(trials, eta)),
-                                 "poisson" = quote(Y ~ poisson(exp(eta))),
-                                 "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
-                                 "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints))
+                                 "gaussian" = if (!is.null(sigma_idx)) quote(lp <- lp + sum(robust_obs_weight * normal_lpdf(Y, eta, sigma[sigma_idx], sum = FALSE))) else quote(lp <- lp + sum(robust_obs_weight * normal_lpdf(Y, eta, sigma, sum = FALSE))),
+                                 "lognormal" = if (!is.null(sigma_idx)) quote(lp <- lp + sum(robust_obs_weight * lognormal_lpdf(Y, eta, sigma[sigma_idx], sum = FALSE))) else quote(lp <- lp + sum(robust_obs_weight * lognormal_lpdf(Y, eta, sigma, sum = FALSE))),
+                                 "student_t" = if (!is.null(sigma_idx)) quote(lp <- lp + sum(robust_obs_weight * student_t_lpdf(Y, nu, eta, sigma[sigma_idx], sum = FALSE))) else quote(lp <- lp + sum(robust_obs_weight * student_t_lpdf(Y, nu, eta, sigma, sum = FALSE))),
+                                 "gamma" = quote(lp <- lp + sum(robust_obs_weight * gamma_lpdf(Y, shape, shape / exp(eta), sum = FALSE))),
+                                 "bernoulli" = quote(lp <- lp + sum(robust_obs_weight * bernoulli_logit_lpmf(Y, eta, sum = FALSE))),
+                                 "binomial" = quote(lp <- lp + sum(robust_obs_weight * binomial_logit_lpmf(Y, trials, eta, sum = FALSE))),
+                                 "poisson" = quote(lp <- lp + sum(robust_obs_weight * poisson_lpmf(Y, exp(eta), sum = FALSE))),
+                                 "neg_binomial" = quote(lp <- lp + sum(robust_obs_weight * neg_binomial_2_lpmf(Y, exp(eta), phi, sum = FALSE))),
+                                 "ordered" = quote(lp <- lp + sum(robust_obs_weight * ordered_logistic_lpmf(Y, eta, cutpoints, sum = FALSE)))
     )
   }
 
   ll_random_exprs <- list()
   if (has_random) {
     for (b in 1:num_bars) {
-      r_re_name <- as.name(paste0("r_re", suffix(b)))
-      if (num_ranef_list[[b]] > 1) {
-        CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
-        num_ranef_name <- as.name(paste0("num_ranef", suffix(b)))
-        num_groups_name <- as.name(paste0("num_groups", suffix(b)))
-
-        if (!is_flat && !is.null(prior$lkj_eta)) {
-          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(CF_corr_name) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        num_groups_val <- num_groups_list[[b]]
+        num_ranef_val <- num_ranef_list[[b]]
+        weight_name <- as.name(paste0("robust_re_weight", suffix(b)))
+        if (num_ranef_val == 1) {
+          sd_name <- as.name(paste0("sd", suffix(b)))
+          r_re_name <- as.name(paste0("r_re", suffix(b)))
+          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(lp <- lp + sum(.(weight_name) * normal_lpdf(.(r_re_name), 0, .(sd_name), sum = FALSE)))
+        } else {
+          r_re_name <- as.name(paste0("r_re", suffix(b)))
+          CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
+          if (!is_flat && !is.null(prior$lkj_eta)) {
+            ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(CF_corr_name) ~ lkj_CF_corr(.(prior$lkj_eta)))
+          }
+          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(for (j in 1:.(num_groups_val)) lp <- lp + .(weight_name)[j] * multi_normal_CF_lpdf(.(r_re_name)[j, ], rep(0, .(num_ranef_val)), rep(1, .(num_ranef_val)), .(CF_corr_name)))
         }
-        ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(for (j in 1:.(num_groups_name)) .(r_re_name)[j, ] ~ multi_normal_CF(rep(0, .(num_ranef_name)), rep(1, .(num_ranef_name)), .(CF_corr_name)))
-      } else {
-        ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(r_re_name) ~ normal(0, 1))
-      }
     }
   }
 
@@ -932,6 +943,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   model_exprs <- list()
+  model_exprs[[length(model_exprs) + 1]] <- quote(lp <- 0)
   model_exprs[[length(model_exprs) + 1]] <- "# Transform"
   model_exprs <- c(model_exprs, transform_exprs)
   model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Data)"
@@ -989,6 +1001,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
+  ordered_data <- utils::modifyList(ordered_data, dat_weights)
   obj <- rtmb_model(data = ordered_data, code = code_obj, par_names = par_names_list, init = init,
                     fixed = fixed,
                     view = if (!is.null(view)) view else view_vars, silent = FALSE)
@@ -1021,6 +1034,19 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     fixed_effects <- c(if (use_centering) "Intercept_c" else "Intercept", fixed_effects)
   }
   obj$extra$marginal <- fixed_effects
+
+  # --- glmer_info for robust standard errors ---
+  if (obj$type == "glmer") {
+    obj$extra$glmer_info <- list(
+      family = family,
+      num_bars = num_bars,
+      group_labels = group_labels_list,
+      weight_names = if (num_bars > 0) paste0("robust_re_weight", sapply(1:num_bars, suffix)) else character(0),
+      obs_weight_name = "robust_obs_weight",
+      group_idx_names = if (num_bars > 0) paste0("group_idx", sapply(1:num_bars, suffix)) else character(0),
+      num_groups_list = num_groups_list
+    )
+  }
 
   return(obj)
 }

@@ -990,7 +990,7 @@ generate_random_init <- function(pl_full, par_list, range = 2) {
 }
 
 parse_parameters <- function(par_list, par_names = NULL) {
-  P <- if (length(par_list) > 0) sum(sapply(par_list, function(x) x$length)) else 0
+  P <- if (length(par_list) > 0) sum(vapply(par_list, function(x) x$length, numeric(1))) else 0
 
   init_vec    <- numeric(P)
   lower_vec   <- rep(NA, P)

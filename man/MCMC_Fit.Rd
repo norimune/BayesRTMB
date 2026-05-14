@@ -20,7 +20,7 @@ parameters with `fixed = list(...)`, or supplied as an already fitted
 Bayes factors are computed only by marginal-likelihood model comparison.
 }
 \section{Super class}{
-\code{BayesRTMB::RTMB_Fit_Base} -> \code{mcmc_fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{mcmc_fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}

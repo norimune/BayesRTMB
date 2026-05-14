@@ -13,7 +13,7 @@ An R6 class storing optimization results from maximum a posteriori
 (MAP) estimation.
 }
 \section{Super class}{
-\code{BayesRTMB::RTMB_Fit_Base} -> \code{map_fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{map_fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}

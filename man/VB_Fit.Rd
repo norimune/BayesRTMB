@@ -13,7 +13,7 @@ An R6 class storing posterior samples and related information
 from Automatic Differentiation Variational Inference (ADVI).
 }
 \section{Super class}{
-\code{BayesRTMB::RTMB_Fit_Base} -> \code{advi_fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{advi_fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}

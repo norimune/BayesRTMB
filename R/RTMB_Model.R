@@ -477,14 +477,17 @@ RTMB_Model <- R6::R6Class(
       reserved_classic_args <- c(
         "df", "REML", "marginal", "df_pars", "views",
         "empirical", "target_vars", "is_classic", ".return_object",
-        "ci_method", "se_sampling"
+        "ci_method", "se_sampling",
+        "robust", "robust_se", "rbust_se",
+        "bootstrap", "n_boot", "B",
+        "cluster", "vcov", "se_type"
       )
       bad_args <- intersect(names(dot_args), reserved_classic_args)
       if (length(bad_args) > 0L) {
         stop(
           "Unsupported argument(s) in classic(): ",
           paste(bad_args, collapse = ", "), "\n",
-          "Use `df_method` for degrees of freedom and `view` for display selection.",
+          "Use fit$robust_se() or fit$bootstrap() after classic().",
           call. = FALSE
         )
       }

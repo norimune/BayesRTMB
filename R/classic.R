@@ -9,6 +9,7 @@
 #' @field vcov Variance-covariance matrix of fixed effects.
 #' @field se_method Character string specifying the method used for standard errors.
 #' @field cluster Character string specifying the cluster variable name, if any.
+#' @field robust_type Character string specifying the robust standard error correction type, if used.
 #' @field bootstrap_results A matrix containing bootstrap samples, if applicable.
 #' @field test_results List of additional test results (e.g., chisq.test).
 #' @field view Character vector of parameter names to prioritize in summary.
@@ -80,6 +81,7 @@ Classic_Fit <- R6::R6Class(
     df_method = NULL,
     idx_fix_active = NULL,
     show_df = TRUE,
+    robust_type = NULL,
 
     #' @description Create a new `Classic_Fit` object.
     #' @param model The `RTMB_Model` object.
@@ -145,86 +147,56 @@ Classic_Fit <- R6::R6Class(
       self$df_method <- df_method
       self$idx_fix_active <- idx_fix_active
       self$show_df <- show_df
+      self$robust_type <- NULL
     },
 
     #' @description Compute robust standard errors (sandwich estimator).
     #' @param cluster Character; variable name for clustering.
+    #' @param type Character; "CR1" (default) or "CR0".
+    #' @param update Logical; whether to update the internal fit summary.
+    #' @param ... Additional arguments.
     #' @return Self.
-    compute_robust = function(cluster = NULL) {
-      self$se_method <- "robust"
-      self$cluster <- cluster
+    robust_se = function(cluster = NULL, type = c("CR1", "CR0"), update = TRUE, ...) {
+      type <- match.arg(type)
 
-      formula <- nobars(self$model$formula)
-      if (!is.null(self$model$raw_data)) {
-        dat <- as.data.frame(self$model$raw_data)
-      } else {
-        dat <- as.data.frame(self$model$data)
-      }
-      mf <- model.frame(formula, dat)
-      X <- model.matrix(formula, mf)
-      y <- model.response(mf)
-
-      if (is.data.frame(self$fit)) {
-        beta_all <- self$fit$Estimate
-        names(beta_all) <- rownames(self$fit)
-        fe_names_in_fit <- names(beta_all)[grepl("^(Intercept|Intercept_c|b\\[)", names(beta_all))]
-      } else if (inherits(self$fit, "lm")) {
-        beta_all <- stats::coef(self$fit)
-        fe_names_in_fit <- names(beta_all)
-      } else {
-        stop(paste("Unsupported fit type:", class(self$fit)[1]))
+      # --- 1. Detect if GLMM ---
+      if (!is.null(self$model$extra$glmer_info)) {
+        return(private$.compute_glmer_robust_se(cluster = cluster, type = type, update = update))
       }
 
-      if (length(fe_names_in_fit) == 0) stop("No fixed effects found in fit object.")
-
-      X_cols <- colnames(X)
-      idx_map <- integer(length(fe_names_in_fit))
-      for (i in seq_along(fe_names_in_fit)) {
-        fname <- fe_names_in_fit[i]
-        pos <- which(X_cols == fname)
-        if (length(pos) == 0) {
-          if (tolower(fname) == "intercept" || fname == "intercept_c" || fname == "(intercept)") {
-            pos <- which(tolower(X_cols) == "intercept" | tolower(X_cols) == "(intercept)")
-          } else {
-            vname <- gsub("^b\\[(.*)\\]$", "\\1", fname)
-            pos <- which(X_cols == vname)
-          }
-        }
-        if (length(pos) > 0) idx_map[i] <- pos[1]
+      # --- 2. Fallback to OLS-based sandwich for LM ---
+      if (!is.null(self$model$type) && self$model$type == "lm") {
+        return(private$.compute_lm_robust_se(cluster = cluster, type = type, update = update))
       }
 
-      keep <- idx_map > 0
-      if (!any(keep)) stop("None of the fixed effects could be matched.")
-
-      fe_names_in_fit <- fe_names_in_fit[keep]
-      beta <- beta_all[fe_names_in_fit]
-      idx_map <- idx_map[keep]
-      X_subset <- X[, idx_map, drop = FALSE]
-
-      XtX <- t(X_subset) %*% X_subset
-      bread_ols <- tryCatch(solve(XtX), error = function(e) MASS::ginv(XtX))
-      res <- as.numeric(y - X_subset %*% beta)
-
-      if (is.null(cluster)) {
-        h <- tryCatch(diag(X_subset %*% bread_ols %*% t(X_subset)), error = function(e) rep(0, length(res)))
-        omega <- res^2 / (1 - h)^2
-        meat <- t(X_subset) %*% (as.numeric(omega) * X_subset)
-        V_final <- bread_ols %*% meat %*% bread_ols
-      } else {
-        if (!cluster %in% names(dat)) stop(paste("Cluster variable", cluster, "not found."))
-        grp <- as.factor(dat[[cluster]])
-        scores <- X_subset * as.numeric(res)
-        cluster_scores <- aggregate(scores, by = list(grp), sum)[, -1, drop = FALSE]
-        meat <- t(as.matrix(cluster_scores)) %*% as.matrix(cluster_scores)
-        m <- length(unique(grp)); n <- nrow(X_subset); k <- ncol(X_subset)
-        adj <- (m / (m - 1)) * ((n - 1) / (n - k))
-        V_final <- adj * bread_ols %*% meat %*% bread_ols
+      # --- 3. For GLM, currently we recommend bootstrap or implementing score-based robust ---
+      if (!is.null(self$model$type) && self$model$type == "glm") {
+        stop("robust_se() for glm is not implemented yet. Use bootstrap().", call. = FALSE)
       }
 
-      self$vcov <- V_final
-      colnames(self$vcov) <- rownames(self$vcov) <- fe_names_in_fit
-      self$.update_fit_with_vcov()
-      return(self)
+      stop("robust_se() is currently supported for 'lm' and 'glmer' models.", call. = FALSE)
+    },
+
+    #' @description Alias for robust_se().
+    #' @param ... Arguments passed to robust_se().
+    #' @return Self.
+    rbust_se = function(...) {
+      self$robust_se(...)
+    },
+
+    #' @description (Deprecated) Use robust_se() instead.
+    #' @param ... Arguments passed to robust_se().
+    #' @return Self.
+    compute_robust = function(...) {
+      warning("compute_robust() is deprecated. Use robust_se() instead.", call. = FALSE)
+      self$robust_se(...)
+    },
+
+    #' @description Compute bootstrap standard errors.
+    #' @param ... Arguments passed to compute_bootstrap().
+    #' @return Self.
+    bootstrap = function(...) {
+      self$compute_bootstrap(...)
     },
 
     #' @description Compute bootstrap standard errors.
@@ -380,6 +352,7 @@ Classic_Fit <- R6::R6Class(
         family = self$model$family,
         se_method = self$se_method,
         cluster = self$cluster,
+        robust_type = self$robust_type,
         bootstrap = if (!is.null(self$bootstrap_results)) nrow(self$bootstrap_results) else NULL,
         logLik = self$logLik(),
         AIC = self$AIC(),
@@ -1236,10 +1209,293 @@ Classic_Fit <- R6::R6Class(
         }
         par_list$IE <- est[grepl("^IE_", names(est))]
       }
-      return(par_list)
     }
+  ),
+  private = list(
+    .update_fixed_effects_with_vcov = function(V) {
+      se <- sqrt(diag(V))
+
+      for (nm in names(se)) {
+        if (!nm %in% rownames(self$fit)) next
+
+        self$fit[nm, "Std. Error"] <- se[[nm]]
+
+        stat_col <- if ("z value" %in% names(self$fit)) "z value" else "t value"
+        self$fit[nm, stat_col] <- self$fit[nm, "Estimate"] / pmax(se[[nm]], 1e-12)
+
+        if ("df" %in% names(self$fit) && is.finite(self$fit[nm, "df"])) {
+          crit <- qt(0.975, df = self$fit[nm, "df"])
+          self$fit[nm, "Pr"] <- 2 * pt(-abs(self$fit[nm, stat_col]), df = self$fit[nm, "df"])
+        } else {
+          crit <- qnorm(0.975)
+          self$fit[nm, "Pr"] <- 2 * pnorm(-abs(self$fit[nm, stat_col]))
+        }
+
+        self$fit[nm, "Lower 95%"] <- self$fit[nm, "Estimate"] - crit * se[[nm]]
+        self$fit[nm, "Upper 95%"] <- self$fit[nm, "Estimate"] + crit * se[[nm]]
+      }
+
+      self$df_fixed <- self$fit
+      invisible(self)
+    },
+    .compute_lm_robust_se = function(cluster = NULL, type = c("CR1", "CR0"), update = TRUE) {
+      type <- match.arg(type)
+      self$se_method <- if (is.null(cluster)) "robust" else "cluster-robust"
+      self$cluster <- cluster
+
+      formula <- nobars(self$model$formula)
+      if (!is.null(self$model$raw_data)) {
+        dat <- as.data.frame(self$model$raw_data)
+      } else {
+        dat <- as.data.frame(self$model$data)
+      }
+      mf <- model.frame(formula, dat)
+      X <- model.matrix(formula, mf)
+      y <- model.response(mf)
+
+      if (is.data.frame(self$fit)) {
+        beta_all <- self$fit$Estimate
+        names(beta_all) <- rownames(self$fit)
+        fe_names_in_fit <- names(beta_all)[grepl("^(Intercept|Intercept_c|b\\[)", names(beta_all))]
+      } else if (inherits(self$fit, "lm")) {
+        beta_all <- stats::coef(self$fit)
+        fe_names_in_fit <- names(beta_all)
+      } else {
+        stop(paste("Unsupported fit type:", class(self$fit)[1]))
+      }
+
+      if (length(fe_names_in_fit) == 0) stop("No fixed effects found in fit object.")
+
+      X_cols <- colnames(X)
+      idx_map <- integer(length(fe_names_in_fit))
+      for (i in seq_along(fe_names_in_fit)) {
+        fname <- fe_names_in_fit[i]
+        pos <- which(X_cols == fname)
+        if (length(pos) == 0) {
+          if (tolower(fname) == "intercept" || fname == "intercept_c" || fname == "(intercept)") {
+            pos <- which(tolower(X_cols) == "intercept" | tolower(X_cols) == "(intercept)")
+          } else {
+            vname <- gsub("^b\\[(.*)\\]$", "\\1", fname)
+            pos <- which(X_cols == vname)
+          }
+        }
+        if (length(pos) > 0) idx_map[i] <- pos[1]
+      }
+
+      keep <- idx_map > 0
+      if (!any(keep)) stop("None of the fixed effects could be matched.")
+
+      fe_names_in_fit <- fe_names_in_fit[keep]
+      beta <- beta_all[fe_names_in_fit]
+      idx_map <- idx_map[keep]
+      X_subset <- X[, idx_map, drop = FALSE]
+
+      XtX <- t(X_subset) %*% X_subset
+      bread_ols <- tryCatch(solve(XtX), error = function(e) MASS::ginv(XtX))
+      res <- as.numeric(y - X_subset %*% beta)
+
+      if (is.null(cluster)) {
+        h <- tryCatch(diag(X_subset %*% bread_ols %*% t(X_subset)), error = function(e) rep(0, length(res)))
+        omega <- res^2 / (1 - h)^2
+        meat <- t(X_subset) %*% (as.numeric(omega) * X_subset)
+        V_final <- bread_ols %*% meat %*% bread_ols
+      } else {
+        if (!cluster %in% names(dat)) stop(paste("Cluster variable", cluster, "not found."))
+        grp <- as.factor(dat[[cluster]])
+        scores <- X_subset * as.numeric(res)
+        cluster_scores <- aggregate(scores, by = list(grp), sum)[, -1, drop = FALSE]
+        meat <- t(as.matrix(cluster_scores)) %*% as.matrix(cluster_scores)
+        m <- length(unique(grp)); n <- nrow(X_subset); k <- ncol(X_subset)
+        adj <- if (type == "CR1") (m / (m - 1)) * ((n - 1) / (n - k)) else 1
+        V_final <- adj * bread_ols %*% meat %*% bread_ols
+      }
+
+      self$vcov <- V_final
+      colnames(self$vcov) <- rownames(self$vcov) <- fe_names_in_fit
+
+      self$se_method <- if (is.null(cluster)) "robust" else "cluster-robust"
+      self$ci_method <- self$se_method
+      self$cluster <- cluster
+      self$robust_type <- type
+
+      if (update) private$.update_fixed_effects_with_vcov(self$vcov)
+      
+      cat(sprintf("%s standard errors updated.\n", tools::toTitleCase(self$se_method)))
+      return(self)
+    },
+      .compute_glmer_robust_se = function(cluster = NULL, type = c("CR1", "CR0"), update = TRUE) {
+        type <- match.arg(type)
+        info <- self$model$extra$glmer_info
+        
+        if (!is.null(self$map) && length(self$map) > 0L) {
+          stop("robust_se() for glmer with mapped/fixed parameters is not supported yet.", call. = FALSE)
+        }
+        
+        if (info$num_bars != 1L) {
+          stop("robust_se() for glmer currently supports exactly one grouping factor.", call. = FALSE)
+        }
+
+        gvar <- info$group_labels[[1]]
+        if (is.null(cluster)) cluster <- gvar
+        if (!identical(cluster, gvar)) {
+          stop(sprintf("robust_se() for glmer currently requires `cluster` to be the random-effect grouping variable '%s'.", gvar), call. = FALSE)
+        }
+
+        raw_data <- if (!is.null(self$model$raw_data)) self$model$raw_data else self$model$data
+        if (!cluster %in% names(raw_data)) stop(paste("Cluster variable", cluster, "not found."))
+        
+        grp_factor <- as.factor(raw_data[[cluster]])
+        clusters <- levels(grp_factor)
+        m <- length(clusters)
+        n <- length(grp_factor)
+
+        # Verify one-to-one mapping
+        idx_name <- info$group_idx_names[1]
+        re_grp_idx <- self$model$data[[idx_name]]
+        tab <- table(re_grp_idx, grp_factor)
+        if (any(rowSums(tab > 0) != 1L)) {
+          stop("Each random-effect level must belong to exactly one robust cluster.", call. = FALSE)
+        }
+
+        obs_to_cluster <- as.integer(grp_factor)
+        re_level_to_cluster <- as.integer(apply(tab > 0, 1, function(x) which(x > 0)[1]))
+
+        # 3. Build AD object for score calculation
+        message("Preparing parameters for robust AD object...")
+        
+        tmp_par_list <- self$model$par_list
+        tmp_par_list[[info$obs_weight_name]] <- list(
+          type = "vector", length = n, dim = n, unc_length = n,
+          bounds = "none", random = FALSE
+        )
+        for (b in 1:info$num_bars) {
+          L_w <- info$num_groups_list[[b]]
+          tmp_par_list[[info$weight_names[b]]] <- list(
+            type = "vector", length = L_w, dim = L_w, unc_length = L_w,
+            bounds = "none", random = FALSE
+          )
+        }
+
+        tmp_data <- self$model$data
+        tmp_data[[info$obs_weight_name]] <- NULL
+        for (wn in info$weight_names) tmp_data[[wn]] <- NULL
+
+        # Initial unconstrained parameters
+        init_unc_list <- self$model$unconstrained_vector_to_list(self$par_unc)
+        init_unc_list[[info$obs_weight_name]] <- rep(1, n)
+        for (b in 1:info$num_bars) {
+          init_unc_list[[info$weight_names[b]]] <- rep(1, info$num_groups_list[[b]])
+        }
+
+        random_names <- names(self$model$par_list)[vapply(self$model$par_list, function(p) isTRUE(p$random), logical(1))]
+        
+        f_ad_score <- function(y_unc_list) {
+          para <- to_constrained(y_unc_list, tmp_par_list)
+          -self$model$log_prob(dat = tmp_data, par = para)
+        }
+
+        obj_score <- RTMB::MakeADFun(
+          func = f_ad_score,
+          parameters = init_unc_list,
+          random = random_names,
+          map = self$map,
+          intern = TRUE,
+          silent = TRUE
+        )
+        message("AD object built. Calculating Hessian...")
+        H <- obj_score$he(obj_score$par)
+        message("Hessian calculated.")
+        
+        fe_pars <- intersect(c("Intercept", "Intercept_c", "b"), names(self$model$par_list))
+        k_p <- 0
+        for (nm in fe_pars) k_p <- k_p + self$model$par_list[[nm]]$unc_length
+        
+        n_weights <- n + sum(unlist(info$num_groups_list))
+        n_total <- length(obj_score$par)
+        n_theta <- n_total - n_weights
+        theta_indices <- 1:n_theta
+        
+        meat <- matrix(0, n_theta, n_theta)
+        
+        current_pos <- n_theta + 1
+        obs_weight_indices <- current_pos:(current_pos + n - 1)
+        current_pos <- current_pos + n
+        re_weight_indices <- list()
+        for (b in 1:info$num_bars) {
+          n_lev <- info$num_groups_list[[b]]
+          re_weight_indices[[b]] <- current_pos:(current_pos + n_lev - 1)
+          current_pos <- current_pos + n_lev
+        }
+        
+        for (i in 1:m) {
+          s_i <- rep(0, n_theta)
+          obs_idx <- which(obs_to_cluster == i)
+          if (length(obs_idx) > 0) {
+            s_i <- s_i + rowSums(H[theta_indices, obs_weight_indices[obs_idx], drop = FALSE])
+          }
+          for (b in 1:info$num_bars) {
+            lev_idx <- which(re_level_to_cluster == i)
+            if (length(lev_idx) > 0) {
+              s_i <- s_i + rowSums(H[theta_indices, re_weight_indices[[b]][lev_idx], drop = FALSE])
+            }
+          }
+          meat <- meat + s_i %*% t(s_i)
+        }
+        
+        H_theta <- H[theta_indices, theta_indices, drop = FALSE]
+        H_inv <- tryCatch(solve(H_theta), error = function(e) MASS::ginv(H_theta))
+        
+        # 4. Final Calculations and Object Updates
+        if (type == "CR1") {
+          if (m <= 1L) {
+            stop("CR1 robust SE requires at least two clusters.", call. = FALSE)
+          }
+          if (n <= k_p) {
+            warning("CR1 finite-sample correction skipped because n <= p.", call. = FALSE)
+            adj <- m / (m - 1)
+          } else {
+            adj <- (m / (m - 1)) * ((n - 1) / (n - k_p))
+          }
+        } else {
+          adj <- 1
+        }
+        
+        V_unc <- adj * H_inv %*% meat %*% H_inv
+        
+        # Correctly identify fixed-effect indices from AD object names
+        par_names <- names(obj_score$par)
+        fe_idx <- which(par_names %in% c("Intercept", "Intercept_c", "b"))
+        
+        # Standardized labels for summary alignment
+        fe_labels <- unlist(lapply(fe_pars, function(nm) {
+          generate_flat_names(
+            base_name = nm,
+            dims = self$model$par_list[[nm]]$dim,
+            names_def = self$model$par_names[[nm]]
+          )
+        }), use.names = FALSE)
+        
+        if (length(fe_idx) != length(fe_labels)) {
+          stop("Failed to align fixed-effect indices with displayed coefficient names.", call. = FALSE)
+        }
+        
+        V_beta <- V_unc[fe_idx, fe_idx, drop = FALSE]
+        rownames(V_beta) <- colnames(V_beta) <- fe_labels
+        
+        # Update object metadata
+        self$vcov <- V_beta
+        self$se_method <- "cluster-robust"
+        self$ci_method <- "cluster-robust"
+        self$cluster <- cluster
+        self$robust_type <- type
+        
+        if (update) private$.update_fixed_effects_with_vcov(V_beta)
+        
+        cat(sprintf("%s standard errors updated.\n", tools::toTitleCase(self$se_method)))
+        return(self)
+      }
+    )
   )
-)
 
 #' @export
 summary.Classic_Fit <- function(object, ...) {
@@ -1253,8 +1509,21 @@ print.summary_Classic_Fit <- function(x, ...) {
   } else if (!is.null(x$type) && x$type == "loglinear") { cat("\nLog-Linear Model Analysis\n")
   } else { cat("\nCall:\n"); type_label <- if (is.null(x$type)) "Generic Model" else x$type; cat(paste("Classical estimation via", type_label), "\n") }
   if (!is.null(x$se_method) && x$se_method != "wald") {
-    method_label <- switch(x$se_method, robust = if (!is.null(x$cluster)) paste("Robust (Cluster:", x$cluster, ")") else "Robust (HC3)",
-                           bootstrap = paste0("Bootstrap (", x$bootstrap, " samples)"), "Standard")
+    method_label <- switch(
+      x$se_method,
+      robust = if (!is.null(x$cluster)) {
+        paste("Robust (Cluster:", x$cluster, ")")
+      } else {
+        paste0("Robust (", x$robust_type %||% "HC3", ")")
+      },
+      `cluster-robust` = paste0(
+        "Cluster-robust",
+        if (!is.null(x$cluster)) paste0(" (cluster = ", x$cluster, ")") else "",
+        if (!is.null(x$robust_type)) paste0(", ", x$robust_type) else ""
+      ),
+      bootstrap = paste0("Bootstrap (", x$bootstrap, " samples)"),
+      "Standard"
+    )
     cat(sprintf("Standard Errors: %s\n", method_label))
   }
   if (!is.null(x$logLik) && !is.na(x$logLik)) cat(sprintf("\nLog-Likelihood: %.3f, AIC: %.3f, BIC: %.3f\n", as.numeric(x$logLik), x$AIC, x$BIC))
