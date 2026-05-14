@@ -1,10 +1,3 @@
-#' Base class for RTMB Fit objects
-#'
-#' An R6 base class providing common methods for Bayesian and MAP inference results.
-#'
-#' @field model The `RTMB_Model` object used for estimation.
-#'
-#' @importFrom R6 R6Class
 `%||%` <- function(a, b) if (!is.null(a)) a else b
 
 #' @keywords internal
@@ -139,6 +132,13 @@
   return(res)
 }
 
+#' Base class for RTMB Fit objects
+#'
+#' An R6 base class providing common methods for Bayesian and MAP inference results.
+#'
+#' @field model The `RTMB_Model` object used for estimation.
+#'
+#' @importFrom R6 R6Class
 #' @export
 RTMB_Fit_Base <- R6::R6Class(
   classname = "RTMB_Fit_Base",

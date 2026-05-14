@@ -45,9 +45,10 @@ Classic_Fit <- R6::R6Class(
     par_vec = NULL,
     vcov = NULL,
 
-    #' @description Get point estimate for a target parameter (internal use).
+    #' @description Get point estimate for a target parameter.
     #' @param target Target parameter name.
-    #' @return Matrix or array of point estimate.
+    #' @param ... Additional arguments, ignored for classic fits.
+    #' @return Matrix, array, vector, or scalar point estimate.
     get_point_estimate = function(target, ...) {
       if (!is.null(self$par[[target]])) return(self$par[[target]])
       if (!is.null(self$transform[[target]])) return(self$transform[[target]])

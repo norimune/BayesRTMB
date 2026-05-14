@@ -41,9 +41,11 @@ VB_Fit <- R6::R6Class(
     mu_history     = NULL,
 
     # 1. Constructor
-    #' @description Get point estimate for a target parameter (internal use).
+    #' @description Get point estimate for a target parameter.
     #' @param target Target parameter name.
-    #' @return Matrix or array of point estimate.
+    #' @param chains Numeric vector of chains to include. If NULL, all chains are used.
+    #' @param best_chains Integer; number of best chains to retain based on ELBO.
+    #' @return Matrix, array, vector, or scalar point estimate.
     get_point_estimate = function(target, chains = NULL, best_chains = NULL) {
       target_draws <- self$draws(pars = target, chains = chains, best_chains = best_chains, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)

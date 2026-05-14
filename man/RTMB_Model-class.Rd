@@ -45,7 +45,8 @@ posterior, and drawing posterior samples.
 
 \item{\code{map}}{A list specifying parameter mappings for fixing values (e.g., via \code{fixed_model()}).}
 
-\item{\code{prior_correction}}{Numeric value for legacy or low-level marginal-likelihood correction. Fixed-parameter prior removal is handled during AD objective construction.}
+\item{\code{prior_correction}}{Numeric value for legacy or low-level marginal-likelihood correction.
+Fixed-parameter prior removal is handled during AD objective construction.}
 
 \item{\code{fixed_prior_specs}}{Internal specification for removing fixed-parameter prior contributions during AD evaluation.}
 

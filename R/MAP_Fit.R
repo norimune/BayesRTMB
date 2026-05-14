@@ -2,7 +2,7 @@
 #'
 #' An R6 class storing optimization results from maximum a posteriori
 #' (MAP) estimation.
-#
+#'
 #' @field model The `RTMB_Model` object used for estimation.
 #' @field par_vec Parameter vector on the unconstrained scale (constrained values unlisted).
 #' @field par Parameter list on the constrained scale.
@@ -60,9 +60,10 @@ MAP_Fit <- R6::R6Class(
     idx_fix_active = NULL,
     show_df        = TRUE,
 
-    #' @description Get point estimate for a target parameter (internal use).
+    #' @description Get point estimate for a target parameter.
     #' @param target Target parameter name.
-    #' @return Matrix or array of point estimate.
+    #' @param ... Additional arguments, ignored for MAP fits.
+    #' @return Matrix, array, vector, or scalar point estimate.
     get_point_estimate = function(target, ...) {
       if (!is.null(self$par[[target]])) return(self$par[[target]])
       if (!is.null(self$transform[[target]])) return(self$transform[[target]])

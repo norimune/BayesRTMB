@@ -22,6 +22,7 @@ An R6 base class providing common methods for Bayesian and MAP inference results
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-RTMB_Fit_Base-get_point_estimate}{\code{RTMB_Fit_Base$get_point_estimate()}}
+\item \href{#method-RTMB_Fit_Base-estimate}{\code{RTMB_Fit_Base$estimate()}}
 \item \href{#method-RTMB_Fit_Base-EAP}{\code{RTMB_Fit_Base$EAP()}}
 \item \href{#method-RTMB_Fit_Base-MAP}{\code{RTMB_Fit_Base$MAP()}}
 \item \href{#method-RTMB_Fit_Base-rotate}{\code{RTMB_Fit_Base$rotate()}}
@@ -35,13 +36,15 @@ An R6 base class providing common methods for Bayesian and MAP inference results
 \subsection{Method \code{get_point_estimate()}}{
 Abstract method to get a point estimate for a target parameter.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$get_point_estimate(target)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$get_point_estimate(target, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{target}}{Character string specifying the target parameter name.}
+
+\item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
@@ -50,66 +53,115 @@ A numeric array or matrix of the point estimate.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-RTMB_Fit_Base-EAP"></a>}}
-\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-EAP}{}}}
-\subsection{Method \code{EAP()}}{
-Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+\if{html}{\out{<a id="method-RTMB_Fit_Base-estimate"></a>}}
+\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-estimate}{}}}
+\subsection{Method \code{estimate()}}{
+Get point estimates for parameters, transformed parameters, and generated quantities.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$EAP(pars = "parameters", chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".}
-
-\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
-
-\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of EAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-RTMB_Fit_Base-MAP"></a>}}
-\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-MAP}{}}}
-\subsection{Method \code{MAP()}}{
-Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$MAP(
-  pars = "parameters",
+\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$estimate(
+  pars = NULL,
+  type = c("mean", "EAP", "marginal_map", "joint_map", "MAP"),
+  component = c("all", "parameters", "transform", "generate"),
   chains = NULL,
   best_chains = NULL,
-  type = c("marginal", "joint")
+  drop = TRUE,
+  ...
 )}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{pars}}{Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".}
+\item{\code{pars}}{Optional character or numeric vector of parameter names or indices to extract.
+Supports special keywords: "parameters", "transform", "generate", and "all".}
 
-\item{\code{chains}}{Numeric vector specifying the chains to use. Default is NULL (all chains).}
+\item{\code{type}}{Character string specifying the estimation type.}
 
-\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.}
+\item{\code{component}}{Character string specifying the component to filter by.}
 
-\item{\code{type}}{Character string specifying the type of MAP estimate.
-"marginal" (default) calculates the peak of the marginal posterior density for each parameter.
-"joint" returns the parameter values from the iteration with the highest log-posterior.}
+\item{\code{chains}}{Numeric vector of chains to include.}
+
+\item{\code{best_chains}}{Number of best chains to include.}
+
+\item{\code{drop}}{Logical; if TRUE and only one parameter is selected, return the value directly instead of a list.}
+
+\item{\code{...}}{Additional arguments passed to draws().}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A named list of MAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.
+A named list of point estimates, or a single value if `drop = TRUE`.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RTMB_Fit_Base-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+Calculate Expected A Posteriori (EAP) estimates from posterior samples.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$EAP(
+  pars = "parameters",
+  chains = NULL,
+  best_chains = NULL,
+  drop = FALSE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
+
+\item{\code{chains}}{Numeric vector of chains to include.}
+
+\item{\code{best_chains}}{Number of best chains to include.}
+
+\item{\code{drop}}{Logical; whether to drop the list if only one parameter is selected.}
+
+\item{\code{...}}{Additional arguments passed to `estimate()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of EAP estimates.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RTMB_Fit_Base-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+Calculate Maximum A Posteriori (MAP) estimates.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$MAP(
+  pars = "parameters",
+  chains = NULL,
+  best_chains = NULL,
+  type = c("marginal", "joint"),
+  drop = FALSE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
+
+\item{\code{chains}}{Numeric vector of chains to include.}
+
+\item{\code{best_chains}}{Number of best chains to include.}
+
+\item{\code{type}}{Character string; "marginal" or "joint" MAP.}
+
+\item{\code{drop}}{Logical; whether to drop the list if only one parameter is selected.}
+
+\item{\code{...}}{Additional arguments passed to `estimate()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of MAP estimates.
 }
 }
 \if{html}{\out{<hr>}}

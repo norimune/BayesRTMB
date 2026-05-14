@@ -6,6 +6,9 @@
 \description{
 An R6 class representing the results of a classical (frequentist) estimation.
 }
+\section{Super class}{
+\code{BayesRTMB::RTMB_Fit_Base} -> \code{Classic_Fit}
+}
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
 \describe{
@@ -74,6 +77,7 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \section{Methods}{
 \subsection{Public methods}{
 \itemize{
+\item \href{#method-Classic_Fit-get_point_estimate}{\code{Classic_Fit$get_point_estimate()}}
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
 \item \href{#method-Classic_Fit-compute_robust}{\code{Classic_Fit$compute_robust()}}
 \item \href{#method-Classic_Fit-compute_bootstrap}{\code{Classic_Fit$compute_bootstrap()}}
@@ -89,6 +93,39 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-.get_lsmeans_df}{\code{Classic_Fit$.get_lsmeans_df()}}
 \item \href{#method-Classic_Fit-.construct_par_list}{\code{Classic_Fit$.construct_par_list()}}
 \item \href{#method-Classic_Fit-clone}{\code{Classic_Fit$clone()}}
+}
+}
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
+<ul>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
+</ul>
+</details>
+}}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-get_point_estimate"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-get_point_estimate}{}}}
+\subsection{Method \code{get_point_estimate()}}{
+Get point estimate for a target parameter.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$get_point_estimate(target, ...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Target parameter name.}
+
+\item{\code{...}}{Additional arguments, ignored for classic fits.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Matrix, array, vector, or scalar point estimate.
 }
 }
 \if{html}{\out{<hr>}}

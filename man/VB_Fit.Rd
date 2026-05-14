@@ -13,7 +13,7 @@ An R6 class storing posterior samples and related information
 from Automatic Differentiation Variational Inference (ADVI).
 }
 \section{Super class}{
-\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{advi_fit}
+\code{BayesRTMB::RTMB_Fit_Base} -> \code{advi_fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -53,8 +53,6 @@ from Automatic Differentiation Variational Inference (ADVI).
 \itemize{
 \item \href{#method-advi_fit-get_point_estimate}{\code{VB_Fit$get_point_estimate()}}
 \item \href{#method-advi_fit-new}{\code{VB_Fit$new()}}
-\item \href{#method-advi_fit-EAP}{\code{VB_Fit$EAP()}}
-\item \href{#method-advi_fit-MAP}{\code{VB_Fit$MAP()}}
 \item \href{#method-advi_fit-print}{\code{VB_Fit$print()}}
 \item \href{#method-advi_fit-draws}{\code{VB_Fit$draws()}}
 \item \href{#method-advi_fit-summary}{\code{VB_Fit$summary()}}
@@ -68,6 +66,9 @@ from Automatic Differentiation Variational Inference (ADVI).
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul>
@@ -77,20 +78,24 @@ from Automatic Differentiation Variational Inference (ADVI).
 \if{html}{\out{<a id="method-advi_fit-get_point_estimate"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-get_point_estimate}{}}}
 \subsection{Method \code{get_point_estimate()}}{
-Get point estimate for a target parameter (internal use).
+Get point estimate for a target parameter.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$get_point_estimate(target)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{target}}{Target parameter name.}
+
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Matrix or array of point estimate.
+Matrix, array, vector, or scalar point estimate.
 }
 }
 \if{html}{\out{<hr>}}
@@ -137,46 +142,6 @@ Create a new `VB_Fit` object.
 \item{\code{mu_history}}{Matrix of the parameter trajectory from the final window.}
 }
 \if{html}{\out{</div>}}
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-EAP"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-EAP}{}}}
-\subsection{Method \code{EAP()}}{
-Calculate Expected A Posteriori (EAP) estimates (posterior means).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Optional character or numeric vector of parameter names/indices to extract.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of EAP estimates.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-MAP"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-MAP}{}}}
-\subsection{Method \code{MAP()}}{
-Calculate Maximum A Posteriori (MAP) estimates (joint mode iteration).
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$MAP(pars = NULL)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Optional character vector of parameter names to extract.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of MAP estimates.
 }
 }
 \if{html}{\out{<hr>}}

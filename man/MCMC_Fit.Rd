@@ -20,7 +20,7 @@ parameters with `fixed = list(...)`, or supplied as an already fitted
 Bayes factors are computed only by marginal-likelihood model comparison.
 }
 \section{Super class}{
-\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{mcmc_fit}
+\code{BayesRTMB::RTMB_Fit_Base} -> \code{mcmc_fit}
 }
 \section{Public fields}{
 \if{html}{\out{<div class="r6-fields">}}
@@ -59,8 +59,6 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-mcmc_fit-get_point_estimate}{\code{MCMC_Fit$get_point_estimate()}}
-\item \href{#method-mcmc_fit-EAP}{\code{MCMC_Fit$EAP()}}
-\item \href{#method-mcmc_fit-MAP}{\code{MCMC_Fit$MAP()}}
 \item \href{#method-mcmc_fit-new}{\code{MCMC_Fit$new()}}
 \item \href{#method-mcmc_fit-print}{\code{MCMC_Fit$print()}}
 \item \href{#method-mcmc_fit-draws}{\code{MCMC_Fit$draws()}}
@@ -78,6 +76,9 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul>
@@ -87,60 +88,24 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \if{html}{\out{<a id="method-mcmc_fit-get_point_estimate"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-get_point_estimate}{}}}
 \subsection{Method \code{get_point_estimate()}}{
-Get point estimate for a target parameter (internal use).
+Get point estimate for a target parameter.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$get_point_estimate(target)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{target}}{Target parameter name.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Matrix or array of point estimate.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-EAP"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-EAP}{}}}
-\subsection{Method \code{EAP()}}{
-Calculate the Expected A Posteriori (EAP) estimates.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$EAP(pars = NULL)}\if{html}{\out{</div>}}
-}
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Optional character vector of parameter names to extract.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-A named list of EAP estimates (posterior means).
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-MAP"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-MAP}{}}}
-\subsection{Method \code{MAP()}}{
-Calculate the Maximum A Posteriori (MAP) estimates from samples.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$MAP(pars = NULL)}\if{html}{\out{</div>}}
-}
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
 
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{pars}}{Optional character vector of parameter names to extract.}
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-A named list of MAP estimates (samples with highest log-posterior).
+Matrix, array, vector, or scalar point estimate.
 }
 }
 \if{html}{\out{<hr>}}
