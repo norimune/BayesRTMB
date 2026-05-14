@@ -3,6 +3,11 @@
 An R6 class representing the results of a classical (frequentist)
 estimation.
 
+## Super class
+
+[`BayesRTMB::RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
+-\> `Classic_Fit`
+
 ## Public fields
 
 - `model`:
@@ -28,6 +33,11 @@ estimation.
 - `cluster`:
 
   Character string specifying the cluster variable name, if any.
+
+- `robust_type`:
+
+  Character string specifying the robust standard error correction type,
+  if used.
 
 - `bootstrap_results`:
 
@@ -130,9 +140,17 @@ estimation.
 
 ### Public methods
 
+- [`Classic_Fit$get_point_estimate()`](#method-Classic_Fit-get_point_estimate)
+
 - [`Classic_Fit$new()`](#method-Classic_Fit-new)
 
+- [`Classic_Fit$robust_se()`](#method-Classic_Fit-robust_se)
+
+- [`Classic_Fit$rbust_se()`](#method-Classic_Fit-rbust_se)
+
 - [`Classic_Fit$compute_robust()`](#method-Classic_Fit-compute_robust)
+
+- [`Classic_Fit$bootstrap()`](#method-Classic_Fit-bootstrap)
 
 - [`Classic_Fit$compute_bootstrap()`](#method-Classic_Fit-compute_bootstrap)
 
@@ -159,6 +177,38 @@ estimation.
 - [`Classic_Fit$.construct_par_list()`](#method-Classic_Fit-.construct_par_list)
 
 - [`Classic_Fit$clone()`](#method-Classic_Fit-clone)
+
+Inherited methods
+
+- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
+- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
+- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
+- [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
+- [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
+
+------------------------------------------------------------------------
+
+### Method `get_point_estimate()`
+
+Get point estimate for a target parameter.
+
+#### Usage
+
+    Classic_Fit$get_point_estimate(target, ...)
+
+#### Arguments
+
+- `target`:
+
+  Target parameter name.
+
+- `...`:
+
+  Additional arguments, ignored for classic fits.
+
+#### Returns
+
+Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 
@@ -316,19 +366,96 @@ Create a new \`Classic_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### Method `compute_robust()`
+### Method `robust_se()`
 
 Compute robust standard errors (sandwich estimator).
 
 #### Usage
 
-    Classic_Fit$compute_robust(cluster = NULL)
+    Classic_Fit$robust_se(
+      cluster = NULL,
+      type = c("CR1", "CR0"),
+      update = TRUE,
+      ...
+    )
 
 #### Arguments
 
 - `cluster`:
 
   Character; variable name for clustering.
+
+- `type`:
+
+  Character; "CR1" (default) or "CR0".
+
+- `update`:
+
+  Logical; whether to update the internal fit summary.
+
+- `...`:
+
+  Additional arguments.
+
+#### Returns
+
+Self.
+
+------------------------------------------------------------------------
+
+### Method `rbust_se()`
+
+Alias for robust_se().
+
+#### Usage
+
+    Classic_Fit$rbust_se(...)
+
+#### Arguments
+
+- `...`:
+
+  Arguments passed to robust_se().
+
+#### Returns
+
+Self.
+
+------------------------------------------------------------------------
+
+### Method `compute_robust()`
+
+(Deprecated) Use robust_se() instead.
+
+#### Usage
+
+    Classic_Fit$compute_robust(...)
+
+#### Arguments
+
+- `...`:
+
+  Arguments passed to robust_se().
+
+#### Returns
+
+Self.
+
+------------------------------------------------------------------------
+
+### Method `bootstrap()`
+
+Compute bootstrap standard errors.
+
+#### Usage
+
+    Classic_Fit$bootstrap(...)
+
+#### Arguments
+
+- `...`:
+
+  Arguments passed to compute_bootstrap().
 
 #### Returns
 

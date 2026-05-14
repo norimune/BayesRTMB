@@ -123,10 +123,6 @@ estimation.
 
 - [`MAP_Fit$get_point_estimate()`](#method-map_fit-get_point_estimate)
 
-- [`MAP_Fit$EAP()`](#method-map_fit-EAP)
-
-- [`MAP_Fit$MAP()`](#method-map_fit-MAP)
-
 - [`MAP_Fit$new()`](#method-map_fit-new)
 
 - [`MAP_Fit$ranef()`](#method-map_fit-ranef)
@@ -145,6 +141,9 @@ estimation.
 
 Inherited methods
 
+- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
+- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
+- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
 - [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
 - [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
@@ -152,11 +151,11 @@ Inherited methods
 
 ### Method `get_point_estimate()`
 
-Get point estimate for a target parameter (internal use).
+Get point estimate for a target parameter.
 
 #### Usage
 
-    MAP_Fit$get_point_estimate(target)
+    MAP_Fit$get_point_estimate(target, ...)
 
 #### Arguments
 
@@ -164,49 +163,13 @@ Get point estimate for a target parameter (internal use).
 
   Target parameter name.
 
-#### Returns
+- `...`:
 
-Matrix or array of point estimate.
-
-------------------------------------------------------------------------
-
-### Method `EAP()`
-
-Return point estimates (EAP is not applicable for MAP).
-
-#### Usage
-
-    MAP_Fit$EAP(pars = NULL)
-
-#### Arguments
-
-- `pars`:
-
-  Optional character vector of parameter names to extract.
+  Additional arguments, ignored for MAP fits.
 
 #### Returns
 
-A named list of point estimates.
-
-------------------------------------------------------------------------
-
-### Method `MAP()`
-
-Return point estimates (MAP sampling method is not applicable).
-
-#### Usage
-
-    MAP_Fit$MAP(pars = NULL)
-
-#### Arguments
-
-- `pars`:
-
-  Optional character vector of parameter names to extract.
-
-#### Returns
-
-A named list of point estimates.
+Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 

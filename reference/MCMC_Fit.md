@@ -85,10 +85,6 @@ only by marginal-likelihood model comparison.
 
 - [`MCMC_Fit$get_point_estimate()`](#method-mcmc_fit-get_point_estimate)
 
-- [`MCMC_Fit$EAP()`](#method-mcmc_fit-EAP)
-
-- [`MCMC_Fit$MAP()`](#method-mcmc_fit-MAP)
-
 - [`MCMC_Fit$new()`](#method-mcmc_fit-new)
 
 - [`MCMC_Fit$print()`](#method-mcmc_fit-print)
@@ -115,6 +111,9 @@ only by marginal-likelihood model comparison.
 
 Inherited methods
 
+- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
+- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
+- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
 - [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
 - [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
@@ -122,11 +121,11 @@ Inherited methods
 
 ### Method `get_point_estimate()`
 
-Get point estimate for a target parameter (internal use).
+Get point estimate for a target parameter.
 
 #### Usage
 
-    MCMC_Fit$get_point_estimate(target)
+    MCMC_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)
 
 #### Arguments
 
@@ -134,49 +133,17 @@ Get point estimate for a target parameter (internal use).
 
   Target parameter name.
 
-#### Returns
+- `chains`:
 
-Matrix or array of point estimate.
+  Numeric vector of chains to include. If NULL, all chains are used.
 
-------------------------------------------------------------------------
+- `best_chains`:
 
-### Method `EAP()`
-
-Calculate the Expected A Posteriori (EAP) estimates.
-
-#### Usage
-
-    MCMC_Fit$EAP(pars = NULL)
-
-#### Arguments
-
-- `pars`:
-
-  Optional character vector of parameter names to extract.
+  Integer; number of best chains to retain based on mean log-posterior.
 
 #### Returns
 
-A named list of EAP estimates (posterior means).
-
-------------------------------------------------------------------------
-
-### Method `MAP()`
-
-Calculate the Maximum A Posteriori (MAP) estimates from samples.
-
-#### Usage
-
-    MCMC_Fit$MAP(pars = NULL)
-
-#### Arguments
-
-- `pars`:
-
-  Optional character vector of parameter names to extract.
-
-#### Returns
-
-A named list of MAP estimates (samples with highest log-posterior).
+Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 

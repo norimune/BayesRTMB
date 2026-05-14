@@ -174,8 +174,6 @@ MAP fit object"></head><body>
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 
 <ul><li><p><a href="#method-map_fit-get_point_estimate"><code>MAP_Fit$get_point_estimate()</code></a></p></li>
-<li><p><a href="#method-map_fit-EAP"><code>MAP_Fit$EAP()</code></a></p></li>
-<li><p><a href="#method-map_fit-MAP"><code>MAP_Fit$MAP()</code></a></p></li>
 <li><p><a href="#method-map_fit-new"><code>MAP_Fit$new()</code></a></p></li>
 <li><p><a href="#method-map_fit-ranef"><code>MAP_Fit$ranef()</code></a></p></li>
 <li><p><a href="#method-map_fit-draws"><code>MAP_Fit$draws()</code></a></p></li>
@@ -184,13 +182,16 @@ MAP fit object"></head><body>
 <li><p><a href="#method-map_fit-generated_quantities"><code>MAP_Fit$generated_quantities()</code></a></p></li>
 <li><p><a href="#method-map_fit-profile"><code>MAP_Fit$profile()</code></a></p></li>
 <li><p><a href="#method-map_fit-clone"><code>MAP_Fit$clone()</code></a></p></li>
-</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href="RTMB_Fit_Base.html#method-EAP"><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href="RTMB_Fit_Base.html#method-MAP"><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href="RTMB_Fit_Base.html#method-estimate"><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href="RTMB_Fit_Base.html#method-rotate"><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul></details></p><hr><a id="method-map_fit-get_point_estimate"></a><div class="section">
 <h3 id="method-get-point-estimate-">Method <code>get_point_estimate()</code><a class="anchor" aria-label="anchor" href="#method-get-point-estimate-"></a></h3>
-<p>Get point estimate for a target parameter (internal use).</p><div class="section">
+<p>Get point estimate for a target parameter.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">get_point_estimate</span><span class="op">(</span><span class="va">target</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">get_point_estimate</span><span class="op">(</span><span class="va">target</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
@@ -199,57 +200,21 @@ MAP fit object"></head><body>
 <dd><p>Target parameter name.</p></dd>
 
 
+<dt><code>...</code></dt>
+<dd><p>Additional arguments, ignored for MAP fits.</p></dd>
+
+
 </dl><p></p></div>
 </div>
 <div class="section">
 <h4 id="returns">Returns<a class="anchor" aria-label="anchor" href="#returns"></a></h4>
-<p>Matrix or array of point estimate.</p>
-</div>
-
-</div><p></p><hr><a id="method-map_fit-EAP"></a><div class="section">
-<h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
-<p>Return point estimates (EAP is not applicable for MAP).</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
-<dd><p>Optional character vector of parameter names to extract.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-<div class="section">
-<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
-<p>A named list of point estimates.</p>
-</div>
-
-</div><p></p><hr><a id="method-map_fit-MAP"></a><div class="section">
-<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
-<p>Return point estimates (MAP sampling method is not applicable).</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
-<dd><p>Optional character vector of parameter names to extract.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-<div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
-<p>A named list of point estimates.</p>
+<p>Matrix, array, vector, or scalar point estimate.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-new"></a><div class="section">
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
 <p>Create a new `MAP_Fit` object.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/MAP_Fit.html">MAP_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  <span class="va">model</span>,</span>
 <span>  <span class="va">par_vec</span>,</span>
@@ -279,7 +244,7 @@ MAP fit object"></head><body>
 </div>
 
 <div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>model</code></dt>
 <dd><p>The `RTMB_Model` object used for estimation.</p></dd>
 
@@ -382,19 +347,19 @@ MAP fit object"></head><body>
 </div><p></p><hr><a id="method-map_fit-ranef"></a><div class="section">
 <h3 id="method-ranef-">Method <code>ranef()</code><a class="anchor" aria-label="anchor" href="#method-ranef-"></a></h3>
 <p>Return random effect estimates as a named list.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">ranef</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
 <p>A named list of random effect estimates.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-draws"></a><div class="section">
 <h3 id="method-draws-">Method <code>draws()</code><a class="anchor" aria-label="anchor" href="#method-draws-"></a></h3>
 <p>Extract samples from the asymptotic posterior distribution.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  inc_random <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -405,7 +370,7 @@ MAP fit object"></head><body>
 </div>
 
 <div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to extract.</p></dd>
 
@@ -429,19 +394,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
 <p>An array of samples [iterations, 1, parameters].</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-summary"></a><div class="section">
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
 <p>Summarize MAP estimates.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector specifying the names of parameters to summarize. If NULL, all available parameters are summarized.</p></dd>
 
@@ -461,19 +426,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>A summary object, typically a data frame.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-print"></a><div class="section">
 <h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
 <p>Print a brief summary of the fitted object.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector specifying the names of parameters to summarize.</p></dd>
 
@@ -493,19 +458,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-generated_quantities"></a><div class="section">
 <h3 id="method-generated-quantities-">Method <code>generated_quantities()</code><a class="anchor" aria-label="anchor" href="#method-generated-quantities-"></a></h3>
 <p>Compute generated quantities from the MAP estimate.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">code</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
 <dd><p>An `rtmb_code({ ... })` or `{ ... }` block containing the logic to be calculated using the MAP estimate.</p></dd>
 
@@ -513,14 +478,14 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-profile"></a><div class="section">
 <h3 id="method-profile-">Method <code><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile()</a></code><a class="anchor" aria-label="anchor" href="#method-profile-"></a></h3>
 <p>Calculate Profile Likelihood confidence intervals for specific parameters.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">profile</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
@@ -534,7 +499,7 @@ MAP fit object"></head><body>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector of parameter names to profile. If NULL, all fixed parameters are profiled.</p></dd>
 
@@ -570,19 +535,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

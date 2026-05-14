@@ -21,6 +21,8 @@ results.
 
 - [`RTMB_Fit_Base$get_point_estimate()`](#method-RTMB_Fit_Base-get_point_estimate)
 
+- [`RTMB_Fit_Base$estimate()`](#method-RTMB_Fit_Base-estimate)
+
 - [`RTMB_Fit_Base$EAP()`](#method-RTMB_Fit_Base-EAP)
 
 - [`RTMB_Fit_Base$MAP()`](#method-RTMB_Fit_Base-MAP)
@@ -39,7 +41,7 @@ Abstract method to get a point estimate for a target parameter.
 
 #### Usage
 
-    RTMB_Fit_Base$get_point_estimate(target)
+    RTMB_Fit_Base$get_point_estimate(target, ...)
 
 #### Arguments
 
@@ -47,9 +49,69 @@ Abstract method to get a point estimate for a target parameter.
 
   Character string specifying the target parameter name.
 
+- `...`:
+
+  Additional arguments.
+
 #### Returns
 
 A numeric array or matrix of the point estimate.
+
+------------------------------------------------------------------------
+
+### Method `estimate()`
+
+Get point estimates for parameters, transformed parameters, and
+generated quantities.
+
+#### Usage
+
+    RTMB_Fit_Base$estimate(
+      pars = NULL,
+      type = c("mean", "EAP", "marginal_map", "joint_map", "MAP"),
+      component = c("all", "parameters", "transform", "generate"),
+      chains = NULL,
+      best_chains = NULL,
+      drop = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Optional character or numeric vector of parameter names or indices to
+  extract. Supports special keywords: "parameters", "transform",
+  "generate", and "all".
+
+- `type`:
+
+  Character string specifying the estimation type.
+
+- `component`:
+
+  Character string specifying the component to filter by.
+
+- `chains`:
+
+  Numeric vector of chains to include.
+
+- `best_chains`:
+
+  Number of best chains to include.
+
+- `drop`:
+
+  Logical; if TRUE and only one parameter is selected, return the value
+  directly instead of a list.
+
+- `...`:
+
+  Additional arguments passed to draws().
+
+#### Returns
+
+A named list of point estimates, or a single value if \`drop = TRUE\`.
 
 ------------------------------------------------------------------------
 
@@ -59,37 +121,45 @@ Calculate Expected A Posteriori (EAP) estimates from posterior samples.
 
 #### Usage
 
-    RTMB_Fit_Base$EAP(pars = "parameters", chains = NULL, best_chains = NULL)
+    RTMB_Fit_Base$EAP(
+      pars = "parameters",
+      chains = NULL,
+      best_chains = NULL,
+      drop = FALSE,
+      ...
+    )
 
 #### Arguments
 
 - `pars`:
 
-  Character vector specifying the names of parameters to extract. Use
-  "parameters" for only model parameters, "all" for all variables
-  including transformed and generated quantities, or a character vector
-  of specific variable names. Default is "parameters".
+  Optional character vector of parameter names to extract.
 
 - `chains`:
 
-  Numeric vector specifying the chains to use. Default is NULL (all
-  chains).
+  Numeric vector of chains to include.
 
 - `best_chains`:
 
-  Integer; number of best chains to retain based on mean log-posterior
-  (lp) or ELBO. Default is NULL.
+  Number of best chains to include.
+
+- `drop`:
+
+  Logical; whether to drop the list if only one parameter is selected.
+
+- `...`:
+
+  Additional arguments passed to \`estimate()\`.
 
 #### Returns
 
-A named list of EAP estimates structured for use as \`init\`, or a
-single array/vector if a single parameter is specified.
+A named list of EAP estimates.
 
 ------------------------------------------------------------------------
 
 ### Method `MAP()`
 
-Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
+Calculate Maximum A Posteriori (MAP) estimates.
 
 #### Usage
 
@@ -97,39 +167,40 @@ Calculate Maximum A Posteriori (MAP) estimates from posterior samples.
       pars = "parameters",
       chains = NULL,
       best_chains = NULL,
-      type = c("marginal", "joint")
+      type = c("marginal", "joint"),
+      drop = FALSE,
+      ...
     )
 
 #### Arguments
 
 - `pars`:
 
-  Character vector specifying the names of parameters to extract. Use
-  "parameters" for only model parameters, "all" for all variables
-  including transformed and generated quantities, or a character vector
-  of specific variable names. Default is "parameters".
+  Optional character vector of parameter names to extract.
 
 - `chains`:
 
-  Numeric vector specifying the chains to use. Default is NULL (all
-  chains).
+  Numeric vector of chains to include.
 
 - `best_chains`:
 
-  Integer; number of best chains to retain based on mean log-posterior
-  (lp) or ELBO. Default is NULL.
+  Number of best chains to include.
 
 - `type`:
 
-  Character string specifying the type of MAP estimate. "marginal"
-  (default) calculates the peak of the marginal posterior density for
-  each parameter. "joint" returns the parameter values from the
-  iteration with the highest log-posterior.
+  Character string; "marginal" or "joint" MAP.
+
+- `drop`:
+
+  Logical; whether to drop the list if only one parameter is selected.
+
+- `...`:
+
+  Additional arguments passed to \`estimate()\`.
 
 #### Returns
 
-A named list of MAP estimates structured for use as \`init\`, or a
-single array/vector if a single parameter is specified.
+A named list of MAP estimates.
 
 ------------------------------------------------------------------------
 

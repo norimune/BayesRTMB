@@ -77,6 +77,7 @@ Base class for RTMB Fit objects"></head><body>
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 
 <ul><li><p><a href="#method-RTMB_Fit_Base-get_point_estimate"><code>RTMB_Fit_Base$get_point_estimate()</code></a></p></li>
+<li><p><a href="#method-RTMB_Fit_Base-estimate"><code>RTMB_Fit_Base$estimate()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-EAP"><code>RTMB_Fit_Base$EAP()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-MAP"><code>RTMB_Fit_Base$MAP()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-rotate"><code>RTMB_Fit_Base$rotate()</code></a></p></li>
@@ -86,13 +87,17 @@ Base class for RTMB Fit objects"></head><body>
 <h3 id="method-get-point-estimate-">Method <code>get_point_estimate()</code><a class="anchor" aria-label="anchor" href="#method-get-point-estimate-"></a></h3>
 <p>Abstract method to get a point estimate for a target parameter.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">get_point_estimate</span><span class="op">(</span><span class="va">target</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">get_point_estimate</span><span class="op">(</span><span class="va">target</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Character string specifying the target parameter name.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
@@ -102,88 +107,157 @@ Base class for RTMB Fit objects"></head><body>
 <p>A numeric array or matrix of the point estimate.</p>
 </div>
 
-</div><p></p><hr><a id="method-RTMB_Fit_Base-EAP"></a><div class="section">
-<h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
-<p>Calculate Expected A Posteriori (EAP) estimates from posterior samples.</p><div class="section">
+</div><p></p><hr><a id="method-RTMB_Fit_Base-estimate"></a><div class="section">
+<h3 id="method-estimate-">Method <code>estimate()</code><a class="anchor" aria-label="anchor" href="#method-estimate-"></a></h3>
+<p>Get point estimates for parameters, transformed parameters, and generated quantities.</p><div class="section">
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span>, chains <span class="op">=</span> <span class="cn">NULL</span>, best_chains <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean"</span>, <span class="st">"EAP"</span>, <span class="st">"marginal_map"</span>, <span class="st">"joint_map"</span>, <span class="st">"MAP"</span><span class="op">)</span>,</span>
+<span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"parameters"</span>, <span class="st">"transform"</span>, <span class="st">"generate"</span><span class="op">)</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
-<dd><p>Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".</p></dd>
+<dd><p>Optional character or numeric vector of parameter names or indices to extract.
+Supports special keywords: "parameters", "transform", "generate", and "all".</p></dd>
+
+
+<dt><code>type</code></dt>
+<dd><p>Character string specifying the estimation type.</p></dd>
+
+
+<dt><code>component</code></dt>
+<dd><p>Character string specifying the component to filter by.</p></dd>
 
 
 <dt><code>chains</code></dt>
-<dd><p>Numeric vector specifying the chains to use. Default is NULL (all chains).</p></dd>
+<dd><p>Numeric vector of chains to include.</p></dd>
 
 
 <dt><code>best_chains</code></dt>
-<dd><p>Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.</p></dd>
+<dd><p>Number of best chains to include.</p></dd>
+
+
+<dt><code>drop</code></dt>
+<dd><p>Logical; if TRUE and only one parameter is selected, return the value directly instead of a list.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments passed to draws().</p></dd>
 
 
 </dl><p></p></div>
 </div>
 <div class="section">
 <h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
-<p>A named list of EAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.</p>
+<p>A named list of point estimates, or a single value if `drop = TRUE`.</p>
 </div>
 
-</div><p></p><hr><a id="method-RTMB_Fit_Base-MAP"></a><div class="section">
-<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
-<p>Calculate Maximum A Posteriori (MAP) estimates from posterior samples.</p><div class="section">
+</div><p></p><hr><a id="method-RTMB_Fit_Base-EAP"></a><div class="section">
+<h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
+<p>Calculate Expected A Posteriori (EAP) estimates from posterior samples.</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span></span>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="st">"parameters"</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"marginal"</span>, <span class="st">"joint"</span><span class="op">)</span></span>
+<span>  drop <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
-<dd><p>Character vector specifying the names of parameters to extract.
-Use "parameters" for only model parameters, "all" for all variables
-including transformed and generated quantities, or a character vector
-of specific variable names. Default is "parameters".</p></dd>
+<dd><p>Optional character vector of parameter names to extract.</p></dd>
 
 
 <dt><code>chains</code></dt>
-<dd><p>Numeric vector specifying the chains to use. Default is NULL (all chains).</p></dd>
+<dd><p>Numeric vector of chains to include.</p></dd>
 
 
 <dt><code>best_chains</code></dt>
-<dd><p>Integer; number of best chains to retain based on mean log-posterior (lp) or ELBO. Default is NULL.</p></dd>
+<dd><p>Number of best chains to include.</p></dd>
 
 
-<dt><code>type</code></dt>
-<dd><p>Character string specifying the type of MAP estimate.
-"marginal" (default) calculates the peak of the marginal posterior density for each parameter.
-"joint" returns the parameter values from the iteration with the highest log-posterior.</p></dd>
+<dt><code>drop</code></dt>
+<dd><p>Logical; whether to drop the list if only one parameter is selected.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments passed to `estimate()`.</p></dd>
 
 
 </dl><p></p></div>
 </div>
 <div class="section">
 <h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
-<p>A named list of MAP estimates structured for use as `init`, or a single array/vector if a single parameter is specified.</p>
+<p>A named list of EAP estimates.</p>
+</div>
+
+</div><p></p><hr><a id="method-RTMB_Fit_Base-MAP"></a><div class="section">
+<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
+<p>Calculate Maximum A Posteriori (MAP) estimates.</p><div class="section">
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="st">"parameters"</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"marginal"</span>, <span class="st">"joint"</span><span class="op">)</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Optional character vector of parameter names to extract.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Numeric vector of chains to include.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Number of best chains to include.</p></dd>
+
+
+<dt><code>type</code></dt>
+<dd><p>Character string; "marginal" or "joint" MAP.</p></dd>
+
+
+<dt><code>drop</code></dt>
+<dd><p>Logical; whether to drop the list if only one parameter is selected.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments passed to `estimate()`.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<p>A named list of MAP estimates.</p>
 </div>
 
 </div><p></p><hr><a id="method-RTMB_Fit_Base-rotate"></a><div class="section">
 <h3 id="method-rotate-">Method <code>rotate()</code><a class="anchor" aria-label="anchor" href="#method-rotate-"></a></h3>
 <p>Rotate sampled parameters.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">rotate</span><span class="op">(</span><span class="va">target</span>, reference <span class="op">=</span> <span class="cn">NULL</span>, linked <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Character string specifying the target variable to base the rotation on.</p></dd>
 
@@ -211,14 +285,14 @@ of specific variable names. Default is "parameters".</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>The updated object invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-RTMB_Fit_Base-fa_rotate"></a><div class="section">
 <h3 id="method-fa-rotate-">Method <code>fa_rotate()</code><a class="anchor" aria-label="anchor" href="#method-fa-rotate-"></a></h3>
 <p>Rotate factor loadings and optional factor scores.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">fa_rotate</span><span class="op">(</span></span>
 <span>  target <span class="op">=</span> <span class="st">"L"</span>,</span>
 <span>  linked <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -229,7 +303,7 @@ of specific variable names. Default is "parameters".</p></dd>
 </div>
 
 <div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Character string specifying the target variable to base the rotation on.</p></dd>
 
@@ -253,19 +327,19 @@ of specific variable names. Default is "parameters".</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>The updated object invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-RTMB_Fit_Base-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 
