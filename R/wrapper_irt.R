@@ -67,8 +67,8 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   setup_exprs[[2]] <- quote(person_idx <- as.integer(obs_data[, "row"]))
   setup_exprs[[3]] <- quote(item_idx <- as.integer(obs_data[, "col"]))
   setup_exprs[[4]] <- quote(Y_obs <- Y[obs_data])
-  setup_exprs[[5]] <- quote(N_persons <- nrow(Y)) # or max(person_idx)
-  setup_exprs[[6]] <- quote(N_items <- ncol(Y))   # or max(item_idx)
+  setup_exprs[[5]] <- quote(N_persons <- nrow(Y))
+  setup_exprs[[6]] <- quote(N_items <- ncol(Y))
   setup_exprs[[7]] <- quote(N_obs <- length(Y_obs))
 
   if (type == "ordered") {
@@ -180,7 +180,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     if (model == "3PL") init$c <- rep(0.1, length(item_names))
   }
 
-  obj <- rtmb_model(data = as.list(tmp_env), code = code_obj, par_names = par_names_list, 
+  obj <- rtmb_model(data = list(Y = Y), code = code_obj, par_names = par_names_list,
                     init = init, fixed = fixed, view = view_vars)
   obj$type <- "irt"
   obj$extra <- list(

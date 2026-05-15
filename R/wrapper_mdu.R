@@ -184,6 +184,71 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
   )
 }
 
+#' Make Best-Worst Pair Indices from Best and Worst Responses
+#'
+#' @description
+#' Converts separate `Best` and `Worst` response matrices into `Y_dif` pair
+#' indices for Best-Worst MDU models. The returned index is the position of the
+#' ordered `(best, worst)` pair among all `C * (C - 1)` pairs generated from
+#' each row of `sets`.
+#'
+#' @param Best Matrix or data frame of best responses (N persons x P tasks).
+#' @param Worst Matrix or data frame of worst responses (N persons x P tasks).
+#' @param sets Matrix or data frame of presented item sets (P tasks x C items).
+#'
+#' @return An integer matrix of pair indices (`Y_dif`).
+#' @export
+make_ydif_from_bw <- function(Best, Worst, sets) {
+  Best <- .as_mdu_integer_matrix(Best, "Best")
+  Worst <- .as_mdu_integer_matrix(Worst, "Worst")
+  sets <- .as_mdu_integer_matrix(sets, "sets")
+
+  if (!identical(dim(Best), dim(Worst))) {
+    stop("'Best' and 'Worst' must have the same dimensions.", call. = FALSE)
+  }
+  if (anyNA(Best) || anyNA(Worst)) {
+    stop("'Best' and 'Worst' cannot contain missing values.", call. = FALSE)
+  }
+
+  N <- nrow(Best)
+  P <- ncol(Best)
+  C <- ncol(sets)
+  if (nrow(sets) != P) {
+    stop("nrow(sets) must be equal to ncol(Best).", call. = FALSE)
+  }
+  if (C < 2) {
+    stop("'sets' must have at least two columns.", call. = FALSE)
+  }
+
+  idx_i <- rep(seq_len(C), each = C)
+  idx_j <- rep(seq_len(C), times = C)
+  mask <- idx_i != idx_j
+  best_rel <- idx_i[mask]
+  worst_rel <- idx_j[mask]
+
+  Y_dif <- matrix(NA_integer_, nrow = N, ncol = P)
+  for (n in seq_len(N)) {
+    for (p in seq_len(P)) {
+      b_rel <- which(sets[p, ] == Best[n, p])
+      w_rel <- which(sets[p, ] == Worst[n, p])
+      if (length(b_rel) != 1L) {
+        stop("Each Best response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
+      }
+      if (length(w_rel) != 1L) {
+        stop("Each Worst response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
+      }
+      if (b_rel == w_rel) {
+        stop("Best and Worst responses cannot be the same item within a task.", call. = FALSE)
+      }
+      Y_dif[n, p] <- which(best_rel == b_rel & worst_rel == w_rel)
+    }
+  }
+
+  colnames(Y_dif) <- colnames(Best)
+  rownames(Y_dif) <- rownames(Best)
+  Y_dif
+}
+
 .as_mdu_integer_matrix <- function(x, name) {
   if (is.data.frame(x)) x <- as.matrix(x)
   if (!is.matrix(x)) {
@@ -273,6 +338,8 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
       Y_best = Y_best,
       Y_dif = Y_dif,
       S = S,
+      Best = NULL,
+      Worst = NULL,
       score_mat = score_mat,
       N = N,
       M = M,
@@ -316,7 +383,7 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
   }
 
   Y_best <- matrix(NA_integer_, N, P)
-  Y_dif <- matrix(NA_integer_, N, P)
+  Y_dif <- if (method == "Best-Worst") make_ydif_from_bw(Best, Worst, S) else matrix(NA_integer_, N, P)
   score_mat <- matrix(0, N, M)
 
   for (n in seq_len(N)) {
@@ -332,15 +399,6 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
 
       if (method == "Best-Worst") {
         w <- Worst[n, p]
-        if (is.na(w)) next
-        w_rel <- which(S[p, ] == w)
-        if (length(w_rel) != 1L) {
-          stop("Each Worst response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
-        }
-        if (b == w) {
-          stop("Best and Worst responses cannot be the same item within a task.", call. = FALSE)
-        }
-        Y_dif[n, p] <- which(best_rel_all == b_rel & worst_rel_all == w_rel)
         score_mat[n, w] <- score_mat[n, w] - 1
       }
     }
@@ -350,6 +408,8 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
     Y_best = Y_best,
     Y_dif = Y_dif,
     S = S,
+    Best = Best,
+    Worst = Worst,
     score_mat = score_mat,
     N = N,
     M = M,
@@ -440,8 +500,10 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
 #'   for `classic()`. The latent coordinates `delta` and `theta` are always
 #'   treated as random effects with normal scale priors, similarly to IRT ability
 #'   parameters.
-#' @param y_range Optional response range. If supplied with the default flat
-#'   prior, `prior_weak()` is used.
+#' @param y_range Optional response range for `method = "rating"`. If supplied
+#'   with the default flat prior, `prior_weak()` is used. For choice methods
+#'   (`"Best"` and `"Best-Worst"`), `prior_weak()` behaves like
+#'   `prior_normal()` because there is no observed rating scale.
 #' @param init Optional named list of initial values.
 #' @param fixed Optional named list of parameter values to fix.
 #' @param view Character vector of parameter names to prioritize in summaries.
@@ -509,8 +571,8 @@ rtmb_mdu <- function(data, ndim = 2,
   }
 
   prior_type <- prior$type
-  if (prior_type == "weak" && is.null(y_range)) {
-    stop("When using prior_weak(), please specify 'y_range' (e.g., y_range = c(1, 7)).", call. = FALSE)
+  if (prior_type == "weak" && method == "rating" && is.null(y_range)) {
+    stop("When using prior_weak() with method = 'rating', please specify 'y_range' (e.g., y_range = c(1, 7)).", call. = FALSE)
   }
 
   mu_alpha_init <- if (method == "rating") mean(Y, na.rm = TRUE) else 0
@@ -522,16 +584,19 @@ rtmb_mdu <- function(data, ndim = 2,
   theta_sd <- prior$theta_sd %||% 1
   lambda_rate <- prior$lambda_rate %||% (1 / 2.5)
 
-  if (prior_type == "weak") {
-    half_range <- diff(y_range) / 2
-    if (!is.finite(half_range) || half_range <= 0) {
+  if (prior_type == "weak" && method == "rating") {
+    y_range <- as.numeric(y_range)
+    if (length(y_range) != 2L || any(!is.finite(y_range)) || y_range[1] >= y_range[2]) {
       stop("'y_range' must be an increasing numeric vector of length 2.", call. = FALSE)
     }
     sd_ratio <- prior$sd_ratio %||% 0.5
-    mu_alpha_init <- mean(y_range)
-    alpha_sd <- half_range
-    sigma_rate <- 1 / (half_range * sd_ratio)
-    beta_rate <- 1 / (prior$max_beta %||% 1)
+    max_beta <- prior$max_beta %||% 1
+    if (!is.finite(sd_ratio) || sd_ratio <= 0) {
+      stop("'prior$sd_ratio' must be a positive finite value.", call. = FALSE)
+    }
+    if (!is.finite(max_beta) || max_beta <= 0) {
+      stop("'prior$max_beta' must be a positive finite value.", call. = FALSE)
+    }
     delta_sd <- prior$delta_sd %||% 1
     theta_sd <- prior$theta_sd %||% 1
   }
@@ -539,7 +604,7 @@ rtmb_mdu <- function(data, ndim = 2,
   if (method == "rating") {
     dat_mdu <- list(
       Y = Y,
-      D = D,
+      ndim = D,
       distance_eps = distance_eps,
       mu_alpha_init = mu_alpha_init,
       alpha_sd = alpha_sd,
@@ -549,11 +614,30 @@ rtmb_mdu <- function(data, ndim = 2,
       theta_sd = theta_sd,
       sigma_alpha_rate = sigma_alpha_rate
     )
+    if (prior_type == "weak") {
+      dat_mdu$y_range <- y_range
+      dat_mdu$sd_ratio <- sd_ratio
+      dat_mdu$max_beta <- max_beta
+    }
 
-    setup_ast <- quote({
-      N <- nrow(Y)
-      M <- ncol(Y)
-    })
+    setup_ast <- if (prior_type == "weak") {
+      quote({
+        N <- nrow(Y)
+        M <- ncol(Y)
+        D <- ndim
+        half_range <- diff(y_range) / 2
+        mu_alpha_init <- mean(y_range)
+        alpha_sd <- half_range
+        sigma_rate <- 1 / (half_range * sd_ratio)
+        beta_rate <- 1 / max_beta
+      })
+    } else {
+      quote({
+        N <- nrow(Y)
+        M <- ncol(Y)
+        D <- ndim
+      })
+    }
 
     param_ast <- if (alpha_type == "random") {
       bquote({
@@ -662,22 +746,54 @@ rtmb_mdu <- function(data, ndim = 2,
     if (is.null(view)) view <- c("alpha", "beta", "sigma", "delta")
   } else {
     dat_mdu <- list(
-      Y_best = choice_data$Y_best,
-      Y_dif = choice_data$Y_dif,
-      S = choice_data$S,
-      N = N,
-      M = M,
-      P = choice_data$P,
-      C = choice_data$C,
-      D = D,
+      sets = choice_data$S,
+      ndim = D,
       distance_eps = distance_eps,
+      mu_alpha_init = mu_alpha_init,
+      alpha_sd = alpha_sd,
       delta_sd = delta_sd,
       theta_sd = theta_sd,
       sigma_alpha_rate = sigma_alpha_rate,
       lambda_rate = lambda_rate
     )
+    if (method == "Best") {
+      dat_mdu$Y_best <- choice_data$Y_best
+    } else if (identical(choice_data$input, "Y_dif")) {
+      dat_mdu$Y_dif <- choice_data$Y_dif
+    } else {
+      dat_mdu$Best <- choice_data$Best
+      dat_mdu$Worst <- choice_data$Worst
+    }
 
-    setup_ast <- quote({})
+    setup_ast <- if (method == "Best") {
+      quote({
+        S <- sets
+        N <- nrow(Y_best)
+        P <- nrow(S)
+        C <- ncol(S)
+        M <- max(S)
+        D <- ndim
+      })
+    } else if (identical(choice_data$input, "Y_dif")) {
+      quote({
+        S <- sets
+        N <- nrow(Y_dif)
+        P <- nrow(S)
+        C <- ncol(S)
+        M <- max(S)
+        D <- ndim
+      })
+    } else {
+      quote({
+        S <- sets
+        N <- nrow(Best)
+        P <- nrow(S)
+        C <- ncol(S)
+        M <- max(S)
+        D <- ndim
+        Y_dif <- make_ydif_from_bw(Best, Worst, S)
+      })
+    }
 
     param_ast <- if (alpha_type == "random") {
       bquote({
@@ -748,10 +864,12 @@ rtmb_mdu <- function(data, ndim = 2,
     if (alpha_type == "random") {
       model_exprs[[length(model_exprs) + 1]] <- quote(alpha_raw ~ centered_multi_normal(1))
       model_exprs[[length(model_exprs) + 1]] <- quote(sigma_alpha ~ exponential(sigma_alpha_rate))
-    } else {
-    model_exprs[[length(model_exprs) + 1]] <- quote(alpha ~ normal(mu_alpha_init, alpha_sd))
+    } else if (prior_type %in% c("normal", "weak")) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(alpha ~ normal(mu_alpha_init, alpha_sd))
     }
-    model_exprs[[length(model_exprs) + 1]] <- quote(lambda ~ exponential(lambda_rate))
+    if (prior_type %in% c("normal", "weak")) {
+      model_exprs[[length(model_exprs) + 1]] <- quote(lambda ~ exponential(lambda_rate))
+    }
     model_ast <- as.call(c(list(as.name("{")), model_exprs))
     code_obj <- list(setup = setup_ast, parameters = param_ast)
     if (!is.null(transform_ast)) code_obj$transform <- transform_ast

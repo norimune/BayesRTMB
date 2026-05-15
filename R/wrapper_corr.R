@@ -406,8 +406,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
 
      setup_exprs <- list(as.name("{"))
-     setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- N)
-     setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- P)
+     setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- nrow(Y))
+     setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- ncol(Y))
+     setup_exprs[[length(setup_exprs) + 1]] <- quote(Y_bar <- colMeans(Y))
+     setup_exprs[[length(setup_exprs) + 1]] <- quote(S_Y <- cov(Y) * (N - 1))
 
      if (prior_type == "weak") {
        if (is.null(y_range)) {
@@ -432,13 +434,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      setup_ast <- as.call(setup_exprs)
 
      param_exprs <- list(as.name("{"))
-     param_exprs[[length(param_exprs) + 1]] <- bquote(mean <- Dim(.(P), random = TRUE))
-     param_exprs[[length(param_exprs) + 1]] <- bquote(sd   <- Dim(.(P), lower = 0))
+     param_exprs[[length(param_exprs) + 1]] <- quote(mean <- Dim(P, random = TRUE))
+     param_exprs[[length(param_exprs) + 1]] <- quote(sd   <- Dim(P, lower = 0))
 
      if (P == 2) {
        param_exprs[[length(param_exprs) + 1]] <- bquote(corr <- Dim(lower = -1, upper = 1))
      } else {
-       param_exprs[[length(param_exprs) + 1]] <- bquote(CF_corr <- Dim(c(.(P), .(P)), type = "CF_corr"))
+       param_exprs[[length(param_exprs) + 1]] <- quote(CF_corr <- Dim(c(P, P), type = "CF_corr"))
      }
      param_ast <- as.call(param_exprs)
 
@@ -494,9 +496,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
      class(mdl_code) <- "rtmb_code"
 
-     dat_list <- list(
-       N = N, P = P, Y_bar = colMeans(Y_mat), S_Y = cov(Y_mat) * (N - 1), P_y = P_y, P_x = P_x
-     )
+     dat_list <- list(Y = Y_mat, P_y = P_y, P_x = P_x)
      if (prior_type == "weak") {
        dat_list$mid_y <- mid_y_val
        dat_list$alpha_prior_sd <- alpha_prior_sd_val

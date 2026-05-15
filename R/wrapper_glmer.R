@@ -1,3 +1,254 @@
+#' Reconstruct an Observation-Level Random-Effect Design Matrix
+#'
+#' @description
+#' Converts the transposed block random-effect design matrix used internally by
+#' `rtmb_glmer()` into an observation-level matrix. This is kept as a small
+#' utility for users who want to work from the block matrix returned by
+#' `make_glmer_re_terms()`.
+#'
+#' @param Zt Transposed block random-effect design matrix.
+#' @param group_idx Integer group index for each observation.
+#' @param N Number of observations. Defaults to `length(group_idx)`.
+#'
+#' @return A matrix with `N` rows and one column per random-effect coefficient.
+#' @export
+make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
+  num_groups <- max(group_idx)
+  num_ranef <- nrow(Zt) / num_groups
+  Z_mat <- matrix(0, nrow = N, ncol = num_ranef)
+  for (i in seq_len(N)) {
+    g <- group_idx[i]
+    Z_mat[i, ] <- Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i]
+  }
+  Z_mat
+}
+
+.deparse_glmer_term <- function(x) {
+  paste(deparse(x), collapse = " ")
+}
+
+.expand_glmer_bars <- function(bars) {
+  expanded_bars <- list()
+  if (length(bars) > 0) {
+    for (bar in bars) {
+      grp_expr <- bar[[3]]
+      term_labels <- attr(terms(as.formula(paste("~", .deparse_glmer_term(grp_expr)))), "term.labels")
+      for (label in term_labels) {
+        new_bar <- bar
+        new_bar[[3]] <- parse(text = label)[[1]]
+        expanded_bars[[length(expanded_bars) + 1]] <- new_bar
+      }
+    }
+  }
+  expanded_bars
+}
+
+.make_glmer_Zt <- function(Z_mat, group_idx, num_groups) {
+  N <- nrow(Z_mat)
+  num_ranef <- ncol(Z_mat)
+  Zt <- matrix(0, nrow = num_groups * num_ranef, ncol = N)
+  for (i in seq_len(N)) {
+    g <- group_idx[i]
+    Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i] <- Z_mat[i, ]
+  }
+  Zt
+}
+
+.select_glmer_setup_data <- function(formula, data, resid_group = NULL, resid_time = NULL) {
+  has_random <- !is.null(findbars(formula))
+  mf_form <- if (has_random) subbars(formula) else formula
+  if (!inherits(mf_form, "formula")) mf_form <- as.formula(mf_form, env = environment(formula))
+  if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
+  if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
+
+  vars <- unique(all.vars(mf_form))
+  missing_vars <- setdiff(vars, names(data))
+  if (length(missing_vars) > 0) {
+    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "), call. = FALSE)
+  }
+  as.data.frame(data)[, vars, drop = FALSE]
+}
+
+#' Prepare GLMM Formula Components
+#'
+#' @description
+#' Builds the response, fixed-effect model matrix, and lme4-style random-effect
+#' design components used by `rtmb_glmer()`. This is the user-facing helper that
+#' reproduces what the wrapper places in the generated `setup` block.
+#'
+#' @param formula lme4-style formula.
+#' @param data Data frame.
+#' @param family Character string of the distribution family.
+#' @param resid_group Optional residual-correlation grouping variable.
+#' @param resid_time Optional residual-correlation time variable.
+#' @param within Optional list for wide-to-long conversion when the response is
+#'   written as `cbind(...)`.
+#' @param factors Optional character vector of variables to treat as factors.
+#'
+#' @return A list containing `Y`, `X`, `trials`, `offset`, `N`, fixed-effect
+#' metadata, and random-effect terms.
+#' @export
+make_glmer_re_terms <- function(formula, data, family = "gaussian",
+                                resid_group = NULL, resid_time = NULL,
+                                within = NULL, factors = NULL) {
+  if (family == "gaussian" && is.call(formula[[2]]) && identical(formula[[2]][[1]], as.name("cbind"))) {
+    processed <- .handle_wide_to_long(formula, data, within, factors)
+    formula <- processed$formula
+    data <- processed$data
+    factors <- processed$factors
+  }
+
+  if (!is.null(factors)) {
+    data <- as.data.frame(data)
+    for (f in factors) {
+      if (f %in% names(data)) data[[f]] <- as.factor(data[[f]])
+    }
+  }
+
+  data <- .select_glmer_setup_data(formula, data, resid_group = resid_group, resid_time = resid_time)
+  has_random <- !is.null(findbars(formula))
+  fixed_form <- if (has_random) nobars(formula) else formula
+  mf_form <- if (has_random) subbars(formula) else formula
+  if (!inherits(fixed_form, "formula")) fixed_form <- as.formula(fixed_form, env = environment(formula))
+  if (!inherits(mf_form, "formula")) mf_form <- as.formula(mf_form, env = environment(formula))
+
+  if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
+  if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
+
+  mf <- model.frame(mf_form, data = data)
+  Y <- model.response(mf)
+  X_full <- model.matrix(fixed_form, mf)
+  X_assign <- attr(X_full, "assign")
+  X_terms <- attr(terms(fixed_form), "term.labels")
+  offset <- model.offset(mf)
+  N <- nrow(mf)
+
+  num_categories <- NULL
+  if (is.matrix(Y)) {
+    if (ncol(Y) == 2 && family == "binomial") {
+      trials <- as.numeric(Y[, 1] + Y[, 2])
+      Y <- as.numeric(Y[, 1])
+    } else if (ncol(Y) == 1) {
+      Y <- as.numeric(Y[, 1])
+      trials <- rep(1, length(Y))
+    } else {
+      stop("Invalid matrix format for the response variable.")
+    }
+  } else {
+    trials <- rep(1, length(Y))
+    if (is.factor(Y)) {
+      Y <- if (family %in% c("bernoulli", "binomial")) as.numeric(Y) - 1 else as.numeric(Y)
+    } else {
+      Y <- as.numeric(Y)
+    }
+  }
+
+  if (family == "ordered") {
+    if (any(!is.finite(Y)) || any(abs(Y - round(Y)) > .Machine$double.eps^0.5) || any(Y < 1)) {
+      stop(
+        "Ordered responses must be category codes 1, 2, ..., K or an ordered/factor response. ",
+        "Check that the response variable is not being centered or otherwise transformed.",
+        call. = FALSE
+      )
+    }
+    Y <- as.integer(round(Y))
+    num_categories <- max(Y)
+  }
+
+  has_intercept <- "(Intercept)" %in% colnames(X_full)
+  if (family == "ordered") has_intercept <- FALSE
+  fixed_colnames <- colnames(X_full)
+  X <- X_full
+  if ("(Intercept)" %in% colnames(X)) {
+    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
+  }
+
+  bars <- if (has_random) .expand_glmer_bars(findbars(formula)) else list()
+  num_bars <- length(bars)
+  suffix <- function(b) if (num_bars > 1) paste0("_", b) else ""
+
+  random_terms <- list()
+  random_data <- list()
+  num_ranef_list <- list()
+  num_groups_list <- list()
+  ranef_names_list <- list()
+  group_labels_list <- list()
+
+  if (num_bars > 0) {
+    for (b in seq_len(num_bars)) {
+      bar <- bars[[b]]
+      re_form <- as.formula(paste("~", .deparse_glmer_term(bar[[2]])))
+      Z_mat <- model.matrix(re_form, mf)
+
+      group_var_label <- .deparse_glmer_term(bar[[3]])
+      vars <- trimws(unlist(strsplit(group_var_label, ":")))
+      if (length(vars) > 1) {
+        flist <- interaction(mf[vars], sep = ":", drop = TRUE)
+      } else {
+        flist <- as.factor(mf[[vars]])
+      }
+      group_idx <- as.integer(flist)
+
+      if (length(group_idx) == 0) {
+        stop("Grouping factor '", group_var_label, "' resulted in an empty vector.")
+      }
+      if (any(is.na(group_idx))) {
+        stop("NA values found in grouping factor '", group_var_label, "'. Check your data.")
+      }
+
+      num_groups <- length(levels(flist))
+      num_ranef <- ncol(Z_mat)
+      Zt <- .make_glmer_Zt(Z_mat, group_idx, num_groups)
+
+      random_data[[paste0("Zt", suffix(b))]] <- Zt
+      random_data[[paste0("group_idx", suffix(b))]] <- group_idx
+      num_ranef_list[[b]] <- num_ranef
+      num_groups_list[[b]] <- num_groups
+
+      r_names <- colnames(Z_mat)
+      r_names[r_names == "(Intercept)"] <- "Int"
+      ranef_names_list[[b]] <- r_names
+      group_labels_list[[b]] <- group_var_label
+
+      random_terms[[b]] <- list(
+        Z = Z_mat,
+        Zt = Zt,
+        group_idx = group_idx,
+        group = flist,
+        group_label = group_var_label,
+        num_groups = num_groups,
+        num_ranef = num_ranef,
+        ranef_names = r_names
+      )
+    }
+  }
+
+  list(
+    Y = Y,
+    X = X,
+    trials = trials,
+    offset = offset,
+    N = N,
+    mf = mf,
+    X_assign = X_assign,
+    X_terms = X_terms,
+    fixed_colnames = fixed_colnames,
+    fixed_names = colnames(X),
+    has_intercept = has_intercept,
+    num_categories = num_categories,
+    random = list(
+      bars = bars,
+      num_bars = num_bars,
+      terms = random_terms,
+      data = random_data,
+      num_ranef_list = num_ranef_list,
+      num_groups_list = num_groups_list,
+      ranef_names_list = ranef_names_list,
+      group_labels_list = group_labels_list
+    )
+  )
+}
+
 #' RTMB-based GLMM wrapper function
 #'
 #' @param formula lme4-style formula (e.g., Y ~ X + (1 | GID))
@@ -257,153 +508,37 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     stop(sprintf("Specifying 'y_range' is required when using prior_%s() with family = '%s'.", prior_type, family))
   }
 
-  if (has_random) {
-    all_vars_form <- subbars(formula)
-    fixed_form <- nobars(formula)
-    bars <- findbars(formula)
-
-    # Expand bars with * or : using terms() expansion
-    expanded_bars <- list()
-    if (length(bars) > 0) {
-      for (bar in bars) {
-        grp_expr <- bar[[3]]
-        # Use terms() to expand a*b into a, b, a:b
-        term_labels <- attr(terms(as.formula(paste("~", deparse(grp_expr)))), "term.labels")
-        for (label in term_labels) {
-          new_bar <- bar
-          new_bar[[3]] <- parse(text = label)[[1]]
-          expanded_bars[[length(expanded_bars) + 1]] <- new_bar
-        }
-      }
-    }
-    bars <- expanded_bars
-    num_bars <- length(bars)
-    suffix <- function(b) if (num_bars > 1) paste0("_", b) else ""
-
-    # Add residual correlation variables to formula for model.frame if needed
-    mf_form <- all_vars_form
-    if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
-    if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
-
-    mf <- model.frame(mf_form, data = data)
-    Y <- model.response(mf)
-    X <- model.matrix(fixed_form, mf)
-    X_assign <- attr(X, "assign")
-    X_terms <- attr(terms(fixed_form), "term.labels")
-    offset <- model.offset(mf)
-    N <- nrow(mf)
-
-    dat_ranef <- list()
-    num_ranef_list <- list()
-    num_groups_list <- list()
-    ranef_names_list <- list()
-    group_labels_list <- list()
-
-    for (b in 1:num_bars) {
-      bar <- bars[[b]]
-      re_form <- as.formula(paste("~", deparse(bar[[2]])))
-
-      Z_mf <- model.matrix(re_form, mf)
-
-      # Handle grouping factor (potentially with interactions)
-      group_var_label <- deparse(bar[[3]])
-      vars <- trimws(unlist(strsplit(group_var_label, ":")))
-
-      if (length(vars) > 1) {
-        flist <- interaction(mf[vars], sep = ":", drop = TRUE)
-      } else {
-        flist <- as.factor(mf[[vars]])
-      }
-      group_idx <- as.integer(flist)
-
-      if (length(group_idx) == 0) {
-        stop("Grouping factor '", group_var_label, "' resulted in an empty vector.")
-      }
-      if (any(is.na(group_idx))) {
-        stop("NA values found in grouping factor '", group_var_label, "'. Check your data.")
-      }
-
-      num_groups <- length(levels(flist))
-      num_ranef <- ncol(Z_mf)
-
-      Zt <- matrix(0, nrow = num_groups * num_ranef, ncol = N)
-      for (i in 1:N) {
-        g <- group_idx[i]
-        Zt[((g - 1) * num_ranef + 1):(g * num_ranef), i] <- Z_mf[i, ]
-      }
-
-      dat_ranef[[paste0("Zt", suffix(b))]] <- Zt
-      dat_ranef[[paste0("group_idx", suffix(b))]] <- group_idx
-
-      num_ranef_list[[b]] <- num_ranef
-      num_groups_list[[b]] <- num_groups
-
-      r_names <- colnames(Z_mf)
-      r_names[r_names == "(Intercept)"] <- "Int"
-      ranef_names_list[[b]] <- r_names
-      group_labels_list[[b]] <- group_var_label
-    }
-  } else {
-    # Add residual correlation variables to formula for model.frame if needed
-    mf_form <- formula
-    if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
-    if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
-
-    mf <- model.frame(mf_form, data)
-    Y <- model.response(mf)
-    X <- model.matrix(formula, mf)
-    X_assign <- attr(X, "assign")
-    X_terms <- attr(terms(formula), "term.labels")
-    offset <- model.offset(mf)
-    N <- nrow(mf)
-    num_bars <- 0
-    dat_ranef <- list()
-    num_ranef_list <- list()
-    num_groups_list <- list()
-    ranef_names_list <- list()
-    group_labels_list <- list()
-  }
+  glmer_terms <- make_glmer_re_terms(
+    formula = formula,
+    data = data,
+    family = family,
+    resid_group = resid_group,
+    resid_time = resid_time,
+    within = within,
+    factors = factors
+  )
+  Y <- glmer_terms$Y
+  X <- glmer_terms$X
+  trials <- glmer_terms$trials
+  X_assign <- glmer_terms$X_assign
+  X_terms <- glmer_terms$X_terms
+  offset <- glmer_terms$offset
+  N <- glmer_terms$N
+  mf <- glmer_terms$mf
+  fixed_colnames <- glmer_terms$fixed_colnames
+  fixed_names <- glmer_terms$fixed_names
+  has_intercept <- glmer_terms$has_intercept
+  ordered_num_categories <- glmer_terms$num_categories
+  bars <- glmer_terms$random$bars
+  num_bars <- glmer_terms$random$num_bars
+  suffix <- function(b) if (num_bars > 1) paste0("_", b) else ""
+  num_ranef_list <- glmer_terms$random$num_ranef_list
+  num_groups_list <- glmer_terms$random$num_groups_list
+  ranef_names_list <- glmer_terms$random$ranef_names_list
+  group_labels_list <- glmer_terms$random$group_labels_list
   
   jzs_V_val <- NULL
-
-  has_intercept <- "(Intercept)" %in% colnames(X)
-  if (family == "ordered") has_intercept <- FALSE
-  fixed_colnames <- colnames(X)
-  if ("(Intercept)" %in% colnames(X)) {
-    X <- X[, colnames(X) != "(Intercept)", drop = FALSE]
-  }
-
-  fixed_names <- colnames(X)
   K_tmp <- ncol(X)
-
-  if (is.matrix(Y)) {
-    if (ncol(Y) == 2 && family == "binomial") {
-      trials <- as.numeric(Y[, 1] + Y[, 2])
-      Y <- as.numeric(Y[, 1])
-    } else if (ncol(Y) == 1) {
-      Y <- as.numeric(Y[, 1])
-      trials <- rep(1, length(Y))
-    } else stop("Invalid matrix format for the response variable.")
-  } else {
-    trials <- rep(1, length(Y))
-    if (is.factor(Y)) {
-      Y <- if (family %in% c("bernoulli", "binomial")) as.numeric(Y) - 1 else as.numeric(Y)
-    } else {
-      Y <- as.numeric(Y)
-    }
-  }
-  ordered_num_categories <- NULL
-  if (family == "ordered") {
-    if (any(!is.finite(Y)) || any(abs(Y - round(Y)) > .Machine$double.eps^0.5) || any(Y < 1)) {
-      stop(
-        "Ordered responses must be category codes 1, 2, ..., K or an ordered/factor response. ",
-        "Check that the response variable is not being centered or otherwise transformed.",
-        call. = FALSE
-      )
-    }
-    Y <- as.integer(round(Y))
-    ordered_num_categories <- max(Y)
-  }
 
   # --- Robust SE Weights ---
   dat_weights <- list(robust_obs_weight = rep(1, N))
@@ -499,8 +634,15 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }, error = function(e) init <- NULL)
   }
 
-  dat <- list(Y = Y, trials = trials, X = X,
+  setup_df <- .select_glmer_setup_data(formula, data, resid_group = resid_group, resid_time = resid_time)
+  class(setup_df) <- c("rtmb_setup_df", class(setup_df))
+  dat <- list(df = setup_df, formula = formula,
               sigma_idx = sigma_idx, num_sigma_groups = num_sigma_groups)
+  if (has_random && !identical(family, "gaussian")) dat$family_name <- family
+  if (has_random && !is.null(resid_group)) dat$resid_group_name <- resid_group
+  if (has_random && !is.null(resid_time)) dat$resid_time_name <- resid_time
+  if (has_random && !is.null(within)) dat$within_info <- within
+  if (has_random && !is.null(factors)) dat$factors_info <- factors
 
   if (!is.null(resid_corr)) {
     if (family != "gaussian") stop("Residual correlation structures are currently only supported for Gaussian models.")
@@ -532,41 +674,93 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     dat$max_T_resid <- max(table(group_resid))
   }
 
-  if (has_random) {
-    dat <- c(dat, dat_ranef)
-  }
   if (!is.null(sigma_idx)) {
     dat$sigma_idx <- sigma_idx
     dat$num_sigma_groups <- num_sigma_groups
   }
-  if (!is.null(offset)) dat$offset <- offset
-  if (family == "ordered") dat$num_categories <- ordered_num_categories
 
   # --- Setup AST ---
   setup_exprs <- list()
-  setup_exprs[[1]] <- quote(N <- length(Y))
-  setup_exprs[[2]] <- quote(K <- ncol(X))
+  Y_setup_raw <- model.response(mf)
   if (has_random) {
+    glmer_re_call_args <- list(formula = as.name("formula"), data = as.name("df"))
+    if (!identical(family, "gaussian")) glmer_re_call_args$family <- as.name("family_name")
+    if (!is.null(resid_group)) glmer_re_call_args$resid_group <- as.name("resid_group_name")
+    if (!is.null(resid_time)) glmer_re_call_args$resid_time <- as.name("resid_time_name")
+    if (!is.null(within)) glmer_re_call_args$within <- as.name("within_info")
+    if (!is.null(factors)) glmer_re_call_args$factors <- as.name("factors_info")
+    setup_exprs[[length(setup_exprs) + 1]] <- as.call(list(as.name("<-"), as.name("res"), as.call(c(list(as.name("make_glmer_re_terms")), glmer_re_call_args))))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- res$Y)
+    if (family == "binomial") {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- res$trials)
+    }
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- res$X)
+    if (!is.null(offset)) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(offset <- res$offset)
+    }
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- res$N)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(K <- ncol(X))
+    if (family == "ordered") {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- res$num_categories)
+    }
+    setup_exprs[[length(setup_exprs) + 1]] <- "# Random-effect design"
     for (b in 1:num_bars) {
       group_idx_name <- as.name(paste0("group_idx", suffix(b)))
-      Zt_name <- as.name(paste0("Zt", suffix(b)))
       Z_mat_name <- as.name(paste0("Z_mat", suffix(b)))
       num_groups_name <- as.name(paste0("num_groups", suffix(b)))
       num_ranef_name <- as.name(paste0("num_ranef", suffix(b)))
 
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_groups_name) <- max(.(group_idx_name)))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- nrow(.(Zt_name)) / .(num_groups_name))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Z_mat_name) <- matrix(0, nrow = N, ncol = .(num_ranef_name)))
-
-      loop_body <- bquote({
-        g <- .(group_idx_name)[i]
-        .(Z_mat_name)[i, ] <- .(Zt_name)[((g - 1) * .(num_ranef_name) + 1):(g * .(num_ranef_name)), i]
-      })
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(for (i in 1:N) .(loop_body))
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(group_idx_name) <- res$random$terms[[.(b)]]$group_idx)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Z_mat_name) <- res$random$terms[[.(b)]]$Z)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_groups_name) <- res$random$terms[[.(b)]]$num_groups)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- res$random$terms[[.(b)]]$num_ranef)
     }
+  } else {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mf <- model.frame(formula, df))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- model.response(mf))
+    if (is.matrix(Y_setup_raw)) {
+      if (ncol(Y_setup_raw) == 2 && family == "binomial") {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- as.numeric(Y[, 1] + Y[, 2]))
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y[, 1]))
+      } else if (ncol(Y_setup_raw) == 1) {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y[, 1]))
+        if (family == "binomial") {
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- rep(1, length(Y)))
+        }
+      }
+    } else {
+      if (is.factor(Y_setup_raw)) {
+        if (family %in% c("bernoulli", "binomial")) {
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y) - 1)
+        } else {
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y))
+        }
+      } else {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y))
+      }
+      if (family == "binomial") {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- rep(1, length(Y)))
+      }
+    }
+    if (family == "ordered") {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.integer(round(Y)))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- max(Y))
+    }
+    if ("(Intercept)" %in% fixed_colnames) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_full <- model.matrix(formula, mf))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- X_full[, colnames(X_full) != "(Intercept)", drop = FALSE])
+    } else {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- model.matrix(formula, mf))
+    }
+    if (!is.null(offset)) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(offset <- model.offset(mf))
+    }
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- length(Y))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(K <- ncol(X))
   }
 
   if (use_weak_info) {
+    setup_exprs[[length(setup_exprs) + 1]] <- "# Prior setting"
     if (family %in% c("bernoulli", "binomial", "ordered")) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- pi / sqrt(3))
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- base_scale * .(prior$max_beta))
@@ -643,6 +837,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   if (use_centering && K_tmp > 0) {
+    setup_exprs[[length(setup_exprs) + 1]] <- "# Centering"
     setup_exprs[[length(setup_exprs) + 1]] <- quote(X_mean <- apply(X, 2, mean))
     if (has_intercept) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_c <- X - rep(1, N) %*% t(X_mean))

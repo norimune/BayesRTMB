@@ -86,7 +86,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   dat_fa <- list(
     Y = Y,
-    K_factors = K,
+    nfactors = K,
     prior_mean_center = prior_mean_center,
     prior_mean_sd = prior_mean_sd,
     prior_sd_rate = prior_sd_rate,
@@ -100,10 +100,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   setup_ast <- quote({
     N <- nrow(Y)
     J <- ncol(Y)
-    # Note: Using colMeans and cov for efficiency in RTMB if possible, 
-    # but follow user's requested syntax for setup block.
-    Y_bar <- apply(Y, 2, mean)
-    S_Y <- cov(Y) * (N - 1)
+    K <- nfactors
+    Y_bar <- colMeans(Y, na.rm = TRUE)
+    S_Y <- cov(Y, use = "pairwise.complete.obs") * (N - 1)
   })
 
   if (is_ssp) {
@@ -139,11 +138,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     param_ast <- quote({
       mean = Dim(dim = J)
-      Lambda_star = Dim(c(J, K_factors))
-      r = Dim(c(J, K_factors), lower = 0.001, upper = 0.999)
-      tau = Dim(c(J, K_factors), lower = 0)
+      Lambda_star = Dim(c(J, K))
+      r = Dim(c(J, K), lower = 0.001, upper = 0.999)
+      tau = Dim(c(J, K), lower = 0)
       sd = Dim(J, lower = 0)
-      CF_Omega = Dim(c(K_factors, K_factors), type = "CF_corr")
+      CF_Omega = Dim(c(K, K), type = "CF_corr")
     })
 
     tran_ast <- quote({
@@ -223,7 +222,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     param_ast <- quote({
       mean <- Dim(dim = J)
-      L_raw <- Dim(dim = c(J, K_factors), type = "lower_tri")
+      L_raw <- Dim(dim = c(J, K), type = "lower_tri")
       sd <- Dim(dim = J, lower = 0)
     })
 

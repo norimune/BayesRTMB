@@ -46,8 +46,10 @@ for `classic()`. The latent coordinates `delta` and `theta` are always
 treated as random effects with normal scale priors, similarly to IRT ability
 parameters.}
 
-\item{y_range}{Optional response range. If supplied with the default flat
-prior, `prior_weak()` is used.}
+\item{y_range}{Optional response range for `method = "rating"`. If supplied
+with the default flat prior, `prior_weak()` is used. For choice methods
+(`"Best"` and `"Best-Worst"`), `prior_weak()` behaves like
+`prior_normal()` because there is no observed rating scale.}
 
 \item{init}{Optional named list of initial values.}
 
