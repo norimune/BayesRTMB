@@ -3,14 +3,18 @@
 #' @param Y Numeric matrix or data frame (N rows x M items).
 #' @param D Number of unfolding dimensions.
 #' @param distance Character; `"squared"` or `"euclidean"`.
+#' @param alpha Character; `"random"` for item-specific alpha initial values or
+#'   `"fix"` for a common alpha initial value.
 #' @param distance_eps Small positive constant added to the distance.
 #' @param min_sigma Minimum initial residual standard deviation.
 #'
 #' @return A named list of initial values.
 #' @export
 make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
+                          alpha = c("random", "fix"),
                           distance_eps = 1e-4, min_sigma = 0.1) {
   distance <- match.arg(distance)
+  alpha <- match.arg(alpha)
   Y <- as.matrix(Y)
   storage.mode(Y) <- "double"
 
@@ -73,7 +77,13 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   init_delta <- init_delta_tri
   init_theta <- sweep(init_theta, 2, colMeans(init_theta), "-")
 
-  init_alpha <- max(Y, na.rm = TRUE)
+  init_alpha <- if (alpha == "random") {
+    a <- colMeans(Y, na.rm = TRUE)
+    a[!is.finite(a)] <- mean(Y, na.rm = TRUE)
+    as.numeric(a)
+  } else {
+    mean(Y, na.rm = TRUE)
+  }
 
   D_sq <- matrix(NA_real_, N, M)
   for (i in seq_len(N)) {
@@ -83,12 +93,18 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   }
   D_used <- if (distance == "squared") D_sq + distance_eps else sqrt(D_sq + distance_eps)
 
-  diff_Y <- init_alpha - Y
-  init_beta <- sum(diff_Y * D_used, na.rm = TRUE) / sum(D_used^2, na.rm = TRUE)
+  alpha_for_mu <- if (length(init_alpha) == M) {
+    matrix(init_alpha, N, M, byrow = TRUE)
+  } else {
+    matrix(init_alpha, N, M)
+  }
+
+  utility_init <- alpha_for_mu - D_used
+  init_beta <- sum(Y * utility_init, na.rm = TRUE) / sum(utility_init^2, na.rm = TRUE)
   if (!is.finite(init_beta) || init_beta <= 0) init_beta <- 1
   init_beta <- max(init_beta, 1e-4)
 
-  mu <- init_alpha - init_beta * D_used
+  mu <- init_beta * utility_init
   init_sigma <- apply(Y - mu, 2, stats::sd, na.rm = TRUE)
   y_sd <- stats::sd(as.numeric(Y), na.rm = TRUE)
   if (!is.finite(y_sd) || y_sd <= 0) y_sd <- 1
@@ -104,6 +120,299 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   )
 }
 
+#' Restore Best and Worst Responses from Best-Worst Pair Indices
+#'
+#' @description
+#' Converts a matrix of Best-Worst pair indices (`Y_dif`) into separate `Best`
+#' and `Worst` data frames, using the presented item-set matrix.
+#'
+#' @param Y_dif Matrix or data frame of pair indices (N persons x P tasks).
+#'   Each value must be an integer from 1 to `C * (C - 1)`, where `C` is the
+#'   number of items per task.
+#' @param sets Matrix or data frame of presented item sets (P tasks x C items).
+#'
+#' @return A list with two data frames: `Best` and `Worst`.
+#' @export
+restore_bw_from_ydif <- function(Y_dif, sets) {
+  Y_dif <- .as_mdu_integer_matrix(Y_dif, "Y_dif")
+  sets <- .as_mdu_integer_matrix(sets, "sets")
+
+  N <- nrow(Y_dif)
+  P <- ncol(Y_dif)
+  C <- ncol(sets)
+
+  if (nrow(sets) != P) {
+    stop("nrow(sets) must be equal to ncol(Y_dif).", call. = FALSE)
+  }
+  if (C < 2) {
+    stop("'sets' must have at least two columns.", call. = FALSE)
+  }
+  if (anyNA(Y_dif)) {
+    stop("'Y_dif' cannot contain missing values.", call. = FALSE)
+  }
+
+  idx_i <- rep(seq_len(C), each = C)
+  idx_j <- rep(seq_len(C), times = C)
+  mask <- idx_i != idx_j
+  best_rel <- idx_i[mask]
+  worst_rel <- idx_j[mask]
+
+  Y_dif_int <- matrix(as.integer(Y_dif), nrow = N, ncol = P)
+  max_pair <- C * (C - 1)
+  if (any(Y_dif_int < 1 | Y_dif_int > max_pair)) {
+    stop("'Y_dif' must contain values from 1 to C * (C - 1).", call. = FALSE)
+  }
+
+  Best <- matrix(NA, nrow = N, ncol = P)
+  Worst <- matrix(NA, nrow = N, ncol = P)
+  for (n in seq_len(N)) {
+    for (p in seq_len(P)) {
+      ans <- Y_dif_int[n, p]
+      Best[n, p] <- sets[p, best_rel[ans]]
+      Worst[n, p] <- sets[p, worst_rel[ans]]
+    }
+  }
+
+  colnames(Best) <- colnames(Y_dif)
+  colnames(Worst) <- colnames(Y_dif)
+  rownames(Best) <- rownames(Y_dif)
+  rownames(Worst) <- rownames(Y_dif)
+
+  list(
+    Best = as.data.frame(Best),
+    Worst = as.data.frame(Worst)
+  )
+}
+
+.as_mdu_integer_matrix <- function(x, name) {
+  if (is.data.frame(x)) x <- as.matrix(x)
+  if (!is.matrix(x)) {
+    stop("'", name, "' must be a matrix or data frame.", call. = FALSE)
+  }
+  x
+}
+
+.normalize_mdu_choice_data <- function(data, sets, method) {
+  if (is.null(sets)) {
+    stop("'sets' must be supplied when method is 'Best' or 'Best-Worst'.", call. = FALSE)
+  }
+  y_dif_input <- method == "Best-Worst" && !is.list(data)
+  if (!is.list(data) && !y_dif_input) {
+    stop("For choice MDU, 'data' must be a list containing 'Best' and optionally 'Worst'.", call. = FALSE)
+  }
+  if (!y_dif_input && is.null(data$Best)) {
+    stop("'data$Best' is required when method is 'Best' or 'Best-Worst'.", call. = FALSE)
+  }
+  if (!y_dif_input && method == "Best-Worst" && is.null(data$Worst)) {
+    stop("'data$Worst' is required when method is 'Best-Worst'.", call. = FALSE)
+  }
+
+  S_raw <- .as_mdu_integer_matrix(sets, "sets")
+  if (anyNA(S_raw)) stop("'sets' cannot contain missing values.", call. = FALSE)
+  P <- nrow(S_raw)
+  C <- ncol(S_raw)
+  if (P < 1 || C < 2) {
+    stop("'sets' must have at least one row and at least two columns.", call. = FALSE)
+  }
+
+  set_values <- as.vector(S_raw)
+  use_names <- is.character(S_raw) || is.factor(S_raw)
+  if (use_names) {
+    item_names <- unique(as.character(set_values))
+    S <- matrix(match(as.character(S_raw), item_names), nrow = P, ncol = C)
+  } else {
+    S <- matrix(as.integer(S_raw), nrow = P, ncol = C)
+    if (any(!is.finite(S)) || any(S < 1)) {
+      stop("'sets' must contain positive item indices or item names.", call. = FALSE)
+    }
+    item_names <- paste0("Item", seq_len(max(S)))
+  }
+  if (any(apply(S, 1, function(z) anyDuplicated(z) > 0L))) {
+    stop("Each row of 'sets' must contain distinct items.", call. = FALSE)
+  }
+  M <- length(item_names)
+
+  idx_i <- rep(seq_len(C), each = C)
+  idx_j <- rep(seq_len(C), times = C)
+  mask <- idx_i != idx_j
+  best_rel_all <- idx_i[mask]
+  worst_rel_all <- idx_j[mask]
+
+  if (y_dif_input) {
+    Y_dif <- .as_mdu_integer_matrix(data, "data")
+    Y_dif <- matrix(as.integer(Y_dif), nrow = nrow(Y_dif), ncol = ncol(Y_dif))
+    if (ncol(Y_dif) != P) {
+      stop("'data' must have the same number of columns as nrow(sets).", call. = FALSE)
+    }
+    if (anyNA(Y_dif)) {
+      stop("'data' cannot contain missing values when supplied as Y_dif.", call. = FALSE)
+    }
+    max_pair <- C * (C - 1)
+    if (any(Y_dif < 1 | Y_dif > max_pair)) {
+      stop(
+        "'data' as Y_dif must contain pair indices from 1 to C * (C - 1).",
+        call. = FALSE
+      )
+    }
+
+    N <- nrow(Y_dif)
+    Y_best <- matrix(NA_integer_, N, P)
+    score_mat <- matrix(0, N, M)
+    for (n in seq_len(N)) {
+      for (p in seq_len(P)) {
+        ans <- Y_dif[n, p]
+        b <- S[p, best_rel_all[ans]]
+        w <- S[p, worst_rel_all[ans]]
+        Y_best[n, p] <- best_rel_all[ans]
+        score_mat[n, b] <- score_mat[n, b] + 1
+        score_mat[n, w] <- score_mat[n, w] - 1
+      }
+    }
+
+    return(list(
+      Y_best = Y_best,
+      Y_dif = Y_dif,
+      S = S,
+      score_mat = score_mat,
+      N = N,
+      M = M,
+      P = P,
+      C = C,
+      item_names = item_names,
+      input = "Y_dif"
+    ))
+  }
+
+  convert_response <- function(x, name) {
+    x <- .as_mdu_integer_matrix(x, paste0("data$", name))
+    if (ncol(x) != P) {
+      stop("'", name, "' must have the same number of columns as nrow(sets).", call. = FALSE)
+    }
+    if (use_names || is.character(x) || is.factor(x)) {
+      res <- matrix(match(as.character(x), item_names), nrow = nrow(x), ncol = ncol(x))
+    } else {
+      res <- matrix(as.integer(x), nrow = nrow(x), ncol = ncol(x))
+    }
+    if (any(!is.na(res) & (res < 1 | res > M))) {
+      stop("'", name, "' contains item indices outside the item range in 'sets'.", call. = FALSE)
+    }
+    res
+  }
+
+  Best <- convert_response(data$Best, "Best")
+  if (anyNA(Best)) {
+    stop("'data$Best' cannot contain missing values for choice MDU.", call. = FALSE)
+  }
+  N <- nrow(Best)
+  Worst <- NULL
+  if (method == "Best-Worst") {
+    Worst <- convert_response(data$Worst, "Worst")
+    if (anyNA(Worst)) {
+      stop("'data$Worst' cannot contain missing values for Best-Worst MDU.", call. = FALSE)
+    }
+    if (!identical(dim(Best), dim(Worst))) {
+      stop("'data$Best' and 'data$Worst' must have the same dimensions.", call. = FALSE)
+    }
+  }
+
+  Y_best <- matrix(NA_integer_, N, P)
+  Y_dif <- matrix(NA_integer_, N, P)
+  score_mat <- matrix(0, N, M)
+
+  for (n in seq_len(N)) {
+    for (p in seq_len(P)) {
+      b <- Best[n, p]
+      if (is.na(b)) next
+      b_rel <- which(S[p, ] == b)
+      if (length(b_rel) != 1L) {
+        stop("Each Best response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
+      }
+      Y_best[n, p] <- b_rel
+      score_mat[n, b] <- score_mat[n, b] + 1
+
+      if (method == "Best-Worst") {
+        w <- Worst[n, p]
+        if (is.na(w)) next
+        w_rel <- which(S[p, ] == w)
+        if (length(w_rel) != 1L) {
+          stop("Each Worst response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
+        }
+        if (b == w) {
+          stop("Best and Worst responses cannot be the same item within a task.", call. = FALSE)
+        }
+        Y_dif[n, p] <- which(best_rel_all == b_rel & worst_rel_all == w_rel)
+        score_mat[n, w] <- score_mat[n, w] - 1
+      }
+    }
+  }
+
+  list(
+    Y_best = Y_best,
+    Y_dif = Y_dif,
+    S = S,
+    score_mat = score_mat,
+    N = N,
+    M = M,
+    P = P,
+    C = C,
+    item_names = item_names,
+    input = if (method == "Best-Worst") "Best-Worst" else "Best"
+  )
+}
+
+.make_init_mdu_choice <- function(score_mat, D, min_lambda = 1e-4) {
+  N <- nrow(score_mat)
+  M <- ncol(score_mat)
+  if (D >= M) {
+    stop("'ndim' must be smaller than the number of items.", call. = FALSE)
+  }
+
+  alpha_score <- colSums(score_mat, na.rm = TRUE)
+  alpha_init <- as.numeric(scale(alpha_score, center = TRUE, scale = FALSE)) * 0.1
+
+  score_centered <- scale(score_mat, center = TRUE, scale = FALSE)
+  score_centered <- t(scale(t(score_centered), center = TRUE, scale = FALSE))
+  score_centered[!is.finite(score_centered)] <- 0
+
+  svd_res <- svd(score_centered, nu = D, nv = D)
+  sv <- pmax(svd_res$d[seq_len(D)], 0)
+  theta_temp <- sweep(svd_res$u[, seq_len(D), drop = FALSE], 2, sqrt(sv), "*")
+  delta_temp <- sweep(svd_res$v[, seq_len(D), drop = FALSE], 2, sqrt(sv), "*")
+
+  qr_obj <- qr(t(delta_temp))
+  Q_rot <- qr.Q(qr_obj)
+  R_rot <- qr.R(qr_obj)
+  sign_diag <- sign(diag(R_rot))
+  sign_diag[sign_diag == 0] <- 1
+  Q_rot <- sweep(Q_rot, 2, sign_diag, "*")
+  delta_rot <- delta_temp %*% Q_rot
+  theta_rot <- theta_temp %*% Q_rot
+
+  delta_sd <- apply(delta_rot, 2, stats::sd, na.rm = TRUE)
+  delta_sd[!is.finite(delta_sd) | delta_sd <= 1e-8] <- 1
+  delta_scaled <- sweep(delta_rot, 2, delta_sd, "/")
+  theta_scaled <- sweep(theta_rot, 2, delta_sd, "/")
+
+  init_delta <- matrix(0, nrow = M, ncol = D)
+  for (d in seq_len(D)) {
+    vals <- delta_scaled[d:M, d]
+    vals <- vals - mean(vals)
+    init_delta[d:M, d] <- vals
+  }
+  init_theta <- sweep(theta_scaled, 2, colMeans(theta_scaled), "-")
+
+  lambda_init <- 1
+  if (!is.finite(lambda_init) || lambda_init < min_lambda) lambda_init <- min_lambda
+
+  list(
+    alpha_raw = alpha_init,
+    delta = init_delta,
+    theta = init_theta,
+    sigma_alpha = 1,
+    lambda = lambda_init
+  )
+}
+
 #' RTMB-based Multidimensional Unfolding Wrapper
 #'
 #' @description
@@ -112,11 +421,20 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
 #' both row scores (`theta`) and item locations (`delta`) in a shared D-dimensional
 #' space.
 #'
-#' @param data Numeric matrix or data frame (N rows x M items).
+#' @param data Numeric matrix or data frame (N rows x M items) for
+#'   `method = "rating"`. For choice methods, a list containing `Best` and,
+#'   for `method = "Best-Worst"`, `Worst`. For `method = "Best-Worst"`, a
+#'   single matrix/data frame is treated as pre-coded `Y_dif` pair indices.
 #' @param ndim Number of unfolding dimensions.
 #' @param distance Character; `"squared"` uses squared Euclidean distance
 #'   (default, often easier for optimization), while `"euclidean"` uses Euclidean
 #'   distance.
+#' @param alpha Character; `"random"` estimates item-specific alpha values as
+#'   random effects (default), while `"fix"` estimates a single common alpha.
+#' @param method Character; `"rating"` for continuous ratings, `"Best"` for
+#'   best-only choice tasks, or `"Best-Worst"` for best-worst choice tasks.
+#' @param sets Matrix or data frame of presented item sets (P tasks x C items)
+#'   for choice methods.
 #' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or
 #'   `prior_weak()`. `prior_flat()` creates a maximum-likelihood model suitable
 #'   for `classic()`. The latent coordinates `delta` and `theta` are always
@@ -131,32 +449,51 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
 #'
 #' @return An `RTMB_Model` object.
 #' @export
-rtmb_mdu <- function(data, ndim = 2, distance = c("squared", "euclidean"),
+rtmb_mdu <- function(data, ndim = 2,
+                     distance = c("squared", "euclidean"),
+                     alpha = c("random", "fix"),
+                     method = c("rating", "Best", "Best-Worst"),
+                     sets = NULL,
                      prior = prior_flat(), y_range = NULL,
                      init = NULL, fixed = NULL, view = NULL,
                      distance_eps = 1e-4) {
 
+  method <- match.arg(method)
   distance <- match.arg(distance)
-  Y <- as.matrix(data)
-  storage.mode(Y) <- "double"
+  alpha_type <- match.arg(alpha)
 
-  if (anyNA(Y)) {
-    stop("rtmb_mdu() does not currently support missing values in 'data'.", call. = FALSE)
-  }
   if (!is.numeric(ndim) || length(ndim) != 1L || ndim < 1) {
     stop("'ndim' must be a positive integer.", call. = FALSE)
   }
   D <- as.integer(ndim)
-  N <- nrow(Y)
-  M <- ncol(Y)
-  if (D >= M) {
-    stop("'ndim' must be smaller than the number of items/columns.", call. = FALSE)
-  }
 
-  item_names <- colnames(Y)
-  if (is.null(item_names)) item_names <- paste0("Item", seq_len(M))
-  person_names <- rownames(Y)
-  if (is.null(person_names)) person_names <- paste0("Person", seq_len(N))
+  if (method == "rating") {
+    Y <- as.matrix(data)
+    storage.mode(Y) <- "double"
+    if (anyNA(Y)) {
+      stop("rtmb_mdu() does not currently support missing values in 'data'.", call. = FALSE)
+    }
+    N <- nrow(Y)
+    M <- ncol(Y)
+    if (D >= M) {
+      stop("'ndim' must be smaller than the number of items/columns.", call. = FALSE)
+    }
+    item_names <- colnames(Y)
+    if (is.null(item_names)) item_names <- paste0("Item", seq_len(M))
+    person_names <- rownames(Y)
+    if (is.null(person_names)) person_names <- paste0("Person", seq_len(N))
+  } else {
+    choice_data <- .normalize_mdu_choice_data(data, sets, method)
+    N <- choice_data$N
+    M <- choice_data$M
+    if (D >= M) {
+      stop("'ndim' must be smaller than the number of items.", call. = FALSE)
+    }
+    item_names <- choice_data$item_names
+    person_source <- if (is.list(data)) data$Best else data
+    person_names <- rownames(.as_mdu_integer_matrix(person_source, "data"))
+    if (is.null(person_names)) person_names <- paste0("Person", seq_len(N))
+  }
   dim_names <- paste0("Dim", seq_len(D))
 
   if (is.null(prior)) prior <- prior_flat()
@@ -176,16 +513,14 @@ rtmb_mdu <- function(data, ndim = 2, distance = c("squared", "euclidean"),
     stop("When using prior_weak(), please specify 'y_range' (e.g., y_range = c(1, 7)).", call. = FALSE)
   }
 
-  y_center <- mean(Y)
-  y_sd <- stats::sd(as.numeric(Y))
-  if (!is.finite(y_sd) || y_sd <= 0) y_sd <- 1
-
-  alpha_center <- 0
+  mu_alpha_init <- if (method == "rating") mean(Y, na.rm = TRUE) else 0
   alpha_sd <- prior$alpha_sd %||% prior$mu_sd %||% 10
+  sigma_alpha_rate <- prior$sigma_alpha_rate %||% (1 / 2.5)
   beta_rate <- prior$beta_rate %||% 0.1
   sigma_rate <- prior$sigma_rate %||% 0.1
   delta_sd <- prior$delta_sd %||% prior$tau_sd %||% 1
   theta_sd <- prior$theta_sd %||% 1
+  lambda_rate <- prior$lambda_rate %||% (1 / 2.5)
 
   if (prior_type == "weak") {
     half_range <- diff(y_range) / 2
@@ -193,7 +528,7 @@ rtmb_mdu <- function(data, ndim = 2, distance = c("squared", "euclidean"),
       stop("'y_range' must be an increasing numeric vector of length 2.", call. = FALSE)
     }
     sd_ratio <- prior$sd_ratio %||% 0.5
-    alpha_center <- mean(y_range)
+    mu_alpha_init <- mean(y_range)
     alpha_sd <- half_range
     sigma_rate <- 1 / (half_range * sd_ratio)
     beta_rate <- 1 / (prior$max_beta %||% 1)
@@ -201,74 +536,263 @@ rtmb_mdu <- function(data, ndim = 2, distance = c("squared", "euclidean"),
     theta_sd <- prior$theta_sd %||% 1
   }
 
-  dat_mdu <- list(
-    Y = Y,
-    D = D,
-    distance_eps = distance_eps,
-    alpha_center = alpha_center,
-    alpha_sd = alpha_sd,
-    beta_rate = beta_rate,
-    sigma_rate = sigma_rate,
-    delta_sd = delta_sd,
-    theta_sd = theta_sd
-  )
+  if (method == "rating") {
+    dat_mdu <- list(
+      Y = Y,
+      D = D,
+      distance_eps = distance_eps,
+      mu_alpha_init = mu_alpha_init,
+      alpha_sd = alpha_sd,
+      beta_rate = beta_rate,
+      sigma_rate = sigma_rate,
+      delta_sd = delta_sd,
+      theta_sd = theta_sd,
+      sigma_alpha_rate = sigma_alpha_rate
+    )
 
-  use_random_coords <- TRUE
-
-  setup_ast <- quote({
-    N <- nrow(Y)
-    M <- ncol(Y)
-  })
-
-  param_ast <- bquote({
-    alpha <- Dim()
-    beta <- Dim(lower = 0)
-    sigma <- Dim(M, lower = 0)
-    delta <- Dim(c(M, D), type = "centered_tri", random = TRUE)
-    theta <- Dim(c(N, D), random = TRUE)
-  })
-
-  loop_ast <- if (distance == "squared") {
-    quote(for (i in 1:N) {
-      for (j in 1:M) {
-        d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
-        mu_ij <- alpha - beta * d_ij
-        Y[i, j] ~ normal(mu_ij, sigma[j])
-      }
+    setup_ast <- quote({
+      N <- nrow(Y)
+      M <- ncol(Y)
     })
+
+    param_ast <- if (alpha_type == "random") {
+      bquote({
+        mu_alpha <- Dim()
+        alpha_raw <- Dim(M, random = TRUE)
+        sigma_alpha <- Dim(1, lower = 0)
+        beta <- Dim(lower = 0)
+        sigma <- Dim(M, lower = 0)
+        delta <- Dim(c(M, D), type = "centered_tri", random = TRUE)
+        theta <- Dim(c(N, D), random = TRUE)
+      })
+    } else {
+      bquote({
+        alpha <- Dim()
+        beta <- Dim(lower = 0)
+        sigma <- Dim(M, lower = 0)
+        delta <- Dim(c(M, D), type = "centered_tri", random = TRUE)
+        theta <- Dim(c(N, D), random = TRUE)
+      })
+    }
+
+    transform_ast <- if (alpha_type == "random") {
+      quote({
+        alpha <- mu_alpha + alpha_raw * sigma_alpha
+      })
+    } else {
+      NULL
+    }
+
+    loop_ast <- if (distance == "squared" && alpha_type == "random") {
+      quote(for (i in 1:N) {
+        for (j in 1:M) {
+          d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
+          mu_ij <- beta * (alpha[j] - d_ij)
+          Y[i, j] ~ normal(mu_ij, sigma[j])
+        }
+      })
+    } else if (distance == "squared") {
+      quote(for (i in 1:N) {
+        for (j in 1:M) {
+          d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
+          mu_ij <- beta * (alpha - d_ij)
+          Y[i, j] ~ normal(mu_ij, sigma[j])
+        }
+      })
+    } else if (alpha_type == "random") {
+      quote(for (i in 1:N) {
+        for (j in 1:M) {
+          d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
+          mu_ij <- beta * (alpha[j] - d_ij)
+          Y[i, j] ~ normal(mu_ij, sigma[j])
+        }
+      })
+    } else {
+      quote(for (i in 1:N) {
+        for (j in 1:M) {
+          d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
+          mu_ij <- beta * (alpha - d_ij)
+          Y[i, j] ~ normal(mu_ij, sigma[j])
+        }
+      })
+    }
+
+    model_exprs <- list(loop_ast)
+    model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ centered_tri_multi_normal(delta_sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(for (d in 1:D) theta[, d] ~ normal(0, theta_sd))
+    if (alpha_type == "random") {
+      model_exprs[[length(model_exprs) + 1]] <- quote(alpha_raw ~ normal(0, 1))
+      model_exprs[[length(model_exprs) + 1]] <- quote(sigma_alpha ~ exponential(sigma_alpha_rate))
+    }
+    if (prior_type %in% c("normal", "weak")) {
+      if (alpha_type == "fix") {
+        model_exprs[[length(model_exprs) + 1]] <- quote(alpha ~ normal(mu_alpha_init, alpha_sd))
+      } else {
+        model_exprs[[length(model_exprs) + 1]] <- quote(mu_alpha ~ normal(mu_alpha_init, alpha_sd))
+      }
+      model_exprs[[length(model_exprs) + 1]] <- quote(beta ~ exponential(beta_rate))
+      model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+    }
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
+    code_obj <- list(setup = setup_ast, parameters = param_ast)
+    if (!is.null(transform_ast)) code_obj$transform <- transform_ast
+    code_obj$model <- model_ast
+    code_obj$env <- parent.frame()
+
+    if (is.null(init)) {
+      init <- make_init_mdu(Y, D, distance = distance, alpha = alpha_type, distance_eps = distance_eps)
+      if (alpha_type == "random") {
+        alpha_init <- init$alpha
+        sigma_alpha_init <- stats::sd(alpha_init, na.rm = TRUE)
+        if (!is.finite(sigma_alpha_init) || sigma_alpha_init <= 1e-8) sigma_alpha_init <- 1
+        init$alpha_raw <- (alpha_init - mean(alpha_init, na.rm = TRUE)) / sigma_alpha_init
+        init$mu_alpha <- mean(alpha_init, na.rm = TRUE)
+        init$sigma_alpha <- sigma_alpha_init
+        init$alpha <- NULL
+      }
+    }
+
+    par_names_list <- list(
+      sigma = item_names,
+      delta = list(item_names, dim_names),
+      theta = list(person_names, dim_names)
+    )
+    if (alpha_type == "random") par_names_list$alpha_raw <- item_names
+
+    if (is.null(view)) view <- c("alpha", "beta", "sigma", "delta")
   } else {
-    quote(for (i in 1:N) {
-      for (j in 1:M) {
-        d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
-        mu_ij <- alpha - beta * d_ij
-        Y[i, j] ~ normal(mu_ij, sigma[j])
+    dat_mdu <- list(
+      Y_best = choice_data$Y_best,
+      Y_dif = choice_data$Y_dif,
+      S = choice_data$S,
+      N = N,
+      M = M,
+      P = choice_data$P,
+      C = choice_data$C,
+      D = D,
+      distance_eps = distance_eps,
+      delta_sd = delta_sd,
+      theta_sd = theta_sd,
+      sigma_alpha_rate = sigma_alpha_rate,
+      lambda_rate = lambda_rate
+    )
+
+    setup_ast <- quote({})
+
+    param_ast <- if (alpha_type == "random") {
+      bquote({
+        delta <- Dim(c(M, D), type = "centered_tri", random = TRUE)
+        theta <- Dim(c(N, D), random = TRUE)
+        alpha_raw <- Dim(M, type = "centered", random = TRUE)
+        sigma_alpha <- Dim(1, lower = 0)
+        lambda <- Dim(1, lower = 0)
+      })
+    } else {
+      bquote({
+        delta <- Dim(c(M, D), type = "centered_tri", random = TRUE)
+        theta <- Dim(c(N, D), random = TRUE)
+        alpha <- Dim()
+        lambda <- Dim(1, lower = 0)
+      })
+    }
+
+    transform_ast <- if (alpha_type == "random") {
+      quote({
+        alpha <- alpha_raw * sigma_alpha
+      })
+    } else {
+      NULL
+    }
+
+    utility_ast <- if (distance == "squared" && alpha_type == "random") {
+      quote(for (m in 1:M) {
+        U[m] <- alpha[m] - squared_distance(theta[n, ], delta[m, ]) - distance_eps
+      })
+    } else if (distance == "squared") {
+      quote(for (m in 1:M) {
+        U[m] <- alpha - squared_distance(theta[n, ], delta[m, ]) - distance_eps
+      })
+    } else if (alpha_type == "random") {
+      quote(for (m in 1:M) {
+        U[m] <- alpha[m] - distance(theta[n, ], delta[m, ]) - distance_eps
+      })
+    } else {
+      quote(for (m in 1:M) {
+        U[m] <- alpha - distance(theta[n, ], delta[m, ]) - distance_eps
+      })
+    }
+
+    likelihood_ast <- if (method == "Best") {
+      bquote(for (n in 1:N) {
+        U <- rep(alpha[1] * 0, M)
+        .(utility_ast)
+        for (p in 1:P) {
+          U_set <- U[S[p, ]]
+          Y_best[n, p] ~ categorical_logit(lambda * U_set)
+        }
+      })
+    } else {
+      bquote(for (n in 1:N) {
+        U <- rep(alpha[1] * 0, M)
+        .(utility_ast)
+        for (p in 1:P) {
+          U_set <- U[S[p, ]]
+          Y_dif[n, p] ~ bw_categorical_logit(U_set, lambda)
+        }
+      })
+    }
+
+    model_exprs <- list(likelihood_ast)
+    model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ centered_tri_multi_normal(delta_sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(for (d in 1:D) theta[, d] ~ normal(0, theta_sd))
+    if (alpha_type == "random") {
+      model_exprs[[length(model_exprs) + 1]] <- quote(alpha_raw ~ centered_multi_normal(1))
+      model_exprs[[length(model_exprs) + 1]] <- quote(sigma_alpha ~ exponential(sigma_alpha_rate))
+    } else {
+    model_exprs[[length(model_exprs) + 1]] <- quote(alpha ~ normal(mu_alpha_init, alpha_sd))
+    }
+    model_exprs[[length(model_exprs) + 1]] <- quote(lambda ~ exponential(lambda_rate))
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
+    code_obj <- list(setup = setup_ast, parameters = param_ast)
+    if (!is.null(transform_ast)) code_obj$transform <- transform_ast
+    code_obj$model <- model_ast
+    code_obj$env <- parent.frame()
+
+    if (is.null(init)) {
+      init <- .make_init_mdu_choice(choice_data$score_mat, D)
+      if (alpha_type == "fix") init <- init[setdiff(names(init), c("alpha_raw", "sigma_alpha"))]
+      if (alpha_type == "fix") init$alpha <- 0
+    }
+
+    par_names_list <- list(
+      delta = list(item_names, dim_names),
+      theta = list(person_names, dim_names)
+    )
+    if (alpha_type == "random") par_names_list$alpha_raw <- item_names
+
+    if (is.null(view)) {
+      view <- if (alpha_type == "random") {
+        c("lambda", "sigma_alpha", "alpha", "delta")
+      } else {
+        c("lambda", "alpha", "delta")
       }
-    })
+    }
   }
 
-  model_exprs <- list(loop_ast)
-  model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ centered_tri_multi_normal(delta_sd))
-  model_exprs[[length(model_exprs) + 1]] <- quote(for (d in 1:D) theta[, d] ~ normal(0, theta_sd))
-  if (prior_type %in% c("normal", "weak")) {
-    model_exprs[[length(model_exprs) + 1]] <- quote(alpha ~ normal(alpha_center, alpha_sd))
-    model_exprs[[length(model_exprs) + 1]] <- quote(beta ~ exponential(beta_rate))
-    model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+  if (!is.null(init)) {
+    if (!is.null(init$phi_raw) && is.null(init$alpha_raw)) {
+      init$alpha_raw <- init$phi_raw
+      init$phi_raw <- NULL
+    }
+    if (!is.null(init$sigma_phi) && is.null(init$sigma_alpha)) {
+      init$sigma_alpha <- init$sigma_phi
+      init$sigma_phi <- NULL
+    }
+    if (alpha_type == "fix") {
+      init$alpha_raw <- NULL
+      init$sigma_alpha <- NULL
+    }
   }
-  model_ast <- as.call(c(list(as.name("{")), model_exprs))
-
-  code_obj <- list(setup = setup_ast, parameters = param_ast, model = model_ast, env = parent.frame())
-
-  if (is.null(init)) {
-    init <- make_init_mdu(Y, D, distance = distance, distance_eps = distance_eps)
-  }
-
-  par_names_list <- list(
-    sigma = item_names,
-    delta = list(item_names, dim_names),
-    theta = list(person_names, dim_names)
-  )
-
-  if (is.null(view)) view <- c("alpha", "beta", "sigma", "delta")
 
   obj <- rtmb_model(
     data = dat_mdu,
@@ -282,8 +806,12 @@ rtmb_mdu <- function(data, ndim = 2, distance = c("squared", "euclidean"),
   obj$extra <- list(
     source = "wrapper",
     prior_type = prior$type,
+    method = method,
+    alpha = alpha_type,
+    input = if (method == "rating") "rating" else choice_data$input,
     distance = distance,
-    marginal = c("delta", "theta")
+    marginal = c("delta", "theta"),
+    sets = if (method == "rating") NULL else choice_data$S
   )
   obj
 }

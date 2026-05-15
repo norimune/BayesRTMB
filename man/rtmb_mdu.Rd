@@ -8,6 +8,9 @@ rtmb_mdu(
   data,
   ndim = 2,
   distance = c("squared", "euclidean"),
+  alpha = c("random", "fix"),
+  method = c("rating", "Best", "Best-Worst"),
+  sets = NULL,
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
@@ -17,13 +20,25 @@ rtmb_mdu(
 )
 }
 \arguments{
-\item{data}{Numeric matrix or data frame (N rows x M items).}
+\item{data}{Numeric matrix or data frame (N rows x M items) for
+`method = "rating"`. For choice methods, a list containing `Best` and,
+for `method = "Best-Worst"`, `Worst`. For `method = "Best-Worst"`, a
+single matrix/data frame is treated as pre-coded `Y_dif` pair indices.}
 
 \item{ndim}{Number of unfolding dimensions.}
 
 \item{distance}{Character; `"squared"` uses squared Euclidean distance
 (default, often easier for optimization), while `"euclidean"` uses Euclidean
 distance.}
+
+\item{alpha}{Character; `"random"` estimates item-specific alpha values as
+random effects (default), while `"fix"` estimates a single common alpha.}
+
+\item{method}{Character; `"rating"` for continuous ratings, `"Best"` for
+best-only choice tasks, or `"Best-Worst"` for best-worst choice tasks.}
+
+\item{sets}{Matrix or data frame of presented item sets (P tasks x C items)
+for choice methods.}
 
 \item{prior}{Prior configuration: `prior_flat()`, `prior_normal()`, or
 `prior_weak()`. `prior_flat()` creates a maximum-likelihood model suitable

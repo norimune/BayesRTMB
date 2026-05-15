@@ -8,6 +8,7 @@ make_init_mdu(
   Y,
   D,
   distance = c("squared", "euclidean"),
+  alpha = c("random", "fix"),
   distance_eps = 1e-04,
   min_sigma = 0.1
 )
@@ -18,6 +19,9 @@ make_init_mdu(
 \item{D}{Number of unfolding dimensions.}
 
 \item{distance}{Character; `"squared"` or `"euclidean"`.}
+
+\item{alpha}{Character; `"random"` for item-specific alpha initial values or
+`"fix"` for a common alpha initial value.}
 
 \item{distance_eps}{Small positive constant added to the distance.}
 

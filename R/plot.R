@@ -396,6 +396,173 @@ plot_forest <- function(x, prob = 0.95,
   axis(2, at = y_pos, labels = parnames, las = 1, tick = FALSE, line = -0.5)
 }
 
+#' Plot Multidimensional Unfolding Configuration
+#'
+#' @description
+#' Draws an item-person map for multidimensional unfolding models. Item
+#' locations are shown as labels, optional blue circles show item alpha/radius
+#' values, and the respondent locations are summarized by a two-
+#' dimensional kernel density contour.
+#'
+#' @param delta Item coordinate matrix (M items x D dimensions), or a fitted
+#'   object with an `EAP()` method.
+#' @param theta Person coordinate matrix (N persons x D dimensions). If `delta`
+#'   is a fitted object and `theta` is `NULL`, it is extracted from the fit.
+#' @param item_alpha Optional item alpha vector used for item radii. If `delta`
+#'   is a fitted object and `item_alpha` is `NULL`, `alpha` is extracted when
+#'   available.
+#' @param phi Deprecated alias for `item_alpha`.
+#' @param dims Integer vector of length 2 specifying dimensions to plot.
+#' @param radius Numeric plot radius. If `NULL`, a radius is chosen from the
+#'   coordinates.
+#' @param signs Numeric vector of length 2. Use `-1` to flip an axis.
+#' @param item_labels Optional item labels. Defaults to row names or item
+#'   numbers.
+#' @param show_phi Logical; whether to draw circles based on item alpha.
+#' @param show_density Logical; whether to draw density contours for `theta`.
+#' @param circle_scale Numeric multiplier for item radii.
+#' @param alpha Circle transparency.
+#' @param contour_n Grid size passed to `MASS::kde2d()`.
+#' @param distance Character; `"auto"`, `"squared"`, or `"euclidean"`. Used
+#'   to transform item alpha values into plotted radii. `"auto"` uses the fit's
+#'   stored distance when available.
+#' @param point_estimate Character; point estimate used when `delta` is a fit
+#'   object. Passed to `estimate()`.
+#' @param main,xlab,ylab Plot title and axis labels.
+#' @param ... Additional arguments passed to `plot()`.
+#'
+#' @return Invisibly returns a list with plotted `delta`, `theta`, and
+#'   `item_alpha`.
+#' @export
+plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
+                     dims = c(1, 2), radius = NULL, signs = c(1, 1),
+                     item_labels = NULL, show_phi = TRUE, show_density = TRUE,
+                     circle_scale = 1, alpha = 0.2, contour_n = 60,
+                     distance = c("auto", "squared", "euclidean"),
+                     point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
+                     main = "MDU Configuration", xlab = NULL, ylab = NULL, ...) {
+  point_estimate <- match.arg(point_estimate)
+  distance <- match.arg(distance)
+
+  if (!is.matrix(delta) && is.function(delta$estimate)) {
+    fit <- delta
+    if (distance == "auto") distance <- fit$extra$distance %||% "squared"
+    est_type <- switch(
+      point_estimate,
+      EAP = "EAP",
+      mean = "mean",
+      MAP = "MAP",
+      marginal_map = "marginal_map",
+      joint_map = "joint_map"
+    )
+    est <- fit$estimate(type = est_type, pars = "all", drop = FALSE)
+    if (is.null(est$delta)) {
+      stop("The fitted object does not contain 'delta'.", call. = FALSE)
+    }
+    delta <- est$delta
+    if (is.null(theta)) theta <- est$theta
+    if (is.null(item_alpha)) item_alpha <- est$alpha
+    if (is.null(item_alpha) && is.null(phi)) phi <- est$phi
+  }
+  if (distance == "auto") distance <- "squared"
+  if (is.null(item_alpha) && !is.null(phi)) item_alpha <- phi
+
+  delta <- as.matrix(delta)
+  if (is.null(theta)) {
+    stop("'theta' must be supplied unless 'delta' is a fitted object containing theta.", call. = FALSE)
+  }
+  theta <- as.matrix(theta)
+
+  D <- ncol(delta)
+  if (length(dims) != 2L || any(dims < 1) || any(dims > D)) {
+    stop("'dims' must be an integer vector of length 2 within the coordinate dimensions.", call. = FALSE)
+  }
+  if (ncol(theta) < max(dims)) {
+    stop("'theta' does not have enough columns for the requested 'dims'.", call. = FALSE)
+  }
+  if (length(signs) != 2L || any(!signs %in% c(-1, 1))) {
+    stop("'signs' must be a numeric vector of length 2 containing only -1 or 1.", call. = FALSE)
+  }
+
+  x_delta <- signs[1] * delta[, dims[1]]
+  y_delta <- signs[2] * delta[, dims[2]]
+  x_theta <- signs[1] * theta[, dims[1]]
+  y_theta <- signs[2] * theta[, dims[2]]
+
+  if (is.null(item_labels)) {
+    item_labels <- rownames(delta)
+    if (is.null(item_labels)) item_labels <- seq_len(nrow(delta))
+  }
+  if (length(item_labels) != nrow(delta)) {
+    stop("'item_labels' must have the same length as nrow(delta).", call. = FALSE)
+  }
+
+  finite_coords <- c(x_delta, y_delta, x_theta, y_theta)
+  finite_coords <- finite_coords[is.finite(finite_coords)]
+  if (is.null(radius)) {
+    radius <- max(abs(finite_coords), na.rm = TRUE)
+    if (!is.finite(radius) || radius <= 0) radius <- 1
+    radius <- radius * 1.1
+  }
+
+  if (is.null(xlab)) xlab <- paste0("Dim ", dims[1])
+  if (is.null(ylab)) ylab <- paste0("Dim ", dims[2])
+
+  old_par <- par(no.readonly = TRUE)
+  on.exit(par(old_par))
+  par(pty = "s")
+
+  plot(
+    c(-radius, radius), c(-radius, radius),
+    type = "n", asp = 1, xlab = xlab, ylab = ylab, main = main, ...
+  )
+  abline(h = 0, v = 0, col = "gray85", lty = 3)
+
+  if (isTRUE(show_density)) {
+    ok <- is.finite(x_theta) & is.finite(y_theta)
+    if (sum(ok) > 5 && stats::sd(x_theta[ok]) > 0 && stats::sd(y_theta[ok]) > 0) {
+      knl <- MASS::kde2d(
+        x_theta[ok], y_theta[ok],
+        n = contour_n,
+        lims = c(-radius, radius, -radius, radius)
+      )
+      contour(knl, add = TRUE, drawlabels = TRUE, col = "gray25", lwd = 0.8)
+    }
+  }
+
+  if (isTRUE(show_phi) && !is.null(item_alpha)) {
+    item_alpha <- as.numeric(item_alpha)
+    if (length(item_alpha) == 1L) {
+      item_radius <- rep(0, nrow(delta))
+    } else if (length(item_alpha) == nrow(delta)) {
+      item_radius <- pmax(item_alpha - min(item_alpha, na.rm = TRUE), 0)
+      if (distance == "squared") item_radius <- sqrt(item_radius)
+    } else {
+      stop("'item_alpha' must have length 1 or the same length as nrow(delta).", call. = FALSE)
+    }
+    max_item_radius <- max(item_radius, na.rm = TRUE)
+    if (is.finite(max_item_radius) && max_item_radius > 0) {
+      item_radius <- item_radius / max_item_radius * radius * 0.35 * circle_scale
+      circle_col <- grDevices::rgb(0.1, 0.25, 0.9, alpha = alpha)
+      angle <- seq(0, 2 * pi, length.out = 160)
+      for (m in seq_along(item_radius)) {
+        if (is.finite(item_radius[m]) && item_radius[m] > 0) {
+          lines(
+            x_delta[m] + item_radius[m] * cos(angle),
+            y_delta[m] + item_radius[m] * sin(angle),
+            col = circle_col
+          )
+        }
+      }
+    }
+  }
+
+  points(x_theta, y_theta, pch = 16, col = grDevices::rgb(0, 0, 0, 0.12), cex = 0.45)
+  text(x_delta, y_delta, labels = item_labels, font = 2, cex = 0.9)
+
+  invisible(list(delta = cbind(x_delta, y_delta), theta = cbind(x_theta, y_theta), item_alpha = item_alpha))
+}
+
 #' Plot pairs for posterior samples
 #'
 #' Draw a scatterplot matrix to examine posterior correlations between parameters.
