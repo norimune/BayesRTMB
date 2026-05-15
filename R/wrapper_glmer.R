@@ -77,7 +77,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     # 1. Grand Mean Centering
     if (!is.null(gmc)) {
       target_gmc <- if (identical(gmc, "all")) {
-        names(data_centered)[sapply(data_centered, is.numeric)]
+        vars_in_fixed <- all.vars(nobars(formula))
+        vars_in_fixed <- vars_in_fixed[-1]
+        vars_in_fixed <- vars_in_fixed[vars_in_fixed %in% names(data_centered)]
+        vars_in_fixed[vapply(data_centered[vars_in_fixed], is.numeric, logical(1))]
       } else {
         gmc
       }
@@ -385,7 +388,21 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     trials <- rep(1, length(Y))
     if (is.factor(Y)) {
       Y <- if (family %in% c("bernoulli", "binomial")) as.numeric(Y) - 1 else as.numeric(Y)
-    } else Y <- as.numeric(Y)
+    } else {
+      Y <- as.numeric(Y)
+    }
+  }
+  ordered_num_categories <- NULL
+  if (family == "ordered") {
+    if (any(!is.finite(Y)) || any(abs(Y - round(Y)) > .Machine$double.eps^0.5) || any(Y < 1)) {
+      stop(
+        "Ordered responses must be category codes 1, 2, ..., K or an ordered/factor response. ",
+        "Check that the response variable is not being centered or otherwise transformed.",
+        call. = FALSE
+      )
+    }
+    Y <- as.integer(round(Y))
+    ordered_num_categories <- max(Y)
   }
 
   # --- Robust SE Weights ---
@@ -523,7 +540,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     dat$num_sigma_groups <- num_sigma_groups
   }
   if (!is.null(offset)) dat$offset <- offset
-  if (family == "ordered") dat$num_categories <- length(unique(Y))
+  if (family == "ordered") dat$num_categories <- ordered_num_categories
 
   # --- Setup AST ---
   setup_exprs <- list()

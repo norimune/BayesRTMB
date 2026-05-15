@@ -19,11 +19,13 @@
 
 .resolve_classic_settings <- function(self, private, df_method = "auto") {
   type <- self$type %||% "generic"
+  has_random_parameters <- any(vapply(self$par_list, function(p) isTRUE(p$random), logical(1)))
 
   if (is.numeric(df_method)) {
     use_reml <- type %in% c("lm", "lmer", "ttest", "corr", "mediation")
     return(list(
       use_reml = use_reml,
+      use_laplace = use_reml || has_random_parameters,
       df_method = "numeric",
       df_value = as.numeric(df_method),
       target_vars = if (use_reml && !is.null(self$extra$marginal)) self$extra$marginal else character(0),
@@ -74,6 +76,7 @@
 
   list(
     use_reml = use_reml,
+    use_laplace = use_reml || has_random_parameters,
     df_method = df_method,
     df_value = NULL,
     target_vars = target_vars,
@@ -114,7 +117,7 @@
   model_to_fit <- self
 
   raw <- model_to_fit$.__enclos_env__$private$.fit_rtmb(
-    laplace = settings$use_reml,
+    laplace = settings$use_laplace,
     init = NULL,
     num_estimate = 1,
     control = list(),
@@ -155,7 +158,7 @@
     par_unc = raw$par_unc,
     vcov_unc = raw$vcov_unc,
     ci_method = se_method,
-    laplace = settings$use_reml,
+    laplace = settings$use_laplace,
     map = raw$map,
     test_results = comp$test_results,
     view = view,
@@ -368,7 +371,7 @@
     }
     
     # Handle random effects in samples (Laplace)
-    if (settings$use_reml && length(idx_ran_full) > 0) {
+    if (settings$use_laplace && length(idx_ran_full) > 0) {
       for (ridx in idx_ran_full) {
         u_samples_mat[, ridx] <- rnorm(num_samples, mean = unc_est_vec[ridx], sd = unc_se_vec[ridx])
       }
@@ -531,7 +534,7 @@
   }
   
   df_fixed <- build_summary_df(FALSE)
-  df_random <- if (settings$use_reml) build_summary_df(TRUE) else NULL
+  df_random <- if (settings$use_laplace) build_summary_df(TRUE) else NULL
 
   # 4. Transform and Generate Tables
   tran_list <- if (!is.null(self$transform)) tryCatch(self$transform(self$data, con_est_list), error = function(e) NULL) else NULL

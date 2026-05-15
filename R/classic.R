@@ -781,7 +781,9 @@ Classic_Fit <- R6::R6Class(
            res$truncated <- FALSE
         }
 
-        is_asymptotic <- (!is.null(self$model$type) && self$model$type %in% c("table", "loglinear", "fa", "irt", "mixture")) || inherits(self$model, "rtmb_loglinear")
+        is_asymptotic <- (!is.null(self$model$type) &&
+                            self$model$type %in% c("glm", "glmer", "table", "loglinear", "fa", "irt", "mixture")) ||
+          inherits(self$model, "rtmb_loglinear")
 
         # --- Add t/z-test results for classic mode ---
         if (!is.null(self$sd_rep)) {

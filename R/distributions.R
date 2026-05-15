@@ -400,8 +400,9 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
     return(max_val + log(exp(v - max_val) + exp(-max_val)))
   }
   log1m_exp <- function(v) {
-    # Robust implementation to avoid NaN when v >= 0 due to numerical precision
-    v <- pmin(v, -1e-7)
+    # In ordered-logistic middle categories, v = log(F_lower) - log(F_upper)
+    # is non-positive by construction. Avoid pmin()/ifelse() here because
+    # comparisons on RTMB AD types are unsafe.
     return(log(-expm1(v)))
   }
 
@@ -425,10 +426,12 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
       lp <- lp - sum(log1p_exp(cutpoints[K - 1] - eta_vec[idx_K]))
     }
     if (length(idx_mid) > 0) {
-      y_mid <- x[idx_mid]
-      A <- -log1p_exp(-(cutpoints[y_mid] - eta_vec[idx_mid]))
-      B <- -log1p_exp(-(cutpoints[y_mid - 1] - eta_vec[idx_mid]))
-      lp <- lp + sum(A + log1m_exp(B - A))
+      for (ii in idx_mid) {
+        y <- as.integer(x[ii])
+        A <- -log1p_exp(-(cutpoints[y] - eta_vec[ii]))
+        B <- -log1p_exp(-(cutpoints[y - 1L] - eta_vec[ii]))
+        lp <- lp + A + log1m_exp(B - A)
+      }
     }
     return(lp)
   } else {
@@ -441,10 +444,12 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
       res[idx_K] <- -log1p_exp(cutpoints[K - 1] - eta_vec[idx_K])
     }
     if (length(idx_mid) > 0) {
-      y_mid <- x[idx_mid]
-      A <- -log1p_exp(-(cutpoints[y_mid] - eta_vec[idx_mid]))
-      B <- -log1p_exp(-(cutpoints[y_mid - 1] - eta_vec[idx_mid]))
-      res[idx_mid] <- A + log1m_exp(B - A)
+      for (ii in idx_mid) {
+        y <- as.integer(x[ii])
+        A <- -log1p_exp(-(cutpoints[y] - eta_vec[ii]))
+        B <- -log1p_exp(-(cutpoints[y - 1L] - eta_vec[ii]))
+        res[ii] <- A + log1m_exp(B - A)
+      }
     }
     return(res)
   }
