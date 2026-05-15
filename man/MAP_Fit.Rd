@@ -26,7 +26,7 @@ An R6 class storing optimization results from maximum a posteriori
 
 \item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw unconstrained values).}
 
-\item{\code{ci_method}}{Method used for CI estimation ("wald", "profile", or "sampling").}
+\item{\code{ci_method}}{Method used for CI estimation ("wald", "sampling", or "none").}
 
 \item{\code{objective}}{RTMB objective function object.}
 
@@ -186,7 +186,7 @@ Create a new `MAP_Fit` object.
 
 \item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
 
-\item{\code{ci_method}}{Method used for CI estimation ("wald" or "sampling").}
+\item{\code{ci_method}}{Method used for CI estimation ("wald", "sampling", or "none").}
 
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 

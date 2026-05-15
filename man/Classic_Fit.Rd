@@ -36,7 +36,7 @@ An R6 class representing the results of a classical (frequentist) estimation.
 
 \item{\code{objective}}{Final objective value.}
 
-\item{\code{log_ml}}{Log marginal likelihood.}
+\item{\code{log_lik}}{Log-likelihood.}
 
 \item{\code{convergence}}{Convergence code.}
 
@@ -86,11 +86,12 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-compute_robust}{\code{Classic_Fit$compute_robust()}}
 \item \href{#method-Classic_Fit-bootstrap}{\code{Classic_Fit$bootstrap()}}
 \item \href{#method-Classic_Fit-compute_bootstrap}{\code{Classic_Fit$compute_bootstrap()}}
-\item \href{#method-Classic_Fit-.update_fit_with_vcov}{\code{Classic_Fit$.update_fit_with_vcov()}}
 \item \href{#method-Classic_Fit-AIC}{\code{Classic_Fit$AIC()}}
 \item \href{#method-Classic_Fit-BIC}{\code{Classic_Fit$BIC()}}
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-logLik}{\code{Classic_Fit$logLik()}}
+\item \href{#method-Classic_Fit-EAP}{\code{Classic_Fit$EAP()}}
+\item \href{#method-Classic_Fit-MAP}{\code{Classic_Fit$MAP()}}
 \item \href{#method-Classic_Fit-summary}{\code{Classic_Fit$summary()}}
 \item \href{#method-Classic_Fit-anova}{\code{Classic_Fit$anova()}}
 \item \href{#method-Classic_Fit-lsmeans}{\code{Classic_Fit$lsmeans()}}
@@ -103,8 +104,6 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
@@ -144,7 +143,7 @@ Create a new `Classic_Fit` object.
   par_vec = NULL,
   par = NULL,
   objective = NULL,
-  log_ml = NULL,
+  log_lik = NULL,
   convergence = NULL,
   sd_rep = NULL,
   df_fixed = NULL,
@@ -164,7 +163,7 @@ Create a new `Classic_Fit` object.
   view = NULL,
   fit = NULL,
   vcov = NULL,
-  df_method = "bw",
+  df_method = "auto",
   idx_fix_active = NULL,
   show_df = TRUE,
   ...
@@ -182,7 +181,7 @@ Create a new `Classic_Fit` object.
 
 \item{\code{objective}}{Final objective value.}
 
-\item{\code{log_ml}}{Log marginal likelihood.}
+\item{\code{log_lik}}{Log-likelihood.}
 
 \item{\code{convergence}}{Convergence code.}
 
@@ -347,16 +346,6 @@ Self.
 }
 }
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Classic_Fit-.update_fit_with_vcov"></a>}}
-\if{latex}{\out{\hypertarget{method-Classic_Fit-.update_fit_with_vcov}{}}}
-\subsection{Method \code{.update_fit_with_vcov()}}{
-(Internal) Update fit data frame with current vcov.
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$.update_fit_with_vcov()}\if{html}{\out{</div>}}
-}
-
-}
-\if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-AIC"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-AIC}{}}}
 \subsection{Method \code{AIC()}}{
@@ -402,6 +391,40 @@ Get the Log-Likelihood of the fitted model.
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$logLik()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+EAP estimates are not available for Classic_Fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$EAP(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Ignored.}
+}
+\if{html}{\out{</div>}}
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+MAP estimates are not available for Classic_Fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$MAP(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Ignored.}
+}
+\if{html}{\out{</div>}}
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-summary"></a>}}

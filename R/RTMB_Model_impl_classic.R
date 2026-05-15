@@ -141,7 +141,7 @@
     par_vec = unlist(raw$par, use.names = FALSE),
     par = raw$par,
     objective = raw$opt$objective,
-    log_ml = comp$log_ml,
+    log_lik = comp$log_lik,
     convergence = raw$opt$convergence,
     sd_rep = raw$sd_rep,
     df_fixed = comp$df_fixed,
@@ -649,19 +649,9 @@
     if (settings$use_reml) idx_fix_active else NULL
   )
 
-  # 5. Log Marginal Likelihood and Vcov
-  log_ml <- NA
-  if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !isTRUE(raw$fallback_needed)) {
-    eig <- tryCatch(eigen(sd_rep$cov.fixed, symmetric = TRUE), error = function(e) NULL)
-    if (!is.null(eig) && all(eig$values > 1e-8)) {
-      lj_missing <- if (settings$use_reml) {
-        calc_log_jacobian(unc_est_list, self$par_list, FALSE) - calc_log_jacobian(unc_est_list, self$par_list, TRUE)
-      } else {
-        calc_log_jacobian(unc_est_list, self$par_list, FALSE)
-      }
-      log_ml <- -opt$objective + lj_missing + (length(opt$par) / 2) * log(2 * pi) + 0.5 * sum(log(eig$values))
-    }
-  }
+  # 5. Log-likelihood and Vcov
+  log_lik <- -opt$objective
+
 
   # Build V_fixed_full (vcov)
   if (is.null(df_fixed) || nrow(df_fixed) == 0) {
@@ -703,7 +693,7 @@
     generate = gq_list,
     se_samples = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
     vcov = V_fixed_full,
-    log_ml = log_ml,
+    log_lik = log_lik,
     test_results = test_results
   )
 }

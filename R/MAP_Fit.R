@@ -7,7 +7,7 @@
 #' @field par_vec Parameter vector on the unconstrained scale (constrained values unlisted).
 #' @field par Parameter list on the constrained scale.
 #' @field par_unc Parameter vector on the unconstrained scale (raw unconstrained values).
-#' @field ci_method Method used for CI estimation ("wald", "profile", or "sampling").
+#' @field ci_method Method used for CI estimation ("wald", "sampling", or "none").
 #' @field objective RTMB objective function object.
 #' @field log_ml Log marginal likelihood or related model criterion.
 #' @field convergence Optimizer convergence code.
@@ -90,7 +90,7 @@ MAP_Fit <- R6::R6Class(
     #' @param generate List of generated quantities maintaining their original dimensions.
     #' @param se_samples List of simulated samples for standard error estimation.
     #' @param par_unc Parameter vector on the unconstrained scale (raw values).
-    #' @param ci_method Method used for CI estimation ("wald" or "sampling").
+    #' @param ci_method Method used for CI estimation ("wald", "sampling", or "none").
     #' @param laplace Logical; whether Laplace approximation was used.
     #' @param vcov_unc Variance-covariance matrix of parameters in unconstrained space.
     #' @param map List; the parameter mapping used.
@@ -331,7 +331,6 @@ MAP_Fit <- R6::R6Class(
 
       ci_label <- "95% Wald CI"
       if (!is.null(self$ci_method)) {
-        if (self$ci_method == "profile") ci_label <- "95% Profile Likelihood CI"
         if (self$ci_method == "sampling") ci_label <- "95% Sampling-based CI"
       }
       cat(sprintf("\nPoint Estimates and %s:\n", ci_label))

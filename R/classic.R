@@ -15,7 +15,7 @@
 #' @field view Character vector of parameter names to prioritize in summary.
 #' @field par_vec Numeric vector of parameter estimates.
 #' @field objective Final objective value.
-#' @field log_ml Log marginal likelihood.
+#' @field log_lik Log-likelihood.
 #' @field convergence Convergence code.
 #' @field sd_rep TMB sdreport object.
 #' @field df_fixed Dataframe of fixed effects results.
@@ -57,7 +57,7 @@ Classic_Fit <- R6::R6Class(
       stop("Parameter not found: ", target)
     },
     objective = NULL,
-    log_ml = NULL,
+    log_lik = NULL,
     convergence = NULL,
     sd_rep = NULL,
     df_fixed = NULL,
@@ -78,7 +78,7 @@ Classic_Fit <- R6::R6Class(
     map = NULL,
     cluster = NULL,
     view = NULL,
-    df_method = NULL,
+    df_method = "auto",
     idx_fix_active = NULL,
     show_df = TRUE,
     robust_type = NULL,
@@ -88,7 +88,7 @@ Classic_Fit <- R6::R6Class(
     #' @param par_vec Numeric vector of parameter estimates.
     #' @param par List of parameter estimates.
     #' @param objective Final objective value.
-    #' @param log_ml Log marginal likelihood.
+    #' @param log_lik Log-likelihood.
     #' @param convergence Convergence code.
     #' @param sd_rep TMB sdreport object.
     #' @param df_fixed Dataframe of fixed effects results.
@@ -112,18 +112,25 @@ Classic_Fit <- R6::R6Class(
     #' @param idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
     #' @param show_df Logical; whether to display degrees of freedom in the summary output.
     #' @param ... Additional arguments passed to the constructor.
-    initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_ml = NULL,
+    initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_lik = NULL,
                           convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
                           df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
                           vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL,
                           test_results = list(), view = NULL, fit = NULL, vcov = NULL, 
-                          df_method = "bw", idx_fix_active = NULL, show_df = TRUE, ...) {
+                          df_method = "auto", idx_fix_active = NULL, show_df = TRUE, ...) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- if (!is.null(par)) par else if (!is.null(df_fixed)) self$.construct_par_list(df_fixed) else if (!is.null(fit)) self$.construct_par_list(fit) else NULL
       self$objective <- objective
-      self$log_ml <- log_ml
+      
+      # Handle log_ml fallback from ...
+      dots <- list(...)
+      if (is.null(log_lik) && !is.null(dots$log_ml)) {
+        log_lik <- dots$log_ml
+      }
+      self$log_lik <- log_lik
+      
       self$convergence <- convergence
       self$sd_rep <- sd_rep
       self$df_fixed <- if (!is.null(df_fixed)) df_fixed else fit
@@ -147,7 +154,6 @@ Classic_Fit <- R6::R6Class(
       self$df_method <- df_method
       self$idx_fix_active <- idx_fix_active
       self$show_df <- show_df
-      self$robust_type <- NULL
     },
 
     #' @description Compute robust standard errors (sandwich estimator).
@@ -204,98 +210,46 @@ Classic_Fit <- R6::R6Class(
     #' @param cluster Character; clustering variable.
     #' @return Self.
     compute_bootstrap = function(n_boot = 1000, cluster = NULL) {
-      self$se_method <- "bootstrap"
-      cat(sprintf("Performing non-parametric bootstrap (%d samples)...\n", n_boot))
-
-      boot_results <- vector("list", n_boot)
-      pb <- txtProgressBar(min = 0, max = n_boot, style = 3)
-
-      old_opt <- options(BayesRTMB.silent = TRUE)
-      on.exit(options(old_opt), add = TRUE)
-
+      if (!is.null(cluster)) {
+        stop("Clustered bootstrap is not yet implemented.")
+      }
+      
+      n_par <- length(self$par_vec)
+      boot_samples <- matrix(NA, nrow = n_boot, ncol = n_par)
+      colnames(boot_samples) <- names(self$par_vec)
+      
+      cat("Performing bootstrap estimation (n =", n_boot, ")...\n")
+      pb <- utils::txtProgressBar(min = 0, max = n_boot, style = 3)
+      
       for (i in 1:n_boot) {
         resampled_data <- self$model$.resample_data()
-
-        tryCatch({
-          capture.output({
-            boot_fit <- if (!is.null(self$model$refit_fn)) {
-               self$model$refit_fn(resampled_data)
-            } else {
-               self$model$.perform_fit(resampled_data)
-            }
-          })
-
-          if (is.data.frame(boot_fit)) {
-            boot_results[[i]] <- boot_fit$Estimate
-          } else if (inherits(boot_fit, "Classic_Fit")) {
-            boot_results[[i]] <- boot_fit$fit$Estimate
-          } else if (inherits(boot_fit, "lm")) {
-            boot_results[[i]] <- stats::coef(boot_fit)
-          } else if (is.list(boot_fit) && !is.null(boot_fit$df_combined)) {
-            # Handle list return from .perform_fit
-            boot_results[[i]] <- if (is.data.frame(boot_fit$df_combined)) boot_fit$df_combined$Estimate else stats::coef(boot_fit$df_combined)
-          }
-        }, error = function(e) { })
-        setTxtProgressBar(pb, i)
+        
+        # We need a way to re-run the same pipeline with new data
+        # Check if the model has a refit function or we can use .perform_fit
+        boot_fit <- if (!is.null(self$model$refit_fn)) {
+          self$model$refit_fn(resampled_data)
+        } else {
+          self$model$.perform_fit(resampled_data)
+        }
+        
+        if (!is.null(boot_fit)) {
+           boot_samples[i, ] <- boot_fit$par_vec
+        }
+        utils::setTxtProgressBar(pb, i)
       }
       close(pb)
-
-      boot_results <- Filter(Negate(is.null), boot_results)
-      if (length(boot_results) == 0) stop("All bootstrap fits failed.")
-
-      boot_mat <- do.call(rbind, boot_results)
-      self$bootstrap_results <- boot_mat
-
-      boot_se <- apply(boot_mat, 2, sd, na.rm = TRUE)
-      boot_lower <- apply(boot_mat, 2, quantile, probs = 0.025, na.rm = TRUE)
-      boot_upper <- apply(boot_mat, 2, quantile, probs = 0.975, na.rm = TRUE)
-
-      # Update self$fit
-      if (is.data.frame(self$fit)) {
-        res_df <- self$fit
-      } else {
-        # Convert lm to df
-        s_lm <- summary(self$fit)
-        res_df <- data.frame(
-          Estimate = stats::coef(self$fit),
-          `Std. Error` = s_lm$coefficients[, 2],
-          check.names = FALSE
-        )
-      }
-
-      n_rows <- min(nrow(res_df), length(boot_se))
-      res_df$`Std. Error`[1:n_rows] <- boot_se[1:n_rows]
-      res_df$`Lower 95%`[1:n_rows] <- boot_lower[1:n_rows]
-      res_df$`Upper 95%`[1:n_rows] <- boot_upper[1:n_rows]
-      res_df$`t value`[1:n_rows] <- res_df$Estimate[1:n_rows] / pmax(res_df$`Std. Error`[1:n_rows], 1e-12)
-
-      if (!is.null(res_df$df)) {
-        res_df$Pr[1:n_rows] <- 2 * pt(-abs(res_df$`t value`[1:n_rows]), df = res_df$df[1:n_rows])
-      }
-
-      self$fit <- res_df
-      return(self)
-    },
-
-    #' @description (Internal) Update fit data frame with current vcov.
-    .update_fit_with_vcov = function() {
-      if (is.null(self$vcov)) return()
-      new_se <- sqrt(diag(self$vcov))
-
-      if (is.data.frame(self$fit)) {
-        n <- min(nrow(self$fit), length(new_se))
-        self$fit$`Std. Error`[1:n] <- new_se[1:n]
-        self$fit$`t value`[1:n] <- self$fit$Estimate[1:n] / pmax(self$fit$`Std. Error`[1:n], 1e-12)
-        if (!is.null(self$fit$df)) {
-          self$fit$Pr[1:n] <- 2 * pt(-abs(self$fit$`t value`[1:n]), df = self$fit$df[1:n])
-        }
-        # Update CIs
-        crit <- if (!is.null(self$fit$df)) qt(0.975, df = self$fit$df) else 1.96
-        self$fit$`Lower 95%`[1:n] <- self$fit$Estimate[1:n] - crit[1:n] * self$fit$`Std. Error`[1:n]
-        self$fit$`Upper 95%`[1:n] <- self$fit$Estimate[1:n] + crit[1:n] * self$fit$`Std. Error`[1:n]
-      }
-      # For lm objects, we don't update the object itself,
-      # but ensure summary() uses self$vcov.
+      
+      self$bootstrap_results <- boot_samples
+      self$se_method <- "bootstrap"
+      self$ci_method <- "bootstrap"
+      
+      # Update vcov based on bootstrap samples
+      self$vcov <- stats::cov(boot_samples, use = "complete.obs")
+      
+      # Update fit dataframe using private method
+      private$.update_fixed_effects_with_vcov(self$vcov)
+      
+      return(invisible(self))
     },
 
     #' @description Get the AIC of the fitted model.
@@ -325,19 +279,57 @@ Classic_Fit <- R6::R6Class(
 
     #' @description Get the Log-Likelihood of the fitted model.
     logLik = function() {
-      if (inherits(self$fit, "lm")) {
+      if (inherits(self$fit, c("lm", "glm"))) {
         return(stats::logLik(self$fit))
       }
 
-      val <- if (!is.null(self$model$extra[["loglik"]])) self$model$extra[["loglik"]] else NA
-      df_val <- if (!is.null(self$model$extra[["df"]])) self$model$extra[["df"]] else nrow(self$fit)
-      nobs_val <- if (!is.null(self$model$extra[["nobs"]])) self$model$extra[["nobs"]] else 0
+      val <- if (!is.null(self$log_lik)) {
+        self$log_lik
+      } else if (!is.null(self$model$extra[["loglik"]])) {
+        self$model$extra[["loglik"]]
+      } else {
+        NA_real_
+      }
+
+      df_val <- if (!is.null(self$model$extra[["df"]])) {
+        self$model$extra[["df"]]
+      } else if (is.data.frame(self$fit)) {
+        nrow(self$fit)
+      } else {
+        length(self$par_vec)
+      }
+
+      nobs_val <- if (!is.null(self$model$extra[["nobs"]])) {
+        self$model$extra[["nobs"]]
+      } else if (!is.null(self$model$raw_data)) {
+        nrow(as.data.frame(self$model$raw_data))
+      } else {
+        NA_real_
+      }
 
       res <- val
       attr(res, "df") <- df_val
       attr(res, "nobs") <- nobs_val
       class(res) <- "logLik"
-      return(res)
+      res
+    },
+
+    #' @description EAP estimates are not available for Classic_Fit.
+    #' @param ... Ignored.
+    EAP = function(...) {
+      stop(
+        "EAP() is not available for Classic_Fit. Use estimate() instead.",
+        call. = FALSE
+      )
+    },
+
+    #' @description MAP estimates are not available for Classic_Fit.
+    #' @param ... Ignored.
+    MAP = function(...) {
+      stop(
+        "MAP() is not available for Classic_Fit. Use estimate() instead.",
+        call. = FALSE
+      )
     },
 
     #' @description Display a summary of the estimation results.
