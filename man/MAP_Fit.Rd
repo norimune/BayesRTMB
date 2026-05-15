@@ -65,6 +65,8 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
 
 \item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output.}
+
+\item{\code{view}}{Character vector of parameter names to prioritize in summary.}
 }
 \if{html}{\out{</div>}}
 }
@@ -123,14 +125,14 @@ Create a new `MAP_Fit` object.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$new(
   model,
-  par_vec,
-  par,
-  objective,
-  log_ml,
-  convergence,
-  sd_rep,
-  df_fixed,
-  random_effects,
+  par_vec = NULL,
+  par = NULL,
+  objective = NULL,
+  log_ml = NULL,
+  convergence = NULL,
+  sd_rep = NULL,
+  df_fixed = NULL,
+  random_effects = NULL,
   df_transform = NULL,
   df_generate = NULL,
   opt_history = NULL,
@@ -138,14 +140,15 @@ Create a new `MAP_Fit` object.
   generate = NULL,
   se_samples = NULL,
   par_unc = NULL,
-  vcov_unc = NULL,
   ci_method = "wald",
   laplace = TRUE,
   map = NULL,
+  vcov_unc = NULL,
   marginal_vars = NULL,
   laplace_random_vars = NULL,
   idx_fix_active = NULL,
-  show_df = TRUE
+  show_df = TRUE,
+  view = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -184,13 +187,13 @@ Create a new `MAP_Fit` object.
 
 \item{\code{par_unc}}{Parameter vector on the unconstrained scale (raw values).}
 
-\item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
-
 \item{\code{ci_method}}{Method used for CI estimation ("wald", "sampling", or "none").}
 
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
 \item{\code{map}}{List; the parameter mapping used.}
+
+\item{\code{vcov_unc}}{Variance-covariance matrix of parameters in unconstrained space.}
 
 \item{\code{marginal_vars}}{Character vector of parameter names requested through `optimize(marginal = ...)`.}
 
@@ -199,6 +202,8 @@ Create a new `MAP_Fit` object.
 \item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
 
 \item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output. Default is TRUE.}
+
+\item{\code{view}}{Character vector of parameter names to prioritize in summary.}
 }
 \if{html}{\out{</div>}}
 }
@@ -256,7 +261,13 @@ An array of samples [iterations, 1, parameters].
 \subsection{Method \code{summary()}}{
 Summarize MAP estimates.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$summary(
+  pars = NULL,
+  max_rows = 10,
+  digits = 5,
+  ranef = FALSE,
+  view = NULL
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -269,6 +280,8 @@ Summarize MAP estimates.
 \item{\code{digits}}{Number of digits to print.}
 
 \item{\code{ranef}}{Logical; whether to also display random effect estimates. Default is FALSE.}
+
+\item{\code{view}}{Character vector of parameter names to prioritize or filter by.}
 }
 \if{html}{\out{</div>}}
 }

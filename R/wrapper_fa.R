@@ -201,7 +201,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     obj$type <- "fa"
     obj$extra <- list(
       source = "wrapper",
-      prior_type = prior$type,
+      prior_type = if (is_ssp) "ssp" else prior$type,
       marginal = "mean"
     )
     return(obj)

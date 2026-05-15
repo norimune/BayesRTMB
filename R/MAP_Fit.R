@@ -27,6 +27,7 @@
 #' @field laplace_random_vars Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.
 #' @field idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
 #' @field show_df Logical; whether to display degrees of freedom in the summary output.
+#' @field view Character vector of parameter names to prioritize in summary.
 #'
 #' @export
 MAP_Fit <- R6::R6Class(
@@ -59,6 +60,7 @@ MAP_Fit <- R6::R6Class(
     laplace_random_vars = NULL,
     idx_fix_active = NULL,
     show_df        = TRUE,
+    view           = NULL,
 
     #' @description Get point estimate for a target parameter.
     #' @param target Target parameter name.
@@ -98,12 +100,14 @@ MAP_Fit <- R6::R6Class(
     #' @param laplace_random_vars Character vector of all parameter names passed to `MakeADFun(random = ...)` during Laplace approximation.
     #' @param idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
     #' @param show_df Logical; whether to display degrees of freedom in the summary output. Default is TRUE.
-    initialize = function(model, par_vec, par, objective, log_ml, convergence, sd_rep, df_fixed,
-                          random_effects, df_transform = NULL, df_generate = NULL, opt_history = NULL,
-                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL, 
-                           vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL, 
-                           marginal_vars = NULL, laplace_random_vars = NULL,
-                           idx_fix_active = NULL, show_df = TRUE) {
+    #' @param view Character vector of parameter names to prioritize in summary.
+    initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_ml = NULL,
+                          convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
+                          df_transform = NULL, df_generate = NULL, opt_history = NULL,
+                          transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
+                          ci_method = "wald", laplace = TRUE, map = NULL, vcov_unc = NULL,
+                          marginal_vars = NULL, laplace_random_vars = NULL, idx_fix_active = NULL,
+                          show_df = TRUE, view = NULL) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -124,10 +128,11 @@ MAP_Fit <- R6::R6Class(
       self$vcov_unc <- vcov_unc
       self$laplace <- laplace
       self$map <- map
-       self$marginal_vars <- marginal_vars
-       self$laplace_random_vars <- laplace_random_vars
-       self$idx_fix_active <- idx_fix_active
+      self$marginal_vars <- marginal_vars
+      self$laplace_random_vars <- laplace_random_vars
+      self$idx_fix_active <- idx_fix_active
       self$show_df <- show_df
+      self$view <- view
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -255,8 +260,9 @@ MAP_Fit <- R6::R6Class(
     #' @param max_rows Maximum number of rows to print in summaries. Default is 10.
     #' @param digits Number of digits to print.
     #' @param ranef Logical; whether to also display random effect estimates. Default is FALSE.
+    #' @param view Character vector of parameter names to prioritize or filter by.
     #' @return A summary object, typically a data frame.
-    summary = function(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE) {
+    summary = function(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE, view = NULL) {
       # Defensive check for pars
       vars <- if (is.null(pars)) names(self$par) else pars
       if (is.numeric(vars) && !is.null(self$par)) vars <- names(self$par)[vars]
@@ -315,7 +321,11 @@ MAP_Fit <- R6::R6Class(
         base_names <- gsub("\\[.*\\]$", "", var_names)
 
         target_views <- c()
-        if (!is.null(self$model$view)) {
+        if (!is.null(view)) {
+          target_views <- c(target_views, view)
+        } else if (!is.null(self$view)) {
+          target_views <- c(target_views, self$view)
+        } else if (!is.null(self$model$view)) {
           target_views <- c(target_views, self$model$view)
         }
 

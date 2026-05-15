@@ -127,6 +127,7 @@
   }
 
   if (se_sampling && se_enabled) {
+    set.seed(seed)
     if (!getOption("BayesRTMB.silent", FALSE)) cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
     Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]; mu_valid <- unc_est_vec[idx_fix_active]
     eig <- eigen(Cov_u_valid, symmetric = TRUE); eig$values <- pmax(eig$values, 1e-8); Cov_u_pd <- eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
@@ -391,7 +392,8 @@
     map = target_map,
     marginal_vars = target_vars,
     laplace_random_vars = ad_setup$use_random,
-    idx_fix_active = idx_fix_active, show_df = show_df
+    idx_fix_active = idx_fix_active, show_df = show_df,
+    view = view
   )
   return(res_obj)
 }
