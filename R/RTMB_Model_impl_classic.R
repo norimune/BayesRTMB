@@ -230,7 +230,17 @@
       df_res <- Inf
     } else {
       # Calculate effective parameters (fixed effects)
-      p_eff <- length(settings$target_vars)
+      p_eff <- NA_integer_
+      if (!is.null(self$type) && self$type %in% c("lm", "lmer") &&
+          !is.null(self$formula) && !is.null(self$raw_data)) {
+        p_eff <- tryCatch({
+          mf <- stats::model.frame(nobars(self$formula), data = as.data.frame(self$raw_data))
+          qr(stats::model.matrix(nobars(self$formula), data = mf))$rank
+        }, error = function(e) NA_integer_)
+      }
+      if (is.na(p_eff)) {
+        p_eff <- length(settings$target_vars)
+      }
       if (p_eff == 0 && !is.null(self$extra$marginal)) {
         p_eff <- sum(vapply(self$extra$marginal, function(nm) {
           if (nm %in% names(self$par_list)) self$par_list[[nm]]$unc_length else 0

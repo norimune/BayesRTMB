@@ -239,7 +239,7 @@ Compute robust standard errors (sandwich estimator).
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$robust_se(
   cluster = NULL,
-  type = c("CR1", "CR0"),
+  type = c("HC3", "HC0", "HC1", "CR1", "CR0"),
   inplace = FALSE,
   ...
 )}\if{html}{\out{</div>}}
@@ -250,7 +250,8 @@ Compute robust standard errors (sandwich estimator).
 \describe{
 \item{\code{cluster}}{Character; variable name for clustering.}
 
-\item{\code{type}}{Character; "CR1" (default) or "CR0".}
+\item{\code{type}}{Character; "HC3" (default), "HC0", or "HC1" for non-clustered
+robust SE; "CR1" or "CR0" for clustered robust SE.}
 
 \item{\code{inplace}}{Logical; if FALSE, return a robust-SE copy without modifying the original fit.
 If TRUE, update the object in place.}

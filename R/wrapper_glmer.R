@@ -1035,8 +1035,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
   obj$extra$marginal <- fixed_effects
 
-  # --- glmer_info for robust standard errors ---
-  if (obj$type == "glmer") {
+  # --- mixed-model metadata for robust standard errors ---
+  if (obj$type %in% c("lmer", "glmer")) {
     obj$extra$glmer_info <- list(
       family = family,
       num_bars = num_bars,

@@ -298,13 +298,18 @@ plot_acf <- function(x, var_idx = 1) {
 #'
 #' @param x A 3D array of posterior samples with dimensions `(iterations, chains, variables)`.
 #' @param prob Numeric. Probability mass for the credible interval (default is 0.95).
+#' @param point_estimate Character. Point estimate shown as dots. One of
+#'   `"median"` (default), `"EAP"`/`"mean"`, `"MAP"`/`"marginal_map"`, or
+#'   `"joint_map"`. `"joint_map"` uses the draw with the largest `lp` variable.
 #'
 #' @return No return value.
 #' @export
-plot_forest <- function(x, prob = 0.95) {
+plot_forest <- function(x, prob = 0.95,
+                        point_estimate = c("median", "EAP", "mean", "MAP", "marginal_map", "joint_map")) {
   if (is.null(dim(x)) || length(dim(x)) != 3) {
     stop("`x` must be a 3D array with dimension (iterations, chains, variables).", call. = FALSE)
   }
+  point_estimate <- match.arg(point_estimate)
 
   n_variables <- dim(x)[3]
   parnames <- dimnames(x)[[3]]
@@ -326,6 +331,37 @@ plot_forest <- function(x, prob = 0.95) {
     )
   }))
 
+  point_values <- switch(
+    point_estimate,
+    median = summaries[, "median"],
+    EAP = summaries[, "mean"],
+    mean = summaries[, "mean"],
+    MAP = apply(x, 3, function(v) .get_marginal_mode(as.vector(v))),
+    marginal_map = apply(x, 3, function(v) .get_marginal_mode(as.vector(v))),
+    joint_map = {
+      lp_idx <- match("lp", parnames)
+      if (is.na(lp_idx)) {
+        stop("`point_estimate = 'joint_map'` requires a variable named `lp` in `x`.", call. = FALSE)
+      }
+      lp_vals <- x[, , lp_idx]
+      max_idx <- which(lp_vals == max(lp_vals, na.rm = TRUE), arr.ind = TRUE)
+      if (nrow(max_idx) == 0L) {
+        stop("Failed to find the maximum `lp` value.", call. = FALSE)
+      }
+      x[max_idx[1, 1], max_idx[1, 2], ]
+    }
+  )
+
+  point_label <- switch(
+    point_estimate,
+    median = "median",
+    EAP = "EAP",
+    mean = "EAP",
+    MAP = "MAP",
+    marginal_map = "MAP",
+    joint_map = "joint MAP"
+  )
+
   old_par <- par(no.readonly = TRUE)
   on.exit(par(old_par))
 
@@ -336,26 +372,26 @@ plot_forest <- function(x, prob = 0.95) {
   y_pos <- seq(n_variables, 1, by = -1)
 
   plot(
-    x = summaries[, "median"],
+    x = point_values,
     y = y_pos,
-    xlim = range(c(summaries[, "lower"], summaries[, "upper"])),
+    xlim = range(c(summaries[, "lower"], summaries[, "upper"], point_values), na.rm = TRUE),
     ylim = c(0.5, n_variables + 0.5),
     type = "n",
     yaxt = "n",
     ylab = "",
     xlab = "Estimate",
-    main = sprintf("Forest Plot (%g%% CI)", prob * 100)
+    main = sprintf("Forest Plot (%g%% CI, point = %s)", prob * 100, point_label)
   )
 
   abline(v = 0, lty = 2, col = "gray50")
 
-  # Draw credible interval lines and median points
+  # Draw credible interval lines and selected point estimates
   segments(
     x0 = summaries[, "lower"], y0 = y_pos,
     x1 = summaries[, "upper"], y1 = y_pos,
     lwd = 2, col = "black"
   )
-  points(summaries[, "median"], y_pos, pch = 16, col = "black", cex = 1.2)
+  points(point_values, y_pos, pch = 16, col = "black", cex = 1.2)
 
   axis(2, at = y_pos, labels = parnames, las = 1, tick = FALSE, line = -0.5)
 }
