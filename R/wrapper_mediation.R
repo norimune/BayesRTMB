@@ -374,12 +374,20 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order, silent = FALSE)
   mdl$formula <- formula
   mdl$raw_data <- data
+  mdl$family <- family_list
 
   mdl$type <- "mediation"
   mdl$extra <- list(
     source = "wrapper",
     prior_type = prior$type,
-    marginal = if (prior_type %in% c("weak", "normal")) paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq)
+    marginal = if (prior_type %in% c("weak", "normal")) paste0("b_c", 1:n_eq) else paste0("b", 1:n_eq),
+    mediation = list(
+      formula = formula,
+      family = family_list,
+      view = view,
+      n_eq = n_eq,
+      responses = resp_names
+    )
   )
 
   mdl$extra$df_map <- df_map

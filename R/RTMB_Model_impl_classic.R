@@ -21,7 +21,7 @@
   type <- self$type %||% "generic"
 
   if (is.numeric(df_method)) {
-    use_reml <- type %in% c("lmer", "ttest")
+    use_reml <- type %in% c("lm", "lmer", "ttest", "corr", "mediation")
     return(list(
       use_reml = use_reml,
       df_method = "numeric",
@@ -47,7 +47,7 @@
     )
   }
 
-  use_reml <- type %in% c("lmer", "ttest")
+  use_reml <- type %in% c("lm", "lmer", "ttest", "corr", "mediation")
 
   if (identical(df_method, "auto")) {
     df_method <- if (type %in% c("lmer")) {

@@ -478,7 +478,7 @@ RTMB_Model <- R6::R6Class(
         "df", "REML", "marginal", "df_pars", "views",
         "empirical", "target_vars", "is_classic", ".return_object",
         "ci_method", "se_sampling",
-        "robust", "robust_se", "rbust_se",
+        "robust", "robust_se",
         "bootstrap", "n_boot", "B",
         "cluster", "vcov", "se_type"
       )

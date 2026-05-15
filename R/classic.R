@@ -159,20 +159,26 @@ Classic_Fit <- R6::R6Class(
     #' @description Compute robust standard errors (sandwich estimator).
     #' @param cluster Character; variable name for clustering.
     #' @param type Character; "CR1" (default) or "CR0".
-    #' @param update Logical; whether to update the internal fit summary.
+    #' @param inplace Logical; if FALSE, return a robust-SE copy without modifying the original fit.
+    #'   If TRUE, update the object in place.
     #' @param ... Additional arguments.
     #' @return Self.
-    robust_se = function(cluster = NULL, type = c("CR1", "CR0"), update = TRUE, ...) {
+    robust_se = function(cluster = NULL, type = c("CR1", "CR0"), inplace = FALSE, ...) {
       type <- match.arg(type)
+
+      if (!isTRUE(inplace)) {
+        out <- self$clone(deep = TRUE)
+        return(out$robust_se(cluster = cluster, type = type, inplace = TRUE, ...))
+      }
 
       # --- 1. Detect if GLMM ---
       if (!is.null(self$model$extra$glmer_info)) {
-        return(private$.compute_glmer_robust_se(cluster = cluster, type = type, update = update))
+        return(private$.compute_glmer_robust_se(cluster = cluster, type = type, update = TRUE))
       }
 
       # --- 2. Fallback to OLS-based sandwich for LM ---
       if (!is.null(self$model$type) && self$model$type == "lm") {
-        return(private$.compute_lm_robust_se(cluster = cluster, type = type, update = update))
+        return(private$.compute_lm_robust_se(cluster = cluster, type = type, update = TRUE))
       }
 
       # --- 3. For GLM, currently we recommend bootstrap or implementing score-based robust ---
@@ -183,73 +189,332 @@ Classic_Fit <- R6::R6Class(
       stop("robust_se() is currently supported for 'lm' and 'glmer' models.", call. = FALSE)
     },
 
-    #' @description Alias for robust_se().
-    #' @param ... Arguments passed to robust_se().
-    #' @return Self.
-    rbust_se = function(...) {
-      self$robust_se(...)
-    },
-
     #' @description (Deprecated) Use robust_se() instead.
-    #' @param ... Arguments passed to robust_se().
+    #' @param ... Arguments passed to robust_se(), including inplace.
     #' @return Self.
     compute_robust = function(...) {
       warning("compute_robust() is deprecated. Use robust_se() instead.", call. = FALSE)
       self$robust_se(...)
     },
 
-    #' @description Compute bootstrap standard errors.
-    #' @param ... Arguments passed to compute_bootstrap().
-    #' @return Self.
-    bootstrap = function(...) {
-      self$compute_bootstrap(...)
+    #' @description Compute nonparametric bootstrap standard errors and confidence intervals.
+    #' Currently implemented only for mediation models.
+    #' Bootstrap refits mediation equations with base R lm.fit()/glm.fit() when possible,
+    #' and falls back to RTMB refits for unsupported families.
+    #' @param n_boot Integer; number of bootstrap samples.
+    #' @param seed Optional integer random seed.
+    #' @param inplace Logical; if FALSE, return a bootstrap-SE copy without modifying the original fit.
+    #'   If TRUE, update the object in place.
+    #' @param ... Additional arguments.
+    #' @return A Classic_Fit object.
+    bootstrap = function(n_boot = 1000, seed = NULL, inplace = FALSE, ...) {
+      self$compute_bootstrap(
+        n_boot = n_boot,
+        seed = seed,
+        inplace = inplace,
+        ...
+      )
     },
 
-    #' @description Compute bootstrap standard errors.
-    #' @param n_boot Integer; number of samples.
-    #' @param cluster Character; clustering variable.
-    #' @return Self.
-    compute_bootstrap = function(n_boot = 1000, cluster = NULL) {
-      if (!is.null(cluster)) {
-        stop("Clustered bootstrap is not yet implemented.")
+    #' @description Compute nonparametric bootstrap standard errors and confidence intervals.
+    #' Currently implemented only for mediation models.
+    #' Bootstrap refits mediation equations with base R lm.fit()/glm.fit() when possible,
+    #' and falls back to RTMB refits for unsupported families.
+    #' @param n_boot Integer; number of bootstrap samples.
+    #' @param seed Optional integer random seed.
+    #' @param inplace Logical; if FALSE, return a bootstrap-SE copy without modifying the original fit.
+    #'   If TRUE, update the object in place.
+    #' @param ... Additional arguments.
+    #' @return A Classic_Fit object.
+    compute_bootstrap = function(n_boot = 1000, seed = NULL, inplace = FALSE, ...) {
+      if (!identical(self$model$type, "mediation")) {
+        stop(
+          "bootstrap() is currently implemented only for mediation models. ",
+          "Use robust_se() for lm/glmer robust standard errors.",
+          call. = FALSE
+        )
       }
-      
-      n_par <- length(self$par_vec)
-      boot_samples <- matrix(NA, nrow = n_boot, ncol = n_par)
-      colnames(boot_samples) <- names(self$par_vec)
-      
-      cat("Performing bootstrap estimation (n =", n_boot, ")...\n")
-      pb <- utils::txtProgressBar(min = 0, max = n_boot, style = 3)
-      
-      for (i in 1:n_boot) {
-        resampled_data <- self$model$.resample_data()
-        
-        # We need a way to re-run the same pipeline with new data
-        # Check if the model has a refit function or we can use .perform_fit
-        boot_fit <- if (!is.null(self$model$refit_fn)) {
-          self$model$refit_fn(resampled_data)
+
+      if (!isTRUE(inplace)) {
+        out <- self$clone(deep = TRUE)
+        return(out$compute_bootstrap(
+          n_boot = n_boot,
+          seed = seed,
+          inplace = TRUE,
+          ...
+        ))
+      }
+
+      if (!is.numeric(n_boot) || length(n_boot) != 1L || is.na(n_boot) || n_boot < 1) {
+        stop("n_boot must be a positive integer.", call. = FALSE)
+      }
+
+      n_boot <- as.integer(n_boot)
+
+      extract_estimates <- function(fit) {
+        dfs <- list(
+          fixed = fit$df_fixed,
+          random = fit$random_effects,
+          transform = fit$df_transform,
+          generate = fit$df_generate
+        )
+        keep <- vapply(dfs, is.data.frame, logical(1))
+        dfs <- dfs[keep]
+        if (length(dfs) == 0L) return(stats::setNames(numeric(0), character(0)))
+        out_df <- do.call(rbind, unname(dfs))
+        out_df <- out_df[!duplicated(rownames(out_df)), , drop = FALSE]
+        out <- out_df$Estimate
+        names(out) <- rownames(out_df)
+        out
+      }
+
+      update_df_with_boot <- function(df, boot_se, boot_lower, boot_upper) {
+        if (!is.data.frame(df)) return(df)
+
+        common <- intersect(rownames(df), names(boot_se))
+        if (length(common) == 0L) return(df)
+
+        df[common, "Std. Error"] <- boot_se[common]
+        df[common, "Lower 95%"] <- boot_lower[common]
+        df[common, "Upper 95%"] <- boot_upper[common]
+
+        stat_col <- if ("z value" %in% names(df)) {
+          "z value"
+        } else if ("t value" %in% names(df)) {
+          "t value"
         } else {
-          self$model$.perform_fit(resampled_data)
+          NULL
         }
-        
-        if (!is.null(boot_fit)) {
-           boot_samples[i, ] <- boot_fit$par_vec
+
+        if (!is.null(stat_col)) {
+          df[common, stat_col] <- df[common, "Estimate"] /
+            pmax(df[common, "Std. Error"], 1e-12)
         }
-        utils::setTxtProgressBar(pb, i)
+
+        if ("Pr" %in% names(df) && !is.null(stat_col)) {
+          if ("df" %in% names(df)) {
+            df[common, "Pr"] <- 2 * stats::pt(
+              -abs(df[common, stat_col]),
+              df = df[common, "df"]
+            )
+          } else {
+            df[common, "Pr"] <- 2 * stats::pnorm(
+              -abs(df[common, stat_col])
+            )
+          }
+        }
+
+        df
       }
-      close(pb)
-      
-      self$bootstrap_results <- boot_samples
+
+      compute_mediation_boot_estimates <- function(dat_b, target_names, formula, family) {
+        n_eq <- length(formula)
+        if (!is.list(family)) family <- rep(list(family), n_eq)
+        if (length(family) != n_eq) stop("Length of family list must match length of formula list.")
+
+        coefs <- vector("list", n_eq)
+        x_names <- vector("list", n_eq)
+        resp_names <- character(n_eq)
+        out <- stats::setNames(rep(NA_real_, length(target_names)), target_names)
+
+        for (j in seq_len(n_eq)) {
+          f <- formula[[j]]
+          fam <- family[[j]]
+          fam_name <- if (inherits(fam, "family")) fam$family else as.character(fam)[1]
+          mf <- stats::model.frame(f, data = dat_b)
+          y <- stats::model.response(mf)
+          X <- stats::model.matrix(f, data = mf)
+          cn <- colnames(X)
+          cn[cn == "(Intercept)"] <- "Intercept"
+          x_names[[j]] <- cn
+          resp_names[j] <- as.character(f[[2]])
+
+          if (fam_name == "gaussian") {
+            fit_j <- stats::lm.fit(x = X, y = as.numeric(y))
+            beta <- as.numeric(fit_j$coefficients)
+            names(beta) <- cn
+            coefs[[j]] <- beta
+            b_names <- paste0("b", j, "[", cn, "]")
+            out[intersect(b_names, target_names)] <- beta[match(intersect(b_names, target_names), b_names)]
+            sigma_name <- paste0("sigma", j)
+            if (sigma_name %in% target_names) {
+              out[[sigma_name]] <- sqrt(mean(fit_j$residuals^2, na.rm = TRUE))
+            }
+          } else if (fam_name %in% c("binomial", "bernoulli")) {
+            fit_j <- stats::glm.fit(x = X, y = y, family = stats::binomial())
+            beta <- as.numeric(fit_j$coefficients)
+            names(beta) <- cn
+            coefs[[j]] <- beta
+            b_names <- paste0("b", j, "[", cn, "]")
+            out[intersect(b_names, target_names)] <- beta[match(intersect(b_names, target_names), b_names)]
+          } else if (fam_name == "poisson") {
+            fit_j <- stats::glm.fit(x = X, y = y, family = stats::poisson())
+            beta <- as.numeric(fit_j$coefficients)
+            names(beta) <- cn
+            coefs[[j]] <- beta
+            b_names <- paste0("b", j, "[", cn, "]")
+            out[intersect(b_names, target_names)] <- beta[match(intersect(b_names, target_names), b_names)]
+          } else {
+            stop(sprintf("Unsupported mediation bootstrap family: %s", fam_name), call. = FALSE)
+          }
+        }
+
+        mediators <- intersect(resp_names, unique(unlist(x_names)))
+        indeps <- setdiff(unique(unlist(x_names)), c(resp_names, "Intercept"))
+        if (length(indeps) == 0L && length(mediators) > 0L) {
+          indeps <- setdiff(x_names[[1]], "Intercept")
+        }
+
+        for (iv in indeps) {
+          for (m in mediators) {
+            idx_m_resp <- which(resp_names == m)
+            idx_m_pred <- which(vapply(x_names, function(x) m %in% x, logical(1)))
+            if (length(idx_m_resp) == 0L || length(idx_m_pred) == 0L) next
+
+            for (m_resp in idx_m_resp) {
+              if (!(iv %in% names(coefs[[m_resp]]))) next
+              a_val <- coefs[[m_resp]][[iv]]
+
+              for (dv_idx in idx_m_pred) {
+                if (dv_idx == m_resp) next
+                dv_name <- resp_names[[dv_idx]]
+                if (!(m %in% names(coefs[[dv_idx]]))) next
+                b_val <- coefs[[dv_idx]][[m]]
+
+                ie_name <- paste0("IE_", iv, "_", m, "_", dv_name)
+                if (ie_name %in% target_names) out[[ie_name]] <- a_val * b_val
+
+                if (iv %in% names(coefs[[dv_idx]])) {
+                  de_val <- coefs[[dv_idx]][[iv]]
+                  de_name <- paste0("DE_", iv, "_", dv_name)
+                  te_name <- paste0("TE_", iv, "_", m, "_", dv_name)
+                  if (de_name %in% target_names) out[[de_name]] <- de_val
+                  if (te_name %in% target_names) out[[te_name]] <- a_val * b_val + de_val
+                }
+              }
+            }
+          }
+        }
+
+        out
+      }
+
+      use_fast_mediation_bootstrap <- function(family) {
+        fam_list <- if (is.list(family)) family else list(family)
+        fam_names <- vapply(fam_list, function(fam) {
+          if (inherits(fam, "family")) fam$family else as.character(fam)[1]
+        }, character(1))
+        all(fam_names %in% c("gaussian", "binomial", "bernoulli", "poisson"))
+      }
+
+      base_est <- extract_estimates(self)
+      target_names <- names(base_est)
+      if (length(target_names) == 0L) {
+        stop("No estimates are available for bootstrap.", call. = FALSE)
+      }
+
+      med_info <- self$model$extra$mediation %||% list()
+      formula <- med_info$formula %||% self$model$formula
+      family <- med_info$family %||% self$model$family %||% "gaussian"
+      view <- med_info$view %||% self$model$view
+      dat <- self$model$raw_data
+
+      if (is.null(formula) || is.null(dat)) {
+        stop(
+          "Mediation bootstrap requires the original formula and raw data stored in the model.",
+          call. = FALSE
+        )
+      }
+      dat <- as.data.frame(dat)
+      n <- nrow(dat)
+      if (is.na(n) || n <= 0L) stop("Original data are empty.", call. = FALSE)
+
+      if (!is.null(seed)) set.seed(seed)
+
+      boot_mat <- matrix(NA_real_, nrow = n_boot, ncol = length(target_names))
+      colnames(boot_mat) <- target_names
+      ok <- rep(FALSE, n_boot)
+      fast_boot <- use_fast_mediation_bootstrap(family)
+
+      show_progress <- !getOption("BayesRTMB.silent", FALSE)
+      if (show_progress) {
+        cat(sprintf("Performing mediation bootstrap estimation (n = %d)...\n", n_boot))
+        pb <- utils::txtProgressBar(min = 0, max = n_boot, style = 3)
+        on.exit(close(pb), add = TRUE)
+      }
+
+      old_silent <- options(BayesRTMB.silent = TRUE)
+      on.exit(options(old_silent), add = TRUE)
+
+      for (i in seq_len(n_boot)) {
+        idx <- sample.int(n, size = n, replace = TRUE)
+        dat_b <- dat[idx, , drop = FALSE]
+
+        boot_est <- tryCatch({
+          if (fast_boot) {
+            compute_mediation_boot_estimates(
+              dat_b = dat_b,
+              target_names = target_names,
+              formula = formula,
+              family = family
+            )
+          } else {
+            boot_mdl <- rtmb_mediation(
+              formula = formula,
+              data = dat_b,
+              family = family,
+              prior = prior_flat(),
+              view = view
+            )
+            boot_fit <- boot_mdl$classic()
+            extract_estimates(boot_fit)
+          }
+        }, error = function(e) NULL)
+
+        if (!is.null(boot_est) && length(boot_est) > 0L) {
+          common <- intersect(target_names, names(boot_est))
+          if (length(common) > 0L) {
+            boot_mat[i, common] <- boot_est[common]
+            ok[i] <- TRUE
+          }
+        }
+
+        if (show_progress) utils::setTxtProgressBar(pb, i)
+      }
+
+      if (!any(ok)) {
+        stop("All bootstrap fits failed.", call. = FALSE)
+      }
+      if (sum(ok) < n_boot) {
+        warning(
+          sprintf("Only %d of %d bootstrap fits succeeded.", sum(ok), n_boot),
+          call. = FALSE
+        )
+      }
+
+      boot_mat_ok <- boot_mat[ok, , drop = FALSE]
+      boot_se <- apply(boot_mat_ok, 2, stats::sd, na.rm = TRUE)
+      boot_lower <- apply(boot_mat_ok, 2, stats::quantile, probs = 0.025, na.rm = TRUE)
+      boot_upper <- apply(boot_mat_ok, 2, stats::quantile, probs = 0.975, na.rm = TRUE)
+
+      boot_lower <- as.numeric(boot_lower)
+      boot_upper <- as.numeric(boot_upper)
+      names(boot_lower) <- names(boot_upper) <- colnames(boot_mat_ok)
+
+      self$bootstrap_results <- boot_mat_ok
       self$se_method <- "bootstrap"
       self$ci_method <- "bootstrap"
-      
-      # Update vcov based on bootstrap samples
-      self$vcov <- stats::cov(boot_samples, use = "complete.obs")
-      
-      # Update fit dataframe using private method
-      private$.update_fixed_effects_with_vcov(self$vcov)
-      
-      return(invisible(self))
+      self$cluster <- NULL
+      self$robust_type <- NULL
+      self$vcov <- stats::cov(boot_mat_ok, use = "pairwise.complete.obs")
+
+      self$df_fixed <- update_df_with_boot(self$df_fixed, boot_se, boot_lower, boot_upper)
+      self$random_effects <- update_df_with_boot(self$random_effects, boot_se, boot_lower, boot_upper)
+      self$df_transform <- update_df_with_boot(self$df_transform, boot_se, boot_lower, boot_upper)
+      self$df_generate <- update_df_with_boot(self$df_generate, boot_se, boot_lower, boot_upper)
+      self$fit <- self$df_fixed
+
+      return(self)
     },
 
     #' @description Get the AIC of the fitted model.
@@ -550,6 +815,19 @@ Classic_Fit <- R6::R6Class(
            missing_t <- is.na(row_t)
            if (any(missing_t)) {
               row_t[missing_t] <- df_print$Estimate[missing_t] / pmax(df_print$`Std. Error`[missing_t], 1e-12, na.rm = TRUE)
+           }
+
+           if (identical(self$se_method, "bootstrap")) {
+              row_t <- df_print$Estimate / pmax(df_print$`Std. Error`, 1e-12, na.rm = TRUE)
+           } else if (self$se_method %in% c("robust", "cluster-robust") && !is.null(self$vcov)) {
+              robust_rows <- intersect(rownames(df_print), rownames(self$vcov))
+              if (length(robust_rows) > 0L) {
+                robust_idx <- match(robust_rows, rownames(df_print))
+                row_t[robust_idx] <- df_print$Estimate[robust_idx] /
+                  pmax(df_print$`Std. Error`[robust_idx], 1e-12, na.rm = TRUE)
+              }
+           } else if (!identical(self$se_method, "wald")) {
+              row_t <- df_print$Estimate / pmax(df_print$`Std. Error`, 1e-12, na.rm = TRUE)
            }
            
            if (is_asymptotic) {
@@ -1308,11 +1586,11 @@ Classic_Fit <- R6::R6Class(
       self$se_method <- if (is.null(cluster)) "robust" else "cluster-robust"
       self$ci_method <- self$se_method
       self$cluster <- cluster
-      self$robust_type <- type
+      self$robust_type <- if (is.null(cluster)) "HC3" else type
 
       if (update) private$.update_fixed_effects_with_vcov(self$vcov)
       
-      cat(sprintf("%s standard errors updated.\n", tools::toTitleCase(self$se_method)))
+      cat(sprintf("%s standard errors calculated.\n", tools::toTitleCase(self$se_method)))
       return(self)
     },
       .compute_glmer_robust_se = function(cluster = NULL, type = c("CR1", "CR0"), update = TRUE) {
@@ -1483,7 +1761,7 @@ Classic_Fit <- R6::R6Class(
         
         if (update) private$.update_fixed_effects_with_vcov(V_beta)
         
-        cat(sprintf("%s standard errors updated.\n", tools::toTitleCase(self$se_method)))
+        cat(sprintf("%s standard errors calculated.\n", tools::toTitleCase(self$se_method)))
         return(self)
       }
     )

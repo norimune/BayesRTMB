@@ -82,7 +82,6 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-get_point_estimate}{\code{Classic_Fit$get_point_estimate()}}
 \item \href{#method-Classic_Fit-new}{\code{Classic_Fit$new()}}
 \item \href{#method-Classic_Fit-robust_se}{\code{Classic_Fit$robust_se()}}
-\item \href{#method-Classic_Fit-rbust_se}{\code{Classic_Fit$rbust_se()}}
 \item \href{#method-Classic_Fit-compute_robust}{\code{Classic_Fit$compute_robust()}}
 \item \href{#method-Classic_Fit-bootstrap}{\code{Classic_Fit$bootstrap()}}
 \item \href{#method-Classic_Fit-compute_bootstrap}{\code{Classic_Fit$compute_bootstrap()}}
@@ -241,7 +240,7 @@ Compute robust standard errors (sandwich estimator).
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$robust_se(
   cluster = NULL,
   type = c("CR1", "CR0"),
-  update = TRUE,
+  inplace = FALSE,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -253,29 +252,10 @@ Compute robust standard errors (sandwich estimator).
 
 \item{\code{type}}{Character; "CR1" (default) or "CR0".}
 
-\item{\code{update}}{Logical; whether to update the internal fit summary.}
+\item{\code{inplace}}{Logical; if FALSE, return a robust-SE copy without modifying the original fit.
+If TRUE, update the object in place.}
 
 \item{\code{...}}{Additional arguments.}
-}
-\if{html}{\out{</div>}}
-}
-\subsection{Returns}{
-Self.
-}
-}
-\if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-Classic_Fit-rbust_se"></a>}}
-\if{latex}{\out{\hypertarget{method-Classic_Fit-rbust_se}{}}}
-\subsection{Method \code{rbust_se()}}{
-Alias for robust_se().
-\subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$rbust_se(...)}\if{html}{\out{</div>}}
-}
-
-\subsection{Arguments}{
-\if{html}{\out{<div class="arguments">}}
-\describe{
-\item{\code{...}}{Arguments passed to robust_se().}
 }
 \if{html}{\out{</div>}}
 }
@@ -295,7 +275,7 @@ Self.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{Arguments passed to robust_se().}
+\item{\code{...}}{Arguments passed to robust_se(), including inplace.}
 }
 \if{html}{\out{</div>}}
 }
@@ -307,42 +287,60 @@ Self.
 \if{html}{\out{<a id="method-Classic_Fit-bootstrap"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-bootstrap}{}}}
 \subsection{Method \code{bootstrap()}}{
-Compute bootstrap standard errors.
+Compute nonparametric bootstrap standard errors and confidence intervals.
+Currently implemented only for mediation models.
+Bootstrap refits mediation equations with base R lm.fit()/glm.fit() when possible,
+and falls back to RTMB refits for unsupported families.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$bootstrap(...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$bootstrap(n_boot = 1000, seed = NULL, inplace = FALSE, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{...}}{Arguments passed to compute_bootstrap().}
+\item{\code{n_boot}}{Integer; number of bootstrap samples.}
+
+\item{\code{seed}}{Optional integer random seed.}
+
+\item{\code{inplace}}{Logical; if FALSE, return a bootstrap-SE copy without modifying the original fit.
+If TRUE, update the object in place.}
+
+\item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Self.
+A Classic_Fit object.
 }
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-compute_bootstrap"></a>}}
 \if{latex}{\out{\hypertarget{method-Classic_Fit-compute_bootstrap}{}}}
 \subsection{Method \code{compute_bootstrap()}}{
-Compute bootstrap standard errors.
+Compute nonparametric bootstrap standard errors and confidence intervals.
+Currently implemented only for mediation models.
+Bootstrap refits mediation equations with base R lm.fit()/glm.fit() when possible,
+and falls back to RTMB refits for unsupported families.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$compute_bootstrap(n_boot = 1000, cluster = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$compute_bootstrap(n_boot = 1000, seed = NULL, inplace = FALSE, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{n_boot}}{Integer; number of samples.}
+\item{\code{n_boot}}{Integer; number of bootstrap samples.}
 
-\item{\code{cluster}}{Character; clustering variable.}
+\item{\code{seed}}{Optional integer random seed.}
+
+\item{\code{inplace}}{Logical; if FALSE, return a bootstrap-SE copy without modifying the original fit.
+If TRUE, update the object in place.}
+
+\item{\code{...}}{Additional arguments.}
 }
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Self.
+A Classic_Fit object.
 }
 }
 \if{html}{\out{<hr>}}
