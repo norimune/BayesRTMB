@@ -784,6 +784,7 @@ Classic_Fit <- R6::R6Class(
         is_asymptotic <- (!is.null(self$model$type) &&
                             self$model$type %in% c("glm", "glmer", "table", "loglinear", "fa", "irt", "mixture")) ||
           inherits(self$model, "rtmb_loglinear")
+        hide_tests <- !is.null(self$model$type) && self$model$type %in% c("mdu")
 
         # --- Add t/z-test results for classic mode ---
         if (!is.null(self$sd_rep)) {
@@ -847,6 +848,12 @@ Classic_Fit <- R6::R6Class(
                 df_print$Pr <- 2 * pt(-abs(row_t), df = df_print$df)
              } else {
                 df_print$Pr <- 2 * pnorm(-abs(row_t))
+             }
+
+             if (hide_tests) {
+                df_print$`z value` <- NULL
+                df_print$`t value` <- NULL
+                df_print$Pr <- NULL
              }
         }
 

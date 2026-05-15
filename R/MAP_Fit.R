@@ -281,11 +281,32 @@ MAP_Fit <- R6::R6Class(
         cat("Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)\n")
       }
 
+      target_views <- c()
+      if (!is.null(view)) {
+        target_views <- c(target_views, view)
+      } else if (!is.null(self$view)) {
+        target_views <- c(target_views, self$view)
+      } else if (!is.null(self$model$view)) {
+        target_views <- c(target_views, self$model$view)
+      }
+
+      view_matches_ranef <- FALSE
+      if (length(target_views) > 0 && is.data.frame(self$random_effects) && nrow(self$random_effects) > 0) {
+        re_names <- rownames(self$random_effects)
+        re_base_names <- gsub("\\[.*\\]$", "", re_names)
+        for (v in target_views) {
+          if (any(re_names == v | re_base_names == v)) {
+            view_matches_ranef <- TRUE
+            break
+          }
+        }
+      }
+
       all_dfs <- list()
       if (!is.null(self$df_fixed) && nrow(self$df_fixed) > 0) all_dfs$fixed <- self$df_fixed
       
-      # Automatically include random effects if specific parameters are requested or ranef=TRUE
-      include_ranef <- isTRUE(ranef) || !is.null(pars)
+      # Automatically include random effects if requested by pars, ranef=TRUE, or view.
+      include_ranef <- isTRUE(ranef) || !is.null(pars) || view_matches_ranef
       if (include_ranef && is.data.frame(self$random_effects) && nrow(self$random_effects) > 0) {
         all_dfs$random <- self$random_effects
       }
@@ -319,15 +340,6 @@ MAP_Fit <- R6::R6Class(
       if (nrow(df_combined) > 0 && is.null(pars)) {
         var_names <- rownames(df_combined)
         base_names <- gsub("\\[.*\\]$", "", var_names)
-
-        target_views <- c()
-        if (!is.null(view)) {
-          target_views <- c(target_views, view)
-        } else if (!is.null(self$view)) {
-          target_views <- c(target_views, self$view)
-        } else if (!is.null(self$model$view)) {
-          target_views <- c(target_views, self$model$view)
-        }
 
         priority_idx <- integer(0)
         for (v in target_views) {

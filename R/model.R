@@ -1,6 +1,3 @@
-#' @import future
-#' @import future.apply
-#' @import progressr
 #' @import MASS
 #' @importFrom grDevices col2rgb hcl.colors rgb
 #' @importFrom graphics abline axis legend lines matplot mtext pairs par points polygon segments strwidth text

@@ -171,6 +171,142 @@ RTMB_Fit_Base <- R6::R6Class(
                         best_chains = NULL, 
                         drop = TRUE, 
                         ...) {
+      names0 <- function(x) {
+        n <- names(x)
+        if (is.null(n)) character(0L) else n
+      }
+      coalesce_null <- function(a, b) {
+        if (!is.null(a)) a else b
+      }
+      select_parameters_local <- function(all_list, pars) {
+        if (is.null(pars)) return(all_list)
+        if (identical(pars, "parameters") || identical(pars, "all")) return(all_list)
+
+        if (is.numeric(pars)) {
+          res <- tryCatch(all_list[pars], error = function(e) NULL)
+          if (is.null(res)) return(all_list[0])
+          return(res[names(res) != ""])
+        }
+
+        if (is.character(pars)) {
+          is_negative <- grepl("^-", pars)
+          if (any(is_negative)) {
+            if (!all(is_negative)) {
+              stop("Cannot mix positive and negative parameter names in selection.")
+            }
+            exclude_names <- gsub("^-", "", pars)
+            return(all_list[!(names(all_list) %in% exclude_names)])
+          }
+          return(all_list[names(all_list) %in% pars])
+        }
+
+        return(all_list)
+      }
+      estimate_component_names <- function(fit, component) {
+        if (component == "parameters") return(names0(fit$model$par_list))
+
+        if (component == "transform") {
+          n <- names0(fit$transform_dims)
+          if (length(n) == 0L) n <- names0(fit$transform)
+          return(n)
+        }
+
+        if (component == "generate") {
+          n <- names0(fit$generate_dims)
+          if (length(n) == 0L) n <- names0(fit$generate)
+          return(n)
+        }
+
+        stop("Unknown component: ", component, call. = FALSE)
+      }
+      marginal_mode <- function(x) {
+        x <- x[is.finite(x)]
+        if (length(x) == 0L) return(NA_real_)
+        if (length(unique(x)) == 1L) return(x[1L])
+        d <- density(x)
+        d$x[which.max(d$y)]
+      }
+      collect_point_estimates <- function(fit, type = "EAP", chains = NULL, best_chains = NULL, ...) {
+        if (inherits(fit, c("Classic_Fit", "map_fit"))) {
+          res <- c(coalesce_null(fit$par, list()),
+                   coalesce_null(fit$transform, list()),
+                   coalesce_null(fit$generate, list()))
+          return(res)
+        }
+
+        if (inherits(fit, c("mcmc_fit", "advi_fit"))) {
+          samps <- fit$draws(chains = chains, best_chains = best_chains,
+                             inc_random = TRUE, inc_transform = TRUE, inc_generate = TRUE)
+
+          if (type == "joint_map") {
+            lp_idx <- which(dimnames(samps)[[3]] == "lp")
+            if (length(lp_idx) == 0) lp_idx <- 1
+
+            lp_vals <- samps[, , lp_idx]
+            max_idx <- which(lp_vals == max(lp_vals, na.rm = TRUE), arr.ind = TRUE)
+            iter_idx <- max_idx[1, 1]
+            chain_idx <- max_idx[1, 2]
+
+            flat_ests <- samps[iter_idx, chain_idx, ]
+            names(flat_ests) <- dimnames(samps)[[3]]
+          } else {
+            d <- dim(samps)
+            samps_flat <- matrix(samps, nrow = d[1] * d[2], ncol = d[3])
+            colnames(samps_flat) <- dimnames(samps)[[3]]
+
+            if (type == "EAP") {
+              flat_ests <- colMeans(samps_flat, na.rm = TRUE)
+            } else {
+              flat_ests <- apply(samps_flat, 2, marginal_mode)
+            }
+          }
+
+          res <- list()
+          group_by_name <- function(base_names, dims_list = NULL) {
+            for (name in base_names) {
+              idx <- grep(paste0("^", name, "(\\[|$)"), names(flat_ests))
+              if (length(idx) > 0) {
+                val <- flat_ests[idx]
+                dims <- if (!is.null(dims_list)) dims_list[[name]] else fit$model$par_list[[name]]$dim
+                if (length(dims) > 1) dim(val) <- dims
+                res[[name]] <<- val
+              }
+            }
+          }
+
+          group_by_name(names(fit$model$par_list))
+          group_by_name(names(fit$transform_dims), fit$transform_dims)
+          group_by_name(names(fit$generate_dims), fit$generate_dims)
+
+          return(res)
+        }
+        stop("Unsupported fit object type.")
+      }
+      select_estimates <- function(fit, est_list, pars = NULL, component = "all", drop = FALSE) {
+        component <- match.arg(component, c("all", "parameters", "transform", "generate"))
+
+        if (identical(pars, "all")) {
+          pars <- NULL
+        } else if (identical(pars, "parameters")) {
+          pars <- estimate_component_names(fit, "parameters")
+        } else if (identical(pars, "transform")) {
+          pars <- estimate_component_names(fit, "transform")
+        } else if (identical(pars, "generate")) {
+          pars <- estimate_component_names(fit, "generate")
+        }
+
+        res <- select_parameters_local(est_list, pars)
+
+        if (component != "all") {
+          keep <- estimate_component_names(fit, component)
+          res <- res[names(res) %in% keep]
+        }
+
+        if (length(res) == 0L) return(list())
+        if (isTRUE(drop) && length(res) == 1L) return(res[[1L]])
+        return(res)
+      }
+
       type <- match.arg(type)
       component <- match.arg(component)
       
@@ -189,7 +325,7 @@ RTMB_Fit_Base <- R6::R6Class(
         }
       }
 
-      est_all <- .collect_point_estimates(self, type = type, chains = chains, best_chains = best_chains, ...)
+      est_all <- collect_point_estimates(self, type = type, chains = chains, best_chains = best_chains, ...)
       
       # Validate pars existence if character and not keywords/regex/exclusion
       if (is.character(pars) && !any(grepl("^-", pars)) && 
@@ -204,7 +340,7 @@ RTMB_Fit_Base <- R6::R6Class(
         }
       }
       
-      res <- .select_estimates(self, est_all, pars = pars, component = component, drop = drop)
+      res <- select_estimates(self, est_all, pars = pars, component = component, drop = drop)
       return(res)
     },
 

@@ -41,6 +41,16 @@
   P_random <- if (!is.null(pl_random)) length(pl_random$names) else 0
 
   if (parallel) {
+    if (!requireNamespace("future", quietly = TRUE) ||
+        !requireNamespace("future.apply", quietly = TRUE) ||
+        !requireNamespace("progressr", quietly = TRUE)) {
+      stop(
+        "parallel = TRUE for sample() requires the suggested packages ",
+        "'future', 'future.apply', and 'progressr'. ",
+        "Please install them or use parallel = FALSE.",
+        call. = FALSE
+      )
+    }
     if (inherits(future::plan(), "sequential")) {
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = chains)
       else future::plan(future::multisession, workers = chains)
@@ -227,6 +237,14 @@
   } else { save_info <- NULL }
 
   if (parallel && num_estimate > 1) {
+    if (!requireNamespace("future", quietly = TRUE) ||
+        !requireNamespace("future.apply", quietly = TRUE)) {
+      stop(
+        "parallel = TRUE for variational() requires the suggested packages ",
+        "'future' and 'future.apply'. Please install them or use parallel = FALSE.",
+        call. = FALSE
+      )
+    }
     if (inherits(future::plan(), "sequential")) {
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = num_estimate)
       else future::plan(future::multisession, workers = num_estimate)

@@ -898,7 +898,19 @@ RTMB_Model <- R6::R6Class(
       if (verbose) cat("\n")
       valid_idx <- which(!is.na(obj_vals))
       if (length(valid_idx) == 0L) stop("All optimization attempts failed.", call. = FALSE)
-      best_idx <- valid_idx[which.min(obj_vals[valid_idx])]; best_res <- opt_results[[best_idx]]
+      converged_idx <- valid_idx[!is.na(conv_codes[valid_idx]) & conv_codes[valid_idx] == 0L]
+      if (length(converged_idx) > 0L) {
+        best_idx <- converged_idx[which.min(obj_vals[converged_idx])]
+      } else {
+        best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
+        if (num_estimate > 1L) {
+          warning(
+            "No optimization run converged; BEST is selected by the lowest objective among non-converged runs.",
+            call. = FALSE
+          )
+        }
+      }
+      best_res <- opt_results[[best_idx]]
 
       if (isTRUE(apply_prior_correction) && !is.na(self$prior_correction) && self$prior_correction != 0) {
         for (i in seq_along(obj_vals)) if (!is.na(obj_vals[i])) obj_vals[i] <- obj_vals[i] + self$prior_correction
@@ -914,6 +926,15 @@ RTMB_Model <- R6::R6Class(
         message = messages,
         stringsAsFactors = FALSE
       )
+
+      if (num_estimate > 1L && isTRUE(verbose)) {
+        cat("\nConvergence Diagnostics per estimate:\n")
+        for (i in seq_len(num_estimate)) {
+          status <- if (!is.na(conv_codes[i]) && conv_codes[i] == 0L) "Converged" else "Not Converged"
+          best_marker <- if (i == best_idx) "  <-- BEST" else ""
+          cat(sprintf("  est%d: objective = %10.2f (%s)%s\n", i, obj_vals[i], status, best_marker))
+        }
+      }
 
       sd_rep <- if (isTRUE(se)) {
         tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = isTRUE(reml)), warning = function(w) NULL, error = function(e) NULL)
