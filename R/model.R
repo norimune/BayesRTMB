@@ -176,6 +176,13 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     if (is.null(e)) next
     if (is.call(e) && (identical(e[[1]], as.name("=")) || identical(e[[1]], as.name("<-")))) {
       v_name <- as.character(e[[2]])
+      if (identical(v_name, "lp")) {
+        stop(
+          "[Error in 'parameters' block]\n",
+          "'lp' is a reserved variable used internally for accumulating log probability and cannot be declared as a parameter.",
+          call. = FALSE
+        )
+      }
       d_expr <- e[[3]]
 
       used_vars <- all.vars(d_expr)

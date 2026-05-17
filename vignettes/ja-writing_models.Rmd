@@ -162,6 +162,18 @@ transform = {
 
 `transform` で作った量は、`model` ブロックの中で使えます。また、推定後の出力にも含まれます。MAP推定では、デルタ法によって標準誤差や信頼区間も計算されます。
 
+ただし、`transform` ブロックの中で作ったすべての途中変数を保存したいとは限りません。その場合は、`report()` を使って、明示的に保存したい量だけを指定できます。
+
+```{r}
+transform = {
+  eta <- alpha + X %*% beta
+  mu <- inv_logit(eta)
+  report(mu, beta)
+}
+```
+
+この例では、`eta` は計算途中で使うだけなので出力には含めず、`mu` と `beta` だけを保存対象にしています。
+
 ## model
 
 `model` は、尤度と事前分布を書くブロックです。
@@ -177,7 +189,20 @@ model = {
 
 `~` の左側に確率変数、右側に分布を書きます。`Y ~ normal(mu, sigma)` は、観測値 `Y` が平均 `mu`、標準偏差 `sigma` の正規分布に従う、という意味です。
 
-`model` ブロックでは、`lp <- 0` と書く必要はありません。BayesRTMB が内部で対数確率を自動的に足し合わせます。
+同じ内容は、対数確率を明示的に足し合わせる形でも書けます。
+
+```{r}
+model = {
+  lp <- lp + normal_lpdf(Y, mu, sigma)
+  lp <- lp + normal_lpdf(alpha, 0, 10)
+  lp <- lp + normal_lpdf(beta, 0, 2.5)
+  lp <- lp + exponential_lpdf(sigma, 1)
+}
+```
+
+つまり、`Y ~ normal(mu, sigma)` と `lp <- lp + normal_lpdf(Y, mu, sigma)` は、同じモデルを表す2つの書き方です。通常は `~` を使ったほうが読みやすいですが、特殊な尤度を自分で組み立てたいときには `lp <- lp + ..._lpdf(...)` の形が便利です。Stanと違って、`BayesRTMB`パッケージでは`Y ~ normal(mu, sigma)`と書いても正規化定数は計算されます。なのでbridgesamplingをしたいときでも`~`を使った記法を使って問題ありません。
+
+ただし、`lp` は対数確率を足し合わせるための予約語です。`parameters` ブロックで `lp = Dim()` のように宣言したり、一般の作業用変数として使ったりしないでください。
 
 ## generate
 
@@ -190,6 +215,50 @@ generate = {
 ```
 
 `generate` に書いた計算は、尤度評価には入りません。そのため、重い計算を書いても推定速度には直接影響しません。
+
+`generate` ブロックは、事後予測チェックや予測値の計算に便利です。
+
+```{r}
+code_ppc <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha <- Dim()
+    beta <- Dim(P)
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    mu <- alpha + X %*% beta
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha ~ normal(0, 10)
+    beta ~ normal(0, 2.5)
+    sigma ~ exponential(1)
+  },
+  generate = {
+    Y_rep <- rnorm(N, mu, sigma)
+    residual <- Y - mu
+  }
+)
+```
+
+`Y_rep` は事後予測分布からの複製データ、`residual` は残差です。これらは推定後に取り出して、モデル診断に使えます。
+
+モデル定義時に書き忘れた場合でも、推定後に `generated_quantities()` で追加できます。
+
+```{r}
+new_generate <- rtmb_code(
+  generate = {
+    abs_residual <- abs(Y - mu)
+  }
+)
+
+fit_reg <- mdl_reg$optimize()
+fit_reg$generated_quantities(new_generate)
+```
 
 # 回帰モデル
 
@@ -289,7 +358,7 @@ code_reg2 <- rtmb_code(
 
 ここでは、`setup` で中心化済みの `X_c` を作っています。`alpha_c` は中心化後の切片です。`transform` では、元の尺度での切片 `alpha` も計算しています。
 
-```r
+```{r}
 alpha <- alpha_c - sum(X_mean * beta)
 ```
 
@@ -474,7 +543,7 @@ Y ~ poisson(exp(eta))
 
 # 混合分布モデル
 
-混合分布モデルは、制約つきパラメータと複数初期値の重要性を学ぶよい例です。
+混合分布モデルは、制約つきパラメータと複数初期値を使うモデリングのいい例です。
 
 ```{r}
 set.seed(123)
@@ -511,66 +580,25 @@ code_mix <- rtmb_code(
 
 `theta` は混合率なので、`type = "simplex"` を使います。
 
-混合分布は局所解が生じやすいため、複数の初期値から推定するのが有効です。
+混合分布は局所解が生じやすいため、MAP推定では `num_estimate` を多めにして、複数の初期値から最もよい解を選ぶのが有効です。通常は、自分で初期値を細かく指定するよりも、まずは `init` を指定せずに `num_estimate` を増やすほうが手軽です。
 
 ```{r}
-init_mix <- list(
-  theta = rep(1 / K, K),
-  mu = quantile(Y, probs = seq(0.2, 0.8, length.out = K)),
-  sigma = rep(sd(Y), K)
-)
+mdl_mix <- rtmb_model(data_mix, code_mix)
+fit_mix <- mdl_mix$optimize(num_estimate = 20)
+```
 
-mdl_mix <- rtmb_model(data_mix, code_mix, init = init_mix)
-fit_mix <- mdl_mix$optimize(num_estimate = 8)
+MCMCを行う場合は、MAP推定で得られたパラメータ推定値を初期値として使うと安定しやすくなります。必要に応じて `init_jitter` で少しだけ揺らします。
+
+```{r}
+fit_mix_mcmc <- mdl_mix$sample(
+  init = fit_mix$estimate("parameters"),
+  init_jitter = 0.2
+)
 ```
 
 混合分布では、ラベルスイッチングにも注意が必要です。成分の順序に意味がないため、MCMCでは成分ラベルが入れ替わることがあります。
 
-# generate の活用
 
-`generate` ブロックは、事後予測チェックや予測値の計算に便利です。
-
-```{r}
-code_ppc <- rtmb_code(
-  setup = {
-    N <- length(Y)
-    P <- ncol(X)
-  },
-  parameters = {
-    alpha <- Dim()
-    beta <- Dim(P)
-    sigma <- Dim(lower = 0)
-  },
-  transform = {
-    mu <- alpha + X %*% beta
-  },
-  model = {
-    Y ~ normal(mu, sigma)
-    alpha ~ normal(0, 10)
-    beta ~ normal(0, 2.5)
-    sigma ~ exponential(1)
-  },
-  generate = {
-    Y_rep <- rnorm(N, mu, sigma)
-    residual <- Y - mu
-  }
-)
-```
-
-`Y_rep` は事後予測分布からの複製データ、`residual` は残差です。これらは推定後に取り出して、モデル診断に使えます。
-
-モデル定義時に書き忘れた場合でも、推定後に `generated_quantities()` で追加できます。
-
-```{r}
-new_generate <- rtmb_code(
-  generate = {
-    abs_residual <- abs(Y - mu)
-  }
-)
-
-fit_reg <- mdl_reg$optimize()
-fit_reg$generated_quantities(new_generate)
-```
 
 # よくある注意点
 
@@ -592,9 +620,9 @@ X <- as.matrix(debate[, c("talk", "perf", "skill")])
 
 ## AD型に対する if 文
 
-推定中のパラメータを使った条件分岐は、AD計算で問題になることがあります。
+推定中のパラメータを使った条件分岐は、`RTMB`のAD計算で問題になることがあります。
 
-```r
+```{r}
 if (theta > 0) ...
 ```
 
