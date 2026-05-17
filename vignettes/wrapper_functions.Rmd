@@ -14,7 +14,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
 In BayesRTMB, you can freely define models using the `rtmb_code` block, but we also provide **wrapper functions** to quickly execute common statistical analyses (like t-tests, regressions, and factor analysis).

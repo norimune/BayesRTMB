@@ -14,7 +14,7 @@ editor_options:
 ---
 
 ```{r setup, include=FALSE}
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 ```
 
 This page explains how to describe models using the `rtmb_code` block, which is the core of BayesRTMB, and details the available probability distributions and mathematical functions.
