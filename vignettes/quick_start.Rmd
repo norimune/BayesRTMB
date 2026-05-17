@@ -216,6 +216,16 @@ Each plot has a different role.
 - `plot_acf()` checks whether autocorrelation is too strong.
 - `plot_forest()` summarizes point estimates and credible intervals.
 
+For example, these functions produce plots like the following.
+
+![Posterior density plot](plot_dens.png)
+
+![Trace plot](plot_trace.png)
+
+![Autocorrelation plot](plot_acf.png)
+
+![Forest plot](plot_forest.png)
+
 # 6. Multiple Regression with a Wrapper Function
 
 For standard analyses, you can start from a wrapper function instead of writing `rtmb_code()` yourself.
@@ -268,6 +278,8 @@ fit_lm$draws(c("b[talk]", "b[perf]", "b[talk:perf]")) |>
   plot_forest(point_estimate = "MAP")
 ```
 
+![Regression coefficient forest plot](plot_forest.png)
+
 # 7. Plot an Interaction
 
 Interactions are often difficult to interpret from a coefficient table alone.
@@ -277,6 +289,8 @@ Use `conditional_effects()` to visualize predicted values.
 ce <- conditional_effects(fit_lm, effect = "talk:perf")
 plot(ce)
 ```
+
+![Conditional effect plot](conditional_effect.png)
 
 With `effect = "talk:perf"`, you can see how the effect of `talk` changes depending on the value of `perf`.
 

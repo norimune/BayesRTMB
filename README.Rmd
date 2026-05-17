@@ -6,162 +6,89 @@ output: github_document
 
 **Language / 言語**: [English introduction](articles/introduction.html) | [パッケージ紹介](articles/ja-introduction.html)
 
-**BayesRTMB** is an R package for fast, flexible, and compile-free Bayesian modeling. 
+**BayesRTMB** is an R package for writing and fitting statistical models with RTMB as the automatic differentiation engine.
 
-Powered by **RTMB** (R template Model Builder) as its automatic differentiation engine, BayesRTMB allows you to write models natively in R with a syntax similar to Stan, while eliminating the need for lengthy C++ compilation times.
+You can start from wrapper functions such as `rtmb_lm()`, `rtmb_glmer()`, `rtmb_corr()`, and `rtmb_ttest()`, or write your own model with `rtmb_code()`. The same model object can then be used for MCMC, MAP estimation, variational inference, and frequency-oriented classical analyses where supported.
 
 ## Key Features
 
-- **No C++ Compilation**: Write models in pure R and execute them instantly.
-- **Intuitive Block Syntax**: Define your model cleanly using `rtmb_code()` with `parameters`, `transform`, `model`, and `generate` blocks.
-- **Multiple Inference Engines**: Seamlessly switch between:
-  - **NUTS** (No-U-Turn Sampler) for robust MCMC sampling.
-  - **ADVI** (Automatic Differentiation Variational Inference) for fast approximate inference.
-  - **MAP** (Maximum a Posteriori) estimation.
-- **Laplace Approximation**: Built-in support for marginalizing random effects to speed up complex hierarchical models.
-- **Model Comparison**: Compute marginal likelihoods via Bridge Sampling and calculate Bayes Factors.
-- **Rich Diagnostics & Plotting**: Integrated functions for trace plots, density plots, autocorrelation, and forest plots.
-- **Convenient Wrappers**: Ready-to-use functions like `rtmb_ttest` and `rtmb_glmer` for standard analyses with automatic weakly informative priors.
+- **Model code in R**: Write models with `setup`, `parameters`, `transform`, `model`, and `generate` blocks.
+- **Multiple estimation methods**: Use `$sample()`, `$optimize()`, `$variational()`, and `$classic()` from a common model object.
+- **Wrapper functions**: Fit regression models, GLM/GLMMs, t tests, correlations, contingency tables, factor analysis, IRT, latent rank models, and multidimensional unfolding models.
+- **Classical analyses from wrappers**: Use `$classic()` for frequency-oriented outputs, including `AIC()`, `BIC()`, and `anova()` for supported fits.
+- **Random effects and Laplace approximation**: Declare parameters with `random = TRUE` and use RTMB's Laplace machinery for latent variables and mixed models.
+- **Diagnostics and visualization**: Plot posterior draws, convergence diagnostics, forest plots, conditional effects, and related summaries.
 
 ## Installation
 
-You can install the development version from GitHub with:
+You can install the development version from GitHub with either `pak` or `remotes`.
 
 ```{r eval=FALSE}
-# install.packages("remotes")
+pak::pak("norimune/BayesRTMB")
+```
+
+```{r eval=FALSE}
 remotes::install_github("norimune/BayesRTMB")
 ```
 
-### Important Note for Windows Users
+### Windows Users
 
-Since BayesRTMB depends on C++ libraries through the `RTMB` and `TMB` ecosystems, Windows users **must install Rtools** to compile the underlying dependencies. 
-
-1. Download and install the appropriate version of [Rtools](https://cran.r-project.org/bin/windows/Rtools/) that matches your R version (e.g., Rtools44 for R 4.4.x).
-2. After installation, restart RStudio.
-3. You can verify if Rtools is correctly installed and recognized by your system by running:
+Windows users need Rtools because BayesRTMB depends on the RTMB/TMB ecosystem.
 
 ```{r eval=FALSE}
-# If TRUE is returned, your system is ready to build packages.
 pkgbuild::check_build_tools(debug = TRUE)
 ```
 
-## Basic Usage
+If this check fails, install the Rtools version that matches your R version from the [Rtools page](https://cran.r-project.org/bin/windows/Rtools/), restart R, and try again.
 
-A model in BayesRTMB is defined by combining your data with an `rtmb_code()` block. Here is a simple example of estimating a mean and standard deviation.
+## Quick Example
+
+For standard analyses, start with a wrapper function.
 
 ```{r eval=FALSE}
 library(BayesRTMB)
+data(debate)
 
-# 1. Prepare data
-Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
-dat <- list(Y = Y, N = length(Y))
+mdl <- rtmb_lm(sat ~ talk * perf, data = debate)
 
-# 2. Define the model using rtmb_code
+fit_mcmc <- mdl$sample()
+fit_map  <- mdl$optimize()
+fit_lm   <- mdl$classic()
+```
+
+The generated model code can be inspected.
+
+```{r eval=FALSE}
+mdl$print_code()
+```
+
+You can also write a model directly.
+
+```{r eval=FALSE}
+data_list <- list(Y = debate$sat, N = nrow(debate))
+
 code <- rtmb_code(
   parameters = {
-    mu = Dim(1)
-    sigma = Dim(1, lower = 0)
+    mu = Dim()
+    sigma = Dim(lower = 0)
   },
   model = {
-    # Priors
-    mu ~ normal(0, 10)
-    sigma ~ exponential(0.1)
-    
-    # Likelihood
     Y ~ normal(mu, sigma)
+    mu ~ normal(0, 10)
+    sigma ~ exponential(1)
   }
 )
 
-# 3. Build the model object
-mdl <- rtmb_model(data = dat, code = code)
-
-# 4. Run NUTS MCMC sampling
-fit_mcmc <- mdl$sample(iter = 2000, warmup = 1000, chains = 4)
-
-# Print summary
-fit_mcmc$summary()
+mdl_custom <- rtmb_model(data_list, code)
+fit_custom <- mdl_custom$sample()
 ```
 
-## Advanced Inference
+## Articles
 
-BayesRTMB provides a unified interface for various inference methods using R6 objects. You can easily apply different algorithms to the exact same model object.
-
-```{r eval=FALSE}
-# Maximum a Posteriori (MAP) estimation
-fit_map <- mdl$optimize()
-
-# Automatic Differentiation Variational Inference (ADVI)
-# Supports "meanfield", "fullrank", and "hybrid" approaches
-fit_advi <- mdl$advi(method = "meanfield", iter = 5000)
-```
-
-### Dealing with Random Effects
-
-For hierarchical models, you can declare parameters as random effects. BayesRTMB can utilize RTMB's **Laplace approximation** to integrate them out, significantly speeding up both MAP and NUTS.
-
-```{r eval=FALSE}
-code_hierarchical <- rtmb_code(
-  parameters = {
-    mu_global = Dim(1)
-    sigma_global = Dim(1, lower = 0)
-    # Declare a random effect vector
-    alpha = Dim(J, random = TRUE) 
-  },
-  model = {
-    alpha ~ normal(mu_global, sigma_global)
-    # ... rest of the model ...
-  }
-)
-
-# Enable Laplace approximation during sampling
-fit_mcmc_laplace <- mdl$sample(laplace = TRUE)
-```
-
-## Model Comparison & Bayes Factors
-
-BayesRTMB integrates bridge sampling to easily compute marginal likelihoods for model comparison. You can evaluate the strength of evidence for one model over another using Bayes factors.
-
-```{r eval=FALSE}
-# Assume fit_model1 and fit_model2 are MCMC_Fit objects
-# Compute marginal likelihoods via Bridge Sampling
-bs1 <- fit_model1$bridgesampling()
-bs2 <- fit_model2$bridgesampling()
-
-# Calculate Bayes Factor
-# This function outputs the BF and an interpretation based on Kass & Raftery (1995)
-bayes_factor(bs1, bs2)
-```
-
-## Visualization
-
-The package includes built-in functions to visualize posterior distributions and diagnose MCMC performance quickly.
-
-```{r eval=FALSE}
-# Extract the underlying array of samples
-samples <- fit_mcmc$fit
-
-# Diagnostic plots
-plot_trace(samples)
-plot_dens(samples)
-plot_acf(samples, var_idx = 1)
-
-# Compare parameter estimates
-plot_forest(samples, prob = 0.95)
-plot_pairs(samples)
-```
-
-## Built-in Wrappers
-
-If you don't want to write model code from scratch, BayesRTMB offers wrapper functions for common tasks, complete with automated weakly informative priors.
-
-```{r eval=FALSE}
-# Bayesian Two-Sample T-Test
-# Automatically scales priors based on y_range
-mdl_test <- rtmb_ttest(
-  y1 = group_A, 
-  y2 = group_B, 
-  y_range = c(0,10)
-)
-
-fit_test <- mdl_test$sample()
-```
+- [Quick Start](articles/quick_start.html): installation, a minimal model, MCMC diagnostics, visualization, and t tests.
+- [Wrapper Functions](articles/wrapper_functions.html): using wrappers for Bayesian and classical analyses.
+- [Writing Model Codes](articles/writing_models.html): writing custom models with `rtmb_code()`.
+- [日本語: パッケージ紹介](articles/ja-introduction.html)
+- [日本語: クイックスタート](articles/ja-quick_start.html)
+- [日本語: ラッパー関数の使い方](articles/ja-wrapper_functions.html)
+- [日本語: モデルコードの書き方](articles/ja-writing_models.html)

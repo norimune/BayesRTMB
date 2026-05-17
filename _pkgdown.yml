@@ -42,8 +42,20 @@ navbar:
 
 home:
   links:
+  - text: Quick Start
+    href: articles/quick_start.html
+  - text: Wrapper Functions
+    href: articles/wrapper_functions.html
+  - text: Writing Model Codes
+    href: articles/writing_models.html
   - text: パッケージ紹介
     href: articles/ja-introduction.html
+  - text: クイックスタート
+    href: articles/ja-quick_start.html
+  - text: ラッパー関数の使い方
+    href: articles/ja-wrapper_functions.html
+  - text: モデルコードの書き方
+    href: articles/ja-writing_models.html
   - text: English introduction
     href: articles/introduction.html
   sidebar:
@@ -51,7 +63,7 @@ home:
 
 articles:
 - title: English
-  desc: BayesRTMB English articles.
+  desc: Start here for installation, wrapper functions, and writing custom model code.
   contents:
   - introduction
   - quick_start
@@ -59,7 +71,7 @@ articles:
   - writing_models
 
 - title: 日本語
-  desc: BayesRTMB の概要と使い方をまとめた記事です。
+  desc: BayesRTMB の概要、クイックスタート、ラッパー関数、モデルコードの書き方をまとめた記事です。
   contents:
   - ja-introduction
   - ja-quick_start
