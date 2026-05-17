@@ -234,6 +234,24 @@ Each plot has a different role.
 - [`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)
   summarizes point estimates and credible intervals.
 
+For example, these functions produce plots like the following.
+
+![Posterior density plot](plot_dens.png)
+
+Posterior density plot
+
+![Trace plot](plot_trace.png)
+
+Trace plot
+
+![Autocorrelation plot](plot_acf.png)
+
+Autocorrelation plot
+
+![Forest plot](plot_forest.png)
+
+Forest plot
+
 ## 6. Multiple Regression with a Wrapper Function
 
 For standard analyses, you can start from a wrapper function instead of
@@ -295,6 +313,10 @@ fit_lm$draws(c("b[talk]", "b[perf]", "b[talk:perf]")) |>
   plot_forest(point_estimate = "MAP")
 ```
 
+![Regression coefficient forest plot](plot_forest.png)
+
+Regression coefficient forest plot
+
 ## 7. Plot an Interaction
 
 Interactions are often difficult to interpret from a coefficient table
@@ -307,6 +329,10 @@ to visualize predicted values.
 ce <- conditional_effects(fit_lm, effect = "talk:perf")
 plot(ce)
 ```
+
+![Conditional effect plot](conditional_effect.png)
+
+Conditional effect plot
 
 With `effect = "talk:perf"`, you can see how the effect of `talk`
 changes depending on the value of `perf`.

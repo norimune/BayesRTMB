@@ -2,7 +2,8 @@
 
 ### English
 
-BayesRTMB English articles.
+Start here for installation, wrapper functions, and writing custom model
+code.
 
 - [Introduction to
   BayesRTMB](https://norimune.github.io/BayesRTMB/articles/introduction.md):
@@ -29,7 +30,8 @@ BayesRTMB English articles.
 
 ### 日本語
 
-BayesRTMB の概要と使い方をまとめた記事です。
+BayesRTMB
+の概要、クイックスタート、ラッパー関数、モデルコードの書き方をまとめた記事です。
 
 - [BayesRTMB
   の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):

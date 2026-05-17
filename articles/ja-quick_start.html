@@ -275,6 +275,19 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <li>
 <code><a href="../reference/plot_forest.html">plot_forest()</a></code> は、点推定値と信用区間を一覧します。</li>
 </ul>
+<p>実際には、たとえば次のような図として確認できます。</p>
+<div class="float">
+<img src="plot_dens.png" alt="Posterior density plot"><div class="figcaption">Posterior density plot</div>
+</div>
+<div class="float">
+<img src="plot_trace.png" alt="Trace plot"><div class="figcaption">Trace plot</div>
+</div>
+<div class="float">
+<img src="plot_acf.png" alt="Autocorrelation plot"><div class="figcaption">Autocorrelation plot</div>
+</div>
+<div class="float">
+<img src="plot_forest.png" alt="Forest plot"><div class="figcaption">Forest plot</div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="ラッパー関数で重回帰を行う">6. ラッパー関数で重回帰を行う<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%83%E3%83%91%E3%83%BC%E9%96%A2%E6%95%B0%E3%81%A7%E9%87%8D%E5%9B%9E%E5%B8%B0%E3%82%92%E8%A1%8C%E3%81%86"></a>
@@ -322,6 +335,9 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"b[talk]"</span>, <span class="st">"b[perf]"</span>, <span class="st">"b[talk:perf]"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/plot_forest.html">plot_forest</a></span><span class="op">(</span>point_estimate <span class="op">=</span> <span class="st">"MAP"</span><span class="op">)</span></span></code></pre></div>
+<div class="float">
+<img src="plot_forest.png" alt="Regression coefficient forest plot"><div class="figcaption">Regression coefficient forest plot</div>
+</div>
 </div>
 <div class="section level2">
 <h2 id="交互作用を図で確認する">7. 交互作用を図で確認する<a class="anchor" aria-label="anchor" href="#%E4%BA%A4%E4%BA%92%E4%BD%9C%E7%94%A8%E3%82%92%E5%9B%B3%E3%81%A7%E7%A2%BA%E8%AA%8D%E3%81%99%E3%82%8B"></a>
@@ -332,6 +348,9 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/conditional_effects.html">conditional_effects</a></span><span class="op">(</span><span class="va">fit_lm</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ce</span><span class="op">)</span></span></code></pre></div>
+<div class="float">
+<img src="conditional_effect.png" alt="Conditional effect plot"><div class="figcaption">Conditional effect plot</div>
+</div>
 <p><code>effect = "talk:perf"</code> と書くと、<code>talk</code>
 の効果が <code>perf</code>
 の値によってどのように変わるかを確認できます。</p>

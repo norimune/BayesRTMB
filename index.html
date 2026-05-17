@@ -69,172 +69,93 @@
 <div class="page-header"><h1 id="bayesrtmb">BayesRTMB<a class="anchor" aria-label="anchor" href="#bayesrtmb"></a>
 </h1></div>
 <p><strong>Language / 言語</strong>: <a href="https://norimune.github.io/BayesRTMB/articles/introduction.html">English introduction</a> | <a href="https://norimune.github.io/BayesRTMB/articles/ja-introduction.html">パッケージ紹介</a></p>
-<p><strong>BayesRTMB</strong> is an R package for fast, flexible, and compile-free Bayesian modeling.</p>
-<p>Powered by <strong>RTMB</strong> (R template Model Builder) as its automatic differentiation engine, BayesRTMB allows you to write models natively in R with a syntax similar to Stan, while eliminating the need for lengthy C++ compilation times.</p>
+<p><strong>BayesRTMB</strong> is an R package for writing and fitting statistical models with RTMB as the automatic differentiation engine.</p>
+<p>You can start from wrapper functions such as <code><a href="reference/rtmb_lm.html">rtmb_lm()</a></code>, <code><a href="reference/rtmb_glmer.html">rtmb_glmer()</a></code>, <code><a href="reference/rtmb_corr.html">rtmb_corr()</a></code>, and <code><a href="reference/rtmb_ttest.html">rtmb_ttest()</a></code>, or write your own model with <code><a href="reference/rtmb_code.html">rtmb_code()</a></code>. The same model object can then be used for MCMC, MAP estimation, variational inference, and frequency-oriented classical analyses where supported.</p>
 <div class="section level2">
 <h2 id="key-features">Key Features<a class="anchor" aria-label="anchor" href="#key-features"></a>
 </h2>
 <ul>
 <li>
-<strong>No C++ Compilation</strong>: Write models in pure R and execute them instantly.</li>
+<strong>Model code in R</strong>: Write models with <code>setup</code>, <code>parameters</code>, <code>transform</code>, <code>model</code>, and <code>generate</code> blocks.</li>
 <li>
-<strong>Intuitive Block Syntax</strong>: Define your model cleanly using <code><a href="reference/rtmb_code.html">rtmb_code()</a></code> with <code>parameters</code>, <code>transform</code>, <code>model</code>, and <code>generate</code> blocks.</li>
+<strong>Multiple estimation methods</strong>: Use <code>$sample()</code>, <code>$optimize()</code>, <code>$variational()</code>, and <code>$classic()</code> from a common model object.</li>
 <li>
-<strong>Multiple Inference Engines</strong>: Seamlessly switch between:
-<ul>
+<strong>Wrapper functions</strong>: Fit regression models, GLM/GLMMs, t tests, correlations, contingency tables, factor analysis, IRT, latent rank models, and multidimensional unfolding models.</li>
 <li>
-<strong>NUTS</strong> (No-U-Turn Sampler) for robust MCMC sampling.</li>
+<strong>Classical analyses from wrappers</strong>: Use <code>$classic()</code> for frequency-oriented outputs, including <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code>, <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code>, and <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code> for supported fits.</li>
 <li>
-<strong>ADVI</strong> (Automatic Differentiation Variational Inference) for fast approximate inference.</li>
+<strong>Random effects and Laplace approximation</strong>: Declare parameters with <code>random = TRUE</code> and use RTMB’s Laplace machinery for latent variables and mixed models.</li>
 <li>
-<strong>MAP</strong> (Maximum a Posteriori) estimation.</li>
-</ul>
-</li>
-<li>
-<strong>Laplace Approximation</strong>: Built-in support for marginalizing random effects to speed up complex hierarchical models.</li>
-<li>
-<strong>Model Comparison</strong>: Compute marginal likelihoods via Bridge Sampling and calculate Bayes Factors.</li>
-<li>
-<strong>Rich Diagnostics &amp; Plotting</strong>: Integrated functions for trace plots, density plots, autocorrelation, and forest plots.</li>
-<li>
-<strong>Convenient Wrappers</strong>: Ready-to-use functions like <code>rtmb_ttest</code> and <code>rtmb_glmer</code> for standard analyses with automatic weakly informative priors.</li>
+<strong>Diagnostics and visualization</strong>: Plot posterior draws, convergence diagnostics, forest plots, conditional effects, and related summaries.</li>
 </ul>
 </div>
 <div class="section level2">
 <h2 id="installation">Installation<a class="anchor" aria-label="anchor" href="#installation"></a>
 </h2>
-<p>You can install the development version from GitHub with:</p>
+<p>You can install the development version from GitHub with either <code>pak</code> or <code>remotes</code>.</p>
 <div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="important-note-for-windows-users">Important Note for Windows Users<a class="anchor" aria-label="anchor" href="#important-note-for-windows-users"></a>
-</h3>
-<p>Since BayesRTMB depends on C++ libraries through the <code>RTMB</code> and <code>TMB</code> ecosystems, Windows users <strong>must install Rtools</strong> to compile the underlying dependencies.</p>
-<ol style="list-style-type: decimal">
-<li>Download and install the appropriate version of <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a> that matches your R version (e.g., Rtools44 for R 4.4.x).</li>
-<li>After installation, restart RStudio.</li>
-<li>You can verify if Rtools is correctly installed and recognized by your system by running:</li>
-</ol>
+<code class="sourceCode R"><span><span class="fu">pak</span><span class="fu">::</span><span class="fu"><a href="https://pak.r-lib.org/reference/pak.html" class="external-link">pak</a></span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># If TRUE is returned, your system is ready to build packages.</span></span>
-<span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
+<div class="section level3">
+<h3 id="windows-users">Windows Users<a class="anchor" aria-label="anchor" href="#windows-users"></a>
+</h3>
+<p>Windows users need Rtools because BayesRTMB depends on the RTMB/TMB ecosystem.</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>If this check fails, install the Rtools version that matches your R version from the <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools page</a>, restart R, and try again.</p>
 </div>
 </div>
 <div class="section level2">
-<h2 id="basic-usage">Basic Usage<a class="anchor" aria-label="anchor" href="#basic-usage"></a>
+<h2 id="quick-example">Quick Example<a class="anchor" aria-label="anchor" href="#quick-example"></a>
 </h2>
-<p>A model in BayesRTMB is defined by combining your data with an <code><a href="reference/rtmb_code.html">rtmb_code()</a></code> block. Here is a simple example of estimating a mean and standard deviation.</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<p>For standard analyses, start with a wrapper function.</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 1. Prepare data</span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5.2</span>, <span class="fl">4.8</span>, <span class="fl">5.5</span>, <span class="fl">6.1</span>, <span class="fl">4.9</span>, <span class="fl">5.3</span><span class="op">)</span></span>
-<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, N <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 2. Define the model using rtmb_code</span></span>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span>  <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_lm</span>   <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>The generated model code can be inspected.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>You can also write a model directly.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span>, N <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span>, lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">mu</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  model <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="co"># Priors</span></span>
-<span>    <span class="va">mu</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
-<span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span>
-<span>    </span>
-<span>    <span class="co"># Likelihood</span></span>
 <span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span>    <span class="va">mu</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 3. Build the model object</span></span>
-<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">dat</span>, code <span class="op">=</span> <span class="va">code</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># 4. Run NUTS MCMC sampling</span></span>
-<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>iter <span class="op">=</span> <span class="fl">2000</span>, warmup <span class="op">=</span> <span class="fl">1000</span>, chains <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Print summary</span></span>
-<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">mdl_custom</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_list</span>, <span class="va">code</span><span class="op">)</span></span>
+<span><span class="va">fit_custom</span> <span class="op">&lt;-</span> <span class="va">mdl_custom</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="advanced-inference">Advanced Inference<a class="anchor" aria-label="anchor" href="#advanced-inference"></a>
+<h2 id="articles">Articles<a class="anchor" aria-label="anchor" href="#articles"></a>
 </h2>
-<p>BayesRTMB provides a unified interface for various inference methods using R6 objects. You can easily apply different algorithms to the exact same model object.</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Maximum a Posteriori (MAP) estimation</span></span>
-<span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Automatic Differentiation Variational Inference (ADVI)</span></span>
-<span><span class="co"># Supports "meanfield", "fullrank", and "hybrid" approaches</span></span>
-<span><span class="va">fit_advi</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">advi</span><span class="op">(</span>method <span class="op">=</span> <span class="st">"meanfield"</span>, iter <span class="op">=</span> <span class="fl">5000</span><span class="op">)</span></span></code></pre></div>
-<div class="section level3">
-<h3 id="dealing-with-random-effects">Dealing with Random Effects<a class="anchor" aria-label="anchor" href="#dealing-with-random-effects"></a>
-</h3>
-<p>For hierarchical models, you can declare parameters as random effects. BayesRTMB can utilize RTMB’s <strong>Laplace approximation</strong> to integrate them out, significantly speeding up both MAP and NUTS.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">code_hierarchical</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
-<span>  parameters <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu_global</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="va">sigma_global</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span>, lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span>    <span class="co"># Declare a random effect vector</span></span>
-<span>    <span class="va">alpha</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">J</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> </span>
-<span>  <span class="op">}</span>,</span>
-<span>  model <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">alpha</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu_global</span>, <span class="va">sigma_global</span><span class="op">)</span></span>
-<span>    <span class="co"># ... rest of the model ...</span></span>
-<span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Enable Laplace approximation during sampling</span></span>
-<span><span class="va">fit_mcmc_laplace</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level2">
-<h2 id="model-comparison--bayes-factors">Model Comparison &amp; Bayes Factors<a class="anchor" aria-label="anchor" href="#model-comparison--bayes-factors"></a>
-</h2>
-<p>BayesRTMB integrates bridge sampling to easily compute marginal likelihoods for model comparison. You can evaluate the strength of evidence for one model over another using Bayes factors.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Assume fit_model1 and fit_model2 are MCMC_Fit objects</span></span>
-<span><span class="co"># Compute marginal likelihoods via Bridge Sampling</span></span>
-<span><span class="va">bs1</span> <span class="op">&lt;-</span> <span class="va">fit_model1</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">bs2</span> <span class="op">&lt;-</span> <span class="va">fit_model2</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Calculate Bayes Factor</span></span>
-<span><span class="co"># This function outputs the BF and an interpretation based on Kass &amp; Raftery (1995)</span></span>
-<span><span class="fu"><a href="reference/bayes_factor.html">bayes_factor</a></span><span class="op">(</span><span class="va">bs1</span>, <span class="va">bs2</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="visualization">Visualization<a class="anchor" aria-label="anchor" href="#visualization"></a>
-</h2>
-<p>The package includes built-in functions to visualize posterior distributions and diagnose MCMC performance quickly.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Extract the underlying array of samples</span></span>
-<span><span class="va">samples</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="va">fit</span></span>
-<span></span>
-<span><span class="co"># Diagnostic plots</span></span>
-<span><span class="fu"><a href="reference/plot_trace.html">plot_trace</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/plot_acf.html">plot_acf</a></span><span class="op">(</span><span class="va">samples</span>, var_idx <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># Compare parameter estimates</span></span>
-<span><span class="fu"><a href="reference/plot_forest.html">plot_forest</a></span><span class="op">(</span><span class="va">samples</span>, prob <span class="op">=</span> <span class="fl">0.95</span><span class="op">)</span></span>
-<span><span class="fu"><a href="reference/plot_pairs.html">plot_pairs</a></span><span class="op">(</span><span class="va">samples</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level2">
-<h2 id="built-in-wrappers">Built-in Wrappers<a class="anchor" aria-label="anchor" href="#built-in-wrappers"></a>
-</h2>
-<p>If you don’t want to write model code from scratch, BayesRTMB offers wrapper functions for common tasks, complete with automated weakly informative priors.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># Bayesian Two-Sample T-Test</span></span>
-<span><span class="co"># Automatically scales priors based on y_range</span></span>
-<span><span class="va">mdl_test</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span></span>
-<span>  y1 <span class="op">=</span> <span class="va">group_A</span>, </span>
-<span>  y2 <span class="op">=</span> <span class="va">group_B</span>, </span>
-<span>  y_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>,<span class="fl">10</span><span class="op">)</span></span>
-<span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">fit_test</span> <span class="op">&lt;-</span> <span class="va">mdl_test</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<ul>
+<li>
+<a href="https://norimune.github.io/BayesRTMB/articles/quick_start.html">Quick Start</a>: installation, a minimal model, MCMC diagnostics, visualization, and t tests.</li>
+<li>
+<a href="https://norimune.github.io/BayesRTMB/articles/wrapper_functions.html">Wrapper Functions</a>: using wrappers for Bayesian and classical analyses.</li>
+<li>
+<a href="https://norimune.github.io/BayesRTMB/articles/writing_models.html">Writing Model Codes</a>: writing custom models with <code><a href="reference/rtmb_code.html">rtmb_code()</a></code>.</li>
+<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-introduction.html">日本語: パッケージ紹介</a></li>
+<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-quick_start.html">日本語: クイックスタート</a></li>
+<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.html">日本語: ラッパー関数の使い方</a></li>
+<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-writing_models.html">日本語: モデルコードの書き方</a></li>
+</ul>
 </div>
 </div>
   </main><aside class="col-md-3"><div class="links">
@@ -242,7 +163,13 @@
 <ul class="list-unstyled">
 <li><a href="https://github.com/norimune/BayesRTMB/" class="external-link">Browse source code</a></li>
 <li><a href="https://github.com/norimune/BayesRTMB/issues" class="external-link">Report a bug</a></li>
+<li><a href="articles/quick_start.html">Quick Start</a></li>
+<li><a href="articles/wrapper_functions.html">Wrapper Functions</a></li>
+<li><a href="articles/writing_models.html">Writing Model Codes</a></li>
 <li><a href="articles/ja-introduction.html">パッケージ紹介</a></li>
+<li><a href="articles/ja-quick_start.html">クイックスタート</a></li>
+<li><a href="articles/ja-wrapper_functions.html">ラッパー関数の使い方</a></li>
+<li><a href="articles/ja-writing_models.html">モデルコードの書き方</a></li>
 <li><a href="articles/introduction.html">English introduction</a></li>
 </ul>
 </div>

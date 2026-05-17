@@ -229,6 +229,24 @@ plot_forest(theta_draws)
 - [`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)
   は、点推定値と信用区間を一覧します。
 
+実際には、たとえば次のような図として確認できます。
+
+![Posterior density plot](plot_dens.png)
+
+Posterior density plot
+
+![Trace plot](plot_trace.png)
+
+Trace plot
+
+![Autocorrelation plot](plot_acf.png)
+
+Autocorrelation plot
+
+![Forest plot](plot_forest.png)
+
+Forest plot
+
 ## 6. ラッパー関数で重回帰を行う
 
 標準的な分析では、[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
@@ -286,6 +304,10 @@ fit_lm$draws(c("b[talk]", "b[perf]", "b[talk:perf]")) |>
   plot_forest(point_estimate = "MAP")
 ```
 
+![Regression coefficient forest plot](plot_forest.png)
+
+Regression coefficient forest plot
+
 ## 7. 交互作用を図で確認する
 
 交互作用は、係数表だけでは解釈しにくいことがあります。
@@ -297,6 +319,10 @@ fit_lm$draws(c("b[talk]", "b[perf]", "b[talk:perf]")) |>
 ce <- conditional_effects(fit_lm, effect = "talk:perf")
 plot(ce)
 ```
+
+![Conditional effect plot](conditional_effect.png)
+
+Conditional effect plot
 
 `effect = "talk:perf"` と書くと、`talk` の効果が `perf`
 の値によってどのように変わるかを確認できます。
