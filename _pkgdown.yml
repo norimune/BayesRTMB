@@ -85,7 +85,6 @@ reference:
   contents:
   - rtmb_code
   - rtmb_model
-  - safe_rtmb_model
 
 - title: "Wrapper Functions"
   desc: "Functions for quick, standard analyses (Classical and Bayesian)."
