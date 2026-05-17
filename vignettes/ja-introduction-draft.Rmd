@@ -6,7 +6,7 @@ output:
     toc: true
     toc_depth: 3
 vignette: >
-  %\VignetteIndexEntry{BayesRTMB の概要}
+  %\VignetteIndexEntry{BayesRTMB の概要 draft}
   %\VignetteEncoding{UTF-8}
   %\VignetteEngine{knitr::rmarkdown}
 editor_options:
