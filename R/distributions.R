@@ -32,6 +32,7 @@
 #'   \item \code{poisson(mean)}: Poisson count data.
 #'   \item \code{neg_binomial_2(mu, size)}: Negative binomial (mean/dispersion parameterization).
 #'   \item \code{ordered_logistic(eta, cutpoints)}: Ordered categorical outcomes.
+#'   \item \code{sequential_logistic(eta, cutpoints)}: Sequential ordered categorical outcomes.
 #' }
 #'
 #' \strong{Multivariate and Matrix Distributions:}
@@ -452,6 +453,63 @@ ordered_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
       }
     }
     return(res)
+  }
+}
+
+#' Sequential logistic log-probability mass function
+#'
+#' @param x Vector of ordered categorical outcomes.
+#' @param eta Linear predictor.
+#' @param cutpoints Vector of sequential cutpoints.
+#' @return The sum of the log-probability.
+#' @keywords internal
+sequential_logistic_lpmf <- function(x, eta, cutpoints, sum = TRUE) {
+  N <- length(x)
+  K <- length(cutpoints) + 1
+
+  log1p_exp <- function(v) {
+    max_val <- (v + sqrt(v^2 + 1e-11)) / 2
+    max_val + log(exp(v - max_val) + exp(-max_val))
+  }
+
+  eta_is_matrix <- is.matrix(eta)
+  if (!eta_is_matrix) {
+    if (length(eta) == 1 && N > 1) {
+      eta_vec <- rep(eta, N)
+    } else {
+      eta_vec <- eta
+    }
+  }
+
+  log_prob_one <- function(i, y) {
+    lp_i <- cutpoints[1] * 0
+    if (y > 1L) {
+      for (kk in 1:(y - 1L)) {
+        eta_ik <- if (eta_is_matrix) eta[i, kk] else eta_vec[i]
+        v <- eta_ik - cutpoints[kk]
+        lp_i <- lp_i - log1p_exp(-v)
+      }
+    }
+    if (y < K) {
+      eta_iy <- if (eta_is_matrix) eta[i, y] else eta_vec[i]
+      v <- eta_iy - cutpoints[y]
+      lp_i <- lp_i - log1p_exp(v)
+    }
+    lp_i
+  }
+
+  if (sum) {
+    lp <- cutpoints[1] * 0
+    for (ii in seq_len(N)) {
+      lp <- lp + log_prob_one(ii, as.integer(x[ii]))
+    }
+    lp
+  } else {
+    res <- rep(cutpoints[1] * 0, N)
+    for (ii in seq_len(N)) {
+      res[ii] <- log_prob_one(ii, as.integer(x[ii]))
+    }
+    res
   }
 }
 

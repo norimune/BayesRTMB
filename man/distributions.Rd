@@ -35,6 +35,7 @@ In `rtmb_code`, you can specify distributions in two ways:
   \item \code{poisson(mean)}: Poisson count data.
   \item \code{neg_binomial_2(mu, size)}: Negative binomial (mean/dispersion parameterization).
   \item \code{ordered_logistic(eta, cutpoints)}: Ordered categorical outcomes.
+  \item \code{sequential_logistic(eta, cutpoints)}: Sequential ordered categorical outcomes.
 }
 
 \strong{Multivariate and Matrix Distributions:}

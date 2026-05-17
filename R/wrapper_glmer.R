@@ -143,10 +143,10 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
     }
   }
 
-  if (family == "ordered") {
+  if (family %in% c("ordered", "sequential")) {
     if (any(!is.finite(Y)) || any(abs(Y - round(Y)) > .Machine$double.eps^0.5) || any(Y < 1)) {
       stop(
-        "Ordered responses must be category codes 1, 2, ..., K or an ordered/factor response. ",
+        "Ordinal responses must be category codes 1, 2, ..., K or an ordered/factor response. ",
         "Check that the response variable is not being centered or otherwise transformed.",
         call. = FALSE
       )
@@ -156,7 +156,7 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
   }
 
   has_intercept <- "(Intercept)" %in% colnames(X_full)
-  if (family == "ordered") has_intercept <- FALSE
+  if (family %in% c("ordered", "sequential")) has_intercept <- FALSE
   fixed_colnames <- colnames(X_full)
   X <- X_full
   if ("(Intercept)" %in% colnames(X)) {
@@ -253,7 +253,8 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #'
 #' @param formula lme4-style formula (e.g., Y ~ X + (1 | GID))
 #' @param data Data frame
-#' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
+#' @param family Character string of the distribution family (e.g., "gaussian",
+#'   "binomial", "poisson", "ordered", "sequential")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.
@@ -539,6 +540,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   
   jzs_V_val <- NULL
   K_tmp <- ncol(X)
+  sequential_transitions_tmp <- if (identical(family, "sequential")) ordered_num_categories - 1 else 1
 
   # --- Robust SE Weights ---
   dat_weights <- list(robust_obs_weight = rep(1, N))
@@ -587,8 +589,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       con_est_list <- c(con_est_list, tran_res)
     }
 
-    b_est <- as.numeric(con_est_list$b)
-    if (length(b_est) == 0 || any(is.na(b_est))) b_est <- rep(0, K_tmp)
+    b_est <- con_est_list$b
+    if (is.null(b_est) || length(b_est) == 0 || any(is.na(as.numeric(b_est)))) {
+      b_est <- if (identical(family, "sequential")) matrix(0, K_tmp, sequential_transitions_tmp) else rep(0, K_tmp)
+    } else if (identical(family, "sequential")) {
+      b_est <- matrix(as.numeric(b_est), K_tmp, sequential_transitions_tmp)
+    } else {
+      b_est <- as.numeric(b_est)
+    }
 
     r_init <- ifelse(abs(b_est) > mean(abs(b_est)), 0.9, 0.1)
     tau_init <- pmax(abs(b_est), 0.01)
@@ -616,8 +624,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       }
 
       if (regularization == "none" && K_tmp > 0) {
-        if (has_intercept) init$b <- init_coef[-1]
-        else init$b <- init_coef
+        b_init <- if (has_intercept) init_coef[-1] else init_coef
+        if (family == "sequential") {
+          init$b <- matrix(b_init, K_tmp, sequential_transitions_tmp)
+        } else {
+          init$b <- b_init
+        }
       }
 
       # Initial values for residual correlation
@@ -700,7 +712,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
     setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- res$N)
     setup_exprs[[length(setup_exprs) + 1]] <- quote(K <- ncol(X))
-    if (family == "ordered") {
+    if (family %in% c("ordered", "sequential")) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- res$num_categories)
     }
     setup_exprs[[length(setup_exprs) + 1]] <- "# Random-effect design"
@@ -735,14 +747,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         } else {
           setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y))
         }
-      } else {
+      } else if (!is.numeric(Y_setup_raw)) {
         setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(Y))
       }
       if (family == "binomial") {
         setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- rep(1, length(Y)))
       }
     }
-    if (family == "ordered") {
+    if (family %in% c("ordered", "sequential")) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.integer(round(Y)))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- max(Y))
     }
@@ -761,7 +773,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   if (use_weak_info) {
     setup_exprs[[length(setup_exprs) + 1]] <- "# Prior setting"
-    if (family %in% c("bernoulli", "binomial", "ordered")) {
+    if (family %in% c("bernoulli", "binomial", "ordered", "sequential")) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(base_scale <- pi / sqrt(3))
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- base_scale * .(prior$max_beta))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- 0)
@@ -800,7 +812,11 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
     if (K_tmp > 0) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- .(prior$max_beta) * base_scale / X_sd)
+      if (family == "sequential") {
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- matrix(.(prior$max_beta) * base_scale / X_sd, K, num_categories - 1))
+      } else {
+        setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- .(prior$max_beta) * base_scale / X_sd)
+      }
       
       if (prior_type == "jzs") {
         # Calculate (X_c' X_c / N)^-1 for multivariate JZS
@@ -825,13 +841,23 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       }
 
       if (regularization == "rhs") {
-        setup_exprs[[length(setup_exprs) + 1]] <- bquote(p0 <- min(.(prior$expected_vars), K - 1))
+        if (family == "sequential") {
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(p0 <- min(.(prior$expected_vars), K * (num_categories - 1) - 1))
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(K_eff <- K * (num_categories - 1))
+        } else {
+          setup_exprs[[length(setup_exprs) + 1]] <- bquote(p0 <- min(.(prior$expected_vars), K - 1))
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(K_eff <- K)
+        }
         setup_exprs[[length(setup_exprs) + 1]] <- quote(if (p0 < 1) p0 <- 1)
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- (p0 / (K - p0)) * (base_scale / sqrt(N)))
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- (p0 / (K_eff - p0)) * (base_scale / sqrt(N)))
         setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_df <- .(prior$slab_df) / 2.0)
         setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_scale2 <- (.(prior$slab_df) * .(prior$slab_scale)^2) / 2.0)
       } else if (regularization == "ssp") {
-        setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- base_scale / X_sd)
+        if (family == "sequential") {
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- matrix(base_scale / X_sd, K, num_categories - 1))
+        } else {
+          setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- base_scale / X_sd)
+        }
       }
     }
   }
@@ -848,6 +874,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   tmp_env <- list2env(dat)
   eval(setup_ast, tmp_env)
   N <- tmp_env$N; K <- tmp_env$K
+  num_categories <- tmp_env$num_categories
   num_sigma_groups <- if (!is.null(tmp_env$num_sigma_groups)) tmp_env$num_sigma_groups else 1
 
   # --- Parameters AST ---
@@ -861,20 +888,34 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
   if (K > 0) {
     if (prior_type == "jzs") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
+      if (family == "sequential") param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(c(K, num_categories - 1)))
+      else param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
     } else if (regularization == "none") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
+      if (family == "sequential") param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(c(K, num_categories - 1)))
+      else param_exprs[[length(param_exprs) + 1]] <- quote(b <- Dim(K))
     } else if (regularization == "rhs") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(K))
-      param_exprs[[length(param_exprs) + 1]] <- quote(lambda <- Dim(K, lower = 0))
-      param_exprs[[length(param_exprs) + 1]] <- quote(w_lambda <- Dim(K, lower = 0))
+      if (family == "sequential") {
+        param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(c(K, num_categories - 1)))
+        param_exprs[[length(param_exprs) + 1]] <- quote(lambda <- Dim(c(K, num_categories - 1), lower = 0))
+        param_exprs[[length(param_exprs) + 1]] <- quote(w_lambda <- Dim(c(K, num_categories - 1), lower = 0))
+      } else {
+        param_exprs[[length(param_exprs) + 1]] <- quote(z <- Dim(K))
+        param_exprs[[length(param_exprs) + 1]] <- quote(lambda <- Dim(K, lower = 0))
+        param_exprs[[length(param_exprs) + 1]] <- quote(w_lambda <- Dim(K, lower = 0))
+      }
       param_exprs[[length(param_exprs) + 1]] <- quote(tau_hs <- Dim(1, lower = 0))
       param_exprs[[length(param_exprs) + 1]] <- quote(w_tau <- Dim(1, lower = 0))
       param_exprs[[length(param_exprs) + 1]] <- quote(c2 <- Dim(1, lower = 0))
     } else if (regularization == "ssp") {
-      param_exprs[[length(param_exprs) + 1]] <- quote(beta_raw <- Dim(K))
-      param_exprs[[length(param_exprs) + 1]] <- quote(r <- Dim(K, lower = 0.001, upper = 0.999))
-      param_exprs[[length(param_exprs) + 1]] <- quote(tau <- Dim(K, lower = 0))
+      if (family == "sequential") {
+        param_exprs[[length(param_exprs) + 1]] <- quote(beta_raw <- Dim(c(K, num_categories - 1)))
+        param_exprs[[length(param_exprs) + 1]] <- quote(r <- Dim(c(K, num_categories - 1), lower = 0.001, upper = 0.999))
+        param_exprs[[length(param_exprs) + 1]] <- quote(tau <- Dim(c(K, num_categories - 1), lower = 0))
+      } else {
+        param_exprs[[length(param_exprs) + 1]] <- quote(beta_raw <- Dim(K))
+        param_exprs[[length(param_exprs) + 1]] <- quote(r <- Dim(K, lower = 0.001, upper = 0.999))
+        param_exprs[[length(param_exprs) + 1]] <- quote(tau <- Dim(K, lower = 0))
+      }
     }
   }
 
@@ -910,7 +951,12 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (family == "student_t") param_exprs[[length(param_exprs) + 1]] <- quote(nu <- Dim(1, lower = 2))
   if (family == "gamma") param_exprs[[length(param_exprs) + 1]] <- quote(shape <- Dim(1, lower = 0))
   if (family == "neg_binomial") param_exprs[[length(param_exprs) + 1]] <- quote(phi <- Dim(1, lower = 0))
-  if (family == "ordered") param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
+  if (family == "ordered") {
+    param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1, type = "ordered"))
+  }
+  if (family == "sequential") {
+    param_exprs[[length(param_exprs) + 1]] <- quote(cutpoints <- Dim(num_categories - 1))
+  }
   param_ast <- as.call(c(list(as.name("{")), param_exprs))
 
   # --- Transform AST ---
@@ -944,7 +990,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   # --- Model AST ---
   transform_exprs <- list()
-  if (has_intercept) {
+  if (family == "sequential") {
+    if (K > 0) transform_exprs[[1]] <- quote(eta <- X %*% b)
+    else transform_exprs[[1]] <- quote(eta <- matrix(0, N, num_categories - 1))
+  } else if (has_intercept) {
     if (use_centering) {
       if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept_c + X_c %*% b)
       else transform_exprs[[1]] <- quote(eta <- rep(Intercept_c, N))
@@ -965,13 +1014,27 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       sd_name <- as.name(paste0("sd", suffix(b)))
 
       if (num_ranef_list[[b]] > 1) {
-        transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (i in 1:N) eta[i] <- eta[i] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name)))
+        if (family == "sequential") {
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (i in 1:N) for (k_seq in 1:(num_categories - 1)) eta[i, k_seq] <- eta[i, k_seq] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name)))
+        } else {
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (i in 1:N) eta[i] <- eta[i] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name)))
+        }
       } else {
-        transform_exprs[[length(transform_exprs) + 1]] <- bquote(eta <- eta + .(Z_mat_name)[,1] * .(r_re_name)[.(group_idx_name)] * .(sd_name))
+        if (family == "sequential") {
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (k_seq in 1:(num_categories - 1)) eta[, k_seq] <- eta[, k_seq] + .(Z_mat_name)[,1] * .(r_re_name)[.(group_idx_name)] * .(sd_name))
+        } else {
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(eta <- eta + .(Z_mat_name)[,1] * .(r_re_name)[.(group_idx_name)] * .(sd_name))
+        }
       }
     }
   }
-  if (!is.null(offset)) transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
+  if (!is.null(offset)) {
+    if (family == "sequential") {
+      transform_exprs[[length(transform_exprs) + 1]] <- quote(for (k_seq in 1:(num_categories - 1)) eta[, k_seq] <- eta[, k_seq] + offset)
+    } else {
+      transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
+    }
+  }
 
   ll_data_exprs <- list()
   if (!is.null(resid_corr)) {
@@ -1030,7 +1093,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                                  "binomial" = quote(lp <- lp + sum(robust_obs_weight * binomial_logit_lpmf(Y, trials, eta, sum = FALSE))),
                                  "poisson" = quote(lp <- lp + sum(robust_obs_weight * poisson_lpmf(Y, exp(eta), sum = FALSE))),
                                  "neg_binomial" = quote(lp <- lp + sum(robust_obs_weight * neg_binomial_2_lpmf(Y, exp(eta), phi, sum = FALSE))),
-                                 "ordered" = quote(lp <- lp + sum(robust_obs_weight * ordered_logistic_lpmf(Y, eta, cutpoints, sum = FALSE)))
+                                 "ordered" = quote(lp <- lp + sum(robust_obs_weight * ordered_logistic_lpmf(Y, eta, cutpoints, sum = FALSE))),
+                                 "sequential" = quote(Y ~ sequential_logistic(eta, cutpoints))
     )
   }
 
@@ -1043,7 +1107,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         if (num_ranef_val == 1) {
           sd_name <- as.name(paste0("sd", suffix(b)))
           r_re_name <- as.name(paste0("r_re", suffix(b)))
-          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(lp <- lp + sum(.(weight_name) * normal_lpdf(.(r_re_name), 0, .(sd_name), sum = FALSE)))
+          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(lp <- lp + sum(.(weight_name) * normal_lpdf(.(r_re_name), 0, 1, sum = FALSE)))
         } else {
           r_re_name <- as.name(paste0("r_re", suffix(b)))
           CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
@@ -1075,7 +1139,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (family == "student_t" && !is.null(prior$nu_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(nu ~ exponential(.(prior$nu_rate)))
     if (family == "gamma" && !is.null(prior$shape_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(shape ~ exponential(.(prior$shape_rate)))
     if (family == "neg_binomial" && !is.null(prior$phi_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(phi ~ exponential(.(prior$phi_rate)))
-    if (family == "ordered" && !is.null(prior$cutpoint_sd)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
+    if (family %in% c("ordered", "sequential") && !is.null(prior$cutpoint_sd)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
 
     if (has_intercept) {
       if (use_weak_info && prior_type == "weak") {
@@ -1151,7 +1215,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (family == "student_t" && !is.null(prior$nu_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(nu ~ exponential(.(prior$nu_rate)))
     if (family == "gamma" && !is.null(prior$shape_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(shape ~ exponential(.(prior$shape_rate)))
     if (family == "neg_binomial" && !is.null(prior$phi_rate)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(phi ~ exponential(.(prior$phi_rate)))
-    if (family == "ordered" && !is.null(prior$cutpoint_sd)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
+    if (family %in% c("ordered", "sequential") && !is.null(prior$cutpoint_sd)) prior_exprs[[length(prior_exprs) + 1]] <- bquote(cutpoints ~ normal(0, .(prior$cutpoint_sd)))
   }
 
   model_exprs <- list()
@@ -1179,12 +1243,32 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     par_names_list$sigma <- sigma_group_names
   }
   if (K > 0) {
-    par_names_list$b <- fixed_names
-    if (regularization == "rhs") {
-      par_names_list$z <- fixed_names; par_names_list$lambda <- fixed_names; par_names_list$w_lambda <- fixed_names
-    } else if (regularization == "ssp") {
-      par_names_list$beta_raw <- fixed_names; par_names_list$r <- fixed_names; par_names_list$tau <- fixed_names
+    if (family == "sequential") {
+      transition_names <- paste0(seq_len(num_categories - 1), "->", 2:num_categories)
+      par_names_list$b <- list(fixed_names, transition_names)
+    } else {
+      par_names_list$b <- fixed_names
     }
+    if (regularization == "rhs") {
+      if (family == "sequential") {
+        par_names_list$z <- list(fixed_names, transition_names)
+        par_names_list$lambda <- list(fixed_names, transition_names)
+        par_names_list$w_lambda <- list(fixed_names, transition_names)
+      } else {
+        par_names_list$z <- fixed_names; par_names_list$lambda <- fixed_names; par_names_list$w_lambda <- fixed_names
+      }
+    } else if (regularization == "ssp") {
+      if (family == "sequential") {
+        par_names_list$beta_raw <- list(fixed_names, transition_names)
+        par_names_list$r <- list(fixed_names, transition_names)
+        par_names_list$tau <- list(fixed_names, transition_names)
+      } else {
+        par_names_list$beta_raw <- fixed_names; par_names_list$r <- fixed_names; par_names_list$tau <- fixed_names
+      }
+    }
+  }
+  if (family %in% c("ordered", "sequential")) {
+    par_names_list$cutpoints <- paste0("C", seq_len(num_categories - 1))
   }
   if (has_random) {
     for (b in 1:num_bars) {
@@ -1200,6 +1284,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   view_vars <- c()
   if (has_intercept) view_vars <- c(if (use_centering) "Intercept_c" else "Intercept")
   if (K > 0) view_vars <- c(view_vars, "b")
+  if (family %in% c("ordered", "sequential")) view_vars <- c(view_vars, "cutpoints")
   view_vars <- c(view_vars, "sigma")
   if (has_random) {
     for (b in 1:num_bars) {

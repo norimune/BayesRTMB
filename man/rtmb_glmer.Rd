@@ -32,7 +32,8 @@ rtmb_glmer(
 
 \item{data}{Data frame}
 
-\item{family}{Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")}
+\item{family}{Character string of the distribution family (e.g., "gaussian",
+"binomial", "poisson", "ordered", "sequential")}
 
 \item{laplace}{Logical; whether to marginalize random effects using Laplace approximation}
 

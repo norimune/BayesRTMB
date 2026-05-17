@@ -63,8 +63,20 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     family_list <- family
   }
 
-  N <- nrow(data)
-  data_list <- list(N = N)
+  setup_vars <- unique(unlist(lapply(formula, all.vars), use.names = FALSE))
+  missing_vars <- setdiff(setup_vars, names(data))
+  if (length(missing_vars) > 0) {
+    stop(
+      "The following variables in formula are not found in data: ",
+      paste(missing_vars, collapse = ", "),
+      call. = FALSE
+    )
+  }
+  setup_df <- as.data.frame(data)[, setup_vars, drop = FALSE]
+  class(setup_df) <- c("rtmb_setup_df", class(setup_df))
+
+  N <- nrow(setup_df)
+  data_list <- list(df = setup_df)
   resp_names <- character(n_eq)
   X_list <- list()
   X_colnames <- list()
@@ -76,10 +88,8 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     y_name <- as.character(f[[2]])
     resp_names[i] <- y_name
 
-    Y_val <- as.numeric(model.response(mf))
-    data_list[[paste0("Y_", i)]] <- Y_val
     X_mat <- model.matrix(f, data = data)
-    data_list[[paste0("X_", i)]] <- X_mat
+    data_list[[paste0("formula_", i)]] <- f
     cols <- colnames(X_mat)
     cols[cols == "(Intercept)"] <- "Intercept"
     X_colnames[[i]] <- cols
@@ -113,7 +123,18 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
 
   # 2. Setup AST Block
   setup_exprs <- list()
-  setup_exprs[[1]] <- quote(N <- N)
+  setup_exprs[[1]] <- quote(N <- nrow(df))
+
+  for (i in 1:n_eq) {
+    mf_name <- as.name(paste0("mf_", i))
+    formula_name <- as.name(paste0("formula_", i))
+    Y_name <- as.name(paste0("Y_", i))
+    X_name <- as.name(paste0("X_", i))
+
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mf_name) <- model.frame(.(formula_name), df))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Y_name) <- as.numeric(model.response(.(mf_name))))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_name) <- model.matrix(.(formula_name), .(mf_name)))
+  }
 
   for (i in 1:n_eq) {
     f_type <- family_list[[i]]
@@ -371,9 +392,9 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     view_order <- unique(c(view, view_order))
   }
 
-  mdl <- rtmb_model(data = as.list(tmp_env), code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order, silent = FALSE)
+  mdl <- rtmb_model(data = data_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order, silent = FALSE)
   mdl$formula <- formula
-  mdl$raw_data <- data
+  mdl$raw_data <- setup_df
   mdl$family <- family_list
 
   mdl$type <- "mediation"

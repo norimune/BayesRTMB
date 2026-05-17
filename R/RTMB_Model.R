@@ -429,6 +429,27 @@ RTMB_Model <- R6::R6Class(
         )
       }
 
+      if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
+        return(.lrt_two_stage_optimize(
+          self = self,
+          laplace = laplace,
+          init = init,
+          num_estimate = num_estimate,
+          control = control,
+          optimizer = optimizer,
+          method = method,
+          map = map,
+          fixed = fixed,
+          se_method = se_method,
+          num_samples = num_samples,
+          seed = seed,
+          marginal = marginal,
+          df_method = df_method,
+          view = view,
+          ...
+        ))
+      }
+
       .inference_pipeline(
         self = self,
         private = private,
@@ -527,6 +548,13 @@ RTMB_Model <- R6::R6Class(
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL) {
+      if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
+        stop(
+          "two_stage estimation for rtmb_lrt() is currently implemented only for optimize(). ",
+          "MCMC sampling is not implemented for two_stage models yet.",
+          call. = FALSE
+        )
+      }
       .sample_impl(self, private, sampling, warmup, chains, thin, seed, delta, 
                    max_treedepth, parallel, laplace, init, init_jitter, 
                    save_csv, map, fixed)
@@ -556,6 +584,13 @@ RTMB_Model <- R6::R6Class(
                            method = c("meanfield", "fullrank", "hybrid"), parallel = FALSE,
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
                            map = NULL, fixed = NULL) {
+      if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
+        stop(
+          "two_stage estimation for rtmb_lrt() is currently implemented only for optimize(). ",
+          "Variational inference is not implemented for two_stage models yet.",
+          call. = FALSE
+        )
+      }
       .variational_impl(self, private, iter, tol_rel_obj, window_size, num_samples, 
                         num_estimate, alpha, laplace, print_freq, method, 
                         parallel, seed, init, save_csv, map, fixed)
@@ -844,6 +879,10 @@ RTMB_Model <- R6::R6Class(
       if (is.null(control)) control <- list()
       optimizer <- match.arg(optimizer, c("nlminb", "optim"))
       if (!is.numeric(num_estimate) || length(num_estimate) != 1L || num_estimate < 1) stop("num_estimate must be a positive integer.", call. = FALSE)
+      se_messages <- character(0)
+      add_se_message <- function(msg) {
+        if (!msg %in% se_messages) se_messages <<- c(se_messages, msg)
+      }
 
       reml_state <- NULL
       if (isTRUE(reml)) {
@@ -937,7 +976,19 @@ RTMB_Model <- R6::R6Class(
       }
 
       sd_rep <- if (isTRUE(se)) {
-        tryCatch(RTMB::sdreport(ad_obj, getJointPrecision = isTRUE(reml)), warning = function(w) NULL, error = function(e) NULL)
+        tryCatch(
+          withCallingHandlers(
+            RTMB::sdreport(ad_obj, getJointPrecision = isTRUE(reml)),
+            warning = function(w) {
+              add_se_message(paste0("SE warning from sdreport(): ", conditionMessage(w)))
+              invokeRestart("muffleWarning")
+            }
+          ),
+          error = function(e) {
+            add_se_message(paste0("SE calculation via sdreport() failed: ", conditionMessage(e)))
+            NULL
+          }
+        )
       } else NULL
 
       unc_est_vec <- unlist(ad_obj$env$parList(), use.names = FALSE); L_u_total <- length(unc_est_vec)
@@ -953,15 +1004,35 @@ RTMB_Model <- R6::R6Class(
       unc_se_vec <- rep(0, L_u_total); Cov_u <- matrix(0, L_u_total, L_u_total); fallback_needed <- FALSE
       if (isTRUE(se) && !is.null(sd_rep) && !is.null(sd_rep$cov.fixed)) {
         se_fix <- sqrt(pmax(diag(sd_rep$cov.fixed), 0))
-        if (!isTRUE(sd_rep$pdHess) || any(!is.finite(se_fix)) || length(idx_fix_active) != length(se_fix)) fallback_needed <- TRUE
+        if (!isTRUE(sd_rep$pdHess) || any(!is.finite(se_fix)) || length(idx_fix_active) != length(se_fix)) {
+          fallback_needed <- TRUE
+          if (!isTRUE(sd_rep$pdHess)) {
+            add_se_message("SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.")
+          }
+          if (any(!is.finite(se_fix))) {
+            add_se_message("SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.")
+          }
+          if (length(idx_fix_active) != length(se_fix)) {
+            add_se_message("SE warning: sdreport() covariance size did not match the active parameter vector; Hessian-based fallback will be attempted.")
+          }
+        }
         else {
           unc_se_vec[idx_fix_active] <- se_fix; Cov_u[idx_fix_active, idx_fix_active] <- sd_rep$cov.fixed
           unc_se_vec <- private$.copy_mapped_se(unc_se_vec, se_fix, target_map, index_map$factor_levels_seen, idx_ran_full)
         }
-      } else if (isTRUE(se)) fallback_needed <- TRUE
+      } else if (isTRUE(se)) {
+        fallback_needed <- TRUE
+        add_se_message("SE warning: sdreport() did not return cov.fixed; Hessian-based fallback will be attempted.")
+      }
 
       if (isTRUE(se) && isTRUE(reml) && !is.null(sd_rep) && !is.null(sd_rep$jointPrecision) && length(idx_ran_full) > 0L) {
-        V_joint <- tryCatch(solve(as.matrix(sd_rep$jointPrecision)), error = function(e) if (requireNamespace("MASS", quietly = TRUE)) MASS::ginv(as.matrix(sd_rep$jointPrecision)) else NULL)
+        V_joint <- tryCatch(
+          solve(as.matrix(sd_rep$jointPrecision)),
+          error = function(e) {
+            add_se_message("SE warning: joint precision matrix was singular; using MASS::ginv() for random-effect covariance.")
+            if (requireNamespace("MASS", quietly = TRUE)) MASS::ginv(as.matrix(sd_rep$jointPrecision)) else NULL
+          }
+        )
         if (!is.null(V_joint) && nrow(V_joint) == length(idx_ran_full) && ncol(V_joint) == length(idx_ran_full)) {
           Cov_u[idx_ran_full, idx_ran_full] <- as.matrix(V_joint)
           unc_se_vec[idx_ran_full] <- sqrt(pmax(diag(as.matrix(V_joint)), 0))
@@ -976,12 +1047,25 @@ RTMB_Model <- R6::R6Class(
       if (isTRUE(se) && isTRUE(fallback_needed) && length(opt$par) > 0L) {
         H <- tryCatch(ad_obj$he(opt$par), error = function(e) tryCatch(ad_obj$he(opt$par + 1e-6), error = function(e2) NULL))
         if (!is.null(H)) {
-          Cov_pseudo <- tryCatch(solve(H), error = function(e) if (requireNamespace("MASS", quietly = TRUE)) MASS::ginv(H) else NULL)
+          Cov_pseudo <- tryCatch(
+            solve(H),
+            error = function(e) {
+              add_se_message("SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.")
+              if (requireNamespace("MASS", quietly = TRUE)) MASS::ginv(H) else NULL
+            }
+          )
           if (!is.null(Cov_pseudo) && length(idx_fix_active) == length(sqrt(pmax(diag(Cov_pseudo), 0)))) {
             se_pseudo <- sqrt(pmax(diag(Cov_pseudo), 0)); unc_se_vec[idx_fix_active] <- se_pseudo; Cov_u[idx_fix_active, idx_fix_active] <- Cov_pseudo
             unc_se_vec <- private$.copy_mapped_se(unc_se_vec, se_pseudo, target_map, index_map$factor_levels_seen, idx_ran_full)
+          } else {
+            add_se_message("SE warning: Hessian-based fallback failed; standard errors may be unavailable or unreliable.")
           }
+        } else {
+          add_se_message("SE warning: Hessian could not be evaluated; standard errors may be unavailable or unreliable.")
         }
+      }
+      if (isTRUE(se) && length(se_messages) > 0L && isTRUE(verbose) && !getOption("BayesRTMB.silent", FALSE)) {
+        cat(paste0(se_messages, collapse = "\n"), "\n", sep = "")
       }
 
       diag(Cov_u) <- pmax(diag(Cov_u), unc_se_vec^2); Cov_u[is.na(Cov_u)] <- 0

@@ -18,6 +18,7 @@ rtmb_lrt(
   prior = prior_flat(),
   y_range = NULL,
   fixed = NULL,
+  two_stage = FALSE,
   ...
 )
 }
@@ -46,6 +47,10 @@ rtmb_lrt(
 Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
+
+\item{two_stage}{Logical; if TRUE, estimate the latent-rank measurement model
+first and then estimate the rank regression with delta-method uncertainty
+propagation. Currently supported for `$optimize()` only.}
 
 \item{...}{Additional arguments passed to `rtmb_model`.}
 }

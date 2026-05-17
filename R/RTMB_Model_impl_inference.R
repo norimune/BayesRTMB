@@ -12,13 +12,15 @@
   H0 <- tryCatch(private$.simple_jacobian(ad_obj$gr, par), warning = function(w) NULL, error = function(e) NULL)
 
   if (is.null(H0) || any(!is.finite(H0))) {
-    warning("Hessian computation failed. Using normal approximation.")
+    if (!silent) cat("SE warning: Hessian computation failed in Satterthwaite calculation. Using normal approximation.\n")
     return(df_full)
   }
   V <- tryCatch(solve(H0), error = function(e) {
+    if (!silent) cat("SE warning: Hessian matrix was singular in Satterthwaite calculation; using MASS::ginv().\n")
     tryCatch(MASS::ginv(H0), error = function(e2) NULL)
   })
   if (is.null(V)) {
+    if (!silent) cat("SE warning: Satterthwaite covariance calculation failed. Using normal approximation.\n")
     return(df_full)
   }
 
@@ -146,9 +148,11 @@
   }
 
   V_theta <- tryCatch(solve(H_theta), error = function(e) {
+    if (!silent) cat("SE warning: Hessian matrix was singular in REML Satterthwaite calculation; using MASS::ginv().\n")
     tryCatch(MASS::ginv(H_theta), error = function(e2) NULL)
   })
   if (is.null(V_theta)) {
+    if (!silent) cat("SE warning: REML Satterthwaite covariance calculation failed. Using infinite degrees of freedom.\n")
     return(fallback_reml_result())
   }
 

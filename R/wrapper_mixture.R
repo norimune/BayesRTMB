@@ -93,6 +93,8 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     if (is.null(prior$ssp_ratio)) prior$ssp_ratio <- 0.25
   }
 
+  setup_from_formula <- inherits(formula, "formula") && !is.null(data)
+
   # Parse formulas and prepare data
   if (is.matrix(formula) || is.vector(formula)) {
     Y_mat <- as.matrix(formula)
@@ -122,6 +124,20 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     }
   }
 
+  if (setup_from_formula) {
+    setup_vars <- all.vars(formula)
+    missing_vars <- setdiff(setup_vars, names(data))
+    if (length(missing_vars) > 0) {
+      stop(
+        "The following variables in formula are not found in data: ",
+        paste(missing_vars, collapse = ", "),
+        call. = FALSE
+      )
+    }
+    setup_df <- as.data.frame(data)[, setup_vars, drop = FALSE]
+    class(setup_df) <- c("rtmb_setup_df", class(setup_df))
+  }
+
   Y_mat <- as.matrix(Y_mat)
   N_obs <- nrow(Y_mat)
   P_dim <- ncol(Y_mat)
@@ -136,23 +152,46 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal", "full_equal_corr")
 
   # --- 1. Dynamic AST Construction: setup ---
-  setup_exprs <- list(
-    as.name("{"),
-    quote(N <- N),
-    quote(K <- K),
-    quote(P <- P)
-  )
+  if (setup_from_formula) {
+    setup_exprs <- list(
+      as.name("{"),
+      quote(mf <- model.frame(formula, df)),
+      quote(Y <- model.response(mf)),
+      quote(if (is.null(Y)) Y <- as.matrix(mf)),
+      quote(Y <- as.matrix(Y)),
+      quote(N <- nrow(Y)),
+      quote(P <- ncol(Y)),
+      quote(K <- K)
+    )
+  } else {
+    setup_exprs <- list(
+      as.name("{"),
+      quote(N <- N),
+      quote(K <- K),
+      quote(P <- P)
+    )
+  }
   if (has_cov_prob) {
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- K_prob)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(X_means, 1, K_prob))
+    if (setup_from_formula) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_prob <- model.matrix(formula, mf))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- ncol(X_prob))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(colMeans(X_prob), 1, K_prob))
+    } else {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- K_prob)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(X_means, 1, K_prob))
+    }
     if (regularization == "rhs") {
       # RHS setup
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(tau0 <- tau0)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_df <- half_slab_df)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(half_slab_scale2 <- half_slab_scale2)
+      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) {
+        bquote(tau0 <- .(prior$expected_vars) / (K_prob - .(prior$expected_vars)) / sqrt(N))
+      } else {
+        quote(tau0 <- tau0)
+      }
+      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(half_slab_df <- .(prior$slab_df) / 2) else quote(half_slab_df <- half_slab_df)
+      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(half_slab_scale2 <- .(prior$slab_scale)^2 / 2) else quote(half_slab_scale2 <- half_slab_scale2)
     } else if (regularization == "ssp") {
       # SSP setup
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_scale <- tau_scale)
+      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(tau_scale <- .(prior$max_beta) / 1.96) else quote(tau_scale <- tau_scale)
     }
   }
   setup_ast <- as.call(setup_exprs)
@@ -380,18 +419,26 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     }
   }
 
-  data_list <- list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim)
+  data_list <- if (setup_from_formula) {
+    list(df = setup_df, formula = formula, K = K_mix)
+  } else {
+    list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim)
+  }
   if (has_cov_prob) {
-    data_list$X_prob <- X_prob
-    data_list$K_prob <- K_prob
-    data_list$X_means <- as.vector(colMeans(X_prob))
+    if (!setup_from_formula) {
+      data_list$X_prob <- X_prob
+      data_list$K_prob <- K_prob
+      data_list$X_means <- as.vector(colMeans(X_prob))
+    }
     if (regularization == "rhs") {
       p0 <- prior$expected_vars
-      data_list$tau0 <- p0 / (K_prob - p0) / sqrt(N_obs)
-      data_list$half_slab_df <- prior$slab_df / 2
-      data_list$half_slab_scale2 <- prior$slab_scale^2 / 2
+      if (!setup_from_formula) {
+        data_list$tau0 <- p0 / (K_prob - p0) / sqrt(N_obs)
+        data_list$half_slab_df <- prior$slab_df / 2
+        data_list$half_slab_scale2 <- prior$slab_scale^2 / 2
+      }
     } else if (regularization == "ssp") {
-      data_list$tau_scale <- prior$max_beta / 1.96
+      if (!setup_from_formula) data_list$tau_scale <- prior$max_beta / 1.96
     }
   }
 

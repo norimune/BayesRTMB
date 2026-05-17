@@ -323,7 +323,14 @@
     } else {
       # delta method SE
       se_out <- rep(NA_real_, L_out)
-      smry_rep <- if (!is.null(sd_rep)) tryCatch(as.data.frame(summary(sd_rep, select = "report")), error = function(e) NULL) else NULL
+      smry_rep <- if (!is.null(sd_rep)) {
+        tryCatch(
+          suppressWarnings(as.data.frame(summary(sd_rep, select = "report"))),
+          error = function(e) NULL
+        )
+      } else {
+        NULL
+      }
       if (!is.null(smry_rep)) {
         m_idx <- match(names_vec, rownames(smry_rep))
         valid <- !is.na(m_idx)
@@ -389,6 +396,7 @@
     opt_history = opt_history, transform = tran_list, generate = gq_list,
     se_samples = if (is_se_sampling && se_enabled) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
     par_unc = unc_est_vec, ci_method = se_method, laplace = laplace,
+    vcov_unc = Cov_u,
     map = target_map,
     marginal_vars = target_vars,
     laplace_random_vars = ad_setup$use_random,
