@@ -8,7 +8,6 @@ rtmb_table(
   x,
   y = NULL,
   data = NULL,
-  classic = FALSE,
   correct = TRUE,
   prior = prior_flat(),
   fixed = NULL,
@@ -16,15 +15,13 @@ rtmb_table(
 )
 }
 \arguments{
-\item{x}{Variable name or formula.}
+\item{x}{Variable name, formula, table, or matrix.}
 
 \item{y}{Variable name (optional if x is a formula).}
 
 \item{data}{A data frame.}
 
-\item{classic}{Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.}
-
-\item{correct}{Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).}
+\item{correct}{Logical; if TRUE, apply Yates' continuity correction for 2x2 classic analyses.}
 
 \item{prior}{Prior specification (Bayesian mode). Default is `prior_flat()`.}
 
@@ -33,7 +30,7 @@ rtmb_table(
 \item{...}{Additional arguments.}
 }
 \value{
-A `Classic_Fit` or `MCMC_Fit` object.
+An `RTMB_Model` object.
 }
 \description{
 `rtmb_table` performs a chi-squared test of independence between two categorical variables.
@@ -42,6 +39,7 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 \examples{
 \donttest{
 # Classic chi-squared test
-rtmb_table(skill, cond, data = debate, classic = TRUE)
+rtmb_table(skill, cond, data = debate)$classic()
+rtmb_table(table(debate$skill, debate$cond))$classic()
 }
 }

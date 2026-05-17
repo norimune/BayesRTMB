@@ -4,45 +4,69 @@
 #' `rtmb_table` performs a chi-squared test of independence between two categorical variables.
 #' It provides both classic (frequentist) Pearson chi-squared tests and Bayesian multinomial-style models.
 #'
-#' @param x Variable name or formula.
+#' @param x Variable name, formula, table, or matrix.
 #' @param y Variable name (optional if x is a formula).
 #' @param data A data frame.
-#' @param classic Logical; if TRUE, perform frequentist chi-squared and Fisher's exact tests.
-#' @param correct Logical; if TRUE, apply Yates' continuity correction (for 2x2 classic only).
+#' @param correct Logical; if TRUE, apply Yates' continuity correction for 2x2 classic analyses.
 #' @param prior Prior specification (Bayesian mode). Default is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments.
 #'
-#' @return A `Classic_Fit` or `MCMC_Fit` object.
+#' @return An `RTMB_Model` object.
 #'
 #' @examples
 #' \donttest{
 #' # Classic chi-squared test
-#' rtmb_table(skill, cond, data = debate, classic = TRUE)
+#' rtmb_table(skill, cond, data = debate)$classic()
+#' rtmb_table(table(debate$skill, debate$cond))$classic()
 #' }
 #' @export
-rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE, prior = prior_flat(), fixed = NULL, ...) {
+rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_flat(), fixed = NULL, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
 
-  # 1. Extract Variables
-  if (is.null(data)) {
-    v1 <- eval(x_expr, parent.frame())
-    v2 <- eval(y_expr, parent.frame())
-    v1_name <- deparse(x_expr)
-    v2_name <- deparse(y_expr)
+  # 1. Extract table or variables
+  if (!is.null(data)) {
+    x_val <- if (is.name(x_expr)) data[[as.character(x_expr)]] else eval(x_expr, data)
   } else {
-    v1 <- if (is.name(x_expr)) data[[as.character(x_expr)]] else eval(x_expr, data)
-    v2 <- if (is.name(y_expr)) data[[as.character(y_expr)]] else eval(y_expr, data)
-    v1_name <- as.character(x_expr)
-    v2_name <- as.character(y_expr)
+    x_val <- eval(x_expr, parent.frame())
   }
 
-  # Ensure factors
-  v1 <- as.factor(v1)
-  v2 <- as.factor(v2)
-  tab <- table(v1, v2)
+  if (inherits(x_val, "table") || (is.matrix(x_val) && is.numeric(x_val))) {
+    tab <- as.table(x_val)
+    if (length(dim(tab)) != 2L) {
+      stop("`x` must be a two-way table or matrix when supplied as a table-like object.", call. = FALSE)
+    }
+    dimn <- dimnames(tab)
+    if (is.null(dimn)) dimn <- vector("list", 2L)
+    if (is.null(dimn[[1]])) dimn[[1]] <- paste0("Row", seq_len(nrow(tab)))
+    if (is.null(dimn[[2]])) dimn[[2]] <- paste0("Col", seq_len(ncol(tab)))
+    dimnames(tab) <- dimn
+    table_name <- deparse(x_expr)
+    dim_names <- names(dimn)
+    v1_name <- if (!is.null(dim_names) && nzchar(dim_names[1])) dim_names[1] else paste0(table_name, "_row")
+    v2_name <- if (!is.null(dim_names) && length(dim_names) >= 2L && nzchar(dim_names[2])) dim_names[2] else paste0(table_name, "_col")
+  } else {
+    if (missing(y) || identical(y_expr, quote(NULL))) {
+      stop("`y` is required unless `x` is a two-way table or matrix.", call. = FALSE)
+    }
+    if (is.null(data)) {
+      v1 <- x_val
+      v2 <- eval(y_expr, parent.frame())
+      v1_name <- deparse(x_expr)
+      v2_name <- deparse(y_expr)
+    } else {
+      v1 <- x_val
+      v2 <- if (is.name(y_expr)) data[[as.character(y_expr)]] else eval(y_expr, data)
+      v1_name <- as.character(x_expr)
+      v2_name <- as.character(y_expr)
+    }
+
+    v1 <- as.factor(v1)
+    v2 <- as.factor(v2)
+    tab <- table(v1, v2)
+  }
 
   # Prepare row/column names for labels
   R_names <- rownames(tab)
@@ -50,32 +74,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, classic = FALSE, correct = TRUE
   grid <- expand.grid(Row = R_names, Col = C_names)
   cell_labels <- paste0(v1_name, ":", grid$Row, ", ", v2_name, ":", grid$Col)
 
-  # 2. Classic Mode (Frequentist)
-  if (isTRUE(classic)) {
-    chisq_res <- stats::chisq.test(tab, correct = correct)
-    fisher_res <- tryCatch(stats::fisher.test(tab), error = function(e) NULL)
-    
-    res <- Classic_Fit$new(
-      model = list(
-        type = "table", 
-        extra = list(tab = tab, correct = correct),
-        data = list(tab = tab), 
-        par_names = list(p = cell_labels)
-      ),
-      df_fixed = data.frame(
-        Statistic = c("Chi-squared", if (!is.null(fisher_res)) "Fisher's Exact" else NULL),
-        Estimate = c(chisq_res$statistic, if (!is.null(fisher_res)) NA else NULL),
-        df = c(chisq_res$parameter, if (!is.null(fisher_res)) NA else NULL),
-        Pr = c(chisq_res$p.value, if (!is.null(fisher_res)) fisher_res$p.value else NULL),
-        check.names = FALSE
-      ),
-      test_results = list(chisq = chisq_res, fisher = fisher_res)
-    )
-    class(res) <- c("rtmb_table", class(res))
-    return(res)
-  }
-
-  # 3. Bayes Mode (Multinomial Model)
+  # 2. Model (Multinomial Model)
   # Data for RTMB
   Y_vec <- as.vector(tab)
   R <- nrow(tab)

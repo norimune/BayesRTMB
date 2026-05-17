@@ -8,6 +8,7 @@
 #' @param data An optional data frame containing the variables.
 #' @param ID A character string or expression specifying the group ID variable for multilevel models.
 #' @param covariates Optional numeric matrix or data frame of covariates to be included in the joint MVN model.
+#' @param method Correlation method for \code{classic()}: \code{"pearson"}, \code{"spearman"}, or \code{"reml"}.
 #' @param prior Prior configuration object: `prior_flat()`, `prior_normal()`, or `prior_weak()`. Default is `prior_flat()`.
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
@@ -19,9 +20,11 @@
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
+                       method = c("pearson", "spearman", "reml"),
                        prior = prior_flat(), y_range = NULL,
                        init = NULL, fixed = NULL) {
 
+  method <- match.arg(method)
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
 
@@ -355,7 +358,8 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      obj$extra <- list(
        source = "wrapper",
        prior_type = prior$type,
-       marginal = "mu"
+       marginal = "mu",
+       corr_method = "reml"
      )
 
      # Set degrees of freedom map for BW method
@@ -523,7 +527,8 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     obj$extra <- list(
       source = "wrapper",
       prior_type = prior$type,
-      marginal = "mean"
+      marginal = "mean",
+      corr_method = method
     )
 
     return(obj)

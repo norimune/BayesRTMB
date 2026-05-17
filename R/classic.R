@@ -2024,7 +2024,96 @@ print.anova_rtmb_table <- function(x, ...) { cat("\nContingency Table Analysis T
 }
 
 #' @export
-anova.Classic_Fit <- function(object, ...) object$anova(...)
+anova.Classic_Fit <- function(object, ...) {
+  dots <- list(...)
+  is_fit <- vapply(dots, inherits, logical(1), what = "Classic_Fit")
+
+  if (length(dots) > 0L && any(is_fit)) {
+    if (!all(is_fit)) {
+      stop("When comparing models, all arguments after `object` must be Classic_Fit objects.", call. = FALSE)
+    }
+
+    call <- match.call(expand.dots = FALSE)
+    dot_exprs <- as.list(call$...)
+    labels <- c(deparse1(call$object), vapply(dot_exprs, deparse1, character(1)))
+    return(.anova_classic_lrt(c(list(object), dots), labels = labels))
+  }
+
+  object$anova(...)
+}
+
+.anova_classic_lrt <- function(fits, labels = NULL) {
+  if (length(fits) < 2L) {
+    stop("At least two Classic_Fit objects are required for model comparison.", call. = FALSE)
+  }
+
+  if (is.null(labels) || length(labels) != length(fits)) {
+    labels <- paste0("Model ", seq_along(fits))
+  }
+
+  ll <- lapply(fits, stats::logLik)
+  loglik <- vapply(ll, as.numeric, numeric(1))
+  df <- vapply(ll, function(x) {
+    val <- attr(x, "df")
+    if (is.null(val) || length(val) == 0L) NA_real_ else as.numeric(val)[1]
+  }, numeric(1))
+  nobs <- vapply(ll, function(x) {
+    val <- attr(x, "nobs")
+    if (is.null(val) || length(val) == 0L) NA_real_ else as.numeric(val)[1]
+  }, numeric(1))
+
+  if (anyNA(loglik)) {
+    stop("Likelihood-ratio comparison requires all models to have a finite logLik().", call. = FALSE)
+  }
+  if (anyNA(df)) {
+    stop("Likelihood-ratio comparison requires all logLik() values to have a valid df attribute.", call. = FALSE)
+  }
+
+  known_nobs <- nobs[!is.na(nobs)]
+  if (length(unique(known_nobs)) > 1L) {
+    warning("Models appear to have different numbers of observations; likelihood-ratio tests may not be valid.", call. = FALSE)
+  }
+
+  ord <- order(df, loglik)
+  labels <- labels[ord]
+  loglik <- loglik[ord]
+  df <- df[ord]
+  fits <- fits[ord]
+
+  aic <- vapply(fits, stats::AIC, numeric(1))
+  bic <- vapply(fits, stats::BIC, numeric(1))
+  chisq <- c(NA_real_, 2 * diff(loglik))
+  df_diff <- c(NA_real_, diff(df))
+  p_val <- rep(NA_real_, length(fits))
+  ok <- !is.na(chisq) & !is.na(df_diff) & df_diff > 0
+  p_val[ok] <- stats::pchisq(chisq[ok], df = df_diff[ok], lower.tail = FALSE)
+
+  res <- data.frame(
+    Model = labels,
+    Df = df,
+    logLik = loglik,
+    AIC = aic,
+    BIC = bic,
+    Chisq = chisq,
+    `Chi Df` = df_diff,
+    `Pr(>Chisq)` = p_val,
+    check.names = FALSE
+  )
+  rownames(res) <- seq_len(nrow(res))
+  class(res) <- c("anova_classic_lrt", "anova", "data.frame")
+  attr(res, "heading") <- "Likelihood Ratio Tests"
+  res
+}
+
+#' @export
+print.anova_classic_lrt <- function(x, digits = max(3L, getOption("digits") - 2L), ...) {
+  heading <- attr(x, "heading")
+  if (!is.null(heading)) cat(heading, "\n", sep = "")
+  x_print <- x
+  class(x_print) <- "data.frame"
+  print(x_print, digits = digits, na.print = "", row.names = FALSE, ...)
+  invisible(x)
+}
 
 #' @export
 print.Classic_Fit <- function(x, ...) x$print(...)

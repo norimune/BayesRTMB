@@ -110,6 +110,12 @@
   }
 
   private$.validate_classic_model()
+
+  if (isTRUE(self$type == "corr") &&
+      (self$extra$corr_method %||% "reml") %in% c("pearson", "spearman")) {
+    return(.classic_corr_test_fit(self, method = self$extra$corr_method, view = view))
+  }
+
   settings <- private$.resolve_classic_settings(df_method)
 
   # For classic mode, we use .fit_rtmb with apply_prior_correction = FALSE.
@@ -170,6 +176,207 @@
 
   class(fit) <- unique(c(
     paste0("rtmb_", self$type),
+    "Classic_Fit",
+    class(fit)
+  ))
+
+  fit
+}
+
+.classic_corr_test_fit <- function(self, method = c("pearson", "spearman"), view = NULL) {
+  method <- match.arg(method)
+  Y <- as.matrix(self$data$Y)
+  P_y <- self$data$P_y %||% ncol(Y)
+  P_x <- self$data$P_x %||% 0
+  Y_target <- Y[, seq_len(P_y), drop = FALSE]
+  var_names <- colnames(Y_target)
+  if (is.null(var_names)) var_names <- paste0("V", seq_len(ncol(Y_target)))
+
+  if (ncol(Y_target) < 2) {
+    stop("rtmb_corr() requires at least two numeric variables for correlation tests.", call. = FALSE)
+  }
+
+  pairs <- utils::combn(seq_len(ncol(Y_target)), 2)
+
+  if (P_x > 0) {
+    ok <- stats::complete.cases(Y)
+    Y_complete <- Y[ok, , drop = FALSE]
+    n_complete <- nrow(Y_complete)
+    if (n_complete <= P_x + 2) {
+      stop("Not enough complete observations to compute partial correlations.", call. = FALSE)
+    }
+
+    Y_corr <- if (method == "spearman") {
+      apply(Y_complete, 2, rank, ties.method = "average")
+    } else {
+      Y_complete
+    }
+    R <- stats::cor(Y_corr, use = "complete.obs")
+    R_yy <- R[seq_len(P_y), seq_len(P_y), drop = FALSE]
+    x_idx <- P_y + seq_len(P_x)
+    R_yx <- R[seq_len(P_y), x_idx, drop = FALSE]
+    R_xx <- R[x_idx, x_idx, drop = FALSE]
+    P_cov <- R_yy - R_yx %*% MASS::ginv(R_xx) %*% t(R_yx)
+    D <- diag(1 / sqrt(diag(P_cov)), nrow = P_y, ncol = P_y)
+    P_corr <- D %*% P_cov %*% D
+
+    rows <- vector("list", ncol(pairs))
+    pcorr_values <- numeric(ncol(pairs))
+    row_names <- character(ncol(pairs))
+    df_val <- n_complete - P_x - 2
+
+    for (k in seq_len(ncol(pairs))) {
+      i <- pairs[1, k]
+      j <- pairs[2, k]
+      est <- P_corr[i, j]
+      est <- pmax(pmin(est, 0.999999), -0.999999)
+      pcorr_values[k] <- est
+
+      t_val <- est * sqrt(df_val / pmax(1 - est^2, 1e-12))
+      p_val <- 2 * stats::pt(-abs(t_val), df = df_val)
+      z_se <- if (n_complete - P_x - 3 > 0) 1 / sqrt(n_complete - P_x - 3) else NA_real_
+      if (is.na(z_se)) {
+        lower <- upper <- NA_real_
+      } else {
+        z_val <- atanh(est)
+        lower <- tanh(z_val - stats::qnorm(0.975) * z_se)
+        upper <- tanh(z_val + stats::qnorm(0.975) * z_se)
+      }
+
+      rows[[k]] <- data.frame(
+        Estimate = est,
+        `Std. Error` = NA_real_,
+        `Lower 95%` = lower,
+        `Upper 95%` = upper,
+        df = df_val,
+        `t value` = t_val,
+        Pr = p_val,
+        check.names = FALSE
+      )
+      row_names[k] <- if (ncol(Y_target) == 2) {
+        "pcorr[rho]"
+      } else {
+        paste0("pcorr[", var_names[i], ",", var_names[j], "]")
+      }
+    }
+
+    df_fixed <- do.call(rbind, rows)
+    rownames(df_fixed) <- row_names
+
+    pcorr_out <- if (ncol(Y_target) == 2) {
+      stats::setNames(pcorr_values, "rho")
+    } else {
+      out <- diag(1, ncol(Y_target))
+      colnames(out) <- rownames(out) <- var_names
+      for (k in seq_len(ncol(pairs))) {
+        i <- pairs[1, k]
+        j <- pairs[2, k]
+        out[i, j] <- out[j, i] <- pcorr_values[k]
+      }
+      out
+    }
+
+    fit <- Classic_Fit$new(
+      model = self,
+      par = list(pcorr = pcorr_out),
+      log_lik = NA_real_,
+      df_fixed = df_fixed,
+      transform = list(pcorr = pcorr_out),
+      generate = NULL,
+      ci_method = "wald",
+      laplace = FALSE,
+      test_results = list(cor_test_method = method, partial = TRUE),
+      view = view,
+      df_method = method,
+      show_df = TRUE
+    )
+
+    class(fit) <- unique(c(
+      "rtmb_corr",
+      "Classic_Fit",
+      class(fit)
+    ))
+
+    return(fit)
+  }
+
+  rows <- vector("list", ncol(pairs))
+  corr_values <- numeric(ncol(pairs))
+  row_names <- character(ncol(pairs))
+
+  for (k in seq_len(ncol(pairs))) {
+    i <- pairs[1, k]
+    j <- pairs[2, k]
+    ok <- stats::complete.cases(Y_target[, i], Y_target[, j])
+    x <- Y_target[ok, i]
+    y <- Y_target[ok, j]
+    ct <- suppressWarnings(stats::cor.test(x, y, method = method))
+    est <- unname(ct$estimate)
+    corr_values[k] <- est
+
+    lower <- upper <- NA_real_
+    if (!is.null(ct$conf.int)) {
+      lower <- unname(ct$conf.int[1])
+      upper <- unname(ct$conf.int[2])
+    }
+
+    row <- data.frame(
+      Estimate = est,
+      `Std. Error` = NA_real_,
+      `Lower 95%` = lower,
+      `Upper 95%` = upper,
+      check.names = FALSE
+    )
+
+    if (method == "pearson") {
+      row$df <- unname(ct$parameter %||% (length(x) - 2))
+      row$`t value` <- unname(ct$statistic)
+    } else {
+      row$`S value` <- unname(ct$statistic)
+    }
+    row$Pr <- ct$p.value
+
+    row_names[k] <- if (ncol(Y_target) == 2) {
+      "corr[rho]"
+    } else {
+      paste0("corr[", var_names[i], ",", var_names[j], "]")
+    }
+    rows[[k]] <- row
+  }
+
+  df_fixed <- do.call(rbind, rows)
+  rownames(df_fixed) <- row_names
+
+  corr_out <- if (ncol(Y_target) == 2) {
+    stats::setNames(corr_values, "rho")
+  } else {
+    out <- diag(1, ncol(Y_target))
+    colnames(out) <- rownames(out) <- var_names
+    for (k in seq_len(ncol(pairs))) {
+      i <- pairs[1, k]
+      j <- pairs[2, k]
+      out[i, j] <- out[j, i] <- corr_values[k]
+    }
+    out
+  }
+
+  fit <- Classic_Fit$new(
+    model = self,
+    par = list(corr = corr_out),
+    log_lik = NA_real_,
+    df_fixed = df_fixed,
+    transform = NULL,
+    generate = NULL,
+    ci_method = "wald",
+    laplace = FALSE,
+    test_results = list(cor_test_method = method),
+    view = view,
+    df_method = method,
+    show_df = method == "pearson"
+  )
+
+  class(fit) <- unique(c(
+    "rtmb_corr",
     "Classic_Fit",
     class(fit)
   ))
@@ -281,6 +488,41 @@
         }
       }
       est_dfs_all <- unlist(df_list_unc, use.names = FALSE)
+    }
+
+    if (isTRUE(self$type == "corr") && identical(self$extra$corr_method %||% "reml", "reml")) {
+      n_corr <- if (!is.null(self$data$Y) && is.matrix(self$data$Y)) {
+        nrow(self$data$Y)
+      } else {
+        n_obs
+      }
+      if (!is.na(n_corr) && n_corr > 2) {
+        p_y <- self$data$P_y %||% 0
+        p_x <- if (!is.null(self$data$Y) && is.matrix(self$data$Y) && p_y > 0) {
+          max(ncol(self$data$Y) - p_y, 0)
+        } else {
+          self$data$P_x %||% 0
+        }
+        df_reml <- list(
+          mean = n_corr - 1,
+          sd = n_corr - 2,
+          corr = n_corr - 2,
+          CF_corr = n_corr - 2,
+          pcorr = pmax(n_corr - p_x - 2, 1)
+        )
+        df_list_unc <- unconstrained_vector_to_list(est_dfs_all, self$par_list)
+        for (v in intersect(names(df_list_unc), names(df_reml))) {
+          df_list_unc[[v]] <- rep(df_reml[[v]], length(df_list_unc[[v]]))
+        }
+        est_dfs_all <- unlist(df_list_unc, use.names = FALSE)
+
+        if (is.null(self$extra$df_map)) self$extra$df_map <- list()
+        self$extra$df_map$mean <- df_reml$mean
+        self$extra$df_map$sd <- df_reml$sd
+        self$extra$df_map$corr <- df_reml$corr
+        self$extra$df_map$CF_corr <- df_reml$CF_corr
+        self$extra$df_map$pcorr <- df_reml$pcorr
+      }
     }
   } else if (identical(settings$df_method, "satterthwaite")) {
     satt_res <- self$calculate_satterthwaite_df(
@@ -661,6 +903,26 @@
     if (settings$use_reml) V_theta else NULL,
     if (settings$use_reml) idx_fix_active else NULL
   )
+
+  apply_df_map_to_summary <- function(df) {
+    if (is.null(df) || is.null(self$extra$df_map) || !("df" %in% names(df))) {
+      return(df)
+    }
+    rn <- rownames(df)
+    if (is.null(rn)) return(df)
+    base_names <- gsub("\\[.*\\]$", "", rn)
+    for (i in seq_along(base_names)) {
+      if (base_names[i] %in% names(self$extra$df_map)) {
+        df$df[i] <- as.numeric(self$extra$df_map[[base_names[i]]])
+      }
+    }
+    df
+  }
+
+  df_fixed <- apply_df_map_to_summary(df_fixed)
+  df_random <- apply_df_map_to_summary(df_random)
+  df_transform <- apply_df_map_to_summary(df_transform)
+  df_generate <- apply_df_map_to_summary(df_generate)
 
   # 5. Log-likelihood and Vcov
   log_lik <- -opt$objective

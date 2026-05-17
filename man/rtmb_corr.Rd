@@ -9,6 +9,7 @@ rtmb_corr(
   data = NULL,
   ID = NULL,
   covariates = NULL,
+  method = c("pearson", "spearman", "reml"),
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
@@ -23,6 +24,8 @@ rtmb_corr(
 \item{ID}{A character string or expression specifying the group ID variable for multilevel models.}
 
 \item{covariates}{Optional numeric matrix or data frame of covariates to be included in the joint MVN model.}
+
+\item{method}{Correlation method for \code{classic()}: \code{"pearson"}, \code{"spearman"}, or \code{"reml"}.}
 
 \item{prior}{Prior configuration object: `prior_flat()`, `prior_normal()`, or `prior_weak()`. Default is `prior_flat()`.}
 
