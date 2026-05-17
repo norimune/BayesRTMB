@@ -86,7 +86,7 @@ MAP fit object"></head><body>
 
 
 <dt><code>ci_method</code></dt>
-<dd><p>Method used for CI estimation ("wald", "profile", or "sampling").</p></dd>
+<dd><p>Method used for CI estimation ("wald", "sampling", or "none").</p></dd>
 
 
 <dt><code>objective</code></dt>
@@ -165,6 +165,10 @@ MAP fit object"></head><body>
 <dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
 
 
+<dt><code>view</code></dt>
+<dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -217,14 +221,14 @@ MAP fit object"></head><body>
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/MAP_Fit.html">MAP_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  <span class="va">model</span>,</span>
-<span>  <span class="va">par_vec</span>,</span>
-<span>  <span class="va">par</span>,</span>
-<span>  <span class="va">objective</span>,</span>
-<span>  <span class="va">log_ml</span>,</span>
-<span>  <span class="va">convergence</span>,</span>
-<span>  <span class="va">sd_rep</span>,</span>
-<span>  <span class="va">df_fixed</span>,</span>
-<span>  <span class="va">random_effects</span>,</span>
+<span>  par_vec <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  par <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  objective <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  log_ml <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  convergence <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sd_rep <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  df_fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  random_effects <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  df_transform <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  df_generate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  opt_history <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -232,14 +236,15 @@ MAP fit object"></head><body>
 <span>  generate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  se_samples <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  par_unc <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  vcov_unc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ci_method <span class="op">=</span> <span class="st">"wald"</span>,</span>
 <span>  laplace <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  vcov_unc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  marginal_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  laplace_random_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  idx_fix_active <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  show_df <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span>  show_df <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -309,12 +314,8 @@ MAP fit object"></head><body>
 <dd><p>Parameter vector on the unconstrained scale (raw values).</p></dd>
 
 
-<dt><code>vcov_unc</code></dt>
-<dd><p>Variance-covariance matrix of parameters in unconstrained space.</p></dd>
-
-
 <dt><code>ci_method</code></dt>
-<dd><p>Method used for CI estimation ("wald" or "sampling").</p></dd>
+<dd><p>Method used for CI estimation ("wald", "sampling", or "none").</p></dd>
 
 
 <dt><code>laplace</code></dt>
@@ -323,6 +324,10 @@ MAP fit object"></head><body>
 
 <dt><code>map</code></dt>
 <dd><p>List; the parameter mapping used.</p></dd>
+
+
+<dt><code>vcov_unc</code></dt>
+<dd><p>Variance-covariance matrix of parameters in unconstrained space.</p></dd>
 
 
 <dt><code>marginal_vars</code></dt>
@@ -339,6 +344,10 @@ MAP fit object"></head><body>
 
 <dt><code>show_df</code></dt>
 <dd><p>Logical; whether to display degrees of freedom in the summary output. Default is TRUE.</p></dd>
+
+
+<dt><code>view</code></dt>
+<dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
 
 </dl><p></p></div>
@@ -402,7 +411,13 @@ MAP fit object"></head><body>
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
 <p>Summarize MAP estimates.</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, digits <span class="op">=</span> <span class="fl">5</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  max_rows <span class="op">=</span> <span class="fl">10</span>,</span>
+<span>  digits <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  ranef <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
@@ -421,6 +436,10 @@ MAP fit object"></head><body>
 
 <dt><code>ranef</code></dt>
 <dd><p>Logical; whether to also display random effect estimates. Default is FALSE.</p></dd>
+
+
+<dt><code>view</code></dt>
+<dd><p>Character vector of parameter names to prioritize or filter by.</p></dd>
 
 
 </dl><p></p></div>

@@ -36,7 +36,7 @@ estimation.
 
 - `ci_method`:
 
-  Method used for CI estimation ("wald", "profile", or "sampling").
+  Method used for CI estimation ("wald", "sampling", or "none").
 
 - `objective`:
 
@@ -117,6 +117,10 @@ estimation.
 
   Logical; whether to display degrees of freedom in the summary output.
 
+- `view`:
+
+  Character vector of parameter names to prioritize in summary.
+
 ## Methods
 
 ### Public methods
@@ -181,14 +185,14 @@ Create a new \`MAP_Fit\` object.
 
     MAP_Fit$new(
       model,
-      par_vec,
-      par,
-      objective,
-      log_ml,
-      convergence,
-      sd_rep,
-      df_fixed,
-      random_effects,
+      par_vec = NULL,
+      par = NULL,
+      objective = NULL,
+      log_ml = NULL,
+      convergence = NULL,
+      sd_rep = NULL,
+      df_fixed = NULL,
+      random_effects = NULL,
       df_transform = NULL,
       df_generate = NULL,
       opt_history = NULL,
@@ -196,14 +200,15 @@ Create a new \`MAP_Fit\` object.
       generate = NULL,
       se_samples = NULL,
       par_unc = NULL,
-      vcov_unc = NULL,
       ci_method = "wald",
       laplace = TRUE,
       map = NULL,
+      vcov_unc = NULL,
       marginal_vars = NULL,
       laplace_random_vars = NULL,
       idx_fix_active = NULL,
-      show_df = TRUE
+      show_df = TRUE,
+      view = NULL
     )
 
 #### Arguments
@@ -273,13 +278,9 @@ Create a new \`MAP_Fit\` object.
 
   Parameter vector on the unconstrained scale (raw values).
 
-- `vcov_unc`:
-
-  Variance-covariance matrix of parameters in unconstrained space.
-
 - `ci_method`:
 
-  Method used for CI estimation ("wald" or "sampling").
+  Method used for CI estimation ("wald", "sampling", or "none").
 
 - `laplace`:
 
@@ -288,6 +289,10 @@ Create a new \`MAP_Fit\` object.
 - `map`:
 
   List; the parameter mapping used.
+
+- `vcov_unc`:
+
+  Variance-covariance matrix of parameters in unconstrained space.
 
 - `marginal_vars`:
 
@@ -308,6 +313,10 @@ Create a new \`MAP_Fit\` object.
 
   Logical; whether to display degrees of freedom in the summary output.
   Default is TRUE.
+
+- `view`:
+
+  Character vector of parameter names to prioritize in summary.
 
 ------------------------------------------------------------------------
 
@@ -374,7 +383,13 @@ Summarize MAP estimates.
 
 #### Usage
 
-    MAP_Fit$summary(pars = NULL, max_rows = 10, digits = 5, ranef = FALSE)
+    MAP_Fit$summary(
+      pars = NULL,
+      max_rows = 10,
+      digits = 5,
+      ranef = FALSE,
+      view = NULL
+    )
 
 #### Arguments
 
@@ -395,6 +410,10 @@ Summarize MAP estimates.
 
   Logical; whether to also display random effect estimates. Default is
   FALSE.
+
+- `view`:
+
+  Character vector of parameter names to prioritize or filter by.
 
 #### Returns
 

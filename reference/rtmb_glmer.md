@@ -42,7 +42,7 @@ rtmb_glmer(
 - family:
 
   Character string of the distribution family (e.g., "gaussian",
-  "binomial", "poisson")
+  "binomial", "poisson", "ordered", "sequential")
 
 - laplace:
 

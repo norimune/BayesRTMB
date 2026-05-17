@@ -59,9 +59,9 @@ estimation.
 
   Final objective value.
 
-- `log_ml`:
+- `log_lik`:
 
-  Log marginal likelihood.
+  Log-likelihood.
 
 - `convergence`:
 
@@ -146,15 +146,11 @@ estimation.
 
 - [`Classic_Fit$robust_se()`](#method-Classic_Fit-robust_se)
 
-- [`Classic_Fit$rbust_se()`](#method-Classic_Fit-rbust_se)
-
 - [`Classic_Fit$compute_robust()`](#method-Classic_Fit-compute_robust)
 
 - [`Classic_Fit$bootstrap()`](#method-Classic_Fit-bootstrap)
 
 - [`Classic_Fit$compute_bootstrap()`](#method-Classic_Fit-compute_bootstrap)
-
-- [`Classic_Fit$.update_fit_with_vcov()`](#method-Classic_Fit-.update_fit_with_vcov)
 
 - [`Classic_Fit$AIC()`](#method-Classic_Fit-AIC)
 
@@ -163,6 +159,10 @@ estimation.
 - [`Classic_Fit$print()`](#method-Classic_Fit-print)
 
 - [`Classic_Fit$logLik()`](#method-Classic_Fit-logLik)
+
+- [`Classic_Fit$EAP()`](#method-Classic_Fit-EAP)
+
+- [`Classic_Fit$MAP()`](#method-Classic_Fit-MAP)
 
 - [`Classic_Fit$summary()`](#method-Classic_Fit-summary)
 
@@ -180,8 +180,6 @@ estimation.
 
 Inherited methods
 
-- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
-- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
 - [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
 - [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
 - [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
@@ -223,7 +221,7 @@ Create a new \`Classic_Fit\` object.
       par_vec = NULL,
       par = NULL,
       objective = NULL,
-      log_ml = NULL,
+      log_lik = NULL,
       convergence = NULL,
       sd_rep = NULL,
       df_fixed = NULL,
@@ -243,7 +241,7 @@ Create a new \`Classic_Fit\` object.
       view = NULL,
       fit = NULL,
       vcov = NULL,
-      df_method = "bw",
+      df_method = "auto",
       idx_fix_active = NULL,
       show_df = TRUE,
       ...
@@ -267,9 +265,9 @@ Create a new \`Classic_Fit\` object.
 
   Final objective value.
 
-- `log_ml`:
+- `log_lik`:
 
-  Log marginal likelihood.
+  Log-likelihood.
 
 - `convergence`:
 
@@ -374,8 +372,8 @@ Compute robust standard errors (sandwich estimator).
 
     Classic_Fit$robust_se(
       cluster = NULL,
-      type = c("CR1", "CR0"),
-      update = TRUE,
+      type = c("HC3", "HC0", "HC1", "CR1", "CR0"),
+      inplace = FALSE,
       ...
     )
 
@@ -387,35 +385,17 @@ Compute robust standard errors (sandwich estimator).
 
 - `type`:
 
-  Character; "CR1" (default) or "CR0".
+  Character; "HC3" (default), "HC0", or "HC1" for non-clustered robust
+  SE; "CR1" or "CR0" for clustered robust SE.
 
-- `update`:
+- `inplace`:
 
-  Logical; whether to update the internal fit summary.
+  Logical; if FALSE, return a robust-SE copy without modifying the
+  original fit. If TRUE, update the object in place.
 
 - `...`:
 
   Additional arguments.
-
-#### Returns
-
-Self.
-
-------------------------------------------------------------------------
-
-### Method `rbust_se()`
-
-Alias for robust_se().
-
-#### Usage
-
-    Classic_Fit$rbust_se(...)
-
-#### Arguments
-
-- `...`:
-
-  Arguments passed to robust_se().
 
 #### Returns
 
@@ -435,7 +415,7 @@ Self.
 
 - `...`:
 
-  Arguments passed to robust_se().
+  Arguments passed to robust_se(), including inplace.
 
 #### Returns
 
@@ -445,55 +425,73 @@ Self.
 
 ### Method `bootstrap()`
 
-Compute bootstrap standard errors.
+Compute nonparametric bootstrap standard errors and confidence
+intervals. Currently implemented only for mediation models. Bootstrap
+refits mediation equations with base R lm.fit()/glm.fit() when possible,
+and falls back to RTMB refits for unsupported families.
 
 #### Usage
 
-    Classic_Fit$bootstrap(...)
-
-#### Arguments
-
-- `...`:
-
-  Arguments passed to compute_bootstrap().
-
-#### Returns
-
-Self.
-
-------------------------------------------------------------------------
-
-### Method `compute_bootstrap()`
-
-Compute bootstrap standard errors.
-
-#### Usage
-
-    Classic_Fit$compute_bootstrap(n_boot = 1000, cluster = NULL)
+    Classic_Fit$bootstrap(n_boot = 1000, seed = NULL, inplace = FALSE, ...)
 
 #### Arguments
 
 - `n_boot`:
 
-  Integer; number of samples.
+  Integer; number of bootstrap samples.
 
-- `cluster`:
+- `seed`:
 
-  Character; clustering variable.
+  Optional integer random seed.
+
+- `inplace`:
+
+  Logical; if FALSE, return a bootstrap-SE copy without modifying the
+  original fit. If TRUE, update the object in place.
+
+- `...`:
+
+  Additional arguments.
 
 #### Returns
 
-Self.
+A Classic_Fit object.
 
 ------------------------------------------------------------------------
 
-### Method `.update_fit_with_vcov()`
+### Method `compute_bootstrap()`
 
-(Internal) Update fit data frame with current vcov.
+Compute nonparametric bootstrap standard errors and confidence
+intervals. Currently implemented only for mediation models. Bootstrap
+refits mediation equations with base R lm.fit()/glm.fit() when possible,
+and falls back to RTMB refits for unsupported families.
 
 #### Usage
 
-    Classic_Fit$.update_fit_with_vcov()
+    Classic_Fit$compute_bootstrap(n_boot = 1000, seed = NULL, inplace = FALSE, ...)
+
+#### Arguments
+
+- `n_boot`:
+
+  Integer; number of bootstrap samples.
+
+- `seed`:
+
+  Optional integer random seed.
+
+- `inplace`:
+
+  Logical; if FALSE, return a bootstrap-SE copy without modifying the
+  original fit. If TRUE, update the object in place.
+
+- `...`:
+
+  Additional arguments.
+
+#### Returns
+
+A Classic_Fit object.
 
 ------------------------------------------------------------------------
 
@@ -540,6 +538,38 @@ Get the Log-Likelihood of the fitted model.
 #### Usage
 
     Classic_Fit$logLik()
+
+------------------------------------------------------------------------
+
+### Method `EAP()`
+
+EAP estimates are not available for Classic_Fit.
+
+#### Usage
+
+    Classic_Fit$EAP(...)
+
+#### Arguments
+
+- `...`:
+
+  Ignored.
+
+------------------------------------------------------------------------
+
+### Method `MAP()`
+
+MAP estimates are not available for Classic_Fit.
+
+#### Usage
+
+    Classic_Fit$MAP(...)
+
+#### Arguments
+
+- `...`:
+
+  Ignored.
 
 ------------------------------------------------------------------------
 

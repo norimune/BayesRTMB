@@ -73,6 +73,7 @@ and Gaussian Process smoothing on the mean profiles.</p>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  two_stage <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -128,6 +129,12 @@ Specifying this automatically enables weakly informative priors if `prior` is `p
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
 <dd><p>Optional named list of fixed values for specific parameters.</p></dd>
+
+
+<dt id="arg-two-stage">two_stage<a class="anchor" aria-label="anchor" href="#arg-two-stage"></a></dt>
+<dd><p>Logical; if TRUE, estimate the latent-rank measurement model
+first and then estimate the rank regression with delta-method uncertainty
+propagation. Currently supported for `$optimize()` only.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

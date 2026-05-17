@@ -52,6 +52,8 @@ Functions for visualizing MCMC samples and model results.
   : Plot posterior densities for MCMC samples
 - [`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)
   : Plot parameter estimates and credible intervals (Forest Plot)
+- [`plot_mdu()`](https://norimune.github.io/BayesRTMB/reference/plot_mdu.md)
+  : Plot Multidimensional Unfolding Configuration
 - [`plot_pairs()`](https://norimune.github.io/BayesRTMB/reference/plot_pairs.md)
   : Plot pairs for posterior samples
 - [`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)
@@ -239,6 +241,14 @@ Functions used within rtmb_code for stability and transformations.
   Logit function
 - [`lsmeans()`](https://norimune.github.io/BayesRTMB/reference/lsmeans.md)
   : Least Squares Means (Marginal Means)
+- [`make_glmer_Z_matrix()`](https://norimune.github.io/BayesRTMB/reference/make_glmer_Z_matrix.md)
+  : Reconstruct an Observation-Level Random-Effect Design Matrix
+- [`make_glmer_re_terms()`](https://norimune.github.io/BayesRTMB/reference/make_glmer_re_terms.md)
+  : Prepare GLMM Formula Components
+- [`make_init_mdu()`](https://norimune.github.io/BayesRTMB/reference/make_init_mdu.md)
+  : Create Initial Values for Multidimensional Unfolding
+- [`make_ydif_from_bw()`](https://norimune.github.io/BayesRTMB/reference/make_ydif_from_bw.md)
+  : Make Best-Worst Pair Indices from Best and Worst Responses
 - [`map_est()`](https://norimune.github.io/BayesRTMB/reference/map_est.md)
   : Maximum A Posteriori (MAP) Estimate
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
@@ -259,6 +269,8 @@ Functions used within rtmb_code for stability and transformations.
   : Plot posterior densities for MCMC samples
 - [`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)
   : Plot parameter estimates and credible intervals (Forest Plot)
+- [`plot_mdu()`](https://norimune.github.io/BayesRTMB/reference/plot_mdu.md)
+  : Plot Multidimensional Unfolding Configuration
 - [`plot_pairs()`](https://norimune.github.io/BayesRTMB/reference/plot_pairs.md)
   : Plot pairs for posterior samples
 - [`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)
@@ -297,6 +309,8 @@ Functions used within rtmb_code for stability and transformations.
   Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
+- [`restore_bw_from_ydif()`](https://norimune.github.io/BayesRTMB/reference/restore_bw_from_ydif.md)
+  : Restore Best and Worst Responses from Best-Worst Pair Indices
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
@@ -317,6 +331,8 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Log-linear analysis (Poisson regression)
 - [`rtmb_lrt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.md)
   : Fit a Latent Rank Theory (LRT) Model
+- [`rtmb_mdu()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mdu.md)
+  : RTMB-based Multidimensional Unfolding Wrapper
 - [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md)
   : RTMB-based Mediation Analysis Wrapper
 - [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md)

@@ -46,6 +46,9 @@ two ways:
 
 - `ordered_logistic(eta, cutpoints)`: Ordered categorical outcomes.
 
+- `sequential_logistic(eta, cutpoints)`: Sequential ordered categorical
+  outcomes.
+
 **Multivariate and Matrix Distributions:**
 
 - `multi_normal(mean, Sigma)`: Standard multivariate normal
