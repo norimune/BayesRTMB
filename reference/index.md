@@ -8,8 +8,6 @@ Functions for defining and fitting custom models.
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
   : Create an RTMB_Model Object
-- [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
-  : Safe RTMB model construction (with error message translation)
 
 ## Wrapper Functions
 
