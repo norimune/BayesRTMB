@@ -8,7 +8,13 @@
   cat("=== RTMB Model Code ===\n\n")
   cat("rtmb_code(\n")
 
-  blocks <- names(self$code)
+  blocks <- setdiff(names(self$code), "env")
+  is_empty_block <- function(expr) {
+    is.call(expr) &&
+      identical(expr[[1]], as.name("{")) &&
+      length(as.list(expr)) == 1L
+  }
+  blocks <- blocks[!(blocks == "setup" & vapply(self$code[blocks], is_empty_block, logical(1)))]
   n_blocks <- length(blocks)
 
   for (i in seq_along(blocks)) {
@@ -97,6 +103,5 @@
 
   return(n_total)
 }
-
 
 

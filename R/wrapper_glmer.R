@@ -1015,22 +1015,40 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
       if (num_ranef_list[[b]] > 1) {
         if (family == "sequential") {
-          transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (i in 1:N) for (k_seq in 1:(num_categories - 1)) eta[i, k_seq] <- eta[i, k_seq] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name)))
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(
+            for (i in 1:N) {
+              for (k_seq in 1:(num_categories - 1)) {
+                eta[i, k_seq] <- eta[i, k_seq] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name))
+              }
+            }
+          )
         } else {
-          transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (i in 1:N) eta[i] <- eta[i] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name)))
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(
+            for (i in 1:N) {
+              eta[i] <- eta[i] + sum(.(Z_mat_name)[i, ] * .(r_re_name)[.(group_idx_name)[i], ] * .(sd_name))
+            }
+          )
         }
       } else {
         if (family == "sequential") {
-          transform_exprs[[length(transform_exprs) + 1]] <- bquote(for (k_seq in 1:(num_categories - 1)) eta[, k_seq] <- eta[, k_seq] + .(Z_mat_name)[,1] * .(r_re_name)[.(group_idx_name)] * .(sd_name))
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(
+            for (k_seq in 1:(num_categories - 1)) {
+              eta[, k_seq] <- eta[, k_seq] + .(Z_mat_name)[, 1] * .(r_re_name)[.(group_idx_name)] * .(sd_name)
+            }
+          )
         } else {
-          transform_exprs[[length(transform_exprs) + 1]] <- bquote(eta <- eta + .(Z_mat_name)[,1] * .(r_re_name)[.(group_idx_name)] * .(sd_name))
+          transform_exprs[[length(transform_exprs) + 1]] <- bquote(eta <- eta + .(Z_mat_name)[, 1] * .(r_re_name)[.(group_idx_name)] * .(sd_name))
         }
       }
     }
   }
   if (!is.null(offset)) {
     if (family == "sequential") {
-      transform_exprs[[length(transform_exprs) + 1]] <- quote(for (k_seq in 1:(num_categories - 1)) eta[, k_seq] <- eta[, k_seq] + offset)
+      transform_exprs[[length(transform_exprs) + 1]] <- quote(
+        for (k_seq in 1:(num_categories - 1)) {
+          eta[, k_seq] <- eta[, k_seq] + offset
+        }
+      )
     } else {
       transform_exprs[[length(transform_exprs) + 1]] <- quote(eta <- eta + offset)
     }
@@ -1085,15 +1103,15 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     )
   } else {
     ll_data_exprs[[1]] <- switch(family,
-                                 "gaussian" = if (!is.null(sigma_idx)) quote(lp <- lp + sum(robust_obs_weight * normal_lpdf(Y, eta, sigma[sigma_idx], sum = FALSE))) else quote(lp <- lp + sum(robust_obs_weight * normal_lpdf(Y, eta, sigma, sum = FALSE))),
-                                 "lognormal" = if (!is.null(sigma_idx)) quote(lp <- lp + sum(robust_obs_weight * lognormal_lpdf(Y, eta, sigma[sigma_idx], sum = FALSE))) else quote(lp <- lp + sum(robust_obs_weight * lognormal_lpdf(Y, eta, sigma, sum = FALSE))),
-                                 "student_t" = if (!is.null(sigma_idx)) quote(lp <- lp + sum(robust_obs_weight * student_t_lpdf(Y, nu, eta, sigma[sigma_idx], sum = FALSE))) else quote(lp <- lp + sum(robust_obs_weight * student_t_lpdf(Y, nu, eta, sigma, sum = FALSE))),
-                                 "gamma" = quote(lp <- lp + sum(robust_obs_weight * gamma_lpdf(Y, shape, shape / exp(eta), sum = FALSE))),
-                                 "bernoulli" = quote(lp <- lp + sum(robust_obs_weight * bernoulli_logit_lpmf(Y, eta, sum = FALSE))),
-                                 "binomial" = quote(lp <- lp + sum(robust_obs_weight * binomial_logit_lpmf(Y, trials, eta, sum = FALSE))),
-                                 "poisson" = quote(lp <- lp + sum(robust_obs_weight * poisson_lpmf(Y, exp(eta), sum = FALSE))),
-                                 "neg_binomial" = quote(lp <- lp + sum(robust_obs_weight * neg_binomial_2_lpmf(Y, exp(eta), phi, sum = FALSE))),
-                                 "ordered" = quote(lp <- lp + sum(robust_obs_weight * ordered_logistic_lpmf(Y, eta, cutpoints, sum = FALSE))),
+                                 "gaussian" = if (!is.null(sigma_idx)) quote(Y ~ normal(eta, sigma[sigma_idx])) else quote(Y ~ normal(eta, sigma)),
+                                 "lognormal" = if (!is.null(sigma_idx)) quote(Y ~ lognormal(eta, sigma[sigma_idx])) else quote(Y ~ lognormal(eta, sigma)),
+                                 "student_t" = if (!is.null(sigma_idx)) quote(Y ~ student_t(nu, eta, sigma[sigma_idx])) else quote(Y ~ student_t(nu, eta, sigma)),
+                                 "gamma" = quote(Y ~ gamma(shape, shape / exp(eta))),
+                                 "bernoulli" = quote(Y ~ bernoulli_logit(eta)),
+                                 "binomial" = quote(Y ~ binomial_logit(trials, eta)),
+                                 "poisson" = quote(Y ~ poisson(exp(eta))),
+                                 "neg_binomial" = quote(Y ~ neg_binomial_2(exp(eta), phi)),
+                                 "ordered" = quote(Y ~ ordered_logistic(eta, cutpoints)),
                                  "sequential" = quote(Y ~ sequential_logistic(eta, cutpoints))
     )
   }
@@ -1103,18 +1121,16 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     for (b in 1:num_bars) {
         num_groups_val <- num_groups_list[[b]]
         num_ranef_val <- num_ranef_list[[b]]
-        weight_name <- as.name(paste0("robust_re_weight", suffix(b)))
         if (num_ranef_val == 1) {
-          sd_name <- as.name(paste0("sd", suffix(b)))
           r_re_name <- as.name(paste0("r_re", suffix(b)))
-          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(lp <- lp + sum(.(weight_name) * normal_lpdf(.(r_re_name), 0, 1, sum = FALSE)))
+          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(r_re_name) ~ normal(0, 1))
         } else {
           r_re_name <- as.name(paste0("r_re", suffix(b)))
           CF_corr_name <- as.name(paste0("CF_corr", suffix(b)))
           if (!is_flat && !is.null(prior$lkj_eta)) {
             ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(.(CF_corr_name) ~ lkj_CF_corr(.(prior$lkj_eta)))
           }
-          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(for (j in 1:.(num_groups_val)) lp <- lp + .(weight_name)[j] * multi_normal_CF_lpdf(.(r_re_name)[j, ], rep(0, .(num_ranef_val)), rep(1, .(num_ranef_val)), .(CF_corr_name)))
+          ll_random_exprs[[length(ll_random_exprs) + 1]] <- bquote(for (j in 1:.(num_groups_val)) .(r_re_name)[j, ] ~ multi_normal_CF(rep(0, .(num_ranef_val)), rep(1, .(num_ranef_val)), .(CF_corr_name)))
         }
     }
   }
@@ -1219,7 +1235,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   model_exprs <- list()
-  model_exprs[[length(model_exprs) + 1]] <- quote(lp <- 0)
   model_exprs[[length(model_exprs) + 1]] <- "# Transform"
   model_exprs <- c(model_exprs, transform_exprs)
   model_exprs[[length(model_exprs) + 1]] <- "# Likelihood (Data)"

@@ -41,13 +41,20 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
 
   # --- 1. Data Extraction ---
   is_formula <- is.call(x_expr) && (x_expr[[1]] == quote(`~`))
+  formula_input <- is_formula
+  raw_response <- NULL
+  raw_group_idx <- NULL
+  raw_id <- NULL
   if (is_formula) {
     x <- eval(x_expr, parent.frame())
     mf <- if (is.null(data)) model.frame(x, parent.frame()) else model.frame(x, data)
     response <- mf[[1]]; group <- as.factor(mf[[2]])
     levs <- levels(group); x_label <- levs[1]; y_label <- levs[2]
+    raw_response <- as.numeric(response)
+    raw_group_idx <- as.integer(group)
     if (paired) {
       id_val <- if (!is.null(data)) data[[ID]] else eval(substitute(ID), parent.frame())
+      raw_id <- id_val
       d1 <- mf[group == levs[1], ]; d1$id <- id_val[group == levs[1]]
       d2 <- mf[group == levs[2], ]; d2$id <- id_val[group == levs[2]]
       common_ids <- intersect(d1$id, d2$id)
@@ -96,7 +103,20 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   }
 
   # --- 3. AST Construction ---
-  setup_ast <- quote({})
+  setup_exprs <- list(as.name("{"))
+  if (formula_input) {
+    if (paired) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(d1 <- data.frame(Y = Y[G == 1], ID = ID[G == 1]))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(d2 <- data.frame(Y = Y[G == 2], ID = ID[G == 2]))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(common_ids <- intersect(d1$ID, d2$ID))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(Y1 <- d1$Y[match(common_ids, d1$ID)])
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(Y2 <- d2$Y[match(common_ids, d2$ID)])
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(diffs <- Y1 - Y2)
+    } else {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(Y1 <- as.numeric(na.omit(Y[G == 1])))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(Y2 <- as.numeric(na.omit(Y[G == 2])))
+    }
+  }
   if (is_weak) {
     if (is.null(y_range)) {
       stop("Specifying 'y_range' (theoretical minimum and maximum values of the response) is required when using prior_weak().", call. = FALSE)
@@ -106,31 +126,25 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     sd_ratio_val <- prior$sd_ratio
     max_beta_val <- prior$max_beta
     
-    setup_ast <- bquote({
-      half_d_y <- .(diff(y_range) / 2)
-      base_scale <- half_d_y * .(sd_ratio_val)
-      alpha_prior_sd <- half_d_y
-      
-      # Determine x_sd based on design
-      .(if (paired) {
-        quote(x_sd <- 0.5) # Balanced Condition effect (Condition 0/1)
-      } else {
-        quote({
-          n1 <- length(Y1)
-          n2 <- length(Y2)
-          p1 <- n1 / (n1 + n2)
-          x_sd <- sqrt(p1 * (1 - p1))
-        })
-      })
-      
-      diff_prior_sd <- .(max_beta_val) * base_scale / x_sd
-      mid_y <- .(if(paired) 0 else mean(y_range))
-      sigma_rate_weak <- 1.0 / base_scale
-    })
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_d_y <- .(diff(y_range) / 2))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(base_scale <- half_d_y * .(sd_ratio_val))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- half_d_y)
+    if (paired) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(x_sd <- 0.5)
+    } else {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(n1 <- length(Y1))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(n2 <- length(Y2))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(p1 <- n1 / (n1 + n2))
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(x_sd <- sqrt(p1 * (1 - p1)))
+    }
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(diff_prior_sd <- .(max_beta_val) * base_scale / x_sd)
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(mid_y <- .(if (paired) 0 else mean(y_range)))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_weak <- 1.0 / base_scale)
   }
+  setup_ast <- as.call(setup_exprs)
 
   if (paired) {
-    dat <- list(diffs = Y1 - Y2, r = r)
+    dat <- if (formula_input) list(Y = raw_response, G = raw_group_idx, ID = raw_id, r = r) else list(diffs = Y1 - Y2, r = r)
     param_ast <- if (use_delta_param) {
       quote({ sd_diff = Dim(1, lower = 0); delta = Dim(1) })
     } else {
@@ -158,7 +172,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     view_vars <- c("diff", "delta", "sd_diff")
     marginal <- if (use_delta_param) "delta" else "diff"
   } else {
-    dat <- list(Y1 = Y1, Y2 = Y2, r = r)
+    dat <- if (formula_input) list(Y = raw_response, G = raw_group_idx, r = r) else list(Y1 = Y1, Y2 = Y2, r = r)
     
     # Structure for independent t-tests
     if (!var.equal) {

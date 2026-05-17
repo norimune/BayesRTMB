@@ -502,7 +502,7 @@ MCMC_Fit <- R6::R6Class(
         attr(res, "error") <- 0
         attr(res, "ess") <- N_total
         self$log_ml <- res
-        return(res)
+        return(invisible(res))
       }
 
       index1 <- seq(1, N_total - 1, by = 2)
@@ -652,7 +652,7 @@ MCMC_Fit <- R6::R6Class(
       attr(res, "ess") <- n_eff
       self$log_ml <- res
 
-      return(res)
+      return(invisible(res))
     },
 
     #' @description Calculate the Bayes factor by marginal-likelihood model comparison.
