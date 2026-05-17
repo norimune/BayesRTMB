@@ -384,5 +384,3 @@ bf
 3. **[RTMB の仕組みと推定アルゴリズム](ja-rtmb_internals.html)**  
    MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。
 
-4. **詳細版クイックスタート**  
-   以前の長い quick start は、[詳細版クイックスタート](ja-quick_start-long.html) として残しています。

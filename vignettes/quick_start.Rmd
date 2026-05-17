@@ -383,6 +383,3 @@ Continue with the page that matches your purpose.
 
 3. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
    Learn about internal processing such as MAP estimation, Laplace approximation, MCMC, and variational inference.
-
-4. **Extended Quick Start**  
-   The previous longer quick start is preserved as [Extended Quick Start](quick_start-long.html).
