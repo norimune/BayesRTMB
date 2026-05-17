@@ -12,6 +12,7 @@ rtmb_corr(
   data = NULL,
   ID = NULL,
   covariates = NULL,
+  method = c("pearson", "spearman", "reml"),
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
@@ -39,6 +40,11 @@ rtmb_corr(
 
   Optional numeric matrix or data frame of covariates to be included in
   the joint MVN model.
+
+- method:
+
+  Correlation method for `classic()`: `"pearson"`, `"spearman"`, or
+  `"reml"`.
 
 - prior:
 

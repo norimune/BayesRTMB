@@ -7,8 +7,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>Writing Model Codes • BayesRTMB</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="Writing Model Codes">
 <meta name="description" content="A guide on how to write model codes in BayesRTMB.">
@@ -150,12 +150,22 @@ likelihood (the data generating process). Similar to Stan, using the
 <span>  <span class="co"># Likelihood</span></span>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<p>Internally, the log-density of the specified probability distribution
-is automatically added to the model’s total log-posterior probability.
-Instead of the sampling syntax, you can also explicitly call functions
-like <code>lp &lt;- lp + normal_lpdf(Y, mu, sigma)</code>. In this case,
-<code>lp</code> is a reserved word, so you must always use
-<code>lp</code> when you want to add log probabilities.</p>
+<p>The same model can also be written by explicitly adding log
+densities:</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">mu</span>, <span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/exponential_lpdf.html">exponential_lpdf</a></span><span class="op">(</span><span class="va">sigma</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>In other words, <code>Y ~ normal(mu, sigma)</code> and
+<code>lp &lt;- lp + normal_lpdf(Y, mu, sigma)</code> are two ways to
+write the same model. The <code>~</code> syntax is usually easier to
+read, while <code>lp &lt;- lp + ..._lpdf(...)</code> is useful when you
+need to build a custom likelihood. <code>lp</code> is reserved for
+accumulating log probability, so do not declare it in the
+<code>parameters</code> block or use it as an ordinary working
+variable.</p>
 </div>
 <div class="section level3">
 <h3 id="setup-block">1-3. setup block<a class="anchor" aria-label="anchor" href="#setup-block"></a>
@@ -165,7 +175,7 @@ begin. It is primarily used to extract data sizes (number of
 rows/columns) as variables from the <code>data</code> list passed from
 R, and to create constants required for computations.</p>
 <p><strong>Example Code:</strong></p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>  <span class="co"># Get the sample size of the observed data</span></span>
 <span>  <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>    <span class="co"># Get the number of columns in the design matrix (number of predictors)</span></span>

@@ -81,12 +81,24 @@ model = {
 }
 ```
 
-Internally, the log-density of the specified probability distribution is
-automatically added to the model’s total log-posterior probability.
-Instead of the sampling syntax, you can also explicitly call functions
-like `lp <- lp + normal_lpdf(Y, mu, sigma)`. In this case, `lp` is a
-reserved word, so you must always use `lp` when you want to add log
-probabilities.
+The same model can also be written by explicitly adding log densities:
+
+``` r
+
+model = {
+  lp <- lp + normal_lpdf(mu, 0, 10)
+  lp <- lp + exponential_lpdf(sigma, 1)
+  lp <- lp + normal_lpdf(Y, mu, sigma)
+}
+```
+
+In other words, `Y ~ normal(mu, sigma)` and
+`lp <- lp + normal_lpdf(Y, mu, sigma)` are two ways to write the same
+model. The `~` syntax is usually easier to read, while
+`lp <- lp + ..._lpdf(...)` is useful when you need to build a custom
+likelihood. `lp` is reserved for accumulating log probability, so do not
+declare it in the `parameters` block or use it as an ordinary working
+variable.
 
 ### 1-3. setup block
 

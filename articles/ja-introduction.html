@@ -7,12 +7,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <title>BayesRTMB の概要 • BayesRTMB</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<link href="../deps/bootstrap-5.3.1/bootstrap.min.css" rel="stylesheet">
-<script src="../deps/bootstrap-5.3.1/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
+<link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
+<script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
 <script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="BayesRTMB の概要">
-<meta name="description" content="BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。">
-<meta property="og:description" content="BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。">
+<meta name="description" content="BayesRTMB の考え方、モデルの作り方、推定方法の全体像を紹介します。">
+<meta property="og:description" content="BayesRTMB の考え方、モデルの作り方、推定方法の全体像を紹介します。">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -81,314 +81,527 @@
     
     
 <div class="section level2">
-<h2 id="bayesrtmb-とは">BayesRTMB とは？<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A8%E3%81%AF"></a>
+<h2 id="bayesrtmb-とは">BayesRTMB とは<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A8%E3%81%AF"></a>
 </h2>
-<p><strong>BayesRTMB</strong> は、RTMB を自動微分エンジンとして用いる
-ベイズ推定用のR パッケージです。 Stan に近い感覚でモデルを書きつつ、R
-の中でC++へのコンパイルなしにそのままベイズ推定を進められます。</p>
+<p><strong>BayesRTMB</strong> は、RTMB を計算エンジンとして用いながら、R
+の中で統計モデルを記述し、推定するためのパッケージです。</p>
+<p>BayesRTMB では、標準的な分析は <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> や
+<code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>
+などのラッパー関数から始められます。一方で、必要に応じて
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> を使い、Stan
+に近い感覚で独自のモデルを書くこともできます。</p>
+<p>1つのモデルオブジェクトから、MCMC、MAP
+推定、変分推論、そして頻度主義的分析を呼び出せる点が BayesRTMB
+の基本的な考え方です。</p>
+<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_freq</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>このページでは、BayesRTMB
-の位置づけと、パッケージを使う上での全体像をまとめます。</p>
+の位置づけと、パッケージを使ううえで最初に知っておくとよい全体像を紹介します。詳しいコードの書き方や個別の分析例は、他の
+vignette で扱います。</p>
 <div class="section level3">
 <h3 id="記事へのリンク">記事へのリンク<a class="anchor" aria-label="anchor" href="#%E8%A8%98%E4%BA%8B%E3%81%B8%E3%81%AE%E3%83%AA%E3%83%B3%E3%82%AF"></a>
 </h3>
-<p>以下のような記事があります。</p>
+<p>以下の記事があります。</p>
 <ul>
-<li><strong><a href="ja-introduction.html">日本語トップ</a></strong></li>
+<li><strong><a href="ja-introduction.html">日本語版の概要</a></strong></li>
 <li><strong><a href="ja-quick_start.html">クイックスタート</a></strong></li>
 <li><strong><a href="ja-wrapper_functions.html">ラッパー関数の使い方</a></strong></li>
-<li><strong><a href="ja-writing_models.html">コードの書き方</a></strong></li>
-<li><strong><a href="ja-rtmb_internals.html">RTMBの仕組みと推定のアルゴリズム</a></strong></li>
+<li><strong><a href="ja-writing_models.html">モデルコードの書き方</a></strong></li>
+<li><strong><a href="ja-rtmb_internals.html">RTMB
+の仕組みと推定アルゴリズム</a></strong></li>
 </ul>
 </div>
-<div class="section level3">
-<h3 id="bayesrtmb-でできること">BayesRTMB でできること<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A7%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8"></a>
-</h3>
-<p>BayesRTMB には、次のような特徴があります。</p>
+</div>
+<div class="section level2">
+<h2 id="bayesrtmb-でできること">BayesRTMB でできること<a class="anchor" aria-label="anchor" href="#bayesrtmb-%E3%81%A7%E3%81%A7%E3%81%8D%E3%82%8B%E3%81%93%E3%81%A8"></a>
+</h2>
+<p>BayesRTMB の主な特徴は次の通りです。</p>
 <ul>
-<li><strong>C++ のコンパイルなしでモデルを書ける</strong></li>
-<li>
-<strong><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
-によるブロック構文</strong>でモデルを整理して書ける</li>
-<li>
-<strong>NUTS / ADVI / MAP</strong>
-を同じモデルオブジェクトから使い分けられる</li>
-<li>
-<strong>Laplace 近似</strong>により、階層モデルの random effect
-を効率よく扱える</li>
-<li>
-<strong>Bridge Sampling</strong> を使った周辺尤度や Bayes factor
-の計算に対応している</li>
-<li>
-<strong><code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> や <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>
-などのラッパー関数</strong>で、標準的な分析をすぐに始められる</li>
+<li><p><strong>R の中でモデルを書ける</strong><br><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> を使い、<code>parameters</code>,
+<code>transform</code>, <code>model</code>, <code>generate</code>
+などのブロックに分けてモデルを記述できます。</p></li>
+<li><p><strong>ラッパー関数からすぐに分析できる</strong><br>
+回帰、一般化線形モデル、混合モデル、t
+検定、相関、因子分析、IRT、潜在ランク理論、多次元展開法などを、専用のラッパー関数から実行できます。</p></li>
+<li><p><strong>同じモデルから複数の推定方法を使える</strong><br>
+MCMC、MAP 推定、変分推論、頻度主義的分析を、同じ <code>RTMB_Model</code>
+オブジェクトから呼び出せます。</p></li>
+<li><p><strong>ランダム効果を効率的に扱える</strong><br><code>random = TRUE</code> と宣言したパラメータは、MAP 推定では Laplace
+近似によって周辺化できます。</p></li>
+<li><p><strong>wrapper で作られたモデルを確認できる</strong><br><code>print_code()</code> を使うと、ラッパー関数が内部で作っている
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> を確認できます。</p></li>
+<li><p><strong>モデル比較にも対応している</strong><br>
+MCMC の結果から bridge sampling による周辺尤度や Bayes factor
+を計算できます。</p></li>
 </ul>
 </div>
-<div class="section level3">
-<h3 id="インストール方法">インストール方法<a class="anchor" aria-label="anchor" href="#%E3%82%A4%E3%83%B3%E3%82%B9%E3%83%88%E3%83%BC%E3%83%AB%E6%96%B9%E6%B3%95"></a>
-</h3>
-<p>GitHubから開発版をインストールできます。</p>
-<div class="sourceCode" id="cb1"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># install.packages("remotes")</span></span>
-<span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
-<div class="section level4">
-<h4 id="windows-ユーザーへの重要なお知らせ">Windows ユーザーへの重要なお知らせ<a class="anchor" aria-label="anchor" href="#windows-%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E3%81%B8%E3%81%AE%E9%87%8D%E8%A6%81%E3%81%AA%E3%81%8A%E7%9F%A5%E3%82%89%E3%81%9B"></a>
-</h4>
-<p>BayesRTMB は裏側の計算エンジンとして <code>RTMB</code> や
-<code>TMB</code> を使用しており、これらは C++
-のライブラリに依存しています。そのため、Windows
-環境でパッケージをインストールするには、C++
-のコードをコンパイルするためのツールである <strong>Rtools
-のインストールが必須</strong> となります。</p>
-<ol style="list-style-type: decimal">
-<li>ご自身の R のバージョンに合った <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools</a>
-をダウンロードしてインストールしてください（例: R 4.4.x をお使いの場合は
-Rtools44）。</li>
-<li>インストール完了後、RStudio を再起動します。</li>
-<li>以下のコードを実行し、Rtools
-がシステムに正しく認識されているかを確認できます。</li>
-</ol>
+<div class="section level2">
+<h2 id="つの入口">2つの入口<a class="anchor" aria-label="anchor" href="#%E3%81%A4%E3%81%AE%E5%85%A5%E5%8F%A3"></a>
+</h2>
+<p>BayesRTMB には、大きく分けて2つの入口があります。</p>
+<p>1つ目は、標準的な分析を行うための <strong>ラッパー関数</strong>
+です。通常はこちらから始めるのが簡単です。</p>
 <div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 実行結果として TRUE が返ってくれば、コンパイル環境の構築は成功です。</span></span>
-<span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-</div>
-</div>
-<div class="section level3">
-<h3 id="基本の流れ">基本の流れ<a class="anchor" aria-label="anchor" href="#%E5%9F%BA%E6%9C%AC%E3%81%AE%E6%B5%81%E3%82%8C"></a>
-</h3>
-<p>BayesRTMB の基本的な分析は、次の 3 段階で進みます。</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>データ</strong>を用意する</li>
-<li>
-<strong><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code></strong> でモデルを書く</li>
-<li>
-<strong><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code></strong>
-でモデルオブジェクトを作り、推定する</li>
-</ol>
-<p>例として、平均 <code>mu</code> と標準偏差 <code>sigma</code>
-を推定する単純な正規分布モデルをとりあげます。</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="co"># 1. データの準備</span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">5.2</span>, <span class="fl">4.8</span>, <span class="fl">5.5</span>, <span class="fl">6.1</span>, <span class="fl">4.9</span>, <span class="fl">5.3</span><span class="op">)</span></span>
-<span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 2. モデルの定義</span></span>
+<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
+<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit</span></span></code></pre></div>
+<p>2つ目は、モデルを自分で書くための
+<strong><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code></strong>
+です。ラッパー関数では表現しにくいモデルや、新しいモデルを試したい場合に使います。</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  Y <span class="op">=</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span>,</span>
+<span>  X <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.matrix.html" class="external-link">data.matrix</a></span><span class="op">(</span><span class="va">debate</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>, <span class="st">"perf"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  setup <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
+<span>    <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu</span>    <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span>, lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">alpha</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">beta</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">P</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  transform <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  model <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu</span>    <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
-<span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">0.1</span><span class="op">)</span></span>
-<span>    <span class="va">Y</span>     <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span>    <span class="va">alpha</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="va">beta</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="co"># 3. モデルオブジェクトの作成</span></span>
-<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">dat</span>, code <span class="op">=</span> <span class="va">code</span><span class="op">)</span></span></code></pre></div>
-</div>
-<div class="section level3">
-<h3 id="推定法の使い分け">推定法の使い分け<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E5%AE%9A%E6%B3%95%E3%81%AE%E4%BD%BF%E3%81%84%E5%88%86%E3%81%91"></a>
-</h3>
-<p>作成した 1 つの <code>mdl</code>
-オブジェクトに対して、目的に応じて複数の推定メソッドを呼び出すことができます。</p>
-<div class="section level4">
-<h4 id="map-推定-optimize">1. MAP 推定 (<code>optimize</code>)<a class="anchor" aria-label="anchor" href="#map-%E6%8E%A8%E5%AE%9A-optimize"></a>
-</h4>
-<p>事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。</p>
+<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code</span><span class="op">)</span></span></code></pre></div>
+<p><code>model</code> ブロックでは、次のような sampling syntax
+を使います。</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">opt_fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">opt_fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## Call:</span></span>
+<code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="va">beta</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span><span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span></code></pre></div>
+<p>これは内部的には対数密度を足し合わせるコードに変換されます。</p>
+</div>
+<div class="section level2">
+<h2 id="ラッパー関数から始める">ラッパー関数から始める<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%83%E3%83%91%E3%83%BC%E9%96%A2%E6%95%B0%E3%81%8B%E3%82%89%E5%A7%8B%E3%82%81%E3%82%8B"></a>
+</h2>
+<p>まずはラッパー関数を使った例を見てみます。ここでは
+<code>debate</code> データを使い、満足度 <code>sat</code> を
+<code>talk</code> と <code>perf</code>
+で説明する線形回帰モデルを考えます。</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
+<span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>この時点では、まだ推定は実行されていません。<code>mdl_lm</code>
+は、モデル定義とデータを保持した <code>RTMB_Model</code>
+オブジェクトです。</p>
+<p>MAP 推定を行うには、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> を使います。</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">## Negative Log-Posterior: 9.13</span></span>
-<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -11.14</span></span>
+<span><span class="co">## Negative Log-Posterior: 395.58</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -404.61</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
-<span><span class="co">## variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
-<span><span class="co">## mu         5.29839     0.17416    4.95704    5.63974 </span></span>
-<span><span class="co">## sigma      0.42624     0.12240    0.24279    0.74830 </span></span></code></pre>
-</div>
-<div class="section level4">
-<h4 id="mcmc-推定-sample">2. MCMC 推定 (<code>sample</code>)<a class="anchor" aria-label="anchor" href="#mcmc-%E6%8E%A8%E5%AE%9A-sample"></a>
-</h4>
-<p>NUTS (No-U-Turn Sampler)
-アルゴリズムを用いて、事後分布全体から正確なサンプルを抽出する最も標準的なベイズ推論のアプローチです。<code>parallel = TRUE</code>
-を指定すると複数チェーンの並列計算が可能です（デフォルトは
-<code>FALSE</code>）。</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mcmc_fit</span> <span class="op">&lt;-</span></span>
-<span>  <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
-<span>    sampling <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>    warmup <span class="op">=</span> <span class="fl">1000</span>,</span>
-<span>    chains <span class="op">=</span> <span class="fl">4</span>,</span>
-<span>    parallel <span class="op">=</span> <span class="cn">FALSE</span></span>
-<span>  <span class="op">)</span></span>
-<span><span class="va">mcmc_fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## variable    mean    sd     map    q2.5  q97.5  ess_bulk  ess_tail  rhat </span></span>
-<span><span class="co">## lp        -11.15  1.24  -10.19  -14.63  -9.97       923       830  1.01 </span></span>
-<span><span class="co">## mu          5.29  0.30    5.32    4.68   5.87      1122       495  1.00 </span></span>
-<span><span class="co">## sigma       0.65  0.31    0.48    0.32   1.41      1072      1404  1.00</span></span></code></pre>
-</div>
-<div class="section level4">
-<h4 id="変分推論-variational">3. 変分推論 (<code>variational</code>)<a class="anchor" aria-label="anchor" href="#%E5%A4%89%E5%88%86%E6%8E%A8%E8%AB%96-variational"></a>
-</h4>
-<p>ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求めます。MCMC
-では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。</p>
+<span><span class="co">##  variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
+<span><span class="co">## Intercept   1.83366     0.21105    1.42000    2.24732 </span></span>
+<span><span class="co">## b[talk]     0.28694     0.05291    0.18323    0.39064 </span></span>
+<span><span class="co">## b[perf]     0.15632     0.02987    0.09777    0.21486 </span></span>
+<span><span class="co">## sigma       0.90453     0.03693    0.83497    0.97988 </span></span></code></pre>
+<p>頻度主義的な線形回帰として推定したい場合は、<code>classic()</code>
+を使います。<code>classic()</code> は、ラッパー関数で作られた flat prior
+のモデルに対して利用できます。</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">vb_fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">fit_freq</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_freq</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Call:</span></span>
+<span><span class="co">## Classical estimation via lm </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Log-Likelihood: -402.220, AIC: 812.440, BIC: 827.255</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and Confidence Intervals:</span></span>
+<span><span class="co">##           Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr    </span></span>
+<span><span class="co">## Intercept  1.83366    0.21212   1.41621   2.25110 297  8.64454 &lt;.0001 ***</span></span>
+<span><span class="co">## b[talk]    0.28694    0.05318   0.18229   0.39159 297  5.39580 &lt;.0001 ***</span></span>
+<span><span class="co">## b[perf]    0.15632    0.03002   0.09724   0.21539 297  5.20703 &lt;.0001 ***</span></span>
+<span><span class="co">## sigma      0.90909    0.03730   0.83856   0.98554 297 -2.32306 .02085   *</span></span></code></pre>
+<p>ラッパー関数がどのようなモデルコードを作っているかは、<code>print_code()</code>
+で確認できます。</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_lm</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## === RTMB Model Code ===</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## rtmb_code(</span></span>
+<span><span class="co">##   setup = {</span></span>
+<span><span class="co">##     mf &lt;- model.frame(formula, df)</span></span>
+<span><span class="co">##     Y &lt;- model.response(mf)</span></span>
+<span><span class="co">##     X_full &lt;- model.matrix(formula, mf)</span></span>
+<span><span class="co">##     X &lt;- X_full[, colnames(X_full) != "(Intercept)", drop = FALSE]</span></span>
+<span><span class="co">##     N &lt;- length(Y)</span></span>
+<span><span class="co">##     K &lt;- ncol(X)</span></span>
+<span><span class="co">##   }, </span></span>
+<span><span class="co">##   parameters = {</span></span>
+<span><span class="co">##     Intercept &lt;- Dim(1)</span></span>
+<span><span class="co">##     b &lt;- Dim(K)</span></span>
+<span><span class="co">##     sigma &lt;- Dim(num_sigma_groups, lower = 0)</span></span>
+<span><span class="co">##   }, </span></span>
+<span><span class="co">##   model = {</span></span>
+<span><span class="co">##     # Transform</span></span>
+<span><span class="co">##     eta &lt;- Intercept + X %*% b</span></span>
+<span><span class="co">##     # Likelihood (Data)</span></span>
+<span><span class="co">##     Y ~ normal(eta, sigma)</span></span>
+<span><span class="co">##     # Priors</span></span>
+<span><span class="co">##   }</span></span>
+<span><span class="co">## )</span></span></code></pre>
+<p><code>print_code()</code> は、ユーザーが <code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+で同じモデルを再現できるように、<code>setup</code>,
+<code>parameters</code>, <code>transform</code>, <code>model</code>
+などのブロックを表示します。</p>
+</div>
+<div class="section level2">
+<h2 id="自分でモデルを書く">自分でモデルを書く<a class="anchor" aria-label="anchor" href="#%E8%87%AA%E5%88%86%E3%81%A7%E3%83%A2%E3%83%87%E3%83%AB%E3%82%92%E6%9B%B8%E3%81%8F"></a>
+</h2>
+<p>より柔軟なモデルを書きたい場合は、<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
+を使います。</p>
+<p><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> の主なブロックは次の通りです。</p>
+<ul>
+<li>
+<code>setup</code>: データから必要な量を前処理する</li>
+<li>
+<code>parameters</code>: 推定するパラメータを宣言する</li>
+<li>
+<code>transform</code>: パラメータから派生量や線形予測子を作る</li>
+<li>
+<code>model</code>: 尤度と事前分布を書く</li>
+<li>
+<code>generate</code>: 予測値や生成量を計算する</li>
+</ul>
+<p>たとえば、<code><a href="../reference/prior_normal.html">prior_normal()</a></code> に近い素直な normal /
+exponential prior を持つ回帰モデルは次のように書けます。</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">dat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  Y <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">debate</span><span class="op">$</span><span class="va">sat</span><span class="op">)</span>,</span>
+<span>  X <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/data.matrix.html" class="external-link">data.matrix</a></span><span class="op">(</span><span class="va">debate</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>, <span class="st">"perf"</span>, <span class="st">"skill"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">code_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  setup <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
+<span>    <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  parameters <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">alpha</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">beta</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">P</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  transform <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  model <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span>    <span class="va">alpha</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="va">beta</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">2.5</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  generate <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">Y_rep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code_reg</span><span class="op">)</span></span></code></pre></div>
+<p><code>setup</code> に前処理を書くことで、<code>parameters</code> や
+<code>model</code>
+ブロックを読みやすくできます。また、<code>print_code()</code>
+で表示したときにも、モデルの再現に必要な処理が見えるようになります。</p>
+</div>
+<div class="section level2">
+<h2 id="推定方法の使い分け">推定方法の使い分け<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E5%AE%9A%E6%96%B9%E6%B3%95%E3%81%AE%E4%BD%BF%E3%81%84%E5%88%86%E3%81%91"></a>
+</h2>
+<p>BayesRTMB は Bayes 推定を基本にしています。そのため、ここでは
+MCMC、MAP 推定、変分推論、そして頻度主義的分析の順に整理します。</p>
+<table class="table">
+<thead><tr class="header">
+<th>メソッド</th>
+<th>主な目的</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>$sample()</code></td>
+<td>NUTS による MCMC サンプリングを行う</td>
+</tr>
+<tr class="even">
+<td><code>$optimize()</code></td>
+<td>MAP 推定または最尤推定を高速に行う</td>
+</tr>
+<tr class="odd">
+<td><code>$variational()</code></td>
+<td>ADVI による近似事後分布を求める</td>
+</tr>
+<tr class="even">
+<td><code>$classic()</code></td>
+<td>flat prior のラッパーモデルを頻度主義的分析として扱う</td>
+</tr>
+</tbody>
+</table>
+<div class="section level3">
+<h3 id="mcmc">MCMC<a class="anchor" aria-label="anchor" href="#mcmc"></a>
+</h3>
+<p><code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> は、NUTS による MCMC
+サンプリングを行います。事後分布全体を見たい場合や、MAP
+推定だけでは不確実性を十分に表現しにくい場合に使います。</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
+<span>  sampling <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  warmup <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  chains <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
+<span><span class="co">## chain 1 started... </span></span>
+<span><span class="co">## chain 1: iter 100 warmup </span></span>
+<span><span class="co">## chain 1: iter 200 warmup </span></span>
+<span><span class="co">## chain 1: iter 300 sampling </span></span>
+<span><span class="co">## chain 1: iter 400 sampling </span></span>
+<span><span class="co">## chain 2 started... </span></span>
+<span><span class="co">## chain 2: iter 100 warmup </span></span>
+<span><span class="co">## chain 2: iter 200 warmup </span></span>
+<span><span class="co">## chain 2: iter 300 sampling </span></span>
+<span><span class="co">## chain 2: iter 400 sampling </span></span>
+<span><span class="co">##  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span></span>
+<span><span class="co">## lp         -397.90  1.50  -396.86  -402.08  -395.97       111       115  1.02 </span></span>
+<span><span class="co">## Intercept     1.87  0.25     1.87     1.40     2.37        52        71  1.02 </span></span>
+<span><span class="co">## b[talk]       0.28  0.06     0.29     0.16     0.39        96        81  1.02 </span></span>
+<span><span class="co">## b[perf]       0.15  0.03     0.15     0.09     0.22        40       127  1.02 </span></span>
+<span><span class="co">## sigma         0.91  0.04     0.91     0.85     0.99        58        65  1.03 </span></span></code></pre>
+</div>
+<div class="section level3">
+<h3 id="map-推定">MAP 推定<a class="anchor" aria-label="anchor" href="#map-%E6%8E%A8%E5%AE%9A"></a>
+</h3>
+<p><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>
+は、事後分布または尤度を最大化する点推定を行います。モデルの確認や、複雑なモデルの初期検討に向いています。</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Call:</span></span>
+<span><span class="co">## MAP Estimation via RTMB</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Negative Log-Posterior: 395.58</span></span>
+<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -404.61</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
+<span><span class="co">##  variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
+<span><span class="co">## Intercept   1.83366     0.21105    1.42000    2.24732 </span></span>
+<span><span class="co">## b[talk]     0.28694     0.05291    0.18323    0.39064 </span></span>
+<span><span class="co">## b[perf]     0.15632     0.02987    0.09777    0.21486 </span></span>
+<span><span class="co">## sigma       0.90453     0.03693    0.83497    0.97988 </span></span></code></pre>
+<p><code>se_method = "sampling"</code>
+を使うと、近似正規サンプルによる不確実性の伝播を使って、派生量の標準誤差や区間を計算できます。</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>se_method <span class="op">=</span> <span class="st">"sampling"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level3">
+<h3 id="変分推論">変分推論<a class="anchor" aria-label="anchor" href="#%E5%A4%89%E5%88%86%E6%8E%A8%E8%AB%96"></a>
+</h3>
+<p><code>variational()</code> は、ADVI
+によって事後分布を近似します。MCMC
+より高速におおまかな結果を得たい場合に使います。ただし、事後分布の不確実性を過小評価することがあるため、最終的な不確実性評価には注意が必要です。</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"meanfield"</span>,</span>
 <span>  iter <span class="op">=</span> <span class="fl">3000</span>,</span>
 <span>  num_estimate <span class="op">=</span> <span class="fl">4</span></span>
-<span><span class="op">)</span></span>
-<span><span class="va">vb_fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## variable    mean    sd     map    q2.5   q97.5 </span></span>
-<span><span class="co">## lp        -12.85  2.08  -12.33  -17.10  -10.21 </span></span>
-<span><span class="co">## mu          5.31  0.39    5.32    4.54    6.07 </span></span>
-<span><span class="co">## sigma       1.12  0.57    0.86    0.40    2.63 </span></span></code></pre>
-</div>
+<span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
-<h3 id="ランダム効果-random-effect-を含むモデル">ランダム効果 (Random effect) を含むモデル<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%B3%E3%83%80%E3%83%A0%E5%8A%B9%E6%9E%9C-random-effect-%E3%82%92%E5%90%AB%E3%82%80%E3%83%A2%E3%83%87%E3%83%AB"></a>
+<h3 id="頻度主義的分析">頻度主義的分析<a class="anchor" aria-label="anchor" href="#%E9%A0%BB%E5%BA%A6%E4%B8%BB%E7%BE%A9%E7%9A%84%E5%88%86%E6%9E%90"></a>
 </h3>
-<p>階層モデルなどを構築する場合、パラメータを <code>random = TRUE</code>
+<p><code>classic()</code> は、ラッパー関数で作られた flat prior
+のモデルに対して、頻度主義的な推定結果を返します。</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_freq</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_freq</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Call:</span></span>
+<span><span class="co">## Classical estimation via lm </span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Log-Likelihood: -402.220, AIC: 812.440, BIC: 827.255</span></span>
+<span><span class="co">## </span></span>
+<span><span class="co">## Point Estimates and Confidence Intervals:</span></span>
+<span><span class="co">##           Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr    </span></span>
+<span><span class="co">## Intercept  1.83366    0.21212   1.41621   2.25110 297  8.64454 &lt;.0001 ***</span></span>
+<span><span class="co">## b[talk]    0.28694    0.05318   0.18229   0.39159 297  5.39580 &lt;.0001 ***</span></span>
+<span><span class="co">## b[perf]    0.15632    0.03002   0.09724   0.21539 297  5.20703 &lt;.0001 ***</span></span>
+<span><span class="co">## sigma      0.90909    0.03730   0.83856   0.98554 297 -2.32306 .02085   *</span></span></code></pre>
+<p><code>lm</code> や <code>glm</code>
+型のモデルでは、検定統計量は通常の表記に近い形で表示されます。混合モデルでは、必要に応じて自由度補正や
+Laplace 近似が使われます。</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="ランダム効果と-laplace-近似">ランダム効果と Laplace 近似<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%B3%E3%83%80%E3%83%A0%E5%8A%B9%E6%9E%9C%E3%81%A8-laplace-%E8%BF%91%E4%BC%BC"></a>
+</h2>
+<p>階層モデルや混合モデルでは、パラメータを <code>random = TRUE</code>
 として宣言できます。</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
-<span></span>
-<span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
-<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">group</span></span>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/factor.html" class="external-link">factor</a></span><span class="op">(</span><span class="va">debate</span><span class="op">$</span><span class="va">group</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">G</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">group</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">data_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>,group <span class="op">=</span> <span class="va">group</span>, G <span class="op">=</span> <span class="va">G</span><span class="op">)</span></span>
+<span><span class="va">dat_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, group <span class="op">=</span> <span class="va">group</span>, G <span class="op">=</span> <span class="va">G</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">code_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu</span>    <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
-<span>    <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
-<span>    <span class="va">tau</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower<span class="op">=</span><span class="fl">0</span><span class="op">)</span></span>
-<span>    <span class="va">r</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">G</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span>    <span class="va">mu</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">tau</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">r</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">G</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  model <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span> <span class="op">+</span> <span class="va">r</span><span class="op">[</span><span class="va">group</span><span class="op">]</span> <span class="op">*</span> <span class="va">tau</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span>    <span class="va">r</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span>    <span class="va">tau</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
-<span>    <span class="va">sigma</span>   <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  generate <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">icc</span> <span class="op">=</span> <span class="va">tau</span> <span class="op">/</span> <span class="op">(</span><span class="va">tau</span> <span class="op">+</span> <span class="va">sigma</span><span class="op">)</span></span>
+<span>    <span class="va">icc</span> <span class="op">&lt;-</span> <span class="va">tau</span><span class="op">^</span><span class="fl">2</span> <span class="op">/</span> <span class="op">(</span><span class="va">tau</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span> <span class="va">sigma</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
-<span><span class="op">)</span></span></code></pre></div>
-<p>このようなモデルでは、Laplace
-近似を使ってランダム効果を周辺化（積分消去）できます。MAP 推定
-(<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>) ではデフォルトで <code>laplace = TRUE</code>
-となり、自動的に適用されます。
-生成量の信頼区間は、<code>se_sampling=TRUE</code>とすることで計算できます。</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_icc</span>, <span class="va">code_icc</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
 <span></span>
+<span><span class="va">mdl_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat_icc</span>, <span class="va">code_icc</span><span class="op">)</span></span>
+<span><span class="va">fit_icc</span> <span class="op">&lt;-</span> <span class="va">mdl_icc</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
+<p>MAP 推定では、<code>laplace = TRUE</code>
+が既定値です。<code>random = TRUE</code> とされたパラメータは、Laplace
+近似によって周辺化されます。</p>
+<p>ラッパー関数を使う場合は、次のように混合モデルを書けます。</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_hlm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
+<span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
+<span>  family <span class="op">=</span> <span class="st">"gaussian"</span></span>
+<span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">opt_icc</span> <span class="op">&lt;-</span> <span class="va">mdl_icc</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span>, se_sampling <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
-<span><span class="va">opt_icc</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## Call:</span></span>
-<span><span class="co">## MAP Estimation via RTMB</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Negative Log-Posterior: 407.96</span></span>
-<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -413.73</span></span>
-<span><span class="co">## Note: Random effects are stored in $random_effects</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
-<span><span class="co">## variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
-<span><span class="co">## mu         3.43333     0.07387    3.28647    3.58483 </span></span>
-<span><span class="co">## sigma      0.79705     0.04187    0.72217    0.88498 </span></span>
-<span><span class="co">## tau        0.58599     0.06962    0.46731    0.73489 </span></span>
-<span><span class="co">## icc        0.42370     0.03414    0.35876    0.49122 </span></span></code></pre>
-<p>MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>)
-でも指定は可能ですが、MCMCの場合は変量効果が問題なく推定できるため、基本的にはデフォルトの
-<code>laplace = FALSE</code> で問題ありません。</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mcmc_icc</span> <span class="op">&lt;-</span> <span class="va">mdl_icc</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># plot_dens()で事後分布を描画できる</span></span>
-<span><span class="va">mcmc_icc</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"icc"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p><img src="icc_plot.png"></p>
+<span><span class="va">fit_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
-<div class="section level3">
-<h3 id="ラッパー関数で簡単に分析する">ラッパー関数で簡単に分析する<a class="anchor" aria-label="anchor" href="#%E3%83%A9%E3%83%83%E3%83%91%E3%83%BC%E9%96%A2%E6%95%B0%E3%81%A7%E7%B0%A1%E5%8D%98%E3%81%AB%E5%88%86%E6%9E%90%E3%81%99%E3%82%8B"></a>
-</h3>
-<p>BayesRTMB
-には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。</p>
-<p>たとえばマルチレベルモデルであれば <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code>
+<div class="section level2">
+<h2 id="モデル比較と-bridge-sampling">モデル比較と bridge sampling<a class="anchor" aria-label="anchor" href="#%E3%83%A2%E3%83%87%E3%83%AB%E6%AF%94%E8%BC%83%E3%81%A8-bridge-sampling"></a>
+</h2>
+<p>MCMC の結果に対して、bridge sampling
+による周辺尤度を計算できます。</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
+<span>  sampling <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  warmup <span class="op">=</span> <span class="fl">200</span>,</span>
+<span>  chains <span class="op">=</span> <span class="fl">2</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>表示は、たとえば次のように出力されます。</p>
+<pre class="text"><code><span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
+<span><span class="co">## chain 1 started... </span></span>
+<span><span class="co">## chain 1: iter 100 warmup </span></span>
+<span><span class="co">## chain 1: iter 200 warmup </span></span>
+<span><span class="co">## chain 1: iter 300 sampling </span></span>
+<span><span class="co">## chain 1: iter 400 sampling </span></span>
+<span><span class="co">## chain 2 started... </span></span>
+<span><span class="co">## chain 2: iter 100 warmup </span></span>
+<span><span class="co">## chain 2: iter 200 warmup </span></span>
+<span><span class="co">## chain 2: iter 300 sampling </span></span>
+<span><span class="co">## chain 2: iter 400 sampling </span></span>
+<span><span class="co">## Bridge Sampling Converged: LogML = -404.659 (Error = 0.0223, ESS = 78.8)</span></span></code></pre>
+<p>戻り値は数値の log marginal likelihood で、<code>error</code> と
+<code>ess</code> の属性を持ちます。</p>
+<p>Bayes factor を計算したい場合は、<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code>
 を使います。</p>
-<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
-<span><span class="va">mdl_lmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">cond</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># MAP推定</span></span>
-<span><span class="va">opt_lmer</span> <span class="op">&lt;-</span> <span class="va">mdl_lmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>df <span class="op">=</span> <span class="st">"auto"</span><span class="op">)</span></span>
-<span><span class="va">opt_lmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## Call:</span></span>
-<span><span class="co">## MAP Estimation via RTMB</span></span>
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
+<span><span class="va">bf</span></span></code></pre></div>
+<pre class="text"><code><span><span class="co">## </span></span>
+<span><span class="co">## --- Sampling from the comparison model ---</span></span>
+<span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
+<span><span class="co">## chain 1 started... </span></span>
+<span><span class="co">## chain 1: iter 100 warmup </span></span>
+<span><span class="co">## chain 1: iter 200 warmup </span></span>
+<span><span class="co">## chain 1: iter 300 warmup </span></span>
+<span><span class="co">## chain 1: iter 400 warmup </span></span>
+<span><span class="co">## chain 1: iter 500 warmup </span></span>
+<span><span class="co">## chain 1: iter 600 warmup </span></span>
+<span><span class="co">## chain 1: iter 700 warmup </span></span>
+<span><span class="co">## chain 1: iter 800 warmup </span></span>
+<span><span class="co">## chain 1: iter 900 warmup </span></span>
+<span><span class="co">## chain 1: iter 1000 warmup </span></span>
+<span><span class="co">## chain 1: iter 1100 sampling </span></span>
+<span><span class="co">## chain 1: iter 1200 sampling </span></span>
+<span><span class="co">## chain 2 started... </span></span>
+<span><span class="co">## chain 2: iter 100 warmup </span></span>
+<span><span class="co">## chain 2: iter 200 warmup </span></span>
+<span><span class="co">## chain 2: iter 300 warmup </span></span>
+<span><span class="co">## chain 2: iter 400 warmup </span></span>
+<span><span class="co">## chain 2: iter 500 warmup </span></span>
+<span><span class="co">## chain 2: iter 600 warmup </span></span>
+<span><span class="co">## chain 2: iter 700 warmup </span></span>
+<span><span class="co">## chain 2: iter 800 warmup </span></span>
+<span><span class="co">## chain 2: iter 900 warmup </span></span>
+<span><span class="co">## chain 2: iter 1000 warmup </span></span>
+<span><span class="co">## chain 2: iter 1100 sampling </span></span>
+<span><span class="co">## chain 2: iter 1200 sampling </span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">## Negative Log-Posterior: 394.07</span></span>
-<span><span class="co">## Approx. Log Marginal Likelihood (Laplace): -402.96</span></span>
-<span><span class="co">## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## Point Estimates and 95% Wald CI:</span></span>
-<span><span class="co">##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF </span></span>
-<span><span class="co">## Intercept      2.58149     0.18124    2.22468    2.93829  274 </span></span>
-<span><span class="co">## b[talk]        0.25197     0.05764    0.13852    0.36541  295 </span></span>
-<span><span class="co">## b[cond]   0.18183     0.14595   -0.10729    0.47094  114 </span></span>
-<span><span class="co">## sigma          0.77760     0.03891    0.70443    0.85838  159 </span></span>
-<span><span class="co">## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 </span></span></code></pre>
-<p>一般化線形混合モデルには <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>、因子分析には
-<code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> など、分析目的に応じた関数が利用できます。</p>
-<p>また、<code><a href="../reference/rtmb_ttest.html">rtmb_ttest()</a></code> を使うと、ベイジアン t
-検定が簡単に実行できます。<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> メソッドで
-<code>fixed</code> 引数にリスト形式で「0
-に固定したいパラメータと値」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
-<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">cond</span>, data <span class="op">=</span> <span class="va">debate</span>, r <span class="op">=</span> <span class="fl">0.707</span><span class="op">)</span></span>
-<span><span class="va">mcmc_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
-<span></span>
-<span><span class="co"># delta = 0 の帰無モデルと比較</span></span>
-<span><span class="va">bf_ttest</span> <span class="op">&lt;-</span> <span class="va">mcmc_ttest</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
-<span><span class="va">bf_ttest</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## Bayes Factor (BF12) : 21.51 </span></span>
-<span><span class="co">## Log Bayes Factor    : 3.0685 (Approx. Error = 0.0021)</span></span>
-<span><span class="co">## Interpretation      : Strong evidence for Model 1 </span></span></code></pre>
+<span><span class="co">## --- Calculating marginal likelihood for the comparison model ---</span></span>
+<span><span class="co">## Bridge Sampling Converged: LogML = -416.504 (Error = 0.0178, ESS = 95.2)</span></span>
+<span><span class="co">## --- Bayes Factor Analysis (Bridge Sampling) ---</span></span>
+<span><span class="co">## Bayes Factor (BF12) : 139287.9 </span></span>
+<span><span class="co">## Log Bayes Factor    : 11.8443 (Approx. Error = 0.0285)</span></span>
+<span><span class="co">## Evidence            : Decisive evidence for Model 1 </span></span>
+<span><span class="co">## Comparison model    : Parameters fixed at list("b[talk]" = 0) </span></span></code></pre>
 </div>
-<div class="section level3">
-<h3 id="次のステップ">次のステップ<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97"></a>
-</h3>
+<div class="section level2">
+<h2 id="次のステップ">次のステップ<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97"></a>
+</h2>
 <p>BayesRTMB
-の全体像がつかめたら、以下の順番でドキュメントを参照して具体的な使い方を深めていくことをおすすめします。</p>
+の全体像がつかめたら、次は目的に応じて以下の記事を読むのがおすすめです。</p>
 <ol style="list-style-type: decimal">
-<li>
-<strong><a href="ja-quick_start.html">クイックスタート</a></strong>
-二項モデル、回帰モデル、階層モデル、GLMM、混合分布モデルなどの
-具体例を通して、<code>setup</code> や <code>transform</code>
-などの各ブロックの役割と、実践的な分析方法を学びます。</li>
-<li>
-<strong><a href="ja-writing_models.html">コードの書き方</a></strong>
-各関数の詳細な仕様を確認できます。 3.<strong>その他リファレンス</strong>
-特に自分でモデルを構築する際は、以下のページが役立ちます。
-<ul>
-<li>
-<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>: 各ブロックの記述ルールと仕様</li>
-<li>
-<code><a href="../reference/Dim.html">Dim()</a></code>:
-パラメータの型と制約（<code>parameter_types</code>）</li>
-<li>
-<code>distributions</code> / <code>math_functions</code>:
-組み込みの確率分布や、数値計算を安定させる数学関数</li>
-</ul>
-</li>
+<li><p><strong><a href="ja-quick_start.html">クイックスタート</a></strong><br>
+基本的なモデルを実際に動かしながら、<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> と
+<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> の流れを確認できます。</p></li>
+<li><p><strong><a href="ja-wrapper_functions.html">ラッパー関数の使い方</a></strong><br>
+回帰、一般化線形モデル、混合モデル、t
+検定など、標準的な分析をラッパー関数で実行する方法を確認できます。</p></li>
+<li><p><strong><a href="ja-writing_models.html">モデルコードの書き方</a></strong><br><code>setup</code>, <code>parameters</code>, <code>transform</code>,
+<code>model</code>, <code>generate</code>
+の各ブロックを使って、自分でモデルを書く方法を詳しく説明します。</p></li>
+<li><p><strong><a href="ja-rtmb_internals.html">RTMB
+の仕組みと推定アルゴリズム</a></strong><br>
+Laplace
+近似、制約付きパラメータ、MCMC、変分推論などの内部処理を確認できます。</p></li>
 </ol>
-</div>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

@@ -1,176 +1,219 @@
 # ラッパー関数の使い方
 
-BayesRTMB では、`rtmb_code`
-ブロックを使って自由にモデルを定義できますが、
-一般的な統計分析（t検定、回帰分析、因子分析など）を素早く実行するための**ラッパー関数**も用意されています。
+BayesRTMB
+では、[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+を使ってモデルを直接書くこともできますが、よく使う分析についてはラッパー関数が用意されています。
 
-これらの関数は、[`lm()`](https://rdrr.io/r/stats/lm.html) や
-`lme4::glmer()` といった標準的な R の関数に近い文法でモデルを指定でき（※
-`lme4` パッケージ自体のインストールは不要です）、
+ラッパー関数は、[`lm()`](https://rdrr.io/r/stats/lm.html) や
+[`glm()`](https://rdrr.io/r/stats/glm.html)
+のような短い書き方から、内部的に一貫した
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+を生成します。そのため、同じモデルに対して
+MCMC、MAP推定、変分推論、そして頻度主義的分析を切り替えて使うことができます。
 
-かつ BayesRTMB
-の強力な推定機能（MCMC、MAP、ADVI）をそのまま利用できます。
+このページでは、各ラッパー関数の細かい理論やオプションではなく、「どのような雰囲気で使うか」を中心に紹介します。
 
-このページでは、主要なラッパー関数の使い方を順に紹介します。
+## ラッパー関数とは
 
-------------------------------------------------------------------------
-
-## 1. rtmb_ttest（ベイズ的t検定）
-
-2 群の平均値の差を検討するための関数です。 BayesRTMB の `rtmb_ttest`
-は、標準的な t
-検定に加えて、**効果量（delta）の推定**と**ベイズファクターの計算**が簡単に行えるよう設計されています。
-
-まず、サンプルデータを生成して分析してみましょう。
+ラッパー関数は、典型的な統計モデルを簡潔に書くための入り口です。たとえば、重回帰なら次のように書けます。
 
 ``` r
 
 library(BayesRTMB)
-set.seed(123)
-
-# データの生成（2群）
-y1 <- rnorm(30, mean = 0, sd = 1)
-y2 <- rnorm(30, mean = 1, sd = 1)
-
-# ベクトルを直接渡す方法
-mdl_ttest <- rtmb_ttest(y1, y2)
-
-# フォーミュラ形式で渡す方法（データフレームがある場合）
-# df <- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))
-# mdl_ttest <- rtmb_ttest(Y ~ group, data = df)
-
-# MCMCによる推定
-fit_ttest <- mdl_ttest$sample()
-fit_ttest$summary()
-```
-
-``` text
-## variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-## lp        -88.05  1.23  -87.08  -91.16  -86.63      1543      2467  1.00 
-## delta       1.24  0.30    1.25    0.65    1.84      1830      1654  1.01 
-## mean        0.57  0.12    0.58    0.34    0.81      3058      2436  1.00 
-## sd          0.93  0.09    0.92    0.78    1.13      2371      2755  1.00 
-## diff        1.15  0.25    1.11    0.64    1.63      2309      1695  1.01 
-## mean0      -0.00  0.17   -0.01   -0.34    0.34      2645      2468  1.00 
-## mean1       1.14  0.17    1.14    0.80    1.49      2507      2364  1.00 
-```
-
-#### 生成されたコードの確認
-
-ラッパー関数が内部でどのような `rtmb_code`
-を生成したかは、モデルオブジェクトの `print_code()`
-メソッドで確認できます。これにより、ラッパー関数をベースにしつつ、必要に応じて独自のモデルへ拡張する際の参考にできます。
-
-``` r
-
-# 内部で生成された RTMB コードを表示
-mdl_ttest$print_code()
-```
-
-``` text
-## === RTMB Model Code ===
-## 
-## rtmb_code(
-##   parameters = {
-##     mean = Dim(1)
-##     sd = Dim(1, lower = 0)
-##     delta = Dim(1)
-##   }, 
-##   transform = {
-##     diff <- delta * sd
-##     mean0 <- mean - diff/2
-##     mean1 <- mean + diff/2
-##   }, 
-##   model = {
-##     Y1 ~ normal(mean0, sd)
-##     Y2 ~ normal(mean1, sd)
-##     delta ~ cauchy(0, r)
-##     mean ~ normal(0, 10)
-##     sd ~ exponential(0.1)
-##   }, 
-##   <environment>
-## )
-```
-
-#### ベイズファクターの計算
-
-[`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
-メソッドを使うことで、効果量 $`\delta = 0`$
-とする帰無モデルとの比較（ベイズファクター）を算出できます。
-
-``` r
-
-# 効果量 delta = 0 とするモデルと比較
-bf <- fit_ttest$bayes_factor(fixed = list(delta = 0))
-bf
-```
-
-``` text
-## Bayes Factor (BF12) : 4777.563 
-## Log Bayes Factor    : 8.4717 (Approx. Error = 0.0039)
-## Interpretation      : Decisive evidence for Model 1 
-```
-
-------------------------------------------------------------------------
-
-## 2. rtmb_lm（線形回帰分析）
-
-標準的な [`lm()`](https://rdrr.io/r/stats/lm.html)
-と同様のフォーマットで線形回帰を行えます。
-ここでは、パッケージに同梱されている `debate`
-データ（議論の満足度に関するシミュレーションデータ）を使用します。
-
-``` r
-
 data(debate)
 
-# sat を talk と skill で予測するモデル
-mdl_lm <- rtmb_lm(sat ~ talk + skill, data = debate)
-
-# MAP推定で素早く確認
-fit_lm <- mdl_lm$optimize()
-fit_lm$summary()
+mdl <- rtmb_lm(sat ~ talk * perf, data = debate)
 ```
+
+この時点では、まだ推定は実行されていません。モデルを作ったあとに、目的に応じて推定方法を選びます。
+
+``` r
+
+fit_mcmc <- mdl$sample()
+fit_map  <- mdl$optimize()
+fit_cl   <- mdl$classic()
+```
+
+同じ `mdl`
+から、ベイズ推定と頻度主義的分析の両方を扱えるところが、BayesRTMB
+のラッパー関数の大きな特徴です。
+
+## ラッパー関数一覧
+
+主なラッパー関数は次のとおりです。ここでは、細かなオプションよりも典型的な使い方を示します。
+
+| 関数 | 分析 | 典型的なコード |
+|:---|:---|:---|
+| [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md) | t検定 | `rtmb_ttest(sat ~ cond, data = debate)` |
+| [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md) | 線形回帰 | `rtmb_lm(sat ~ talk * perf, data = debate)` |
+| [`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md) | 一般化線形モデル | `rtmb_glm(y ~ x, data = df, family = "bernoulli")` |
+| [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md) | 線形混合モデル | `rtmb_lmer(y ~ x + (1 | group), data = df)` |
+| [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md) | 一般化線形混合モデル | `rtmb_glmer(y ~ x + (1 | group), data = df, family = "poisson")` |
+| [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md) | 相関・偏相関 | `rtmb_corr(cbind(sat, perf), data = debate)` |
+| [`rtmb_table()`](https://norimune.github.io/BayesRTMB/reference/rtmb_table.md) | クロス表分析 | `rtmb_table(skill, cond, data = debate)` |
+| [`rtmb_loglinear()`](https://norimune.github.io/BayesRTMB/reference/rtmb_loglinear.md) | 対数線形モデル | `rtmb_loglinear(~ A + B + A:B, data = df)` |
+| [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md) | 因子分析 | `rtmb_fa(items, nfactors = 3)` |
+| [`rtmb_irt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_irt.md) | 項目反応理論 | `rtmb_irt(items, model = "2PL")` |
+| [`rtmb_lrt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.md) | 潜在ランク理論 | `rtmb_lrt(y, k = 3)` |
+| [`rtmb_mdu()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mdu.md) | 多次元展開法 | `rtmb_mdu(Y, ndim = 2)` |
+| [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md) | 媒介分析 | `rtmb_mediation(list(m ~ x, y ~ x + m), data = df)` |
+| [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md) | 混合分布モデル | `rtmb_mixture(y ~ x, k = 3, data = df)` |
+
+## 推定のイメージ
+
+ラッパー関数でモデルを作ったあとは、メソッドを選んで推定します。
+
+MCMC を使う場合は [`sample()`](https://rdrr.io/r/base/sample.html)
+です。
+
+``` r
+
+mdl <- rtmb_lm(sat ~ talk * perf, data = debate)
+fit <- mdl$sample()
+fit$summary()
+```
+
+MAP推定を使う場合は
+[`optimize()`](https://rdrr.io/r/stats/optimize.html) です。
+
+``` r
+
+fit <- mdl$optimize()
+fit$summary()
+```
+
+頻度主義的分析を使う場合は `classic()` です。
+
+``` r
+
+fit <- mdl$classic()
+fit$summary()
+```
+
+このように、モデルの書き方は同じで、推定方法だけを切り替えられます。
+
+## 頻度主義的分析
+
+`classic()` は、BayesRTMB
+のラッパー関数を頻度主義的な分析として使うためのメソッドです。
+
+``` r
+
+rtmb_corr(cbind(sat, perf), data = debate)$classic()
+```
+
+[`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
+のデフォルトは `method = "pearson"` なので、`classic()` は
+[`cor.test()`](https://rdrr.io/r/stats/cor.test.html) と同じ Pearson
+相関の結果を返します。
 
 ``` text
 ## Call:
-## MAP Estimation via RTMB
+## Classical estimation via corr 
 ## 
-## Negative Log-Posterior: 416.94
-## Approx. Log Marginal Likelihood (Laplace): -425.12
-## 
-## Point Estimates and 95% Wald CI:
-##    variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## Intercept     2.14693     0.20761    1.74001    2.55384 
-## b[talk]       0.28612     0.05434    0.17961    0.39264 
-## b[skill]      0.20106     0.06604    0.07162    0.33050 
-## sigma         0.92284     0.03725    0.85265    0.99880 
-## Intercept_c   3.43324     0.05333    3.32871    3.53777 
+## Point Estimates and Confidence Intervals:
+##           Estimate Std. Error Lower 95% Upper 95%  df t value     Pr    
+## corr[rho]  0.29742         NA   0.19059   0.39728 298 5.37755 <.0001 ***
 ```
 
-#### 事前分布の設定と弱情報事前分布
-
-BayesRTMB では、`prior`
-引数を使ってパラメータの事前分布を指定できます。デフォルトでは
-[`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)（実質的にフラットな事前分布）が設定されています。
-
-ベイズファクターの算出（`Bridge Sampling`や`bayes_factor`メソッド）を行う場合、事前分布の設定が結果に影響を与えます。BayesRTMB
-では、目的変数の理論的な最小値・最大値を `y_range`
-に指定することで、適切な**弱情報事前分布（Weakly Informative
-Prior）**を自動構成することを推奨しています。
-
-`y_range` を指定すると、内部で自動的に `prior = prior_weak()`
-が適用され、情報の少ない（しかし統計的に適切な）事前分布と、計算を安定させるための中心化推定が自動的に有効になります。
+統制変数を入れた場合は、共変量だけを統制した偏相関になります。
 
 ``` r
 
-# 弱情報事前分布を使用してモデルを作成（満足度が 1〜5 の範囲の場合）
-# y_range を指定するだけで自動的に適切な事前分布が設定されます
-mdl_lm_weak <- rtmb_lm(sat ~ talk + skill,
-  data = debate,
-  y_range = c(1, 5)
-)
-mdl_lm_weak$print_code()
+rtmb_corr(cbind(sat, perf),
+          data = debate,
+          covariates = ~ skill)$classic()
+```
+
+``` text
+##           Estimate Std. Error Lower 95% Upper 95%  df t value     Pr    
+## pcorr[rho]  0.29604         NA   0.18896   0.39617 297 5.34134 <.0001 ***
+```
+
+`method = "spearman"` を指定すると Spearman
+相関を使います。`method = "reml"` を指定すると、RTMB
+のREML推定に基づく相関モデルとして推定されます。
+
+``` r
+
+rtmb_corr(cbind(sat, perf), data = debate, method = "spearman")$classic()
+rtmb_corr(cbind(sat, perf), data = debate, method = "reml")$classic()
+```
+
+### S3メソッド
+
+`classic()` の結果は `Classic_Fit`
+オブジェクトなので、[`anova()`](https://rdrr.io/r/stats/anova.html)、[`AIC()`](https://rdrr.io/r/stats/AIC.html)、[`BIC()`](https://rdrr.io/r/stats/AIC.html)
+などのS3メソッドを使えます。
+
+クロス表分析では、1つの対象に対して
+[`anova()`](https://rdrr.io/r/stats/anova.html)
+を使うと、独立性の検定を表示できます。
+
+``` r
+
+fit_tab <- rtmb_table(skill, cond, data = debate)$classic()
+anova(fit_tab)
+```
+
+``` text
+## Contingency Table Analysis Tests
+## - 
+##                                        X-squared df p-value
+## Pearson's Chi-squared (from est. prob)   1.20478  2  0.5475
+## 
+## Fisher's Exact Test for Count Data
+## p-value =  0.54310 
+```
+
+複数のモデルを比較する場合は、`anova(fit1, fit2)`
+と書けます。たとえば、因子分析で因子数の異なるモデルを比較できます。
+
+``` r
+
+data(BigFive)
+
+items <- BigFive[, 1:10]
+fit_fa1 <- rtmb_fa(items, nfactors = 1)$classic()
+fit_fa2 <- rtmb_fa(items, nfactors = 2)$classic()
+
+anova(fit_fa1, fit_fa2)
+```
+
+``` text
+## Likelihood Ratio Tests
+##    Model Df  logLik    AIC    BIC  Chisq Chi Df Pr(>Chisq)
+## fit_fa1 30 -2485.5 5030.9 4970.9     NA     NA         NA
+## fit_fa2 40 -2440.4 4960.9 4880.9 90.089     10 5.1421e-15
+```
+
+[`AIC()`](https://rdrr.io/r/stats/AIC.html) や
+[`BIC()`](https://rdrr.io/r/stats/AIC.html) も同じように使えます。
+
+``` r
+
+c(AIC_1 = AIC(fit_fa1),
+  AIC_2 = AIC(fit_fa2),
+  BIC_1 = BIC(fit_fa1),
+  BIC_2 = BIC(fit_fa2))
+```
+
+``` text
+##    AIC_1    AIC_2    BIC_1    BIC_2 
+## 5030.942 4960.853 4970.942 4880.853
+```
+
+## print_code()
+
+ラッパー関数は簡単に使えますが、内部ではすべて
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+に展開されています。どのようなモデルが生成されたかは `print_code()`
+で確認できます。
+
+``` r
+
+mdl <- rtmb_ttest(sat ~ cond, data = debate)
+mdl$print_code()
 ```
 
 ``` text
@@ -178,565 +221,47 @@ mdl_lm_weak$print_code()
 ## 
 ## rtmb_code(
 ##   setup = {
-##     N <- length(Y)
-##     K <- ncol(X)
-##     half_d_y <- diff(y_range)/2
-##     base_scale <- half_d_y * weak_info_prior$sd_ratio
-##     alpha_prior_sd <- half_d_y
-##     mid_y <- mean(y_range)
-##     sigma_rate <- 1/base_scale
-##     tau_rate <- 1/base_scale
-##     X_mean <- apply(X, 2, mean)
-##     X_sd <- apply(X, 2, sd)
-##     beta_prior_sd <- weak_info_prior$max_beta * base_scale/X_sd
-##     X_c <- X - rep(1, N) %*% t(X_mean)
+##     Y1 <- as.numeric(na.omit(Y[G == 1]))
+##     Y2 <- as.numeric(na.omit(Y[G == 2]))
 ##   }, 
 ##   parameters = {
-##     Intercept_c <- Dim(1)
-##     b <- Dim(K)
-##     sigma <- Dim(1, lower = 0)
+##     mean0 = Dim(1)
+##     mean1 = Dim(1)
+##     sd = Dim(2, lower = 0)
 ##   }, 
 ##   transform = {
-##     Intercept <- Intercept_c - sum(X_mean * b)
+##     diff <- mean0 - mean1
+##     mean <- (mean0 + mean1)/2
+##     sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
+##     delta <- diff/sd_pooled
 ##   }, 
 ##   model = {
-##     # Transform
-##     eta <- as.vector(Intercept_c + X_c %*% b)
-##     # Likelihood (Data)
-##     Y ~ normal(eta, sigma)
-##     # Priors
-##     sigma ~ exponential(sigma_rate)
-##     Intercept_c ~ normal(mid_y, alpha_prior_sd)
-##     b ~ normal(0, beta_prior_sd)
+##     Y1 ~ normal(mean0, sd[1])
+##     Y2 ~ normal(mean1, sd[2])
 ##   }
 ## )
 ```
 
-また、手動で事前分布の広さを調整したい場合は、[`prior_uniform()`](https://norimune.github.io/BayesRTMB/reference/prior_uniform.md)
-を使用します。
+この例は Welch の
+t検定に対応するモデルです。通常の検定としては短く呼び出せますが、内部では2群それぞれの平均と標準偏差を推定するモデルとして表現されています。
 
-``` r
-
-# 係数 (b) の事前分布の標準誤差を 5、切片 (Intercept) を 10 に設定
-mdl_lm_custom <- rtmb_lm(sat ~ talk + skill,
-  data = debate,
-  prior = prior_uniform(b_sd = 5, Intercept_sd = 10)
-)
-```
-
-------------------------------------------------------------------------
-
-## 3. rtmb_glm（一般化線形モデル）
-
-`family`
-引数を指定することで、ロジスティック回帰やポアソン回帰などを行えます。
-例として、実験条件（cond: 0 or
-1）を予測するロジスティック回帰を実行します。
-
-``` r
-
-# ロジスティック回帰 (family = "bernoulli")
-mdl_glm <- rtmb_glm(cond ~ sat + skill,
-  data = debate,
-  family = "bernoulli"
-)
-
-fit_glm <- mdl_glm$sample()
-fit_glm$summary()
-```
-
-``` text
-       variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-## lp               -213.72  1.24  -212.80  -216.90  -212.31      1567      2449  1.00 
-## Intercept          -1.35  0.50    -1.32    -2.31    -0.38      3740      2794  1.00 
-## b[sat]     0.40  0.13     0.38     0.16     0.64      3127      2838  1.00 
-## b[skill]           -0.01  0.15     0.01    -0.30     0.28      3445      2925  1.00 
-## Intercept_c        -0.00  0.12    -0.03    -0.23     0.23      4129      2544  1.00 
-```
-
-#### 利用可能な分布（family）
-
-`rtmb_glm` および `rtmb_glmer`
-では、以下の分布を指定できます。各分布には標準的なリンク関数が内部で設定されています。
-
-| family | リンク関数 | 概要 |
-|:---|:---|:---|
-| `gaussian` | 恒等 (identity) | 正規分布。標準的な回帰分析に。 |
-| `lognormal` | 対数 (log) | 対数正規分布。正の値をとるデータの分析に。 |
-| `student_t` | 恒等 (identity) | t 分布。外れ値の影響を抑えたい場合に。 |
-| `gamma` | 対数 (log) | ガンマ分布。正の値をとる歪んだデータの分析に。 |
-| `poisson` | 対数 (log) | ポアソン分布。カウントデータの分析に。 |
-| `bernoulli` | ロジット (logit) | ベルヌーイ分布。2値データの分析に。 |
-| `ordered` | ロジット (logit) | 順序ロジスティック分布。順序カテゴリデータの分析に。 |
-
-------------------------------------------------------------------------
-
-## 4. 混合分布モデル (rtmb_mixture)
-
-複数の分布が混ざったデータを推定することができます。
-
-``` r
-
-set.seed(123)
-
-N <- 300 # サンプルサイズ
-K <- 3 # クラスタの数
-
-# 真のパラメータ
-theta_true <- c(0.2, 0.5, 0.3) # 各クラスタの混合比率 (和が1)
-mu_true <- c(-3, 0, 4) # 各クラスタの平均
-sigma_true <- c(0.5, 1.0, 0.8) # 各クラスタの標準偏差
-
-# 潜在変数 z (各データ点がどのクラスタから生成されたか)
-z <- sample(1:K, size = N, replace = TRUE, prob = theta_true)
-
-# 観測データ Y
-Y <- numeric(N)
-for (i in 1:N) {
-  Y[i] <- rnorm(1, mean = mu_true[z[i]], sd = sigma_true[z[i]])
-}
-
-Y |> hist()
-```
-
-``` r
-
-set.seed(123)
-
-N <- 300
-K <- 3
-X1 <- rnorm(N, mean = 0, sd = 1) 
-X2 <- rbinom(N, size = 1, prob = 0.5)
-X_mat <- cbind(Intercept = 1, X1, X2)
-
-beta2 <- c(0.5, 1.2, -0.8)
-beta3 <- c(-0.2, -1.5, 1.0)
-
-beta_true <- cbind(beta2, beta3)
-eta <- X_mat %*% beta_true
-pi_mat <- array(NA,dim=c(N,K))
-for(i in 1:N){
-  pi_mat[i,] <- softmax(c(0,eta[i,]))
-}
-mu_true <- c(-3, 0, 4) 
-sigma_true <- c(0.5, 1.0, 0.8) 
-
-z <- numeric(N)
-Y <- numeric(N)
-
-for (i in 1:N) {
-  z[i] <- sample(1:K, size = 1, prob = pi_mat[i, ])
-  Y[i] <- rnorm(1, mean = mu_true[z[i]], sd = sigma_true[z[i]])
-}
-
-dat <- data.frame(Y = Y, X1 = X1, X2 = X2, true_z = z)
-```
-
-``` r
-
-mdl_mix <- rtmb_mixture(Y ~ X1 + X2, data = dat, k = 3)
-opt_mix <- mdl_mix$optimize(num_estimate = 8)
-opt_mix$print()
-```
-
-------------------------------------------------------------------------
-
-## 5. 事後解析（交互作用の可視化と単純効果分析）
-
-回帰モデル（LM, GLM, GLMER）を適合させた後、`condal_effects()` や
-[`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
-を使用して結果の解析や可視化を行えます。これらのメソッドは現在、MCMC（[`sample()`](https://rdrr.io/r/base/sample.html)）で適合させたモデルで利用可能です。
-
-#### `condal_effects()` による可視化
-
-`condal_effects()`
-関数は、モデルの予測値を可視化するために使用されます。特に交互作用効果を理解するのに強力です。
-
-``` r
-
-# talk と perf の交互作用を含む線形回帰
-mdl_int <- rtmb_lm(sat ~ talk * perf, data = debate)
-mcmc_int <- mdl_int$sample()
-
-# 交互作用効果の可視化
-# 連続変数の調整変数の場合、自動的に 平均値 ± 1SD が表示されます
-ce <- condal_effects(mcmc_int, effect = "talk:perf",sd_multiplier = 1)
-plot(ce)
-```
-
-![交互作用効果の図](condal_effect.png)
-
-交互作用効果の図
-
-#### `simple_effects()` による単純効果分析
-
-`condal_effects()`
-が視覚的な概観を提供するのに対し、[`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
-では特定の調整変数のレベルにおける焦点変数の効果を統計的に検討できます。
-
-- **単純傾き (Simple Slopes)**: 焦点変数が連続変数の場合。
-- **ペアワイズ対比 (Pairwise Contrasts)**:
-  焦点変数がカテゴリ変数の場合。
-
-``` r
-
-# perf の各レベルにおける 'talk' の単純傾きを計算
-se <- simple_effects(mcmc_int, effect = "talk:perf")
-print(se)
-```
-
-``` text
-## --- Simple Effects Analysis ---
-##    moderator perf          term estimate  lower upper
-##  perf       2.930 Slope of talk    0.038 -0.118 0.191
-##  perf       4.690 Slope of talk    0.266  0.161 0.369
-##  perf       6.450 Slope of talk    0.494  0.354 0.631
-```
-
-デフォルトでは、連続変数の調整変数の場合、平均値および平均値 ± 1SD
-の位置で効果を評価します。この挙動は `sd_multiplier`
-引数を指定することで変更できます。
-
-------------------------------------------------------------------------
-
-## 6. rtmb_corr（相関行列の推定）
-
-変数の間の相関関係を推定するための関数です。
-ここでは性格五因子（BigFive）のデータの一部を使って、2変数の場合と行列全体の場合を紹介します。
-
-#### 2変数の相関とベイズファクター
-
-2つの変数（例：外向性を示す項目 BF1 と
-BF6）の間の相関を推定し、無相関（$`r = 0`$）を帰無仮説としたベイズファクターを計算します。
-
-``` r
-
-data(BigFive)
-
-# BF1 と BF6 の相関
-mdl_corr2 <- rtmb_corr(BigFive[, c("BF1", "BF6")])
-mcmc_corr2 <- mdl_corr2$sample()
-mcmc_corr2$summary()
-```
-
-``` text
-##  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-## lp         -493.27  1.55  -492.22  -497.08  -491.16      1799      2658  1.00 
-## corr[rho]    -0.60  0.05    -0.60    -0.69    -0.50      2365      2539  1.00 
-## mean[BF1]     3.56  0.08     3.56     3.39     3.72      3031      2914  1.00 
-## mean[BF6]     2.71  0.09     2.73     2.54     2.89      2978      2872  1.00 
-## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 
-## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 
-```
-
-``` r
-
-# 相関ゼロのモデルと比較 (fixed = list(corr = 0))
-bf_corr <- mcmc_corr2$bayes_factor(fixed = list(corr = 0))
-bf_corr
-```
-
-``` text
-## Bayes Factor (BF12) : 6.839475e+15 
-## Log Bayes Factor    : 36.4615 (Approx. Error = 0.0043)
-## Interpretation      : Decisive evidence for Model 1 
-```
-
-#### 相関行列の推定
-
-複数の変数を一括して指定すると、相関行列全体を推定します。
-
-``` r
-
-# 5つの変数の相関行列を推定
-mdl_corr_mat <- rtmb_corr(BigFive[, 1:5])
-opt_corr_mat <- mdl_corr_mat$optimize()
-opt_corr_mat$summary()
-```
-
-``` text
-## Call:
-## MAP Estimation via RTMB
-## 
-## Negative Log-Posterior: 1254.77
-## Approx. Log Marginal Likelihood (Laplace): -1289.58
-## 
-## Point Estimates and 95% Wald CI:
-##      variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## corr[BF1,BF1]   1.00000     0.00000    1.00000    1.00000 
-## corr[BF2,BF1]   0.09243     0.07555   -0.05565    0.24050 
-## corr[BF3,BF1]   0.09382     0.07552   -0.05420    0.24184 
-## corr[BF4,BF1]   0.08807     0.07562   -0.06014    0.23629 
-## corr[BF5,BF1]  -0.02158     0.07619   -0.17090    0.12775 
-## corr[BF1,BF2]   0.09243     0.07555   -0.05565    0.24050 
-## corr[BF2,BF2]   1.00000     0.00000    1.00000    1.00000 
-## corr[BF3,BF2]  -0.03374     0.07610   -0.18289    0.11542 
-## corr[BF4,BF2]  -0.13588     0.07481   -0.28250    0.01074 
-## corr[BF5,BF2]  -0.08526     0.07567   -0.23357    0.06306 
-```
-
-------------------------------------------------------------------------
-
-## 7. rtmb_fa（探索的因子分析）
-
-観測変数の背後にある共通因子を推定します。
-
-### 因子軸の回転
-
-因子分析はMCMCだとやや時間がかかるので、MAP推定が早くて使いやすいです。
-`rotate`オプションで、因子の回転が実行できます。
-回転後の因子負荷量は`_promax`のように回転名が後ろにつきます。
-回転後の因子負荷量はgenerateに入るので、MAPでは標準では標準誤差が計算されません。
-`se_sampling = TRUE`としておくことで標準誤差も計算されます。
-
-``` r
-
-# 5因子モデル、プロマックス回転を指定
-mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax")
-
-opt_fa <- mdl_fa$optimize(se_sampling = TRUE)
-# 因子負荷量 (L) などを確認
-opt_fa$summary()
-```
-
-``` text
-## Call:
-## MAP Estimation via RTMB
-## 
-## Negative Log-Posterior: 4791.18
-## Approx. Log Marginal Likelihood (Laplace): -5016.21
-## 
-## Point Estimates and 95% Wald CI:
-##         variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## L_promax[BF1,1]    0.86657     0.05905    0.72847    0.95902 
-## L_promax[BF2,1]    0.02202     0.05325   -0.07631    0.12786 
-## L_promax[BF3,1]   -0.09276     0.06886   -0.20404    0.06562 
-## L_promax[BF4,1]    0.04927     0.06391   -0.07333    0.17433 
-## L_promax[BF5,1]   -0.02101     0.04856   -0.11742    0.07748 
-## L_promax[BF6,1]   -0.80459     0.05957   -0.89651   -0.66314 
-## L_promax[BF7,1]   -0.01111     0.05307   -0.11843    0.08566 
-## L_promax[BF8,1]   -0.07429     0.05917   -0.16758    0.06246 
-## L_promax[BF9,1]   -0.08225     0.07363   -0.23533    0.05242 
-## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 
-```
-
-回転後の因子負荷量をソートして表示させる関数、`sort_loadings`を使うと結果が見やすいです。
-
-``` r
-
-opt_fa$generate$L_promax |> sort_loadings()
-```
-
-``` text
-##        V1    V2    V3    V4    V5
-## V1   .867 -.117 -.179  .089  .057
-## V6  -.805  .000  .048  .200 -.065
-## V11  .584  .087  .126  .169 -.197
-## V16  .516  .087  .276 -.009  .040
-## V2   .022 -.806 -.076 -.013  .043
-## V7  -.011 -.800 -.175 -.054  .002
-## V12  .065 -.797 -.045 -.083 -.088
-## V17  .007 -.763  .070  .009 -.012
-## V8  -.074  .172  .830 -.044 -.061
-## V3  -.093  .044  .533  .101  .060
-## V18 -.036 -.196  .512 -.156 -.066
-## V13 -.005 -.078  .488 -.121  .154
-## V4   .049  .118 -.080  .607  .058
-## V14 -.096 -.037 -.031  .586 -.022
-## V19  .094  .054  .001  .506 -.085
-## V9  -.082  .064 -.059  .463  .019
-## V5  -.021 -.132  .021  .206 -.795
-## V20 -.022 -.126  .161  .321 -.762
-## V15  .000 -.138  .075  .228  .730
-## V10  .031 -.120  .047  .317  .712
-```
-
-### 因子得点
-
-因子得点も`score = TRUE`のオプションで出力可能です。
-因子得点もgenerateに出力されます。
-
-``` r
-
-mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "promax", score = TRUE)
-
-opt_fa <- mdl_fa$optimize()
-
-opt_fa$generate$score |> head()
-```
-
-``` text
-##             [,1]        [,2]        [,3]       [,4]       [,5]
-## [1,]  0.49722956 -1.18644757 -1.29011492 -0.1941201 -0.4712234
-## [2,] -1.21954058 -0.46063346  1.17665101 -0.8095066  1.0632201
-## [3,] -0.05617309  0.09471994 -1.47004442  0.5897946 -0.1808377
-## [4,]  0.48324361 -1.40302694  0.04676041 -0.8297736 -0.4993311
-## [5,] -0.23744265  1.18767815  0.51330882 -0.3034767 -1.6688545
-## [6,]  0.20824541 -0.38166057 -1.12921376  0.8736080 -0.5483280
-```
-
-### 正則化因子分析
-
-スパースな負荷量を推定するための Spike-and-Slab
-Prior（SSP）を用いた正則化因子分析もサポートしています。
-
-正則化は、多すぎるパラメータについて 0
-に縮小させることでより倹約的で予測力の高いモデルを構築することができる方法です。因子分析に適用すると、回転の自由度を消すことができ、一意な解を得ることができます。
-
-正則化因子分析は MAP ではうまく推定できないことがあるので、MCMC か ADVI
-を使うほうがいいでしょう。ここでは
-ADVI（自動微分変分ベイズ法）による結果を紹介します。
-
-``` r
-
-mdl_fa <- rtmb_fa(BigFive, nfactors = 5, rotate = "ssp")
-
-vb_fa <- mdl_fa$variational(iter = 5000, parallel = TRUE)
-vb_fa
-```
-
-``` text
-## variable      mean     sd       map      q2.5     q97.5 
-## lp        -5362.15  33.02  -5353.45  -5449.35  -5322.61 
-## L[BF1,1]     -0.02   0.07     -0.00     -0.22      0.04 
-## L[BF2,1]     -0.82   0.04     -0.83     -0.88     -0.74 
-## L[BF3,1]      0.00   0.04     -0.00     -0.05      0.05 
-## L[BF4,1]      0.02   0.07      0.00     -0.07      0.25 
-## L[BF5,1]     -0.02   0.06     -0.00     -0.19      0.05 
-## L[BF6,1]      0.00   0.03      0.00     -0.02      0.05 
-## L[BF7,1]     -0.82   0.04     -0.82     -0.88     -0.73 
-## L[BF8,1]      0.01   0.05      0.00     -0.05      0.11 
-## L[BF9,1]      0.01   0.04      0.00     -0.03      0.08 
-```
-
-MCMC や ADVI の結果の出力は、`EAP` と `MAP` があります。正則化の場合は
-`MAP` だと厳密に 0 に近づくので、出力がみやすくなります。
-
-``` r
-
-vb_fa$MAP("L") |> sort_loadings()
-```
-
-``` text
-##        V1    V2    V3    V4    V5
-## V7  -.823  .000 -.001  .001  .010
-## V2  -.820  .001  .000  .000  .001
-## V12 -.801 -.001  .000  .001  .000
-## V17 -.738  .000  .000  .000  .001
-## V1  -.001 -.795 -.001  .000  .001
-## V6   .000  .773  .001 -.045  .002
-## V11  .004 -.610  .096 -.099 -.021
-## V16 -.001 -.554 -.001  .000 -.212
-## V15 -.001 -.001 -.822 -.001 -.001
-## V10  .000 -.001 -.809  .000  .000
-## V5  -.004 -.002  .711 -.339 -.001
-## V20  .000 -.001  .668 -.448 -.007
-## V4   .002 -.001  .000 -.637  .002
-## V19  .001  .000 -.001 -.569  .000
-## V14 -.001 -.001 -.001 -.540  .002
-## V9   .000  .002  .001 -.429  .002
-## V8   .001 -.001  .000  .001 -.854
-## V3  -.001 -.001 -.001  .000 -.487
-## V13 -.027 -.001 -.003  .000 -.428
-## V18 -.220 -.001  .001  .001 -.425
-```
-
-------------------------------------------------------------------------
-
-## 8. rtmb_irt（項目反応理論）
-
-[`rtmb_irt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_irt.md)
-は、テストデータやアンケートデータの解析に適した項目反応理論（IRT）のモデルを構築します。
-現在は以下のモデルをサポートしています。
-
-- **1PL / 2PL / 3PL モデル**: 2値データ（正解/不正解）の分析。
-- **Graded Response Model (GRM)**:
-  多値データ（リッカート尺度など）の分析。
-
-IRT モデルは計算負荷が高いため、大規模なデータでは `variational()`
-による高速な近似や、`optimize(laplace = TRUE)`
-による能力値の周辺化を活用するのが効果的です。
-
-#### 分析例（段階反応モデル）
-
-`BigFive`
-性格データ（多値）を使用して、段階反応モデル（GRM）を適合させます。ここでは「協調性」に関する
-4 つの項目を分析します。
-
-``` r
-
-data(BigFive)
-# Select items 2, 7, 12, 17 (Agreeableness)
-dat_irt <- BigFive[, c("BF2", "BF7", "BF12", "BF17")]
-
-# Fit a 2PL Graded Response Model (Ordered Logistic)
-mdl_irt <- rtmb_irt(dat_irt, model = "2PL", type = "ordered")
-
-# Fast estimation using MAP with Laplace approximation for latent traits
-opt_irt <- mdl_irt$optimize(se_sampling = TRUE)
-opt_irt
-```
-
-``` text
-## Call:
-## MAP Estimation via RTMB
-## 
-## Negative Log-Posterior: 855.97
-## Approx. Log Marginal Likelihood (Laplace): -862.01
-## Note: Random effects are stored in $random_effects
-## 
-## Point Estimates and 95% Wald CI:
-##           variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## a[BF2]               2.59656     0.39595    1.90122    3.46560 
-## a[BF7]               2.54272     0.35182    1.95367    3.32212 
-## a[BF12]              2.53327     0.39717    1.93398    3.53325 
-## a[BF17]              1.92822     0.27020    1.46972    2.50115 
-## b[BF2,Threshold1]   -5.52251     0.72815   -6.91884   -4.06858 
-## b[BF7,Threshold1]   -5.34943     0.64569   -6.63549   -4.19742 
-## b[BF12,Threshold1]  -5.29023     0.65049   -6.54949   -4.01624 
-## b[BF17,Threshold1]  -4.31129     0.50114   -5.32272   -3.36251 
-## b[BF2,Threshold2]   -2.68286     0.42440   -3.41160   -1.76330 
-## b[BF7,Threshold2]   -2.72371     0.39514   -3.49773   -1.93475 
-```
-
-#### 項目反応曲線の可視化
-
-[`item_curve()`](https://norimune.github.io/BayesRTMB/reference/item_curve.md)
-関数を使用して、各項目のカテゴリ反応曲線（CRC）を可視化できます。これにより、潜在能力（$`\theta`$）の変化に伴って各カテゴリが選択される確率がどのように変化するかを理解するのに役立ちます。
-
-``` r
-
-# 項目曲線の計算
-ic <- item_curve(opt_irt)
-
-# 描画 (各項目のカテゴリ確率を表示)
-plot(ic)
-```
-
-#### 項目情報量とテスト情報量
-
-情報関数は、潜在能力の異なるレベルにおける測定の精度を評価するのに役立ちます。
-
-``` r
-
-# 項目情報関数: どの項目が最も情報を提供しているかを表示
-ii <- item_info(opt_irt)
-plot(ii)
-
-# テスト情報関数: テスト/尺度全体の合計情報量
-ti <- test_info(opt_irt)
-plot(ti)
-```
-
-------------------------------------------------------------------------
-
-## まとめ
-
-BayesRTMB のラッパー関数を使うことで、 -
-複雑なモデルコードを書かずに、慣れ親しんだ文法で高度な分析ができる -
-同じモデルオブジェクトから MAP, MCMC, VB を自由に切り替えられる -
-ベイズファクターの算出もスムーズに行える といったメリットが得られます。
-
-よりカスタマイズされたモデルが必要な場合は、[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)を参考に
+このように、ラッパー関数は「簡単に使う」ための入り口であると同時に、「どのモデルを推定しているか」を確認しながら、必要に応じて独自の
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
-を使ったモデル構築に挑戦してみてください。
+へ進むための足場にもなります。
+
+## 次に読む記事
+
+BayesRTMB
+の全体像や、より細かな使い方を知りたい場合は、次の記事も参照してください。
+
+- [イントロダクション](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):
+  BayesRTMB
+  の基本的な考え方と、MCMC、MAP推定、変分推論、頻度主義的分析の位置づけ。
+- [クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
+  インストール、最初のモデル、MCMC診断、可視化、t検定のベイズファクター。
+- [モデルを書く](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):
+  [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+  を使って独自のモデルを書く方法。
+- [内部構造](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md):
+  `setup`、`parameters`、`transform`、`model` など、BayesRTMB
+  の内部的なモデル構造。

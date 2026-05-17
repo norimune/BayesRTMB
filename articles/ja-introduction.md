@@ -1,342 +1,598 @@
 # BayesRTMB の概要
 
-## BayesRTMB とは？
+## BayesRTMB とは
 
-**BayesRTMB** は、RTMB を自動微分エンジンとして用いる ベイズ推定用のR
-パッケージです。 Stan に近い感覚でモデルを書きつつ、R
-の中でC++へのコンパイルなしにそのままベイズ推定を進められます。
+**BayesRTMB** は、RTMB を計算エンジンとして用いながら、R
+の中で統計モデルを記述し、推定するためのパッケージです。
+
+BayesRTMB では、標準的な分析は
+[`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
+や
+[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+などのラッパー関数から始められます。一方で、必要に応じて
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+を使い、Stan に近い感覚で独自のモデルを書くこともできます。
+
+1つのモデルオブジェクトから、MCMC、MAP
+推定、変分推論、そして頻度主義的分析を呼び出せる点が BayesRTMB
+の基本的な考え方です。
+
+``` r
+
+fit_mcmc <- mdl$sample()
+fit_map <- mdl$optimize()
+fit_vb <- mdl$variational()
+fit_freq <- mdl$classic()
+```
 
 このページでは、BayesRTMB
-の位置づけと、パッケージを使う上での全体像をまとめます。
+の位置づけと、パッケージを使ううえで最初に知っておくとよい全体像を紹介します。詳しいコードの書き方や個別の分析例は、他の
+vignette で扱います。
 
 ### 記事へのリンク
 
-以下のような記事があります。
+以下の記事があります。
 
-- **[日本語トップ](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)**
+- **[日本語版の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)**
 - **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
 - **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**
-- **[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
-- **[RTMBの仕組みと推定のアルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**
+- **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
+- **[RTMB
+  の仕組みと推定アルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**
 
-### BayesRTMB でできること
+## BayesRTMB でできること
 
-BayesRTMB には、次のような特徴があります。
+BayesRTMB の主な特徴は次の通りです。
 
-- **C++ のコンパイルなしでモデルを書ける**
-- **[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
-  によるブロック構文**でモデルを整理して書ける
-- **NUTS / ADVI / MAP** を同じモデルオブジェクトから使い分けられる
-- **Laplace 近似**により、階層モデルの random effect を効率よく扱える
-- **Bridge Sampling** を使った周辺尤度や Bayes factor
-  の計算に対応している
-- **[`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)
-  や
-  [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
-  などのラッパー関数**で、標準的な分析をすぐに始められる
+- **R の中でモデルを書ける**  
+  [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+  を使い、`parameters`, `transform`, `model`, `generate`
+  などのブロックに分けてモデルを記述できます。
 
-### インストール方法
+- **ラッパー関数からすぐに分析できる**  
+  回帰、一般化線形モデル、混合モデル、t
+  検定、相関、因子分析、IRT、潜在ランク理論、多次元展開法などを、専用のラッパー関数から実行できます。
 
-GitHubから開発版をインストールできます。
+- **同じモデルから複数の推定方法を使える**  
+  MCMC、MAP 推定、変分推論、頻度主義的分析を、同じ `RTMB_Model`
+  オブジェクトから呼び出せます。
 
-``` r
+- **ランダム効果を効率的に扱える**  
+  `random = TRUE` と宣言したパラメータは、MAP 推定では Laplace
+  近似によって周辺化できます。
 
-# install.packages("remotes")
-remotes::install_github("norimune/BayesRTMB")
-```
+- **wrapper で作られたモデルを確認できる**  
+  `print_code()` を使うと、ラッパー関数が内部で作っている
+  [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+  を確認できます。
 
-#### Windows ユーザーへの重要なお知らせ
+- **モデル比較にも対応している**  
+  MCMC の結果から bridge sampling による周辺尤度や Bayes factor
+  を計算できます。
 
-BayesRTMB は裏側の計算エンジンとして `RTMB` や `TMB`
-を使用しており、これらは C++
-のライブラリに依存しています。そのため、Windows
-環境でパッケージをインストールするには、C++
-のコードをコンパイルするためのツールである **Rtools
-のインストールが必須** となります。
+## 2つの入口
 
-1.  ご自身の R のバージョンに合った
-    [Rtools](https://cran.r-project.org/bin/windows/Rtools/)
-    をダウンロードしてインストールしてください（例: R 4.4.x
-    をお使いの場合は Rtools44）。
-2.  インストール完了後、RStudio を再起動します。
-3.  以下のコードを実行し、Rtools
-    がシステムに正しく認識されているかを確認できます。
+BayesRTMB には、大きく分けて2つの入口があります。
 
-``` r
-
-# 実行結果として TRUE が返ってくれば、コンパイル環境の構築は成功です。
-pkgbuild::check_build_tools(debug = TRUE)
-```
-
-### 基本の流れ
-
-BayesRTMB の基本的な分析は、次の 3 段階で進みます。
-
-1.  **データ**を用意する
-2.  **[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)**
-    でモデルを書く
-3.  **[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)**
-    でモデルオブジェクトを作り、推定する
-
-例として、平均 `mu` と標準偏差 `sigma`
-を推定する単純な正規分布モデルをとりあげます。
-
-``` r
-
-# 1. データの準備
-Y <- c(5.2, 4.8, 5.5, 6.1, 4.9, 5.3)
-dat <- list(Y = Y)
-
-# 2. モデルの定義
-code <- rtmb_code(
-  parameters = {
-    mu    = Dim(1)
-    sigma = Dim(1, lower = 0)
-  },
-  model = {
-    mu    ~ normal(0, 10)
-    sigma ~ exponential(0.1)
-    Y     ~ normal(mu, sigma)
-  }
-)
-
-# 3. モデルオブジェクトの作成
-mdl <- rtmb_model(data = dat, code = code)
-```
-
-### 推定法の使い分け
-
-作成した 1 つの `mdl`
-オブジェクトに対して、目的に応じて複数の推定メソッドを呼び出すことができます。
-
-#### 1. MAP 推定 (`optimize`)
-
-事後分布を最大化する点（事後最頻値）を求めます。計算が非常に速いため、モデルの記述にエラーがないか、大まかな結果がどうなるかを素早く確認したいときに最適です。
-
-``` r
-
-opt_fit <- mdl$optimize()
-opt_fit$summary()
-```
-
-``` text
-## Call:
-## MAP Estimation via RTMB
-## 
-## Negative Log-Posterior: 9.13
-## Approx. Log Marginal Likelihood (Laplace): -11.14
-## 
-## Point Estimates and 95% Wald CI:
-## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## mu         5.29839     0.17416    4.95704    5.63974 
-## sigma      0.42624     0.12240    0.24279    0.74830 
-```
-
-#### 2. MCMC 推定 (`sample`)
-
-NUTS (No-U-Turn Sampler)
-アルゴリズムを用いて、事後分布全体から正確なサンプルを抽出する最も標準的なベイズ推論のアプローチです。`parallel = TRUE`
-を指定すると複数チェーンの並列計算が可能です（デフォルトは `FALSE`）。
-
-``` r
-
-mcmc_fit <-
-  mdl$sample(
-    sampling = 1000,
-    warmup = 1000,
-    chains = 4,
-    parallel = FALSE
-  )
-mcmc_fit$summary()
-```
-
-``` text
-## variable    mean    sd     map    q2.5  q97.5  ess_bulk  ess_tail  rhat 
-## lp        -11.15  1.24  -10.19  -14.63  -9.97       923       830  1.01 
-## mu          5.29  0.30    5.32    4.68   5.87      1122       495  1.00 
-## sigma       0.65  0.31    0.48    0.32   1.41      1072      1404  1.00
-```
-
-#### 3. 変分推論 (`variational`)
-
-ADVI (自動微分変分ベイズ) を用いて、近似的に事後分布を求めます。MCMC
-では時間がかかりすぎる複雑なモデルを高速に推定したい場合に向いています。ただし、事後分布の不確実性（標準誤差など）は過小評価されやすいため、主に点推定値や大まかな分布の形状を素早く得たい用途に適しています。
-
-``` r
-
-vb_fit <- mdl$variational(
-  method = "meanfield",
-  iter = 3000,
-  num_estimate = 4
-)
-vb_fit$summary()
-```
-
-``` text
-## variable    mean    sd     map    q2.5   q97.5 
-## lp        -12.85  2.08  -12.33  -17.10  -10.21 
-## mu          5.31  0.39    5.32    4.54    6.07 
-## sigma       1.12  0.57    0.86    0.40    2.63 
-```
-
-### ランダム効果 (Random effect) を含むモデル
-
-階層モデルなどを構築する場合、パラメータを `random = TRUE`
-として宣言できます。
+1つ目は、標準的な分析を行うための **ラッパー関数**
+です。通常はこちらから始めるのが簡単です。
 
 ``` r
 
 data(debate)
 
+mdl <- rtmb_lm(sat ~ talk + perf, data = debate)
+fit <- mdl$optimize()
+fit
+```
+
+2つ目は、モデルを自分で書くための
+**[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)**
+です。ラッパー関数では表現しにくいモデルや、新しいモデルを試したい場合に使います。
+
+``` r
+
+dat <- list(
+  Y = debate$sat,
+  X = data.matrix(debate[c("talk", "perf")])
+)
+
+code <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha = Dim()
+    beta = Dim(P)
+    sigma = Dim(lower = 0)
+  },
+  transform = {
+    mu <- alpha + X %*% beta
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha ~ normal(0, 10)
+    beta ~ normal(0, 10)
+    sigma ~ exponential(1)
+  }
+)
+
+mdl <- rtmb_model(dat, code)
+```
+
+`model` ブロックでは、次のような sampling syntax を使います。
+
+``` r
+
+Y ~ normal(mu, sigma)
+beta ~ normal(0, 10)
+sigma ~ exponential(1)
+```
+
+これは内部的には対数密度を足し合わせるコードに変換されます。
+
+## ラッパー関数から始める
+
+まずはラッパー関数を使った例を見てみます。ここでは `debate`
+データを使い、満足度 `sat` を `talk` と `perf`
+で説明する線形回帰モデルを考えます。
+
+``` r
+
+data(debate)
+
+mdl_lm <- rtmb_lm(
+  sat ~ talk + perf,
+  data = debate
+)
+```
+
+この時点では、まだ推定は実行されていません。`mdl_lm`
+は、モデル定義とデータを保持した `RTMB_Model` オブジェクトです。
+
+MAP
+推定を行うには、[`optimize()`](https://rdrr.io/r/stats/optimize.html)
+を使います。
+
+``` r
+
+fit_map <- mdl_lm$optimize()
+fit_map
+```
+
+``` text
+## Starting RTMB optimization...
+## 
+## 
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 395.58
+## Approx. Log Marginal Likelihood (Laplace): -404.61
+## 
+## Point Estimates and 95% Wald CI:
+##  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## Intercept   1.83366     0.21105    1.42000    2.24732 
+## b[talk]     0.28694     0.05291    0.18323    0.39064 
+## b[perf]     0.15632     0.02987    0.09777    0.21486 
+## sigma       0.90453     0.03693    0.83497    0.97988 
+```
+
+頻度主義的な線形回帰として推定したい場合は、`classic()`
+を使います。`classic()` は、ラッパー関数で作られた flat prior
+のモデルに対して利用できます。
+
+``` r
+
+fit_freq <- mdl_lm$classic()
+fit_freq
+```
+
+``` text
+## Starting RTMB optimization...
+## 
+## 
+## Call:
+## Classical estimation via lm 
+## 
+## Log-Likelihood: -402.220, AIC: 812.440, BIC: 827.255
+## 
+## Point Estimates and Confidence Intervals:
+##           Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr    
+## Intercept  1.83366    0.21212   1.41621   2.25110 297  8.64454 <.0001 ***
+## b[talk]    0.28694    0.05318   0.18229   0.39159 297  5.39580 <.0001 ***
+## b[perf]    0.15632    0.03002   0.09724   0.21539 297  5.20703 <.0001 ***
+## sigma      0.90909    0.03730   0.83856   0.98554 297 -2.32306 .02085   *
+```
+
+ラッパー関数がどのようなモデルコードを作っているかは、`print_code()`
+で確認できます。
+
+``` r
+
+mdl_lm$print_code()
+```
+
+``` text
+## === RTMB Model Code ===
+## 
+## rtmb_code(
+##   setup = {
+##     mf <- model.frame(formula, df)
+##     Y <- model.response(mf)
+##     X_full <- model.matrix(formula, mf)
+##     X <- X_full[, colnames(X_full) != "(Intercept)", drop = FALSE]
+##     N <- length(Y)
+##     K <- ncol(X)
+##   }, 
+##   parameters = {
+##     Intercept <- Dim(1)
+##     b <- Dim(K)
+##     sigma <- Dim(num_sigma_groups, lower = 0)
+##   }, 
+##   model = {
+##     # Transform
+##     eta <- Intercept + X %*% b
+##     # Likelihood (Data)
+##     Y ~ normal(eta, sigma)
+##     # Priors
+##   }
+## )
+```
+
+`print_code()` は、ユーザーが
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+で同じモデルを再現できるように、`setup`, `parameters`, `transform`,
+`model` などのブロックを表示します。
+
+## 自分でモデルを書く
+
+より柔軟なモデルを書きたい場合は、[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+を使います。
+
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+の主なブロックは次の通りです。
+
+- `setup`: データから必要な量を前処理する
+- `parameters`: 推定するパラメータを宣言する
+- `transform`: パラメータから派生量や線形予測子を作る
+- `model`: 尤度と事前分布を書く
+- `generate`: 予測値や生成量を計算する
+
+たとえば、[`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
+に近い素直な normal / exponential prior
+を持つ回帰モデルは次のように書けます。
+
+``` r
+
+dat <- list(
+  Y = as.numeric(debate$sat),
+  X = data.matrix(debate[c("talk", "perf", "skill")])
+)
+
+code_reg <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha = Dim()
+    beta = Dim(P)
+    sigma = Dim(lower = 0)
+  },
+  transform = {
+    mu <- alpha + X %*% beta
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha ~ normal(0, 10)
+    beta ~ normal(0, 2.5)
+    sigma ~ exponential(1)
+  },
+  generate = {
+    Y_rep <- rnorm(length(Y), mu, sigma)
+  }
+)
+
+mdl_reg <- rtmb_model(dat, code_reg)
+```
+
+`setup` に前処理を書くことで、`parameters` や `model`
+ブロックを読みやすくできます。また、`print_code()`
+で表示したときにも、モデルの再現に必要な処理が見えるようになります。
+
+## 推定方法の使い分け
+
+BayesRTMB は Bayes 推定を基本にしています。そのため、ここでは MCMC、MAP
+推定、変分推論、そして頻度主義的分析の順に整理します。
+
+| メソッド         | 主な目的                                              |
+|------------------|-------------------------------------------------------|
+| `$sample()`      | NUTS による MCMC サンプリングを行う                   |
+| `$optimize()`    | MAP 推定または最尤推定を高速に行う                    |
+| `$variational()` | ADVI による近似事後分布を求める                       |
+| `$classic()`     | flat prior のラッパーモデルを頻度主義的分析として扱う |
+
+### MCMC
+
+[`sample()`](https://rdrr.io/r/base/sample.html) は、NUTS による MCMC
+サンプリングを行います。事後分布全体を見たい場合や、MAP
+推定だけでは不確実性を十分に表現しにくい場合に使います。
+
+``` r
+
+set.seed(1)
+
+fit_mcmc <- mdl_lm$sample(
+  sampling = 200,
+  warmup = 200,
+  chains = 2
+)
+
+fit_mcmc$summary()
+```
+
+``` text
+## Starting sequential sampling (chains = 2)...
+## chain 1 started... 
+## chain 1: iter 100 warmup 
+## chain 1: iter 200 warmup 
+## chain 1: iter 300 sampling 
+## chain 1: iter 400 sampling 
+## chain 2 started... 
+## chain 2: iter 100 warmup 
+## chain 2: iter 200 warmup 
+## chain 2: iter 300 sampling 
+## chain 2: iter 400 sampling 
+##  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
+## lp         -397.90  1.50  -396.86  -402.08  -395.97       111       115  1.02 
+## Intercept     1.87  0.25     1.87     1.40     2.37        52        71  1.02 
+## b[talk]       0.28  0.06     0.29     0.16     0.39        96        81  1.02 
+## b[perf]       0.15  0.03     0.15     0.09     0.22        40       127  1.02 
+## sigma         0.91  0.04     0.91     0.85     0.99        58        65  1.03 
+```
+
+### MAP 推定
+
+[`optimize()`](https://rdrr.io/r/stats/optimize.html)
+は、事後分布または尤度を最大化する点推定を行います。モデルの確認や、複雑なモデルの初期検討に向いています。
+
+``` r
+
+fit_map <- mdl_lm$optimize()
+fit_map$summary()
+```
+
+``` text
+## Starting RTMB optimization...
+## 
+## 
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 395.58
+## Approx. Log Marginal Likelihood (Laplace): -404.61
+## 
+## Point Estimates and 95% Wald CI:
+##  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+## Intercept   1.83366     0.21105    1.42000    2.24732 
+## b[talk]     0.28694     0.05291    0.18323    0.39064 
+## b[perf]     0.15632     0.02987    0.09777    0.21486 
+## sigma       0.90453     0.03693    0.83497    0.97988 
+```
+
+`se_method = "sampling"`
+を使うと、近似正規サンプルによる不確実性の伝播を使って、派生量の標準誤差や区間を計算できます。
+
+``` r
+
+fit_map <- mdl_lm$optimize(se_method = "sampling")
+```
+
+### 変分推論
+
+`variational()` は、ADVI によって事後分布を近似します。MCMC
+より高速におおまかな結果を得たい場合に使います。ただし、事後分布の不確実性を過小評価することがあるため、最終的な不確実性評価には注意が必要です。
+
+``` r
+
+fit_vb <- mdl_lm$variational(
+  method = "meanfield",
+  iter = 3000,
+  num_estimate = 4
+)
+```
+
+### 頻度主義的分析
+
+`classic()` は、ラッパー関数で作られた flat prior
+のモデルに対して、頻度主義的な推定結果を返します。
+
+``` r
+
+fit_freq <- mdl_lm$classic()
+fit_freq$summary()
+```
+
+``` text
+## Starting RTMB optimization...
+## 
+## 
+## Call:
+## Classical estimation via lm 
+## 
+## Log-Likelihood: -402.220, AIC: 812.440, BIC: 827.255
+## 
+## Point Estimates and Confidence Intervals:
+##           Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr    
+## Intercept  1.83366    0.21212   1.41621   2.25110 297  8.64454 <.0001 ***
+## b[talk]    0.28694    0.05318   0.18229   0.39159 297  5.39580 <.0001 ***
+## b[perf]    0.15632    0.03002   0.09724   0.21539 297  5.20703 <.0001 ***
+## sigma      0.90909    0.03730   0.83856   0.98554 297 -2.32306 .02085   *
+```
+
+`lm` や `glm`
+型のモデルでは、検定統計量は通常の表記に近い形で表示されます。混合モデルでは、必要に応じて自由度補正や
+Laplace 近似が使われます。
+
+## ランダム効果と Laplace 近似
+
+階層モデルや混合モデルでは、パラメータを `random = TRUE`
+として宣言できます。
+
+``` r
+
 Y <- debate$sat
-group <- debate$group
+group <- as.integer(factor(debate$group))
 G <- length(unique(group))
 
-data_icc <- list(Y = Y,group = group, G = G)
+dat_icc <- list(Y = Y, group = group, G = G)
 
 code_icc <- rtmb_code(
   parameters = {
-    mu    <- Dim()
-    sigma <- Dim(lower = 0)
-    tau   <- Dim(lower=0)
-    r     <- Dim(G, random = TRUE)
+    mu = Dim()
+    sigma = Dim(lower = 0)
+    tau = Dim(lower = 0)
+    r = Dim(G, random = TRUE)
   },
   model = {
     Y ~ normal(mu + r[group] * tau, sigma)
     r ~ normal(0, 1)
     tau ~ exponential(1)
-    sigma   ~ exponential(1)
+    sigma ~ exponential(1)
   },
   generate = {
-    icc = tau / (tau + sigma)
+    icc <- tau^2 / (tau^2 + sigma^2)
   }
 )
+
+mdl_icc <- rtmb_model(dat_icc, code_icc)
+fit_icc <- mdl_icc$optimize(laplace = TRUE)
 ```
 
-このようなモデルでは、Laplace
-近似を使ってランダム効果を周辺化（積分消去）できます。MAP 推定
-([`optimize()`](https://rdrr.io/r/stats/optimize.html)) ではデフォルトで
-`laplace = TRUE` となり、自動的に適用されます。
-生成量の信頼区間は、`se_sampling=TRUE`とすることで計算できます。
+MAP 推定では、`laplace = TRUE` が既定値です。`random = TRUE`
+とされたパラメータは、Laplace 近似によって周辺化されます。
+
+ラッパー関数を使う場合は、次のように混合モデルを書けます。
 
 ``` r
 
-mdl_icc <- rtmb_model(data_icc, code_icc)
+mdl_hlm <- rtmb_glmer(
+  sat ~ talk + perf + (1 | group),
+  data = debate,
+  family = "gaussian"
+)
 
-
-opt_icc <- mdl_icc$optimize(laplace = TRUE, se_sampling = TRUE)
-opt_icc
+fit_hlm <- mdl_hlm$optimize()
 ```
+
+## モデル比較と bridge sampling
+
+MCMC の結果に対して、bridge sampling による周辺尤度を計算できます。
+
+``` r
+
+set.seed(1)
+
+fit_mcmc <- mdl_lm$sample(
+  sampling = 200,
+  warmup = 200,
+  chains = 2
+)
+fit_mcmc$bridgesampling()
+```
+
+表示は、たとえば次のように出力されます。
 
 ``` text
-## Call:
-## MAP Estimation via RTMB
-## 
-## Negative Log-Posterior: 407.96
-## Approx. Log Marginal Likelihood (Laplace): -413.73
-## Note: Random effects are stored in $random_effects
-## 
-## Point Estimates and 95% Wald CI:
-## variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## mu         3.43333     0.07387    3.28647    3.58483 
-## sigma      0.79705     0.04187    0.72217    0.88498 
-## tau        0.58599     0.06962    0.46731    0.73489 
-## icc        0.42370     0.03414    0.35876    0.49122 
+## Starting sequential sampling (chains = 2)...
+## chain 1 started... 
+## chain 1: iter 100 warmup 
+## chain 1: iter 200 warmup 
+## chain 1: iter 300 sampling 
+## chain 1: iter 400 sampling 
+## chain 2 started... 
+## chain 2: iter 100 warmup 
+## chain 2: iter 200 warmup 
+## chain 2: iter 300 sampling 
+## chain 2: iter 400 sampling 
+## Bridge Sampling Converged: LogML = -404.659 (Error = 0.0223, ESS = 78.8)
 ```
 
-MCMC ([`sample()`](https://rdrr.io/r/base/sample.html))
-でも指定は可能ですが、MCMCの場合は変量効果が問題なく推定できるため、基本的にはデフォルトの
-`laplace = FALSE` で問題ありません。
+戻り値は数値の log marginal likelihood で、`error` と `ess`
+の属性を持ちます。
 
-``` r
-
-mcmc_icc <- mdl_icc$sample()
-
-# plot_dens()で事後分布を描画できる
-mcmc_icc$draws("icc") |> plot_dens()
-```
-
-![](icc_plot.png)
-
-### ラッパー関数で簡単に分析する
-
-BayesRTMB
-には、標準的な分析を一からモデル定義しなくても簡単に実行できるラッパー関数が用意されています。
-
-たとえばマルチレベルモデルであれば
-[`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
+Bayes factor
+を計算したい場合は、[`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 を使います。
 
 ``` r
 
-data(debate)
-mdl_lmer <- rtmb_lm(sat ~ talk + cond + (1 | group), data = debate)
-
-# MAP推定
-opt_lmer <- mdl_lmer$optimize(df = "auto")
-opt_lmer$summary()
+bf <- fit_mcmc$bayes_factor(fixed = list("b[talk]" = 0))
+bf
 ```
 
 ``` text
-## Call:
-## MAP Estimation via RTMB
 ## 
-## Negative Log-Posterior: 394.07
-## Approx. Log Marginal Likelihood (Laplace): -402.96
-## Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
+## --- Sampling from the comparison model ---
+## Starting sequential sampling (chains = 2)...
+## chain 1 started... 
+## chain 1: iter 100 warmup 
+## chain 1: iter 200 warmup 
+## chain 1: iter 300 warmup 
+## chain 1: iter 400 warmup 
+## chain 1: iter 500 warmup 
+## chain 1: iter 600 warmup 
+## chain 1: iter 700 warmup 
+## chain 1: iter 800 warmup 
+## chain 1: iter 900 warmup 
+## chain 1: iter 1000 warmup 
+## chain 1: iter 1100 sampling 
+## chain 1: iter 1200 sampling 
+## chain 2 started... 
+## chain 2: iter 100 warmup 
+## chain 2: iter 200 warmup 
+## chain 2: iter 300 warmup 
+## chain 2: iter 400 warmup 
+## chain 2: iter 500 warmup 
+## chain 2: iter 600 warmup 
+## chain 2: iter 700 warmup 
+## chain 2: iter 800 warmup 
+## chain 2: iter 900 warmup 
+## chain 2: iter 1000 warmup 
+## chain 2: iter 1100 sampling 
+## chain 2: iter 1200 sampling 
 ## 
-## Point Estimates and 95% Wald CI:
-##     variable  Estimate  Std. Error  Lower 95%  Upper 95%   DF 
-## Intercept      2.58149     0.18124    2.22468    2.93829  274 
-## b[talk]        0.25197     0.05764    0.13852    0.36541  295 
-## b[cond]   0.18183     0.14595   -0.10729    0.47094  114 
-## sigma          0.77760     0.03891    0.70443    0.85838  159 
-## sd[Int]        0.53194     0.06728    0.40987    0.69038   25 
+## --- Calculating marginal likelihood for the comparison model ---
+## Bridge Sampling Converged: LogML = -416.504 (Error = 0.0178, ESS = 95.2)
+## --- Bayes Factor Analysis (Bridge Sampling) ---
+## Bayes Factor (BF12) : 139287.9 
+## Log Bayes Factor    : 11.8443 (Approx. Error = 0.0285)
+## Evidence            : Decisive evidence for Model 1 
+## Comparison model    : Parameters fixed at list("b[talk]" = 0) 
 ```
 
-一般化線形混合モデルには
-[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)、因子分析には
-[`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
-など、分析目的に応じた関数が利用できます。
-
-また、[`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
-を使うと、ベイジアン t
-検定が簡単に実行できます。[`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
-メソッドで `fixed` 引数にリスト形式で「0
-に固定したいパラメータと値」を指定するだけで、自動的に比較モデルの推定とベイズファクターの計算が行われます。
-
-``` r
-
-data(debate)
-mdl_ttest <- rtmb_ttest(sat ~ cond, data = debate, r = 0.707)
-mcmc_ttest <- mdl_ttest$sample()
-
-# delta = 0 の帰無モデルと比較
-bf_ttest <- mcmc_ttest$bayes_factor(fixed = list(delta = 0))
-bf_ttest
-```
-
-``` text
-## Bayes Factor (BF12) : 21.51 
-## Log Bayes Factor    : 3.0685 (Approx. Error = 0.0021)
-## Interpretation      : Strong evidence for Model 1 
-```
-
-### 次のステップ
+## 次のステップ
 
 BayesRTMB
-の全体像がつかめたら、以下の順番でドキュメントを参照して具体的な使い方を深めていくことをおすすめします。
+の全体像がつかめたら、次は目的に応じて以下の記事を読むのがおすすめです。
 
-1.  **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
-    二項モデル、回帰モデル、階層モデル、GLMM、混合分布モデルなどの
-    具体例を通して、`setup` や `transform`
-    などの各ブロックの役割と、実践的な分析方法を学びます。
-2.  **[コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
-    各関数の詳細な仕様を確認できます。 3.**その他リファレンス**
-    特に自分でモデルを構築する際は、以下のページが役立ちます。
-    - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md):
-      各ブロックの記述ルールと仕様
-    - [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md):
-      パラメータの型と制約（`parameter_types`）
-    - `distributions` / `math_functions`:
-      組み込みの確率分布や、数値計算を安定させる数学関数
+1.  **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**  
+    基本的なモデルを実際に動かしながら、[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+    と
+    [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+    の流れを確認できます。
+
+2.  **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**  
+    回帰、一般化線形モデル、混合モデル、t
+    検定など、標準的な分析をラッパー関数で実行する方法を確認できます。
+
+3.  **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**  
+    `setup`, `parameters`, `transform`, `model`, `generate`
+    の各ブロックを使って、自分でモデルを書く方法を詳しく説明します。
+
+4.  **[RTMB
+    の仕組みと推定アルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**  
+    Laplace
+    近似、制約付きパラメータ、MCMC、変分推論などの内部処理を確認できます。

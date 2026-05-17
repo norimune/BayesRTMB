@@ -592,14 +592,14 @@ BayesRTMB English articles.
 - [Introduction to
   BayesRTMB](https://norimune.github.io/BayesRTMB/articles/introduction.md):
 
-  An overview of the concepts, basic usage, and main inference methods
-  in BayesRTMB.
+  Introduces the ideas behind BayesRTMB, how to write models, and the
+  overall inference workflow.
 
 - [BayesRTMB Quick
   Start](https://norimune.github.io/BayesRTMB/articles/quick_start.md):
 
-  An introduction to using BayesRTMB through examples of binomial,
-  regression, and hierarchical models.
+  A short introduction to the minimal BayesRTMB workflow, MCMC checks,
+  wrapper functions, visualization, and t tests.
 
 - [Wrapper
   Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md):
@@ -619,21 +619,21 @@ BayesRTMB の概要と使い方をまとめた記事です。
 - [BayesRTMB
   の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):
 
-  BayesRTMB の考え方、基本的な使い方、主要な推論法の流れを紹介します。
+  BayesRTMB の考え方、モデルの作り方、推定方法の全体像を紹介します。
 
 - [BayesRTMB
   クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
 
-  BayesRTMB
-  の基本的な使い方を、二項モデル、回帰モデル、階層モデルの例を通してパッケージの使い方を紹介します。
+  BayesRTMB の最小ワークフロー、MCMC の確認、ラッパー関数、可視化、t
+  検定の入口を短く紹介します。
 
 - [ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md):
 
-  BayesRTMB に用意されている便利なラッパー関数（rtmb_lm, rtmb_glmer,
-  rtmb_ttest など）の使い方を解説します。
+  BayesRTMB
+  のラッパー関数で、MCMC、MAP推定、変分推論、頻度主義的分析を手早く実行する方法を紹介します。
 
-- [コードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):
+- [モデルの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):
 
-  model codeの書き方について解説します
+  BayesRTMBでrtmb_code()を使ってモデルを書くための基本文法と実例を解説します。
 
 - [RTMBの仕組みと推定のアルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md):
