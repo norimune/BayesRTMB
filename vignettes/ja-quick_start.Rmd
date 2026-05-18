@@ -206,7 +206,6 @@ theta_draws <- fit_mcmc$draws("theta")
 plot_dens(theta_draws)
 plot_trace(theta_draws)
 plot_acf(theta_draws)
-plot_forest(theta_draws)
 ```
 
 それぞれの図は、次の目的で使います。
@@ -214,7 +213,6 @@ plot_forest(theta_draws)
 - `plot_dens()` は、事後分布の形を確認します。
 - `plot_trace()` は、チェインがよく混ざっているかを確認します。
 - `plot_acf()` は、自己相関が強すぎないかを確認します。
-- `plot_forest()` は、点推定値と信用区間を一覧します。
 
 実際には、たとえば次のような図として確認できます。
 
@@ -223,8 +221,6 @@ plot_forest(theta_draws)
 ![Trace plot](plot_trace.png)
 
 ![Autocorrelation plot](plot_acf.png)
-
-![Forest plot](plot_forest.png)
 
 # 6. ラッパー関数で重回帰を行う
 
@@ -238,6 +234,7 @@ data(debate)
 mdl_lm <- rtmb_lm(
   sat ~ talk * perf,
   data = debate,
+  gmc = "all",
   prior = prior_normal()
 )
 
@@ -263,12 +260,12 @@ fit_lm
 ## 
 ## Point Estimates and 95% Sampling-based CI:
 ##     variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-## Intercept_c    3.43325     0.05232    3.33254    3.53601 
-## b[talk]       -0.34490     0.15982   -0.65456   -0.01513 
-## b[perf]       -0.25266     0.10109   -0.45514   -0.04584 
-## b[talk:perf]   0.13020     0.03059    0.06865    0.19039 
-## sigma          0.87135     0.03637    0.80450    0.94693 
-## Intercept      3.79883     0.51483    2.75177    4.83008 
+## Intercept_c    3.43325     0.05232    3.33253    3.53604 
+## b[talk]        0.26572     0.05305    0.15585    0.36839 
+## b[perf]        0.14054     0.02924    0.08274    0.19857 
+## b[talk:perf]   0.13022     0.03063    0.06780    0.19111 
+## sigma          0.87135     0.03629    0.80181    0.94375 
+## Intercept      3.41638     0.05254    3.31562    3.51660 
 ```
 
 係数を一覧したいときは、`plot_forest()` が便利です。
@@ -278,7 +275,7 @@ fit_lm$draws(c("b[talk]", "b[perf]", "b[talk:perf]")) |>
   plot_forest(point_estimate = "MAP")
 ```
 
-![Regression coefficient forest plot](plot_forest.png)
+![Regression coefficient forest plot](lm_forest.png)
 
 # 7. 交互作用を図で確認する
 
