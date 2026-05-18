@@ -259,6 +259,9 @@ BayesRTMB
   の基本的な考え方と、MCMC、MAP推定、変分推論、頻度主義的分析の位置づけ。
 - [クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md):
   インストール、最初のモデル、MCMC診断、可視化、t検定のベイズファクター。
+- [階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md):
+  [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+  を使って mixed model / GLMM を詳しく扱う方法。
 - [モデルを書く](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md):
   [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   を使って独自のモデルを書く方法。

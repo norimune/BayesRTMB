@@ -607,4 +607,6 @@ BayesRTMB の内部構造は、次のように整理できます。
 を参照してください。ラッパー関数がどのような
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
 を作るかは、[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)
-と `print_code()` が参考になります。
+と `print_code()` が参考になります。階層モデルや GLMM
+の具体的な使い方は、[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)
+で確認できます。

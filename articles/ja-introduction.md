@@ -36,6 +36,7 @@ vignette で扱います。
 - **[日本語版の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)**
 - **[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)**
 - **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**
+- **[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**
 - **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**
 - **[RTMB
   の仕組みと推定アルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**
@@ -588,11 +589,15 @@ BayesRTMB
     回帰、一般化線形モデル、混合モデル、t
     検定など、標準的な分析をラッパー関数で実行する方法を確認できます。
 
-3.  **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**  
+3.  **[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
+    [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+    を使った階層モデル、GLMM、順序モデル、残差相関、可視化の流れを確認できます。
+
+4.  **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**  
     `setup`, `parameters`, `transform`, `model`, `generate`
     の各ブロックを使って、自分でモデルを書く方法を詳しく説明します。
 
-4.  **[RTMB
+5.  **[RTMB
     の仕組みと推定アルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**  
     Laplace
     近似、制約付きパラメータ、MCMC、変分推論などの内部処理を確認できます。

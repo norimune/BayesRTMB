@@ -449,12 +449,19 @@ page that matches your purpose.
     models, t tests, correlations, factor analysis, and IRT with wrapper
     functions.
 
-2.  **[Writing Model
+2.  **[Hierarchical Models and
+    GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md)**  
+    Learn how to use
+    [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+    for hierarchical models, GLMMs, residual correlation, conditional
+    effects, priors, and ANOVA-style workflows.
+
+3.  **[Writing Model
     Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md)**  
     Learn how to write custom models with the `setup`, `parameters`,
     `transform`, `model`, and `generate` blocks.
 
-3.  **[RTMB Internals and Inference
+4.  **[RTMB Internals and Inference
     Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md)**  
     Learn about internal processing such as MAP estimation, Laplace
     approximation, MCMC, and variational inference.

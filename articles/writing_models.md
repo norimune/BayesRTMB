@@ -285,3 +285,10 @@ Rather than writing a complex model from the beginning, it’s better to
 start estimating with simple models first. The error messages are still
 under development, and we plan to make them more user-friendly in the
 future.
+
+For standard wrapper models, see [Wrapper
+Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md).
+For mixed models and GLMMs in particular, see [Hierarchical Models and
+GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md). For
+the internal inference pipeline, see [RTMB Internals and Inference
+Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md).

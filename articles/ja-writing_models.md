@@ -739,5 +739,9 @@ mdl <- rtmb_model(data_reg, code_reg, init = init)
 既存のモデルを短く書きたい場合は、[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)
 が便利です。
 
+階層モデルや GLMM を wrapper
+で詳しく扱いたい場合は、[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)
+を参照してください。
+
 まずパッケージ全体をざっと試したい場合は、[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)
 を参照してください。

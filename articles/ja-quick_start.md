@@ -438,11 +438,15 @@ bf
     回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT
     など、標準的な分析をラッパー関数で行う方法を確認できます。
 
-2.  **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**  
+2.  **[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
+    [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+    を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。
+
+3.  **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**  
     [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
     の `setup`, `parameters`, `transform`, `model`, `generate`
     を使って、独自モデルを書く方法を学べます。
 
-3.  **[RTMB
+4.  **[RTMB
     の仕組みと推定アルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**  
     MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。

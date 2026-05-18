@@ -339,17 +339,19 @@ Shrunk Posterior Distribution
 ## 5. Post-Estimation Analysis (Interaction & Visualization)
 
 After fitting a regression model (LM, GLM, GLMER), you can use
-`condal_effects()` and
+[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+and
 [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
 to analyze and visualize the results. These methods are currently
 available for models fitted using MCMC
 ([`sample()`](https://rdrr.io/r/base/sample.html)).
 
-#### Visualization with `condal_effects()`
+#### Visualization with `conditional_effects()`
 
-The `condal_effects()` function is used to visualize the predicted
-values of a model. It is particularly powerful for understanding
-interaction effects.
+The
+[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+function is used to visualize the predicted values of a model. It is
+particularly powerful for understanding interaction effects.
 
 ``` r
 
@@ -359,13 +361,15 @@ fit_int <- mdl_int$sample()
 
 # Visualize the interaction effect
 # For continuous moderators, it automatically shows Mean ± 1SD
-ce <- condal_effects(fit_int, effect = "talk:perf")
+ce <- conditional_effects(fit_int, effect = "talk:perf")
 plot(ce)
 ```
 
 #### Simple Effects Analysis with `simple_effects()`
 
-While `condal_effects()` provides a visual overview,
+While
+[`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
+provides a visual overview,
 [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
 allows you to statistically examine the effect of a focal variable at
 specific levels of a moderator.
@@ -753,7 +757,13 @@ writing complex model codes from scratch. - Seamlessly switch between
 MAP, MCMC, and VB estimations using the same model object. - Calculate
 Bayes factors smoothly.
 
-If you require a more customized model, check out the [Quick
-Start](https://norimune.github.io/BayesRTMB/articles/quick_start.md) and
-try building your own using
+For a more detailed guide to mixed models and GLMMs, see [Hierarchical
+Models and
+GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md). If
+you require a more customized model, check out [Writing Model
+Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md)
+and try building your own using
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md).
+For the model-building pipeline behind the wrappers, see [RTMB Internals
+and Inference
+Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md).

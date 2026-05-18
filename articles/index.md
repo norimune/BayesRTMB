@@ -2,8 +2,8 @@
 
 ### English
 
-Start here for installation, wrapper functions, and writing custom model
-code.
+Start here for installation, wrapper functions, GLMMs, internals, and
+writing custom model code.
 
 - [Introduction to
   BayesRTMB](https://norimune.github.io/BayesRTMB/articles/introduction.md):
@@ -23,15 +23,29 @@ code.
   A guide on how to use the convenient wrapper functions available in
   BayesRTMB (e.g., rtmb_lm, rtmb_glmer, rtmb_ttest).
 
+- [Hierarchical Models and GLMMs with
+  rtmb_glmer()](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md):
+
+  A practical guide to fitting hierarchical models, GLMMs, residual
+  correlation models, ordinal models, visualization, priors, and
+  classical ANOVA-style workflows with rtmb_glmer().
+
 - [Writing Model
   Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md):
 
   A guide on how to write model codes in BayesRTMB.
 
+- [RTMB Internals and Inference
+  Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md):
+
+  Explains how BayesRTMB turns rtmb_code() into RTMB automatic
+  differentiation objects and routes models to MCMC, MAP, variational
+  inference, and classical estimation.
+
 ### 日本語
 
 BayesRTMB
-の概要、クイックスタート、ラッパー関数、モデルコードの書き方をまとめた記事です。
+の概要、クイックスタート、ラッパー関数、階層モデル、モデルコードの書き方をまとめた記事です。
 
 - [BayesRTMB
   の概要](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md):

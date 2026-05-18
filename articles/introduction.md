@@ -40,6 +40,8 @@ The following articles are available.
   Start](https://norimune.github.io/BayesRTMB/articles/quick_start.md)**
 - **[Wrapper
   Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md)**
+- **[Hierarchical Models and
+  GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md)**
 - **[Writing Model
   Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md)**
 - **[RTMB Internals and Inference
@@ -608,12 +610,19 @@ the articles that match your purpose.
     Learn how to run standard analyses such as regression, generalized
     linear models, mixed models, and t tests with wrapper functions.
 
-3.  **[Writing Model
+3.  **[Hierarchical Models and
+    GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md)**  
+    Learn how to use
+    [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+    for hierarchical models, GLMMs, residual correlation, ordinal
+    models, priors, and visualization.
+
+4.  **[Writing Model
     Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md)**  
     Learn how to write your own models using the `setup`, `parameters`,
     `transform`, `model`, and `generate` blocks.
 
-4.  **[RTMB Internals and Inference
+5.  **[RTMB Internals and Inference
     Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md)**  
     Learn about internal processing such as Laplace approximation,
     constrained parameters, MCMC, and variational inference.
