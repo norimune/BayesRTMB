@@ -1,5 +1,5 @@
 ---
-title: "rtmb_glmer() で階層モデル・GLMMを書く"
+title: "rtmb_glmer() で階層モデル・GLMM・分散分析を書く"
 description: "lme4 風の式から階層モデル、一般化線形混合モデル、順序モデル、残差構造つきモデルを作り、MCMC、MAP、VB、classic を使い分ける方法を説明します。"
 output: rmarkdown::html_vignette
 vignette: >
