@@ -53,4 +53,15 @@ BayesRTMB
 
   BayesRTMBでrtmb_code()を使ってモデルを書くための基本文法と実例を解説します。
 
-- [RTMBの仕組みと推定のアルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md):
+- [rtmb_glmer()
+  で階層モデル・GLMMを書く](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md):
+
+  lme4
+  風の式から階層モデル、一般化線形混合モデル、順序モデル、残差構造つきモデルを作り、MCMC、MAP、VB、classic
+  を使い分ける方法を説明します。
+
+- [BayesRTMB
+  の内部構造](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md):
+
+  rtmb_code() が RTMB の自動微分オブジェクトに変換され、MCMC、MAP
+  推定、変分推論、古典的推定へ渡される流れを解説します。

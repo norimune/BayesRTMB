@@ -5,12 +5,14 @@
 <meta charset="utf-8">
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
-<title>RTMBの仕組みと推定のアルゴリズム • BayesRTMB</title>
+<title>BayesRTMB の内部構造 • BayesRTMB</title>
 <script src="../deps/jquery-3.6.0/jquery-3.6.0.min.js"></script><meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
 <link href="../deps/bootstrap-5.3.8/bootstrap.min.css" rel="stylesheet">
 <script src="../deps/bootstrap-5.3.8/bootstrap.bundle.min.js"></script><link href="../deps/font-awesome-6.5.2/css/all.min.css" rel="stylesheet">
 <link href="../deps/font-awesome-6.5.2/css/v4-shims.min.css" rel="stylesheet">
-<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="RTMBの仕組みと推定のアルゴリズム">
+<script src="../deps/headroom-0.11.0/headroom.min.js"></script><script src="../deps/headroom-0.11.0/jQuery.headroom.min.js"></script><script src="../deps/bootstrap-toc-1.0.1/bootstrap-toc.min.js"></script><script src="../deps/clipboard.js-2.0.11/clipboard.min.js"></script><script src="../deps/search-1.0.0/autocomplete.jquery.min.js"></script><script src="../deps/search-1.0.0/fuse.min.js"></script><script src="../deps/search-1.0.0/mark.min.js"></script><!-- pkgdown --><script src="../pkgdown.js"></script><meta property="og:title" content="BayesRTMB の内部構造">
+<meta name="description" content="rtmb_code() が RTMB の自動微分オブジェクトに変換され、MCMC、MAP 推定、変分推論、古典的推定へ渡される流れを解説します。">
+<meta property="og:description" content="rtmb_code() が RTMB の自動微分オブジェクトに変換され、MCMC、MAP 推定、変分推論、古典的推定へ渡される流れを解説します。">
 </head>
 <body>
     <a href="#main" class="visually-hidden-focusable">Skip to contents</a>
@@ -45,6 +47,7 @@
     <li><a class="dropdown-item" href="../articles/ja-quick_start.html">クイックスタート</a></li>
     <li><a class="dropdown-item" href="../articles/ja-wrapper_functions.html">ラッパー関数の使い方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
@@ -69,7 +72,7 @@
 <div class="row">
   <main id="main" class="col-md-9"><div class="page-header">
 
-      <h1>RTMBの仕組みと推定のアルゴリズム</h1>
+      <h1>BayesRTMB の内部構造</h1>
             
       
       <small class="dont-index">Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/vignettes/ja-rtmb_internals.Rmd" class="external-link"><code>vignettes/ja-rtmb_internals.Rmd</code></a></small>
@@ -78,165 +81,682 @@
 
     
     
-<p>本記事では、<code>BayesRTMB</code> が内部で利用している
-<code>RTMB</code>
-パッケージの仕組みと、モデルの推定がどのようなアルゴリズムで行われているかをモデラー向けに解説します。</p>
-<div class="section level2">
-<h2 id="rtmbとは何か">1. RTMBとは何か？<a class="anchor" aria-label="anchor" href="#rtmb%E3%81%A8%E3%81%AF%E4%BD%95%E3%81%8B"></a>
-</h2>
-<p><code>RTMB</code> は、C++で書かれた強力な自動微分ライブラリ
-<code>TMB</code> (Template Model Builder)
-を、Rの構文から直接利用できるようにしたパッケージです。</p>
-<div class="section level3">
-<h3 id="テーピングtapingの仕組み">テーピング（Taping）の仕組み<a class="anchor" aria-label="anchor" href="#%E3%83%86%E3%83%BC%E3%83%94%E3%83%B3%E3%82%B0taping%E3%81%AE%E4%BB%95%E7%B5%84%E3%81%BF"></a>
-</h3>
-<p><code>RTMB</code>
-の最大の特徴は「テーピング」と呼ばれるプロセスにあります。<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
-を実行した際、Rのコードは一度だけ実行され、その計算過程が「計算グラフ（テープ）」として記録されます。</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>実行</strong>: Rの関数（<code>rtmb_code</code>
-で定義したもの）が、「AD（自動微分）タイプ」のオブジェクトを引数として実行されます。</li>
-<li>
-<strong>記録</strong>: 四則演算や数学関数（<code>log</code>,
-<code>exp</code>, <code>sin</code>
-など）が呼び出されるたびに、その操作がテープに記録されます。</li>
-<li>
-<strong>コンパイル</strong>:
-記録されたテープは、裏側のC++エンジンで高速に評価可能な形式に変換されます。</li>
-</ol>
-<p>この仕組みにより、ユーザーはRの書きやすさを維持したまま、C++並みの速度で勾配（導関数）やヘッセ行列を計算できるようになります。Stanのようにコードを修正するたびにコンパイルをし直す必要がなく、すぐにMCMCやMAP推定を実行できます。</p>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="推定のアルゴリズム">2. 推定のアルゴリズム<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E5%AE%9A%E3%81%AE%E3%82%A2%E3%83%AB%E3%82%B4%E3%83%AA%E3%82%BA%E3%83%A0"></a>
-</h2>
-<p><code>BayesRTMB</code> の <code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> (MAP推定) や
-<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> (MCMC)
-は、Stanと同様の高度なアルゴリズムを採用しています。</p>
-<div class="section level3">
-<h3 id="パラメータ空間の変換">パラメータ空間の変換<a class="anchor" aria-label="anchor" href="#%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF%E7%A9%BA%E9%96%93%E3%81%AE%E5%A4%89%E6%8F%9B"></a>
-</h3>
-<p>多くの統計モデルでは、パラメータに制約（例：標準偏差は正、確率は0から1の間、相関行列の性質など）があります。しかし、勾配ベースの最適化アルゴリズムや
-HMC (Hamiltonian Monte Carlo) は、<strong>「制約のない実数空間
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>−</mi><mi>∞</mi><mo>,</mo><mi>∞</mi></mrow><annotation encoding="application/x-tex">-\infty, \infty</annotation></semantics></math>)」</strong>で最も効率的に動作します。</p>
-<p><code>BayesRTMB</code> は、以下のプロセスを自動的に行います。</p>
-<ol style="list-style-type: decimal">
-<li>
-<strong>制約付き空間
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>Y</mi><annotation encoding="application/x-tex">Y</annotation></semantics></math>)</strong>:
-ユーザーが定義したパラメータ（例：<code>lower = 0</code> の
-<code>sigma</code>）。</li>
-<li>
-<strong>変換
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>f</mi><annotation encoding="application/x-tex">f</annotation></semantics></math>)</strong>:
-制約のない実数空間
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math>)
-への写像。
+<p>このページでは、BayesRTMB が内部でどのようにモデルを表現し、RTMB
+の自動微分オブジェクトへ変換し、推定結果を作っているかを説明します。</p>
+<p>通常の分析では、この内部構造を意識する必要はありません。<code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>
+や <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code> などのラッパー関数、または
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> と <code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+の基本的な使い方を知っていれば十分です。</p>
+<p>ただし、次のような場合には内部構造を知っておくと役に立ちます。</p>
 <ul>
-<li>正数制約:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">x = \log(y)</annotation></semantics></math>
-</li>
-<li>上限下限制約:
-<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>x</mi><mo>=</mo><mtext mathvariant="normal">logit</mtext><mo stretchy="false" form="prefix">(</mo><mfrac><mrow><mi>y</mi><mo>−</mo><mtext mathvariant="normal">lower</mtext></mrow><mrow><mtext mathvariant="normal">upper</mtext><mo>−</mo><mtext mathvariant="normal">lower</mtext></mrow></mfrac><mo stretchy="false" form="postfix">)</mo></mrow><annotation encoding="application/x-tex">x = \text{logit}(\frac{y - \text{lower}}{\text{upper} - \text{lower}})</annotation></semantics></math>
-</li>
-</ul>
-</li>
+<li>自分で複雑な <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> を書きたい。</li>
 <li>
-<strong>実数空間
-(<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>X</mi><annotation encoding="application/x-tex">X</annotation></semantics></math>)
-での推定</strong>: 最適化やサンプリングはこの空間で行われます。</li>
-</ol>
-</div>
-<div class="section level3">
-<h3 id="ヤコビアンjacobianの調整">ヤコビアン（Jacobian）の調整<a class="anchor" aria-label="anchor" href="#%E3%83%A4%E3%82%B3%E3%83%93%E3%82%A2%E3%83%B3jacobian%E3%81%AE%E8%AA%BF%E6%95%B4"></a>
-</h3>
-<p>変数変換を行った場合、変換後の空間での確率密度を正しく保つために、変換の<strong>ヤコビアンの行列式の絶対値の対数</strong>を加算する必要があります。</p>
-<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><msub><mi>p</mi><mi>X</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><msub><mi>p</mi><mi>Y</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mrow><mo stretchy="true" form="prefix">|</mo><mfrac><mrow><mi>d</mi><mi>y</mi></mrow><mrow><mi>d</mi><mi>x</mi></mrow></mfrac><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex"> \log p_X(x) = \log p_Y(y) + \log \left| \frac{dy}{dx} \right| </annotation></semantics></math></p>
-<p><code>BayesRTMB</code> は、<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
-を作成する際にこのヤコビアン調整を自動的にモデルの対数密度に加算します。これにより、ユーザーはヤコビアンを意識することなく、Stanと同じように正しい事後分布からのサンプリングが可能になります。</p>
-<hr>
-</div>
-</div>
+<code>print_code()</code>
+の出力を読んで、ラッパー関数が作ったモデルを理解したい。</li>
+<li>
+<code>random = TRUE</code>、Laplace
+近似、<code>marginal</code>、<code>fixed</code>、<code>map</code>
+を組み合わせたい。</li>
+<li>
+<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>、<code>variational()</code>、<code>classic()</code>
+の違いを整理したい。</li>
+<li>標準誤差や信頼区間がどのように計算されているかを知りたい。</li>
+</ul>
 <div class="section level2">
-<h2 id="rtmbコードを書く際の注意点">3. RTMBコードを書く際の注意点<a class="anchor" aria-label="anchor" href="#rtmb%E3%82%B3%E3%83%BC%E3%83%89%E3%82%92%E6%9B%B8%E3%81%8F%E9%9A%9B%E3%81%AE%E6%B3%A8%E6%84%8F%E7%82%B9"></a>
+<h2 id="全体の流れ">1. 全体の流れ<a class="anchor" aria-label="anchor" href="#%E5%85%A8%E4%BD%93%E3%81%AE%E6%B5%81%E3%82%8C"></a>
 </h2>
-<p>RTMBはRのように見えますが、内部は「計算グラフの記録」を行っているため、通常のRとは異なる制限があります。</p>
-<div class="section level3">
-<h3 id="条件分岐の制限">条件分岐の制限<a class="anchor" aria-label="anchor" href="#%E6%9D%A1%E4%BB%B6%E5%88%86%E5%B2%90%E3%81%AE%E5%88%B6%E9%99%90"></a>
-</h3>
-<p>計算グラフは一度しか記録されないため、パラメータの値によって計算パスが変わる
-<code>if</code> 文は、期待通りに動作しません。</p>
-<ul>
-<li>
-<strong>誤り</strong>:
-<code>if (sigma &gt; 1) { ... } else { ... }</code>
-</li>
-<li>
-<strong>正しい</strong>: <code>RTMB::adm_if</code>,
-<code>RTMB::adm_ifelse</code> を使うか、滑らかな関数（<code>abs</code>,
-<code>plogis</code> など）で代用する。</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="rtmb対応関数の使用">RTMB対応関数の使用<a class="anchor" aria-label="anchor" href="#rtmb%E5%AF%BE%E5%BF%9C%E9%96%A2%E6%95%B0%E3%81%AE%E4%BD%BF%E7%94%A8"></a>
-</h3>
-<p>計算グラフに記録するためには、<code>RTMB</code>
-が提供する関数を使う必要があります。</p>
-<ul>
-<li>基本的には通常の <code>log</code>, <code>exp</code>,
-<code>sum</code> などは <code>RTMB</code>
-によってオーバーロードされていますが、特殊な分布や行列演算などは、公式ドキュメント（<code>?RTMB::math_functions</code>）を参照してください。</li>
-</ul>
-</div>
-<div class="section level3">
-<h3 id="ベクトル化">ベクトル化<a class="anchor" aria-label="anchor" href="#%E3%83%99%E3%82%AF%E3%83%88%E3%83%AB%E5%8C%96"></a>
-</h3>
-<p>Rと同様に、大きなループを書くよりもベクトル化された演算（<code>y ~ normal(mu, sigma)</code>
-など）を行うほうが、計算グラフが小さくなり、メモリ消費と計算速度の両面で有利になります。</p>
-<hr>
-</div>
-</div>
-<div class="section level2">
-<h2 id="他のツールとの比較">4. 他のツールとの比較<a class="anchor" aria-label="anchor" href="#%E4%BB%96%E3%81%AE%E3%83%84%E3%83%BC%E3%83%AB%E3%81%A8%E3%81%AE%E6%AF%94%E8%BC%83"></a>
-</h2>
+<p>BayesRTMB の内部処理は、おおまかに次の流れで進みます。</p>
+<pre class="text"><code>rtmb_code()
+  -&gt; rtmb_model()
+    -&gt; RTMB_Model
+      -&gt; build_ad_obj()
+        -&gt; RTMB::MakeADFun()
+          -&gt; sample() / optimize() / variational() / classic()
+            -&gt; MCMC_Fit / MAP_Fit / VB_Fit / Classic_Fit</code></pre>
+<p>ユーザーが書くのは、主に <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> と
+<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> までです。</p>
+<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+は、モデルコードとデータを検査し、<code>RTMB_Model</code> という R6
+オブジェクトを作ります。この <code>RTMB_Model</code>
+が、モデル定義、データ、パラメータ定義、変換ブロック、生成量ブロック、ラッパー関数由来のメタデータを保持します。</p>
+<p>その後、推定メソッドに応じて <code>RTMB::MakeADFun()</code>
+のための自動微分オブジェクトが作られます。得られた結果は、推定方法ごとに次の
+fit object として返されます。</p>
+<p>BayesRTMB は、機能的には MCMC、MAP、VB、classic
+の順に重心を置いています。MCMC は事後分布を直接扱う中心的な推定法、MAP
+は高速な点推定と近似的な確認、VB は大きなモデルの近似推論、classic は
+wrapper 由来モデルを頻度主義的に確認するための補助的な入口です。</p>
 <table class="table">
 <thead><tr class="header">
-<th align="left">機能</th>
-<th align="left">BayesRTMB (RTMB)</th>
-<th align="left">Stan</th>
+<th>メソッド</th>
+<th>主な用途</th>
+<th>返り値</th>
 </tr></thead>
 <tbody>
 <tr class="odd">
-<td align="left"><strong>言語</strong></td>
-<td align="left">R</td>
-<td align="left">Stan専用言語</td>
+<td><code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code></td>
+<td>NUTS による MCMC</td>
+<td><code>MCMC_Fit</code></td>
 </tr>
 <tr class="even">
-<td align="left"><strong>微分エンジン</strong></td>
-<td align="left">TMB (C++ / Adol-C)</td>
-<td align="left">Stan Math Library</td>
+<td><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code></td>
+<td>MAP / ML / marginal MAP</td>
+<td><code>MAP_Fit</code></td>
 </tr>
 <tr class="odd">
-<td align="left"><strong>空間変換</strong></td>
-<td align="left">自動 (Jacobian調整あり)</td>
-<td align="left">自動 (Jacobian調整あり)</td>
+<td><code>variational()</code></td>
+<td>ADVI による近似事後分布</td>
+<td><code>VB_Fit</code></td>
 </tr>
 <tr class="even">
-<td align="left"><strong>推定法</strong></td>
-<td align="left">MAP / NUTS / ADVI</td>
-<td align="left">MAP / NUTS / ADVI / HMC</td>
-</tr>
-<tr class="odd">
-<td align="left"><strong>速度</strong></td>
-<td align="left">R上で動くがC++並みに高速</td>
-<td align="left">C++にコンパイルされるため高速</td>
+<td><code>classic()</code></td>
+<td>頻度主義的推定</td>
+<td><code>Classic_Fit</code></td>
 </tr>
 </tbody>
 </table>
-<p><code>BayesRTMB</code>
-は、Stanの強力なロジックをRの親しみやすい構文で提供することを目指しています。</p>
+</div>
+<div class="section level2">
+<h2 id="rtmb_code-の各ブロック">2. rtmb_code の各ブロック<a class="anchor" aria-label="anchor" href="#rtmb_code-%E3%81%AE%E5%90%84%E3%83%96%E3%83%AD%E3%83%83%E3%82%AF"></a>
+</h2>
+<p><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
+は、モデルをいくつかのブロックに分けて書くための関数です。</p>
+<div class="sourceCode" id="cb2"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  data <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># 入力データの宣言</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  setup <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># データ前処理</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  parameters <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># 推定パラメータの宣言</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  transform <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># パラメータやデータから作る派生量</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  model <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># 尤度と事前分布</span></span>
+<span>  <span class="op">}</span>,</span>
+<span>  generate <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># 推定後に計算したい生成量</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>すべてのブロックが必須ではありません。最小限必要なのは
+<code>parameters</code> と <code>model</code> です。</p>
+<div class="section level3">
+<h3 id="data">data<a class="anchor" aria-label="anchor" href="#data"></a>
+</h3>
+<p><code>data</code>
+ブロックは、モデルで使うデータ名を宣言するためのブロックです。<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+は、ここに書かれた変数が実際に <code>data</code> list
+に含まれているかを確認します。</p>
+</div>
+<div class="section level3">
+<h3 id="setup">setup<a class="anchor" aria-label="anchor" href="#setup"></a>
+</h3>
+<p><code>setup</code> ブロックは、データ前処理のためのブロックです。</p>
+<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> は、まず <code>data</code> list
+を環境に展開し、その環境内で <code>setup</code>
+を評価します。そこで作られた変数や更新された変数は、再び
+<code>data</code> list に戻されます。</p>
+<p>たとえば、ラッパー関数が作るコードでは、ユーザーが
+<code>print_code()</code>
+を見て同じモデルを再現できるように、必要な前処理を <code>setup</code>
+に明示する方針をとっています。</p>
+</div>
+<div class="section level3">
+<h3 id="parameters">parameters<a class="anchor" aria-label="anchor" href="#parameters"></a>
+</h3>
+<p><code>parameters</code> ブロックでは、推定するパラメータを
+<code><a href="../reference/Dim.html">Dim()</a></code> で宣言します。</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="va">beta</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">P</span><span class="op">)</span></span>
+<span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="va">r</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">G</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code><a href="../reference/Dim.html">Dim()</a></code>
+は、次元、制約、初期値、ランダム効果かどうかといった情報を持つパラメータ定義を作ります。</p>
+<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> はこのブロックを評価し、内部で
+<code>par_list</code> を作ります。<code>par_list</code>
+は、制約変換、初期値生成、flat vector との対応、<code>MakeADFun()</code>
+への受け渡しに使われる重要な情報です。</p>
+</div>
+<div class="section level3">
+<h3 id="transform">transform<a class="anchor" aria-label="anchor" href="#transform"></a>
+</h3>
+<p><code>transform</code>
+ブロックは、パラメータやデータから派生量を作る場所です。</p>
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code>transform</code> で作った量は、<code>model</code>
+ブロックの中で使えます。また、推定後の summary
+に含めることもできます。MAP
+推定や古典的推定では、必要に応じてデルタ法やシミュレーションにより標準誤差や区間推定が計算されます。</p>
+<p>ただし、<code>transform</code> で作った量は primary parameter
+ではありません。たとえば <code>optimize(marginal = ...)</code> で
+Laplace 周辺化の対象にできるのは、<code>parameters</code>
+ブロックで宣言されたパラメータだけです。</p>
+</div>
+<div class="section level3">
+<h3 id="model">model<a class="anchor" aria-label="anchor" href="#model"></a>
+</h3>
+<p><code>model</code> ブロックは、尤度と事前分布を書く場所です。</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">beta</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>BayesRTMB では、Stan に近い <code>~</code> の sampling syntax
+を推奨しています。内部では <code><a href="../reference/model_code.html">model_code()</a></code>
+がこの表記を、対数確率 <code>lp</code> への加算に変換します。</p>
+<p>概念的には、次の2つは同じモデルを表します。</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
+<p>ただし、現在の BayesRTMB では、<code><a href="../reference/model_code.html">model_code()</a></code> が実行用の
+<code>log_prob</code> 関数を作るときに <code>lp &lt;- 0</code>
+を内部で用意します。そのため、通常の
+<code>rtmb_code(model = { ... })</code> には <code>lp &lt;- 0</code>
+を書きません。</p>
+<p><code>lp</code> は内部で使う予約語です。<code>parameters</code>
+ブロックで <code>lp &lt;- Dim()</code>
+のように宣言したり、一般の作業用変数として使ったりしないでください。</p>
+</div>
+<div class="section level3">
+<h3 id="generate">generate<a class="anchor" aria-label="anchor" href="#generate"></a>
+</h3>
+<p><code>generate</code>
+ブロックは、推定後に計算したい量を書く場所です。</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">generate</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">y_rep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code>generate</code>
+は、尤度評価や最適化の目的関数には入りません。事後予測、予測値、シミュレーション、因子得点、回転後の因子負荷量など、推定後に見たい量を置くためのブロックです。</p>
+<p>モデル定義時に書かなかった生成量も、推定後に
+<code>generated_quantities()</code> で追加できます。</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="パラメータ表現">3. パラメータ表現<a class="anchor" aria-label="anchor" href="#%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF%E8%A1%A8%E7%8F%BE"></a>
+</h2>
+<p>ユーザーは、通常、パラメータを自然な尺度で考えます。</p>
+<ul>
+<li>標準偏差 <code>sigma</code> は正の値。</li>
+<li>確率 <code>theta</code> は 0 から 1 の範囲。</li>
+<li>ordered cutpoints は昇順。</li>
+<li>simplex は合計が 1。</li>
+</ul>
+<p>一方で、勾配ベースの最適化や HMC
+は、制約のない実数空間で動かすほうが扱いやすくなります。</p>
+<p>そのため BayesRTMB は、内部で次の2つの表現を使い分けます。</p>
+<table class="table">
+<thead><tr class="header">
+<th>表現</th>
+<th>意味</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>constrained scale</td>
+<td>ユーザーが考える自然な尺度</td>
+</tr>
+<tr class="even">
+<td>unconstrained scale</td>
+<td>最適化やサンプリングに使う制約なし尺度</td>
+</tr>
+</tbody>
+</table>
+<p>たとえば、<code>sigma &lt;- Dim(lower = 0)</code>
+と宣言した場合、ユーザー向けには正の <code>sigma</code>
+として表示されますが、内部では実数全体を動く値に変換されます。</p>
+<p>この変換は、主に次の helper によって扱われます。</p>
+<ul>
+<li><code>to_unconstrained()</code></li>
+<li><code>to_constrained()</code></li>
+<li><code>constrained_vector_to_list()</code></li>
+<li><code>unconstrained_vector_to_list()</code></li>
+<li><code>generate_flat_names()</code></li>
+</ul>
+<p>この層は、<code>fixed</code>、<code>map</code>、ランダム効果、Laplace
+近似、summary 表示の整合性に深く関わります。</p>
+</div>
+<div class="section level2">
+<h2 id="ヤコビアン補正">4. ヤコビアン補正<a class="anchor" aria-label="anchor" href="#%E3%83%A4%E3%82%B3%E3%83%93%E3%82%A2%E3%83%B3%E8%A3%9C%E6%AD%A3"></a>
+</h2>
+<p>制約付きのパラメータを非制約空間へ変換すると、確率密度の尺度も変わります。そのため、事後分布を正しく扱うにはヤコビアン補正が必要になります。</p>
+<p>概念的には、自然尺度のパラメータを
+<code>y</code>、非制約尺度のパラメータを <code>x</code>
+とすると、次の関係を考えます。</p>
+<p><math display="block" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><msub><mi>p</mi><mi>X</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>x</mi><mo stretchy="false" form="postfix">)</mo><mo>=</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><msub><mi>p</mi><mi>Y</mi></msub><mo stretchy="false" form="prefix">(</mo><mi>y</mi><mo stretchy="false" form="postfix">)</mo><mo>+</mo><mrow><mi mathvariant="normal">log</mi><mo>⁡</mo></mrow><mrow><mo stretchy="true" form="prefix">|</mo><mfrac><mrow><mi>d</mi><mi>y</mi></mrow><mrow><mi>d</mi><mi>x</mi></mrow></mfrac><mo stretchy="true" form="postfix">|</mo></mrow></mrow><annotation encoding="application/x-tex">
+\log p_X(x) = \log p_Y(y) + \log \left| \frac{dy}{dx} \right|
+</annotation></semantics></math></p>
+<p>BayesRTMB では、ユーザーは自然尺度でモデルを書きます。内部では
+<code>to_unconstrained()</code>、<code>to_constrained()</code>、<code>calc_log_jacobian()</code>
+を使い、推定方法に応じて必要なヤコビアン補正を目的関数に反映します。</p>
+<p>補正の対象は <code>jacobian_target</code> によって制御されます。</p>
+<table class="table">
+<thead><tr class="header">
+<th><code>jacobian_target</code></th>
+<th>意味</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>"all"</code></td>
+<td>すべての変換パラメータに補正を入れる</td>
+</tr>
+<tr class="even">
+<td><code>"random"</code></td>
+<td>Laplace で積分する random 側に補正を入れる</td>
+</tr>
+<tr class="odd">
+<td><code>"none"</code></td>
+<td>補正を入れない</td>
+</tr>
+</tbody>
+</table>
+<p>用途としては、MCMC
+では非制約空間で事後分布全体をサンプリングするため、基本的に
+<code>jacobian_target = "all"</code> を使います。</p>
+<p>一方、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> で Laplace 近似を使う場合は、Laplace
+で積分する random 側の密度変換が必要になるため、基本的に
+<code>jacobian_target = "random"</code> を使います。Laplace
+近似を使わない通常の最適化では、内部目的関数上では
+<code>jacobian_target = "none"</code> が使われます。</p>
+<p>通常のユーザーがこの設定を直接操作する必要はほとんどありません。ただし、profile
+likelihood や Laplace
+近似を含む内部処理では、この区別が重要になります。</p>
+</div>
+<div class="section level2">
+<h2 id="rtmb-の自動微分オブジェクト">5. RTMB の自動微分オブジェクト<a class="anchor" aria-label="anchor" href="#rtmb-%E3%81%AE%E8%87%AA%E5%8B%95%E5%BE%AE%E5%88%86%E3%82%AA%E3%83%96%E3%82%B8%E3%82%A7%E3%82%AF%E3%83%88"></a>
+</h2>
+<p>RTMB は、TMB の自動微分エンジンを R
+から使うためのパッケージです。</p>
+<p>BayesRTMB では、<code>RTMB_Model$build_ad_obj()</code> が
+<code>RTMB::MakeADFun()</code>
+を呼び出し、関数値、勾配、ヘッセ行列などを評価できるオブジェクトを作ります。</p>
+<p>このとき、モデル関数は通常の数値ではなく AD
+型の値を使って評価されます。四則演算、<code><a href="https://rdrr.io/r/base/Log.html" class="external-link">log()</a></code>、<code><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp()</a></code>、行列演算、分布関数などの計算過程が、自動微分のための計算グラフとして記録されます。</p>
+<p>Stan のようにモデルコードを C++
+に書き換えて明示的にコンパイルするのではなく、R で書いたモデル関数を AD
+型で評価し、<code>MakeADFun()</code> object
+として高速に関数値や導関数を評価できるようにする、というイメージです。</p>
+<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> はモデル作成時に pre-check を行います。</p>
+<ul>
+<li>
+<code>setup</code> や <code>parameters</code>
+に未定義変数がないか。</li>
+<li>
+<code>model</code> や <code>transform</code>
+が初期値で実行できるか。</li>
+<li>
+<code>log_prob</code> がスカラーの数値を返すか。</li>
+<li>
+<code>MakeADFun()</code> で勾配が計算できるか。</li>
+</ul>
+<p>この段階で構造的なエラーを早めに検出することで、RTMB/TMB
+側の分かりにくいエラーをなるべく避ける設計になっています。</p>
+</div>
+<div class="section level2">
+<h2 id="推定メソッドごとの違い">6. 推定メソッドごとの違い<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E5%AE%9A%E3%83%A1%E3%82%BD%E3%83%83%E3%83%89%E3%81%94%E3%81%A8%E3%81%AE%E9%81%95%E3%81%84"></a>
+</h2>
+<div class="section level3">
+<h3 id="sample">sample<a class="anchor" aria-label="anchor" href="#sample"></a>
+</h3>
+<p><code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> は、NUTS による MCMC
+サンプリングを行います。</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>BayesRTMB では、MCMC
+が事後分布を直接調べるための中心的な推定法です。点推定だけでなく、事後平均、事後中央値、信用区間、収束診断、事後予測、bridge
+sampling による周辺尤度推定などを扱えます。</p>
+<p>MCMC
+では、非制約尺度でサンプリングを行い、結果を自然尺度に戻して表示します。<code>generate</code>
+ブロックがあれば、サンプルごとの生成量も計算できます。</p>
+</div>
+<div class="section level3">
+<h3 id="optimize">optimize<a class="anchor" aria-label="anchor" href="#optimize"></a>
+</h3>
+<p><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> は、MAP 推定、最尤推定、marginal MAP
+を担当する高速な推定 API です。</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>事前分布を含むモデルでは MAP 推定になります。追加 prior がない
+flat-prior 型のモデルでは、最尤推定と同じものとして解釈できます。</p>
+<p><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> は、MCMC
+の前にモデルの挙動を素早く確認したい場合や、階層モデルで Laplace
+近似を使って点推定を得たい場合に便利です。ただし、信頼区間やlog_mlは無制約パラメータ空間において多変量正規分布への近似が成り立つときに正確になります。返り値は
+<code>MAP_Fit</code> です。</p>
+<p>主なオプションには、次のものがあります。</p>
+<ul>
+<li><code>laplace</code></li>
+<li><code>marginal</code></li>
+<li><code>se_method</code></li>
+<li><code>df_method</code></li>
+<li><code>map</code></li>
+<li><code>fixed</code></li>
+</ul>
+</div>
+<div class="section level3">
+<h3 id="variational">variational<a class="anchor" aria-label="anchor" href="#variational"></a>
+</h3>
+<p><code>variational()</code> は、ADVI
+による近似事後分布を計算します。</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>大きなモデルや、MCMC
+の前におおまかな事後分布を確認したい場合に便利です。平均場近似、full-rank
+近似、hybrid 型の近似を使い分ける設計になっています。</p>
+<p>VB は MCMC
+より速く動くことがありますが、近似推論です。デフォルトの<code>meanfield</code>では制約なしパラメータ空間において独立な多変量正規分布を仮定した推定になるので、信頼区間は小さめに推定されます。<code>fullrank</code>を使えば独立でない多変量正規分布を仮定しますが、計算速度が遅くなります。どちらにせよ、最終的な不確実性評価では、可能であれば
+MCMC の結果と照合するのが安全です。</p>
+</div>
+<div class="section level3">
+<h3 id="classic">classic<a class="anchor" aria-label="anchor" href="#classic"></a>
+</h3>
+<p><code>classic()</code> は、BayesRTMB
+のラッパー関数を頻度主義的分析として使うための API です。</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p><code>classic()</code>
+は、原則として次の条件を満たすモデルだけを対象にします。</p>
+<ul>
+<li>wrapper 由来のモデルである。</li>
+<li>
+<code><a href="../reference/prior_flat.html">prior_flat()</a></code> のモデルである。</li>
+</ul>
+<p>これは、informative prior
+を含むモデルに対して、あたかも通常の頻度主義的推定であるかのように表示しないための設計です。</p>
+<p><code>classic()</code> は <code>Classic_Fit</code>
+を返します。<code>Classic_Fit</code> では、モデルに応じて自由度、p
+値、AIC、BIC、ANOVA、尤度比検定、相関検定、分割表検定など、頻度主義的な後処理を扱います。</p>
+<p>このパッケージの機能的な優先度としては、<code>classic()</code> は
+MCMC、MAP、VB
+の後に位置づけられます。標準的な検定や頻度主義的な分析とベイズ推定の比較のための補助的な推定経路です。</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="optimize-と-classic-の推定結果の違い">7. optimize と classic の推定結果の違い<a class="anchor" aria-label="anchor" href="#optimize-%E3%81%A8-classic-%E3%81%AE%E6%8E%A8%E5%AE%9A%E7%B5%90%E6%9E%9C%E3%81%AE%E9%81%95%E3%81%84"></a>
+</h2>
+<p>BayesRTMB の設計では、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> と
+<code>classic()</code> の責務を明確に分けています。</p>
+<p><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> は、MAP / ML / marginal MAP のための API
+です。informative prior を含むモデルも扱います。</p>
+<p><code>classic()</code> は、wrapper 由来かつ flat-prior
+のモデルだけを対象にする頻度主義的 API
+です。内部的には固定効果をLaplace近似で周辺化した制約付き最尤法（REML）を行うことで、モーメント法と一致する推定量を得ています。</p>
+<p>低水準では、どちらも RTMB による最適化エンジンを共有します。内部の
+<code>.fit_rtmb()</code> は、<code>MakeADFun()</code> object
+を作り、最適化を行い、<code>sdreport()</code> や共分散などの raw
+components を返します。</p>
+<p>ただし、<code>.fit_rtmb()</code> 自体は fit object を作りません。</p>
+<table class="table">
+<thead><tr class="header">
+<th>層</th>
+<th>役割</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>.fit_rtmb()</code></td>
+<td>RTMB 最適化の raw components を返す</td>
+</tr>
+<tr class="even">
+<td><code>.inference_pipeline()</code></td>
+<td>
+<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> 用に <code>MAP_Fit</code> を作る</td>
+</tr>
+<tr class="odd">
+<td><code>.classic_pipeline()</code></td>
+<td>
+<code>classic()</code> 用に <code>Classic_Fit</code> を作る</td>
+</tr>
+</tbody>
+</table>
+<p>この分離により、同じ最適化エンジンを共有しながら、MAP
+推定と頻度主義的分析の表示、自由度、prior
+correction、後処理を分けています。</p>
+</div>
+<div class="section level2">
+<h2 id="laplace-近似と-random">8. Laplace 近似と random<a class="anchor" aria-label="anchor" href="#laplace-%E8%BF%91%E4%BC%BC%E3%81%A8-random"></a>
+</h2>
+<p>階層モデルや潜在変数モデルでは、すべてのパラメータを同時に固定効果のように扱うよりも、一部を積分消去したいことがあります。</p>
+<p>BayesRTMB では、<code>Dim(..., random = TRUE)</code>
+と宣言したパラメータは、Laplace 近似の対象になりえます。</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>  <span class="va">tau</span>   <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="va">r</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">G</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code>optimize(laplace = TRUE)</code>
+では、<code>random = TRUE</code> のパラメータを
+<code>RTMB::MakeADFun(random = ...)</code> に渡し、Laplace
+近似で周辺化します。<code>optimize</code>では<code>laplace = TRUE</code>がデフォルトです。</p>
+<p>また、<code>optimize(marginal = ...)</code>
+を使うと、<code>parameters</code> ブロックで宣言された primary parameter
+を一時的に random として扱い、marginal MAP / empirical Bayes
+型の推定を行えます。flat
+priorにおいて固定効果を<code>marginal</code>に指定すれば、制約付き最尤法(REML)と一致します。</p>
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>marginal <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean"</span>, <span class="st">"delta"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
+<p>ここで重要なのが、<code>marginal_vars</code> と
+<code>laplace_random_vars</code> の区別です。</p>
+<table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
+<thead><tr class="header">
+<th>名前</th>
+<th>意味</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>marginal_vars</code></td>
+<td>
+<code>optimize(marginal = ...)</code> でユーザーまたは wrapper
+が指定した primary parameter 名</td>
+</tr>
+<tr class="even">
+<td><code>laplace_random_vars</code></td>
+<td>実際に <code>MakeADFun(random = ...)</code>
+に渡されたすべての変数名</td>
+</tr>
+</tbody>
+</table>
+<p>mixed model では、もともとの random effects と、<code>marginal</code>
+で指定された primary parameter の両方が Laplace
+対象になることがあります(REML)
+。そのため、<code>laplace_random_vars</code> は
+<code>marginal_vars</code> より広い集合になることがあります。</p>
+<p><code>marginal = "auto"</code> は、wrapper が
+<code>extra$marginal</code> に保存した primary parameter
+名を使います。ここに入れられるのは、<code>parameters</code>
+ブロックで宣言されたパラメータだけです。<code>transform</code> や
+<code>generate</code>
+で作られた派生量は指定できません。<code>optimize</code>でREML推定をしたいときはラッパー関数を使って<code>marginal = "auto"</code>とすれば簡単に実行できます。また、そのときは自動的に自由度推定が<code>df_method = satterthwait</code>となり、t分布で信頼区間を計算します。<code>df_method =Inf</code>とすれば正規分布を仮定します。</p>
+</div>
+<div class="section level2">
+<h2 id="標準誤差と区間推定">9. 標準誤差と区間推定<a class="anchor" aria-label="anchor" href="#%E6%A8%99%E6%BA%96%E8%AA%A4%E5%B7%AE%E3%81%A8%E5%8C%BA%E9%96%93%E6%8E%A8%E5%AE%9A"></a>
+</h2>
+<p><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> と <code>classic()</code>
+では、点推定だけでなく標準誤差や区間推定も扱います。</p>
+<p><code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> の <code>se_method</code>
+には、主に次の選択肢があります。</p>
+<table class="table">
+<thead><tr class="header">
+<th><code>se_method</code></th>
+<th>意味</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td><code>"wald"</code></td>
+<td>
+<code>sdreport()</code> やデルタ法にもとづく Wald 型の標準誤差</td>
+</tr>
+<tr class="even">
+<td><code>"sampling"</code></td>
+<td>近似多変量正規サンプルによる誤差伝播</td>
+</tr>
+<tr class="odd">
+<td><code>"none"</code></td>
+<td>標準誤差と区間推定を計算しない</td>
+</tr>
+</tbody>
+</table>
+<p><code>se_method = "none"</code> は軽量モードです。標準誤差を 0
+とみなすのではなく、標準誤差や信頼区間を計算しない、という意味です。</p>
+<p><code>transform</code> で作られた派生量は、Wald
+型ではデルタ法、<code>se_method = "sampling"</code>
+ではシミュレーションにもとづいて不確実性を伝播します。</p>
+<p><code>generate</code>
+は基本的に推定後の生成量です。生成量の標準誤差や区間を必要とする場合は、MCMC
+サンプルや <code>generated_quantities()</code>
+の結果を使って確認するのが自然です。</p>
+<p><code>sdreport()</code> が信頼できる標準誤差を返せない場合、BayesRTMB
+は診断メッセージを出します。たとえば、<code>pdHess = FALSE</code>、<code>cov.fixed</code>
+が返らない、標準誤差が非有限、Hessian
+fallback、<code><a href="https://rdrr.io/pkg/MASS/man/ginv.html" class="external-link">MASS::ginv()</a></code> fallback などが該当します。</p>
+</div>
+<div class="section level2">
+<h2 id="ad-型のコードを書くときの注意点">10. AD 型のコードを書くときの注意点<a class="anchor" aria-label="anchor" href="#ad-%E5%9E%8B%E3%81%AE%E3%82%B3%E3%83%BC%E3%83%89%E3%82%92%E6%9B%B8%E3%81%8F%E3%81%A8%E3%81%8D%E3%81%AE%E6%B3%A8%E6%84%8F%E7%82%B9"></a>
+</h2>
+<p>RTMB では、モデルコードは通常の R
+のように見えますが、内部では自動微分の計算グラフとして記録されます。そのため、普通の
+R では問題なくても、AD
+型の計算では避けたほうがよい書き方があります。</p>
+<div class="section level3">
+<h3 id="パラメータに依存する-if-文">パラメータに依存する if 文<a class="anchor" aria-label="anchor" href="#%E3%83%91%E3%83%A9%E3%83%A1%E3%83%BC%E3%82%BF%E3%81%AB%E4%BE%9D%E5%AD%98%E3%81%99%E3%82%8B-if-%E6%96%87"></a>
+</h3>
+<p>パラメータの値によって計算経路が変わる <code>if</code>
+文は避けてください。</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># 避けたい例</span></span>
+<span><span class="kw">if</span> <span class="op">(</span><span class="va">sigma</span> <span class="op">&gt;</span> <span class="fl">1</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">0</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="op">}</span> <span class="kw">else</span> <span class="op">{</span></span>
+<span>  <span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">y</span>, <span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>このような分岐は、計算グラフの記録と相性がよくありません。滑らかな関数、制約つきパラメータ化、または
+RTMB が提供する AD 対応の条件分岐を検討します。</p>
+</div>
+<div class="section level3">
+<h3 id="apply-系の関数">apply 系の関数<a class="anchor" aria-label="anchor" href="#apply-%E7%B3%BB%E3%81%AE%E9%96%A2%E6%95%B0"></a>
+</h3>
+<p><code><a href="https://rdrr.io/r/base/apply.html" class="external-link">apply()</a></code>、<code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">lapply()</a></code>、<code><a href="https://rdrr.io/r/base/lapply.html" class="external-link">sapply()</a></code>、<code><a href="https://rdrr.io/r/base/ifelse.html" class="external-link">ifelse()</a></code>
+などは、AD
+型のモデルコードでは期待通りに動かないことがあります。BayesRTMB
+は一部を事前に検出してエラーにします。</p>
+<p>必要な場合は、明示的な <code>for</code>
+ループやベクトル化された演算に書き換えるほうが安全です。</p>
+</div>
+<div class="section level3">
+<h3 id="setup-と-transform-を使い分ける">setup と transform を使い分ける<a class="anchor" aria-label="anchor" href="#setup-%E3%81%A8-transform-%E3%82%92%E4%BD%BF%E3%81%84%E5%88%86%E3%81%91%E3%82%8B"></a>
+</h3>
+<p>データだけから決まる前処理は <code>setup</code>
+に置きます。こちらはAD型の計算を気にする必要はありません。自由なRの処理が可能です。</p>
+<p>パラメータから決まる派生量は <code>transform</code>
+に置きます。こちらはAD型計算が行われます。</p>
+<p>尤度や事前分布は <code>model</code> に置きます。</p>
+<p>生成量は<code>generate</code>に置きます。こちらのブロックではAD型計算がされないので、自由にRコードで計算ができます。複雑な計算やAD計算でエラーが出る場合はこちらで計算しておくほうがいいかも知れません。</p>
+<p>この分担を守ると、<code>print_code()</code>
+で見たときにモデルの意味が読みやすくなり、内部の pre-check
+や自動微分も安定しやすくなります。</p>
+</div>
+</div>
+<div class="section level2">
+<h2 id="stantmbrtmb-との関係">11. Stan、TMB、RTMB との関係<a class="anchor" aria-label="anchor" href="#stantmbrtmb-%E3%81%A8%E3%81%AE%E9%96%A2%E4%BF%82"></a>
+</h2>
+<p>BayesRTMB は、RTMB をバックエンドとして使います。RTMB は、TMB
+の自動微分エンジンを R から使えるようにしたパッケージです。</p>
+<p>Stan
+と似ている点は、ユーザーが確率モデルを書き、制約変換や勾配ベースの推定を使えることです。</p>
+<p>一方で、BayesRTMB では R
+の構文でモデルを書き、<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> のブロックを通じて RTMB
+の目的関数を作ります。ラッパー関数が生成したモデルも
+<code>print_code()</code>
+で確認できるため、標準的な分析から独自モデルへ進みやすい設計になっています。また、テープの記録ではC++へコンパイルをする必要がないので、スピーディーに分析が可能です。</p>
+<table class="table">
+<thead><tr class="header">
+<th>観点</th>
+<th>BayesRTMB</th>
+<th>Stan</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td>モデル記述</td>
+<td>R の <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
+</td>
+<td>Stan 専用言語</td>
+</tr>
+<tr class="even">
+<td>自動微分</td>
+<td>RTMB / TMB</td>
+<td>Stan Math</td>
+</tr>
+<tr class="odd">
+<td>制約変換</td>
+<td>
+<code><a href="../reference/Dim.html">Dim()</a></code> と内部変換</td>
+<td>Stan の parameter 制約</td>
+</tr>
+<tr class="even">
+<td>推定</td>
+<td>MAP / classic / NUTS / ADVI</td>
+<td>MAP / NUTS / ADVI など</td>
+</tr>
+<tr class="odd">
+<td>ラッパー関数</td>
+<td>
+<code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>、<code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code> など</td>
+<td>基本的には手書き</td>
+</tr>
+<tr class="even">
+<td>生成コード確認</td>
+<td><code>print_code()</code></td>
+<td>Stan コードそのもの</td>
+</tr>
+</tbody>
+</table>
+</div>
+<div class="section level2">
+<h2 id="まとめ">12. まとめ<a class="anchor" aria-label="anchor" href="#%E3%81%BE%E3%81%A8%E3%82%81"></a>
+</h2>
+<p>BayesRTMB の内部構造は、次のように整理できます。</p>
+<ul>
+<li>
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
+は、モデルをブロック構造として記述する入口です。</li>
+<li>
+<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+は、データとコードを検査し、<code>RTMB_Model</code> を作ります。</li>
+<li>
+<code>RTMB_Model</code>
+は、モデル、パラメータ、変換、生成量、wrapper metadata
+を保持します。</li>
+<li>
+<code>build_ad_obj()</code> は、<code>RTMB::MakeADFun()</code>
+のための自動微分オブジェクトを作ります。</li>
+<li>
+<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code>、<code>variational()</code>、<code>classic()</code>
+は、同じモデル表現から異なる推定を実行します。</li>
+<li>
+<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> と <code>classic()</code>
+は低水準エンジンを共有しますが、責務と返り値は明確に分かれています。</li>
+<li>Laplace 近似では、<code>random = TRUE</code> と
+<code>marginal</code> の扱い、特に <code>marginal_vars</code> と
+<code>laplace_random_vars</code> の区別が重要です。</li>
+</ul>
+<p>より実践的なモデルの書き方は、<a href="ja-writing_models.html">モデルコードの書き方</a>
+を参照してください。ラッパー関数がどのような <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
+を作るかは、<a href="ja-wrapper_functions.html">ラッパー関数の使い方</a>
+と <code>print_code()</code> が参考になります。</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

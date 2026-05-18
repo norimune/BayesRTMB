@@ -37,6 +37,8 @@ Functions for quick, standard analyses (Classical and Bayesian).
   : RTMB-based Factor Analysis Wrapper
 - [`rtmb_irt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_irt.md)
   : RTMB-based IRT (Item Response Theory) Wrapper
+- [`rtmb_mdu()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mdu.md)
+  : RTMB-based Multidimensional Unfolding Wrapper
 - [`rtmb_lrt()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lrt.md)
   : Fit a Latent Rank Theory (LRT) Model
 
