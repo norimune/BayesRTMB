@@ -1,4 +1,4 @@
-# rtmb_glmer() で階層モデル・GLMMを書く
+# rtmb_glmer() で階層モデル・GLMM・分散分析を書く
 
 このページでは、[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
 を使って階層モデルや一般化線形混合モデルを書く方法を説明します。

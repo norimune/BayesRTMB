@@ -264,8 +264,7 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <span></span>
 <span><span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="va">theta_draws</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/plot_trace.html">plot_trace</a></span><span class="op">(</span><span class="va">theta_draws</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/plot_acf.html">plot_acf</a></span><span class="op">(</span><span class="va">theta_draws</span><span class="op">)</span></span>
-<span><span class="fu"><a href="../reference/plot_forest.html">plot_forest</a></span><span class="op">(</span><span class="va">theta_draws</span><span class="op">)</span></span></code></pre></div>
+<span><span class="fu"><a href="../reference/plot_acf.html">plot_acf</a></span><span class="op">(</span><span class="va">theta_draws</span><span class="op">)</span></span></code></pre></div>
 <p>それぞれの図は、次の目的で使います。</p>
 <ul>
 <li>
@@ -276,8 +275,6 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <li>
 <code><a href="../reference/plot_acf.html">plot_acf()</a></code>
 は、自己相関が強すぎないかを確認します。</li>
-<li>
-<code><a href="../reference/plot_forest.html">plot_forest()</a></code> は、点推定値と信用区間を一覧します。</li>
 </ul>
 <p>実際には、たとえば次のような図として確認できます。</p>
 <div class="float">
@@ -288,9 +285,6 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 </div>
 <div class="float">
 <img src="plot_acf.png" alt="Autocorrelation plot"><div class="figcaption">Autocorrelation plot</div>
-</div>
-<div class="float">
-<img src="plot_forest.png" alt="Forest plot"><div class="figcaption">Forest plot</div>
 </div>
 </div>
 <div class="section level2">
@@ -307,6 +301,7 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
+<span>  gmc <span class="op">=</span> <span class="st">"all"</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_normal.html">prior_normal</a></span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
@@ -329,18 +324,18 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <span><span class="co">## </span></span>
 <span><span class="co">## Point Estimates and 95% Sampling-based CI:</span></span>
 <span><span class="co">##     variable  Estimate  Std. Error  Lower 95%  Upper 95% </span></span>
-<span><span class="co">## Intercept_c    3.43325     0.05232    3.33254    3.53601 </span></span>
-<span><span class="co">## b[talk]       -0.34490     0.15982   -0.65456   -0.01513 </span></span>
-<span><span class="co">## b[perf]       -0.25266     0.10109   -0.45514   -0.04584 </span></span>
-<span><span class="co">## b[talk:perf]   0.13020     0.03059    0.06865    0.19039 </span></span>
-<span><span class="co">## sigma          0.87135     0.03637    0.80450    0.94693 </span></span>
-<span><span class="co">## Intercept      3.79883     0.51483    2.75177    4.83008 </span></span></code></pre>
+<span><span class="co">## Intercept_c    3.43325     0.05232    3.33253    3.53604 </span></span>
+<span><span class="co">## b[talk]        0.26572     0.05305    0.15585    0.36839 </span></span>
+<span><span class="co">## b[perf]        0.14054     0.02924    0.08274    0.19857 </span></span>
+<span><span class="co">## b[talk:perf]   0.13022     0.03063    0.06780    0.19111 </span></span>
+<span><span class="co">## sigma          0.87135     0.03629    0.80181    0.94375 </span></span>
+<span><span class="co">## Intercept      3.41638     0.05254    3.31562    3.51660 </span></span></code></pre>
 <p>係数を一覧したいときは、<code><a href="../reference/plot_forest.html">plot_forest()</a></code> が便利です。</p>
 <div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"b[talk]"</span>, <span class="st">"b[perf]"</span>, <span class="st">"b[talk:perf]"</span><span class="op">)</span><span class="op">)</span> <span class="op">|&gt;</span></span>
 <span>  <span class="fu"><a href="../reference/plot_forest.html">plot_forest</a></span><span class="op">(</span>point_estimate <span class="op">=</span> <span class="st">"MAP"</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
-<img src="plot_forest.png" alt="Regression coefficient forest plot"><div class="figcaption">Regression coefficient forest plot</div>
+<img src="lm_forest.png" alt="Regression coefficient forest plot"><div class="figcaption">Regression coefficient forest plot</div>
 </div>
 </div>
 <div class="section level2">

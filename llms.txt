@@ -587,7 +587,7 @@ BayesRTMB
   BayesRTMBでrtmb_code()を使ってモデルを書くための基本文法と実例を解説します。
 
 - [rtmb_glmer()
-  で階層モデル・GLMMを書く](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md):
+  で階層モデル・GLMM・分散分析を書く](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md):
 
   lme4
   風の式から階層モデル、一般化線形混合モデル、順序モデル、残差構造つきモデルを作り、MCMC、MAP、VB、classic

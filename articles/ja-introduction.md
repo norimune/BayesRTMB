@@ -589,7 +589,7 @@ BayesRTMB
     回帰、一般化線形モデル、混合モデル、t
     検定など、標準的な分析をラッパー関数で実行する方法を確認できます。
 
-3.  **[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
+3.  **[階層モデル・GLMM・分散分析](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
     [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
     を使った階層モデル、GLMM、順序モデル、残差相関、可視化の流れを確認できます。
 
