@@ -69,6 +69,13 @@ rtmb_lrt(
 
   Link function for class probabilities: "ordered" or "sequential".
 
+- prior:
+
+  Prior configuration: \`prior_flat()\`, \`prior_normal()\`,
+  \`prior_weak()\`, \`prior_rhs()\`, or \`prior_ssp()\`. Default is
+  \`prior_flat()\`. If \`y_range\` is supplied with the default flat
+  prior, the wrapper automatically switches to \`prior_weak()\`.
+
 - y_range:
 
   Optional numeric vector or matrix defining the theoretical range (min,
