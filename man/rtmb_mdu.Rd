@@ -9,7 +9,7 @@ rtmb_mdu(
   ndim = 2,
   distance = c("squared", "euclidean"),
   alpha = c("random", "fix"),
-  method = c("rating", "Best", "Best-Worst"),
+  method = c("rating", "Best", "Best-Worst", "MDS"),
   sets = NULL,
   prior = prior_flat(),
   y_range = NULL,
@@ -35,7 +35,8 @@ distance.}
 random effects (default), while `"fix"` estimates a single common alpha.}
 
 \item{method}{Character; `"rating"` for continuous ratings, `"Best"` for
-best-only choice tasks, or `"Best-Worst"` for best-worst choice tasks.}
+best-only choice tasks, `"Best-Worst"` for best-worst choice tasks, or
+`"MDS"` for fitting a multidimensional scaling model to a distance matrix.}
 
 \item{sets}{Matrix or data frame of presented item sets (P tasks x C items)
 for choice methods.}

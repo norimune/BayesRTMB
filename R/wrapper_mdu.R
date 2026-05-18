@@ -120,6 +120,91 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   )
 }
 
+.validate_mds_distance_matrix <- function(data) {
+  Y <- as.matrix(data)
+  storage.mode(Y) <- "double"
+
+  if (!is.matrix(Y) || nrow(Y) != ncol(Y)) {
+    stop("For method = 'MDS', 'data' must be a square distance matrix.", call. = FALSE)
+  }
+  if (anyNA(Y)) {
+    stop("For method = 'MDS', 'data' must not contain missing values.", call. = FALSE)
+  }
+  if (any(!is.finite(Y))) {
+    stop("For method = 'MDS', 'data' must contain only finite values.", call. = FALSE)
+  }
+  if (any(Y < 0)) {
+    stop("For method = 'MDS', 'data' must be a non-negative distance matrix.", call. = FALSE)
+  }
+  if (!isTRUE(all.equal(Y, t(Y), tolerance = 1e-8, check.attributes = FALSE))) {
+    stop("For method = 'MDS', 'data' must be a symmetric distance matrix.", call. = FALSE)
+  }
+  if (any(abs(diag(Y)) > 1e-8)) {
+    stop("For method = 'MDS', the diagonal of the distance matrix must be zero.", call. = FALSE)
+  }
+  Y
+}
+
+.to_centered_tri_init <- function(coords, D) {
+  coords <- as.matrix(coords)
+  N <- nrow(coords)
+  if (ncol(coords) < D) {
+    coords <- cbind(coords, matrix(0, nrow = N, ncol = D - ncol(coords)))
+  }
+  coords <- coords[, seq_len(D), drop = FALSE]
+  coords[!is.finite(coords)] <- 0
+  coords <- sweep(coords, 2, colMeans(coords), "-")
+
+  # Rotate the leading D x D block into a Cholesky-like lower-triangular
+  # orientation so the constrained initial values match type = "centered_tri".
+  if (N >= D) {
+    qr_res <- qr(t(coords[seq_len(D), , drop = FALSE]))
+    Q <- qr.Q(qr_res)
+    R <- qr.R(qr_res)
+    sign_diag <- sign(diag(R))
+    sign_diag[sign_diag == 0] <- 1
+    Q <- sweep(Q, 2, sign_diag, "*")
+    coords <- coords %*% Q
+  }
+
+  coords_tri <- matrix(0, nrow = N, ncol = D)
+  for (d in seq_len(D)) {
+    vals <- coords[d:N, d]
+    vals <- vals - mean(vals)
+    coords_tri[d:N, d] <- vals
+  }
+  coords_tri
+}
+
+.make_init_mds <- function(Y, D, distance = c("euclidean", "squared"), min_sigma = 0.1) {
+  distance <- match.arg(distance)
+  coords <- tryCatch(
+    stats::cmdscale(stats::as.dist(Y), k = D, eig = FALSE),
+    error = function(e) NULL
+  )
+  if (is.null(coords)) {
+    coords <- matrix(stats::rnorm(nrow(Y) * D, sd = 0.1), nrow = nrow(Y), ncol = D)
+  }
+  delta <- .to_centered_tri_init(coords, D)
+
+  pred <- matrix(0, nrow = nrow(Y), ncol = ncol(Y))
+  for (i in seq_len(nrow(Y) - 1L)) {
+    for (j in (i + 1L):nrow(Y)) {
+      d_sq <- sum((delta[i, ] - delta[j, ])^2)
+      pred[i, j] <- if (distance == "squared") d_sq else sqrt(d_sq)
+    }
+  }
+  obs <- Y[upper.tri(Y)]
+  fitted <- pred[upper.tri(pred)]
+  sigma <- stats::sd(obs - fitted, na.rm = TRUE)
+  if (!is.finite(sigma) || sigma <= 0) sigma <- stats::sd(obs, na.rm = TRUE)
+  if (!is.finite(sigma) || sigma <= 0) sigma <- 1
+  tau <- stats::sd(as.numeric(delta), na.rm = TRUE)
+  if (!is.finite(tau) || tau <= 0) tau <- 1
+
+  list(delta = delta, tau = tau, sigma = max(sigma, min_sigma))
+}
+
 #' Restore Best and Worst Responses from Best-Worst Pair Indices
 #'
 #' @description
@@ -492,7 +577,8 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 #' @param alpha Character; `"random"` estimates item-specific alpha values as
 #'   random effects (default), while `"fix"` estimates a single common alpha.
 #' @param method Character; `"rating"` for continuous ratings, `"Best"` for
-#'   best-only choice tasks, or `"Best-Worst"` for best-worst choice tasks.
+#'   best-only choice tasks, `"Best-Worst"` for best-worst choice tasks, or
+#'   `"MDS"` for fitting a multidimensional scaling model to a distance matrix.
 #' @param sets Matrix or data frame of presented item sets (P tasks x C items)
 #'   for choice methods.
 #' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or
@@ -514,14 +600,20 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 rtmb_mdu <- function(data, ndim = 2,
                      distance = c("squared", "euclidean"),
                      alpha = c("random", "fix"),
-                     method = c("rating", "Best", "Best-Worst"),
+                     method = c("rating", "Best", "Best-Worst", "MDS"),
                      sets = NULL,
                      prior = prior_flat(), y_range = NULL,
                      init = NULL, fixed = NULL, view = NULL,
                      distance_eps = 1e-4) {
 
+  distance_missing <- missing(distance)
   method <- match.arg(method)
-  distance <- match.arg(distance)
+  if (method == "MDS" && distance_missing) {
+    distance <- "euclidean"
+    message("method = 'MDS' uses distance = 'euclidean' by default.")
+  } else {
+    distance <- match.arg(distance)
+  }
   alpha_type <- match.arg(alpha)
 
   if (!is.numeric(ndim) || length(ndim) != 1L || ndim < 1) {
@@ -529,7 +621,22 @@ rtmb_mdu <- function(data, ndim = 2,
   }
   D <- as.integer(ndim)
 
-  if (method == "rating") {
+  if (method == "MDS") {
+    Y <- .validate_mds_distance_matrix(data)
+    N <- nrow(Y)
+    M <- N
+    if (D >= M) {
+      stop("'ndim' must be smaller than the size of the distance matrix.", call. = FALSE)
+    }
+    item_names <- colnames(Y)
+    if (is.null(item_names)) item_names <- rownames(Y)
+    if (is.null(item_names)) item_names <- paste0("Item", seq_len(M))
+    row_names <- rownames(Y)
+    if (!is.null(row_names) && !identical(as.character(row_names), as.character(item_names))) {
+      item_names <- row_names
+    }
+    person_names <- character(0)
+  } else if (method == "rating") {
     Y <- as.matrix(data)
     storage.mode(Y) <- "double"
     if (anyNA(Y)) {
@@ -601,7 +708,72 @@ rtmb_mdu <- function(data, ndim = 2,
     theta_sd <- prior$theta_sd %||% 1
   }
 
-  if (method == "rating") {
+  if (method == "MDS") {
+    sigma_rate_mds <- prior$sigma_rate %||% 1
+    tau_rate_mds <- prior$tau_rate %||% prior$lambda_rate %||% 1
+    dat_mdu <- list(
+      Y = Y,
+      N = N,
+      ndim = D,
+      sigma_rate = sigma_rate_mds,
+      tau_rate = tau_rate_mds
+    )
+
+    setup_ast <- quote({
+      N <- nrow(Y)
+      D <- ndim
+    })
+
+    param_ast <- if (prior_type == "flat") {
+      quote({
+        delta <- Dim(c(N, D), type = "centered_tri")
+        sigma <- Dim(lower = 0)
+      })
+    } else {
+      quote({
+        delta <- Dim(c(N, D), type = "centered_tri", random = TRUE)
+        tau <- Dim(lower = 0)
+        sigma <- Dim(lower = 0)
+      })
+    }
+
+    loop_ast <- if (distance == "squared") {
+      quote(for (i in 1:(N - 1)) {
+        for (j in (i + 1):N) {
+          d_ij <- squared_distance(delta[i, ], delta[j, ])
+          Y[i, j] ~ normal(d_ij, sigma)
+        }
+      })
+    } else {
+      quote(for (i in 1:(N - 1)) {
+        for (j in (i + 1):N) {
+          d_ij <- distance(delta[i, ], delta[j, ])
+          Y[i, j] ~ normal(d_ij, sigma)
+        }
+      })
+    }
+
+    model_exprs <- list(loop_ast)
+    if (prior_type != "flat") {
+      model_exprs[[length(model_exprs) + 1]] <- quote(delta ~ centered_tri_multi_normal(tau))
+      model_exprs[[length(model_exprs) + 1]] <- quote(tau ~ exponential(tau_rate))
+      model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(sigma_rate))
+    }
+    model_ast <- as.call(c(list(as.name("{")), model_exprs))
+
+    code_obj <- list(setup = setup_ast, parameters = param_ast, model = model_ast)
+    code_obj$env <- parent.frame()
+
+    if (is.null(init)) {
+      init <- .make_init_mds(Y, D, distance = distance)
+      if (prior_type == "flat") init$tau <- NULL
+    }
+
+    par_names_list <- list(
+      delta = list(item_names, dim_names)
+    )
+    if (is.null(view)) view <- if (prior_type == "flat") c("delta", "sigma") else c("delta", "tau", "sigma")
+  } else if (method == "rating") {
     dat_mdu <- list(
       Y = Y,
       ndim = D,
@@ -926,10 +1098,10 @@ rtmb_mdu <- function(data, ndim = 2,
     prior_type = prior$type,
     method = method,
     alpha = alpha_type,
-    input = if (method == "rating") "rating" else choice_data$input,
+    input = if (method == "rating") "rating" else if (method == "MDS") "distance" else choice_data$input,
     distance = distance,
-    marginal = c("delta", "theta"),
-    sets = if (method == "rating") NULL else choice_data$S
+    marginal = if (method == "MDS") "delta" else c("delta", "theta"),
+    sets = if (method %in% c("rating", "MDS")) NULL else choice_data$S
   )
   obj
 }
