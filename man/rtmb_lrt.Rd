@@ -43,10 +43,10 @@ rtmb_lrt(
 
 \item{link}{Link function for class probabilities: "ordered" or "sequential".}
 
-\item{prior}{Prior configuration: \code{prior_flat()}, \code{prior_normal()},
-\code{prior_weak()}, \code{prior_rhs()}, or \code{prior_ssp()}. Default is
-\code{prior_flat()}. If \code{y_range} is supplied with the default flat prior,
-the wrapper automatically switches to \code{prior_weak()}.}
+\item{prior}{Prior configuration: `prior_flat()`, `prior_normal()`,
+`prior_weak()`, `prior_rhs()`, or `prior_ssp()`. Default is
+`prior_flat()`. If `y_range` is supplied with the default flat prior,
+the wrapper automatically switches to `prior_weak()`.}
 
 \item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.}
