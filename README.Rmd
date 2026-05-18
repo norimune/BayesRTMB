@@ -56,25 +56,30 @@ fit_map  <- mdl$optimize()
 fit_lm   <- mdl$classic()
 ```
 
-The generated model code can be inspected.
-
-```{r eval=FALSE}
-mdl$print_code()
-```
-
 You can also write a model directly.
 
 ```{r eval=FALSE}
-data_list <- list(Y = debate$sat, N = nrow(debate))
+
+Y <- debate$sat
+X <- debate[c("talk","perf")] |> as.matrix()
+
+data_list <- list(Y = Y, X = X)
 
 code <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    K <- ncol(X)
+  },
   parameters = {
-    mu = Dim()
+    Intercept <- Dim(1)
+    b <- Dim(K)
     sigma = Dim(lower = 0)
   },
   model = {
+    mu <- Intercept + X %*% b
     Y ~ normal(mu, sigma)
-    mu ~ normal(0, 10)
+    Intercept ~ normal(0, 10)
+    b ~ normal(0, 10)
     sigma ~ exponential(1)
   }
 )
@@ -83,11 +88,15 @@ mdl_custom <- rtmb_model(data_list, code)
 fit_custom <- mdl_custom$sample()
 ```
 
+
 ## Articles
 
+- [Introduction](articles/introduction.html): overall concepts, entry points, and inference workflow.
 - [Quick Start](articles/quick_start.html): installation, a minimal model, MCMC diagnostics, visualization, and t tests.
 - [Wrapper Functions](articles/wrapper_functions.html): using wrappers for Bayesian and classical analyses.
+- [Hierarchical Models and GLMMs](articles/rtmb_glmer.html): detailed use of `rtmb_glmer()` for mixed models, GLMMs, priors, residual correlation, and visualization.
 - [Writing Model Codes](articles/writing_models.html): writing custom models with `rtmb_code()`.
+- [RTMB Internals and Inference Algorithms](articles/rtmb_internals.html): internal model representation, Laplace approximation, and inference pipelines.
 - [日本語: パッケージ紹介](articles/ja-introduction.html)
 - [日本語: クイックスタート](articles/ja-quick_start.html)
 - [日本語: ラッパー関数の使い方](articles/ja-wrapper_functions.html)

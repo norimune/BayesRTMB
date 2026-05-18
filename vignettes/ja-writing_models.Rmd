@@ -656,6 +656,6 @@ mdl <- rtmb_model(data_reg, code_reg, init = init)
 
 既存のモデルを短く書きたい場合は、[ラッパー関数の使い方](ja-wrapper_functions.html) が便利です。
 
-階層モデルや GLMM を wrapper で詳しく扱いたい場合は、[階層モデル・GLMM](ja-rtmb_glmer.html) を参照してください。
+階層モデルや GLMM を wrapper で詳しく扱いたい場合は、[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html) を参照してください。
 
 まずパッケージ全体をざっと試したい場合は、[クイックスタート](ja-quick_start.html) を参照してください。
