@@ -34,3 +34,24 @@ rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
 ## Value
 
 An \`RTMB_Model\` object.
+
+## Examples
+
+``` r
+if (FALSE) { # \dontrun{
+  # Create a contingency table
+  tab <- matrix(c(10, 20, 30, 40), nrow = 2)
+  dimnames(tab) <- list(A = c("A1", "A2"), B = c("B1", "B2"))
+  
+  # Fit a log-linear model (independence model: ~ A + B)
+  fit_log <- rtmb_loglinear(~ A + B, data = tab)
+  
+  # MAP estimation
+  map_log <- fit_log$optimize()
+  map_log$summary()
+
+  # MCMC sampling (chains and iterations reduced for faster execution)
+  mcmc_log <- fit_log$sample(sampling = 500, warmup = 500, chains = 2)
+  mcmc_log$summary()
+} # }
+```

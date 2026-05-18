@@ -158,6 +158,39 @@ with the default flat prior, `prior_weak()` is used. For choice methods
     <p>An `RTMB_Model` object.</p>
     </div>
 
+    <div class="section level2">
+    <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+<span class="r-in"><span>  <span class="co"># Simulate rating data for Multidimensional Unfolding (MDU)</span></span></span>
+<span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">50</span>  <span class="co"># Number of persons</span></span></span>
+<span class="r-in"><span>  <span class="va">M</span> <span class="op">&lt;-</span> <span class="fl">10</span>  <span class="co"># Number of items</span></span></span>
+<span class="r-in"><span>  <span class="va">D</span> <span class="op">&lt;-</span> <span class="fl">2</span>   <span class="co"># Number of dimensions</span></span></span>
+<span class="r-in"><span>  </span></span>
+<span class="r-in"><span>  <span class="co"># True person and item coordinates in a 2D space</span></span></span>
+<span class="r-in"><span>  <span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span> <span class="op">*</span> <span class="va">D</span><span class="op">)</span>, <span class="va">N</span>, <span class="va">D</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">delta</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">M</span> <span class="op">*</span> <span class="va">D</span><span class="op">)</span>, <span class="va">M</span>, <span class="va">D</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  </span></span>
+<span class="r-in"><span>  <span class="co"># Generate distance-like ratings (smaller means more preferred)</span></span></span>
+<span class="r-in"><span>  <span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="cn">NA</span>, <span class="va">N</span>, <span class="va">M</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="kw">for</span><span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>    <span class="kw">for</span><span class="op">(</span><span class="va">j</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">M</span><span class="op">)</span> <span class="op">{</span></span></span>
+<span class="r-in"><span>      <span class="va">Y</span><span class="op">[</span><span class="va">i</span>, <span class="va">j</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="op">(</span><span class="va">theta</span><span class="op">[</span><span class="va">i</span>,<span class="op">]</span> <span class="op">-</span> <span class="va">delta</span><span class="op">[</span><span class="va">j</span>,<span class="op">]</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">0</span>, <span class="fl">0.5</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="op">}</span></span></span>
+<span class="r-in"><span>  <span class="op">}</span></span></span>
+<span class="r-in"><span></span></span>
+<span class="r-in"><span>  <span class="co"># Fit a 2-dimensional MDU model</span></span></span>
+<span class="r-in"><span>  <span class="va">fit_mdu</span> <span class="op">&lt;-</span> <span class="fu">rtmb_mdu</span><span class="op">(</span><span class="va">Y</span>, ndim <span class="op">=</span> <span class="fl">2</span>, distance <span class="op">=</span> <span class="st">"squared"</span>, method <span class="op">=</span> <span class="st">"rating"</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  </span></span>
+<span class="r-in"><span>  <span class="co"># MAP estimation</span></span></span>
+<span class="r-in"><span>  <span class="va">map_mdu</span> <span class="op">&lt;-</span> <span class="va">fit_mdu</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  <span class="va">map_mdu</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-in"><span>  </span></span>
+<span class="r-in"><span>  <span class="co"># Note: MDU models have many parameters, so MCMC sampling might take time.</span></span></span>
+<span class="r-in"><span>  <span class="co"># mcmc_mdu &lt;- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)</span></span></span>
+<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+</code></pre></div>
+    </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>
 
