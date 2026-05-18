@@ -526,7 +526,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
         n = contour_n,
         lims = c(-radius, radius, -radius, radius)
       )
-      contour(knl, add = TRUE, drawlabels = TRUE, col = "gray25", lwd = 0.8)
+      graphics::contour(knl, add = TRUE, drawlabels = TRUE, col = "gray25", lwd = 0.8)
     }
   }
 

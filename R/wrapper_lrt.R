@@ -14,6 +14,10 @@
 #' @param noise Measurement noise for the GP prior (default is 0.01).
 #' @param prob_smoothing Logical; whether to apply smoothing to the class membership probabilities.
 #' @param link Link function for class probabilities: "ordered" or "sequential".
+#' @param prior Prior configuration: `prior_flat()`, `prior_normal()`,
+#'   `prior_weak()`, `prior_rhs()`, or `prior_ssp()`. Default is
+#'   `prior_flat()`. If `y_range` is supplied with the default flat prior,
+#'   the wrapper automatically switches to `prior_weak()`.
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #'   Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
