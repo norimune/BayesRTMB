@@ -41,6 +41,7 @@ The following articles are available.
 - **[English Introduction](introduction.html)**
 - **[Quick Start](quick_start.html)**
 - **[Wrapper Functions](wrapper_functions.html)**
+- **[Hierarchical Models and GLMMs](rtmb_glmer.html)**
 - **[Writing Model Codes](writing_models.html)**
 - **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**
 
@@ -528,8 +529,11 @@ Once you have a general picture of BayesRTMB, the next step is to read the artic
 2. **[Wrapper Functions](wrapper_functions.html)**  
    Learn how to run standard analyses such as regression, generalized linear models, mixed models, and t tests with wrapper functions.
 
-3. **[Writing Model Codes](writing_models.html)**  
+3. **[Hierarchical Models and GLMMs](rtmb_glmer.html)**  
+   Learn how to use `rtmb_glmer()` for hierarchical models, GLMMs, residual correlation, ordinal models, priors, and visualization.
+
+4. **[Writing Model Codes](writing_models.html)**  
    Learn how to write your own models using the `setup`, `parameters`, `transform`, `model`, and `generate` blocks.
 
-4. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
+5. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
    Learn about internal processing such as Laplace approximation, constrained parameters, MCMC, and variational inference.

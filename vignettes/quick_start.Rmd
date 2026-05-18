@@ -392,8 +392,11 @@ Continue with the page that matches your purpose.
 1. **[Wrapper Functions](wrapper_functions.html)**  
    Learn how to run standard analyses such as regression, GLM, mixed models, t tests, correlations, factor analysis, and IRT with wrapper functions.
 
-2. **[Writing Model Codes](writing_models.html)**  
+2. **[Hierarchical Models and GLMMs](rtmb_glmer.html)**  
+   Learn how to use `rtmb_glmer()` for hierarchical models, GLMMs, residual correlation, conditional effects, priors, and ANOVA-style workflows.
+
+3. **[Writing Model Codes](writing_models.html)**  
    Learn how to write custom models with the `setup`, `parameters`, `transform`, `model`, and `generate` blocks.
 
-3. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
+4. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
    Learn about internal processing such as MAP estimation, Laplace approximation, MCMC, and variational inference.
