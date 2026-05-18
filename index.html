@@ -72,7 +72,7 @@
   <main id="main" class="col-md-9"><div class="section level1">
 <div class="page-header"><h1 id="bayesrtmb">BayesRTMB<a class="anchor" aria-label="anchor" href="#bayesrtmb"></a>
 </h1></div>
-<p><strong>Language / 言語</strong>: <a href="https://norimune.github.io/BayesRTMB/articles/introduction.html">English introduction</a> | <a href="https://norimune.github.io/BayesRTMB/articles/ja-introduction.html">パッケージ紹介</a></p>
+<p><strong>Language / 言語</strong>: <a href="articles/introduction.html">English introduction</a> | <a href="articles/ja-introduction.html">パッケージ紹介</a></p>
 <p><strong>BayesRTMB</strong> is an R package for writing and fitting statistical models with RTMB as the automatic differentiation engine.</p>
 <p>You can start from wrapper functions such as <code><a href="reference/rtmb_lm.html">rtmb_lm()</a></code>, <code><a href="reference/rtmb_glmer.html">rtmb_glmer()</a></code>, <code><a href="reference/rtmb_corr.html">rtmb_corr()</a></code>, and <code><a href="reference/rtmb_ttest.html">rtmb_ttest()</a></code>, or write your own model with <code><a href="reference/rtmb_code.html">rtmb_code()</a></code>. The same model object can then be used for MCMC, MAP estimation, variational inference, and frequency-oriented classical analyses where supported.</p>
 <div class="section level2">
@@ -123,21 +123,28 @@
 <span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_map</span>  <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_lm</span>   <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<p>The generated model code can be inspected.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>You can also write a model directly.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span>, N <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span><span class="op">)</span></span>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
+<span><span class="va">X</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>,<span class="st">"perf"</span><span class="op">)</span><span class="op">]</span> <span class="op">|&gt;</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">data_list</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>Y <span class="op">=</span> <span class="va">Y</span>, X <span class="op">=</span> <span class="va">X</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  setup <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
+<span>    <span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">mu</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
+<span>    <span class="va">Intercept</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">K</span><span class="op">)</span></span>
 <span>    <span class="va">sigma</span> <span class="op">=</span> <span class="fu"><a href="reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  model <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">Intercept</span> <span class="op">+</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">b</span></span>
 <span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
-<span>    <span class="va">mu</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="va">Intercept</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
+<span>    <span class="va">b</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
 <span>    <span class="va">sigma</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
@@ -150,15 +157,21 @@
 </h2>
 <ul>
 <li>
-<a href="https://norimune.github.io/BayesRTMB/articles/quick_start.html">Quick Start</a>: installation, a minimal model, MCMC diagnostics, visualization, and t tests.</li>
+<a href="articles/introduction.html">Introduction</a>: overall concepts, entry points, and inference workflow.</li>
 <li>
-<a href="https://norimune.github.io/BayesRTMB/articles/wrapper_functions.html">Wrapper Functions</a>: using wrappers for Bayesian and classical analyses.</li>
+<a href="articles/quick_start.html">Quick Start</a>: installation, a minimal model, MCMC diagnostics, visualization, and t tests.</li>
 <li>
-<a href="https://norimune.github.io/BayesRTMB/articles/writing_models.html">Writing Model Codes</a>: writing custom models with <code><a href="reference/rtmb_code.html">rtmb_code()</a></code>.</li>
-<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-introduction.html">日本語: パッケージ紹介</a></li>
-<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-quick_start.html">日本語: クイックスタート</a></li>
-<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.html">日本語: ラッパー関数の使い方</a></li>
-<li><a href="https://norimune.github.io/BayesRTMB/articles/ja-writing_models.html">日本語: モデルコードの書き方</a></li>
+<a href="articles/wrapper_functions.html">Wrapper Functions</a>: using wrappers for Bayesian and classical analyses.</li>
+<li>
+<a href="articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a>: detailed use of <code><a href="reference/rtmb_glmer.html">rtmb_glmer()</a></code> for mixed models, GLMMs, priors, residual correlation, and visualization.</li>
+<li>
+<a href="articles/writing_models.html">Writing Model Codes</a>: writing custom models with <code><a href="reference/rtmb_code.html">rtmb_code()</a></code>.</li>
+<li>
+<a href="articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a>: internal model representation, Laplace approximation, and inference pipelines.</li>
+<li><a href="articles/ja-introduction.html">日本語: パッケージ紹介</a></li>
+<li><a href="articles/ja-quick_start.html">日本語: クイックスタート</a></li>
+<li><a href="articles/ja-wrapper_functions.html">日本語: ラッパー関数の使い方</a></li>
+<li><a href="articles/ja-writing_models.html">日本語: モデルコードの書き方</a></li>
 </ul>
 </div>
 </div>

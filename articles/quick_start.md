@@ -136,8 +136,7 @@ fit_map
 ## theta      0.60000     0.15492    0.29740    0.84166 
 ```
 
-In this example, the estimated success probability `theta` is about
-0.60.
+In this example, the estimated success probability `theta` is 0.60.
 
 ## 4. Inspect the Posterior with MCMC
 

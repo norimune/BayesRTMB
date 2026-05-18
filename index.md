@@ -1,9 +1,9 @@
 # BayesRTMB
 
 **Language / 言語**: [English
-introduction](https://norimune.github.io/BayesRTMB/articles/introduction.html)
+introduction](https://norimune.github.io/BayesRTMB/articles/introduction.md)
 \|
-[パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
+[パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)
 
 **BayesRTMB** is an R package for writing and fitting statistical models
 with RTMB as the automatic differentiation engine.
@@ -86,27 +86,30 @@ fit_map  <- mdl$optimize()
 fit_lm   <- mdl$classic()
 ```
 
-The generated model code can be inspected.
-
-``` r
-
-mdl$print_code()
-```
-
 You can also write a model directly.
 
 ``` r
 
-data_list <- list(Y = debate$sat, N = nrow(debate))
+Y <- debate$sat
+X <- debate[c("talk","perf")] |> as.matrix()
+
+data_list <- list(Y = Y, X = X)
 
 code <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    K <- ncol(X)
+  },
   parameters = {
-    mu = Dim()
+    Intercept <- Dim(1)
+    b <- Dim(K)
     sigma = Dim(lower = 0)
   },
   model = {
+    mu <- Intercept + X %*% b
     Y ~ normal(mu, sigma)
-    mu ~ normal(0, 10)
+    Intercept ~ normal(0, 10)
+    b ~ normal(0, 10)
     sigma ~ exponential(1)
   }
 )
@@ -117,22 +120,34 @@ fit_custom <- mdl_custom$sample()
 
 ## Articles
 
+- [Introduction](https://norimune.github.io/BayesRTMB/articles/introduction.md):
+  overall concepts, entry points, and inference workflow.
 - [Quick
-  Start](https://norimune.github.io/BayesRTMB/articles/quick_start.html):
+  Start](https://norimune.github.io/BayesRTMB/articles/quick_start.md):
   installation, a minimal model, MCMC diagnostics, visualization, and t
   tests.
 - [Wrapper
-  Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.html):
+  Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md):
   using wrappers for Bayesian and classical analyses.
+- [Hierarchical Models and
+  GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md):
+  detailed use of
+  [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+  for mixed models, GLMMs, priors, residual correlation, and
+  visualization.
 - [Writing Model
-  Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.html):
+  Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md):
   writing custom models with
   [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md).
+- [RTMB Internals and Inference
+  Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md):
+  internal model representation, Laplace approximation, and inference
+  pipelines.
 - [日本語:
-  パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
+  パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.md)
 - [日本語:
-  クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.html)
+  クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)
 - [日本語:
-  ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.html)
+  ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)
 - [日本語:
-  モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.html)
+  モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)
