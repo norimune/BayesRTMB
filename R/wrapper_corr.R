@@ -16,7 +16,8 @@
 #' @param fixed Optional named list of fixed values for specific parameters.
 
 #'
-#' @return A \code{RTMB_Model} object.
+#'
+#' @example inst/examples/ex_corr.R
 #' @export
 rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,

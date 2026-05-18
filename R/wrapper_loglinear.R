@@ -10,6 +10,7 @@
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments passed to `rtmb_glm()`.
 #' @return An `RTMB_Model` object.
+#' @example inst/examples/ex_loglinear.R
 #' @export
 rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL, ...) {
 

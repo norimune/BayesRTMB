@@ -13,6 +13,7 @@
 #' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
+#' @example inst/examples/ex_irt.R
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = prior_flat(), 

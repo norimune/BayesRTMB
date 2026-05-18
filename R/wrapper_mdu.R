@@ -596,6 +596,7 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 #' @param distance_eps Small positive constant added to the distance.
 #'
 #' @return An `RTMB_Model` object.
+#' @example inst/examples/ex_mdu.R
 #' @export
 rtmb_mdu <- function(data, ndim = 2,
                      distance = c("squared", "euclidean"),

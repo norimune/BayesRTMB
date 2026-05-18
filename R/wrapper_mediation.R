@@ -26,6 +26,7 @@
 #' which is more accurate than the standard Sobel test (Delta Method).
 #'
 #' @return An `RTMB_Model` object.
+#' @example inst/examples/ex_mediation.R
 #' @export
 rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_flat(), y_range = NULL, fixed = NULL, view = NULL, ...) {
 

@@ -18,6 +18,7 @@
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param ... Additional arguments passed to `rtmb_model`.
 #' @return A \code{RTMB_Model} object.
+#' @example inst/examples/ex_mixture.R
 #' @export
 rtmb_mixture <- function(formula, k = 2, data = NULL,
                          covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),

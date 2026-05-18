@@ -28,6 +28,7 @@
 #' degrees of freedom are computed by the package's internal Satterthwaite
 #' procedure rather than by a separate closed-form formula.
 #'
+#' @example inst/examples/ex_ttest.R
 #' @export
 rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        paired = FALSE, ID = NULL,
