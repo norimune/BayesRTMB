@@ -34,6 +34,8 @@ navbar:
         href: articles/ja-wrapper_functions.html
       - text: モデルコードの書き方
         href: articles/ja-writing_models.html
+      - text: 階層モデル・GLMM
+        href: articles/ja-rtmb_glmer.html
       - text: RTMBの仕組みとアルゴリズム
         href: articles/ja-rtmb_internals.html
       - text: "-------"
@@ -56,6 +58,8 @@ home:
     href: articles/ja-wrapper_functions.html
   - text: モデルコードの書き方
     href: articles/ja-writing_models.html
+  - text: 階層モデル・GLMM
+    href: articles/ja-rtmb_glmer.html
   - text: English introduction
     href: articles/introduction.html
   sidebar:
@@ -77,6 +81,7 @@ articles:
   - ja-quick_start
   - ja-wrapper_functions
   - ja-writing_models
+  - ja-rtmb_glmer
   - ja-rtmb_internals
 
 reference:
@@ -101,6 +106,7 @@ reference:
   - rtmb_loglinear
   - rtmb_fa
   - rtmb_irt
+  - rtmb_mdu
   - rtmb_lrt
 
 - title: "Plotting and Diagnostics"
