@@ -175,6 +175,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   N <- nrow(Y_mat)
   P <- ncol(Y_mat)
   if (P < 1) stop("No numeric columns found for correlation analysis.")
+  if (P == 1) warning("Only one variable found. Correlation analysis requires at least two variables.", call. = FALSE)
 
   var_names <- colnames(Y_mat)
   if (is.null(var_names)) var_names <- paste0("V", 1:P)

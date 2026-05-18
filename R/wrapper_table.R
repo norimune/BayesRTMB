@@ -88,6 +88,15 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
     N = N_total
   )
 
+  # Pre-resolve prior settings (avoid runtime NSE dependency on prior object)
+  dirichlet_alpha_val <- if (inherits(prior, "rtmb_prior") && prior$type == "normal" &&
+                              !is.null(prior$dirichlet_alpha)) {
+    prior$dirichlet_alpha
+  } else {
+    1
+  }
+  setup$dirichlet_alpha <- dirichlet_alpha_val
+
   rtmb_model_code <- rtmb_code(
     setup = {
       # No special setup needed for now, Y and N are provided
@@ -108,15 +117,8 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
       # Likelihood
       Y ~ multinomial(N, p)
 
-      # Prior
-      if (inherits(prior, "rtmb_prior") && prior$type == "normal") {
-        # Treat prior_normal(dirichlet_alpha=...)
-        alpha_val <- if (!is.null(prior$dirichlet_alpha)) prior$dirichlet_alpha else 1
-        p ~ dirichlet(rep(alpha_val, R * C))
-      } else {
-        # Default flat
-        p ~ dirichlet(rep(1, R * C))
-      }
+      # Prior (alpha value is embedded as data at construction time)
+      p ~ dirichlet(rep(dirichlet_alpha, R * C))
     },
     generate = {
       # mu and chisq_val are already reported in transform

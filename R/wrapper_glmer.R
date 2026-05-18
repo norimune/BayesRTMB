@@ -643,7 +643,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         init$sigma <- if (num_sigma_groups > 1) rep(stats::sd(Y) * 0.5, num_sigma_groups) else stats::sd(Y) * 0.5
       }
 
-    }, error = function(e) init <- NULL)
+    }, error = function(e) init <<- NULL)
   }
 
   setup_df <- .select_glmer_setup_data(formula, data, resid_group = resid_group, resid_time = resid_time)

@@ -1036,6 +1036,11 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(V_joint) && nrow(V_joint) == length(idx_ran_full) && ncol(V_joint) == length(idx_ran_full)) {
           Cov_u[idx_ran_full, idx_ran_full] <- as.matrix(V_joint)
           unc_se_vec[idx_ran_full] <- sqrt(pmax(diag(as.matrix(V_joint)), 0))
+        } else if (!is.null(V_joint)) {
+          add_se_message(sprintf(
+            "SE warning: joint precision matrix dimension (%d x %d) does not match random effect indices (%d); random-effect SEs may be unavailable.",
+            nrow(V_joint), ncol(V_joint), length(idx_ran_full)
+          ))
         }
       }
 
@@ -1302,6 +1307,20 @@ RTMB_Model <- R6::R6Class(
 
         } else {
           # Fix specific elements
+          # Guard: element-wise fixing is not supported for structurally constrained types
+          # where constrained length != unconstrained length (simplex, corr_matrix, etc.)
+          constrained_types <- c("simplex", "centered", "corr_matrix", "cov_matrix",
+                                 "CF_corr", "CF_cov", "centered_matrix",
+                                 "centered_tri", "positive_centered_tri")
+          if (p_info$length != L_u && (p_info$type %in% constrained_types)) {
+            stop(sprintf(
+              "Element-wise fixing is not supported for parameter '%s' (type = '%s'). ",
+              p_base, p_info$type
+            ),
+            "Fix the entire parameter instead with fixed = list('", p_base, "' = ...).",
+            call. = FALSE)
+          }
+
           idx_str <- gsub(".*\\[(.*)\\].*", "\\1", name)
           p_names <- self$par_names[[p_base]]
           idx <- suppressWarnings(as.integer(idx_str))
@@ -1311,7 +1330,10 @@ RTMB_Model <- R6::R6Class(
             new_init[start_idx + idx - 1] <- as.numeric(val)
 
             if (L_u > 0) {
-              curr_map[idx] <- NA
+              # For types where length == unc_length, constrained index maps directly
+              if (idx <= L_u) {
+                curr_map[idx] <- NA
+              }
               # Drop unused levels even in partial fixing
               curr_map <- normalize_map(curr_map)
             }

@@ -65,6 +65,14 @@
   local_par_list <- self$par_list
   local_pl_full <- self$pl_full
   local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
+  # Normalize map factor levels for consistent MakeADFun behavior
+  if (!is.null(local_map)) {
+    local_map <- lapply(local_map, function(m) {
+      if (is.null(m)) return(NULL)
+      vals <- as.character(m)
+      factor(vals, levels = unique(vals[!is.na(vals)]))
+    })
+  }
   local_log_prob <- self$log_prob
   local_transform <- self$transform
   local_fixed_prior_specs <- self$fixed_prior_specs
@@ -255,6 +263,14 @@
   # --- Data extraction to avoid serialization ---
   local_data <- self$data; local_par_list <- self$par_list; local_pl_full <- self$pl_full
   local_map <- if (is.null(map)) self$map else utils::modifyList(as.list(self$map), as.list(map))
+  # Normalize map factor levels for consistent MakeADFun behavior
+  if (!is.null(local_map)) {
+    local_map <- lapply(local_map, function(m) {
+      if (is.null(m)) return(NULL)
+      vals <- as.character(m)
+      factor(vals, levels = unique(vals[!is.na(vals)]))
+    })
+  }
   local_log_prob <- self$log_prob; local_transform <- self$transform
   local_fixed_prior_specs <- self$fixed_prior_specs
   local_code_model <- self$code$model

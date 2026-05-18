@@ -95,6 +95,14 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     if (is.null(prior$slab_scale)) prior$slab_scale <- 2.0
     if (is.null(prior$slab_df)) prior$slab_df <- 4.0
     if (is.null(prior$ssp_ratio)) prior$ssp_ratio <- 0.25
+    if (prior_type == "weak" && is.null(y_range)) {
+      warning(
+        "prior_weak() is used without 'y_range'. ",
+        "Default hyperparameters will be applied, which may not be well-scaled for your data. ",
+        "Consider specifying 'y_range' for better prior calibration.",
+        call. = FALSE
+      )
+    }
   }
 
   setup_from_formula <- inherits(formula, "formula") && !is.null(data)
@@ -185,9 +193,11 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(X_means, 1, K_prob))
     }
     if (regularization == "rhs") {
-      # RHS setup
+      # RHS setup (cap expected_vars to prevent zero-division)
+      p0_rhs <- min(prior$expected_vars, K_prob - 1)
+      if (p0_rhs < 1) p0_rhs <- 1
       setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) {
-        bquote(tau0 <- .(prior$expected_vars) / (K_prob - .(prior$expected_vars)) / sqrt(N))
+        bquote(tau0 <- .(p0_rhs) / (K_prob - .(p0_rhs)) / sqrt(N))
       } else {
         quote(tau0 <- tau0)
       }
@@ -435,7 +445,8 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       data_list$X_means <- as.vector(colMeans(X_prob))
     }
     if (regularization == "rhs") {
-      p0 <- prior$expected_vars
+      p0 <- min(prior$expected_vars, K_prob - 1)
+      if (p0 < 1) p0 <- 1
       if (!setup_from_formula) {
         data_list$tau0 <- p0 / (K_prob - p0) / sqrt(N_obs)
         data_list$half_slab_df <- prior$slab_df / 2

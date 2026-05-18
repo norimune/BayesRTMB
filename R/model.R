@@ -272,6 +272,17 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   if (!is.null(comp_transform)) {
     test_tran <- with_rtmb_error_handling({ comp_transform(data, test_para) }, "transform")
     if (is.list(test_tran)) {
+      # Check for name collisions between transform outputs and parameter names
+      colliding_names <- intersect(names(test_tran), names(evaluated_par_list))
+      if (length(colliding_names) > 0) {
+        warning(sprintf(
+          "[Warning in 'transform' block] The following variable names in 'transform' conflict with parameter names: %s. ",
+          paste(colliding_names, collapse = ", ")
+        ),
+        "This may cause unexpected behavior during model evaluation. ",
+        "Consider renaming the transform variables to avoid conflicts.",
+        call. = FALSE)
+      }
       test_para <- utils::modifyList(test_para, test_tran)
     }
   }

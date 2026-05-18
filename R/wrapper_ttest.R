@@ -49,11 +49,25 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     x <- eval(x_expr, parent.frame())
     mf <- if (is.null(data)) model.frame(x, parent.frame()) else model.frame(x, data)
     response <- mf[[1]]; group <- as.factor(mf[[2]])
-    levs <- levels(group); x_label <- levs[1]; y_label <- levs[2]
+    levs <- levels(group)
+    if (length(levs) != 2) {
+      stop(
+        sprintf("The grouping variable must have exactly 2 levels, but found %d: %s",
+                length(levs), paste(levs, collapse = ", ")),
+        call. = FALSE
+      )
+    }
+    x_label <- levs[1]; y_label <- levs[2]
     raw_response <- as.numeric(response)
     raw_group_idx <- as.integer(group)
     if (paired) {
+      if (is.null(ID)) {
+        stop("'ID' is required for paired t-tests with formula input (e.g., ID = 'subject_id').", call. = FALSE)
+      }
       id_val <- if (!is.null(data)) data[[ID]] else eval(substitute(ID), parent.frame())
+      if (is.null(id_val)) {
+        stop(sprintf("ID variable '%s' not found in data.", as.character(substitute(ID))), call. = FALSE)
+      }
       raw_id <- id_val
       d1 <- mf[group == levs[1], ]; d1$id <- id_val[group == levs[1]]
       d2 <- mf[group == levs[2], ]; d2$id <- id_val[group == levs[2]]

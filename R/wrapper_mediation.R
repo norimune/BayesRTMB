@@ -40,6 +40,17 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     }
   }
 
+  # Validate: No duplicate response variables
+  resp_check <- vapply(formula, function(f) as.character(f[[2]]), character(1))
+  if (anyDuplicated(resp_check)) {
+    dup_vars <- resp_check[duplicated(resp_check)]
+    stop(
+      sprintf("Duplicate response variable(s) detected: %s. Each equation must have a unique response.",
+              paste(unique(dup_vars), collapse = ", ")),
+      call. = FALSE
+    )
+  }
+
   if (is.null(prior)) prior <- prior_flat()
 
   # Automatically switch to prior_weak() if y_range is provided and prior is default flat

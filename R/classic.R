@@ -790,7 +790,7 @@ Classic_Fit <- R6::R6Class(
         if (!is.null(self$sd_rep)) {
            u_est <- if (!is.null(self$sd_rep$par.fixed)) self$sd_rep$par.fixed else numeric(0)
            u_se <- if (!is.null(self$sd_rep$cov.fixed)) sqrt(diag(self$sd_rep$cov.fixed)) else rep(NA, length(u_est))
-           u_t <- u_est / pmax(u_se, 1e-12, na.rm = TRUE)
+           u_t <- ifelse(is.na(u_se), NA_real_, u_est / pmax(u_se, 1e-12))
            
            # Map to df_print rows
            u_idx_map <- list()
@@ -821,20 +821,23 @@ Classic_Fit <- R6::R6Class(
            # Fallback to constrained ratio for parameters not in par.fixed (e.g. transformed)
            missing_t <- is.na(row_t)
            if (any(missing_t)) {
-              row_t[missing_t] <- df_print$Estimate[missing_t] / pmax(df_print$`Std. Error`[missing_t], 1e-12, na.rm = TRUE)
+              row_t[missing_t] <- ifelse(is.na(df_print$`Std. Error`[missing_t]), NA_real_,
+                df_print$Estimate[missing_t] / pmax(df_print$`Std. Error`[missing_t], 1e-12))
            }
 
            if (identical(self$se_method, "bootstrap")) {
-              row_t <- df_print$Estimate / pmax(df_print$`Std. Error`, 1e-12, na.rm = TRUE)
+              row_t <- ifelse(is.na(df_print$`Std. Error`), NA_real_,
+                df_print$Estimate / pmax(df_print$`Std. Error`, 1e-12))
            } else if (self$se_method %in% c("robust", "cluster-robust") && !is.null(self$vcov)) {
               robust_rows <- intersect(rownames(df_print), rownames(self$vcov))
               if (length(robust_rows) > 0L) {
                 robust_idx <- match(robust_rows, rownames(df_print))
-                row_t[robust_idx] <- df_print$Estimate[robust_idx] /
-                  pmax(df_print$`Std. Error`[robust_idx], 1e-12, na.rm = TRUE)
+                row_t[robust_idx] <- ifelse(is.na(df_print$`Std. Error`[robust_idx]), NA_real_,
+                  df_print$Estimate[robust_idx] / pmax(df_print$`Std. Error`[robust_idx], 1e-12))
               }
            } else if (!identical(self$se_method, "wald")) {
-              row_t <- df_print$Estimate / pmax(df_print$`Std. Error`, 1e-12, na.rm = TRUE)
+              row_t <- ifelse(is.na(df_print$`Std. Error`), NA_real_,
+                df_print$Estimate / pmax(df_print$`Std. Error`, 1e-12))
            }
            
            if (is_asymptotic) {
@@ -1492,6 +1495,7 @@ Classic_Fit <- R6::R6Class(
         }
         par_list$IE <- est[grepl("^IE_", names(est))]
       }
+      return(par_list)
     }
   ),
   private = list(
