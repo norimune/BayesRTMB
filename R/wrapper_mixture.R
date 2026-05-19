@@ -24,6 +24,11 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
                          covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
                          prior = prior_flat(), y_range = NULL, fixed = NULL, ...) {
 
+  if (!is.numeric(k) || length(k) != 1L || is.na(k) || k < 2 || k != as.integer(k)) {
+    stop("'k' must be an integer greater than or equal to 2.", call. = FALSE)
+  }
+  k <- as.integer(k)
+
   if (is.null(prior)) {
     prior <- prior_flat()
   }
@@ -109,7 +114,10 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   setup_from_formula <- inherits(formula, "formula") && !is.null(data)
 
   # Parse formulas and prepare data
-  if (is.matrix(formula) || is.vector(formula)) {
+  if (is.character(formula) && !is.null(data) && all(formula %in% names(data))) {
+    Y_mat <- as.matrix(data[, formula, drop = FALSE])
+    X_prob <- NULL
+  } else if (is.matrix(formula) || (is.vector(formula) && !is.character(formula))) {
     Y_mat <- as.matrix(formula)
     X_prob <- NULL
   } else if (!inherits(formula, "formula")) {
@@ -152,8 +160,21 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   }
 
   Y_mat <- as.matrix(Y_mat)
+  if (!is.numeric(Y_mat) && !is.logical(Y_mat)) {
+    stop("The mixture response must be numeric.", call. = FALSE)
+  }
+  storage.mode(Y_mat) <- "double"
+  if (anyNA(Y_mat)) {
+    stop("rtmb_mixture() does not currently support missing response values.", call. = FALSE)
+  }
   N_obs <- nrow(Y_mat)
   P_dim <- ncol(Y_mat)
+  if (is.null(N_obs) || N_obs < 1L) {
+    stop("The mixture response must contain at least one observation.", call. = FALSE)
+  }
+  if (is.null(P_dim) || P_dim < 1L) {
+    stop("The mixture response must contain at least one variable.", call. = FALSE)
+  }
 
   if (is.null(colnames(Y_mat))) {
     colnames(Y_mat) <- paste0("Y", 1:P_dim)

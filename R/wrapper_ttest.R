@@ -75,6 +75,14 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       if (is.null(id_val)) {
         stop(sprintf("ID variable '%s' not found in data.", as.character(substitute(ID))), call. = FALSE)
       }
+      if (length(id_val) != nrow(mf)) {
+        mf_rows <- suppressWarnings(as.integer(rownames(mf)))
+        if (length(mf_rows) == nrow(mf) && !anyNA(mf_rows) && max(mf_rows) <= length(id_val)) {
+          id_val <- id_val[mf_rows]
+        } else {
+          stop("Could not align 'ID' with the rows used in the paired t-test.", call. = FALSE)
+        }
+      }
       raw_id <- id_val
       d1 <- mf[group == levs[1], ]; d1$id <- id_val[group == levs[1]]
       d2 <- mf[group == levs[2], ]; d2$id <- id_val[group == levs[2]]
@@ -90,6 +98,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     }
   } else {
     x_label <- deparse(x_expr); y_label <- deparse(y_expr)
+    if (identical(y_expr, quote(NULL))) {
+      stop("'y' is required when 'x' is not a formula.", call. = FALSE)
+    }
     if (!is.null(data)) {
       Y1 <- if (x_label %in% names(data)) data[[x_label]] else eval(x_expr, parent.frame())
       Y2 <- if (y_label %in% names(data)) data[[y_label]] else eval(y_expr, parent.frame())
@@ -111,6 +122,15 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
        if (missing == "listwise") {
          Y1 <- as.numeric(na.omit(Y1)); Y2 <- as.numeric(na.omit(Y2))
        }
+    }
+  }
+  if (paired) {
+    if (length(Y1) < 2L || length(Y2) < 2L) {
+      stop("Paired t-tests require at least two complete pairs.", call. = FALSE)
+    }
+  } else {
+    if (length(Y1) < 2L || length(Y2) < 2L) {
+      stop("Two-sample t-tests require at least two observations in each group.", call. = FALSE)
     }
   }
   levs <- c(x_label, y_label)

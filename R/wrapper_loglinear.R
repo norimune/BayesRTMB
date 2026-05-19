@@ -14,6 +14,14 @@
 #' @export
 rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL, ...) {
 
+  if (is.null(prior)) prior <- prior_flat()
+  if (!inherits(prior, "rtmb_prior")) {
+    stop("prior must be an object of class 'rtmb_prior'.", call. = FALSE)
+  }
+  if (missing(data) || is.null(data)) {
+    stop("'data' must be supplied as a data frame, table, or matrix.", call. = FALSE)
+  }
+
   # 1. Data Preparation
   # Convert table or matrix to long data frame
   was_table <- FALSE

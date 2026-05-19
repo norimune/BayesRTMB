@@ -25,6 +25,10 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
+  if (is.null(prior)) prior <- prior_flat()
+  if (!inherits(prior, "rtmb_prior")) {
+    stop("prior must be an object of class 'rtmb_prior'.", call. = FALSE)
+  }
 
   # 1. Extract table or variables
   if (!is.null(data)) {
@@ -80,6 +84,21 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
   R <- nrow(tab)
   C <- ncol(tab)
   N_total <- sum(Y_vec)
+  if (R < 2L || C < 2L) {
+    stop("rtmb_table() requires a table with at least two rows and two columns.", call. = FALSE)
+  }
+  if (any(is.na(Y_vec)) || any(!is.finite(Y_vec))) {
+    stop("Table counts must be finite and non-missing.", call. = FALSE)
+  }
+  if (any(Y_vec < 0)) {
+    stop("Table counts must be non-negative.", call. = FALSE)
+  }
+  if (any(abs(Y_vec - round(Y_vec)) > .Machine$double.eps^0.5)) {
+    stop("Table counts must be whole numbers.", call. = FALSE)
+  }
+  if (N_total <= 0) {
+    stop("Table counts must sum to a positive total.", call. = FALSE)
+  }
 
   setup <- list(
     Y = Y_vec,

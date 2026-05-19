@@ -231,7 +231,12 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   N <- nrow(Y_mat)
   P <- ncol(Y_mat)
   if (P < 1) stop("No numeric columns found for correlation analysis.")
-  if (P == 1) warning("Only one variable found. Correlation analysis requires at least two variables.", call. = FALSE)
+  if (N < 2) {
+    stop("Correlation analysis requires at least two complete observations.", call. = FALSE)
+  }
+  if (P == 1 && is.null(id_val)) {
+    stop("Correlation analysis requires at least two variables.", call. = FALSE)
+  }
 
   var_names <- colnames(Y_mat)
   if (is.null(var_names)) var_names <- paste0("V", 1:P)
@@ -246,10 +251,27 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
   if (!is.null(id_val)) {
      # Multilevel correlation mode
+     if (length(id_val) != N) {
+       stop("'ID' must have the same length as the response data after missing-value handling.", call. = FALSE)
+     }
+     if (anyNA(id_val)) {
+       stop("'ID' must not contain missing values after missing-value handling.", call. = FALSE)
+     }
      group_factor <- as.factor(id_val)
      group_id <- as.integer(group_factor)
      group_names <- levels(group_factor)
      J <- length(group_names)
+     group_counts <- tabulate(group_id, nbins = J)
+     if (J < 2L) {
+       stop("Multilevel correlation requires at least two ID groups.", call. = FALSE)
+     }
+     if (all(group_counts < 2L)) {
+       stop(
+         "Multilevel correlation requires at least one ID group with two or more observations. ",
+         "All supplied ID groups contain only one observation, so within-group variation cannot be estimated.",
+         call. = FALSE
+       )
+     }
 
      # Automatically switch to prior_weak() if y_range is provided and prior is default flat
      if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {

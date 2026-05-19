@@ -2,6 +2,7 @@
 ^\.Rproj\.user$
 ^\.RData$
 ^\.Rhistory$
+^cran-comments\.md$
 ^README\.Rmd$
 ^LICENSE\.md$
 ^^test/\.*\\.csv$$

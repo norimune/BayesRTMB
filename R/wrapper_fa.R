@@ -25,6 +25,10 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     init = NULL, fixed = NULL,
                     missing = c("listwise", "fiml")) {
   missing <- match.arg(missing)
+  if (!is.numeric(nfactors) || length(nfactors) != 1L || is.na(nfactors) ||
+      nfactors < 1 || nfactors != as.integer(nfactors)) {
+    stop("'nfactors' must be a positive integer.", call. = FALSE)
+  }
 
   if (is.data.frame(data)) {
     if (!all(sapply(data, is.numeric))) {
@@ -37,10 +41,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   if (missing == "listwise") {
     Y <- na.omit(Y)
   }
-  K <- nfactors
+  K <- as.integer(nfactors)
   J <- ncol(Y)
   N <- nrow(Y)
 
+  if (is.null(J) || J < 2L) {
+    stop("Factor analysis requires at least two observed variables.", call. = FALSE)
+  }
+  if (is.null(N) || N < 2L) {
+    stop("Factor analysis requires at least two complete observations.", call. = FALSE)
+  }
   if (K >= J) stop("The number of factors (K) must be less than the number of observed variables (J).")
 
   var_names <- colnames(data)

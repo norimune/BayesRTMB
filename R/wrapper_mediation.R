@@ -74,6 +74,22 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     if (length(family) != n_eq) stop("Length of family list must match length of formula list.")
     family_list <- family
   }
+  valid_families <- c("gaussian", "bernoulli", "binomial", "poisson")
+  bad_families <- unlist(family_list, use.names = FALSE)
+  bad_families <- bad_families[
+    !vapply(bad_families, function(x) is.character(x) && length(x) == 1L &&
+              !is.na(x) && x %in% valid_families, logical(1))
+  ]
+  if (length(bad_families) > 0L) {
+    stop(
+      sprintf(
+        "Invalid 'family' value in mediation model: %s. Valid options are: %s",
+        paste(unique(bad_families), collapse = ", "),
+        paste(valid_families, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
 
   setup_vars <- unique(unlist(lapply(formula, all.vars), use.names = FALSE))
   missing_vars <- setdiff(setup_vars, names(data))

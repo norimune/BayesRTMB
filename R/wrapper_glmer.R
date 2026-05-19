@@ -306,6 +306,26 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        missing = c("listwise", "fiml"),
                        .force_sum = FALSE) {
 
+  valid_families <- c(
+    "gaussian", "lognormal", "student_t", "bernoulli", "binomial",
+    "poisson", "neg_binomial", "gamma", "ordered", "sequential"
+  )
+  if (!is.character(family) || length(family) != 1L || is.na(family) ||
+      !(family %in% valid_families)) {
+    stop(
+      sprintf(
+        "Invalid 'family' value. Valid options are: %s",
+        paste(valid_families, collapse = ", ")
+      ),
+      call. = FALSE
+    )
+  }
+  if (!is.null(contrasts) &&
+      (!is.character(contrasts) || length(contrasts) != 1L ||
+       !(contrasts %in% c("treatment", "sum")))) {
+    stop("'contrasts' must be either 'treatment', 'sum', or NULL.", call. = FALSE)
+  }
+
   # Expand dot (.) in formula if present
   if (!is.null(data) && inherits(formula, "formula")) {
     terms_expanded <- try(terms(formula, data = data), silent = TRUE)
