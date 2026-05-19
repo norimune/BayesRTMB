@@ -16,6 +16,7 @@
 #'   Used to construct weakly informative priors when `prior = prior_weak()`.
 #' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
+#' @param missing Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).
 #' @example inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,

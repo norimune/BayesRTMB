@@ -14,8 +14,7 @@
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
 #' @param fixed Optional named list of fixed values for specific parameters.
-
-#'
+#' @param missing Missing value handling strategy: "listwise" (default), "pairwise", or "fiml" (Full Information Maximum Likelihood).
 #'
 #' @example inst/examples/ex_corr.R
 #' @export
@@ -66,6 +65,9 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     Y_mat <- eval_col_range(x_expr, data_eval)
     if (is.null(Y_mat)) {
       Y_mat <- eval(x_expr, data_eval, parent.frame())
+    }
+    if (is.null(Y_mat)) {
+      Y_mat <- data_eval
     }
   } else {
     Y_mat <- x

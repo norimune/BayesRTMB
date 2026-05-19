@@ -35,6 +35,8 @@ Used to construct weakly informative priors when `prior = prior_weak()`.}
 \item{init}{List of initial values.}
 
 \item{fixed}{A named list of parameter values to fix (optional).}
+
+\item{missing}{Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).}
 }
 \description{
 Performs exploratory factor analysis (EFA) using RTMB. It supports standard

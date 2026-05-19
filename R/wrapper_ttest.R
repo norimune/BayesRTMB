@@ -17,6 +17,7 @@
 #' @param init List of initial values.
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
 #' @param fixed Optional named list of fixed values for specific parameters.
+#' @param missing Missing value handling strategy: "listwise".
 #' @param ... Additional arguments.
 #' @return An `RTMB_Model` object.
 #'

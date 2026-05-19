@@ -36,6 +36,8 @@ Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to
 \item{init}{Optional list of initial values.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
+
+\item{missing}{Missing value handling strategy: "listwise" (default), "pairwise", or "fiml" (Full Information Maximum Likelihood).}
 }
 \description{
 `rtmb_corr` fits a correlation model to estimate means, standard deviations, and correlation structures.

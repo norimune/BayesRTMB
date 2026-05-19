@@ -30,6 +30,8 @@ make_glmer_re_terms(
 written as `cbind(...)`.}
 
 \item{factors}{Optional character vector of variables to treat as factors.}
+
+\item{missing}{Missing value handling strategy: "listwise".}
 }
 \value{
 A list containing `Y`, `X`, `trials`, `offset`, `N`, fixed-effect

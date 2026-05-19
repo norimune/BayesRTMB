@@ -24,6 +24,7 @@
 #' The total number of levels must match the number of columns in \code{cbind()} on the LHS.
 #' If omitted and the LHS is \code{cbind()}, the within-factor name is inferred from RHS variables not present in the data.
 #' @param fixed Optional named list of fixed values for specific parameters.
+#' @param missing Missing value handling strategy: "listwise".
 #' @param ... Additional arguments passed to \code{rtmb_model()}.
 #'
 #' @return RTMB_Model object
@@ -84,6 +85,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param view Optional character vector of parameter names to show first in summary.
+#' @param missing Missing value handling strategy: "listwise".
 #' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
@@ -125,6 +127,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param view Optional character vector of parameter names to show first in summary.
+#' @param missing Missing value handling strategy: "listwise".
 #' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export

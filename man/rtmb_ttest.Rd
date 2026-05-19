@@ -46,6 +46,8 @@ Default is `prior_flat()`.}
 
 \item{var.equal}{Logical; whether to assume equal variances. Default is TRUE.}
 
+\item{missing}{Missing value handling strategy: "listwise".}
+
 \item{...}{Additional arguments.}
 }
 \value{

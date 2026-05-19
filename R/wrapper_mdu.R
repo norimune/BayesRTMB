@@ -594,6 +594,7 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 #' @param fixed Optional named list of parameter values to fix.
 #' @param view Character vector of parameter names to prioritize in summaries.
 #' @param distance_eps Small positive constant added to the distance.
+#' @param missing Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).
 #'
 #' @return An `RTMB_Model` object.
 #' @example inst/examples/ex_mdu.R

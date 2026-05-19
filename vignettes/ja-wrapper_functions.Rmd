@@ -225,6 +225,51 @@ mdl$print_code()
 
 このように、ラッパー関数は「簡単に使う」ための入り口であると同時に、「どのモデルを推定しているか」を確認しながら、必要に応じて独自の `rtmb_code()` へ進むための足場にもなります。
 
+# 欠損値の扱い (Missing Data Handling)
+
+BayesRTMB のラッパー関数は、欠損値（`NA`）を適切かつ統一的に扱うための `missing` 引数を備えています。分析手法やデータの形式に応じて、最適な手法を選択できます。
+
+多くのラッパー関数ではデフォルトが `"listwise"`（リストワイズ削除）となっていますが、多変量解析を扱う一部のラッパー関数では、**完全情報最尤法（FIML）** や **ペアワイズ削除** も選択可能です。
+
+| ラッパー関数 | 指定可能な `missing` オプション | デフォルト | 内容説明 |
+| :--- | :--- | :--- | :--- |
+| `rtmb_lm`, `rtmb_glm`, `rtmb_lmer`, `rtmb_glmer`, `rtmb_ttest` | `"listwise"` | `"listwise"` | モデル式（formula）に含まれる変数に `NA` が1つでもある行（観測値）をすべて除外します。 |
+| `rtmb_fa`, `rtmb_corr` | `"listwise"`, `"fiml"` | `"listwise"` | `"listwise"` は完全データのみから共分散行列（十分統計量）を計算し高速に推定します。`"fiml"` は行ごとの欠損パターンに基づき、観測されている変数のみの周辺対数尤度を動的に足し合わせて推定します（完全情報最尤法）。 |
+| `rtmb_corr` （追加オプション） | `"pairwise"` | | `method = "pearson"` または `"spearman"` のときのみ使用可能。R標準の `cor(..., use = "pairwise.complete.obs")` と完全に一致するペアワイズ削除結果を `classic()` メソッドなどで出力します。 |
+| `rtmb_mdu` | `"listwise"`, `"fiml"` | `"listwise"` | `"fiml"` は評定データの欠損値（`NA`）を尤度計算ループ内で安全にスキップし、有効なデータのみで推定します。`"listwise"` は欠損を含む対象者を丸ごと除外します。 |
+| `rtmb_irt` | `"listwise"`, `"fiml"` | `"fiml"` | `"fiml"` は項目ごとの欠損値を自動的にスキップし、手元にある回答のみを用いて能力や項目パラメータを推定します（デフォルト）。`"listwise"` を指定すると、1項目でも欠損がある回答者をすべて除外します。 |
+
+### 分析例：因子分析における完全情報最尤法（FIML）
+
+データに一部の欠損が含まれている場合、`missing = "fiml"` を指定することで、一部しか回答していない参加者も含めた全データを用いて因子負荷量を頑健に推定できます。
+
+```r
+data(BigFive)
+# 意図的にランダムな欠損を生成
+set.seed(42)
+BigFive_miss <- BigFive
+for (col in 1:ncol(BigFive_miss)) {
+  BigFive_miss[sample(1:nrow(BigFive_miss), 10), col] <- NA
+}
+
+# FIMLによる探索的因子分析
+mdl_fa <- rtmb_fa(BigFive_miss, nfactors = 5, missing = "fiml")
+fit_fa <- mdl_fa$optimize()
+```
+
+### 分析例：相関分析におけるペアワイズ削除（Pairwise）
+
+R標準の `cor()` や `cor.test()` のペアワイズ削除の挙動と一致させたい場合は、`missing = "pairwise"` を指定して `classic()` を実行します。
+
+```r
+# ペアワイズ削除による古典的相関分析
+mdl_corr <- rtmb_corr(BigFive_miss[, 1:5], method = "pearson", missing = "pairwise")
+fit_corr <- mdl_corr$classic()
+fit_corr$summary()
+```
+
+---
+
 # 次に読む記事
 
 BayesRTMB の全体像や、より細かな使い方を知りたい場合は、次の記事も参照してください。

@@ -84,6 +84,7 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
 #' @param within Optional list for wide-to-long conversion when the response is
 #'   written as `cbind(...)`.
 #' @param factors Optional character vector of variables to treat as factors.
+#' @param missing Missing value handling strategy: "listwise".
 #'
 #' @return A list containing `Y`, `X`, `trials`, `offset`, `N`, fixed-effect
 #' metadata, and random-effect terms.
@@ -275,6 +276,7 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' @param generate Optional expression for generated quantities.
 #' @param .force_sum Logical; internal use only.
 #' @param fixed Optional named list of fixed values for specific parameters.
+#' @param missing Missing value handling strategy: "listwise".
 #' @example inst/examples/ex_lm.R
 #' @export
 rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,

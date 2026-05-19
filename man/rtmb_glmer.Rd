@@ -68,6 +68,8 @@ rtmb_glmer(
 
 \item{generate}{Optional expression for generated quantities.}
 
+\item{missing}{Missing value handling strategy: "listwise".}
+
 \item{.force_sum}{Logical; internal use only.}
 }
 \description{

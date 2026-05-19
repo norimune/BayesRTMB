@@ -31,6 +31,8 @@ Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c
 \item{fixed}{A named list of parameter values to fix (optional).}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{missing}{Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).}
 }
 \description{
 Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model) using RTMB.

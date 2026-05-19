@@ -60,6 +60,8 @@ with the default flat prior, `prior_weak()` is used. For choice methods
 \item{view}{Character vector of parameter names to prioritize in summaries.}
 
 \item{distance_eps}{Small positive constant added to the distance.}
+
+\item{missing}{Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).}
 }
 \value{
 An `RTMB_Model` object.

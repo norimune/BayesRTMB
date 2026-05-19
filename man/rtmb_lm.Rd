@@ -43,6 +43,8 @@ Default is `prior_flat()`.}
 
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
 
+\item{missing}{Missing value handling strategy: "listwise".}
+
 \item{...}{Additional arguments passed to \code{rtmb_glmer()}.}
 }
 \description{

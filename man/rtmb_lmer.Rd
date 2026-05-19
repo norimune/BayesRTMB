@@ -67,6 +67,8 @@ specify the factor names and their levels, e.g., \code{list(Time = 4)} or \code{
 The total number of levels must match the number of columns in \code{cbind()} on the LHS.
 If omitted and the LHS is \code{cbind()}, the within-factor name is inferred from RHS variables not present in the data.}
 
+\item{missing}{Missing value handling strategy: "listwise".}
+
 \item{...}{Additional arguments passed to \code{rtmb_model()}.}
 }
 \value{
