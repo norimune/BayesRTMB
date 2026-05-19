@@ -4,6 +4,11 @@
 \alias{MCMC_Fit}
 \title{MCMC fit object}
 \description{
+MCMC fit object
+
+MCMC fit object
+}
+\details{
 An R6 class storing posterior samples and related information
 from MCMC estimation.
 
@@ -15,100 +20,101 @@ parameters with `fixed = list(...)`, or supplied as an already fitted
 Bayes factors are computed only by marginal-likelihood model comparison.
 }
 \section{Super class}{
-\code{\link[BayesRTMB:RTMB_Fit_Base]{RTMB_Fit_Base}} -> \code{mcmc_fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{mcmc_fit}
 }
 \section{Public fields}{
-  \if{html}{\out{<div class="r6-fields">}}
-  \describe{
-    \item{\code{model}}{An `RTMB_Model` object used for estimation.}
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{model}}{An `RTMB_Model` object used for estimation.}
 
-    \item{\code{fit}}{Posterior draws for model parameters.}
+\item{\code{fit}}{Posterior draws for model parameters.}
 
-    \item{\code{random_fit}}{Posterior draws for random effects.}
+\item{\code{random_fit}}{Posterior draws for random effects.}
 
-    \item{\code{transform_fit}}{Posterior draws for transformed parameters.}
+\item{\code{transform_fit}}{Posterior draws for transformed parameters.}
 
-    \item{\code{transform_dims}}{Dimension information for transformed parameters.}
+\item{\code{transform_dims}}{Dimension information for transformed parameters.}
 
-    \item{\code{generate_fit}}{Posterior draws for generated quantities.}
+\item{\code{generate_fit}}{Posterior draws for generated quantities.}
 
-    \item{\code{generate_dims}}{Dimension information for generated quantities.}
+\item{\code{generate_dims}}{Dimension information for generated quantities.}
 
-    \item{\code{eps}}{Step size used by the sampler.}
+\item{\code{eps}}{Step size used by the sampler.}
 
-    \item{\code{accept}}{Acceptance statistics from sampling.}
+\item{\code{accept}}{Acceptance statistics from sampling.}
 
-    \item{\code{treedepth}}{Tree depth used in HMC/NUTS sampling.}
+\item{\code{treedepth}}{Tree depth used in HMC/NUTS sampling.}
 
-    \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
+\item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
-    \item{\code{posterior_mean}}{Posterior mean estimates.}
+\item{\code{posterior_mean}}{Posterior mean estimates.}
 
-    \item{\code{log_ml}}{Numeric value storing the calculated log marginal likelihood from bridge sampling.}
+\item{\code{log_ml}}{Numeric value storing the calculated log marginal likelihood from bridge sampling.}
 
-    \item{\code{comparison_fit}}{An \code{MCMC_Fit} object containing the fitted comparison model.}
-  }
-  \if{html}{\out{</div>}}
+\item{\code{comparison_fit}}{An \code{MCMC_Fit} object containing the fitted comparison model.}
+}
+\if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-  \itemize{
-    \item \href{#method-mcmc_fit-get_point_estimate}{\code{mcmc_fit$get_point_estimate()}}
-    \item \href{#method-mcmc_fit-initialize}{\code{mcmc_fit$new()}}
-    \item \href{#method-mcmc_fit-print}{\code{mcmc_fit$print()}}
-    \item \href{#method-mcmc_fit-draws}{\code{mcmc_fit$draws()}}
-    \item \href{#method-mcmc_fit-summary}{\code{mcmc_fit$summary()}}
-    \item \href{#method-mcmc_fit-unconstrain_draws}{\code{mcmc_fit$unconstrain_draws()}}
-    \item \href{#method-mcmc_fit-log_prob}{\code{mcmc_fit$log_prob()}}
-    \item \href{#method-mcmc_fit-bridgesampling}{\code{mcmc_fit$bridgesampling()}}
-    \item \href{#method-mcmc_fit-bayes_factor}{\code{mcmc_fit$bayes_factor()}}
-    \item \href{#method-mcmc_fit-transformed_draws}{\code{mcmc_fit$transformed_draws()}}
-    \item \href{#method-mcmc_fit-generated_quantities}{\code{mcmc_fit$generated_quantities()}}
-    \item \href{#method-mcmc_fit-resolve_switching}{\code{mcmc_fit$resolve_switching()}}
-    \item \href{#method-mcmc_fit-clone}{\code{mcmc_fit$clone()}}
-  }
+\itemize{
+\item \href{#method-mcmc_fit-get_point_estimate}{\code{MCMC_Fit$get_point_estimate()}}
+\item \href{#method-mcmc_fit-new}{\code{MCMC_Fit$new()}}
+\item \href{#method-mcmc_fit-print}{\code{MCMC_Fit$print()}}
+\item \href{#method-mcmc_fit-draws}{\code{MCMC_Fit$draws()}}
+\item \href{#method-mcmc_fit-summary}{\code{MCMC_Fit$summary()}}
+\item \href{#method-mcmc_fit-unconstrain_draws}{\code{MCMC_Fit$unconstrain_draws()}}
+\item \href{#method-mcmc_fit-log_prob}{\code{MCMC_Fit$log_prob()}}
+\item \href{#method-mcmc_fit-bridgesampling}{\code{MCMC_Fit$bridgesampling()}}
+\item \href{#method-mcmc_fit-bayes_factor}{\code{MCMC_Fit$bayes_factor()}}
+\item \href{#method-mcmc_fit-transformed_draws}{\code{MCMC_Fit$transformed_draws()}}
+\item \href{#method-mcmc_fit-generated_quantities}{\code{MCMC_Fit$generated_quantities()}}
+\item \href{#method-mcmc_fit-resolve_switching}{\code{MCMC_Fit$resolve_switching()}}
+\item \href{#method-mcmc_fit-clone}{\code{MCMC_Fit$clone()}}
 }
-\if{html}{\out{<details open><summary>Inherited methods</summary>
+}
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
 <ul>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>RTMB_Fit_Base$EAP()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>RTMB_Fit_Base$MAP()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>RTMB_Fit_Base$estimate()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>RTMB_Fit_Base$fa_rotate()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>RTMB_Fit_Base$rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul>
-</details>}}
+</details>
+}}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-get_point_estimate"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-get_point_estimate}{}}}
-\subsection{\code{mcmc_fit$get_point_estimate()}}{
-  Get point estimate for a target parameter.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$get_point_estimate(target, chains = NULL, best_chains = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{target}}{Target parameter name.}
-      \item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
-      \item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Matrix, array, vector, or scalar point estimate.
-  }
+\subsection{Method \code{get_point_estimate()}}{
+Get point estimate for a target parameter.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Target parameter name.}
+
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Matrix, array, vector, or scalar point estimate.
+}
+}
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-mcmc_fit-initialize"></a>}}
-\if{latex}{\out{\hypertarget{method-mcmc_fit-initialize}{}}}
-\subsection{\code{mcmc_fit$new()}}{
-  Create a new `MCMC_Fit` object.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$new(
+\if{html}{\out{<a id="method-mcmc_fit-new"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-new}{}}}
+\subsection{Method \code{new()}}{
+Create a new `MCMC_Fit` object.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$new(
   model,
   fit,
   random_fit,
@@ -117,89 +123,95 @@ Bayes factors are computed only by marginal-likelihood model comparison.
   treedepth,
   laplace,
   posterior_mean
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{model}}{An `RTMB_Model` object used for estimation.}
-      \item{\code{fit}}{Posterior draws for model parameters.}
-      \item{\code{random_fit}}{Posterior draws for random effects, if available.}
-      \item{\code{eps}}{Step size used by the sampler.}
-      \item{\code{accept}}{Acceptance statistics from sampling.}
-      \item{\code{treedepth}}{Tree depth used in HMC/NUTS sampling.}
-      \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
-      \item{\code{posterior_mean}}{Posterior mean estimates.}
-    }
-    \if{html}{\out{</div>}}
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{model}}{An `RTMB_Model` object used for estimation.}
+
+\item{\code{fit}}{Posterior draws for model parameters.}
+
+\item{\code{random_fit}}{Posterior draws for random effects, if available.}
+
+\item{\code{eps}}{Step size used by the sampler.}
+
+\item{\code{accept}}{Acceptance statistics from sampling.}
+
+\item{\code{treedepth}}{Tree depth used in HMC/NUTS sampling.}
+
+\item{\code{laplace}}{Logical; whether Laplace approximation was used.}
+
+\item{\code{posterior_mean}}{Posterior mean estimates.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-print"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-print}{}}}
-\subsection{\code{mcmc_fit$print()}}{
-  Print a brief summary of the fitted object.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$print(...)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{...}}{Additional arguments.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The object itself, invisibly.
-  }
+\subsection{Method \code{print()}}{
+Print a brief summary of the fitted object.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$print(...)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The object itself, invisibly.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-draws"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-draws}{}}}
-\subsection{\code{mcmc_fit$draws()}}{
-  Extract posterior draws for selected parameters.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$draws(
+\subsection{Method \code{draws()}}{
+Extract posterior draws for selected parameters.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$draws(
   pars = NULL,
   chains = NULL,
   best_chains = NULL,
   inc_random = FALSE,
   inc_transform = TRUE,
   inc_generate = TRUE
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
-      \item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
-      \item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp).}
-      \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
-      \item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
-      \item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Posterior draws.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
+
+\item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp).}
+
+\item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
+
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
+
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Posterior draws.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-summary"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-summary}{}}}
-\subsection{\code{mcmc_fit$summary()}}{
-  Summarize posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$summary(
+\subsection{Method \code{summary()}}{
+Summarize posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$summary(
   pars = NULL,
   chains = NULL,
   best_chains = NULL,
@@ -208,222 +220,222 @@ Bayes factors are computed only by marginal-likelihood model comparison.
   inc_random = FALSE,
   inc_transform = TRUE,
   inc_generate = TRUE
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.}
-      \item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are used.}
-      \item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp).}
-      \item{\code{max_rows}}{Integer; maximum number of rows to print in the summary table. Default is 10.}
-      \item{\code{digits}}{Integer; number of decimal places to print. Default is 2.}
-      \item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
-      \item{\code{inc_transform}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
-      \item{\code{inc_generate}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A summary object.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.}
+
+\item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are used.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior (lp).}
+
+\item{\code{max_rows}}{Integer; maximum number of rows to print in the summary table. Default is 10.}
+
+\item{\code{digits}}{Integer; number of decimal places to print. Default is 2.}
+
+\item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
+
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
+
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A summary object.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-unconstrain_draws"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-unconstrain_draws}{}}}
-\subsection{\code{mcmc_fit$unconstrain_draws()}}{
-  Transform posterior draws to the unconstrained scale.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$unconstrain_draws()}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Posterior draws on the unconstrained scale.
-  }
+\subsection{Method \code{unconstrain_draws()}}{
+Transform posterior draws to the unconstrained scale.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$unconstrain_draws()}\if{html}{\out{</div>}}
 }
 
+\subsection{Returns}{
+Posterior draws on the unconstrained scale.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-log_prob"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-log_prob}{}}}
-\subsection{\code{mcmc_fit$log_prob()}}{
-  Evaluate log-probability values.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$log_prob(safe = FALSE)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{safe}}{Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Numeric vector of log-probability values.
-  }
+\subsection{Method \code{log_prob()}}{
+Evaluate log-probability values.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$log_prob(safe = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{safe}}{Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Numeric vector of log-probability values.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-bridgesampling"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-bridgesampling}{}}}
-\subsection{\code{mcmc_fit$bridgesampling()}}{
-  Estimate the marginal likelihood by bridge sampling.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$bridgesampling(
+\subsection{Method \code{bridgesampling()}}{
+Estimate the marginal likelihood by bridge sampling.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bridgesampling(
   method = "normal",
   use_neff = TRUE,
   seed = NULL,
   max_iter = 100
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{method}}{Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".}
-      \item{\code{use_neff}}{Logical; whether to use the effective sample size (ESS) to adjust for autocorrelation. Default is TRUE.}
-      \item{\code{seed}}{Integer; random seed for reproducibility. Default is NULL.}
-      \item{\code{max_iter}}{Integer; maximum number of iterations for the estimation algorithm. Default is 100.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Bridge sampling result.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{method}}{Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".}
+
+\item{\code{use_neff}}{Logical; whether to use the effective sample size (ESS) to adjust for autocorrelation. Default is TRUE.}
+
+\item{\code{seed}}{Integer; random seed for reproducibility. Default is NULL.}
+
+\item{\code{max_iter}}{Integer; maximum number of iterations for the estimation algorithm. Default is 100.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Bridge sampling result.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-bayes_factor"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-bayes_factor}{}}}
-\subsection{\code{mcmc_fit$bayes_factor()}}{
-  Calculate the Bayes factor by marginal-likelihood model comparison.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$bayes_factor(
+\subsection{Method \code{bayes_factor()}}{
+Calculate the Bayes factor by marginal-likelihood model comparison.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$bayes_factor(
   fixed = NULL,
   comparison_fit = NULL,
   bs_method = "normal",
   error_threshold = 0.2,
   ...
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{fixed}}{Named list of parameter values used to construct the comparison model.
-For example, \code{fixed = list(delta = 0)} or
-\code{fixed = list("b[x]" = 0)}.}
-      \item{\code{comparison_fit}}{Optional `MCMC_Fit` object for an already fitted comparison model.}
-      \item{\code{bs_method}}{Character; the method to use for bridge sampling ("normal" or "warp3").}
-      \item{\code{error_threshold}}{Numeric; threshold for the approximate error warning.}
-      \item{\code{...}}{Additional arguments passed to `sample()` when fitting the comparison model (e.g., \code{chains = 4}, \code{sampling = 4000}).}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A list of class \code{bayes_factor_rtmb} containing Bayes factor results.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{fixed}}{Named list of parameter values used to construct the comparison model.
+For example, \code{fixed = list(delta = 0)} or
+\code{fixed = list("b[x]" = 0)}.}
+
+\item{\code{comparison_fit}}{Optional `MCMC_Fit` object for an already fitted comparison model.}
+
+\item{\code{bs_method}}{Character; the method to use for bridge sampling ("normal" or "warp3").}
+
+\item{\code{error_threshold}}{Numeric; threshold for the approximate error warning.}
+
+\item{\code{...}}{Additional arguments passed to `sample()` when fitting the comparison model (e.g., \code{chains = 4}, \code{sampling = 4000}).}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A list of class \code{bayes_factor_rtmb} containing Bayes factor results.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-transformed_draws"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-transformed_draws}{}}}
-\subsection{\code{mcmc_fit$transformed_draws()}}{
-  Compute transformed parameters from posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$transformed_draws(tran_fn = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{tran_fn}}{A function for transformed parameters.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Transformed parameter draws.
-  }
+\subsection{Method \code{transformed_draws()}}{
+Compute transformed parameters from posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$transformed_draws(tran_fn = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{tran_fn}}{A function for transformed parameters.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Transformed parameter draws.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-generated_quantities"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-generated_quantities}{}}}
-\subsection{\code{mcmc_fit$generated_quantities()}}{
-  Compute generated quantities from posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$generated_quantities(code)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
-to be calculated using posterior samples.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The `MCMC_Fit` object itself (invisibly).
-Results are appended to the `generate_fit` field.
-  }
+\subsection{Method \code{generated_quantities()}}{
+Compute generated quantities from posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
+to be calculated using posterior samples.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The `MCMC_Fit` object itself (invisibly).
+Results are appended to the `generate_fit` field.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-resolve_switching"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-resolve_switching}{}}}
-\subsection{\code{mcmc_fit$resolve_switching()}}{
-  Resolve label switching in posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$resolve_switching(
+\subsection{Method \code{resolve_switching()}}{
+Resolve label switching in posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$resolve_switching(
   target,
   linked = NULL,
   overwrite = TRUE,
   scalar_fns = list()
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{target}}{Character string specifying the target variable to base the relabeling on.}
-      \item{\code{linked}}{Character vector of variable names to be relabeled in the same order as the target. Default is NULL.}
-      \item{\code{overwrite}}{Logical; whether to overwrite the stored draws in the current object. Default is TRUE.}
-      \item{\code{scalar_fns}}{A named list of functions to apply to scalar variables for relabeling. Default is an empty list.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Relabeled draws or updated object.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Character string specifying the target variable to base the relabeling on.}
+
+\item{\code{linked}}{Character vector of variable names to be relabeled in the same order as the target. Default is NULL.}
+
+\item{\code{overwrite}}{Logical; whether to overwrite the stored draws in the current object. Default is TRUE.}
+
+\item{\code{scalar_fns}}{A named list of functions to apply to scalar variables for relabeling. Default is an empty list.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Relabeled draws or updated object.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-mcmc_fit-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-mcmc_fit-clone}{}}}
-\subsection{\code{mcmc_fit$clone()}}{
-  The objects of this class are cloneable with this method.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{mcmc_fit$clone(deep = FALSE)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{deep}}{Whether to make a deep clone.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$clone(deep = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{deep}}{Whether to make a deep clone.}
+}
+\if{html}{\out{</div>}}
+}
+}
 }

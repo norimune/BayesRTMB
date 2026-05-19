@@ -4,101 +4,107 @@
 \alias{VB_Fit}
 \title{VB fit object}
 \description{
+VB fit object
+
+VB fit object
+}
+\details{
 An R6 class storing posterior samples and related information
 from Automatic Differentiation Variational Inference (ADVI).
 }
 \section{Super class}{
-\code{\link[BayesRTMB:RTMB_Fit_Base]{RTMB_Fit_Base}} -> \code{advi_fit}
+\code{\link[BayesRTMB:RTMB_Fit_Base]{BayesRTMB::RTMB_Fit_Base}} -> \code{advi_fit}
 }
 \section{Public fields}{
-  \if{html}{\out{<div class="r6-fields">}}
-  \describe{
-    \item{\code{model}}{An `RTMB_Model` object used for estimation.}
+\if{html}{\out{<div class="r6-fields">}}
+\describe{
+\item{\code{model}}{An `RTMB_Model` object used for estimation.}
 
-    \item{\code{fit}}{A 3D array of posterior draws for fixed model parameters.}
+\item{\code{fit}}{A 3D array of posterior draws for fixed model parameters.}
 
-    \item{\code{random_fit}}{A 3D array of posterior draws for random effects, if available.}
+\item{\code{random_fit}}{A 3D array of posterior draws for random effects, if available.}
 
-    \item{\code{transform_fit}}{A 3D array of posterior draws for transformed parameters, if available.}
+\item{\code{transform_fit}}{A 3D array of posterior draws for transformed parameters, if available.}
 
-    \item{\code{generate_fit}}{A 3D array of posterior draws for generated quantities, if available.}
+\item{\code{generate_fit}}{A 3D array of posterior draws for generated quantities, if available.}
 
-    \item{\code{transform_dims}}{A list storing dimension information for transformed parameters.}
+\item{\code{transform_dims}}{A list storing dimension information for transformed parameters.}
 
-    \item{\code{generate_dims}}{A list storing dimension information for generated quantities.}
+\item{\code{generate_dims}}{A list storing dimension information for generated quantities.}
 
-    \item{\code{elbo_history}}{A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.}
+\item{\code{elbo_history}}{A list of numeric vectors storing the Evidence Lower Bound (ELBO) history during optimization for each chain.}
 
-    \item{\code{laplace}}{Logical; whether Laplace approximation was used to marginalize random effects.}
+\item{\code{laplace}}{Logical; whether Laplace approximation was used to marginalize random effects.}
 
-    \item{\code{posterior_mean}}{A named numeric vector of posterior mean estimates.}
+\item{\code{posterior_mean}}{A named numeric vector of posterior mean estimates.}
 
-    \item{\code{ELBO}}{A numeric vector of final ELBO values for each chain.}
+\item{\code{ELBO}}{A numeric vector of final ELBO values for each chain.}
 
-    \item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
+\item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
 
-    \item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
+\item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
 
-    \item{\code{mu_history}}{Matrix of the parameter trajectory from the final window.}
-  }
-  \if{html}{\out{</div>}}
+\item{\code{mu_history}}{Matrix of the parameter trajectory from the final window.}
+}
+\if{html}{\out{</div>}}
 }
 \section{Methods}{
 \subsection{Public methods}{
-  \itemize{
-    \item \href{#method-advi_fit-get_point_estimate}{\code{advi_fit$get_point_estimate()}}
-    \item \href{#method-advi_fit-initialize}{\code{advi_fit$new()}}
-    \item \href{#method-advi_fit-print}{\code{advi_fit$print()}}
-    \item \href{#method-advi_fit-draws}{\code{advi_fit$draws()}}
-    \item \href{#method-advi_fit-summary}{\code{advi_fit$summary()}}
-    \item \href{#method-advi_fit-plot_elbo}{\code{advi_fit$plot_elbo()}}
-    \item \href{#method-advi_fit-plot_trajectory}{\code{advi_fit$plot_trajectory()}}
-    \item \href{#method-advi_fit-transformed_draws}{\code{advi_fit$transformed_draws()}}
-    \item \href{#method-advi_fit-generated_quantities}{\code{advi_fit$generated_quantities()}}
-    \item \href{#method-advi_fit-clone}{\code{advi_fit$clone()}}
-  }
+\itemize{
+\item \href{#method-advi_fit-get_point_estimate}{\code{VB_Fit$get_point_estimate()}}
+\item \href{#method-advi_fit-new}{\code{VB_Fit$new()}}
+\item \href{#method-advi_fit-print}{\code{VB_Fit$print()}}
+\item \href{#method-advi_fit-draws}{\code{VB_Fit$draws()}}
+\item \href{#method-advi_fit-summary}{\code{VB_Fit$summary()}}
+\item \href{#method-advi_fit-plot_elbo}{\code{VB_Fit$plot_elbo()}}
+\item \href{#method-advi_fit-plot_trajectory}{\code{VB_Fit$plot_trajectory()}}
+\item \href{#method-advi_fit-transformed_draws}{\code{VB_Fit$transformed_draws()}}
+\item \href{#method-advi_fit-generated_quantities}{\code{VB_Fit$generated_quantities()}}
+\item \href{#method-advi_fit-clone}{\code{VB_Fit$clone()}}
 }
-\if{html}{\out{<details open><summary>Inherited methods</summary>
+}
+\if{html}{\out{
+<details open><summary>Inherited methods</summary>
 <ul>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>RTMB_Fit_Base$EAP()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>RTMB_Fit_Base$MAP()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>RTMB_Fit_Base$estimate()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>RTMB_Fit_Base$fa_rotate()</code></a></span></li>
-  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>RTMB_Fit_Base$rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul>
-</details>}}
+</details>
+}}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-get_point_estimate"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-get_point_estimate}{}}}
-\subsection{\code{advi_fit$get_point_estimate()}}{
-  Get point estimate for a target parameter.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$get_point_estimate(target, chains = NULL, best_chains = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{target}}{Target parameter name.}
-      \item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
-      \item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    Matrix, array, vector, or scalar point estimate.
-  }
+\subsection{Method \code{get_point_estimate()}}{
+Get point estimate for a target parameter.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{target}}{Target parameter name.}
+
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+Matrix, array, vector, or scalar point estimate.
+}
+}
 \if{html}{\out{<hr>}}
-\if{html}{\out{<a id="method-advi_fit-initialize"></a>}}
-\if{latex}{\out{\hypertarget{method-advi_fit-initialize}{}}}
-\subsection{\code{advi_fit$new()}}{
-  Create a new `VB_Fit` object.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$new(
+\if{html}{\out{<a id="method-advi_fit-new"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-new}{}}}
+\subsection{Method \code{new()}}{
+Create a new `VB_Fit` object.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$new(
   model,
   fit,
   random_fit,
@@ -109,57 +115,62 @@ from Automatic Differentiation Variational Inference (ADVI).
   rel_obj_vals,
   best_chain,
   mu_history
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{model}}{An `RTMB_Model` object.}
-      \item{\code{fit}}{A 3D array of parameter draws.}
-      \item{\code{random_fit}}{A 3D array of random effect draws.}
-      \item{\code{elbo_history}}{A list of numeric vectors of ELBO values for each chain.}
-      \item{\code{laplace}}{Logical; indicates if Laplace approximation was used.}
-      \item{\code{posterior_mean}}{A named numeric vector of posterior means.}
-      \item{\code{ELBO}}{A numeric vector of final ELBO values for each chain.}
-      \item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
-      \item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
-      \item{\code{mu_history}}{Matrix of the parameter trajectory from the final window.}
-    }
-    \if{html}{\out{</div>}}
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{model}}{An `RTMB_Model` object.}
+
+\item{\code{fit}}{A 3D array of parameter draws.}
+
+\item{\code{random_fit}}{A 3D array of random effect draws.}
+
+\item{\code{elbo_history}}{A list of numeric vectors of ELBO values for each chain.}
+
+\item{\code{laplace}}{Logical; indicates if Laplace approximation was used.}
+
+\item{\code{posterior_mean}}{A named numeric vector of posterior means.}
+
+\item{\code{ELBO}}{A numeric vector of final ELBO values for each chain.}
+
+\item{\code{rel_obj_vals}}{A numeric vector of final relative objective tolerance values for each chain.}
+
+\item{\code{best_chain}}{Integer; the index of the chain with the maximum ELBO.}
+
+\item{\code{mu_history}}{Matrix of the parameter trajectory from the final window.}
+}
+\if{html}{\out{</div>}}
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-print"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-print}{}}}
-\subsection{\code{advi_fit$print()}}{
-  Print a brief summary of the fitted object.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$print(...)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{...}}{Additional arguments passed to the `summary` method.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The object itself, invisibly.
-  }
+\subsection{Method \code{print()}}{
+Print a brief summary of the fitted object.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$print(...)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to the `summary` method.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The object itself, invisibly.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-draws"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-draws}{}}}
-\subsection{\code{advi_fit$draws()}}{
-  Extract posterior draws for selected parameters.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$draws(
+\subsection{Method \code{draws()}}{
+Extract posterior draws for selected parameters.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$draws(
   pars = NULL,
   chains = NULL,
   best_chains = NULL,
@@ -167,173 +178,176 @@ from Automatic Differentiation Variational Inference (ADVI).
   inc_transform = TRUE,
   inc_generate = TRUE,
   best_only = FALSE
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
-      \item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
-      \item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO. If supplied, chains with the highest ELBO are retained.}
-      \item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
-      \item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
-      \item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
-      \item{\code{best_only}}{Logical; whether to extract only from the chain with the maximum ELBO. Default is FALSE unless explicitly requested.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A 3D array of posterior draws `[iterations, chains, parameters]`.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.}
+
+\item{\code{chains}}{Numeric vector specifying the chains to extract. If NULL, draws from all chains are returned.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO. If supplied, chains with the highest ELBO are retained.}
+
+\item{\code{inc_random}}{Logical; whether to include random effects in the output. Default is FALSE.}
+
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the output. Default is TRUE.}
+
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the output. Default is TRUE.}
+
+\item{\code{best_only}}{Logical; whether to extract only from the chain with the maximum ELBO. Default is FALSE unless explicitly requested.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A 3D array of posterior draws `[iterations, chains, parameters]`.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-summary"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-summary}{}}}
-\subsection{\code{advi_fit$summary()}}{
-  Summarize posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$summary(
+\subsection{Method \code{summary()}}{
+Summarize posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$summary(
   pars = NULL,
   max_rows = 10,
   digits = 2,
   inc_random = FALSE,
   inc_transform = TRUE,
   inc_generate = TRUE
-)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.}
-      \item{\code{max_rows}}{Integer; maximum number of rows to print in the summary table. Default is 10.}
-      \item{\code{digits}}{Integer; number of decimal places to print. Default is 2.}
-      \item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
-      \item{\code{inc_transform}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
-      \item{\code{inc_generate}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    A data frame containing the summarized posterior statistics.
-  }
+)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.}
+
+\item{\code{max_rows}}{Integer; maximum number of rows to print in the summary table. Default is 10.}
+
+\item{\code{digits}}{Integer; number of decimal places to print. Default is 2.}
+
+\item{\code{inc_random}}{Logical; whether to include random effects in the summary. Default is FALSE.}
+
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters in the summary. Default is TRUE.}
+
+\item{\code{inc_generate}}{Logical; whether to include generated quantities in the summary. Default is TRUE.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A data frame containing the summarized posterior statistics.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-plot_elbo"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-plot_elbo}{}}}
-\subsection{\code{advi_fit$plot_elbo()}}{
-  Plot the ELBO history to diagnose convergence.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$plot_elbo(tail_n = 1000, ests = NULL, type = "l", ...)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{tail_n}}{Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.}
-      \item{\code{ests}}{Character string `"best"`, numeric vector of estimate indices (e.g., `c(1, 3)`), or `NULL` to plot all. Default is `NULL`.}
-      \item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
-      \item{\code{...}}{Additional arguments passed to the `plot` function.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The object itself, invisibly.
-  }
+\subsection{Method \code{plot_elbo()}}{
+Plot the ELBO history to diagnose convergence.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_elbo(tail_n = 1000, ests = NULL, type = "l", ...)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{tail_n}}{Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.}
+
+\item{\code{ests}}{Character string `"best"`, numeric vector of estimate indices (e.g., `c(1, 3)`), or `NULL` to plot all. Default is `NULL`.}
+
+\item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
+
+\item{\code{...}}{Additional arguments passed to the `plot` function.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The object itself, invisibly.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-plot_trajectory"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-plot_trajectory}{}}}
-\subsection{\code{advi_fit$plot_trajectory()}}{
-  Plot the parameter trajectory from the final optimization window.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$plot_trajectory(pars = NULL, type = "l", ...)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{pars}}{Character vector specifying the names of parameters to plot. If NULL, plots all available parameters.}
-      \item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
-      \item{\code{...}}{Additional arguments passed to the `matplot` function.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The object itself, invisibly.
-  }
+\subsection{Method \code{plot_trajectory()}}{
+Plot the parameter trajectory from the final optimization window.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$plot_trajectory(pars = NULL, type = "l", ...)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character vector specifying the names of parameters to plot. If NULL, plots all available parameters.}
+
+\item{\code{type}}{Character string; the type of plot. Default is "l" (lines).}
+
+\item{\code{...}}{Additional arguments passed to the `matplot` function.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The object itself, invisibly.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-transformed_draws"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-transformed_draws}{}}}
-\subsection{\code{advi_fit$transformed_draws()}}{
-  Compute transformed parameters from posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$transformed_draws(tran_fn = NULL)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{tran_fn}}{An optional user-supplied function that takes data and parameter lists to return transformed quantities.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The `VB_Fit` object itself, invisibly.
-  }
+\subsection{Method \code{transformed_draws()}}{
+Compute transformed parameters from posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$transformed_draws(tran_fn = NULL)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{tran_fn}}{An optional user-supplied function that takes data and parameter lists to return transformed quantities.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The `VB_Fit` object itself, invisibly.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-generated_quantities"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-generated_quantities}{}}}
-\subsection{\code{advi_fit$generated_quantities()}}{
-  Compute generated quantities from posterior draws.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$generated_quantities(code)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
-to be calculated using posterior samples.}
-    }
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Returns}{
-    The `VB_Fit` object itself (invisibly).
-Results are appended to the `generate_fit` field.
-  }
+\subsection{Method \code{generated_quantities()}}{
+Compute generated quantities from posterior draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
+to be calculated using posterior samples.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The `VB_Fit` object itself (invisibly).
+Results are appended to the `generate_fit` field.
+}
+}
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-advi_fit-clone"></a>}}
 \if{latex}{\out{\hypertarget{method-advi_fit-clone}{}}}
-\subsection{\code{advi_fit$clone()}}{
-  The objects of this class are cloneable with this method.
-  \subsection{Usage}{
-    \if{html}{\out{<div class="r">}}
-    \preformatted{advi_fit$clone(deep = FALSE)}
-    \if{html}{\out{</div>}}
-  }
-  \subsection{Arguments}{
-    \if{html}{\out{<div class="arguments">}}
-    \describe{
-      \item{\code{deep}}{Whether to make a deep clone.}
-    }
-    \if{html}{\out{</div>}}
-  }
+\subsection{Method \code{clone()}}{
+The objects of this class are cloneable with this method.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$clone(deep = FALSE)}\if{html}{\out{</div>}}
 }
 
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{deep}}{Whether to make a deep clone.}
+}
+\if{html}{\out{</div>}}
+}
+}
 }

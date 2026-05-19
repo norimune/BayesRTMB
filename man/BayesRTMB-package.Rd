@@ -35,10 +35,5 @@ Useful links:
 \author{
 \strong{Maintainer}: Hiroshi Shimizu \email{simizu706@gmail.com}
 
-Authors:
-\itemize{
-  \item Hiroshi Shimizu \email{simizu706@gmail.com}
-}
-
 }
 \keyword{internal}
