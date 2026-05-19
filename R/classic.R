@@ -784,7 +784,7 @@ Classic_Fit <- R6::R6Class(
         is_asymptotic <- (!is.null(self$model$type) &&
                             self$model$type %in% c("glm", "glmer", "table", "loglinear", "fa", "irt", "mixture")) ||
           inherits(self$model, "rtmb_loglinear")
-        hide_tests <- !is.null(self$model$type) && self$model$type %in% c("mdu")
+        hide_tests <- !is.null(self$model$type) && self$model$type %in% c("mdu", "fa")
 
         # --- Add t/z-test results for classic mode ---
         if (!is.null(self$sd_rep)) {
@@ -851,6 +851,23 @@ Classic_Fit <- R6::R6Class(
                 df_print$Pr <- 2 * pt(-abs(row_t), df = df_print$df)
              } else {
                 df_print$Pr <- 2 * pnorm(-abs(row_t))
+             }
+
+             if (!is.null(self$model$type) && self$model$type == "ttest") {
+                test_rows <- rownames(df_print) == "diff"
+                if ("t value" %in% names(df_print)) df_print$`t value`[!test_rows] <- NA_real_
+                if ("z value" %in% names(df_print)) df_print$`z value`[!test_rows] <- NA_real_
+                df_print$Pr[!test_rows] <- NA_real_
+             }
+
+             if (!is.null(self$model$type) && self$model$type %in% c("lm", "glm", "lmer", "glmer", "mediation")) {
+                row_base <- gsub("\\[.*\\]$", "", rownames(df_print))
+                scale_rows <- grepl("^sigma", row_base) | grepl("^sd", row_base)
+                if (any(scale_rows)) {
+                   if ("t value" %in% names(df_print)) df_print$`t value`[scale_rows] <- NA_real_
+                   if ("z value" %in% names(df_print)) df_print$`z value`[scale_rows] <- NA_real_
+                   df_print$Pr[scale_rows] <- NA_real_
+                }
              }
 
              if (hide_tests) {

@@ -1098,11 +1098,6 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(V_joint) && nrow(V_joint) == length(idx_ran_full) && ncol(V_joint) == length(idx_ran_full)) {
           Cov_u[idx_ran_full, idx_ran_full] <- as.matrix(V_joint)
           unc_se_vec[idx_ran_full] <- sqrt(pmax(diag(as.matrix(V_joint)), 0))
-        } else if (!is.null(V_joint)) {
-          add_se_message(sprintf(
-            "SE warning: joint precision matrix dimension (%d x %d) does not match random effect indices (%d); random-effect SEs may be unavailable.",
-            nrow(V_joint), ncol(V_joint), length(idx_ran_full)
-          ))
         }
       }
 

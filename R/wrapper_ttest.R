@@ -240,7 +240,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       param_ast <- quote({ mean0 = Dim(1); mean1 = Dim(1); sd = Dim(2, lower = 0) })
       tran_ast <- quote({ 
         diff <- mean0 - mean1
-        mean <- (mean0 + mean1)/2
+        total_mean <- (mean0 + mean1)/2
         sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
         delta <- diff / sd_pooled
       })
@@ -248,20 +248,20 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       view_vars <- c("diff", "delta", "mean0", "mean1", "sd")
       marginal <- c("mean0", "mean1")
     } else {
-      # Homoscedastic (Standard pooled): Use mean and diff as parameters to fix DF at N-K
+      # Homoscedastic (Standard pooled): Use total_mean and diff as parameters to fix DF at N-K
       param_ast <- if (use_delta_param) {
-        quote({ mean = Dim(1); sd = Dim(1, lower = 0); delta = Dim(1) })
+        quote({ total_mean = Dim(1); sd = Dim(1, lower = 0); delta = Dim(1) })
       } else {
-        quote({ mean = Dim(1); sd = Dim(1, lower = 0); diff = Dim(1) })
+        quote({ total_mean = Dim(1); sd = Dim(1, lower = 0); diff = Dim(1) })
       }
       tran_ast <- if (use_delta_param) {
-        quote({ diff <- delta * sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2 })
+        quote({ diff <- delta * sd; mean0 <- total_mean + diff/2; mean1 <- total_mean - diff/2 })
       } else {
-        quote({ delta <- diff / sd; mean0 <- mean + diff/2; mean1 <- mean - diff/2 })
+        quote({ delta <- diff / sd; mean0 <- total_mean + diff/2; mean1 <- total_mean - diff/2 })
       }
       model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
-      view_vars <- c("diff", "delta", "mean", "sd")
-      marginal <- if (use_delta_param) c("mean", "delta") else c("mean", "diff")
+      view_vars <- c("diff", "delta", "total_mean", "sd")
+      marginal <- if (use_delta_param) c("total_mean", "delta") else c("total_mean", "diff")
     }
     
     if (is_jzs) {
@@ -276,7 +276,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
         model_body[[length(model_body)+1]] <- quote(mean0 ~ normal(mid_y, alpha_prior_sd))
         model_body[[length(model_body)+1]] <- quote(mean1 ~ normal(mid_y, alpha_prior_sd))
       } else {
-        model_body[[length(model_body)+1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
+        model_body[[length(model_body)+1]] <- quote(total_mean ~ normal(mid_y, alpha_prior_sd))
         model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
       }
       model_body[[length(model_body)+1]] <- quote(sd ~ exponential(sigma_rate_weak))
@@ -290,7 +290,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
         }
       } else {
         mu_sd <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
-        if (!is.null(mu_sd)) model_body[[length(model_body)+1]] <- bquote(mean ~ normal(0, .(mu_sd)))
+        if (!is.null(mu_sd)) model_body[[length(model_body)+1]] <- bquote(total_mean ~ normal(0, .(mu_sd)))
         if (!is.null(prior$b_sd)) model_body[[length(model_body)+1]] <- bquote(diff ~ normal(0, .(prior$b_sd)))
       }
       if (!is.null(prior$sigma_rate)) model_body[[length(model_body)+1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))

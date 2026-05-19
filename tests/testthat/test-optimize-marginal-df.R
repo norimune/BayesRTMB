@@ -11,8 +11,8 @@ test_that("optimize() marginal MAP and Satterthwaite DF work correctly", {
   )
 
   expect_s3_class(fit_tt, "map_fit")
-  expect_true(all(c("mean", "delta") %in% fit_tt$marginal_vars))
-  expect_true(all(c("mean", "delta") %in% fit_tt$laplace_random_vars))
+  expect_true(all(c("total_mean", "delta") %in% fit_tt$marginal_vars))
+  expect_true(all(c("total_mean", "delta") %in% fit_tt$laplace_random_vars))
   expect_true(fit_tt$show_df)
 
   tab_tt <- fit_tt$summary()
@@ -25,7 +25,7 @@ test_that("optimize() marginal MAP and Satterthwaite DF work correctly", {
     expect_true(df_val < 1e12)
   }
   
-  # delta and mean should be Inf or large finite due to low sensitivity in this balanced case
+  # delta should be Inf or large finite due to low sensitivity in this balanced case
   expect_true(is.infinite(tab_tt["delta", "df"]))
 })
 

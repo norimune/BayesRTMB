@@ -44,6 +44,14 @@ test_that("classic ttest matches stats::t.test with equal variances", {
   expect_equal(tab["mean0", "Lower 95%"], mean(Y1) - crit_t * se0, tolerance = 1e-5)
   expect_equal(tab["mean1", "Estimate"], mean(Y2), tolerance = 1e-6)
   expect_equal(tab["mean1", "Lower 95%"], mean(Y2) - crit_t * se1, tolerance = 1e-5)
+
+  coefs <- fit$summary(max_rows = 100)$coefficients
+  expect_false("mean" %in% rownames(coefs))
+  expect_true("total_mean" %in% rownames(coefs))
+  expect_false(is.na(coefs["diff", "t value"]))
+  expect_true(is.na(coefs["total_mean", "t value"]))
+  expect_equal(coefs["total_mean", "Pr"], "")
+  expect_equal(coefs["sd", "Pr"], "")
 })
 
 test_that("classic paired ttest matches stats::t.test paired", {
