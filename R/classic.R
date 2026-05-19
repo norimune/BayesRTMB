@@ -1166,11 +1166,6 @@ Classic_Fit <- R6::R6Class(
       }
 
       res_df <- do.call(rbind, res_list)
-      p_col_name <- if ("Pr(>Chisq)" %in% names(res_df)) "Pr(>Chisq)" else "Pr(>F)"
-      sig <- symnum(res_df[[p_col_name]], corr = FALSE, na = FALSE,
-                    cutpoints = c(0, 0.001, 0.01, 0.05, 0.1, 1),
-                    symbols = c("***", "**", "*", ".", " "))
-      res_df$signif <- as.character(sig)
 
       class(res_df) <- c("anova_rtmb", "anova", "data.frame")
       heading <- if ("Chisq" %in% names(res_df)) "ANOVA Table (Wald Chisq tests)" else "ANOVA Table (Wald F-tests)"
