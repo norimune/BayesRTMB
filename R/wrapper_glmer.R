@@ -93,6 +93,14 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
                                 resid_group = NULL, resid_time = NULL,
                                 within = NULL, factors = NULL,
                                 missing = "listwise") {
+  # Expand dot (.) in formula if present
+  if (!is.null(data) && inherits(formula, "formula")) {
+    terms_expanded <- try(terms(formula, data = data), silent = TRUE)
+    if (!inherits(terms_expanded, "try-error")) {
+      formula <- formula(terms_expanded)
+    }
+  }
+
   if (family == "gaussian" && is.call(formula[[2]]) && identical(formula[[2]][[1]], as.name("cbind"))) {
     processed <- .handle_wide_to_long(formula, data, within, factors)
     formula <- processed$formula
@@ -297,6 +305,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        generate = NULL,
                        missing = c("listwise", "fiml"),
                        .force_sum = FALSE) {
+
+  # Expand dot (.) in formula if present
+  if (!is.null(data) && inherits(formula, "formula")) {
+    terms_expanded <- try(terms(formula, data = data), silent = TRUE)
+    if (!inherits(terms_expanded, "try-error")) {
+      formula <- formula(terms_expanded)
+    }
+  }
 
   missing <- match.arg(missing)
   # --- Handle Wide to Long conversion if needed ---

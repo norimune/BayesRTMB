@@ -76,7 +76,6 @@ rtmb_glmer(
 RTMB-based GLMM wrapper function
 }
 \examples{
-
   # --- 1. Linear Regression (rtmb_lm) ---
   # Fit a linear regression model using the mtcars dataset
   fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
@@ -84,14 +83,16 @@ RTMB-based GLMM wrapper function
   map_lm$summary()
 
   # --- 2. Generalized Linear Model (rtmb_glm) ---
-  # Fit a logistic regression model
-  fit_glm <- rtmb_glm(am ~ mpg + hp, data = mtcars, family = "binomial")
+  # Fit a logistic regression model using the debate dataset
+  data(debate, package = "BayesRTMB")
+  fit_glm <- rtmb_glm(cond ~ talk + sat, data = debate, family = "bernoulli")
   map_glm <- fit_glm$optimize()
   map_glm$summary()
 
   # --- 3. Generalized Linear Mixed Model (rtmb_glmer) ---
-  # Fit a linear mixed-effects model with random intercepts
-  fit_glmer <- rtmb_glmer(weight ~ Time + (1 | Chick), data = ChickWeight, family = "gaussian")
+  # Fit a linear mixed-effects model using the debate dataset
+  data(debate, package = "BayesRTMB")
+  fit_glmer <- rtmb_glmer(talk ~ cond + (1 | group), data = debate, family = "gaussian")
 
   # MAP estimation using Laplace approximation for random effects
   map_glmer <- fit_glmer$optimize(laplace = TRUE)
@@ -105,7 +106,7 @@ RTMB-based GLMM wrapper function
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
   # A convenient wrapper for Gaussian mixed models (identical to rtmb_glmer with family="gaussian")
-  fit_lmer <- rtmb_lmer(mpg ~ wt + (1 | cyl), data = mtcars)
+  fit_lmer <- rtmb_lmer(sat ~ talk + (1 | group), data = debate)
   map_lmer <- fit_lmer$optimize()
   map_lmer$summary()
 

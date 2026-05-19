@@ -103,5 +103,4 @@ space.
   \dontrun{
   # mcmc_mdu <- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)
   }
-
 }
