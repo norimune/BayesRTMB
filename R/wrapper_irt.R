@@ -17,7 +17,10 @@
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = prior_flat(), 
-                     init = NULL, fixed = NULL, view = NULL) {
+                     init = NULL, fixed = NULL, view = NULL,
+                     missing = c("listwise", "fiml")) {
+
+  missing <- match.arg(missing)
 
   model <- match.arg(model)
   type <- match.arg(type)
@@ -26,7 +29,26 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     stop("The 3PL model only supports 'binary' data.")
   }
 
+  if (is.data.frame(data)) {
+    if (!all(sapply(data, is.numeric))) {
+      stop("All variables in the data must be numeric. Character or factor variables are not supported.", call. = FALSE)
+    }
+  } else if (!is.numeric(data) && !is.logical(data)) {
+    stop("The data matrix must be numeric.", call. = FALSE)
+  }
+
   Y <- as.matrix(data)
+  
+  if (missing == "listwise") {
+    Y <- na.omit(Y)
+  }
+
+  if (type == "binary") {
+    unique_vals <- na.omit(unique(as.vector(Y)))
+    if (length(unique_vals) > 2 || any(!unique_vals %in% c(0, 1))) {
+      stop("Binary IRT models (type = 'binary') require responses to be exactly 0, 1, or NA. Found other values.", call. = FALSE)
+    }
+  }
 
   # Get row and column names
   item_names <- colnames(Y)

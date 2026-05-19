@@ -16,6 +16,7 @@ rtmb_glm(
   view = NULL,
   factors = NULL,
   contrasts = "treatment",
+  missing = c("listwise", "fiml"),
   ...
 )
 }
@@ -51,7 +52,7 @@ Default is `prior_flat()`.}
 RTMB-based GLM wrapper function (no random effects)
 }
 \examples{
-\dontrun{
+
   # --- 1. Linear Regression (rtmb_lm) ---
   # Fit a linear regression model using the mtcars dataset
   fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
@@ -73,8 +74,10 @@ RTMB-based GLM wrapper function (no random effects)
   map_glmer$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_glmer$summary()
+  }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
   # A convenient wrapper for Gaussian mixed models (identical to rtmb_glmer with family="gaussian")
@@ -84,24 +87,26 @@ RTMB-based GLM wrapper function (no random effects)
 
   # --- 5. Regularized Regression (Variable Selection) ---
   # You can apply regularization to the fixed effects to shrink noise variables towards zero.
-  # Use penalty = "rhs" for the Regularized Horseshoe prior, or "ssp" for the Spike-and-Slab prior.
+  # Use prior = prior_rhs() for the Regularized Horseshoe prior, or prior_ssp() for the Spike-and-Slab prior.
   # Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum
   # values of the response variable) to automatically set up the required weakly informative priors.
 
   # Fit a linear regression using all predictors in mtcars with the Horseshoe prior
   # 'mpg' theoretically ranges roughly between 0 and 40
-  fit_rhs <- rtmb_lm(mpg ~ ., data = mtcars, penalty = "rhs", y_range = c(0, 40))
+  fit_rhs <- rtmb_lm(mpg ~ ., data = mtcars, prior = prior_rhs(), y_range = c(0, 40))
   map_rhs <- fit_rhs$optimize()
   # Summarize only the fixed effects (slopes)
   map_rhs$summary("b")
 
   # Fit a linear regression with the Spike-and-Slab prior
-  fit_ssp <- rtmb_lm(mpg ~ ., data = mtcars, penalty = "ssp", y_range = c(0, 40))
+  fit_ssp <- rtmb_lm(mpg ~ ., data = mtcars, prior = prior_ssp(), y_range = c(0, 40))
   map_ssp <- fit_ssp$optimize()
   map_ssp$summary("b")
 
   # For models with complex penalties, MCMC often provides more reliable credible intervals
+  \donttest{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ssp$summary("b")
-}
+  mcmc_ssp$summary("b")
+  }
 }

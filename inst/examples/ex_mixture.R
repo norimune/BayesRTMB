@@ -1,4 +1,4 @@
-\dontrun{
+
   # Simulate 1D mixture data (2 components)
   set.seed(123)
   N <- 100
@@ -14,7 +14,8 @@
   map_mix$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_mix <- fit_mix$sample(sampling = 500, warmup = 500, chains = 2)
   # MCMC summary provides estimates for component means, standard deviations, and mixture probabilities
   mcmc_mix$summary()
-}
+  }

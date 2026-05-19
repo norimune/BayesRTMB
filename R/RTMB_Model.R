@@ -942,9 +942,24 @@ RTMB_Model <- R6::R6Class(
         best_idx <- converged_idx[which.min(obj_vals[converged_idx])]
       } else {
         best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
+        best_code <- conv_codes[best_idx]
+        best_message <- messages[best_idx]
+        detail <- paste0(
+          " convergence code = ", if (is.na(best_code)) "NA" else best_code,
+          if (!is.na(best_message) && nzchar(best_message)) paste0("; message = ", best_message) else ""
+        )
         if (num_estimate > 1L) {
           warning(
-            "No optimization run converged; BEST is selected by the lowest objective among non-converged runs.",
+            "No optimization run converged; BEST is selected by the lowest objective among non-converged runs (",
+            detail,
+            ").",
+            call. = FALSE
+          )
+        } else {
+          warning(
+            "Optimization did not converge (",
+            detail,
+            "). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.",
             call. = FALSE
           )
         }

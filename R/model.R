@@ -1004,9 +1004,6 @@ validate_data <- function(dat_list) {
   for (name in names(dat_list)) {
     x <- dat_list[[name]]
     if (inherits(x, "formula") || is.list(x) || is.function(x)) next
-    if (any(is.na(x))) {
-      stop(sprintf("[Data error] Missing values (NA) are present in data '%s'.\n  * Solution: Please exclude NAs or impute missing values before passing to the model.", name), call. = FALSE)
-    }
   }
   return(dat_list)
 }

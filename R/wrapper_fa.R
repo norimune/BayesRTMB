@@ -21,9 +21,21 @@
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = prior_flat(),
                     y_range = NULL,
-                    init = NULL, fixed = NULL) {
+                    init = NULL, fixed = NULL,
+                    missing = c("listwise", "fiml")) {
+  missing <- match.arg(missing)
 
+  if (is.data.frame(data)) {
+    if (!all(sapply(data, is.numeric))) {
+      stop("All variables in the data must be numeric. Character or factor variables are not supported.", call. = FALSE)
+    }
+  } else if (!is.numeric(data) && !is.logical(data)) {
+    stop("The data matrix must be numeric.", call. = FALSE)
+  }
   Y <- as.matrix(data)
+  if (missing == "listwise") {
+    Y <- na.omit(Y)
+  }
   K <- nfactors
   J <- ncol(Y)
   N <- nrow(Y)
@@ -32,6 +44,8 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   var_names <- colnames(data)
   if (is.null(var_names)) var_names <- paste0("V", 1:J)
+  factor_names <- paste0("Factor", 1:K)
+  colnames(Y) <- var_names
 
   # --- 1. Pre-calculate Sufficient Statistics in R (Handling NAs) ---
   if (any(is.na(Y))) {
@@ -97,13 +111,21 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
   is_ssp <- !is.null(rotate) && rotate == "ssp"
 
   # --- 3. Simplified Setup AST ---
-  setup_ast <- quote({
-    N <- nrow(Y)
-    J <- ncol(Y)
-    K <- nfactors
-    Y_bar <- colMeans(Y, na.rm = TRUE)
-    S_Y <- cov(Y, use = "pairwise.complete.obs") * (N - 1)
-  })
+  if (missing == "listwise") {
+    setup_ast <- quote({
+      N <- nrow(Y)
+      J <- ncol(Y)
+      K <- nfactors
+      Y_bar <- colMeans(Y)
+      S_Y <- cov(Y) * (N - 1)
+    })
+  } else {
+    setup_ast <- quote({
+      N <- nrow(Y)
+      J <- ncol(Y)
+      K <- nfactors
+    })
+  }
 
   if (is_ssp) {
     dat_fa$ssp_ratio <- ssp_ratio
@@ -158,7 +180,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     # In SSP case, Lambda is a transformed variable. 
     # S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega)
     # Note: Lambda here is the loadings *before* correlation matrix rotation.
-    model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega))
+    if (missing == "listwise") {
+      model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, Lambda %*% CF_Omega))
+    } else {
+      model_exprs[[1]] <- quote(Y ~ fiml_multi_normal_fa(mean, Lambda %*% CF_Omega, sd))
+    }
     if (prior_type == "normal") {
        if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior_mean_sd)))
        if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior_sd_rate)))
@@ -191,10 +217,21 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
-    p_names <- list(mean = var_names, Lambda_star = var_names, r = var_names, tau = var_names, sd = var_names, CF_Omega = paste0("Factor", 1:K), Lambda = var_names, L = var_names, fa_cor = paste0("Factor", 1:K), communality = var_names)
+    p_names <- list(
+      mean = var_names,
+      Lambda_star = list(var_names, factor_names),
+      r = list(var_names, factor_names),
+      tau = list(var_names, factor_names),
+      sd = var_names,
+      CF_Omega = factor_names,
+      Lambda = list(var_names, factor_names),
+      L = list(var_names, factor_names),
+      fa_cor = factor_names,
+      communality = var_names
+    )
     if (score) {
       ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
-      p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K))
+      p_names[["score"]] <- list(ind_names, factor_names)
     }
     obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = c("L", "sd", "fa_cor"), fixed = fixed)
     obj$type <- "fa"
@@ -235,7 +272,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     model_exprs <- list()
     # Standard FA case: L_raw is a parameter (lower triangular matrix)
-    model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw))
+    if (missing == "listwise") {
+      model_exprs[[1]] <- quote(S_Y ~ sufficient_multi_normal_fa(N, Y_bar, mean, sd, L_raw))
+    } else {
+      model_exprs[[1]] <- quote(Y ~ fiml_multi_normal_fa(mean, L_raw, sd))
+    }
     if (prior_type == "normal") {
        if (!is.null(prior_mean_sd)) model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior_mean_sd)))
        if (!is.null(prior_sd_rate)) model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior_sd_rate)))
@@ -263,7 +304,12 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       dummy_L <- matrix(rnorm(J * K), J, K); test_rot <- rot_fn(dummy_L)
       is_matrix_rot <- is.matrix(test_rot); has_phi <- !is_matrix_rot && !is.null(test_rot$Phi)
       if (is_matrix_rot) {
-        rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out[[.(rot_loadings_name)]] <- unclass(rot_obj) })
+        rot_expr <- bquote({
+          rot_obj <- .(fn_call)(L)
+          out[[.(rot_loadings_name)]] <- unclass(rot_obj)
+          dimnames(out[[.(rot_loadings_name)]]) <- list(.(var_names), .(factor_names))
+          class(out[[.(rot_loadings_name)]]) <- c("rtmb_estimate_matrix", "matrix", "array")
+        })
         score_expr <- if (score) bquote({
           Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
           rot_raw <- unclass(.(fn_call)(L_raw)); if (!is.matrix(rot_raw)) rot_raw <- unclass(rot_raw$loadings)
@@ -271,13 +317,24 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
         }) else quote({})
       } else {
         if (has_phi) {
-          rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out$fa_cor <- rot_obj$Phi; out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings) })
+          rot_expr <- bquote({
+            rot_obj <- .(fn_call)(L)
+            out$fa_cor <- rot_obj$Phi
+            out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings)
+            dimnames(out[[.(rot_loadings_name)]]) <- list(.(var_names), .(factor_names))
+            class(out[[.(rot_loadings_name)]]) <- c("rtmb_estimate_matrix", "matrix", "array")
+          })
           score_expr <- if (score) bquote({
             Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
             rot_raw_obj <- .(fn_call)(L_raw); out$score <- Y_c %*% solve(Sigma, unclass(rot_raw_obj$loadings) %*% rot_raw_obj$Phi)
           }) else quote({})
         } else {
-          rot_expr <- bquote({ rot_obj <- .(fn_call)(L); out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings) })
+          rot_expr <- bquote({
+            rot_obj <- .(fn_call)(L)
+            out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings)
+            dimnames(out[[.(rot_loadings_name)]]) <- list(.(var_names), .(factor_names))
+            class(out[[.(rot_loadings_name)]]) <- c("rtmb_estimate_matrix", "matrix", "array")
+          })
           score_expr <- if (score) bquote({
             Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
             out$score <- Y_c %*% solve(Sigma, unclass(.(fn_call)(L_raw)$loadings))
@@ -290,9 +347,18 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
-    p_names <- list(mean = var_names, L_raw = var_names, sd = var_names, L = var_names, communality = var_names)
-    if (!is.null(rotate)) { p_names[[paste0("L_", rotate)]] <- var_names; if (has_phi) p_names[["fa_cor"]] <- paste0("Factor", 1:K) }
-    if (score) { ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N); p_names[["score"]] <- list(ind_names, paste0("Factor", 1:K)) }
+    p_names <- list(
+      mean = var_names,
+      L_raw = list(var_names, factor_names),
+      sd = var_names,
+      L = list(var_names, factor_names),
+      communality = var_names
+    )
+    if (!is.null(rotate)) {
+      p_names[[paste0("L_", rotate)]] <- list(var_names, factor_names)
+      if (has_phi) p_names[["fa_cor"]] <- factor_names
+    }
+    if (score) { ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N); p_names[["score"]] <- list(ind_names, factor_names) }
 
     target_view <- if (!is.null(rotate)) c(paste0("L_", rotate), "sd", "fa_cor") else c("L", "sd", "fa_cor")
     obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = target_view, fixed = fixed)

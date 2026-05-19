@@ -35,8 +35,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        y_range = NULL,
                        prior = prior_flat(),
                        init = NULL, fixed = NULL,
-                       var.equal = TRUE, ...) {
+                       var.equal = TRUE, missing = c("listwise", "fiml"), ...) {
 
+  missing <- match.arg(missing)
   x_expr <- substitute(x)
   y_expr <- substitute(y)
 
@@ -59,6 +60,10 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       )
     }
     x_label <- levs[1]; y_label <- levs[2]
+    
+    if (!is.numeric(response) && !is.logical(response)) {
+      stop("The response variable must be numeric. Character or factor variables are not supported.", call. = FALSE)
+    }
     raw_response <- as.numeric(response)
     raw_group_idx <- as.integer(group)
     if (paired) {
@@ -75,8 +80,12 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       common_ids <- intersect(d1$id, d2$id)
       Y1 <- d1[match(common_ids, d1$id), 1]; Y2 <- d2[match(common_ids, d2$id), 1]
     } else {
-      Y1 <- as.numeric(na.omit(response[group == levs[1]]))
-      Y2 <- as.numeric(na.omit(response[group == levs[2]]))
+      Y1 <- as.numeric(response[group == levs[1]])
+      Y2 <- as.numeric(response[group == levs[2]])
+      if (missing == "listwise") {
+         Y1 <- as.numeric(na.omit(Y1))
+         Y2 <- as.numeric(na.omit(Y2))
+      }
     }
   } else {
     x_label <- deparse(x_expr); y_label <- deparse(y_expr)
@@ -86,7 +95,22 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     } else {
       Y1 <- eval(x_expr, parent.frame()); Y2 <- eval(y_expr, parent.frame())
     }
-    Y1 <- as.numeric(na.omit(Y1)); Y2 <- as.numeric(na.omit(Y2))
+    
+    if ((!is.numeric(Y1) && !is.logical(Y1)) || (!is.numeric(Y2) && !is.logical(Y2))) {
+      stop("Both variables (x and y) must be numeric. Character or factor variables are not supported.", call. = FALSE)
+    }
+    if (paired) {
+       if (length(Y1) != length(Y2)) stop("For paired t-tests without a formula, x and y must have the same length.", call. = FALSE)
+       if (missing == "listwise") {
+         valid_idx <- !is.na(Y1) & !is.na(Y2)
+         Y1 <- Y1[valid_idx]
+         Y2 <- Y2[valid_idx]
+       }
+    } else {
+       if (missing == "listwise") {
+         Y1 <- as.numeric(na.omit(Y1)); Y2 <- as.numeric(na.omit(Y2))
+       }
+    }
   }
   levs <- c(x_label, y_label)
 

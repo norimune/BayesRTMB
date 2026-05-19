@@ -25,7 +25,7 @@ Performs Bayesian or Frequentist log-linear analysis (Poisson regression)
 on a contingency table or raw data.
 }
 \examples{
-\dontrun{
+
   # Create a contingency table
   tab <- matrix(c(10, 20, 30, 40), nrow = 2)
   dimnames(tab) <- list(A = c("A1", "A2"), B = c("B1", "B2"))
@@ -38,7 +38,8 @@ on a contingency table or raw data.
   map_log$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_log <- fit_log$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_log$summary()
-}
+  }
 }

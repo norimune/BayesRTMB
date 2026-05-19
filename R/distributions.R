@@ -599,6 +599,50 @@ multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega, sum = TRUE) {
   }
 }
 
+#' Multivariate normal log-probability density function parameterized by Cholesky factor of correlation matrix (FIML)
+#'
+#' @param x Vector or matrix of quantiles containing NAs.
+#' @param mean Vector of means.
+#' @param sd Vector of standard deviations.
+#' @param CF_Omega Cholesky factor of the correlation matrix.
+#' @return The sum of the log-density using Full Information Maximum Likelihood.
+#' @keywords internal
+fiml_multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega) {
+  if (length(sd) == 1) {
+    L_Sigma <- matrix(sd, 1, 1) %*% CF_Omega
+  } else {
+    L_Sigma <- diag(sd) %*% CF_Omega
+  }
+  Sigma <- L_Sigma %*% t(L_Sigma)
+
+  N <- nrow(x)
+  lp <- 0
+  
+  # Ensure positive definiteness with a scale-aware jitter
+  diag_Sigma <- diag(Sigma)
+  safe_Sigma <- Sigma + diag(diag_Sigma * 1e-6 + 1e-8)
+
+  for (i in 1:N) {
+    y_i <- x[i, ]
+    keep <- !is.na(y_i)
+    if (any(keep)) {
+      y_obs <- y_i[keep]
+      mean_obs <- mean[keep]
+      Sigma_obs <- safe_Sigma[keep, keep, drop = FALSE]
+
+      log_det_obj <- determinant(Sigma_obs, logarithm = TRUE)
+      log_det <- log_det_obj$modulus
+      k <- sum(keep)
+      const <- -0.5 * (k * log(2 * pi) + log_det)
+
+      resid <- y_obs - mean_obs
+      quad_form <- sum(resid * solve(Sigma_obs, resid))
+      lp <- lp + const - 0.5 * quad_form
+    }
+  }
+  return(lp)
+}
+
 #' Multivariate normal log-probability density function
 #'
 #' @param x Vector or matrix of quantiles.
@@ -977,6 +1021,52 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi, sum = TRUE) {
     return(const - 0.5 * (term1 - term2))
   }
 }
+#' Factor analysis multivariate normal log-probability density function (FIML)
+#'
+#' @param x Matrix of quantiles containing NAs.
+#' @param mu Vector of means.
+#' @param Lambda Factor loading matrix (P x K).
+#' @param psi Vector of unique variances (P).
+#' @return The sum of the log-density.
+#' @keywords internal
+fiml_multi_normal_fa_lpdf <- function(x, mu, Lambda, psi) {
+  P <- nrow(Lambda)
+  K <- ncol(Lambda)
+  
+  # Implied Covariance: Sigma = Lambda %*% t(Lambda) + diag(psi^2)
+  # But for FIML, we can either construct Sigma and invert subsets, or use Woodbury on subsets.
+  # Woodbury on subsets is complex because M = I + Lambda_obs' * inv_psi_obs * Lambda_obs changes per missing pattern.
+  # Given typical RTMB usage, constructing Sigma and subsetting is simplest.
+  Sigma <- Lambda %*% t(Lambda)
+  diag(Sigma) <- diag(Sigma) + psi^2
+  
+  N <- nrow(x)
+  lp <- 0
+  
+  diag_Sigma <- diag(Sigma)
+  safe_Sigma <- Sigma + diag(diag_Sigma * 1e-6 + 1e-8)
+
+  for (i in 1:N) {
+    y_i <- x[i, ]
+    keep <- !is.na(y_i)
+    if (any(keep)) {
+      y_obs <- y_i[keep]
+      mean_obs <- mu[keep]
+      Sigma_obs <- safe_Sigma[keep, keep, drop = FALSE]
+
+      log_det_obj <- determinant(Sigma_obs, logarithm = TRUE)
+      log_det <- log_det_obj$modulus
+      k <- sum(keep)
+      const <- -0.5 * (k * log(2 * pi) + log_det)
+
+      resid <- y_obs - mean_obs
+      quad_form <- sum(resid * solve(Sigma_obs, resid))
+      lp <- lp + const - 0.5 * quad_form
+    }
+  }
+  return(lp)
+}
+
 #' Sufficient statistics multivariate normal log-probability density function
 #'
 #' @param S_mat Deviation sum of squares matrix.

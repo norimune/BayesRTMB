@@ -16,7 +16,8 @@ rtmb_mdu(
   init = NULL,
   fixed = NULL,
   view = NULL,
-  distance_eps = 1e-04
+  distance_eps = 1e-04,
+  missing = c("listwise", "fiml")
 )
 }
 \arguments{
@@ -70,7 +71,7 @@ both row scores (`theta`) and item locations (`delta`) in a shared D-dimensional
 space.
 }
 \examples{
-\dontrun{
+
   # Simulate rating data for Multidimensional Unfolding (MDU)
   set.seed(123)
   N <- 50  # Number of persons
@@ -97,6 +98,8 @@ space.
   map_mdu$summary()
   
   # Note: MDU models have many parameters, so MCMC sampling might take time.
+  \donttest{
   # mcmc_mdu <- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)
-}
+  }
+
 }

@@ -15,3 +15,4 @@
 ^\.github$
 ^\.agent_shared$
 ^vignettes_archive$
+^scratch$

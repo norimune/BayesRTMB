@@ -1,4 +1,4 @@
-\dontrun{
+
   # Simulate mediation data
   set.seed(123)
   N <- 100
@@ -20,6 +20,7 @@
   
   # MCMC sampling for more reliable confidence intervals of the indirect effect
   # (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_med <- fit_med$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_med$summary()
-}
+  }

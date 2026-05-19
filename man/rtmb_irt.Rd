@@ -11,7 +11,8 @@ rtmb_irt(
   prior = prior_flat(),
   init = NULL,
   fixed = NULL,
-  view = NULL
+  view = NULL,
+  missing = c("listwise", "fiml")
 )
 }
 \arguments{
@@ -36,7 +37,7 @@ Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model
 Missing values (NA) in the data are automatically removed internally for efficient computation.
 }
 \examples{
-  \dontrun{
+
   # --- 1. Binary Data (e.g., correct/incorrect answers) ---
   # Simulate binary response data for 100 persons and 5 items
   set.seed(123)
@@ -101,7 +102,9 @@ Missing values (NA) in the data are automatically removed internally for efficie
   # MCMC sampling is recommended for reliable interval estimation.
 
   # MCMC sampling for the ordered model (chains and iterations reduced)
+  \donttest{
   mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ord$summary()
- }
+  mcmc_ord$summary()
+  }
 }

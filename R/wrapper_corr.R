@@ -23,16 +23,25 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                       covariates = NULL,
                        method = c("pearson", "spearman", "reml"),
                        prior = prior_flat(), y_range = NULL,
-                       init = NULL, fixed = NULL) {
+                       init = NULL, fixed = NULL,
+                       missing = c("listwise", "fiml", "pairwise")) {
 
+  missing <- match.arg(missing)
   method <- match.arg(method)
+  if (missing == "pairwise" && method == "reml") {
+    stop("missing = 'pairwise' is only available when method is 'pearson' or 'spearman'.")
+  }
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
+  data_eval <- data
+  if (!is.null(data_eval) && is.matrix(data_eval)) {
+    data_eval <- as.data.frame(data_eval)
+  }
 
   # Evaluation logic for response variables (Y_mat)
-  if (!is.null(data)) {
+  if (!is.null(data_eval)) {
     # Evaluate x in the context of data (NSE support for cbind(a, b))
-    Y_mat <- eval(x_expr, data, parent.frame())
+    Y_mat <- eval(x_expr, data_eval, parent.frame())
   } else {
     Y_mat <- x
   }
@@ -43,20 +52,20 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     lhs_expr <- formula[[2]]
 
     # 1. Try to evaluate LHS directly (handles cbind(y1, y2) or Y_df)
-    Y_mat <- try(eval(lhs_expr, data, parent.frame()), silent = TRUE)
+    Y_mat <- try(eval(lhs_expr, data_eval, parent.frame()), silent = TRUE)
 
     # 2. If eval(lhs) failed, try a safer model.frame call
     if (inherits(Y_mat, "try-error") || is.null(Y_mat)) {
       resp_formula <- bquote(.(lhs_expr) ~ 1)
-      mf_y <- try(model.frame(resp_formula, data = data, na.action = na.pass), silent = TRUE)
+      mf_y <- try(model.frame(resp_formula, data = data_eval, na.action = na.pass), silent = TRUE)
       if (!inherits(mf_y, "try-error")) {
          Y_mat <- model.response(mf_y)
          if (is.null(Y_mat)) Y_mat <- mf_y[, 1, drop = FALSE]
       } else {
          # Last resort: check if it's a name in data
          id_name <- as.character(lhs_expr)
-         if (!is.null(data) && id_name %in% names(data)) {
-            Y_mat <- data[[id_name]]
+         if (!is.null(data_eval) && id_name %in% names(data_eval)) {
+            Y_mat <- data_eval[[id_name]]
          }
       }
     }
@@ -70,11 +79,11 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     if (length(formula) == 3 && is.null(covariates)) {
        rhs_expr <- formula[[3]]
        cov_formula <- bquote(~ .(rhs_expr))
-       mf_x <- try(model.frame(cov_formula, data = data, na.action = na.pass), silent = TRUE)
+       mf_x <- try(model.frame(cov_formula, data = data_eval, na.action = na.pass), silent = TRUE)
        if (inherits(mf_x, "try-error")) {
           # Try to subset data to only RHS variables to avoid errors from other complex columns
           rhs_vars <- all.vars(rhs_expr)
-          data_sub <- if (!is.null(data)) data[, intersect(rhs_vars, names(data)), drop = FALSE] else data
+          data_sub <- if (!is.null(data_eval)) data_eval[, intersect(rhs_vars, names(data_eval)), drop = FALSE] else data_eval
           mf_x <- model.frame(cov_formula, data = data_sub, na.action = na.pass)
        }
        covariates <- model.matrix(attr(mf_x, "terms"), mf_x)
@@ -86,8 +95,8 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   } else {
     formula <- NULL
     # If Y_mat is a character vector of names, subset from data
-    if (is.character(Y_mat) && length(Y_mat) > 1 && !is.null(data)) {
-      Y_mat <- data[, Y_mat, drop = FALSE]
+    if (is.character(Y_mat) && length(Y_mat) > 1 && !is.null(data_eval)) {
+      Y_mat <- data_eval[, Y_mat, drop = FALSE]
     }
     # Handle list of vectors
     if (is.list(Y_mat) && !is.data.frame(Y_mat)) {
@@ -101,13 +110,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      if (is.matrix(covariates) || is.data.frame(covariates)) {
         X_mat <- as.matrix(covariates)
      } else if (inherits(covariates, "formula")) {
-        mf_x <- model.frame(covariates, data = data, na.action = na.pass)
+        mf_x <- model.frame(covariates, data = data_eval, na.action = na.pass)
         X_mat <- model.matrix(covariates, mf_x)
         if ("(Intercept)" %in% colnames(X_mat)) {
           X_mat <- X_mat[, colnames(X_mat) != "(Intercept)", drop = FALSE]
         }
-     } else if (is.character(covariates) && !is.null(data)) {
-        X_mat <- as.matrix(data[, covariates, drop = FALSE])
+     } else if (is.character(covariates) && !is.null(data_eval)) {
+        X_mat <- as.matrix(data_eval[, covariates, drop = FALSE])
      }
   }
 
@@ -119,14 +128,14 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   # Parse ID (NSE support for ID = group)
   id_val <- NULL
   if (!is.null(id_expr)) {
-    if (!is.null(data)) {
+    if (!is.null(data_eval)) {
       # Try to evaluate ID in data
-      id_val <- try(eval(id_expr, data, parent.frame()), silent = TRUE)
+      id_val <- try(eval(id_expr, data_eval, parent.frame()), silent = TRUE)
       if (inherits(id_val, "try-error") || is.null(id_val)) {
         # Fallback: check if ID name is in data
         id_name <- as.character(id_expr)
-        if (id_name %in% names(data)) {
-          id_val <- data[[id_name]]
+        if (id_name %in% names(data_eval)) {
+          id_val <- data_eval[[id_name]]
         } else {
           id_val <- ID # Literal value
         }
@@ -151,10 +160,29 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     }
   }
 
-  # Ensure Y_mat is a numeric matrix
-  Y_mat <- as.data.frame(Y_mat)
-  num_cols <- sapply(Y_mat, is.numeric)
-  Y_mat <- Y_mat[, num_cols, drop = FALSE]
+  if (is.data.frame(Y_mat)) {
+    if (!all(sapply(Y_mat, is.numeric))) {
+      stop("All variables in the response data must be numeric. Character or factor variables are not supported.", call. = FALSE)
+    }
+  } else if (!is.numeric(Y_mat) && !is.logical(Y_mat)) {
+    stop("The response data matrix must be numeric.", call. = FALSE)
+  }
+
+  if (missing == "listwise") {
+    if (!is.null(X_mat)) {
+      valid_idx <- complete.cases(Y_mat, X_mat)
+      Y_mat <- Y_mat[valid_idx, , drop = FALSE]
+      X_mat <- X_mat[valid_idx, , drop = FALSE]
+      if (length(id_val) == length(valid_idx)) id_val <- id_val[valid_idx]
+    } else {
+      valid_idx <- complete.cases(Y_mat)
+      Y_mat <- Y_mat[valid_idx, , drop = FALSE]
+      if (length(id_val) == length(valid_idx)) id_val <- id_val[valid_idx]
+    }
+  } else if (missing == "pairwise" && anyNA(Y_mat)) {
+     # No row deletion for pairwise
+  }
+
   Y_mat <- as.matrix(Y_mat)
 
   P_y <- ncol(Y_mat)
@@ -361,7 +389,8 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        source = "wrapper",
        prior_type = prior$type,
        marginal = "mu",
-       corr_method = "reml"
+       corr_method = "reml",
+       missing = missing
      )
 
      # Set degrees of freedom map for BW method
@@ -414,8 +443,13 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      setup_exprs <- list(as.name("{"))
      setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- nrow(Y))
      setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- ncol(Y))
-     setup_exprs[[length(setup_exprs) + 1]] <- quote(Y_bar <- colMeans(Y))
-     setup_exprs[[length(setup_exprs) + 1]] <- quote(S_Y <- cov(Y) * (N - 1))
+     if (missing == "listwise") {
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(Y_bar <- colMeans(Y))
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(S_Y <- cov(Y) * (N - 1))
+     } else if (missing == "pairwise") {
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(Y_bar <- colMeans(Y, na.rm = TRUE))
+       setup_exprs[[length(setup_exprs) + 1]] <- quote(S_Y <- cov(Y, use = "pairwise.complete.obs") * (N - 1))
+     }
 
      if (prior_type == "weak") {
        if (is.null(y_range)) {
@@ -478,7 +512,11 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
         }
       }
 
-     model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
+      if (missing %in% c("listwise", "pairwise")) {
+        model_exprs[[length(model_exprs) + 1]] <- quote(S_Y ~ sufficient_multi_normal_CF(N, Y_bar, mean, sd, CF_corr))
+      } else {
+        model_exprs[[length(model_exprs) + 1]] <- quote(Y ~ fiml_multi_normal_CF(mean, sd, CF_corr))
+      }
      model_ast <- as.call(model_exprs)
 
      transform_exprs <- list(as.name("{"))
@@ -530,7 +568,8 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
       source = "wrapper",
       prior_type = prior$type,
       marginal = "mean",
-      corr_method = method
+      corr_method = method,
+      missing = missing
     )
 
     return(obj)

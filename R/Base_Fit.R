@@ -37,12 +37,82 @@
   d$x[which.max(d$y)]
 }
 
+#' @export
+print.rtmb_estimate_matrix <- function(x, digits = max(3L, getOption("digits") - 2L), ...) {
+  x_print <- formatC(unclass(x), format = "f", digits = digits)
+  dimnames(x_print) <- dimnames(x)
+  rn <- rownames(x_print)
+  cn <- colnames(x_print)
+  if (is.null(rn)) rn <- rep("", nrow(x_print))
+  if (is.null(cn)) cn <- paste0("[,", seq_len(ncol(x_print)), "]")
+
+  row_width <- max(nchar(rn), 0L)
+  col_widths <- pmax(nchar(cn), apply(nchar(x_print), 2L, max))
+  header <- paste0(
+    strrep(" ", row_width + 1L),
+    paste(format(cn, width = col_widths, justify = "right"), collapse = " ")
+  )
+  rows <- vapply(seq_len(nrow(x_print)), function(i) {
+    paste0(
+      format(rn[i], width = row_width, justify = "left"),
+      " ",
+      paste(format(x_print[i, ], width = col_widths, justify = "right"), collapse = " ")
+    )
+  }, character(1L))
+  cat(paste(c(header, rows), collapse = "\n"), "\n", sep = "")
+  invisible(x)
+}
+
+#' @keywords internal
+#' @noRd
+.apply_estimate_dimnames <- function(fit, name, val, dims = NULL) {
+  if (is.null(dims)) {
+    if (!is.null(fit$model$par_list[[name]])) {
+      dims <- fit$model$par_list[[name]]$dim
+    } else if (!is.null(fit$transform_dims[[name]])) {
+      dims <- fit$transform_dims[[name]]
+    } else if (!is.null(fit$generate_dims[[name]])) {
+      dims <- fit$generate_dims[[name]]
+    }
+  }
+  if (is.null(dims) || length(dims) == 0L) return(val)
+
+  names_def <- fit$model$par_names[[name]]
+  if (length(dims) > 1L && is.null(dim(val))) dim(val) <- dims
+  if (is.null(names_def) && length(dims) == 2L) {
+    y_names <- colnames(fit$model$data$Y)
+    if (!is.null(y_names) && length(y_names) == dims[1L]) {
+      names_def <- list(y_names, paste0("Factor", seq_len(dims[2L])))
+    }
+  }
+
+  if (!is.null(names_def)) {
+    if (is.list(names_def) && length(names_def) == length(dims)) {
+      dimnames(val) <- names_def
+    } else if (is.atomic(names_def) && length(dims) == 1L && length(names_def) == dims[1L]) {
+      names(val) <- names_def
+    } else if (is.atomic(names_def) && length(dims) > 1L && length(names_def) == dims[1L]) {
+      dn <- vector("list", length(dims))
+      dn[[1L]] <- names_def
+      if (length(dims) == 2L && dims[1L] == dims[2L]) dn[[2L]] <- names_def
+      dimnames(val) <- dn
+    }
+  }
+  if (length(dim(val)) == 2L && is.numeric(val)) {
+    class(val) <- unique(c("rtmb_estimate_matrix", class(val)))
+  }
+  val
+}
+
 #' @keywords internal
 #' @noRd
 .collect_point_estimates <- function(fit, type = "EAP", chains = NULL, best_chains = NULL, ...) {
   if (inherits(fit, c("Classic_Fit", "map_fit"))) {
     # Combine par, transform, and generate fields from optimization result
     res <- c(fit$par %||% list(), fit$transform %||% list(), fit$generate %||% list())
+    for (name in names(res)) {
+      res[[name]] <- .apply_estimate_dimnames(fit, name, res[[name]])
+    }
     return(res)
   }
 
@@ -89,6 +159,7 @@
           val <- flat_ests[idx]
           dims <- if (!is.null(dims_list)) dims_list[[name]] else fit$model$par_list[[name]]$dim
           if (length(dims) > 1) dim(val) <- dims
+          val <- .apply_estimate_dimnames(fit, name, val, dims)
           res[[name]] <<- val
         }
       }
@@ -178,6 +249,44 @@ RTMB_Fit_Base <- R6::R6Class(
       coalesce_null <- function(a, b) {
         if (!is.null(a)) a else b
       }
+      apply_estimate_dimnames <- function(fit, name, val, dims = NULL) {
+        if (is.null(dims)) {
+          if (!is.null(fit$model$par_list[[name]])) {
+            dims <- fit$model$par_list[[name]]$dim
+          } else if (!is.null(fit$transform_dims[[name]])) {
+            dims <- fit$transform_dims[[name]]
+          } else if (!is.null(fit$generate_dims[[name]])) {
+            dims <- fit$generate_dims[[name]]
+          }
+        }
+        if (is.null(dims) || length(dims) == 0L) return(val)
+
+        names_def <- fit$model$par_names[[name]]
+        if (length(dims) > 1L && is.null(dim(val))) dim(val) <- dims
+        if (is.null(names_def) && length(dims) == 2L) {
+          y_names <- colnames(fit$model$data$Y)
+          if (!is.null(y_names) && length(y_names) == dims[1L]) {
+            names_def <- list(y_names, paste0("Factor", seq_len(dims[2L])))
+          }
+        }
+
+        if (!is.null(names_def)) {
+          if (is.list(names_def) && length(names_def) == length(dims)) {
+            dimnames(val) <- names_def
+          } else if (is.atomic(names_def) && length(dims) == 1L && length(names_def) == dims[1L]) {
+            names(val) <- names_def
+          } else if (is.atomic(names_def) && length(dims) > 1L && length(names_def) == dims[1L]) {
+            dn <- vector("list", length(dims))
+            dn[[1L]] <- names_def
+            if (length(dims) == 2L && dims[1L] == dims[2L]) dn[[2L]] <- names_def
+            dimnames(val) <- dn
+          }
+        }
+        if (length(dim(val)) == 2L && is.numeric(val)) {
+          class(val) <- unique(c("rtmb_estimate_matrix", class(val)))
+        }
+        val
+      }
       select_parameters_local <- function(all_list, pars) {
         if (is.null(pars)) return(all_list)
         if (identical(pars, "parameters") || identical(pars, "all")) return(all_list)
@@ -231,6 +340,9 @@ RTMB_Fit_Base <- R6::R6Class(
           res <- c(coalesce_null(fit$par, list()),
                    coalesce_null(fit$transform, list()),
                    coalesce_null(fit$generate, list()))
+          for (name in names(res)) {
+            res[[name]] <- apply_estimate_dimnames(fit, name, res[[name]])
+          }
           return(res)
         }
 
@@ -269,6 +381,7 @@ RTMB_Fit_Base <- R6::R6Class(
                 val <- flat_ests[idx]
                 dims <- if (!is.null(dims_list)) dims_list[[name]] else fit$model$par_list[[name]]$dim
                 if (length(dims) > 1) dim(val) <- dims
+                val <- apply_estimate_dimnames(fit, name, val, dims)
                 res[[name]] <<- val
               }
             }
@@ -379,7 +492,7 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
     rotate = function(target, reference = NULL, linked = NULL) {
-      cat("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...\n")
+      message("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...")
 
       target_map <- self$get_point_estimate(target)
 
@@ -473,7 +586,7 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param ... Additional arguments passed to the rotation function.
     #' @return The updated object invisibly.
     fa_rotate = function(target = "L", linked = NULL, scores = NULL, rotate = "promax", ...) {
-      cat(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...\n", rotate, target, rotate))
+      message(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...", rotate, target, rotate))
 
       if (exists(rotate, mode = "function")) {
         rot_fn <- match.fun(rotate)

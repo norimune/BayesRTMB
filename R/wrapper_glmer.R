@@ -90,7 +90,8 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
 #' @export
 make_glmer_re_terms <- function(formula, data, family = "gaussian",
                                 resid_group = NULL, resid_time = NULL,
-                                within = NULL, factors = NULL) {
+                                within = NULL, factors = NULL,
+                                missing = "listwise") {
   if (family == "gaussian" && is.call(formula[[2]]) && identical(formula[[2]][[1]], as.name("cbind"))) {
     processed <- .handle_wide_to_long(formula, data, within, factors)
     formula <- processed$formula
@@ -115,7 +116,8 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
   if (!is.null(resid_group)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_group)))
   if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
 
-  mf <- model.frame(mf_form, data = data)
+  na_act <- if (missing == "listwise") na.omit else na.pass
+  mf <- model.frame(mf_form, data = data, na.action = na_act)
   Y <- model.response(mf)
   X_full <- model.matrix(fixed_form, mf)
   X_assign <- attr(X_full, "assign")
@@ -291,8 +293,10 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        resid_time = NULL,
                        resid_group = NULL,
                        generate = NULL,
+                       missing = c("listwise", "fiml"),
                        .force_sum = FALSE) {
 
+  missing <- match.arg(missing)
   # --- Handle Wide to Long conversion if needed ---
   if (family == "gaussian" && is.call(formula[[2]]) && identical(formula[[2]][[1]], as.name("cbind"))) {
     processed <- .handle_wide_to_long(formula, data, within, factors)
@@ -694,6 +698,14 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   # --- Setup AST ---
   setup_exprs <- list()
   Y_setup_raw <- model.response(mf)
+  
+  if (is.character(Y_setup_raw)) {
+    stop("The response variable must be numeric (or a factor for classification models). Character variables are not supported.", call. = FALSE)
+  }
+  
+  if (is.factor(Y_setup_raw) && !(family %in% c("binomial", "bernoulli", "ordered", "sequential"))) {
+    stop(sprintf("The response variable for family '%s' must be numeric. Factor variables are not supported.", family), call. = FALSE)
+  }
   if (has_random) {
     glmer_re_call_args <- list(formula = as.name("formula"), data = as.name("df"))
     if (!identical(family, "gaussian")) glmer_re_call_args$family <- as.name("family_name")
@@ -701,6 +713,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     if (!is.null(resid_time)) glmer_re_call_args$resid_time <- as.name("resid_time_name")
     if (!is.null(within)) glmer_re_call_args$within <- as.name("within_info")
     if (!is.null(factors)) glmer_re_call_args$factors <- as.name("factors_info")
+    glmer_re_call_args$missing <- missing
     setup_exprs[[length(setup_exprs) + 1]] <- as.call(list(as.name("<-"), as.name("res"), as.call(c(list(as.name("make_glmer_re_terms")), glmer_re_call_args))))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- res$Y)
     if (family == "binomial") {
@@ -728,7 +741,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- res$random$terms[[.(b)]]$num_ranef)
     }
   } else {
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(mf <- model.frame(formula, df))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(na_act <- if (.(missing) == "listwise") na.omit else na.pass)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(mf <- model.frame(formula, df, na.action = na_act))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- model.response(mf))
     if (is.matrix(Y_setup_raw)) {
       if (ncol(Y_setup_raw) == 2 && family == "binomial") {

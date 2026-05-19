@@ -12,7 +12,8 @@ rtmb_fa(
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
-  fixed = NULL
+  fixed = NULL,
+  missing = c("listwise", "fiml")
 )
 }
 \arguments{
@@ -41,7 +42,7 @@ rotation methods (e.g., varimax, promax) as well as regularized factor analysis
 using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
 }
 \examples{
-\dontrun{
+
   # Prepare a subset of the mtcars dataset for factor analysis
   # Scaling is recommended for variables with different units
   fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])
@@ -60,10 +61,12 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
   fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
 
   # MCMC sampling for the 2 factor-model (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_fa2 <- fit_fa2$sample(sampling=500, warmup=500, chains=2)
   # The summary prioritizes rotated loadings (L_promax), standard deviations,
   # and factor correlations
   mcmc_fa2$summary()
+  }
 
   # Setting 'se_sampling = TRUE' enables the calculation of standard errors and 95\% CIs
   # for transformed and generated quantities, such as factor scores and post-hoc rotations.
@@ -90,6 +93,7 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
   map_ssp$summary()
 
   # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
 
   # --- 4. Resolving Label Switching in MCMC ---
@@ -106,5 +110,6 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
   # Summary of the rotated loadings (L_rot) with stabilized estimates
   mcmc_ssp$summary("L_rot")
   mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
-}
+  mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
+  }
 }

@@ -13,7 +13,8 @@ rtmb_corr(
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
-  fixed = NULL
+  fixed = NULL,
+  missing = c("listwise", "fiml", "pairwise")
 )
 }
 \arguments{
@@ -41,7 +42,7 @@ Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to
 It supports simple correlation, multilevel correlation, and classical frequentist estimation.
 }
 \examples{
-\dontrun{
+
   # Simulate bivariate normal data with a true correlation of 0.5
   set.seed(123)
   N <- 50
@@ -54,11 +55,12 @@ It supports simple correlation, multilevel correlation, and classical frequentis
 
     fit_corr <- rtmb_corr(data = data_corr)
 
+    \donttest{
     mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
     mcmc_corr$summary()
 
     bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
     print(bf_corr)
+    }
   }
-}
 }

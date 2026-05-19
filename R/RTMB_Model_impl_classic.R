@@ -199,19 +199,29 @@
   pairs <- utils::combn(seq_len(ncol(Y_target)), 2)
 
   if (P_x > 0) {
-    ok <- stats::complete.cases(Y)
-    Y_complete <- Y[ok, , drop = FALSE]
-    n_complete <- nrow(Y_complete)
-    if (n_complete <= P_x + 2) {
-      stop("Not enough complete observations to compute partial correlations.", call. = FALSE)
-    }
-
-    Y_corr <- if (method == "spearman") {
-      apply(Y_complete, 2, rank, ties.method = "average")
+    missing_arg <- self$extra$missing %||% "listwise"
+    if (missing_arg == "pairwise") {
+      n_complete <- nrow(Y)
+      Y_corr <- if (method == "spearman") {
+        apply(Y, 2, rank, na.last = "keep", ties.method = "average")
+      } else {
+        Y
+      }
+      R <- stats::cor(Y_corr, use = "pairwise.complete.obs")
     } else {
-      Y_complete
+      ok <- stats::complete.cases(Y)
+      Y_complete <- Y[ok, , drop = FALSE]
+      n_complete <- nrow(Y_complete)
+      if (n_complete <= P_x + 2) {
+        stop("Not enough complete observations to compute partial correlations.", call. = FALSE)
+      }
+      Y_corr <- if (method == "spearman") {
+        apply(Y_complete, 2, rank, ties.method = "average")
+      } else {
+        Y_complete
+      }
+      R <- stats::cor(Y_corr, use = "complete.obs")
     }
-    R <- stats::cor(Y_corr, use = "complete.obs")
     R_yy <- R[seq_len(P_y), seq_len(P_y), drop = FALSE]
     x_idx <- P_y + seq_len(P_x)
     R_yx <- R[seq_len(P_y), x_idx, drop = FALSE]

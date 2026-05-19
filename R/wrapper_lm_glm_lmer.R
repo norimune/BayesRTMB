@@ -44,7 +44,9 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        resid_time = NULL,
                        resid_group = NULL,
                        within = NULL,
+                       missing = c("listwise", "fiml"),
                        ...) {
+  missing <- match.arg(missing)
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
@@ -61,6 +63,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              resid_time = resid_time,
              resid_group = resid_group,
              within = within,
+             missing = missing,
              .force_sum = TRUE)
 }
 
@@ -91,7 +94,9 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                        gmc = NULL,
                        view = NULL,
                        factors = NULL,
-                       contrasts = "treatment", ...) {
+                       contrasts = "treatment",
+                       missing = c("listwise", "fiml"), ...) {
+  missing <- match.arg(missing)
   rtmb_glmer(formula = formula, data = data, family = family,
              laplace = FALSE,
              prior = prior,
@@ -101,7 +106,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              gmc = gmc,
              view = view,
              factors = factors,
-             contrasts = contrasts, ...)
+             contrasts = contrasts, missing = missing, ...)
 }
 
 #' RTMB-based Linear Regression wrapper function
@@ -130,7 +135,9 @@ rtmb_lm <- function(formula, data,
                     gmc = NULL,
                     view = NULL,
                     factors = NULL,
-                    contrasts = "treatment", ...) {
+                    contrasts = "treatment",
+                    missing = c("listwise", "fiml"), ...) {
+  missing <- match.arg(missing)
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = FALSE,
              prior = prior,
@@ -140,5 +147,5 @@ rtmb_lm <- function(formula, data,
              gmc = gmc,
              view = view,
              factors = factors,
-             contrasts = contrasts, ...)
+             contrasts = contrasts, missing = missing, ...)
 }

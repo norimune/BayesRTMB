@@ -1,4 +1,4 @@
-\dontrun{
+
   # Simulate bivariate normal data with a true correlation of 0.5
   set.seed(123)
   N <- 50
@@ -11,10 +11,11 @@
 
     fit_corr <- rtmb_corr(data = data_corr)
 
+    \donttest{
     mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
     mcmc_corr$summary()
 
     bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
     print(bf_corr)
+    }
   }
-}

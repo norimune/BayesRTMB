@@ -3,7 +3,7 @@ Type: Package
 Title: Bayesian Inference Using RTMB
 Version: 0.1.0
 Authors@R: person("Hiroshi", "Shimizu", email = "simizu706@gmail.com", role = c("aut", "cre"))
-Description: Provides tools for Markov chain Monte Carlo (MCMC) and Maximum A Posteriori (MAP) estimation utilizing the 'RTMB' package.
+Description: Provides tools for Markov chain Monte Carlo (MCMC) and Maximum A Posteriori (MAP) estimation utilizing the 'RTMB' package. It supports various statistical models including generalized linear mixed models, factor analysis, item response theory, and multidimensional unfolding. The package allows users to easily transition between frequentist and Bayesian paradigms using a unified interface.
 License: MIT + file LICENSE
 Encoding: UTF-8
 Language: en-US

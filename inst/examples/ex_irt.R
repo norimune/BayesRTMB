@@ -1,4 +1,4 @@
-  \dontrun{
+
   # --- 1. Binary Data (e.g., correct/incorrect answers) ---
   # Simulate binary response data for 100 persons and 5 items
   set.seed(123)
@@ -63,6 +63,8 @@
   # MCMC sampling is recommended for reliable interval estimation.
 
   # MCMC sampling for the ordered model (chains and iterations reduced)
+  \donttest{
   mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ord$summary()
- }
+  mcmc_ord$summary()
+  }

@@ -1628,7 +1628,7 @@ Classic_Fit <- R6::R6Class(
 
       if (update) private$.update_fixed_effects_with_vcov(self$vcov)
       
-      cat(sprintf("%s standard errors calculated.\n", tools::toTitleCase(self$se_method)))
+      message(sprintf("%s standard errors calculated.", tools::toTitleCase(self$se_method)))
       return(self)
     },
       .compute_glm_robust_se = function(cluster = NULL, type = c("HC3", "HC0", "HC1", "CR1", "CR0"), update = TRUE) {
@@ -1756,7 +1756,7 @@ Classic_Fit <- R6::R6Class(
 
         if (update) private$.update_fixed_effects_with_vcov(self$vcov)
 
-        cat(sprintf("%s standard errors calculated.\n", tools::toTitleCase(self$se_method)))
+        message(sprintf("%s standard errors calculated.", tools::toTitleCase(self$se_method)))
         return(self)
       },
       .compute_glmer_robust_se = function(cluster = NULL, type = c("CR1", "CR0"), update = TRUE) {
@@ -1927,7 +1927,7 @@ Classic_Fit <- R6::R6Class(
         
         if (update) private$.update_fixed_effects_with_vcov(V_beta)
         
-        cat(sprintf("%s standard errors calculated.\n", tools::toTitleCase(self$se_method)))
+        message(sprintf("%s standard errors calculated.", tools::toTitleCase(self$se_method)))
         return(self)
       }
     )

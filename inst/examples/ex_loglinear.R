@@ -1,4 +1,4 @@
-\dontrun{
+
   # Create a contingency table
   tab <- matrix(c(10, 20, 30, 40), nrow = 2)
   dimnames(tab) <- list(A = c("A1", "A2"), B = c("B1", "B2"))
@@ -11,6 +11,7 @@
   map_log$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
+  \donttest{
   mcmc_log <- fit_log$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_log$summary()
-}
+  }

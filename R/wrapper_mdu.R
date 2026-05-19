@@ -605,8 +605,10 @@ rtmb_mdu <- function(data, ndim = 2,
                      sets = NULL,
                      prior = prior_flat(), y_range = NULL,
                      init = NULL, fixed = NULL, view = NULL,
-                     distance_eps = 1e-4) {
+                     distance_eps = 1e-4,
+                     missing = c("listwise", "fiml")) {
 
+  missing_arg <- match.arg(missing)
   distance_missing <- missing(distance)
   method <- match.arg(method)
   if (method == "MDS" && distance_missing) {
@@ -638,10 +640,19 @@ rtmb_mdu <- function(data, ndim = 2,
     }
     person_names <- character(0)
   } else if (method == "rating") {
+    if (is.data.frame(data)) {
+      if (!all(sapply(data, is.numeric))) {
+        stop("For rating MDU, all variables in the data must be numeric. Character or factor variables are not supported.", call. = FALSE)
+      }
+    } else if (!is.numeric(data) && !is.logical(data)) {
+      stop("For rating MDU, the data matrix must be numeric.", call. = FALSE)
+    }
     Y <- as.matrix(data)
     storage.mode(Y) <- "double"
-    if (anyNA(Y)) {
-      stop("rtmb_mdu() does not currently support missing values in 'data'.", call. = FALSE)
+    if (missing_arg == "listwise") {
+      Y <- na.omit(Y)
+    } else if (anyNA(Y) && missing_arg != "fiml") {
+      stop("rtmb_mdu() requires complete data unless missing = 'fiml'.", call. = FALSE)
     }
     N <- nrow(Y)
     M <- ncol(Y)
@@ -843,33 +854,41 @@ rtmb_mdu <- function(data, ndim = 2,
     loop_ast <- if (distance == "squared" && alpha_type == "random") {
       quote(for (i in 1:N) {
         for (j in 1:M) {
-          d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
-          mu_ij <- beta * (alpha[j] - d_ij)
-          Y[i, j] ~ normal(mu_ij, sigma[j])
+          if (!is.na(Y[i, j])) {
+            d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha[j] - d_ij)
+            Y[i, j] ~ normal(mu_ij, sigma[j])
+          }
         }
       })
     } else if (distance == "squared") {
       quote(for (i in 1:N) {
         for (j in 1:M) {
-          d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
-          mu_ij <- beta * (alpha - d_ij)
-          Y[i, j] ~ normal(mu_ij, sigma[j])
+          if (!is.na(Y[i, j])) {
+            d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha - d_ij)
+            Y[i, j] ~ normal(mu_ij, sigma[j])
+          }
         }
       })
     } else if (alpha_type == "random") {
       quote(for (i in 1:N) {
         for (j in 1:M) {
-          d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
-          mu_ij <- beta * (alpha[j] - d_ij)
-          Y[i, j] ~ normal(mu_ij, sigma[j])
+          if (!is.na(Y[i, j])) {
+            d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha[j] - d_ij)
+            Y[i, j] ~ normal(mu_ij, sigma[j])
+          }
         }
       })
     } else {
       quote(for (i in 1:N) {
         for (j in 1:M) {
-          d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
-          mu_ij <- beta * (alpha - d_ij)
-          Y[i, j] ~ normal(mu_ij, sigma[j])
+          if (!is.na(Y[i, j])) {
+            d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha - d_ij)
+            Y[i, j] ~ normal(mu_ij, sigma[j])
+          }
         }
       })
     }
