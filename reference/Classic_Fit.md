@@ -5,7 +5,7 @@ estimation.
 
 ## Super class
 
-[`BayesRTMB::RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
+[`RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
 -\> `Classic_Fit`
 
 ## Public fields
@@ -142,7 +142,7 @@ estimation.
 
 - [`Classic_Fit$get_point_estimate()`](#method-Classic_Fit-get_point_estimate)
 
-- [`Classic_Fit$new()`](#method-Classic_Fit-new)
+- [`Classic_Fit$new()`](#method-Classic_Fit-initialize)
 
 - [`Classic_Fit$robust_se()`](#method-Classic_Fit-robust_se)
 
@@ -180,13 +180,13 @@ estimation.
 
 Inherited methods
 
-- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
-- [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
-- [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
+- [`RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
+- [`RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
+- [`RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
 ------------------------------------------------------------------------
 
-### Method `get_point_estimate()`
+### `Classic_Fit$get_point_estimate()`
 
 Get point estimate for a target parameter.
 
@@ -210,7 +210,7 @@ Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `Classic_Fit$new()`
 
 Create a new \`Classic_Fit\` object.
 
@@ -364,7 +364,7 @@ Create a new \`Classic_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### Method `robust_se()`
+### `Classic_Fit$robust_se()`
 
 Compute robust standard errors (sandwich estimator).
 
@@ -403,7 +403,7 @@ Self.
 
 ------------------------------------------------------------------------
 
-### Method `compute_robust()`
+### `Classic_Fit$compute_robust()`
 
 (Deprecated) Use robust_se() instead.
 
@@ -423,7 +423,7 @@ Self.
 
 ------------------------------------------------------------------------
 
-### Method `bootstrap()`
+### `Classic_Fit$bootstrap()`
 
 Compute nonparametric bootstrap standard errors and confidence
 intervals. Currently implemented only for mediation models. Bootstrap
@@ -459,7 +459,7 @@ A Classic_Fit object.
 
 ------------------------------------------------------------------------
 
-### Method `compute_bootstrap()`
+### `Classic_Fit$compute_bootstrap()`
 
 Compute nonparametric bootstrap standard errors and confidence
 intervals. Currently implemented only for mediation models. Bootstrap
@@ -495,7 +495,7 @@ A Classic_Fit object.
 
 ------------------------------------------------------------------------
 
-### Method [`AIC()`](https://rdrr.io/r/stats/AIC.html)
+### `Classic_Fit$AIC()`
 
 Get the AIC of the fitted model.
 
@@ -505,7 +505,7 @@ Get the AIC of the fitted model.
 
 ------------------------------------------------------------------------
 
-### Method [`BIC()`](https://rdrr.io/r/stats/AIC.html)
+### `Classic_Fit$BIC()`
 
 Get the BIC of the fitted model.
 
@@ -515,7 +515,7 @@ Get the BIC of the fitted model.
 
 ------------------------------------------------------------------------
 
-### Method [`print()`](https://rdrr.io/r/base/print.html)
+### `Classic_Fit$print()`
 
 Print the fit results.
 
@@ -531,7 +531,7 @@ Print the fit results.
 
 ------------------------------------------------------------------------
 
-### Method [`logLik()`](https://rdrr.io/r/stats/logLik.html)
+### `Classic_Fit$logLik()`
 
 Get the Log-Likelihood of the fitted model.
 
@@ -541,7 +541,7 @@ Get the Log-Likelihood of the fitted model.
 
 ------------------------------------------------------------------------
 
-### Method `EAP()`
+### `Classic_Fit$EAP()`
 
 EAP estimates are not available for Classic_Fit.
 
@@ -557,7 +557,7 @@ EAP estimates are not available for Classic_Fit.
 
 ------------------------------------------------------------------------
 
-### Method `MAP()`
+### `Classic_Fit$MAP()`
 
 MAP estimates are not available for Classic_Fit.
 
@@ -573,7 +573,7 @@ MAP estimates are not available for Classic_Fit.
 
 ------------------------------------------------------------------------
 
-### Method [`summary()`](https://rdrr.io/r/base/summary.html)
+### `Classic_Fit$summary()`
 
 Display a summary of the estimation results.
 
@@ -601,7 +601,7 @@ Display a summary of the estimation results.
 
 ------------------------------------------------------------------------
 
-### Method [`anova()`](https://rdrr.io/r/stats/anova.html)
+### `Classic_Fit$anova()`
 
 Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.
 
@@ -625,7 +625,7 @@ A data frame containing the ANOVA table.
 
 ------------------------------------------------------------------------
 
-### Method [`lsmeans()`](https://norimune.github.io/BayesRTMB/reference/lsmeans.md)
+### `Classic_Fit$lsmeans()`
 
 Calculate Least Squares Means (Marginal Means) and contrasts.
 
@@ -668,7 +668,7 @@ A data frame containing the marginal means or contrasts.
 
 ------------------------------------------------------------------------
 
-### Method `.calc_contrast()`
+### `Classic_Fit$.calc_contrast()`
 
 (Internal) Calculate metrics for a contrast.
 
@@ -692,7 +692,7 @@ A data frame with estimate, SE, df, t-value, and p-value.
 
 ------------------------------------------------------------------------
 
-### Method `.get_lsmeans_df()`
+### `Classic_Fit$.get_lsmeans_df()`
 
 (Internal) Get representative DF for lsmeans.
 
@@ -712,7 +712,7 @@ Degrees of freedom.
 
 ------------------------------------------------------------------------
 
-### Method `.construct_par_list()`
+### `Classic_Fit$.construct_par_list()`
 
 (Internal) Construct a list of parameters from the fit.
 
@@ -732,7 +732,7 @@ A named list of parameters.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `Classic_Fit$clone()`
 
 The objects of this class are cloneable with this method.
 

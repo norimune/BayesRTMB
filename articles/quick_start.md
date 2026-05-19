@@ -24,21 +24,28 @@ covered in other vignettes.
 
 ## 0. Installation and Environment Check
 
-BayesRTMB can be installed from GitHub. If you use `remotes`, install it
-as follows.
+BayesRTMB can be installed from CRAN.
 
 ``` r
 
-install.packages("remotes")
-remotes::install_github("norimune/BayesRTMB")
+install.packages("BayesRTMB")
 ```
 
-If you use `pak`, install it as follows.
+The development version can be installed from GitHub. If you use `pak`,
+install it as follows.
 
 ``` r
 
 install.packages("pak")
 pak::pak("norimune/BayesRTMB")
+```
+
+If you use `remotes`, install it as follows.
+
+``` r
+
+install.packages("remotes")
+remotes::install_github("norimune/BayesRTMB")
 ```
 
 ### Windows Users: Check Rtools

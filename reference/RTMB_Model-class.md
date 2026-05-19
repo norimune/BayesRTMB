@@ -99,7 +99,7 @@ samples.
 
 ### Public methods
 
-- [`RTMB_Model$new()`](#method-RTMB_Model-new)
+- [`RTMB_Model$new()`](#method-RTMB_Model-initialize)
 
 - [`RTMB_Model$prepare_init()`](#method-RTMB_Model-prepare_init)
 
@@ -145,7 +145,7 @@ samples.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `RTMB_Model$new()`
 
 Create a new \`RTMB_Model\` object.
 
@@ -203,7 +203,7 @@ Create a new \`RTMB_Model\` object.
 
 ------------------------------------------------------------------------
 
-### Method `prepare_init()`
+### `RTMB_Model$prepare_init()`
 
 Prepare and format initial values for the model parameters.
 
@@ -224,7 +224,7 @@ A flat numeric vector of constrained initial values.
 
 ------------------------------------------------------------------------
 
-### Method `get_par_list()`
+### `RTMB_Model$get_par_list()`
 
 Get the current parameters as a named list.
 
@@ -245,7 +245,7 @@ A named list of constrained parameters.
 
 ------------------------------------------------------------------------
 
-### Method `get_ad_obj()`
+### `RTMB_Model$get_ad_obj()`
 
 Get the RTMB automatic differentiation object.
 
@@ -265,7 +265,7 @@ A TMB objective object (ad_obj).
 
 ------------------------------------------------------------------------
 
-### Method `to_unconstrained()`
+### `RTMB_Model$to_unconstrained()`
 
 Convert a list of constrained parameters to unconstrained space.
 
@@ -285,7 +285,7 @@ A named list of parameters in unconstrained space.
 
 ------------------------------------------------------------------------
 
-### Method `to_constrained()`
+### `RTMB_Model$to_constrained()`
 
 Convert a list of unconstrained parameters to constrained (natural)
 space.
@@ -306,7 +306,7 @@ A named list of parameters in constrained space.
 
 ------------------------------------------------------------------------
 
-### Method `unconstrained_vector_to_list()`
+### `RTMB_Model$unconstrained_vector_to_list()`
 
 Convert a flat unconstrained vector to a named list.
 
@@ -326,7 +326,7 @@ A named list of unconstrained parameters.
 
 ------------------------------------------------------------------------
 
-### Method `constrained_vector_to_list()`
+### `RTMB_Model$constrained_vector_to_list()`
 
 Convert a flat constrained vector to a named list.
 
@@ -346,7 +346,7 @@ A named list of constrained parameters.
 
 ------------------------------------------------------------------------
 
-### Method `calculate_satterthwaite_df()`
+### `RTMB_Model$calculate_satterthwaite_df()`
 
 Calculate Satterthwaite degrees of freedom for parameters.
 
@@ -401,7 +401,7 @@ Inf for random effects.
 
 ------------------------------------------------------------------------
 
-### Method `calculate_reml_satterthwaite_df()`
+### `RTMB_Model$calculate_reml_satterthwaite_df()`
 
 Calculate Satterthwaite degrees of freedom for integrated fixed effects
 (REML).
@@ -455,7 +455,7 @@ A numeric vector of estimated degrees of freedom for the fixed effects.
 
 ------------------------------------------------------------------------
 
-### Method `build_ad_obj()`
+### `RTMB_Model$build_ad_obj()`
 
 Build the RTMB automatic differentiation object.
 
@@ -511,7 +511,7 @@ An RTMB objective object (ad_obj).
 
 ------------------------------------------------------------------------
 
-### Method [`optimize()`](https://rdrr.io/r/stats/optimize.html)
+### `RTMB_Model$optimize()`
 
 Perform Maximum Likelihood or Maximum A Posteriori (MAP) estimation.
 
@@ -633,7 +633,7 @@ A fitted \`MAP_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### Method `classic()`
+### `RTMB_Model$classic()`
 
 Perform frequentist inference (REML/ML) with model-appropriate degrees
 of freedom.
@@ -704,7 +704,7 @@ A \`Classic_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### Method [`sample()`](https://rdrr.io/r/base/sample.html)
+### `RTMB_Model$sample()`
 
 Draw posterior samples from the model.
 
@@ -792,7 +792,7 @@ A fitted \`MCMC_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### Method `variational()`
+### `RTMB_Model$variational()`
 
 Run Automatic Differentiation Variational Inference (ADVI).
 
@@ -894,7 +894,7 @@ information.
 
 ------------------------------------------------------------------------
 
-### Method `print_code()`
+### `RTMB_Model$print_code()`
 
 Print model code or model structure.
 
@@ -908,7 +908,7 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `print_log_prob()`
+### `RTMB_Model$print_log_prob()`
 
 Print the internal log-probability function.
 
@@ -922,7 +922,7 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `print_transform()`
+### `RTMB_Model$print_transform()`
 
 Print the internal transformation function.
 
@@ -936,7 +936,7 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `print_generate()`
+### `RTMB_Model$print_generate()`
 
 Print the internal generation function.
 
@@ -950,7 +950,7 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `get_n_obs()`
+### `RTMB_Model$get_n_obs()`
 
 Automatically detect and count the number of independent data points
 (observations).
@@ -965,7 +965,7 @@ Integer; total number of observations, or NULL if model code is missing.
 
 ------------------------------------------------------------------------
 
-### Method `fixed_model()`
+### `RTMB_Model$fixed_model()`
 
 Create a model with fixed parameters.
 
@@ -989,7 +989,7 @@ A new RTMB_Model object.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `RTMB_Model$clone()`
 
 The objects of this class are cloneable with this method.
 

@@ -688,12 +688,12 @@ horseshoe、<code><a href="../reference/prior_ssp.html">prior_ssp()</a></code> �
 <div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova</a></span><span class="op">(</span><span class="va">fit_aov</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## ANOVA Table (Wald F-tests)</span></span>
-<span><span class="co">##        num_df den_df F value   Pr(&gt;F) signif</span></span>
-<span><span class="co">## a           1      7  8.4229 0.022913      2</span></span>
-<span><span class="co">## time        3     30  4.8719 0.007062      3</span></span>
-<span><span class="co">## b           2      7  3.3997 0.092967      5</span></span>
-<span><span class="co">## age         1      7  2.4916 0.158466      1</span></span>
-<span><span class="co">## a:time      3     30  9.6016 0.000133      4</span></span></code></pre>
+<span><span class="co">##        num_df den_df F value   Pr(&gt;F)</span></span>
+<span><span class="co">## a           1      7  8.4229 0.022913</span></span>
+<span><span class="co">## time        3     30  4.8719 0.007062</span></span>
+<span><span class="co">## b           2      7  3.3997 0.092967</span></span>
+<span><span class="co">## age         1      7  2.4916 0.158466</span></span>
+<span><span class="co">## a:time      3     30  9.6016 0.000133</span></span></code></pre>
 <p>推定周辺平均は <code><a href="../reference/lsmeans.html">lsmeans()</a></code> で計算できます。</p>
 <div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">emm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lsmeans.html">lsmeans</a></span><span class="op">(</span><span class="va">fit_aov</span>, specs <span class="op">=</span> <span class="st">"a"</span><span class="op">)</span></span>

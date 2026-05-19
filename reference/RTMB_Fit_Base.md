@@ -1,11 +1,5 @@
 # Base class for RTMB Fit objects
 
-Base class for RTMB Fit objects
-
-Base class for RTMB Fit objects
-
-## Details
-
 An R6 base class providing common methods for Bayesian and MAP inference
 results.
 
@@ -35,7 +29,7 @@ results.
 
 ------------------------------------------------------------------------
 
-### Method `get_point_estimate()`
+### `RTMB_Fit_Base$get_point_estimate()`
 
 Abstract method to get a point estimate for a target parameter.
 
@@ -59,7 +53,7 @@ A numeric array or matrix of the point estimate.
 
 ------------------------------------------------------------------------
 
-### Method `estimate()`
+### `RTMB_Fit_Base$estimate()`
 
 Get point estimates for parameters, transformed parameters, and
 generated quantities.
@@ -115,7 +109,7 @@ A named list of point estimates, or a single value if \`drop = TRUE\`.
 
 ------------------------------------------------------------------------
 
-### Method `EAP()`
+### `RTMB_Fit_Base$EAP()`
 
 Calculate Expected A Posteriori (EAP) estimates from posterior samples.
 
@@ -157,7 +151,7 @@ A named list of EAP estimates.
 
 ------------------------------------------------------------------------
 
-### Method `MAP()`
+### `RTMB_Fit_Base$MAP()`
 
 Calculate Maximum A Posteriori (MAP) estimates.
 
@@ -204,7 +198,7 @@ A named list of MAP estimates.
 
 ------------------------------------------------------------------------
 
-### Method `rotate()`
+### `RTMB_Fit_Base$rotate()`
 
 Rotate sampled parameters.
 
@@ -249,7 +243,7 @@ The updated object invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `fa_rotate()`
+### `RTMB_Fit_Base$fa_rotate()`
 
 Rotate factor loadings and optional factor scores.
 
@@ -294,7 +288,7 @@ The updated object invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `RTMB_Fit_Base$clone()`
 
 The objects of this class are cloneable with this method.
 

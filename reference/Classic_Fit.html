@@ -61,7 +61,7 @@
 
     <div class="section level2">
     <h2 id="super-class">Super class<a class="anchor" aria-label="anchor" href="#super-class"></a></h2>
-    <p><code><a href="RTMB_Fit_Base.html">BayesRTMB::RTMB_Fit_Base</a></code> -&gt; <code>Classic_Fit</code></p>
+    <p><code><a href="RTMB_Fit_Base.html">RTMB_Fit_Base</a></code> -&gt; <code>Classic_Fit</code></p>
     </div>
     <div class="section level2">
     <h2 id="public-fields">Public fields<a class="anchor" aria-label="anchor" href="#public-fields"></a></h2>
@@ -69,123 +69,123 @@
 <dd><p>The `RTMB_Model` object used for estimation.</p></dd>
 
 
-<dt><code>fit</code></dt>
+    <dt><code>fit</code></dt>
 <dd><p>The result of the estimation (dataframe or lm object).</p></dd>
 
 
-<dt><code>par</code></dt>
+    <dt><code>par</code></dt>
 <dd><p>a named list of parameter estimates.</p></dd>
 
 
-<dt><code>vcov</code></dt>
+    <dt><code>vcov</code></dt>
 <dd><p>Variance-covariance matrix of fixed effects.</p></dd>
 
 
-<dt><code>se_method</code></dt>
+    <dt><code>se_method</code></dt>
 <dd><p>Character string specifying the method used for standard errors.</p></dd>
 
 
-<dt><code>cluster</code></dt>
+    <dt><code>cluster</code></dt>
 <dd><p>Character string specifying the cluster variable name, if any.</p></dd>
 
 
-<dt><code>robust_type</code></dt>
+    <dt><code>robust_type</code></dt>
 <dd><p>Character string specifying the robust standard error correction type, if used.</p></dd>
 
 
-<dt><code>bootstrap_results</code></dt>
+    <dt><code>bootstrap_results</code></dt>
 <dd><p>A matrix containing bootstrap samples, if applicable.</p></dd>
 
 
-<dt><code>test_results</code></dt>
+    <dt><code>test_results</code></dt>
 <dd><p>List of additional test results (e.g., chisq.test).</p></dd>
 
 
-<dt><code>view</code></dt>
+    <dt><code>view</code></dt>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
 
-<dt><code>par_vec</code></dt>
+    <dt><code>par_vec</code></dt>
 <dd><p>Numeric vector of parameter estimates.</p></dd>
 
 
-<dt><code>objective</code></dt>
+    <dt><code>objective</code></dt>
 <dd><p>Final objective value.</p></dd>
 
 
-<dt><code>log_lik</code></dt>
+    <dt><code>log_lik</code></dt>
 <dd><p>Log-likelihood.</p></dd>
 
 
-<dt><code>convergence</code></dt>
+    <dt><code>convergence</code></dt>
 <dd><p>Convergence code.</p></dd>
 
 
-<dt><code>sd_rep</code></dt>
+    <dt><code>sd_rep</code></dt>
 <dd><p>TMB sdreport object.</p></dd>
 
 
-<dt><code>df_fixed</code></dt>
+    <dt><code>df_fixed</code></dt>
 <dd><p>Dataframe of fixed effects results.</p></dd>
 
 
-<dt><code>random_effects</code></dt>
+    <dt><code>random_effects</code></dt>
 <dd><p>Dataframe of random effects results.</p></dd>
 
 
-<dt><code>df_transform</code></dt>
+    <dt><code>df_transform</code></dt>
 <dd><p>Dataframe of transformed parameters.</p></dd>
 
 
-<dt><code>df_generate</code></dt>
+    <dt><code>df_generate</code></dt>
 <dd><p>Dataframe of generated quantities.</p></dd>
 
 
-<dt><code>opt_history</code></dt>
+    <dt><code>opt_history</code></dt>
 <dd><p>Dataframe of optimization history.</p></dd>
 
 
-<dt><code>transform</code></dt>
+    <dt><code>transform</code></dt>
 <dd><p>List of transformed parameters.</p></dd>
 
 
-<dt><code>generate</code></dt>
+    <dt><code>generate</code></dt>
 <dd><p>List of generated quantities.</p></dd>
 
 
-<dt><code>se_samples</code></dt>
+    <dt><code>se_samples</code></dt>
 <dd><p>List of simulated samples for SE estimation.</p></dd>
 
 
-<dt><code>par_unc</code></dt>
+    <dt><code>par_unc</code></dt>
 <dd><p>Numeric vector of unconstrained parameter estimates.</p></dd>
 
 
-<dt><code>vcov_unc</code></dt>
+    <dt><code>vcov_unc</code></dt>
 <dd><p>Variance-covariance matrix of parameters in unconstrained space.</p></dd>
 
 
-<dt><code>ci_method</code></dt>
+    <dt><code>ci_method</code></dt>
 <dd><p>Method used for CI estimation.</p></dd>
 
 
-<dt><code>laplace</code></dt>
+    <dt><code>laplace</code></dt>
 <dd><p>Whether Laplace approximation was used.</p></dd>
 
 
-<dt><code>map</code></dt>
+    <dt><code>map</code></dt>
 <dd><p>Parameter mapping used.</p></dd>
 
 
-<dt><code>df_method</code></dt>
+    <dt><code>df_method</code></dt>
 <dd><p>Character string specifying the degrees of freedom calculation method.</p></dd>
 
 
-<dt><code>idx_fix_active</code></dt>
+    <dt><code>idx_fix_active</code></dt>
 <dd><p>Numeric vector; mapping between active parameters and full unconstrained vector.</p></dd>
 
 
-<dt><code>show_df</code></dt>
+    <dt><code>show_df</code></dt>
 <dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
 
 
@@ -196,9 +196,8 @@
 
 <div class="section">
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
-
-<ul><li><p><a href="#method-Classic_Fit-get_point_estimate"><code>Classic_Fit$get_point_estimate()</code></a></p></li>
-<li><p><a href="#method-Classic_Fit-new"><code>Classic_Fit$new()</code></a></p></li>
+<p></p><ul><li><p><a href="#method-Classic_Fit-get_point_estimate"><code>Classic_Fit$get_point_estimate()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-initialize"><code>Classic_Fit$new()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-robust_se"><code>Classic_Fit$robust_se()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-compute_robust"><code>Classic_Fit$compute_robust()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-bootstrap"><code>Classic_Fit$bootstrap()</code></a></p></li>
@@ -216,35 +215,33 @@
 <li><p><a href="#method-Classic_Fit-.get_lsmeans_df"><code>Classic_Fit$.get_lsmeans_df()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-.construct_par_list"><code>Classic_Fit$.construct_par_list()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-clone"><code>Classic_Fit$clone()</code></a></p></li>
-</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href="RTMB_Fit_Base.html#method-estimate"><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href="RTMB_Fit_Base.html#method-rotate"><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
+</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href="RTMB_Fit_Base.html#method-estimate"><code>RTMB_Fit_Base$estimate()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+  <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href="RTMB_Fit_Base.html#method-rotate"><code>RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul></details></p><hr><a id="method-Classic_Fit-get_point_estimate"></a><div class="section">
-<h3 id="method-get-point-estimate-">Method <code>get_point_estimate()</code><a class="anchor" aria-label="anchor" href="#method-get-point-estimate-"></a></h3>
+<h3 id="classic-fit-get-point-estimate-"><code>Classic_Fit$get_point_estimate()</code><a class="anchor" aria-label="anchor" href="#classic-fit-get-point-estimate-"></a></h3>
 <p>Get point estimate for a target parameter.</p><div class="section">
 <h4 id="usage">Usage<a class="anchor" aria-label="anchor" href="#usage"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">get_point_estimate</span><span class="op">(</span><span class="va">target</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments">Arguments<a class="anchor" aria-label="anchor" href="#arguments"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Target parameter name.</p></dd>
 
-
-<dt><code>...</code></dt>
+      <dt><code>...</code></dt>
 <dd><p>Additional arguments, ignored for classic fits.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns">Returns<a class="anchor" aria-label="anchor" href="#returns"></a></h4>
 <p>Matrix, array, vector, or scalar point estimate.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-new"></a><div class="section">
-<h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-initialize"></a><div class="section">
+<h3 id="classic-fit-new-"><code>Classic_Fit$new()</code><a class="anchor" aria-label="anchor" href="#classic-fit-new-"></a></h3>
 <p>Create a new `Classic_Fit` object.</p><div class="section">
 <h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/Classic_Fit.html">Classic_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
@@ -277,127 +274,100 @@
 <span>  show_df <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>model</code></dt>
 <dd><p>The `RTMB_Model` object.</p></dd>
 
-
-<dt><code>par_vec</code></dt>
+      <dt><code>par_vec</code></dt>
 <dd><p>Numeric vector of parameter estimates.</p></dd>
 
-
-<dt><code>par</code></dt>
+      <dt><code>par</code></dt>
 <dd><p>List of parameter estimates.</p></dd>
 
-
-<dt><code>objective</code></dt>
+      <dt><code>objective</code></dt>
 <dd><p>Final objective value.</p></dd>
 
-
-<dt><code>log_lik</code></dt>
+      <dt><code>log_lik</code></dt>
 <dd><p>Log-likelihood.</p></dd>
 
-
-<dt><code>convergence</code></dt>
+      <dt><code>convergence</code></dt>
 <dd><p>Convergence code.</p></dd>
 
-
-<dt><code>sd_rep</code></dt>
+      <dt><code>sd_rep</code></dt>
 <dd><p>TMB sdreport object.</p></dd>
 
-
-<dt><code>df_fixed</code></dt>
+      <dt><code>df_fixed</code></dt>
 <dd><p>Dataframe of fixed effects results.</p></dd>
 
-
-<dt><code>random_effects</code></dt>
+      <dt><code>random_effects</code></dt>
 <dd><p>Dataframe of random effects results.</p></dd>
 
-
-<dt><code>df_transform</code></dt>
+      <dt><code>df_transform</code></dt>
 <dd><p>Dataframe of transformed parameters.</p></dd>
 
-
-<dt><code>df_generate</code></dt>
+      <dt><code>df_generate</code></dt>
 <dd><p>Dataframe of generated quantities.</p></dd>
 
-
-<dt><code>opt_history</code></dt>
+      <dt><code>opt_history</code></dt>
 <dd><p>Dataframe of optimization history.</p></dd>
 
-
-<dt><code>transform</code></dt>
+      <dt><code>transform</code></dt>
 <dd><p>List of transformed parameters.</p></dd>
 
-
-<dt><code>generate</code></dt>
+      <dt><code>generate</code></dt>
 <dd><p>List of generated quantities.</p></dd>
 
-
-<dt><code>se_samples</code></dt>
+      <dt><code>se_samples</code></dt>
 <dd><p>List of simulated samples for SE estimation.</p></dd>
 
-
-<dt><code>par_unc</code></dt>
+      <dt><code>par_unc</code></dt>
 <dd><p>Parameter vector on unconstrained scale.</p></dd>
 
-
-<dt><code>vcov_unc</code></dt>
+      <dt><code>vcov_unc</code></dt>
 <dd><p>Covariance matrix on unconstrained scale.</p></dd>
 
-
-<dt><code>ci_method</code></dt>
+      <dt><code>ci_method</code></dt>
 <dd><p>Method used for CI estimation.</p></dd>
 
-
-<dt><code>laplace</code></dt>
+      <dt><code>laplace</code></dt>
 <dd><p>Whether Laplace approximation was used.</p></dd>
 
-
-<dt><code>map</code></dt>
+      <dt><code>map</code></dt>
 <dd><p>Parameter mapping used.</p></dd>
 
-
-<dt><code>test_results</code></dt>
+      <dt><code>test_results</code></dt>
 <dd><p>List of additional test results (e.g., chisq.test).</p></dd>
 
-
-<dt><code>view</code></dt>
+      <dt><code>view</code></dt>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
-
-<dt><code>fit</code></dt>
+      <dt><code>fit</code></dt>
 <dd><p>Legacy argument for backward compatibility (maps to df_fixed).</p></dd>
 
-
-<dt><code>vcov</code></dt>
+      <dt><code>vcov</code></dt>
 <dd><p>Variance-covariance matrix of parameters.</p></dd>
 
-
-<dt><code>df_method</code></dt>
+      <dt><code>df_method</code></dt>
 <dd><p>Method for degrees of freedom calculation.</p></dd>
 
-
-<dt><code>idx_fix_active</code></dt>
+      <dt><code>idx_fix_active</code></dt>
 <dd><p>Numeric vector; mapping between active parameters and full unconstrained vector.</p></dd>
 
-
-<dt><code>show_df</code></dt>
+      <dt><code>show_df</code></dt>
 <dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
 
-
-<dt><code>...</code></dt>
+      <dt><code>...</code></dt>
 <dd><p>Additional arguments passed to the constructor.</p></dd>
 
 
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-robust_se"></a><div class="section">
-<h3 id="method-robust-se-">Method <code>robust_se()</code><a class="anchor" aria-label="anchor" href="#method-robust-se-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-robust_se"></a><div class="section">
+<h3 id="classic-fit-robust-se-"><code>Classic_Fit$robust_se()</code><a class="anchor" aria-label="anchor" href="#classic-fit-robust-se-"></a></h3>
 <p>Compute robust standard errors (sandwich estimator).</p><div class="section">
 <h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">robust_se</span><span class="op">(</span></span>
@@ -406,151 +376,138 @@
 <span>  inplace <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>cluster</code></dt>
 <dd><p>Character; variable name for clustering.</p></dd>
 
-
-<dt><code>type</code></dt>
+      <dt><code>type</code></dt>
 <dd><p>Character; "HC3" (default), "HC0", or "HC1" for non-clustered
 robust SE; "CR1" or "CR0" for clustered robust SE.</p></dd>
 
-
-<dt><code>inplace</code></dt>
+      <dt><code>inplace</code></dt>
 <dd><p>Logical; if FALSE, return a robust-SE copy without modifying the original fit.
 If TRUE, update the object in place.</p></dd>
 
-
-<dt><code>...</code></dt>
+      <dt><code>...</code></dt>
 <dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
 <p>Self.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-compute_robust"></a><div class="section">
-<h3 id="method-compute-robust-">Method <code>compute_robust()</code><a class="anchor" aria-label="anchor" href="#method-compute-robust-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-compute_robust"></a><div class="section">
+<h3 id="classic-fit-compute-robust-"><code>Classic_Fit$compute_robust()</code><a class="anchor" aria-label="anchor" href="#classic-fit-compute-robust-"></a></h3>
 <p>(Deprecated) Use robust_se() instead.</p><div class="section">
 <h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">compute_robust</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Arguments passed to robust_se(), including inplace.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
 <p>Self.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-bootstrap"></a><div class="section">
-<h3 id="method-bootstrap-">Method <code>bootstrap()</code><a class="anchor" aria-label="anchor" href="#method-bootstrap-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-bootstrap"></a><div class="section">
+<h3 id="classic-fit-bootstrap-"><code>Classic_Fit$bootstrap()</code><a class="anchor" aria-label="anchor" href="#classic-fit-bootstrap-"></a></h3>
 <p>Compute nonparametric bootstrap standard errors and confidence intervals.
 Currently implemented only for mediation models.
 Bootstrap refits mediation equations with base R lm.fit()/glm.fit() when possible,
 and falls back to RTMB refits for unsupported families.</p><div class="section">
 <h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">bootstrap</span><span class="op">(</span>n_boot <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, inplace <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>n_boot</code></dt>
 <dd><p>Integer; number of bootstrap samples.</p></dd>
 
-
-<dt><code>seed</code></dt>
+      <dt><code>seed</code></dt>
 <dd><p>Optional integer random seed.</p></dd>
 
-
-<dt><code>inplace</code></dt>
+      <dt><code>inplace</code></dt>
 <dd><p>Logical; if FALSE, return a bootstrap-SE copy without modifying the original fit.
 If TRUE, update the object in place.</p></dd>
 
-
-<dt><code>...</code></dt>
+      <dt><code>...</code></dt>
 <dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>A Classic_Fit object.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-compute_bootstrap"></a><div class="section">
-<h3 id="method-compute-bootstrap-">Method <code>compute_bootstrap()</code><a class="anchor" aria-label="anchor" href="#method-compute-bootstrap-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-compute_bootstrap"></a><div class="section">
+<h3 id="classic-fit-compute-bootstrap-"><code>Classic_Fit$compute_bootstrap()</code><a class="anchor" aria-label="anchor" href="#classic-fit-compute-bootstrap-"></a></h3>
 <p>Compute nonparametric bootstrap standard errors and confidence intervals.
 Currently implemented only for mediation models.
 Bootstrap refits mediation equations with base R lm.fit()/glm.fit() when possible,
 and falls back to RTMB refits for unsupported families.</p><div class="section">
 <h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">compute_bootstrap</span><span class="op">(</span>n_boot <span class="op">=</span> <span class="fl">1000</span>, seed <span class="op">=</span> <span class="cn">NULL</span>, inplace <span class="op">=</span> <span class="cn">FALSE</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>n_boot</code></dt>
 <dd><p>Integer; number of bootstrap samples.</p></dd>
 
-
-<dt><code>seed</code></dt>
+      <dt><code>seed</code></dt>
 <dd><p>Optional integer random seed.</p></dd>
 
-
-<dt><code>inplace</code></dt>
+      <dt><code>inplace</code></dt>
 <dd><p>Logical; if FALSE, return a bootstrap-SE copy without modifying the original fit.
 If TRUE, update the object in place.</p></dd>
 
-
-<dt><code>...</code></dt>
+      <dt><code>...</code></dt>
 <dd><p>Additional arguments.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>A Classic_Fit object.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-AIC"></a><div class="section">
-<h3 id="method-aic-">Method <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code><a class="anchor" aria-label="anchor" href="#method-aic-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-AIC"></a><div class="section">
+<h3 id="classic-fit-aic-"><code>Classic_Fit$AIC()</code><a class="anchor" aria-label="anchor" href="#classic-fit-aic-"></a></h3>
 <p>Get the AIC of the fitted model.</p><div class="section">
 <h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">AIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
+</div>
 
-</div><p></p><hr><a id="method-Classic_Fit-BIC"></a><div class="section">
-<h3 id="method-bic-">Method <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code><a class="anchor" aria-label="anchor" href="#method-bic-"></a></h3>
+<p></p><hr><a id="method-Classic_Fit-BIC"></a><div class="section">
+<h3 id="classic-fit-bic-"><code>Classic_Fit$BIC()</code><a class="anchor" aria-label="anchor" href="#classic-fit-bic-"></a></h3>
 <p>Get the BIC of the fitted model.</p><div class="section">
 <h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">BIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
+</div>
 
-</div><p></p><hr><a id="method-Classic_Fit-print"></a><div class="section">
-<h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
+<p></p><hr><a id="method-Classic_Fit-print"></a><div class="section">
+<h3 id="classic-fit-print-"><code>Classic_Fit$print()</code><a class="anchor" aria-label="anchor" href="#classic-fit-print-"></a></h3>
 <p>Print the fit results.</p><div class="section">
 <h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `summary()`.</p></dd>
@@ -559,22 +516,23 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-logLik"></a><div class="section">
-<h3 id="method-loglik-">Method <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code><a class="anchor" aria-label="anchor" href="#method-loglik-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-logLik"></a><div class="section">
+<h3 id="classic-fit-loglik-"><code>Classic_Fit$logLik()</code><a class="anchor" aria-label="anchor" href="#classic-fit-loglik-"></a></h3>
 <p>Get the Log-Likelihood of the fitted model.</p><div class="section">
 <h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">logLik</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
+</div>
 
-</div><p></p><hr><a id="method-Classic_Fit-EAP"></a><div class="section">
-<h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
+<p></p><hr><a id="method-Classic_Fit-EAP"></a><div class="section">
+<h3 id="classic-fit-eap-"><code>Classic_Fit$EAP()</code><a class="anchor" aria-label="anchor" href="#classic-fit-eap-"></a></h3>
 <p>EAP estimates are not available for Classic_Fit.</p><div class="section">
 <h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Ignored.</p></dd>
@@ -583,14 +541,14 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-MAP"></a><div class="section">
-<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-MAP"></a><div class="section">
+<h3 id="classic-fit-map-"><code>Classic_Fit$MAP()</code><a class="anchor" aria-label="anchor" href="#classic-fit-map-"></a></h3>
 <p>MAP estimates are not available for Classic_Fit.</p><div class="section">
 <h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Ignored.</p></dd>
@@ -599,60 +557,57 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-summary"></a><div class="section">
-<h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-summary"></a><div class="section">
+<h3 id="classic-fit-summary-"><code>Classic_Fit$summary()</code><a class="anchor" aria-label="anchor" href="#classic-fit-summary-"></a></h3>
 <p>Display a summary of the estimation results.</p><div class="section">
 <h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>view <span class="op">=</span> <span class="cn">NULL</span>, digits <span class="op">=</span> <span class="fl">5</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>view</code></dt>
 <dd><p>Character vector of parameter names to prioritize or filter by.</p></dd>
 
-
-<dt><code>digits</code></dt>
+      <dt><code>digits</code></dt>
 <dd><p>Number of digits to print for estimates.</p></dd>
 
-
-<dt><code>max_rows</code></dt>
+      <dt><code>max_rows</code></dt>
 <dd><p>Maximum number of rows to display in the coefficient table.</p></dd>
 
-
-<dt><code>ranef</code></dt>
+      <dt><code>ranef</code></dt>
 <dd><p>Logical; whether to show random effects in the summary.</p></dd>
 
 
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-anova"></a><div class="section">
-<h3 id="method-anova-">Method <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code><a class="anchor" aria-label="anchor" href="#method-anova-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-anova"></a><div class="section">
+<h3 id="classic-fit-anova-"><code>Classic_Fit$anova()</code><a class="anchor" aria-label="anchor" href="#classic-fit-anova-"></a></h3>
 <p>Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.</p><div class="section">
 <h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">anova</span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"reml"</span>, <span class="st">"ls"</span><span class="op">)</span>, type <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>method</code></dt>
 <dd><p>Character; "reml" (standard) or "ls" (experimental).</p></dd>
 
-
-<dt><code>type</code></dt>
+      <dt><code>type</code></dt>
 <dd><p>Integer; Type of Sum of Squares (only Type III supported currently).</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A data frame containing the ANOVA table.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-lsmeans"></a><div class="section">
-<h3 id="method-lsmeans-">Method <code><a href="lsmeans.html">lsmeans()</a></code><a class="anchor" aria-label="anchor" href="#method-lsmeans-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-lsmeans"></a><div class="section">
+<h3 id="classic-fit-lsmeans-"><code>Classic_Fit$lsmeans()</code><a class="anchor" aria-label="anchor" href="#classic-fit-lsmeans-"></a></h3>
 <p>Calculate Least Squares Means (Marginal Means) and contrasts.</p><div class="section">
 <h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span></span>
@@ -662,109 +617,98 @@ If TRUE, update the object in place.</p></dd>
 <span>  adjust <span class="op">=</span> <span class="st">"holm"</span>,</span>
 <span>  protect <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Character vector of factors to calculate means for.</p></dd>
 
-
-<dt><code>pairwise</code></dt>
+      <dt><code>pairwise</code></dt>
 <dd><p>Logical; whether to perform pairwise comparisons.</p></dd>
 
-
-<dt><code>simple</code></dt>
+      <dt><code>simple</code></dt>
 <dd><p>Character vector of factors to hold constant for simple main effects.</p></dd>
 
-
-<dt><code>adjust</code></dt>
+      <dt><code>adjust</code></dt>
 <dd><p>Character; p-value adjustment method (e.g., "bonferroni", "holm", "none").</p></dd>
 
-
-<dt><code>protect</code></dt>
+      <dt><code>protect</code></dt>
 <dd><p>Logical; whether to use hierarchical (protected) testing.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>A data frame containing the marginal means or contrasts.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-.calc_contrast"></a><div class="section">
-<h3 id="method-calc-contrast-">Method <code>.calc_contrast()</code><a class="anchor" aria-label="anchor" href="#method-calc-contrast-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-.calc_contrast"></a><div class="section">
+<h3 id="classic-fit-calc-contrast-"><code>Classic_Fit$.calc_contrast()</code><a class="anchor" aria-label="anchor" href="#classic-fit-calc-contrast-"></a></h3>
 <p>(Internal) Calculate metrics for a contrast.</p><div class="section">
 <h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.calc_contrast</span><span class="op">(</span><span class="va">L</span>, <span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>L</code></dt>
 <dd><p>Contrast matrix.</p></dd>
 
-
-<dt><code>specs</code></dt>
+      <dt><code>specs</code></dt>
 <dd><p>Variable names for lsmeans.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>A data frame with estimate, SE, df, t-value, and p-value.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-.get_lsmeans_df"></a><div class="section">
-<h3 id="method-get-lsmeans-df-">Method <code>.get_lsmeans_df()</code><a class="anchor" aria-label="anchor" href="#method-get-lsmeans-df-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-.get_lsmeans_df"></a><div class="section">
+<h3 id="classic-fit-get-lsmeans-df-"><code>Classic_Fit$.get_lsmeans_df()</code><a class="anchor" aria-label="anchor" href="#classic-fit-get-lsmeans-df-"></a></h3>
 <p>(Internal) Get representative DF for lsmeans.</p><div class="section">
 <h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.get_lsmeans_df</span><span class="op">(</span><span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Variable names for lsmeans.</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>Degrees of freedom.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-.construct_par_list"></a><div class="section">
-<h3 id="method-construct-par-list-">Method <code>.construct_par_list()</code><a class="anchor" aria-label="anchor" href="#method-construct-par-list-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-.construct_par_list"></a><div class="section">
+<h3 id="classic-fit-construct-par-list-"><code>Classic_Fit$.construct_par_list()</code><a class="anchor" aria-label="anchor" href="#classic-fit-construct-par-list-"></a></h3>
 <p>(Internal) Construct a list of parameters from the fit.</p><div class="section">
 <h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.construct_par_list</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fit</code></dt>
 <dd><p>The fit result (dataframe or lm object).</p></dd>
 
 
 </dl><p></p></div>
-</div>
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
 <p>A named list of parameters.</p>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-clone"></a><div class="section">
-<h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
+</div>
+
+<p></p><hr><a id="method-Classic_Fit-clone"></a><div class="section">
+<h3 id="classic-fit-clone-"><code>Classic_Fit$clone()</code><a class="anchor" aria-label="anchor" href="#classic-fit-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
 <h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
+</div><p></p><div class="section">
 <h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
@@ -774,6 +718,7 @@ If TRUE, update the object in place.</p></dd>
 </div>
 
 </div>
+
 
     </div>
 

@@ -1,17 +1,11 @@
 # MAP fit object
 
-MAP fit object
-
-MAP fit object
-
-## Details
-
 An R6 class storing optimization results from maximum a posteriori (MAP)
 estimation.
 
 ## Super class
 
-[`BayesRTMB::RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
+[`RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
 -\> `map_fit`
 
 ## Public fields
@@ -125,41 +119,41 @@ estimation.
 
 ### Public methods
 
-- [`MAP_Fit$get_point_estimate()`](#method-map_fit-get_point_estimate)
+- [`map_fit$get_point_estimate()`](#method-map_fit-get_point_estimate)
 
-- [`MAP_Fit$new()`](#method-map_fit-new)
+- [`map_fit$new()`](#method-map_fit-initialize)
 
-- [`MAP_Fit$ranef()`](#method-map_fit-ranef)
+- [`map_fit$ranef()`](#method-map_fit-ranef)
 
-- [`MAP_Fit$draws()`](#method-map_fit-draws)
+- [`map_fit$draws()`](#method-map_fit-draws)
 
-- [`MAP_Fit$summary()`](#method-map_fit-summary)
+- [`map_fit$summary()`](#method-map_fit-summary)
 
-- [`MAP_Fit$print()`](#method-map_fit-print)
+- [`map_fit$print()`](#method-map_fit-print)
 
-- [`MAP_Fit$generated_quantities()`](#method-map_fit-generated_quantities)
+- [`map_fit$generated_quantities()`](#method-map_fit-generated_quantities)
 
-- [`MAP_Fit$profile()`](#method-map_fit-profile)
+- [`map_fit$profile()`](#method-map_fit-profile)
 
-- [`MAP_Fit$clone()`](#method-map_fit-clone)
+- [`map_fit$clone()`](#method-map_fit-clone)
 
 Inherited methods
 
-- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
-- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
-- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
-- [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
-- [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
+- [`RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
+- [`RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
+- [`RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
+- [`RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
+- [`RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
 ------------------------------------------------------------------------
 
-### Method `get_point_estimate()`
+### `map_fit$get_point_estimate()`
 
 Get point estimate for a target parameter.
 
 #### Usage
 
-    MAP_Fit$get_point_estimate(target, ...)
+    map_fit$get_point_estimate(target, ...)
 
 #### Arguments
 
@@ -177,13 +171,13 @@ Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 
-### Method `new()`
+### `map_fit$new()`
 
 Create a new \`MAP_Fit\` object.
 
 #### Usage
 
-    MAP_Fit$new(
+    map_fit$new(
       model,
       par_vec = NULL,
       par = NULL,
@@ -320,13 +314,13 @@ Create a new \`MAP_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### Method `ranef()`
+### `map_fit$ranef()`
 
 Return random effect estimates as a named list.
 
 #### Usage
 
-    MAP_Fit$ranef()
+    map_fit$ranef()
 
 #### Returns
 
@@ -334,13 +328,13 @@ A named list of random effect estimates.
 
 ------------------------------------------------------------------------
 
-### Method `draws()`
+### `map_fit$draws()`
 
 Extract samples from the asymptotic posterior distribution.
 
 #### Usage
 
-    MAP_Fit$draws(
+    map_fit$draws(
       pars = NULL,
       inc_random = FALSE,
       inc_transform = TRUE,
@@ -377,13 +371,13 @@ An array of samples \[iterations, 1, parameters\].
 
 ------------------------------------------------------------------------
 
-### Method [`summary()`](https://rdrr.io/r/base/summary.html)
+### `map_fit$summary()`
 
 Summarize MAP estimates.
 
 #### Usage
 
-    MAP_Fit$summary(
+    map_fit$summary(
       pars = NULL,
       max_rows = 10,
       digits = 5,
@@ -421,13 +415,13 @@ A summary object, typically a data frame.
 
 ------------------------------------------------------------------------
 
-### Method [`print()`](https://rdrr.io/r/base/print.html)
+### `map_fit$print()`
 
 Print a brief summary of the fitted object.
 
 #### Usage
 
-    MAP_Fit$print(pars = NULL, max_rows = 10, digits = 5, ...)
+    map_fit$print(pars = NULL, max_rows = 10, digits = 5, ...)
 
 #### Arguments
 
@@ -453,13 +447,13 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### Method `generated_quantities()`
+### `map_fit$generated_quantities()`
 
 Compute generated quantities from the MAP estimate.
 
 #### Usage
 
-    MAP_Fit$generated_quantities(code)
+    map_fit$generated_quantities(code)
 
 #### Arguments
 
@@ -475,14 +469,14 @@ in the \`generate\` list and \`df_generate\`.
 
 ------------------------------------------------------------------------
 
-### Method [`profile()`](https://rdrr.io/r/stats/profile.html)
+### `map_fit$profile()`
 
 Calculate Profile Likelihood confidence intervals for specific
 parameters.
 
 #### Usage
 
-    MAP_Fit$profile(
+    map_fit$profile(
       pars = NULL,
       level = 0.95,
       trace = FALSE,
@@ -537,13 +531,13 @@ raw profile objects stored in the "profiles" attribute.
 
 ------------------------------------------------------------------------
 
-### Method `clone()`
+### `map_fit$clone()`
 
 The objects of this class are cloneable with this method.
 
 #### Usage
 
-    MAP_Fit$clone(deep = FALSE)
+    map_fit$clone(deep = FALSE)
 
 #### Arguments
 

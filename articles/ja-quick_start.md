@@ -22,21 +22,28 @@ vignette で扱います。
 
 ## 0. インストールと環境確認
 
-BayesRTMB は GitHub からインストールできます。 `remotes`
-を使う場合は、次のようにします。
+BayesRTMB は CRAN からインストールできます。
 
 ``` r
 
-install.packages("remotes")
-remotes::install_github("norimune/BayesRTMB")
+install.packages("BayesRTMB")
 ```
 
-`pak` を使う場合は、次のようにインストールできます。
+開発版は GitHub からインストールできます。 `pak`
+を使う場合は、次のようにします。
 
 ``` r
 
 install.packages("pak")
 pak::pak("norimune/BayesRTMB")
+```
+
+`remotes` を使う場合は、次のようにします。
+
+``` r
+
+install.packages("remotes")
+remotes::install_github("norimune/BayesRTMB")
 ```
 
 ### Windows ユーザー向け: Rtools の確認
