@@ -1,8 +1,9 @@
 
 # BayesRTMB
 
-**Language / 言語**: [English introduction](articles/introduction.html)
-\| [パッケージ紹介](articles/ja-introduction.html)
+**Language / 言語**: [English
+introduction](https://norimune.github.io/BayesRTMB/articles/introduction.html)
+\| [パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
 
 **BayesRTMB** is an R package for writing and fitting statistical models
 with RTMB as the automatic differentiation engine.
@@ -112,21 +113,29 @@ fit_custom <- mdl_custom$sample()
 
 ## Articles
 
-- [Introduction](articles/introduction.html): overall concepts, entry
-  points, and inference workflow.
-- [Quick Start](articles/quick_start.html): installation, a minimal
-  model, MCMC diagnostics, visualization, and t tests.
-- [Wrapper Functions](articles/wrapper_functions.html): using wrappers
-  for Bayesian and classical analyses.
-- [Hierarchical Models and GLMMs](articles/rtmb_glmer.html): detailed
-  use of `rtmb_glmer()` for mixed models, GLMMs, priors, residual
-  correlation, and visualization.
-- [Writing Model Codes](articles/writing_models.html): writing custom
-  models with `rtmb_code()`.
+- [Introduction](https://norimune.github.io/BayesRTMB/articles/introduction.html):
+  overall concepts, entry points, and inference workflow.
+- [Quick Start](https://norimune.github.io/BayesRTMB/articles/quick_start.html):
+  installation, a minimal model, MCMC diagnostics, visualization, and t
+  tests.
+- [Wrapper Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.html):
+  using wrappers for Bayesian and classical analyses.
+- [Hierarchical Models and
+  GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.html):
+  detailed use of `rtmb_glmer()` for mixed models, GLMMs, priors,
+  residual correlation, and visualization.
+- [Writing Model
+  Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.html):
+  writing custom models with `rtmb_code()`.
 - [RTMB Internals and Inference
-  Algorithms](articles/rtmb_internals.html): internal model
-  representation, Laplace approximation, and inference pipelines.
-- [日本語: パッケージ紹介](articles/ja-introduction.html)
-- [日本語: クイックスタート](articles/ja-quick_start.html)
-- [日本語: ラッパー関数の使い方](articles/ja-wrapper_functions.html)
-- [日本語: モデルコードの書き方](articles/ja-writing_models.html)
+  Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.html):
+  internal model representation, Laplace approximation, and inference
+  pipelines.
+- [日本語:
+  パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
+- [日本語:
+  クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.html)
+- [日本語:
+  ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.html)
+- [日本語:
+  モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.html)
