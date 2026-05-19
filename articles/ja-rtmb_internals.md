@@ -479,7 +479,7 @@ primary parameter の両方が Laplace 対象になることがあります(REML
 `marginal = "auto"` は、wrapper が `extra$marginal` に保存した primary
 parameter 名を使います。ここに入れられるのは、`parameters`
 ブロックで宣言されたパラメータだけです。`transform` や `generate`
-で作られた派生量は指定できません。`optimize`でREML推定をしたいときはラッパー関数を使って`marginal = "auto"`とすれば簡単に実行できます。また、そのときは自動的に自由度推定が`df_method = satterthwait`となり、t分布で信頼区間を計算します。`df_method =Inf`とすれば正規分布を仮定します。
+で作られた派生量は指定できません。`optimize`でREML推定をしたいときはラッパー関数を使って`marginal = "auto"`とすれば簡単に実行できます。また、そのときは自動的に自由度推定が`df_method = "satterthwaite"`となり、t分布で信頼区間を計算します。`df_method = Inf`とすれば正規分布を仮定します。
 
 ## 9. 標準誤差と区間推定
 

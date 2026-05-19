@@ -1,11 +1,17 @@
 # VB fit object
 
+VB fit object
+
+VB fit object
+
+## Details
+
 An R6 class storing posterior samples and related information from
 Automatic Differentiation Variational Inference (ADVI).
 
 ## Super class
 
-[`RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
+[`BayesRTMB::RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
 -\> `advi_fit`
 
 ## Public fields
@@ -74,43 +80,43 @@ Automatic Differentiation Variational Inference (ADVI).
 
 ### Public methods
 
-- [`advi_fit$get_point_estimate()`](#method-advi_fit-get_point_estimate)
+- [`VB_Fit$get_point_estimate()`](#method-advi_fit-get_point_estimate)
 
-- [`advi_fit$new()`](#method-advi_fit-initialize)
+- [`VB_Fit$new()`](#method-advi_fit-new)
 
-- [`advi_fit$print()`](#method-advi_fit-print)
+- [`VB_Fit$print()`](#method-advi_fit-print)
 
-- [`advi_fit$draws()`](#method-advi_fit-draws)
+- [`VB_Fit$draws()`](#method-advi_fit-draws)
 
-- [`advi_fit$summary()`](#method-advi_fit-summary)
+- [`VB_Fit$summary()`](#method-advi_fit-summary)
 
-- [`advi_fit$plot_elbo()`](#method-advi_fit-plot_elbo)
+- [`VB_Fit$plot_elbo()`](#method-advi_fit-plot_elbo)
 
-- [`advi_fit$plot_trajectory()`](#method-advi_fit-plot_trajectory)
+- [`VB_Fit$plot_trajectory()`](#method-advi_fit-plot_trajectory)
 
-- [`advi_fit$transformed_draws()`](#method-advi_fit-transformed_draws)
+- [`VB_Fit$transformed_draws()`](#method-advi_fit-transformed_draws)
 
-- [`advi_fit$generated_quantities()`](#method-advi_fit-generated_quantities)
+- [`VB_Fit$generated_quantities()`](#method-advi_fit-generated_quantities)
 
-- [`advi_fit$clone()`](#method-advi_fit-clone)
+- [`VB_Fit$clone()`](#method-advi_fit-clone)
 
 Inherited methods
 
-- [`RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
-- [`RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
-- [`RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
-- [`RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
-- [`RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
+- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
+- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
+- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
+- [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
+- [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
 ------------------------------------------------------------------------
 
-### `advi_fit$get_point_estimate()`
+### Method `get_point_estimate()`
 
 Get point estimate for a target parameter.
 
 #### Usage
 
-    advi_fit$get_point_estimate(target, chains = NULL, best_chains = NULL)
+    VB_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)
 
 #### Arguments
 
@@ -132,13 +138,13 @@ Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$new()`
+### Method `new()`
 
 Create a new \`VB_Fit\` object.
 
 #### Usage
 
-    advi_fit$new(
+    VB_Fit$new(
       model,
       fit,
       random_fit,
@@ -196,13 +202,13 @@ Create a new \`VB_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$print()`
+### Method [`print()`](https://rdrr.io/r/base/print.html)
 
 Print a brief summary of the fitted object.
 
 #### Usage
 
-    advi_fit$print(...)
+    VB_Fit$print(...)
 
 #### Arguments
 
@@ -216,13 +222,13 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$draws()`
+### Method `draws()`
 
 Extract posterior draws for selected parameters.
 
 #### Usage
 
-    advi_fit$draws(
+    VB_Fit$draws(
       pars = NULL,
       chains = NULL,
       best_chains = NULL,
@@ -276,13 +282,13 @@ A 3D array of posterior draws \`\[iterations, chains, parameters\]\`.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$summary()`
+### Method [`summary()`](https://rdrr.io/r/base/summary.html)
 
 Summarize posterior draws.
 
 #### Usage
 
-    advi_fit$summary(
+    VB_Fit$summary(
       pars = NULL,
       max_rows = 10,
       digits = 2,
@@ -329,13 +335,13 @@ A data frame containing the summarized posterior statistics.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$plot_elbo()`
+### Method `plot_elbo()`
 
 Plot the ELBO history to diagnose convergence.
 
 #### Usage
 
-    advi_fit$plot_elbo(tail_n = 1000, ests = NULL, type = "l", ...)
+    VB_Fit$plot_elbo(tail_n = 1000, ests = NULL, type = "l", ...)
 
 #### Arguments
 
@@ -363,13 +369,13 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$plot_trajectory()`
+### Method `plot_trajectory()`
 
 Plot the parameter trajectory from the final optimization window.
 
 #### Usage
 
-    advi_fit$plot_trajectory(pars = NULL, type = "l", ...)
+    VB_Fit$plot_trajectory(pars = NULL, type = "l", ...)
 
 #### Arguments
 
@@ -392,13 +398,13 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$transformed_draws()`
+### Method `transformed_draws()`
 
 Compute transformed parameters from posterior draws.
 
 #### Usage
 
-    advi_fit$transformed_draws(tran_fn = NULL)
+    VB_Fit$transformed_draws(tran_fn = NULL)
 
 #### Arguments
 
@@ -413,13 +419,13 @@ The \`VB_Fit\` object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### `advi_fit$generated_quantities()`
+### Method `generated_quantities()`
 
 Compute generated quantities from posterior draws.
 
 #### Usage
 
-    advi_fit$generated_quantities(code)
+    VB_Fit$generated_quantities(code)
 
 #### Arguments
 
@@ -435,13 +441,13 @@ The \`VB_Fit\` object itself (invisibly). Results are appended to the
 
 ------------------------------------------------------------------------
 
-### `advi_fit$clone()`
+### Method `clone()`
 
 The objects of this class are cloneable with this method.
 
 #### Usage
 
-    advi_fit$clone(deep = FALSE)
+    VB_Fit$clone(deep = FALSE)
 
 #### Arguments
 

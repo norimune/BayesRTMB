@@ -34,7 +34,3 @@ Useful links: \*
 ## Author
 
 **Maintainer**: Hiroshi Shimizu <simizu706@gmail.com>
-
-Authors:
-
-- Hiroshi Shimizu <simizu706@gmail.com>

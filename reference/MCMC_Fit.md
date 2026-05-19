@@ -1,5 +1,11 @@
 # MCMC fit object
 
+MCMC fit object
+
+MCMC fit object
+
+## Details
+
 An R6 class storing posterior samples and related information from MCMC
 estimation.
 
@@ -11,7 +17,7 @@ only by marginal-likelihood model comparison.
 
 ## Super class
 
-[`RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
+[`BayesRTMB::RTMB_Fit_Base`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.md)
 -\> `mcmc_fit`
 
 ## Public fields
@@ -77,49 +83,49 @@ only by marginal-likelihood model comparison.
 
 ### Public methods
 
-- [`mcmc_fit$get_point_estimate()`](#method-mcmc_fit-get_point_estimate)
+- [`MCMC_Fit$get_point_estimate()`](#method-mcmc_fit-get_point_estimate)
 
-- [`mcmc_fit$new()`](#method-mcmc_fit-initialize)
+- [`MCMC_Fit$new()`](#method-mcmc_fit-new)
 
-- [`mcmc_fit$print()`](#method-mcmc_fit-print)
+- [`MCMC_Fit$print()`](#method-mcmc_fit-print)
 
-- [`mcmc_fit$draws()`](#method-mcmc_fit-draws)
+- [`MCMC_Fit$draws()`](#method-mcmc_fit-draws)
 
-- [`mcmc_fit$summary()`](#method-mcmc_fit-summary)
+- [`MCMC_Fit$summary()`](#method-mcmc_fit-summary)
 
-- [`mcmc_fit$unconstrain_draws()`](#method-mcmc_fit-unconstrain_draws)
+- [`MCMC_Fit$unconstrain_draws()`](#method-mcmc_fit-unconstrain_draws)
 
-- [`mcmc_fit$log_prob()`](#method-mcmc_fit-log_prob)
+- [`MCMC_Fit$log_prob()`](#method-mcmc_fit-log_prob)
 
-- [`mcmc_fit$bridgesampling()`](#method-mcmc_fit-bridgesampling)
+- [`MCMC_Fit$bridgesampling()`](#method-mcmc_fit-bridgesampling)
 
-- [`mcmc_fit$bayes_factor()`](#method-mcmc_fit-bayes_factor)
+- [`MCMC_Fit$bayes_factor()`](#method-mcmc_fit-bayes_factor)
 
-- [`mcmc_fit$transformed_draws()`](#method-mcmc_fit-transformed_draws)
+- [`MCMC_Fit$transformed_draws()`](#method-mcmc_fit-transformed_draws)
 
-- [`mcmc_fit$generated_quantities()`](#method-mcmc_fit-generated_quantities)
+- [`MCMC_Fit$generated_quantities()`](#method-mcmc_fit-generated_quantities)
 
-- [`mcmc_fit$resolve_switching()`](#method-mcmc_fit-resolve_switching)
+- [`MCMC_Fit$resolve_switching()`](#method-mcmc_fit-resolve_switching)
 
-- [`mcmc_fit$clone()`](#method-mcmc_fit-clone)
+- [`MCMC_Fit$clone()`](#method-mcmc_fit-clone)
 
 Inherited methods
 
-- [`RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
-- [`RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
-- [`RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
-- [`RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
-- [`RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
+- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
+- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
+- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
+- [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
+- [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$get_point_estimate()`
+### Method `get_point_estimate()`
 
 Get point estimate for a target parameter.
 
 #### Usage
 
-    mcmc_fit$get_point_estimate(target, chains = NULL, best_chains = NULL)
+    MCMC_Fit$get_point_estimate(target, chains = NULL, best_chains = NULL)
 
 #### Arguments
 
@@ -141,13 +147,13 @@ Matrix, array, vector, or scalar point estimate.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$new()`
+### Method `new()`
 
 Create a new \`MCMC_Fit\` object.
 
 #### Usage
 
-    mcmc_fit$new(
+    MCMC_Fit$new(
       model,
       fit,
       random_fit,
@@ -194,13 +200,13 @@ Create a new \`MCMC_Fit\` object.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$print()`
+### Method [`print()`](https://rdrr.io/r/base/print.html)
 
 Print a brief summary of the fitted object.
 
 #### Usage
 
-    mcmc_fit$print(...)
+    MCMC_Fit$print(...)
 
 #### Arguments
 
@@ -214,13 +220,13 @@ The object itself, invisibly.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$draws()`
+### Method `draws()`
 
 Extract posterior draws for selected parameters.
 
 #### Usage
 
-    mcmc_fit$draws(
+    MCMC_Fit$draws(
       pars = NULL,
       chains = NULL,
       best_chains = NULL,
@@ -268,13 +274,13 @@ Posterior draws.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$summary()`
+### Method [`summary()`](https://rdrr.io/r/base/summary.html)
 
 Summarize posterior draws.
 
 #### Usage
 
-    mcmc_fit$summary(
+    MCMC_Fit$summary(
       pars = NULL,
       chains = NULL,
       best_chains = NULL,
@@ -333,13 +339,13 @@ A summary object.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$unconstrain_draws()`
+### Method `unconstrain_draws()`
 
 Transform posterior draws to the unconstrained scale.
 
 #### Usage
 
-    mcmc_fit$unconstrain_draws()
+    MCMC_Fit$unconstrain_draws()
 
 #### Returns
 
@@ -347,13 +353,13 @@ Posterior draws on the unconstrained scale.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$log_prob()`
+### Method `log_prob()`
 
 Evaluate log-probability values.
 
 #### Usage
 
-    mcmc_fit$log_prob(safe = FALSE)
+    MCMC_Fit$log_prob(safe = FALSE)
 
 #### Arguments
 
@@ -368,13 +374,13 @@ Numeric vector of log-probability values.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$bridgesampling()`
+### Method `bridgesampling()`
 
 Estimate the marginal likelihood by bridge sampling.
 
 #### Usage
 
-    mcmc_fit$bridgesampling(
+    MCMC_Fit$bridgesampling(
       method = "normal",
       use_neff = TRUE,
       seed = NULL,
@@ -408,13 +414,13 @@ Bridge sampling result.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$bayes_factor()`
+### Method [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
 
 Calculate the Bayes factor by marginal-likelihood model comparison.
 
 #### Usage
 
-    mcmc_fit$bayes_factor(
+    MCMC_Fit$bayes_factor(
       fixed = NULL,
       comparison_fit = NULL,
       bs_method = "normal",
@@ -453,13 +459,13 @@ A list of class `bayes_factor_rtmb` containing Bayes factor results.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$transformed_draws()`
+### Method `transformed_draws()`
 
 Compute transformed parameters from posterior draws.
 
 #### Usage
 
-    mcmc_fit$transformed_draws(tran_fn = NULL)
+    MCMC_Fit$transformed_draws(tran_fn = NULL)
 
 #### Arguments
 
@@ -473,13 +479,13 @@ Transformed parameter draws.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$generated_quantities()`
+### Method `generated_quantities()`
 
 Compute generated quantities from posterior draws.
 
 #### Usage
 
-    mcmc_fit$generated_quantities(code)
+    MCMC_Fit$generated_quantities(code)
 
 #### Arguments
 
@@ -495,13 +501,13 @@ The \`MCMC_Fit\` object itself (invisibly). Results are appended to the
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$resolve_switching()`
+### Method `resolve_switching()`
 
 Resolve label switching in posterior draws.
 
 #### Usage
 
-    mcmc_fit$resolve_switching(
+    MCMC_Fit$resolve_switching(
       target,
       linked = NULL,
       overwrite = TRUE,
@@ -536,13 +542,13 @@ Relabeled draws or updated object.
 
 ------------------------------------------------------------------------
 
-### `mcmc_fit$clone()`
+### Method `clone()`
 
 The objects of this class are cloneable with this method.
 
 #### Usage
 
-    mcmc_fit$clone(deep = FALSE)
+    MCMC_Fit$clone(deep = FALSE)
 
 #### Arguments
 

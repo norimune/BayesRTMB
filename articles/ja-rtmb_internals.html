@@ -583,7 +583,7 @@ priorにおいて固定効果を<code>marginal</code>に指定すれば、制約
 名を使います。ここに入れられるのは、<code>parameters</code>
 ブロックで宣言されたパラメータだけです。<code>transform</code> や
 <code>generate</code>
-で作られた派生量は指定できません。<code>optimize</code>でREML推定をしたいときはラッパー関数を使って<code>marginal = "auto"</code>とすれば簡単に実行できます。また、そのときは自動的に自由度推定が<code>df_method = satterthwait</code>となり、t分布で信頼区間を計算します。<code>df_method =Inf</code>とすれば正規分布を仮定します。</p>
+で作られた派生量は指定できません。<code>optimize</code>でREML推定をしたいときはラッパー関数を使って<code>marginal = "auto"</code>とすれば簡単に実行できます。また、そのときは自動的に自由度推定が<code>df_method = "satterthwaite"</code>となり、t分布で信頼区間を計算します。<code>df_method = Inf</code>とすれば正規分布を仮定します。</p>
 </div>
 <div class="section level2">
 <h2 id="標準誤差と区間推定">9. 標準誤差と区間推定<a class="anchor" aria-label="anchor" href="#%E6%A8%99%E6%BA%96%E8%AA%A4%E5%B7%AE%E3%81%A8%E5%8C%BA%E9%96%93%E6%8E%A8%E5%AE%9A"></a>
