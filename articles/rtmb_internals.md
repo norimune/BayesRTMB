@@ -13,7 +13,7 @@ and
 together with the basic
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
 and
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 workflow, are usually enough.
 
 The internal design becomes useful when you want to:
@@ -46,9 +46,9 @@ rtmb_code()
 Users usually write only
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
 and call
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md).
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md).
 
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 checks the model code and data, then creates an `RTMB_Model` R6 object.
 This object stores the model definition, data, parameter declarations,
 transformation blocks, generated-quantity blocks, and wrapper metadata.
@@ -106,7 +106,7 @@ Not every block is required. The minimal model usually needs only
 ### data
 
 The `data` block declares data names used by the model.
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 checks whether these names exist in the supplied data list.
 
 ### setup
@@ -290,7 +290,7 @@ Instead, the R model function is evaluated with AD objects. Arithmetic,
 matrix operations, distribution functions, and transformations are
 recorded as an automatic differentiation graph.
 
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 performs pre-checks before fitting:
 
 - undefined variables in `setup` or `parameters`;
@@ -550,7 +550,7 @@ BayesRTMB’s internal structure can be summarized as follows.
 
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   describes a model as a block-structured object.
-- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
   checks the data and code, then creates an `RTMB_Model`.
 - `RTMB_Model` stores model code, data, parameter declarations,
   transformations, generated quantities, and wrapper metadata.

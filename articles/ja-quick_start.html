@@ -94,7 +94,7 @@
 <li>
 <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> で小さなモデルを書く</li>
 <li>
-<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> でモデルオブジェクトを作る</li>
+<code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> でモデルオブジェクトを作る</li>
 <li>
 <code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> と <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> で推定する</li>
 <li>MCMC の事後分布を可視化する</li>
@@ -169,10 +169,10 @@ Rtools をインストールし、R または RStudio を再起動してくだ�
 <div class="section level2">
 <h2 id="モデルオブジェクトを作る">2. モデルオブジェクトを作る<a class="anchor" aria-label="anchor" href="#%E3%83%A2%E3%83%87%E3%83%AB%E3%82%AA%E3%83%96%E3%82%B8%E3%82%A7%E3%82%AF%E3%83%88%E3%82%92%E4%BD%9C%E3%82%8B"></a>
 </h2>
-<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+<p><code><a href="../reference/rtmb_model.html">rtmb_model()</a></code>
 にデータとモデルコードを渡すと、推定用のモデルオブジェクトが作られます。</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Pre-checking model code...</span></span>
 <span><span class="co">## Checking RTMB setup...</span></span></code></pre>
 <p>この段階では、まだ推定は行われていません。 <code>mdl</code>
@@ -387,13 +387,13 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <span><span class="co">## Log-Likelihood: -421.320, AIC: 848.640, BIC: 842.640</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Point Estimates and Confidence Intervals:</span></span>
-<span><span class="co">##       Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr    </span></span>
-<span><span class="co">## diff  -0.37333    0.11297  -0.59564  -0.15102 298 -3.30484 .00107  **</span></span>
-<span><span class="co">## delta -0.38161    0.11652  -0.61092  -0.15230 298 -3.27497 .00118  **</span></span>
-<span><span class="co">## mean   3.43333    0.05648   3.32218   3.54449 298 60.78547 &lt;.0001 ***</span></span>
-<span><span class="co">## sd     0.97831    0.04007   0.90254   1.06044 298 -0.53533 .59282    </span></span>
-<span><span class="co">## mean0  3.24667    0.07988   3.08947   3.40386 298 40.64495 &lt;.0001 ***</span></span>
-<span><span class="co">## mean1  3.62000    0.07988   3.46280   3.77720 298 45.31870 &lt;.0001 ***</span></span></code></pre>
+<span><span class="co">##            Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr</span></span>
+<span><span class="co">## diff       -0.37333    0.11297  -0.59564  -0.15102 298 -3.30484 .00107  **</span></span>
+<span><span class="co">## delta      -0.38161    0.11652  -0.61092  -0.15230 298       NA</span></span>
+<span><span class="co">## total_mean  3.43333    0.05648   3.32218   3.54449 298       NA</span></span>
+<span><span class="co">## sd          0.97831    0.04007   0.90254   1.06044 298       NA</span></span>
+<span><span class="co">## mean0       3.24667    0.07988   3.08947   3.40386 298       NA</span></span>
+<span><span class="co">## mean1       3.62000    0.07988   3.46280   3.77720 298       NA</span></span></code></pre>
 <p>ここでは、<code>diff</code> が2群の平均差、<code>delta</code>
 が標準化効果量を表します。 <code>classic()</code> は、BayesRTMB
 のモデルを頻度主義的な推定として確認したいときに使えます。</p>
@@ -412,25 +412,13 @@ Cauchy 事前分布を置いた Bayes factor を計算できます。</p>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">2</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fit_t_jzs</span> <span class="op">&lt;-</span> <span class="va">mdl_t_jzs</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
-<span>  sampling <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  warmup <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  chains <span class="op">=</span> <span class="fl">2</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">fit_t_jzs</span> <span class="op">&lt;-</span> <span class="va">mdl_t_jzs</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_t_jzs</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>delta <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bf</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## Calculating marginal likelihood for the full model...</span></span>
-<span><span class="co">## Bridge Sampling Converged: LogML = -424.669 (Error = 0.0180, ESS = 56.0)</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## --- Sampling from the comparison model ---</span></span>
-<span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## --- Calculating marginal likelihood for the comparison model ---</span></span>
-<span><span class="co">## Bridge Sampling Converged: LogML = -427.732 (Error = 0.0111, ESS = 175.7)</span></span>
-<span><span class="co">## --- Bayes Factor Analysis (Bridge Sampling) ---</span></span>
-<span><span class="co">## Bayes Factor (BF12) : 21.3858 </span></span>
-<span><span class="co">## Log Bayes Factor    : 3.0627 (Approx. Error = 0.0212)</span></span>
+<pre class="text"><code><span><span class="co">## --- Bayes Factor Analysis (Bridge Sampling) ---</span></span>
+<span><span class="co">## Bayes Factor (BF12) : 21.4323</span></span>
+<span><span class="co">## Log Bayes Factor    : 3.0649 (Approx. Error = 0.0022)</span></span>
 <span><span class="co">## Evidence            : Strong evidence for Model 1 </span></span>
 <span><span class="co">## Comparison model    : Parameters fixed at list(delta = 0) </span></span></code></pre>
 <p><code>fixed = list(delta = 0)</code> は、効果量を 0

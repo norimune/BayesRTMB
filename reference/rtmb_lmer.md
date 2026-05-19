@@ -118,7 +118,7 @@ rtmb_lmer(
 - ...:
 
   Additional arguments passed to
-  [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md).
+  [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md).
 
 ## Value
 

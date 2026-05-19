@@ -124,9 +124,9 @@
 <span><span class="va">theta</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/base/Special.html" class="external-link">beta</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <p>このように、BayesRTMB では Stan
 に近い感覚で、確率モデルをそのまま書くことができます。</p>
-<p>モデルオブジェクトは <code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> で作成します。</p>
+<p>モデルオブジェクトは <code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> で作成します。</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl_binom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_list</span>, code <span class="op">=</span> <span class="va">code_binom</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">mdl_binom</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_list</span>, code <span class="op">=</span> <span class="va">code_binom</span><span class="op">)</span></span></code></pre></div>
 <p>作成したモデルに対して、MAP推定、MCMC、変分推論を実行できます。</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span>  <span class="op">&lt;-</span> <span class="va">mdl_binom</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -391,7 +391,7 @@
 として、説明変数の数に応じた回帰係数ベクトルを宣言しています。</p>
 <p><code>par_names</code> を使うと、出力の名前を読みやすくできます。</p>
 <div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span></span>
 <span>  data <span class="op">=</span> <span class="va">data_reg</span>,</span>
 <span>  code <span class="op">=</span> <span class="va">code_reg</span>,</span>
 <span>  par_names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>beta <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
@@ -578,7 +578,7 @@
 <p><code>random = TRUE</code>
 にしたパラメータは、MAP推定ではラプラス近似の対象になります。</p>
 <div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl_hlm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span></span>
+<code class="sourceCode R"><span><span class="va">mdl_hlm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span></span>
 <span>  data <span class="op">=</span> <span class="va">data_hlm</span>,</span>
 <span>  code <span class="op">=</span> <span class="va">code_hlm</span>,</span>
 <span>  par_names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>beta <span class="op">=</span> <span class="va">X_names</span><span class="op">)</span></span>
@@ -672,7 +672,7 @@
 <code>init</code> を指定せずに <code>num_estimate</code>
 を増やすほうが手軽です。</p>
 <div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">mdl_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_mix</span>, <span class="va">code_mix</span><span class="op">)</span></span>
+<code class="sourceCode R"><span><span class="va">mdl_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_mix</span>, <span class="va">code_mix</span><span class="op">)</span></span>
 <span><span class="va">fit_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span></code></pre></div>
 <p>MCMCを行う場合は、MAP推定で得られたパラメータ推定値を初期値として使うと安定しやすくなります。必要に応じて
 <code>init_jitter</code> で少しだけ揺らします。</p>
@@ -724,7 +724,7 @@
 <span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_reg</span>, <span class="va">code_reg</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_reg</span>, <span class="va">code_reg</span>, init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span></code></pre></div>
 <p>特に、混合分布モデル、因子分析、多次元展開法、項目反応理論のような潜在変数モデルでは、適切な初期値が推定の安定性に大きく影響します。</p>
 </div>
 <div class="section level3">

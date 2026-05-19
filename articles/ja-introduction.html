@@ -185,7 +185,7 @@ MCMC の結果から bridge sampling による周辺尤度や Bayes factor
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code</span><span class="op">)</span></span></code></pre></div>
 <p><code>model</code> ブロックでは、次のような sampling syntax
 を使います。</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
@@ -249,7 +249,7 @@ MCMC の結果から bridge sampling による周辺尤度や Bayes factor
 <span><span class="co">## Intercept  1.83366    0.21212   1.41621   2.25110 297  8.64454 &lt;.0001 ***</span></span>
 <span><span class="co">## b[talk]    0.28694    0.05318   0.18229   0.39159 297  5.39580 &lt;.0001 ***</span></span>
 <span><span class="co">## b[perf]    0.15632    0.03002   0.09724   0.21539 297  5.20703 &lt;.0001 ***</span></span>
-<span><span class="co">## sigma      0.90909    0.03730   0.83856   0.98554 297 -2.32306 .02085   *</span></span></code></pre>
+<span><span class="co">## sigma      0.90909    0.03730   0.83856   0.98554 297     NA</span></span></code></pre>
 <p>ラッパー関数がどのようなモデルコードを作っているかは、<code>print_code()</code>
 で確認できます。</p>
 <div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
@@ -278,7 +278,7 @@ MCMC の結果から bridge sampling による周辺尤度や Bayes factor
 <span><span class="co">##     # Priors</span></span>
 <span><span class="co">##   }</span></span>
 <span><span class="co">## )</span></span></code></pre>
-<p><code>print_code()</code> は、ユーザーが <code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>
+<p><code>print_code()</code> は、ユーザーが <code><a href="../reference/rtmb_model.html">rtmb_model()</a></code>
 で同じモデルを再現できるように、<code>setup</code>,
 <code>parameters</code>, <code>transform</code>, <code>model</code>
 などのブロックを表示します。</p>
@@ -333,7 +333,7 @@ exponential prior を持つ回帰モデルは次のように書けます。</p>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code_reg</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat</span>, <span class="va">code_reg</span><span class="op">)</span></span></code></pre></div>
 <p><code>setup</code> に前処理を書くことで、<code>parameters</code> や
 <code>model</code>
 ブロックを読みやすくできます。また、<code>print_code()</code>
@@ -377,30 +377,15 @@ MCMC、MAP 推定、変分推論、そして頻度主義的分析の順に整理
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
-<span>  sampling <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  warmup <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  chains <span class="op">=</span> <span class="fl">2</span></span>
-<span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
-<span><span class="co">## chain 1 started... </span></span>
-<span><span class="co">## chain 1: iter 100 warmup </span></span>
-<span><span class="co">## chain 1: iter 200 warmup </span></span>
-<span><span class="co">## chain 1: iter 300 sampling </span></span>
-<span><span class="co">## chain 1: iter 400 sampling </span></span>
-<span><span class="co">## chain 2 started... </span></span>
-<span><span class="co">## chain 2: iter 100 warmup </span></span>
-<span><span class="co">## chain 2: iter 200 warmup </span></span>
-<span><span class="co">## chain 2: iter 300 sampling </span></span>
-<span><span class="co">## chain 2: iter 400 sampling </span></span>
-<span><span class="co">##  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span></span>
-<span><span class="co">## lp         -397.90  1.50  -396.86  -402.08  -395.97       111       115  1.02 </span></span>
-<span><span class="co">## Intercept     1.87  0.25     1.87     1.40     2.37        52        71  1.02 </span></span>
-<span><span class="co">## b[talk]       0.28  0.06     0.29     0.16     0.39        96        81  1.02 </span></span>
-<span><span class="co">## b[perf]       0.15  0.03     0.15     0.09     0.22        40       127  1.02 </span></span>
-<span><span class="co">## sigma         0.91  0.04     0.91     0.85     0.99        58        65  1.03 </span></span></code></pre>
+<pre class="text"><code><span><span class="co">##  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span></span>
+<span><span class="co">## lp         -397.79  1.54  -396.75  -401.63  -395.94       859      1236  1.01</span></span>
+<span><span class="co">## Intercept     1.82  0.22     1.78     1.38     2.26       629      1023  1.01</span></span>
+<span><span class="co">## b[talk]       0.29  0.05     0.28     0.18     0.40       665      1205  1.00</span></span>
+<span><span class="co">## b[perf]       0.16  0.03     0.15     0.10     0.22       671       990  1.01</span></span>
+<span><span class="co">## sigma         0.91  0.04     0.91     0.84     1.00       934      1254  1.01</span></span></code></pre>
 </div>
 <div class="section level3">
 <h3 id="map-推定">MAP 推定<a class="anchor" aria-label="anchor" href="#map-%E6%8E%A8%E5%AE%9A"></a>
@@ -464,7 +449,7 @@ MCMC、MAP 推定、変分推論、そして頻度主義的分析の順に整理
 <span><span class="co">## Intercept  1.83366    0.21212   1.41621   2.25110 297  8.64454 &lt;.0001 ***</span></span>
 <span><span class="co">## b[talk]    0.28694    0.05318   0.18229   0.39159 297  5.39580 &lt;.0001 ***</span></span>
 <span><span class="co">## b[perf]    0.15632    0.03002   0.09724   0.21539 297  5.20703 &lt;.0001 ***</span></span>
-<span><span class="co">## sigma      0.90909    0.03730   0.83856   0.98554 297 -2.32306 .02085   *</span></span></code></pre>
+<span><span class="co">## sigma      0.90909    0.03730   0.83856   0.98554 297     NA</span></span></code></pre>
 <p><code>lm</code> や <code>glm</code>
 型のモデルでは、検定統計量は通常の表記に近い形で表示されます。混合モデルでは、必要に応じて自由度補正や
 Laplace 近似が使われます。</p>
@@ -500,7 +485,7 @@ Laplace 近似が使われます。</p>
 <span>  <span class="op">}</span></span>
 <span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">mdl_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/RTMB_Model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat_icc</span>, <span class="va">code_icc</span><span class="op">)</span></span>
+<span><span class="va">mdl_icc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">dat_icc</span>, <span class="va">code_icc</span><span class="op">)</span></span>
 <span><span class="va">fit_icc</span> <span class="op">&lt;-</span> <span class="va">mdl_icc</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>MAP 推定では、<code>laplace = TRUE</code>
 が既定値です。<code>random = TRUE</code> とされたパラメータは、Laplace
@@ -523,25 +508,9 @@ Laplace 近似が使われます。</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
 <span></span>
-<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
-<span>  sampling <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  warmup <span class="op">=</span> <span class="fl">200</span>,</span>
-<span>  chains <span class="op">=</span> <span class="fl">2</span></span>
-<span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>表示は、たとえば次のように出力されます。</p>
-<pre class="text"><code><span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
-<span><span class="co">## chain 1 started... </span></span>
-<span><span class="co">## chain 1: iter 100 warmup </span></span>
-<span><span class="co">## chain 1: iter 200 warmup </span></span>
-<span><span class="co">## chain 1: iter 300 sampling </span></span>
-<span><span class="co">## chain 1: iter 400 sampling </span></span>
-<span><span class="co">## chain 2 started... </span></span>
-<span><span class="co">## chain 2: iter 100 warmup </span></span>
-<span><span class="co">## chain 2: iter 200 warmup </span></span>
-<span><span class="co">## chain 2: iter 300 sampling </span></span>
-<span><span class="co">## chain 2: iter 400 sampling </span></span>
-<span><span class="co">## Bridge Sampling Converged: LogML = -404.659 (Error = 0.0223, ESS = 78.8)</span></span></code></pre>
+<pre class="text"><code><span><span class="co">## Bridge Sampling Converged: LogML = -404.591 (Error = 0.0032, ESS = 604.0)</span></span></code></pre>
 <p>戻り値は数値の log marginal likelihood で、<code>error</code> と
 <code>ess</code> の属性を持ちます。</p>
 <p>Bayes factor を計算したい場合は、<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code>
@@ -549,41 +518,9 @@ Laplace 近似が使われます。</p>
 <div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bf</span></span></code></pre></div>
-<pre class="text"><code><span><span class="co">## </span></span>
-<span><span class="co">## --- Sampling from the comparison model ---</span></span>
-<span><span class="co">## Starting sequential sampling (chains = 2)...</span></span>
-<span><span class="co">## chain 1 started... </span></span>
-<span><span class="co">## chain 1: iter 100 warmup </span></span>
-<span><span class="co">## chain 1: iter 200 warmup </span></span>
-<span><span class="co">## chain 1: iter 300 warmup </span></span>
-<span><span class="co">## chain 1: iter 400 warmup </span></span>
-<span><span class="co">## chain 1: iter 500 warmup </span></span>
-<span><span class="co">## chain 1: iter 600 warmup </span></span>
-<span><span class="co">## chain 1: iter 700 warmup </span></span>
-<span><span class="co">## chain 1: iter 800 warmup </span></span>
-<span><span class="co">## chain 1: iter 900 warmup </span></span>
-<span><span class="co">## chain 1: iter 1000 warmup </span></span>
-<span><span class="co">## chain 1: iter 1100 sampling </span></span>
-<span><span class="co">## chain 1: iter 1200 sampling </span></span>
-<span><span class="co">## chain 2 started... </span></span>
-<span><span class="co">## chain 2: iter 100 warmup </span></span>
-<span><span class="co">## chain 2: iter 200 warmup </span></span>
-<span><span class="co">## chain 2: iter 300 warmup </span></span>
-<span><span class="co">## chain 2: iter 400 warmup </span></span>
-<span><span class="co">## chain 2: iter 500 warmup </span></span>
-<span><span class="co">## chain 2: iter 600 warmup </span></span>
-<span><span class="co">## chain 2: iter 700 warmup </span></span>
-<span><span class="co">## chain 2: iter 800 warmup </span></span>
-<span><span class="co">## chain 2: iter 900 warmup </span></span>
-<span><span class="co">## chain 2: iter 1000 warmup </span></span>
-<span><span class="co">## chain 2: iter 1100 sampling </span></span>
-<span><span class="co">## chain 2: iter 1200 sampling </span></span>
-<span><span class="co">## </span></span>
-<span><span class="co">## --- Calculating marginal likelihood for the comparison model ---</span></span>
-<span><span class="co">## Bridge Sampling Converged: LogML = -416.504 (Error = 0.0178, ESS = 95.2)</span></span>
-<span><span class="co">## --- Bayes Factor Analysis (Bridge Sampling) ---</span></span>
-<span><span class="co">## Bayes Factor (BF12) : 139287.9 </span></span>
-<span><span class="co">## Log Bayes Factor    : 11.8443 (Approx. Error = 0.0285)</span></span>
+<pre class="text"><code><span><span class="co">## --- Bayes Factor Analysis (Bridge Sampling) ---</span></span>
+<span><span class="co">## Bayes Factor (BF12) : 142963.4</span></span>
+<span><span class="co">## Log Bayes Factor    : 11.8703 (Approx. Error = 0.0040)</span></span>
 <span><span class="co">## Evidence            : Decisive evidence for Model 1 </span></span>
 <span><span class="co">## Comparison model    : Parameters fixed at list("b[talk]" = 0) </span></span></code></pre>
 </div>
@@ -595,7 +532,7 @@ Laplace 近似が使われます。</p>
 <ol style="list-style-type: decimal">
 <li><p><strong><a href="ja-quick_start.html">クイックスタート</a></strong><br>
 基本的なモデルを実際に動かしながら、<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> と
-<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> の流れを確認できます。</p></li>
+<code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> の流れを確認できます。</p></li>
 <li><p><strong><a href="ja-wrapper_functions.html">ラッパー関数の使い方</a></strong><br>
 回帰、一般化線形モデル、混合モデル、t
 検定など、標準的な分析をラッパー関数で実行する方法を確認できます。</p></li>

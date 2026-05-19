@@ -6,7 +6,7 @@ Functions for defining and fitting custom models.
 
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
-- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
   : Create an RTMB_Model Object
 
 ## Wrapper Functions
@@ -183,8 +183,6 @@ Functions used within rtmb_code for stability and transformations.
 - [`RTMB_Model-class`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model-class.md)
   [`RTMB_Model`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model-class.md)
   : RTMB model object
-- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
-  : Create an RTMB_Model Object
 - [`VB_Fit`](https://norimune.github.io/BayesRTMB/reference/VB_Fit.md) :
   VB fit object
 - [`bayes_factor()`](https://norimune.github.io/BayesRTMB/reference/bayes_factor.md)
@@ -337,6 +335,8 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Mediation Analysis Wrapper
 - [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md)
   : Mixture Model Wrapper for RTMB
+- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
+  : Create an RTMB_Model Object
 - [`rtmb_syntax`](https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.md)
   : Guidelines for Writing RTMB-Compatible Code
 - [`rtmb_table()`](https://norimune.github.io/BayesRTMB/reference/rtmb_table.md)

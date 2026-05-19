@@ -26,7 +26,6 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/MCMC_Fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/RTMB_Model-class.html</loc></url>
-<url><loc>https://norimune.github.io/BayesRTMB/reference/RTMB_Model.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/VB_Fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/bayes_factor.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/bernoulli_logit_lpmf.html</loc></url>
@@ -146,6 +145,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_mdu.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_model.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_table.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.html</loc></url>

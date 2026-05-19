@@ -10,7 +10,7 @@ It covers the following topics.
 1.  Write a small model with
     [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
 2.  Create a model object with
-    [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+    [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 3.  Estimate the model with
     [`optimize()`](https://rdrr.io/r/stats/optimize.html) and
     [`sample()`](https://rdrr.io/r/base/sample.html)
@@ -99,7 +99,7 @@ successes `Y` follows a binomial distribution.
 ## 2. Create a Model Object
 
 Pass the data and model code to
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 to create a model object for estimation.
 
 ``` r
@@ -377,13 +377,13 @@ fit_t_classic
 ## Log-Likelihood: -421.320, AIC: 848.640, BIC: 842.640
 ## 
 ## Point Estimates and Confidence Intervals:
-##       Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr    
-## diff  -0.37333    0.11297  -0.59564  -0.15102 298 -3.30484 .00107  **
-## delta -0.38161    0.11652  -0.61092  -0.15230 298 -3.27497 .00118  **
-## mean   3.43333    0.05648   3.32218   3.54449 298 60.78547 <.0001 ***
-## sd     0.97831    0.04007   0.90254   1.06044 298 -0.53533 .59282    
-## mean0  3.24667    0.07988   3.08947   3.40386 298 40.64495 <.0001 ***
-## mean1  3.62000    0.07988   3.46280   3.77720 298 45.31870 <.0001 ***
+##            Estimate Std. Error Lower 95% Upper 95%  df  t value     Pr
+## diff       -0.37333    0.11297  -0.59564  -0.15102 298 -3.30484 .00107  **
+## delta      -0.38161    0.11652  -0.61092  -0.15230 298       NA
+## total_mean  3.43333    0.05648   3.32218   3.54449 298       NA
+## sd          0.97831    0.04007   0.90254   1.06044 298       NA
+## mean0       3.24667    0.07988   3.08947   3.40386 298       NA
+## mean1       3.62000    0.07988   3.46280   3.77720 298       NA
 ```
 
 Here, `diff` is the difference between the two group means, and `delta`
@@ -405,28 +405,16 @@ mdl_t_jzs <- rtmb_ttest(
 
 set.seed(2)
 
-fit_t_jzs <- mdl_t_jzs$sample(
-  sampling = 200,
-  warmup = 200,
-  chains = 2
-)
+fit_t_jzs <- mdl_t_jzs$sample()
 
 bf <- fit_t_jzs$bayes_factor(fixed = list(delta = 0))
 bf
 ```
 
 ``` text
-## Calculating marginal likelihood for the full model...
-## Bridge Sampling Converged: LogML = -424.669 (Error = 0.0180, ESS = 56.0)
-## 
-## --- Sampling from the comparison model ---
-## Starting sequential sampling (chains = 2)...
-## 
-## --- Calculating marginal likelihood for the comparison model ---
-## Bridge Sampling Converged: LogML = -427.732 (Error = 0.0111, ESS = 175.7)
 ## --- Bayes Factor Analysis (Bridge Sampling) ---
-## Bayes Factor (BF12) : 21.3858 
-## Log Bayes Factor    : 3.0627 (Approx. Error = 0.0212)
+## Bayes Factor (BF12) : 21.4323
+## Log Bayes Factor    : 3.0649 (Approx. Error = 0.0022)
 ## Evidence            : Strong evidence for Model 1 
 ## Comparison model    : Parameters fixed at list(delta = 0) 
 ```

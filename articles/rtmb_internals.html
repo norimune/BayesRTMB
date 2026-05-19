@@ -91,7 +91,7 @@ variational inference, or classical estimation.</p>
 <p>Most users do not need to know these details in order to fit ordinary
 models. Wrapper functions such as <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code> and
 <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>, together with the basic
-<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> and <code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> workflow, are
+<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> and <code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> workflow, are
 usually enough.</p>
 <p>The internal design becomes useful when you want to:</p>
 <ul>
@@ -116,8 +116,8 @@ functions;</li>
           -&gt; sample() / optimize() / variational() / classic()
             -&gt; MCMC_Fit / MAP_Fit / VB_Fit / Classic_Fit</code></pre>
 <p>Users usually write only <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> and call
-<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code>.</p>
-<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> checks the model code and data, then
+<code><a href="../reference/rtmb_model.html">rtmb_model()</a></code>.</p>
+<p><code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> checks the model code and data, then
 creates an <code>RTMB_Model</code> R6 object. This object stores the
 model definition, data, parameter declarations, transformation blocks,
 generated-quantity blocks, and wrapper metadata.</p>
@@ -197,7 +197,7 @@ blocks.</p>
 <h3 id="data">data<a class="anchor" aria-label="anchor" href="#data"></a>
 </h3>
 <p>The <code>data</code> block declares data names used by the model.
-<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> checks whether these names exist in the
+<code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> checks whether these names exist in the
 supplied data list.</p>
 </div>
 <div class="section level3">
@@ -398,7 +398,7 @@ evaluate function values, gradients, and Hessian-related quantities.</p>
 Instead, the R model function is evaluated with AD objects. Arithmetic,
 matrix operations, distribution functions, and transformations are
 recorded as an automatic differentiation graph.</p>
-<p><code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> performs pre-checks before fitting:</p>
+<p><code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> performs pre-checks before fitting:</p>
 <ul>
 <li>undefined variables in <code>setup</code> or
 <code>parameters</code>;</li>
@@ -731,7 +731,7 @@ in a separate Stan language file.</p>
 <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> describes a model as a block-structured
 object.</li>
 <li>
-<code><a href="../reference/RTMB_Model.html">rtmb_model()</a></code> checks the data and code, then creates an
+<code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> checks the data and code, then creates an
 <code>RTMB_Model</code>.</li>
 <li>
 <code>RTMB_Model</code> stores model code, data, parameter

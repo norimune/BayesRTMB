@@ -59,7 +59,7 @@ theta ~ beta(1, 1)
 に近い感覚で、確率モデルをそのまま書くことができます。
 
 モデルオブジェクトは
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 で作成します。
 
 ``` r

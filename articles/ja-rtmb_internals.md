@@ -9,7 +9,7 @@
 などのラッパー関数、または
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
 と
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 の基本的な使い方を知っていれば十分です。
 
 ただし、次のような場合には内部構造を知っておくと役に立ちます。
@@ -42,10 +42,10 @@ rtmb_code()
 ユーザーが書くのは、主に
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
 と
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 までです。
 
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 は、モデルコードとデータを検査し、`RTMB_Model` という R6
 オブジェクトを作ります。この `RTMB_Model`
 が、モデル定義、データ、パラメータ定義、変換ブロック、生成量ブロック、ラッパー関数由来のメタデータを保持します。
@@ -101,7 +101,7 @@ code <- rtmb_code(
 ### data
 
 `data`
-ブロックは、モデルで使うデータ名を宣言するためのブロックです。[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+ブロックは、モデルで使うデータ名を宣言するためのブロックです。[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 は、ここに書かれた変数が実際に `data` list
 に含まれているかを確認します。
 
@@ -109,7 +109,7 @@ code <- rtmb_code(
 
 `setup` ブロックは、データ前処理のためのブロックです。
 
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 は、まず `data` list を環境に展開し、その環境内で `setup`
 を評価します。そこで作られた変数や更新された変数は、再び `data` list
 に戻されます。
@@ -137,7 +137,7 @@ parameters = {
 [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md)
 は、次元、制約、初期値、ランダム効果かどうかといった情報を持つパラメータ定義を作ります。
 
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 はこのブロックを評価し、内部で `par_list` を作ります。`par_list`
 は、制約変換、初期値生成、flat vector との対応、`MakeADFun()`
 への受け渡しに使われる重要な情報です。
@@ -302,7 +302,7 @@ Stan のようにモデルコードを C++
 型で評価し、`MakeADFun()` object
 として高速に関数値や導関数を評価できるようにする、というイメージです。
 
-[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 はモデル作成時に pre-check を行います。
 
 - `setup` や `parameters` に未定義変数がないか。
@@ -590,7 +590,7 @@ BayesRTMB の内部構造は、次のように整理できます。
 
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   は、モデルをブロック構造として記述する入口です。
-- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+- [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
   は、データとコードを検査し、`RTMB_Model` を作ります。
 - `RTMB_Model` は、モデル、パラメータ、変換、生成量、wrapper metadata
   を保持します。

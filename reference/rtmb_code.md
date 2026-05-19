@@ -51,7 +51,7 @@ instead of raw algebraic implementations.
 
 ## See also
 
-[`rtmb_model`](https://norimune.github.io/BayesRTMB/reference/RTMB_Model.md)
+[`rtmb_model`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
 for building the model object.
 [`parameter_types`](https://norimune.github.io/BayesRTMB/reference/parameter_types.md)
 for constraining parameters.
