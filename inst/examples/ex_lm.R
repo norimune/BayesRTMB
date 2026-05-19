@@ -1,6 +1,7 @@
   # --- 1. Linear Regression (rtmb_lm) ---
-  # Fit a linear regression model using the mtcars dataset
-  fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
+  # Fit a linear regression model using the debate dataset
+  data(debate, package = "BayesRTMB")
+  fit_lm <- rtmb_lm(sat ~ talk + perf, data = debate)
   map_lm <- fit_lm$optimize()
   map_lm$summary()
 
@@ -39,15 +40,24 @@
   # Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum
   # values of the response variable) to automatically set up the required weakly informative priors.
 
-  # Fit a linear regression using all predictors in mtcars with the Horseshoe prior
-  # 'mpg' theoretically ranges roughly between 0 and 40
-  fit_rhs <- rtmb_lm(mpg ~ ., data = mtcars, prior = prior_rhs(), y_range = c(0, 40))
+  # Fit a linear regression using debate predictors with the Horseshoe prior
+  fit_rhs <- rtmb_lm(
+    sat ~ talk + perf + skill,
+    data = debate,
+    prior = prior_rhs(),
+    y_range = c(1, 5)
+  )
   map_rhs <- fit_rhs$optimize()
   # Summarize only the fixed effects (slopes)
   map_rhs$summary("b")
 
   # Fit a linear regression with the Spike-and-Slab prior
-  fit_ssp <- rtmb_lm(mpg ~ ., data = mtcars, prior = prior_ssp(), y_range = c(0, 40))
+  fit_ssp <- rtmb_lm(
+    sat ~ talk + perf + skill,
+    data = debate,
+    prior = prior_ssp(),
+    y_range = c(1, 5)
+  )
   map_ssp <- fit_ssp$optimize()
   map_ssp$summary("b")
 

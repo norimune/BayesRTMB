@@ -27,10 +27,11 @@ For continuous focal variables, it calculates the slope (simple slopes).
 }
 \examples{
 \dontrun{
-  fit <- rtmb_lm(len ~ supp * dose, data = ToothGrowth)
+  data(debate, package = "BayesRTMB")
+  fit <- rtmb_lm(sat ~ talk * perf, data = debate)
   mcmc_fit <- fit$sample()
-  # Effect of supplement at each dose level
-  se <- simple_effects(mcmc_fit, effect = "supp:dose")
+  # Effect of talk at different levels of performance
+  se <- simple_effects(mcmc_fit, effect = "talk:perf")
   print(se)
 }
 }

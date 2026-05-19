@@ -45,9 +45,9 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
 }
 \examples{
 
-  # Prepare a subset of the mtcars dataset for factor analysis
-  # Scaling is recommended for variables with different units
-  fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])
+  # Prepare a subset of the BigFive dataset for factor analysis
+  data(BigFive, package = "BayesRTMB")
+  fa_data <- BigFive[, 1:10]
 
   # --- 1. Standard Exploratory Factor Analysis (1 Factor) ---
   fit_fa1 <- rtmb_fa(data = fa_data, nfactors = 1)
@@ -104,14 +104,13 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
 
   # Summary of unrotated loadings (may show poor convergence / large SE due to switching)
   mcmc_ssp$summary("L")
-  mcmc_ssp$draws("L[mpg,1]") |> plot_dens()
+  mcmc_ssp$draws("L[BF1,1]") |> plot_dens()
 
   # Apply Procrustes rotation targeting the loading matrix "L"
   mcmc_ssp$rotate(target = "L")
 
   # Summary of the rotated loadings (L_rot) with stabilized estimates
   mcmc_ssp$summary("L_rot")
-  mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
-  mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
+  mcmc_ssp$draws("L_rot[BF1,1]") |> plot_dens()
   }
 }

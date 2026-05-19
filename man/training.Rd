@@ -20,6 +20,9 @@ A data frame with 12 rows and 8 columns:
 \source{
 Simulated dummy data created by the package author.
 }
+\usage{
+training
+}
 \description{
 A small dataset containing repeated outcome measurements from a social
 skills training study. The outcome was measured at four time points for
