@@ -68,6 +68,11 @@ rtmb_corr(
 
   Optional named list of fixed values for specific parameters.
 
+- missing:
+
+  Missing value handling strategy: "listwise" (default), "pairwise", or
+  "fiml" (Full Information Maximum Likelihood).
+
 ## Examples
 
 ``` r
@@ -84,13 +89,14 @@ rtmb_corr(
 
     fit_corr <- rtmb_corr(data = data_corr)
 
-    # \donttest{
+    if (FALSE) { # \dontrun{
     mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
     mcmc_corr$summary()
 
     bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
     print(bf_corr)
-    # }
+    } # }
   }
-#> Error: The response data matrix must be numeric.
+#> Pre-checking model code...
+#> Checking RTMB setup...
 ```

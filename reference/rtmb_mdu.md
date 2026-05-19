@@ -93,6 +93,11 @@ rtmb_mdu(
 
   Small positive constant added to the distance.
 
+- missing:
+
+  Missing value handling strategy: "listwise" (default) or "fiml" (Full
+  Information Maximum Likelihood).
+
 ## Value
 
 An \`RTMB_Model\` object.
@@ -152,7 +157,7 @@ An \`RTMB_Model\` object.
 #> 
   
   # Note: MDU models have many parameters, so MCMC sampling might take time.
-  # \donttest{
+  if (FALSE) { # \dontrun{
   # mcmc_mdu <- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)
-  # }
+  } # }
 ```

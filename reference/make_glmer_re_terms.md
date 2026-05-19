@@ -51,6 +51,10 @@ make_glmer_re_terms(
 
   Optional character vector of variables to treat as factors.
 
+- missing:
+
+  Missing value handling strategy: "listwise".
+
 ## Value
 
 A list containing \`Y\`, \`X\`, \`trials\`, \`offset\`, \`N\`,

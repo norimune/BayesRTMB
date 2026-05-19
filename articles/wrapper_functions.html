@@ -779,6 +779,121 @@ across different levels of the latent trait.</p>
 </div>
 </div>
 <div class="section level2">
+<h2 id="missing-data-handling">9. Missing Data Handling<a class="anchor" aria-label="anchor" href="#missing-data-handling"></a>
+</h2>
+<p>BayesRTMB wrapper functions feature a standardized
+<code>missing</code> argument to handle missing values (<code>NA</code>)
+gracefully. You can choose the most appropriate method depending on your
+analysis type.</p>
+<p>The default for most wrappers is <code>"listwise"</code>, but
+advanced multivariate wrappers support <strong>Full Information Maximum
+Likelihood (FIML)</strong> and <strong>Pairwise</strong> methods.</p>
+<table class="table">
+<colgroup>
+<col width="25%">
+<col width="25%">
+<col width="25%">
+<col width="25%">
+</colgroup>
+<thead><tr class="header">
+<th align="left">Wrapper Function</th>
+<th align="left">Supported <code>missing</code> methods</th>
+<th align="left">Default</th>
+<th align="left">Description</th>
+</tr></thead>
+<tbody>
+<tr class="odd">
+<td align="left">
+<code>rtmb_lm</code>, <code>rtmb_glm</code>,
+<code>rtmb_lmer</code>, <code>rtmb_glmer</code>,
+<code>rtmb_ttest</code>
+</td>
+<td align="left"><code>"listwise"</code></td>
+<td align="left"><code>"listwise"</code></td>
+<td align="left">Removes rows containing <code>NA</code> in any of the
+variables present in the model formula.</td>
+</tr>
+<tr class="even">
+<td align="left">
+<code>rtmb_fa</code>, <code>rtmb_corr</code>
+</td>
+<td align="left">
+<code>"listwise"</code>, <code>"fiml"</code>
+</td>
+<td align="left"><code>"listwise"</code></td>
+<td align="left">
+<code>"listwise"</code> calculates fast sufficient
+statistics on complete cases. <code>"fiml"</code> performs row-wise
+likelihood evaluation using partial observations.</td>
+</tr>
+<tr class="odd">
+<td align="left">
+<code>rtmb_corr</code> (extra method)</td>
+<td align="left"><code>"pairwise"</code></td>
+<td align="left"></td>
+<td align="left">Available when <code>method = "pearson"</code> or
+<code>"spearman"</code>. Produces identical results to base R’s
+<code>cor(..., use = "pairwise.complete.obs")</code>.</td>
+</tr>
+<tr class="even">
+<td align="left"><code>rtmb_mdu</code></td>
+<td align="left">
+<code>"listwise"</code>, <code>"fiml"</code>
+</td>
+<td align="left"><code>"listwise"</code></td>
+<td align="left">
+<code>"fiml"</code> skips missing ratings in the
+internal likelihood loop, whereas <code>"listwise"</code> deletes rows
+containing any <code>NA</code>.</td>
+</tr>
+<tr class="odd">
+<td align="left"><code>rtmb_irt</code></td>
+<td align="left">
+<code>"listwise"</code>, <code>"fiml"</code>
+</td>
+<td align="left"><code>"fiml"</code></td>
+<td align="left">
+<code>"fiml"</code> natively handles missingness by
+omitting individual-item missing observations (long-format), while
+<code>"listwise"</code> drops students/respondents with any missing
+items.</td>
+</tr>
+</tbody>
+</table>
+<div class="section level4">
+<h4 id="example-fiml-in-factor-analysis-rtmb_fa">Example: FIML in Factor Analysis (<code>rtmb_fa</code>)<a class="anchor" aria-label="anchor" href="#example-fiml-in-factor-analysis-rtmb_fa"></a>
+</h4>
+<p>When your data contains missing responses, you can easily enable FIML
+to keep all respondents in the model and estimate factor loadings using
+all available data:</p>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
+<span><span class="co"># Introduce some random missingness</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
+<span><span class="va">BigFive_miss</span> <span class="op">&lt;-</span> <span class="va">BigFive</span></span>
+<span><span class="kw">for</span> <span class="op">(</span><span class="va">col</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">BigFive_miss</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="va">BigFive_miss</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample</a></span><span class="op">(</span><span class="fl">1</span><span class="op">:</span><span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">BigFive_miss</span><span class="op">)</span>, <span class="fl">10</span><span class="op">)</span>, <span class="va">col</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="cn">NA</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="co"># Run Factor Analysis with FIML</span></span>
+<span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive_miss</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, missing <span class="op">=</span> <span class="st">"fiml"</span><span class="op">)</span></span>
+<span><span class="va">fit_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="example-pairwise-deletion-in-correlation-rtmb_corr">Example: Pairwise Deletion in Correlation
+(<code>rtmb_corr</code>)<a class="anchor" aria-label="anchor" href="#example-pairwise-deletion-in-correlation-rtmb_corr"></a>
+</h4>
+<p>If you want to match R’s default correlation tests using pairwise
+deletion, you can specify <code>missing = "pairwise"</code>:</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="co"># Classic Pearson correlation with pairwise deletion</span></span>
+<span><span class="va">mdl_corr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive_miss</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"pearson"</span>, missing <span class="op">=</span> <span class="st">"pairwise"</span><span class="op">)</span></span>
+<span><span class="va">fit_corr</span> <span class="op">&lt;-</span> <span class="va">mdl_corr</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_corr</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<hr>
+</div>
+</div>
+<div class="section level2">
 <h2 id="summary">Summary<a class="anchor" aria-label="anchor" href="#summary"></a>
 </h2>
 <p>By leveraging the wrapper functions in BayesRTMB, you gain the

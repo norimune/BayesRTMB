@@ -69,6 +69,10 @@ rtmb_lm(
 
   Character string specifying the contrast type ("treatment" or "sum").
 
+- missing:
+
+  Missing value handling strategy: "listwise".
+
 - ...:
 
   Additional arguments passed to
@@ -77,7 +81,6 @@ rtmb_lm(
 ## Examples
 
 ``` r
-
   # --- 1. Linear Regression (rtmb_lm) ---
   # Fit a linear regression model using the mtcars dataset
   fit_lm <- rtmb_lm(mpg ~ wt + cyl, data = mtcars)
@@ -103,8 +106,9 @@ rtmb_lm(
 #> 
 
   # --- 2. Generalized Linear Model (rtmb_glm) ---
-  # Fit a logistic regression model
-  fit_glm <- rtmb_glm(am ~ mpg + hp, data = mtcars, family = "binomial")
+  # Fit a logistic regression model using the debate dataset
+  data(debate, package = "BayesRTMB")
+  fit_glm <- rtmb_glm(cond ~ talk + sat, data = debate, family = "bernoulli")
 #> Pre-checking model code...
 #> Checking RTMB setup...
   map_glm <- fit_glm$optimize()
@@ -115,19 +119,20 @@ rtmb_lm(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 9.62
-#> Approx. Log Marginal Likelihood (Laplace): -12.65
+#> Negative Log-Posterior: 183.31
+#> Approx. Log Marginal Likelihood (Laplace): -186.56
 #> 
 #> Point Estimates and 95% Wald CI:
-#>  variable   Estimate  Std. Error  Lower 95%  Upper 95% 
-#> Intercept  -33.60511    15.12413  -63.24785   -3.96236 
-#> b[mpg]       1.25961     0.56938    0.14365    2.37557 
-#> b[hp]        0.05504     0.02698    0.00217    0.10792 
+#>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> Intercept  -3.16409     0.57473   -4.29054   -2.03765 
+#> b[talk]     0.84795     0.15040    0.55317    1.14273 
+#> b[sat]      0.17405     0.13431   -0.08920    0.43730 
 #> 
 
   # --- 3. Generalized Linear Mixed Model (rtmb_glmer) ---
-  # Fit a linear mixed-effects model with random intercepts
-  fit_glmer <- rtmb_glmer(weight ~ Time + (1 | Chick), data = ChickWeight, family = "gaussian")
+  # Fit a linear mixed-effects model using the debate dataset
+  data(debate, package = "BayesRTMB")
+  fit_glmer <- rtmb_glmer(talk ~ cond + (1 | group), data = debate, family = "gaussian")
 #> Pre-checking model code...
 #> Checking RTMB setup...
 
@@ -140,61 +145,27 @@ rtmb_lm(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 2811.17
-#> Approx. Log Marginal Likelihood (Laplace): -2806.94
+#> Negative Log-Posterior: 393.51
+#> Approx. Log Marginal Likelihood (Laplace): -400.58
 #> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
 #> 
 #> Point Estimates and 95% Wald CI:
 #>      variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> Intercept      27.84417     4.35087   19.31663   36.37172 
-#> b[Time]         8.72625     0.17536    8.38256    9.06995 
-#> sigma          28.24714     0.86881   26.59461   30.00235 
-#> sd[Chick:Int]  26.49977     2.91129   21.36626   32.86665 
+#> Intercept       2.64000     0.08790    2.46772    2.81228 
+#> b[cond]         0.76000     0.12431    0.51636    1.00364 
+#> sigma           0.82057     0.04103    0.74397    0.90506 
+#> sd[group:Int]   0.40233     0.07340    0.28137    0.57528 
 #> 
 
   # MCMC sampling (chains and iterations reduced for faster execution)
-  # \donttest{
+  if (FALSE) { # \dontrun{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
-#> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 100 warmup 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 300 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 500 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 700 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 900 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 100 warmup 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 300 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 500 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 700 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 900 sampling 
-#> chain 2: iter 1000 sampling 
   mcmc_glmer$summary()
-#>      variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -2815.47  7.19  -2814.58  -2830.74  -2802.77       104       419  1.03 
-#> Intercept         27.63  4.53     28.51     18.64     36.24        42       125  1.06 
-#> b[Time]            8.72  0.17      8.75      8.37      9.05       431       389  1.01 
-#> sigma             28.38  0.85     27.95     26.93     30.12       427       647  1.00 
-#> sd[Chick:Int]     27.90  3.29     27.50     22.15     35.22        69       158  1.05 
-#> r_re[1]            0.02  0.63     -0.20     -1.26      1.36       473       432  1.00 
-#> r_re[2]           -0.95  0.39     -0.90     -1.75     -0.18       196       472  1.03 
-#> r_re[3]           -0.90  0.39     -0.86     -1.64     -0.15       329       411  1.01 
-#> r_re[4]           -1.81  0.39     -1.65     -2.56     -1.11       166       263  1.04 
-#> r_re[5]           -1.39  0.33     -1.33     -2.08     -0.75       149       417  1.03 
-  # }
+  } # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
   # A convenient wrapper for Gaussian mixed models (identical to rtmb_glmer with family="gaussian")
-  fit_lmer <- rtmb_lmer(mpg ~ wt + (1 | cyl), data = mtcars)
+  fit_lmer <- rtmb_lmer(sat ~ talk + (1 | group), data = debate)
 #> Pre-checking model code...
 #> Checking RTMB setup...
   map_lmer <- fit_lmer$optimize()
@@ -205,49 +176,93 @@ rtmb_lm(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 78.24
-#> Approx. Log Marginal Likelihood (Laplace): -75.65
+#> Negative Log-Posterior: 394.85
+#> Approx. Log Marginal Likelihood (Laplace): -402.71
 #> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
 #> 
 #> Point Estimates and 95% Wald CI:
-#>    variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> Intercept    32.12009     2.87856   26.47821   37.76197 
-#> b[wt]        -3.70755     0.81856   -5.31191   -2.10320 
-#> sigma         2.52988     0.33760    1.94765    3.28616 
-#> sd[cyl:Int]   2.09732     1.13099    0.72888    6.03498 
+#>      variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> Intercept       2.60860     0.18122    2.25341    2.96379 
+#> b[talk]         0.27309     0.05535    0.16461    0.38157 
+#> sigma           0.77837     0.03900    0.70557    0.85869 
+#> sd[group:Int]   0.53681     0.06762    0.41936    0.68715 
 #> 
 
   # --- 5. Regularized Regression (Variable Selection) ---
   # You can apply regularization to the fixed effects to shrink noise variables towards zero.
-  # Use prior = prior_rhs() for the Regularized Horseshoe prior, or prior_ssp() for the Spike-and-Slab prior.
+  # Use prior = prior_rhs() for the Regularized Horseshoe prior,
+  # or prior_ssp() for the Spike-and-Slab prior.
   # Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum
   # values of the response variable) to automatically set up the required weakly informative priors.
 
   # Fit a linear regression using all predictors in mtcars with the Horseshoe prior
   # 'mpg' theoretically ranges roughly between 0 and 40
   fit_rhs <- rtmb_lm(mpg ~ ., data = mtcars, prior = prior_rhs(), y_range = c(0, 40))
-#> Error: Variables not found in data: .
+#> Pre-checking model code...
+#> Checking RTMB setup...
   map_rhs <- fit_rhs$optimize()
-#> Error: object 'fit_rhs' not found
+#> Starting RTMB optimization...
+#> 
+#> Warning: Optimization did not converge ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
   # Summarize only the fixed effects (slopes)
   map_rhs$summary("b")
-#> Error: object 'map_rhs' not found
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 95.24
+#> Approx. Log Marginal Likelihood (Laplace): -143.18
+#> 
+#> Point Estimates and 95% Wald CI:
+#> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> b[cyl]    -0.29300     0.75515   -1.77307    1.18708 
+#> b[disp]    0.00400     0.01355   -0.02254    0.03055 
+#> b[hp]     -0.01781     0.01724   -0.05159    0.01598 
+#> b[drat]    0.82078     1.12397   -1.38216    3.02372 
+#> b[wt]     -2.60416     1.32891   -5.20877    0.00045 
+#> b[qsec]    0.43663     0.55394   -0.64907    1.52232 
+#> b[vs]      0.19512     1.33091   -2.41342    2.80366 
+#> b[am]      1.74367     1.34353   -0.88961    4.37695 
+#> b[gear]    0.82979     1.02907   -1.18714    2.84672 
+#> b[carb]   -0.51687     0.59211   -1.67738    0.64364 
+#> 
 
   # Fit a linear regression with the Spike-and-Slab prior
   fit_ssp <- rtmb_lm(mpg ~ ., data = mtcars, prior = prior_ssp(), y_range = c(0, 40))
-#> Error: Variables not found in data: .
+#> Pre-checking model code...
+#> Checking RTMB setup...
   map_ssp <- fit_ssp$optimize()
-#> Error: object 'fit_ssp' not found
+#> Starting RTMB optimization...
+#> 
+#> Warning: Optimization did not converge ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
+#> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
+#> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")
-#> Error: object 'map_ssp' not found
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 75.37
+#> Approx. Log Marginal Likelihood (Laplace): NA
+#> 
+#> Point Estimates and 95% Wald CI:
+#> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> b[cyl]    -0.00000     0.00000   -0.00000    0.00000 
+#> b[disp]   -0.04069     0.00458   -0.04967   -0.03172 
+#> b[hp]      0.00000     0.00000   -0.00000    0.00000 
+#> b[drat]   -0.00000     0.00000   -0.00000    0.00000 
+#> b[wt]      0.00000     0.00000   -0.00000    0.00000 
+#> b[qsec]    0.00000     0.00000   -0.00000    0.00000 
+#> b[vs]      0.00000     0.00000   -0.00000    0.00000 
+#> b[am]      0.00000     0.00000   -0.00000    0.00000 
+#> b[gear]    0.00000     0.00000   -0.00000    0.00000 
+#> b[carb]    0.00000     0.00000   -0.00000    0.00000 
+#> 
 
   # For models with complex penalties, MCMC often provides more reliable credible intervals
-  # \donttest{
+  if (FALSE) { # \dontrun{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
-#> Error: object 'fit_ssp' not found
   mcmc_ssp$summary("b")
-#> Error: object 'mcmc_ssp' not found
   mcmc_ssp$summary("b")
-#> Error: object 'mcmc_ssp' not found
-  # }
+  } # }
 ```

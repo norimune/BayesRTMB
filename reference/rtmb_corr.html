@@ -117,6 +117,10 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
 <dd><p>Optional named list of fixed values for specific parameters.</p></dd>
 
+
+<dt id="arg-missing">missing<a class="anchor" aria-label="anchor" href="#arg-missing"></a></dt>
+<dd><p>Missing value handling strategy: "listwise" (default), "pairwise", or "fiml" (Full Information Maximum Likelihood).</p></dd>
+
 </dl></div>
 
     <div class="section level2">
@@ -134,15 +138,16 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">fit_corr</span> <span class="op">&lt;-</span> <span class="fu">rtmb_corr</span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_corr</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span>    <span class="co"># \donttest{</span></span></span>
+<span class="r-in"><span>    <span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
 <span class="r-in"><span>    <span class="va">mcmc_corr</span> <span class="op">&lt;-</span> <span class="va">fit_corr</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>corr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_corr</span><span class="op">)</span></span></span>
-<span class="r-in"><span>    <span class="co"># }</span></span></span>
+<span class="r-in"><span>    <span class="op">}</span> <span class="co"># }</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> The response data matrix must be numeric.</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

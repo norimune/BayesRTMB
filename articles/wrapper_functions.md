@@ -749,6 +749,60 @@ plot(ti)
 
 ------------------------------------------------------------------------
 
+## 9. Missing Data Handling
+
+BayesRTMB wrapper functions feature a standardized `missing` argument to
+handle missing values (`NA`) gracefully. You can choose the most
+appropriate method depending on your analysis type.
+
+The default for most wrappers is `"listwise"`, but advanced multivariate
+wrappers support **Full Information Maximum Likelihood (FIML)** and
+**Pairwise** methods.
+
+| Wrapper Function | Supported `missing` methods | Default | Description |
+|:---|:---|:---|:---|
+| `rtmb_lm`, `rtmb_glm`, `rtmb_lmer`, `rtmb_glmer`, `rtmb_ttest` | `"listwise"` | `"listwise"` | Removes rows containing `NA` in any of the variables present in the model formula. |
+| `rtmb_fa`, `rtmb_corr` | `"listwise"`, `"fiml"` | `"listwise"` | `"listwise"` calculates fast sufficient statistics on complete cases. `"fiml"` performs row-wise likelihood evaluation using partial observations. |
+| `rtmb_corr` (extra method) | `"pairwise"` |  | Available when `method = "pearson"` or `"spearman"`. Produces identical results to base R’s `cor(..., use = "pairwise.complete.obs")`. |
+| `rtmb_mdu` | `"listwise"`, `"fiml"` | `"listwise"` | `"fiml"` skips missing ratings in the internal likelihood loop, whereas `"listwise"` deletes rows containing any `NA`. |
+| `rtmb_irt` | `"listwise"`, `"fiml"` | `"fiml"` | `"fiml"` natively handles missingness by omitting individual-item missing observations (long-format), while `"listwise"` drops students/respondents with any missing items. |
+
+#### Example: FIML in Factor Analysis (`rtmb_fa`)
+
+When your data contains missing responses, you can easily enable FIML to
+keep all respondents in the model and estimate factor loadings using all
+available data:
+
+``` r
+
+data(BigFive)
+# Introduce some random missingness
+set.seed(42)
+BigFive_miss <- BigFive
+for (col in 1:ncol(BigFive_miss)) {
+  BigFive_miss[sample(1:nrow(BigFive_miss), 10), col] <- NA
+}
+
+# Run Factor Analysis with FIML
+mdl_fa <- rtmb_fa(BigFive_miss, nfactors = 5, missing = "fiml")
+fit_fa <- mdl_fa$optimize()
+```
+
+#### Example: Pairwise Deletion in Correlation (`rtmb_corr`)
+
+If you want to match R’s default correlation tests using pairwise
+deletion, you can specify `missing = "pairwise"`:
+
+``` r
+
+# Classic Pearson correlation with pairwise deletion
+mdl_corr <- rtmb_corr(BigFive_miss[, 1:5], method = "pearson", missing = "pairwise")
+fit_corr <- mdl_corr$classic()
+fit_corr$summary()
+```
+
+------------------------------------------------------------------------
+
 ## Summary
 
 By leveraging the wrapper functions in BayesRTMB, you gain the following
