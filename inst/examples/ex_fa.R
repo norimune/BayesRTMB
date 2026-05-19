@@ -17,17 +17,17 @@
   fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
 
   # MCMC sampling for the 2 factor-model (chains and iterations reduced for faster execution)
-  \donttest{
+  \dontrun{
   mcmc_fa2 <- fit_fa2$sample(sampling=500, warmup=500, chains=2)
   # The summary prioritizes rotated loadings (L_promax), standard deviations,
   # and factor correlations
   mcmc_fa2$summary()
   }
 
-  # Setting 'se_sampling = TRUE' enables the calculation of standard errors and 95% CIs
+  # Setting se_method = "sampling" enables standard errors and 95% CIs
   # for transformed and generated quantities, such as factor scores and post-hoc rotations.
   # (It uses multivariate normal sampling from the unconstrained parameter space)
-  map_fa2 <- fit_fa2$optimize(se_sampling = TRUE)
+  map_fa2 <- fit_fa2$optimize(se_method = "sampling")
   map_fa2$summary()
 
   # Post-hoc rotation using the fa_rotate() method
@@ -49,7 +49,7 @@
   map_ssp$summary()
 
   # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
-  \donttest{
+  \dontrun{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
 
   # --- 4. Resolving Label Switching in MCMC ---

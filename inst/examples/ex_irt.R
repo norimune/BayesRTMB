@@ -63,7 +63,7 @@
   # MCMC sampling is recommended for reliable interval estimation.
 
   # MCMC sampling for the ordered model (chains and iterations reduced)
-  \donttest{
+  \dontrun{
   mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ord$summary()
   mcmc_ord$summary()

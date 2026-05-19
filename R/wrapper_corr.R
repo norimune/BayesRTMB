@@ -197,12 +197,12 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
   if (missing == "listwise") {
     if (!is.null(X_mat)) {
-      valid_idx <- complete.cases(Y_mat, X_mat)
+      valid_idx <- stats::complete.cases(Y_mat, X_mat)
       Y_mat <- Y_mat[valid_idx, , drop = FALSE]
       X_mat <- X_mat[valid_idx, , drop = FALSE]
       if (length(id_val) == length(valid_idx)) id_val <- id_val[valid_idx]
     } else {
-      valid_idx <- complete.cases(Y_mat)
+      valid_idx <- stats::complete.cases(Y_mat)
       Y_mat <- Y_mat[valid_idx, , drop = FALSE]
       if (length(id_val) == length(valid_idx)) id_val <- id_val[valid_idx]
     }

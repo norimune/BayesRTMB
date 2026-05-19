@@ -73,7 +73,7 @@ RTMB-based Linear Regression wrapper function
   map_glmer$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
-  \donttest{
+  \dontrun{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_glmer$summary()
   }
@@ -86,7 +86,8 @@ RTMB-based Linear Regression wrapper function
 
   # --- 5. Regularized Regression (Variable Selection) ---
   # You can apply regularization to the fixed effects to shrink noise variables towards zero.
-  # Use prior = prior_rhs() for the Regularized Horseshoe prior, or prior_ssp() for the Spike-and-Slab prior.
+  # Use prior = prior_rhs() for the Regularized Horseshoe prior,
+  # or prior_ssp() for the Spike-and-Slab prior.
   # Note: When using regularization, you must specify 'y_range' (the theoretical minimum and maximum
   # values of the response variable) to automatically set up the required weakly informative priors.
 
@@ -103,7 +104,7 @@ RTMB-based Linear Regression wrapper function
   map_ssp$summary("b")
 
   # For models with complex penalties, MCMC often provides more reliable credible intervals
-  \donttest{
+  \dontrun{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ssp$summary("b")
   mcmc_ssp$summary("b")
