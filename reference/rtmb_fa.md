@@ -73,9 +73,9 @@ rtmb_fa(
 
 ``` r
 
-  # Prepare a subset of the mtcars dataset for factor analysis
-  # Scaling is recommended for variables with different units
-  fa_data <- scale(mtcars[, c("mpg", "disp", "hp", "drat", "wt", "qsec")])
+  # Prepare a subset of the BigFive dataset for factor analysis
+  data(BigFive, package = "BayesRTMB")
+  fa_data <- BigFive[, 1:10]
 
   # --- 1. Standard Exploratory Factor Analysis (1 Factor) ---
   fit_fa1 <- rtmb_fa(data = fa_data, nfactors = 1)
@@ -91,21 +91,21 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 191.21
-#> Approx. Log Marginal Likelihood (Laplace): -216.00
+#> Negative Log-Posterior: 2485.47
+#> Approx. Log Marginal Likelihood (Laplace): -2535.33
 #> 
 #> Point Estimates and 95% Wald CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L[mpg,Factor1]    0.91547     0.03740    0.84216    0.98877 
-#> L[disp,Factor1]  -0.95435     0.02609   -1.00548   -0.90322 
-#> L[hp,Factor1]    -0.80119     0.06853   -0.93552   -0.66687 
-#> L[drat,Factor1]   0.73233     0.08608    0.56363    0.90103 
-#> L[wt,Factor1]    -0.92203     0.03253   -0.98578   -0.85828 
-#> L[qsec,Factor1]   0.40864     0.15340    0.10798    0.70930 
-#> sd[mpg]           0.39606     0.07319    0.27572    0.56893 
-#> sd[disp]          0.29398     0.07497    0.17835    0.48460 
-#> sd[hp]            0.58899     0.08135    0.44930    0.77210 
-#> sd[drat]          0.67023     0.08827    0.51774    0.86762 
+#> L[BF1,Factor1]    0.05250     0.08868   -0.12130    0.22630 
+#> L[BF2,Factor1]    0.79972     0.07145    0.65968    0.93976 
+#> L[BF3,Factor1]   -0.13478     0.08707   -0.30542    0.03587 
+#> L[BF4,Factor1]   -0.20465     0.08257   -0.36649   -0.04282 
+#> L[BF5,Factor1]   -0.14443     0.08455   -0.31015    0.02128 
+#> L[BF6,Factor1]   -0.00682     0.08660   -0.17655    0.16291 
+#> L[BF7,Factor1]    0.84338     0.07318    0.69994    0.98681 
+#> L[BF8,Factor1]   -0.24816     0.08298   -0.41080   -0.08551 
+#> L[BF9,Factor1]   -0.11264     0.08648   -0.28214    0.05686 
+#> L[BF10,Factor1]   0.21358     0.08794    0.04122    0.38593 
 #> 
 
 
@@ -136,21 +136,21 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 169.75
-#> Approx. Log Marginal Likelihood (Laplace): -202.89
+#> Negative Log-Posterior: 2440.43
+#> Approx. Log Marginal Likelihood (Laplace): -2503.48
 #> 
 #> Point Estimates and 95% Sampling-based CI:
 #>               variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_promax[mpg,Factor1]   -0.84391     0.09234   -0.94105   -0.58754 
-#> L_promax[disp,Factor1]   0.86488     0.09796    0.58671    0.95548 
-#> L_promax[hp,Factor1]     0.48739     0.17207    0.06884    0.72643 
-#> L_promax[drat,Factor1]  -0.81857     0.13502   -0.94834   -0.53021 
-#> L_promax[wt,Factor1]     1.05698     0.10321    0.86654    1.11629 
-#> L_promax[qsec,Factor1]   0.17103     0.11581    0.01298    0.26388 
-#> L_promax[mpg,Factor2]    0.14304     0.12712   -0.02929    0.40829 
-#> L_promax[disp,Factor2]  -0.15096     0.13212   -0.43374    0.01984 
-#> L_promax[hp,Factor2]    -0.57624     0.18142   -0.91341   -0.26952 
-#> L_promax[drat,Factor2]  -0.18382     0.13165   -0.38770    0.11398 
+#> L_promax[BF1,Factor1]   -0.88412     0.19040   -0.99590   -0.29552 
+#> L_promax[BF2,Factor1]   -0.07323     0.04808   -0.16583    0.02137 
+#> L_promax[BF3,Factor1]   -0.11607     0.07986   -0.27315    0.04090 
+#> L_promax[BF4,Factor1]   -0.07882     0.08795   -0.24846    0.09597 
+#> L_promax[BF5,Factor1]    0.03564     0.08367   -0.12772    0.19089 
+#> L_promax[BF6,Factor1]    0.68867     0.12762    0.39206    0.88820 
+#> L_promax[BF7,Factor1]    0.01309     0.04747   -0.07218    0.09987 
+#> L_promax[BF8,Factor1]   -0.15549     0.09734   -0.35668    0.02904 
+#> L_promax[BF9,Factor1]    0.08481     0.09385   -0.10586    0.26402 
+#> L_promax[BF10,Factor1]  -0.10916     0.07976   -0.26512    0.04661 
 #> 
 
   # Post-hoc rotation using the fa_rotate() method
@@ -167,21 +167,21 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 169.75
-#> Approx. Log Marginal Likelihood (Laplace): -202.89
+#> Negative Log-Posterior: 2440.43
+#> Approx. Log Marginal Likelihood (Laplace): -2503.48
 #> 
 #> Point Estimates and 95% Sampling-based CI:
-#>       variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_varimax[1,1]  -0.84186     0.05720   -0.92282   -0.70183 
-#> L_varimax[2,1]   0.86374     0.05952    0.70611    0.94049 
-#> L_varimax[3,1]   0.59564     0.10327    0.37542    0.77071 
-#> L_varimax[4,1]  -0.74507     0.10571   -0.86734   -0.51778 
-#> L_varimax[5,1]   0.97372     0.06910    0.80969    0.99466 
-#> L_varimax[6,1]  -0.06546     0.11314   -0.26331    0.12112 
-#> L_varimax[1,2]   0.37581     0.13654    0.13184    0.56858 
-#> L_varimax[2,2]  -0.38940     0.14306   -0.59211   -0.15393 
-#> L_varimax[3,2]  -0.69839     0.14894   -0.86577   -0.39394 
-#> L_varimax[4,2]   0.04998     0.13785   -0.24406    0.27966 
+#>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> L_varimax[1,1]   -0.87739     0.18946   -0.98930   -0.27963 
+#> L_varimax[2,1]   -0.00088     0.13712   -0.34153    0.19608 
+#> L_varimax[3,1]   -0.12824     0.08587   -0.27944    0.04857 
+#> L_varimax[4,1]   -0.09712     0.09498   -0.27465    0.09389 
+#> L_varimax[5,1]    0.02261     0.08562   -0.13019    0.20885 
+#> L_varimax[6,1]    0.68707     0.12478    0.38952    0.87753 
+#> L_varimax[7,1]    0.08960     0.14207   -0.28461    0.28011 
+#> L_varimax[8,1]   -0.17801     0.10885   -0.38106    0.03885 
+#> L_varimax[9,1]    0.07460     0.09842   -0.11166    0.27545 
+#> L_varimax[10,1]  -0.08975     0.08971   -0.28869    0.05730 
 #> 
 
 
@@ -195,29 +195,27 @@ rtmb_fa(
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
 #> 
-#> Warning: Optimization did not converge ( convergence code = 1; message = singular convergence (7)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
-#> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
-#> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
+#> Warning: Optimization did not converge ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
   map_ssp$summary()
 #> 
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 175.35
-#> Approx. Log Marginal Likelihood (Laplace): NA
+#> Negative Log-Posterior: 2433.06
+#> Approx. Log Marginal Likelihood (Laplace): -2692.30
 #> 
 #> Point Estimates and 95% Wald CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L[mpg,Factor1]    0.83826     0.05421    0.73201    0.94450 
-#> L[disp,Factor1]  -0.86320     0.04963   -0.96047   -0.76594 
-#> L[hp,Factor1]    -0.56058     0.09806   -0.75277   -0.36839 
-#> L[drat,Factor1]   0.71346     0.09036    0.53636    0.89057 
-#> L[wt,Factor1]    -0.97993     0.02361   -1.02620   -0.93365 
-#> L[qsec,Factor1]   0.00000     0.00000   -0.00000    0.00000 
-#> L[mpg,Factor2]    0.28214     0.09339    0.09909    0.46519 
-#> L[disp,Factor2]  -0.29761     0.08450   -0.46323   -0.13198 
-#> L[hp,Factor2]    -0.66648     0.11892   -0.89956   -0.43339 
-#> L[drat,Factor2]   0.00000     0.00000    0.00000    0.00000 
+#> L[BF1,Factor1]    0.00000     0.00000   -0.00000    0.00000 
+#> L[BF2,Factor1]    0.78286     0.07926    0.62751    0.93821 
+#> L[BF3,Factor1]   -0.11537     0.09039   -0.29252    0.06179 
+#> L[BF4,Factor1]   -0.18356     0.08405   -0.34831   -0.01882 
+#> L[BF5,Factor1]   -0.11921     0.08829   -0.29226    0.05383 
+#> L[BF6,Factor1]    0.00000     0.00000   -0.00000    0.00000 
+#> L[BF7,Factor1]    0.85423     0.08408    0.68944    1.01902 
+#> L[BF8,Factor1]   -0.23762     0.08149   -0.39735   -0.07790 
+#> L[BF9,Factor1]   -0.07829     0.09694   -0.26828    0.11170 
+#> L[BF10,Factor1]   0.18712     0.09227    0.00628    0.36797 
 #> 
 
   # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
@@ -230,14 +228,13 @@ rtmb_fa(
 
   # Summary of unrotated loadings (may show poor convergence / large SE due to switching)
   mcmc_ssp$summary("L")
-  mcmc_ssp$draws("L[mpg,1]") |> plot_dens()
+  mcmc_ssp$draws("L[BF1,1]") |> plot_dens()
 
   # Apply Procrustes rotation targeting the loading matrix "L"
   mcmc_ssp$rotate(target = "L")
 
   # Summary of the rotated loadings (L_rot) with stabilized estimates
   mcmc_ssp$summary("L_rot")
-  mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
-  mcmc_ssp$draws("L_rot[mpg,1]") |> plot_dens()
+  mcmc_ssp$draws("L_rot[BF1,1]") |> plot_dens()
   } # }
 ```

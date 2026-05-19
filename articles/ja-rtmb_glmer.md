@@ -637,14 +637,28 @@ mdl_ar1 <- rtmb_glmer(
 実験計画に近いデータで、分散分析表、推定周辺平均、ペア比較、平均のグラフを主に報告したい場合は、[`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
 から始めると分かりやすくなります。
 
+ここでは、パッケージに含まれる `training`
+データを使います。このデータは、社会的スキルについてのトレーニング効果を4時点で測定したワイド型データです。`a`
+はトレーニング条件で、`0` が統制群、`1` が介入群です。`b`
+はもともとのスキル判定を質的に分類した変数、`age` は年齢です。
+
 [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
-は、`rtmb_glmer(..., family = "gaussian")` の便利な別名です。
+は、`rtmb_glmer(..., family = "gaussian")`
+の便利な別名です。ワイド型の反復測定データは、左辺に
+[`cbind()`](https://rdrr.io/r/base/cbind.html)
+を使い、`within = list(time = 4)`
+を指定すると、内部でロング型データとして扱われます。また、`factors =`
+で指定した変数は内部で factor 型として扱われます。
 
 ``` r
 
+data(training)
+
 mdl_aov <- rtmb_lmer(
-  y ~ cond * time + (1 | id),
-  data = dat,
+  cbind(time1, time2, time3, time4) ~ a * time + b + age + (1 | ID),
+  data = training,
+  within = list(time = 4),
+  factors = c("a", "b", "time"),
   prior = prior_flat()
 )
 
@@ -653,7 +667,8 @@ fit_aov <- mdl_aov$classic()
 
 [`prior_flat()`](https://norimune.github.io/BayesRTMB/reference/prior_flat.md)
 の wrapper モデルに対して `classic()` を呼ぶと、頻度主義的な mixed model
-として確認できます。
+として確認できます。分散分析表は
+[`anova()`](https://rdrr.io/r/stats/anova.html) で表示できます。
 
 ``` r
 
@@ -661,12 +676,13 @@ anova(fit_aov)
 ```
 
 ``` text
-## Analysis of Deviance Table (Type III)
-## 
-##            Df  Chisq  Pr(>Chisq)
-## cond        1  8.214      0.0042 **
-## time        2 15.907      0.0004 ***
-## cond:time   2  5.382      0.0678 .
+## ANOVA Table (Wald F-tests)
+##        num_df den_df F value   Pr(>F) signif
+## a           1      7  8.4229 0.022913      2
+## time        3     30  4.8719 0.007062      3
+## b           2      7  3.3997 0.092967      5
+## age         1      7  2.4916 0.158466      1
+## a:time      3     30  9.6016 0.000133      4
 ```
 
 推定周辺平均は
@@ -675,25 +691,35 @@ anova(fit_aov)
 
 ``` r
 
-emm <- lsmeans(fit_aov, specs = "cond")
+emm <- lsmeans(fit_aov, specs = "a")
 emm
-plot(emm)
 ```
 
 ``` text
-## Least-squares means
-## 
-##        estimate  Std. Error  Lower 95%  Upper 95%  df
-## cond0     3.214       0.108      3.002      3.426  118
-## cond1     3.686       0.111      3.468      3.904  118
+##     estimate Std. Error df Lower 95% Upper 95%
+## a=0  4.06011    6.23673  7 -10.68740  18.80763
+## a=1  5.54280    6.23673  7  -9.20471  20.29031
 ```
 
 交互作用がある場合は、条件ごとの平均や単純効果を見ることが重要です。
 
 ``` r
 
-emm_time <- lsmeans(fit_aov, specs = c("cond", "time"))
+emm_time <- lsmeans(fit_aov, specs = c("a", "time"))
+emm_time
 plot(emm_time)
+```
+
+``` text
+##            estimate Std. Error df Lower 95% Upper 95%
+## a=0:time=1  4.36303    6.24966  7 -10.41508  19.14114
+## a=1:time=1  3.22864    6.24966  7 -11.54947  18.00674
+## a=0:time=2  4.19970    6.24966  7 -10.57841  18.97780
+## a=1:time=2  4.76030    6.24966  7 -10.01780  19.53841
+## a=0:time=3  3.68303    6.24966  7 -11.09508  18.46114
+## a=1:time=3  6.43364    6.24966  7  -8.34447  21.21174
+## a=0:time=4  3.99470    6.27546  7 -10.84441  18.83380
+## a=1:time=4  7.74864    6.27546  7  -7.09047  22.58774
 ```
 
 モデル比較には
@@ -702,8 +728,21 @@ plot(emm_time)
 
 ``` r
 
-fit0 <- rtmb_lmer(y ~ cond + time + (1 | id), data = dat)$classic()
-fit1 <- rtmb_lmer(y ~ cond * time + (1 | id), data = dat)$classic()
+fit0 <- rtmb_lmer(
+  cbind(time1, time2, time3, time4) ~ a + time + b + age + (1 | ID),
+  data = training,
+  within = list(time = 4),
+  factors = c("a", "b", "time"),
+  prior = prior_flat()
+)$classic()
+
+fit1 <- rtmb_lmer(
+  cbind(time1, time2, time3, time4) ~ a * time + b + age + (1 | ID),
+  data = training,
+  within = list(time = 4),
+  factors = c("a", "b", "time"),
+  prior = prior_flat()
+)$classic()
 
 anova(fit0, fit1)
 AIC(fit0, fit1)
@@ -712,10 +751,15 @@ BIC(fit0, fit1)
 
 ``` text
 ## Likelihood Ratio Tests
-## 
-##      Model Df  logLik    AIC    BIC  Chisq Chi Df Pr(>Chisq)
-## fit0    1  6 -182.44 376.88 393.51     NA     NA         NA
-## fit1    2  8 -178.92 373.84 396.01   7.04      2     0.0296 *
+##  Model Df  logLik   AIC    BIC  Chisq Chi Df Pr(>Chisq)
+##   fit0 10 -88.298 196.6 215.31     NA     NA         NA
+##   fit1 13 -77.250 180.5 204.82 22.096      3 6.2287e-05
+##
+## AIC(fit0, fit1)
+## [1] 196.5955
+##
+## BIC(fit0, fit1)
+## [1] 215.3075
 ```
 
 ここでの `classic()` は、ベイズ推定ではなく、BayesRTMB

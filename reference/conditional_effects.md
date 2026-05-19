@@ -42,9 +42,10 @@ credible intervals.
 
 ``` r
 if (FALSE) { # \dontrun{
-  fit <- rtmb_lm(mpg ~ wt * hp, data = mtcars)
+  data(debate, package = "BayesRTMB")
+  fit <- rtmb_lm(sat ~ talk * perf, data = debate)
   mcmc_fit <- fit$sample()
-  ce <- conditional_effects(mcmc_fit, effect = "wt:hp")
+  ce <- conditional_effects(mcmc_fit, effect = "talk:perf")
   plot(ce)
   summary(ce)
 } # }

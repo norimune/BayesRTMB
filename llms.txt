@@ -529,6 +529,8 @@ Functions used within rtmb_code for stability and transformations.
   : Vector to lower triangular matrix (RTMB compatible)
 - [`to_wide()`](https://norimune.github.io/BayesRTMB/reference/to_wide.md)
   : Convert Long Data to Wide Format
+- [`training`](https://norimune.github.io/BayesRTMB/reference/training.md)
+  : Social Skills Training Data
 - [`transform_code()`](https://norimune.github.io/BayesRTMB/reference/transform_code.md)
   : Transformed Code Wrapper for RTMB
 

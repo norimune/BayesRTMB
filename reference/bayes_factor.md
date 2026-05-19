@@ -35,8 +35,9 @@ Bayes factor, approximate estimation error, and interpretation.
 ``` r
 if (FALSE) { # \dontrun{
   # Compare two models using Bayes Factor
-  fit1 <- rtmb_lm(mpg ~ wt, data = mtcars)
-  fit2 <- rtmb_lm(mpg ~ wt + hp, data = mtcars)
+  data(debate, package = "BayesRTMB")
+  fit1 <- rtmb_lm(sat ~ talk, data = debate)
+  fit2 <- rtmb_lm(sat ~ talk + perf, data = debate)
   mcmc1 <- fit1$sample(sampling = 500, warmup = 500)
   mcmc2 <- fit2$sample(sampling = 500, warmup = 500)
   bf <- bayes_factor(mcmc1, mcmc2)
