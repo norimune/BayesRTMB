@@ -14,7 +14,6 @@ Depends:
 Imports: 
     R6,
     MASS
-RoxygenNote: 7.3.3
 URL: https://github.com/norimune/BayesRTMB, https://norimune.github.io/BayesRTMB/
 BugReports: https://github.com/norimune/BayesRTMB/issues
 Suggests: 
@@ -25,3 +24,4 @@ Suggests:
     future.apply,
     progressr
 VignetteBuilder: knitr
+Config/roxygen2/version: 8.0.0
