@@ -18,6 +18,7 @@
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param missing Missing value handling strategy: "listwise".
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments.
 #' @return An `RTMB_Model` object.
 #'
@@ -36,7 +37,8 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        y_range = NULL,
                        prior = prior_flat(),
                        init = NULL, fixed = NULL,
-                       var.equal = TRUE, missing = c("listwise", "fiml"), ...) {
+                       var.equal = TRUE, missing = c("listwise", "fiml"),
+                       WAIC = FALSE, ...) {
 
   missing <- match.arg(missing)
   x_expr <- substitute(x)
@@ -231,6 +233,9 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     }
     view_vars <- c("diff", "delta", "sd_diff")
     marginal <- if (use_delta_param) "delta" else "diff"
+    waic_ast <- quote({
+      log_lik <- normal_lpdf(diffs, diff, sd_diff, sum = FALSE)
+    })
   } else {
     dat <- if (formula_input) list(Y = raw_response, G = raw_group_idx, r = r) else list(Y1 = Y1, Y2 = Y2, r = r)
     
@@ -247,6 +252,12 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       model_body <- list(quote(Y1 ~ normal(mean0, sd[1])), quote(Y2 ~ normal(mean1, sd[2])))
       view_vars <- c("diff", "delta", "mean0", "mean1", "sd")
       marginal <- c("mean0", "mean1")
+      waic_ast <- quote({
+        log_lik <- c(
+          normal_lpdf(Y1, mean0, sd[1], sum = FALSE),
+          normal_lpdf(Y2, mean1, sd[2], sum = FALSE)
+        )
+      })
     } else {
       # Homoscedastic (Standard pooled): Use total_mean and diff as parameters to fix DF at N-K
       param_ast <- if (use_delta_param) {
@@ -262,6 +273,12 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       model_body <- list(quote(Y1 ~ normal(mean0, sd)), quote(Y2 ~ normal(mean1, sd)))
       view_vars <- c("diff", "delta", "total_mean", "sd")
       marginal <- if (use_delta_param) c("total_mean", "delta") else c("total_mean", "diff")
+      waic_ast <- quote({
+        log_lik <- c(
+          normal_lpdf(Y1, mean0, sd, sum = FALSE),
+          normal_lpdf(Y2, mean1, sd, sum = FALSE)
+        )
+      })
     }
     
     if (is_jzs) {
@@ -298,10 +315,17 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   }
 
   model_ast <- as.call(c(list(as.name("{")), model_body))
-  code_obj <- eval(substitute(
-    rtmb_code(setup = S, parameters = P, transform = T, model = M),
-    list(S = setup_ast, P = param_ast, T = tran_ast, M = model_ast)
-  ))
+  code_obj <- if (isTRUE(WAIC)) {
+    eval(substitute(
+      rtmb_code(setup = S, parameters = P, transform = T, model = M, generate = G),
+      list(S = setup_ast, P = param_ast, T = tran_ast, M = model_ast, G = waic_ast)
+    ))
+  } else {
+    eval(substitute(
+      rtmb_code(setup = S, parameters = P, transform = T, model = M),
+      list(S = setup_ast, P = param_ast, T = tran_ast, M = model_ast)
+    ))
+  }
 
   tmp_env <- list2env(dat)
   ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)

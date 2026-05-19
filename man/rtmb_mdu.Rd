@@ -17,7 +17,8 @@ rtmb_mdu(
   fixed = NULL,
   view = NULL,
   distance_eps = 1e-04,
-  missing = c("listwise", "fiml")
+  missing = c("listwise", "fiml"),
+  WAIC = FALSE
 )
 }
 \arguments{
@@ -62,6 +63,8 @@ with the default flat prior, `prior_weak()` is used. For choice methods
 \item{distance_eps}{Small positive constant added to the distance.}
 
 \item{missing}{Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 }
 \value{
 An `RTMB_Model` object.

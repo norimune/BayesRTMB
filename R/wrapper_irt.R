@@ -14,12 +14,13 @@
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param missing Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @example inst/examples/ex_irt.R
 #' @export
 rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "ordered"),
                      prior = prior_flat(), 
                      init = NULL, fixed = NULL, view = NULL,
-                     missing = c("listwise", "fiml")) {
+                     missing = c("listwise", "fiml"), WAIC = FALSE) {
 
   missing <- match.arg(missing)
 
@@ -178,6 +179,42 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 
   # --- Mapping of Parameter Names ---
   code_obj <- list(setup = setup_ast, parameters = param_ast, model = model_ast)
+
+  if (isTRUE(WAIC)) {
+    gq_body <- list(
+      quote(log_lik <- numeric(N_obs)),
+      quote(for (i in 1:N_obs) {})
+    )
+    gq_loop_body <- list(
+      quote(p <- person_idx[i]),
+      quote(j <- item_idx[i]),
+      quote(y <- Y_obs[i])
+    )
+
+    if (type == "binary") {
+      if (model == "1PL") {
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(eta <- theta[p] - b[j])
+      } else {
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(eta <- a[j] * (theta[p] - b[j]))
+      }
+      if (model == "3PL") {
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(prob <- c[j] + (1 - c[j]) * plogis(eta))
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(log_lik[i] <- bernoulli_lpmf(y, prob))
+      } else {
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(log_lik[i] <- bernoulli_logit_lpmf(y, eta))
+      }
+    } else {
+      if (model == "1PL") {
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(eta <- theta[p])
+      } else {
+        gq_loop_body[[length(gq_loop_body) + 1]] <- quote(eta <- a[j] * theta[p])
+      }
+      gq_loop_body[[length(gq_loop_body) + 1]] <- quote(log_lik[i] <- ordered_logistic_lpmf(y, eta, b[j, ]))
+    }
+
+    gq_body[[2]][[4]] <- as.call(c(list(as.name("{")), gq_loop_body))
+    code_obj$generate <- as.call(c(list(as.name("{")), gq_body))
+  }
 
   par_names_list <- list()
   par_names_list$theta <- person_names

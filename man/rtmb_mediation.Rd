@@ -12,6 +12,7 @@ rtmb_mediation(
   y_range = NULL,
   fixed = NULL,
   view = NULL,
+  WAIC = FALSE,
   ...
 )
 }
@@ -30,6 +31,8 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 \item{fixed}{A named list of parameter values to fix (optional).}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{...}{Additional arguments passed to the model construction.}
 }

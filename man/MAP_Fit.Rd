@@ -67,6 +67,8 @@ An R6 class storing optimization results from maximum a posteriori
 \item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output.}
 
 \item{\code{view}}{Character vector of parameter names to prioritize in summary.}
+
+\item{\code{fallback_needed}}{Logical; whether Hessian/SE fallback was used during optimization.}
 }
 \if{html}{\out{</div>}}
 }
@@ -80,6 +82,8 @@ An R6 class storing optimization results from maximum a posteriori
 \item \href{#method-map_fit-summary}{\code{MAP_Fit$summary()}}
 \item \href{#method-map_fit-print}{\code{MAP_Fit$print()}}
 \item \href{#method-map_fit-generated_quantities}{\code{MAP_Fit$generated_quantities()}}
+\item \href{#method-map_fit-WAIC}{\code{MAP_Fit$WAIC()}}
+\item \href{#method-map_fit-diagnose}{\code{MAP_Fit$diagnose()}}
 \item \href{#method-map_fit-profile}{\code{MAP_Fit$profile()}}
 \item \href{#method-map_fit-clone}{\code{MAP_Fit$clone()}}
 }
@@ -148,7 +152,8 @@ Create a new `MAP_Fit` object.
   laplace_random_vars = NULL,
   idx_fix_active = NULL,
   show_df = TRUE,
-  view = NULL
+  view = NULL,
+  fallback_needed = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -204,6 +209,8 @@ Create a new `MAP_Fit` object.
 \item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output. Default is TRUE.}
 
 \item{\code{view}}{Character vector of parameter names to prioritize in summary.}
+
+\item{\code{fallback_needed}}{Logical; whether Hessian/SE fallback was used during optimization.}
 }
 \if{html}{\out{</div>}}
 }
@@ -333,6 +340,39 @@ Compute generated quantities from the MAP estimate.
 }
 \subsection{Returns}{
 The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-WAIC"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-WAIC}{}}}
+\subsection{Method \code{WAIC()}}{
+Compute an approximate WAIC from sampling-based uncertainty propagation.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$WAIC()}\if{html}{\out{</div>}}
+}
+
+\subsection{Returns}{
+A `waic_BayesRTMB` object.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-map_fit-diagnose"></a>}}
+\if{latex}{\out{\hypertarget{method-map_fit-diagnose}{}}}
+\subsection{Method \code{diagnose()}}{
+Run basic diagnostics for the MAP fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MAP_Fit$diagnose(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `diagnose_map_fit()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A `diagnose_BayesRTMB` object.
 }
 }
 \if{html}{\out{<hr>}}

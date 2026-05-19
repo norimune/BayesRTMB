@@ -19,6 +19,7 @@ rtmb_lrt(
   y_range = NULL,
   fixed = NULL,
   two_stage = FALSE,
+  WAIC = FALSE,
   ...
 )
 }
@@ -56,6 +57,8 @@ Specifying this automatically enables weakly informative priors if `prior` is `p
 \item{two_stage}{Logical; if TRUE, estimate the latent-rank measurement model
 first and then estimate the rank regression with delta-method uncertainty
 propagation. Currently supported for `$optimize()` only.}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{...}{Additional arguments passed to `rtmb_model`.}
 }

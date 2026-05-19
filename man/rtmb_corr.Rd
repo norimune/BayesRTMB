@@ -14,7 +14,8 @@ rtmb_corr(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  missing = c("listwise", "fiml", "pairwise")
+  missing = c("listwise", "fiml", "pairwise"),
+  WAIC = FALSE
 )
 }
 \arguments{
@@ -38,6 +39,8 @@ Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 
 \item{missing}{Missing value handling strategy: "listwise" (default), "pairwise", or "fiml" (Full Information Maximum Likelihood).}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 }
 \description{
 `rtmb_corr` fits a correlation model to estimate means, standard deviations, and correlation structures.

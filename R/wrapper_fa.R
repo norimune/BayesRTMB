@@ -17,14 +17,18 @@
 #' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param missing Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @example inst/examples/ex_fa.R
 #' @export
 rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
                     prior = prior_flat(),
                     y_range = NULL,
                     init = NULL, fixed = NULL,
-                    missing = c("listwise", "fiml")) {
+                    missing = c("listwise", "fiml"), WAIC = FALSE) {
   missing <- match.arg(missing)
+  if (isTRUE(WAIC) && missing != "listwise") {
+    stop("WAIC = TRUE is currently supported for rtmb_fa() only with missing = 'listwise'.", call. = FALSE)
+  }
   if (!is.numeric(nfactors) || length(nfactors) != 1L || is.na(nfactors) ||
       nfactors < 1 || nfactors != as.integer(nfactors)) {
     stop("'nfactors' must be a positive integer.", call. = FALSE)
@@ -140,7 +144,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   if (is_ssp) {
     dat_fa$ssp_ratio <- ssp_ratio
-    if (score) dat_fa$Y <- Y
+    if (score || isTRUE(WAIC)) dat_fa$Y <- Y
 
     # Automatic generation of initial values for SSP
     if (is.null(init)) {
@@ -216,6 +220,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       var_common <- rowSums(Lambda * (Lambda %*% CF_Omega))
       communality <- var_common / var_total
       out <- list(communality = communality)
+      if (WAIC) out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE)
     })
     score_expr <- if (score) {
       quote({
@@ -255,7 +260,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   } else {
     # --- Standard rotation logic ---
-    if (score) dat_fa$Y <- Y
+    if (score || isTRUE(WAIC)) dat_fa$Y <- Y
     if (is.null(init)) {
       tryCatch({
         eig <- eigen(S_Y / (N - 1))
@@ -303,6 +308,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
       var_total <- diag(Sigma); var_common <- rowSums(L_raw^2); communality <- var_common / var_total
       out <- list(communality = communality)
+      if (WAIC) out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE)
     })
 
     if (!is.null(rotate)) {

@@ -401,7 +401,8 @@
     marginal_vars = target_vars,
     laplace_random_vars = ad_setup$use_random,
     idx_fix_active = idx_fix_active, show_df = show_df,
-    view = view
+    view = view,
+    fallback_needed = fallback_needed
   )
   return(res_obj)
 }

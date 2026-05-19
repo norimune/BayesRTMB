@@ -17,6 +17,7 @@ rtmb_glm(
   factors = NULL,
   contrasts = "treatment",
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   ...
 )
 }
@@ -47,6 +48,8 @@ Default is `prior_flat()`.}
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
 
 \item{missing}{Missing value handling strategy: "listwise".}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{...}{Additional arguments passed to \code{rtmb_glmer()}.}
 }

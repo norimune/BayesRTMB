@@ -715,6 +715,20 @@ VB_Fit <- R6::R6Class(
 
       cat("Generated quantities added to samples.\n")
       invisible(self)
+    },
+
+    #' @description Compute WAIC from pointwise generated log likelihood.
+    #' @param ... Additional arguments passed to `draws()`, such as `chains` or `best_chains`.
+    #' @return A `waic_BayesRTMB` object.
+    WAIC = function(...) {
+      .waic_from_fit_draws(self, ...)
+    },
+
+    #' @description Run basic diagnostics for the variational fit.
+    #' @param ... Additional arguments passed to `diagnose_vb_fit()`.
+    #' @return A `diagnose_BayesRTMB` object.
+    diagnose = function(...) {
+      diagnose_vb_fit(self, ...)
     }
   )
 )

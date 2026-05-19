@@ -68,6 +68,8 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @field posterior_mean Posterior mean estimates.
 #' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
 #' @field comparison_fit An \code{MCMC_Fit} object containing the fitted comparison model.
+#' @field max_treedepth Maximum tree depth requested for NUTS/HMC.
+#' @field pd_error_count Positive-definite/singularity errors treated as lp = -Inf by chain.
 #'
 
 
@@ -92,6 +94,8 @@ MCMC_Fit <- R6::R6Class(
     posterior_mean = NULL,
     log_ml          = NULL,
     comparison_fit = NULL,
+    max_treedepth  = NULL,
+    pd_error_count = NULL,
 
     # 1. Constructor
     #' @description Get point estimate for a target parameter.
@@ -130,7 +134,18 @@ MCMC_Fit <- R6::R6Class(
 
 
     #' @description Create a new `MCMC_Fit` object.
-    initialize = function(model, fit, random_fit, eps, accept, treedepth, laplace, posterior_mean) {
+    #' @param model An `RTMB_Model` object used for estimation.
+    #' @param fit Posterior draws for model parameters.
+    #' @param random_fit Posterior draws for random effects, if available.
+    #' @param eps Step size used by the sampler.
+    #' @param accept Acceptance statistics from sampling.
+    #' @param treedepth Tree depth used in HMC/NUTS sampling.
+    #' @param laplace Logical; whether Laplace approximation was used.
+    #' @param posterior_mean Posterior mean estimates.
+    #' @param max_treedepth Maximum tree depth requested for NUTS/HMC.
+    #' @param pd_error_count Positive-definite/singularity errors treated as `lp = -Inf` by chain.
+    initialize = function(model, fit, random_fit, eps, accept, treedepth, laplace,
+                          posterior_mean, max_treedepth = NULL, pd_error_count = NULL) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
@@ -139,6 +154,8 @@ MCMC_Fit <- R6::R6Class(
       self$treedepth <- treedepth
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
+      self$max_treedepth <- max_treedepth
+      self$pd_error_count <- pd_error_count
       self$transform_fit <- NULL
       self$transform_dims <- list()
       self$generate_fit <- NULL
@@ -653,6 +670,20 @@ MCMC_Fit <- R6::R6Class(
       self$log_ml <- res
 
       return(invisible(res))
+    },
+
+    #' @description Compute WAIC from pointwise generated log likelihood.
+    #' @param ... Additional arguments passed to `draws()`, such as `chains` or `best_chains`.
+    #' @return A `waic_BayesRTMB` object.
+    WAIC = function(...) {
+      .waic_from_fit_draws(self, ...)
+    },
+
+    #' @description Run basic diagnostics for the MCMC fit.
+    #' @param ... Additional arguments passed to `diagnose_mcmc_fit()`.
+    #' @return A `diagnose_BayesRTMB` object.
+    diagnose = function(...) {
+      diagnose_mcmc_fit(self, ...)
     },
 
     #' @description Calculate the Bayes factor by marginal-likelihood model comparison.

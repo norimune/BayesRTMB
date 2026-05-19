@@ -329,7 +329,13 @@
     }
   }
 
-  res_obj <- MCMC_Fit$new(model = self, fit = fit, random_fit = random_fit, eps = eps_chains, accept = accept_chains, treedepth = treedepth_chains, laplace = laplace, posterior_mean = posterior_mean)
+  res_obj <- MCMC_Fit$new(
+    model = self, fit = fit, random_fit = random_fit,
+    eps = eps_chains, accept = accept_chains, treedepth = treedepth_chains,
+    laplace = laplace, posterior_mean = posterior_mean,
+    max_treedepth = max_treedepth,
+    pd_error_count = pd_error_counts
+  )
   if (!is.null(self$transform)) res_obj$transformed_draws(self$transform)
   if (!is.null(self$generate)) res_obj$generated_quantities(self$code$generate)
   return(res_obj)

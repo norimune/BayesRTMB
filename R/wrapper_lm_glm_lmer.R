@@ -25,6 +25,7 @@
 #' If omitted and the LHS is \code{cbind()}, the within-factor name is inferred from RHS variables not present in the data.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param missing Missing value handling strategy: "listwise".
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to \code{rtmb_model()}.
 #'
 #' @return RTMB_Model object
@@ -46,6 +47,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        resid_group = NULL,
                        within = NULL,
                        missing = c("listwise", "fiml"),
+                       WAIC = FALSE,
                        ...) {
   missing <- match.arg(missing)
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
@@ -65,6 +67,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              resid_group = resid_group,
              within = within,
              missing = missing,
+             WAIC = WAIC,
              .force_sum = TRUE)
 }
 
@@ -86,6 +89,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param view Optional character vector of parameter names to show first in summary.
 #' @param missing Missing value handling strategy: "listwise".
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
@@ -97,7 +101,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                        view = NULL,
                        factors = NULL,
                        contrasts = "treatment",
-                       missing = c("listwise", "fiml"), ...) {
+                       missing = c("listwise", "fiml"), WAIC = FALSE, ...) {
   missing <- match.arg(missing)
   rtmb_glmer(formula = formula, data = data, family = family,
              laplace = FALSE,
@@ -108,7 +112,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              gmc = gmc,
              view = view,
              factors = factors,
-             contrasts = contrasts, missing = missing, ...)
+             contrasts = contrasts, missing = missing, WAIC = WAIC, ...)
 }
 
 #' RTMB-based Linear Regression wrapper function
@@ -128,6 +132,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param view Optional character vector of parameter names to show first in summary.
 #' @param missing Missing value handling strategy: "listwise".
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
@@ -139,7 +144,7 @@ rtmb_lm <- function(formula, data,
                     view = NULL,
                     factors = NULL,
                     contrasts = "treatment",
-                    missing = c("listwise", "fiml"), ...) {
+                    missing = c("listwise", "fiml"), WAIC = FALSE, ...) {
   missing <- match.arg(missing)
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = FALSE,
@@ -150,5 +155,5 @@ rtmb_lm <- function(formula, data,
              gmc = gmc,
              view = view,
              factors = factors,
-             contrasts = contrasts, missing = missing, ...)
+             contrasts = contrasts, missing = missing, WAIC = WAIC, ...)
 }

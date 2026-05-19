@@ -25,6 +25,7 @@ rtmb_glmer(
   resid_group = NULL,
   generate = NULL,
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   .force_sum = FALSE
 )
 }
@@ -69,6 +70,8 @@ rtmb_glmer(
 \item{generate}{Optional expression for generated quantities.}
 
 \item{missing}{Missing value handling strategy: "listwise".}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{.force_sum}{Logical; internal use only.}
 }

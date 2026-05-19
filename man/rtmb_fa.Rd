@@ -13,7 +13,8 @@ rtmb_fa(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  missing = c("listwise", "fiml")
+  missing = c("listwise", "fiml"),
+  WAIC = FALSE
 )
 }
 \arguments{
@@ -37,6 +38,8 @@ Used to construct weakly informative priors when `prior = prior_weak()`.}
 \item{fixed}{A named list of parameter values to fix (optional).}
 
 \item{missing}{Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 }
 \description{
 Performs exploratory factor analysis (EFA) using RTMB. It supports standard

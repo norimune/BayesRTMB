@@ -28,6 +28,7 @@
 #' @field idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
 #' @field show_df Logical; whether to display degrees of freedom in the summary output.
 #' @field view Character vector of parameter names to prioritize in summary.
+#' @field fallback_needed Logical; whether Hessian/SE fallback was used during optimization.
 #'
 #' @export
 MAP_Fit <- R6::R6Class(
@@ -61,6 +62,7 @@ MAP_Fit <- R6::R6Class(
     idx_fix_active = NULL,
     show_df        = TRUE,
     view           = NULL,
+    fallback_needed = NULL,
 
     #' @description Get point estimate for a target parameter.
     #' @param target Target parameter name.
@@ -101,13 +103,14 @@ MAP_Fit <- R6::R6Class(
     #' @param idx_fix_active Numeric vector; mapping between active parameters and full unconstrained vector.
     #' @param show_df Logical; whether to display degrees of freedom in the summary output. Default is TRUE.
     #' @param view Character vector of parameter names to prioritize in summary.
+    #' @param fallback_needed Logical; whether Hessian/SE fallback was used during optimization.
     initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_ml = NULL,
                           convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
                           df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
                           ci_method = "wald", laplace = TRUE, map = NULL, vcov_unc = NULL,
                           marginal_vars = NULL, laplace_random_vars = NULL, idx_fix_active = NULL,
-                          show_df = TRUE, view = NULL) {
+                          show_df = TRUE, view = NULL, fallback_needed = NULL) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- par
@@ -133,6 +136,7 @@ MAP_Fit <- R6::R6Class(
       self$idx_fix_active <- idx_fix_active
       self$show_df <- show_df
       self$view <- view
+      self$fallback_needed <- fallback_needed
 
       if (!is.null(self$par_vec)) self$par_vec <- Re(self$par_vec)
       if (!is.null(self$par)) self$par <- lapply(self$par, Re)
@@ -529,6 +533,27 @@ MAP_Fit <- R6::R6Class(
 
       cat("Generated quantities updated.\n")
       invisible(self)
+    },
+
+    #' @description Compute an approximate WAIC from sampling-based uncertainty propagation.
+    #' @return A `waic_BayesRTMB` object.
+    WAIC = function() {
+      if (is.null(self$se_samples) || is.null(self$se_samples$gq) ||
+          is.null(self$se_samples$gq$log_lik)) {
+        stop(
+          "WAIC for MAP_Fit requires pointwise `log_lik` samples. ",
+          "Use optimize(se_method = 'sampling') with WAIC = TRUE, or use sample()/variational().",
+          call. = FALSE
+        )
+      }
+      .compute_waic_from_log_lik(self$se_samples$gq$log_lik)
+    },
+
+    #' @description Run basic diagnostics for the MAP fit.
+    #' @param ... Additional arguments passed to `diagnose_map_fit()`.
+    #' @return A `diagnose_BayesRTMB` object.
+    diagnose = function(...) {
+      diagnose_map_fit(self, ...)
     },
 
     #' @description Calculate Profile Likelihood confidence intervals for specific parameters.

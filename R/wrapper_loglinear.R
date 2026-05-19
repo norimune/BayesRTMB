@@ -8,11 +8,13 @@
 #' @param data A data frame (required if `formula` is used).
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
 #' @param fixed Optional named list of fixed values for specific parameters.
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to `rtmb_glm()`.
 #' @return An `RTMB_Model` object.
 #' @example inst/examples/ex_loglinear.R
 #' @export
-rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL, ...) {
+rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL,
+                           WAIC = FALSE, ...) {
 
   if (is.null(prior)) prior <- prior_flat()
   if (!inherits(prior, "rtmb_prior")) {
@@ -118,7 +120,7 @@ rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL, ..
     data = data,
     family = "poisson",
     prior = prior,
-    generate = gen_block, fixed = fixed,
+    generate = gen_block, fixed = fixed, WAIC = WAIC,
     ...
   )
 

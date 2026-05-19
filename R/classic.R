@@ -539,6 +539,22 @@ Classic_Fit <- R6::R6Class(
       return(-2 * as.numeric(ll) + log(n[1]) * k[1])
     },
 
+    #' @description WAIC is not defined for classical fits.
+    WAIC = function() {
+      stop(
+        "WAIC requires posterior draws of pointwise log_lik. ",
+        "Use sample() or variational() on a model created with WAIC = TRUE.",
+        call. = FALSE
+      )
+    },
+
+    #' @description Run basic diagnostics for the classical fit.
+    #' @param ... Additional arguments passed to `diagnose_classic_fit()`.
+    #' @return A `diagnose_BayesRTMB` object.
+    diagnose = function(...) {
+      diagnose_classic_fit(self, ...)
+    },
+
     #' @description Print the fit results.
     #' @param ... Additional arguments passed to `summary()`.
     print = function(...) {

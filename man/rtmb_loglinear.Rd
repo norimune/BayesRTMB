@@ -4,7 +4,14 @@
 \alias{rtmb_loglinear}
 \title{RTMB-based Log-linear analysis (Poisson regression)}
 \usage{
-rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
+rtmb_loglinear(
+  formula,
+  data,
+  prior = prior_flat(),
+  fixed = NULL,
+  WAIC = FALSE,
+  ...
+)
 }
 \arguments{
 \item{formula}{A formula (e.g., `~ A + B + A:B`) or a contingency table.}
@@ -14,6 +21,8 @@ rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
 \item{prior}{An object of class "rtmb_prior" specifying the prior distribution.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{...}{Additional arguments passed to `rtmb_glm()`.}
 }

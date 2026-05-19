@@ -87,6 +87,8 @@ An R6 class representing the results of a classical (frequentist) estimation.
 \item \href{#method-Classic_Fit-compute_bootstrap}{\code{Classic_Fit$compute_bootstrap()}}
 \item \href{#method-Classic_Fit-AIC}{\code{Classic_Fit$AIC()}}
 \item \href{#method-Classic_Fit-BIC}{\code{Classic_Fit$BIC()}}
+\item \href{#method-Classic_Fit-WAIC}{\code{Classic_Fit$WAIC()}}
+\item \href{#method-Classic_Fit-diagnose}{\code{Classic_Fit$diagnose()}}
 \item \href{#method-Classic_Fit-print}{\code{Classic_Fit$print()}}
 \item \href{#method-Classic_Fit-logLik}{\code{Classic_Fit$logLik()}}
 \item \href{#method-Classic_Fit-EAP}{\code{Classic_Fit$EAP()}}
@@ -363,6 +365,36 @@ Get the BIC of the fitted model.
 \if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$BIC()}\if{html}{\out{</div>}}
 }
 
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-WAIC"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-WAIC}{}}}
+\subsection{Method \code{WAIC()}}{
+WAIC is not defined for classical fits.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$WAIC()}\if{html}{\out{</div>}}
+}
+
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-Classic_Fit-diagnose"></a>}}
+\if{latex}{\out{\hypertarget{method-Classic_Fit-diagnose}{}}}
+\subsection{Method \code{diagnose()}}{
+Run basic diagnostics for the classical fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{Classic_Fit$diagnose(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `diagnose_classic_fit()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A `diagnose_BayesRTMB` object.
+}
 }
 \if{html}{\out{<hr>}}
 \if{html}{\out{<a id="method-Classic_Fit-print"></a>}}

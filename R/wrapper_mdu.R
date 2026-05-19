@@ -595,6 +595,7 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 #' @param view Character vector of parameter names to prioritize in summaries.
 #' @param distance_eps Small positive constant added to the distance.
 #' @param missing Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #'
 #' @return An `RTMB_Model` object.
 #' @example inst/examples/ex_mdu.R
@@ -607,7 +608,7 @@ rtmb_mdu <- function(data, ndim = 2,
                      prior = prior_flat(), y_range = NULL,
                      init = NULL, fixed = NULL, view = NULL,
                      distance_eps = 1e-4,
-                     missing = c("listwise", "fiml")) {
+                     missing = c("listwise", "fiml"), WAIC = FALSE) {
 
   missing_arg <- match.arg(missing)
   distance_missing <- missing(distance)
@@ -619,6 +620,9 @@ rtmb_mdu <- function(data, ndim = 2,
     distance <- match.arg(distance)
   }
   alpha_type <- match.arg(alpha)
+  if (isTRUE(WAIC) && method == "rating" && missing_arg != "listwise") {
+    stop("WAIC = TRUE is currently supported for rating MDU only with missing = 'listwise'.", call. = FALSE)
+  }
 
   if (!is.numeric(ndim) || length(ndim) != 1L || ndim < 1) {
     stop("'ndim' must be a positive integer.", call. = FALSE)
@@ -775,6 +779,34 @@ rtmb_mdu <- function(data, ndim = 2,
     model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
     code_obj <- list(setup = setup_ast, parameters = param_ast, model = model_ast)
+    if (isTRUE(WAIC)) {
+      pair_ll_ast <- if (distance == "squared") {
+        quote({
+          log_lik <- numeric(N * (N - 1) / 2)
+          idx_ll <- 1
+          for (i in 1:(N - 1)) {
+            for (j in (i + 1):N) {
+              d_ij <- squared_distance(delta[i, ], delta[j, ])
+              log_lik[idx_ll] <- normal_lpdf(Y[i, j], d_ij, sigma)
+              idx_ll <- idx_ll + 1
+            }
+          }
+        })
+      } else {
+        quote({
+          log_lik <- numeric(N * (N - 1) / 2)
+          idx_ll <- 1
+          for (i in 1:(N - 1)) {
+            for (j in (i + 1):N) {
+              d_ij <- distance(delta[i, ], delta[j, ])
+              log_lik[idx_ll] <- normal_lpdf(Y[i, j], d_ij, sigma)
+              idx_ll <- idx_ll + 1
+            }
+          }
+        })
+      }
+      code_obj$generate <- pair_ll_ast
+    }
     code_obj$env <- parent.frame()
 
     if (is.null(init)) {
@@ -914,6 +946,53 @@ rtmb_mdu <- function(data, ndim = 2,
     code_obj <- list(setup = setup_ast, parameters = param_ast)
     if (!is.null(transform_ast)) code_obj$transform <- transform_ast
     code_obj$model <- model_ast
+    if (isTRUE(WAIC)) {
+      code_obj$generate <- if (distance == "squared" && alpha_type == "random") {
+        quote({
+          log_lik <- numeric(N * M)
+          idx_ll <- 1
+          for (i in 1:N) for (j in 1:M) {
+            d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha[j] - d_ij)
+            log_lik[idx_ll] <- normal_lpdf(Y[i, j], mu_ij, sigma[j])
+            idx_ll <- idx_ll + 1
+          }
+        })
+      } else if (distance == "squared") {
+        quote({
+          log_lik <- numeric(N * M)
+          idx_ll <- 1
+          for (i in 1:N) for (j in 1:M) {
+            d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha - d_ij)
+            log_lik[idx_ll] <- normal_lpdf(Y[i, j], mu_ij, sigma[j])
+            idx_ll <- idx_ll + 1
+          }
+        })
+      } else if (alpha_type == "random") {
+        quote({
+          log_lik <- numeric(N * M)
+          idx_ll <- 1
+          for (i in 1:N) for (j in 1:M) {
+            d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha[j] - d_ij)
+            log_lik[idx_ll] <- normal_lpdf(Y[i, j], mu_ij, sigma[j])
+            idx_ll <- idx_ll + 1
+          }
+        })
+      } else {
+        quote({
+          log_lik <- numeric(N * M)
+          idx_ll <- 1
+          for (i in 1:N) for (j in 1:M) {
+            d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
+            mu_ij <- beta * (alpha - d_ij)
+            log_lik[idx_ll] <- normal_lpdf(Y[i, j], mu_ij, sigma[j])
+            idx_ll <- idx_ll + 1
+          }
+        })
+      }
+    }
     code_obj$env <- parent.frame()
 
     if (is.null(init)) {
@@ -1067,6 +1146,37 @@ rtmb_mdu <- function(data, ndim = 2,
     code_obj <- list(setup = setup_ast, parameters = param_ast)
     if (!is.null(transform_ast)) code_obj$transform <- transform_ast
     code_obj$model <- model_ast
+    if (isTRUE(WAIC)) {
+      code_obj$generate <- if (method == "Best") {
+        bquote({
+          log_lik <- numeric(N * P)
+          idx_ll <- 1
+          for (n in 1:N) {
+            U <- rep(alpha[1] * 0, M)
+            .(utility_ast)
+            for (p in 1:P) {
+              U_set <- U[S[p, ]]
+              log_lik[idx_ll] <- categorical_logit_lpmf(Y_best[n, p], lambda * U_set)
+              idx_ll <- idx_ll + 1
+            }
+          }
+        })
+      } else {
+        bquote({
+          log_lik <- numeric(N * P)
+          idx_ll <- 1
+          for (n in 1:N) {
+            U <- rep(alpha[1] * 0, M)
+            .(utility_ast)
+            for (p in 1:P) {
+              U_set <- U[S[p, ]]
+              log_lik[idx_ll] <- bw_categorical_logit_lpmf(Y_dif[n, p], U_set, lambda)
+              idx_ll <- idx_ll + 1
+            }
+          }
+        })
+      }
+    }
     code_obj$env <- parent.frame()
 
     if (is.null(init)) {

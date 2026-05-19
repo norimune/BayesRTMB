@@ -10,6 +10,7 @@
 #' @param correct Logical; if TRUE, apply Yates' continuity correction for 2x2 classic analyses.
 #' @param prior Prior specification (Bayesian mode). Default is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments.
 #'
 #' @return An `RTMB_Model` object.
@@ -21,7 +22,8 @@
 #' rtmb_table(table(debate$skill, debate$cond))$classic()
 #' }
 #' @export
-rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_flat(), fixed = NULL, ...) {
+rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_flat(),
+                       fixed = NULL, WAIC = FALSE, ...) {
 
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -116,33 +118,44 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
   }
   setup$dirichlet_alpha <- dirichlet_alpha_val
 
-  rtmb_model_code <- rtmb_code(
-    setup = {
-      # No special setup needed for now, Y and N are provided
-    },
-    parameters = {
-      # Simplex for probabilities (automatically constrained to sum to 1)
-      # We give it meaningful names during rtmb_model() call
-      p <- Dim(R * C, type = "simplex")
-    },
-    transform = {
-      # Derived quantities for reporting
-      mu <- p * N
-      # Pearson Chi-squared statistic for the estimated probabilities
-      # Sum (O - E)^2 / E
-      chisq_val <- sum((Y - mu)^2 / mu)
-    },
-    model = {
-      # Likelihood
-      Y ~ multinomial(N, p)
-
-      # Prior (alpha value is embedded as data at construction time)
-      p ~ dirichlet(rep(dirichlet_alpha, R * C))
-    },
-    generate = {
+  gen_ast <- if (isTRUE(WAIC)) {
+    quote({
+      log_lik <- multinomial_lpmf(Y, N, p)
+    })
+  } else {
+    quote({
       # mu and chisq_val are already reported in transform
-    }
-  )
+    })
+  }
+
+  rtmb_model_code <- eval(substitute(
+    rtmb_code(
+      setup = {
+        # No special setup needed for now, Y and N are provided
+      },
+      parameters = {
+        # Simplex for probabilities (automatically constrained to sum to 1)
+        # We give it meaningful names during rtmb_model() call
+        p <- Dim(R * C, type = "simplex")
+      },
+      transform = {
+        # Derived quantities for reporting
+        mu <- p * N
+        # Pearson Chi-squared statistic for the estimated probabilities
+        # Sum (O - E)^2 / E
+        chisq_val <- sum((Y - mu)^2 / mu)
+      },
+      model = {
+        # Likelihood
+        Y ~ multinomial(N, p)
+
+        # Prior (alpha value is embedded as data at construction time)
+        p ~ dirichlet(rep(dirichlet_alpha, R * C))
+      },
+      generate = G
+    ),
+    list(G = gen_ast)
+  ))
 
   # Create the model object with explicit parameter names for 'p' and 'mu'
   res <- rtmb_model(

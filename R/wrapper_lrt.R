@@ -24,6 +24,7 @@
 #' @param two_stage Logical; if TRUE, estimate the latent-rank measurement model
 #'   first and then estimate the rank regression with delta-method uncertainty
 #'   propagation. Currently supported for `$optimize()` only.
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to `rtmb_model`.
 #' @return A \code{RTMB_Model} object.
 #' @export
@@ -34,7 +35,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
                      prob_smoothing = FALSE,
                      link = c("ordered", "sequential"),
                      prior = prior_flat(), y_range = NULL, fixed = NULL,
-                     two_stage = FALSE, ...) {
+                     two_stage = FALSE, WAIC = FALSE, ...) {
 
   dots <- list(...)
   if ("2stage" %in% names(dots)) {
@@ -518,6 +519,42 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     } else {
       generate_exprs[[length(generate_exprs) + 1]] <- quote(L_mat <- matrix(L_corr, P, P))
       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- L_mat %*% t(L_mat))
+    }
+  }
+  if (isTRUE(WAIC)) {
+    generate_exprs[[length(generate_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
+    generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
+    if (has_cov_prob) {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(pi_mat <- matrix(mu[1] * 0, N, K))
+      if (link == "ordered") {
+        generate_exprs[[length(generate_exprs) + 1]] <- quote(eta <- X_prob %*% b)
+        generate_exprs[[length(generate_exprs) + 1]] <- quote(for (i in 1:N) {
+          F_prev <- 0
+          for (k in 1:(K - 1)) {
+            F_k <- inv_logit(cutpoints[k] - eta[i])
+            pi_mat[i, k] <- F_k - F_prev
+            F_prev <- F_k
+          }
+          pi_mat[i, K] <- 1 - F_prev
+        })
+      } else {
+        generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_mat <- X_prob %*% b)
+        generate_exprs[[length(generate_exprs) + 1]] <- quote(for (i in 1:N) {
+          q_cum <- 1
+          for (k in 1:(K - 1)) {
+            q_k <- inv_logit(alpha[k] + eta_mat[i, k])
+            pi_mat[i, k] <- q_cum * (1 - q_k)
+            q_cum <- q_cum * q_k
+          }
+          pi_mat[i, K] <- q_cum
+        })
+      }
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(log(pi_mat + 1e-15) + log_dens_mat))
+    } else {
+      if (prob_smoothing) {
+        generate_exprs[[length(generate_exprs) + 1]] <- quote(theta <- softmax(logit_theta))
+      }
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(t(t(log_dens_mat) + log(theta))))
     }
   }
   generate_ast <- as.call(generate_exprs)

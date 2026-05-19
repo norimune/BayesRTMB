@@ -15,6 +15,7 @@
 #' @param init Optional list of initial values.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param missing Missing value handling strategy: "listwise" (default), "pairwise", or "fiml" (Full Information Maximum Likelihood).
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #'
 #' @example inst/examples/ex_corr.R
 #' @export
@@ -23,12 +24,16 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
                        method = c("pearson", "spearman", "reml"),
                        prior = prior_flat(), y_range = NULL,
                        init = NULL, fixed = NULL,
-                       missing = c("listwise", "fiml", "pairwise")) {
+                       missing = c("listwise", "fiml", "pairwise"),
+                       WAIC = FALSE) {
 
   missing <- match.arg(missing)
   method <- match.arg(method)
   if (missing == "pairwise" && method == "reml") {
     stop("missing = 'pairwise' is only available when method is 'pearson' or 'spearman'.")
+  }
+  if (isTRUE(WAIC) && missing != "listwise") {
+    stop("WAIC = TRUE is currently supported for rtmb_corr() only with missing = 'listwise'.", call. = FALSE)
   }
   x_expr <- substitute(x)
   id_expr <- substitute(ID)
@@ -400,7 +405,23 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
       }
       transform_ast <- as.call(transform_exprs)
 
+     generate_ast <- NULL
+     if (isTRUE(WAIC)) {
+       generate_ast <- if (multivariate) {
+         quote({
+           Y_pred <- u[group_id, ] + rep(mu, each = N)
+           log_lik <- multi_normal_CF_lpdf(Y, Y_pred, sigma_within, L_corr_within, sum = FALSE)
+         })
+       } else {
+         quote({
+           Y_pred <- u[group_id, ] + rep(mu, each = N)
+           log_lik <- normal_lpdf(Y, Y_pred, sigma_within, sum = FALSE)
+         })
+       }
+     }
+
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
+     if (!is.null(generate_ast)) mdl_code$generate <- generate_ast
      class(mdl_code) <- "rtmb_code"
 
      v_names <- list(mu = var_names, sigma_between = var_names, sigma_within = var_names)
@@ -586,7 +607,21 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
      transform_ast <- as.call(transform_exprs)
 
+     generate_ast <- NULL
+     if (isTRUE(WAIC)) {
+       generate_ast <- if (P == 1) {
+         quote({
+           log_lik <- normal_lpdf(Y, mean, sd, sum = FALSE)
+         })
+       } else {
+         quote({
+           log_lik <- multi_normal_CF_lpdf(Y, mean, sd, CF_corr, sum = FALSE)
+         })
+       }
+     }
+
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
+     if (!is.null(generate_ast)) mdl_code$generate <- generate_ast
      class(mdl_code) <- "rtmb_code"
 
      dat_list <- list(Y = Y_mat, P_y = P_y, P_x = P_x)

@@ -12,6 +12,7 @@ rtmb_mixture(
   prior = prior_flat(),
   y_range = NULL,
   fixed = NULL,
+  WAIC = FALSE,
   ...
 )
 }
@@ -33,6 +34,8 @@ the wrapper automatically switches to `prior_weak()`.}
 Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{...}{Additional arguments passed to `rtmb_model`.}
 }

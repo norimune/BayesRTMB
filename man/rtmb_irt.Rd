@@ -12,7 +12,8 @@ rtmb_irt(
   init = NULL,
   fixed = NULL,
   view = NULL,
-  missing = c("listwise", "fiml")
+  missing = c("listwise", "fiml"),
+  WAIC = FALSE
 )
 }
 \arguments{
@@ -33,6 +34,8 @@ Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c
 \item{view}{Character vector of parameter names to prioritize in summary.}
 
 \item{missing}{Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 }
 \description{
 Performs Item Response Theory modeling (1PL, 2PL, 3PL, and Graded Response Model) using RTMB.

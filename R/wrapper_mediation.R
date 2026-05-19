@@ -13,6 +13,7 @@
 #' @param y_range Theoretical minimum and maximum values of the response variable.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to the model construction.
 #'
 #' @details
@@ -28,7 +29,9 @@
 #' @return An `RTMB_Model` object.
 #' @example inst/examples/ex_mediation.R
 #' @export
-rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_flat(), y_range = NULL, fixed = NULL, view = NULL, ...) {
+rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_flat(),
+                           y_range = NULL, fixed = NULL, view = NULL,
+                           WAIC = FALSE, ...) {
 
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
@@ -311,10 +314,19 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
       param_exprs[[length(param_exprs) + 1]] <- bquote(.(as.name(s_name)) <- Dim(lower = 0))
       init_list[[s_name]] <- 1.0
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ normal(.(lin_pred_expr), .(as.name(s_name))))
+      if (isTRUE(WAIC)) {
+        generate_exprs[[length(generate_exprs) + 1]] <- bquote(.(as.name(paste0("log_lik_", i))) <- normal_lpdf(.(as.name(paste0("Y_", i))), .(lin_pred_expr), .(as.name(s_name)), sum = FALSE))
+      }
     } else if (f_type %in% c("binomial", "bernoulli")) {
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ bernoulli_logit(.(lin_pred_expr)))
+      if (isTRUE(WAIC)) {
+        generate_exprs[[length(generate_exprs) + 1]] <- bquote(.(as.name(paste0("log_lik_", i))) <- bernoulli_logit_lpmf(.(as.name(paste0("Y_", i))), .(lin_pred_expr), sum = FALSE))
+      }
     } else if (f_type == "poisson") {
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ poisson_log(.(lin_pred_expr)))
+      if (isTRUE(WAIC)) {
+        generate_exprs[[length(generate_exprs) + 1]] <- bquote(.(as.name(paste0("log_lik_", i))) <- poisson_lpmf(.(as.name(paste0("Y_", i))), exp(.(lin_pred_expr)), sum = FALSE))
+      }
     }
 
     has_b_prior <- prior_type %in% c("weak", "normal")
@@ -411,6 +423,11 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   mdl_code$model <- as.call(c(list(as.name("{")), model_exprs))
 
   if (length(generate_exprs) > 0) {
+    if (isTRUE(WAIC)) {
+      log_lik_names <- lapply(seq_len(n_eq), function(i) as.name(paste0("log_lik_", i)))
+      generate_exprs[[length(generate_exprs) + 1]] <- as.call(c(list(as.name("c")), log_lik_names))
+      generate_exprs[[length(generate_exprs)]] <- as.call(list(as.name("<-"), as.name("log_lik"), generate_exprs[[length(generate_exprs)]]))
+    }
     mdl_code$generate <- as.call(c(list(as.name("{")), generate_exprs))
   }
   mdl_code$env <- tmp_env

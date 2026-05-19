@@ -16,13 +16,15 @@
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #'   Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to `rtmb_model`.
 #' @return A \code{RTMB_Model} object.
 #' @example inst/examples/ex_mixture.R
 #' @export
 rtmb_mixture <- function(formula, k = 2, data = NULL,
                          covariance = c("diagonal", "diagonal_equal", "full", "full_equal", "full_equal_corr"),
-                         prior = prior_flat(), y_range = NULL, fixed = NULL, ...) {
+                         prior = prior_flat(), y_range = NULL, fixed = NULL,
+                         WAIC = FALSE, ...) {
 
   if (!is.numeric(k) || length(k) != 1L || is.na(k) || k < 2 || k != as.integer(k)) {
     stop("'k' must be an integer greater than or equal to 2.", call. = FALSE)
@@ -418,6 +420,20 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       })
     } else {
       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- L_corr %*% t(L_corr))
+    }
+  }
+  if (isTRUE(WAIC)) {
+    generate_exprs[[length(generate_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
+    generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
+    if (has_cov_prob) {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_prob <- X_prob %*% b)
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_pi_mat <- matrix(eta_prob[1] * 0, N, K))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(for (i in 1:N) {
+        log_pi_mat[i, ] <- log_softmax(c(0, eta_prob[i, ]))
+      })
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(log_pi_mat + log_dens_mat))
+    } else {
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(t(t(log_dens_mat) + log(theta))))
     }
   }
   generate_ast <- as.call(generate_exprs)

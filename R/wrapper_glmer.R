@@ -282,6 +282,7 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' @param resid_group Variable name for grouping in residual correlation.
 #' @param within Optional list for wide-to-long conversion.
 #' @param generate Optional expression for generated quantities.
+#' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param .force_sum Logical; internal use only.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param missing Missing value handling strategy: "listwise".
@@ -304,6 +305,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        resid_group = NULL,
                        generate = NULL,
                        missing = c("listwise", "fiml"),
+                       WAIC = FALSE,
                        .force_sum = FALSE) {
 
   valid_families <- c(
@@ -1300,9 +1302,52 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
+  waic_ast <- NULL
+  if (isTRUE(WAIC)) {
+    if (!is.null(resid_corr)) {
+      waic_exprs <- c(transform_exprs, list(bquote({
+        log_lik <- numeric(num_groups_resid)
+        has_sig_idx <- !is.null(sigma_idx)
+        .(if (resid_corr == "un") quote(R_mat_resid <- L_resid %*% t(L_resid)) else quote(NULL))
+        for (i in 1:num_groups_resid) {
+          idx <- which(group_resid == i)
+          ni <- length(idx)
+          ti <- time_resid[idx]
+          mu_i <- eta[idx]
+          Vi <- matrix(0, ni, ni)
+          for (r in 1:ni) {
+            s_r <- if (has_sig_idx) sigma[sigma_idx[idx[r]]] else sigma
+            for (c in 1:ni) {
+              s_c <- if (has_sig_idx) sigma[sigma_idx[idx[c]]] else sigma
+              .(vi_inner_expr)
+            }
+          }
+          diag(Vi) <- diag(Vi) + 1e-3
+          log_lik[i] <- multi_normal_lpdf(Y[idx], mu_i, Vi)
+        }
+      })))
+      waic_ast <- as.call(c(list(as.name("{")), waic_exprs))
+    } else {
+      waic_ll <- switch(family,
+        "gaussian" = if (!is.null(sigma_idx)) quote(log_lik <- normal_lpdf(Y, eta, sigma[sigma_idx], sum = FALSE)) else quote(log_lik <- normal_lpdf(Y, eta, sigma, sum = FALSE)),
+        "lognormal" = if (!is.null(sigma_idx)) quote(log_lik <- lognormal_lpdf(Y, eta, sigma[sigma_idx], sum = FALSE)) else quote(log_lik <- lognormal_lpdf(Y, eta, sigma, sum = FALSE)),
+        "student_t" = if (!is.null(sigma_idx)) quote(log_lik <- student_t_lpdf(Y, nu, eta, sigma[sigma_idx], sum = FALSE)) else quote(log_lik <- student_t_lpdf(Y, nu, eta, sigma, sum = FALSE)),
+        "gamma" = quote(log_lik <- gamma_lpdf(Y, shape, shape / exp(eta), sum = FALSE)),
+        "bernoulli" = quote(log_lik <- bernoulli_logit_lpmf(Y, eta, sum = FALSE)),
+        "binomial" = quote(log_lik <- binomial_logit_lpmf(Y, trials, eta, sum = FALSE)),
+        "poisson" = quote(log_lik <- poisson_lpmf(Y, exp(eta), sum = FALSE)),
+        "neg_binomial" = quote(log_lik <- neg_binomial_2_lpmf(Y, exp(eta), phi, sum = FALSE)),
+        "ordered" = quote(log_lik <- ordered_logistic_lpmf(Y, eta, cutpoints, sum = FALSE)),
+        "sequential" = quote(log_lik <- sequential_logistic_lpmf(Y, eta, cutpoints, sum = FALSE))
+      )
+      waic_ast <- as.call(c(list(as.name("{")), c(transform_exprs, list(waic_ll))))
+    }
+  }
+
   code_obj <- list(setup = setup_ast, parameters = param_ast)
   if (!is.null(tran_ast)) code_obj$transform <- tran_ast
   code_obj$model <- model_ast
+  generate <- .rtmb_merge_generate_ast(generate, waic_ast)
   if (!is.null(generate)) code_obj$generate <- generate
 
   par_names_list <- list()

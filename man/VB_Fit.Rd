@@ -60,6 +60,8 @@ from Automatic Differentiation Variational Inference (ADVI).
 \item \href{#method-advi_fit-plot_trajectory}{\code{VB_Fit$plot_trajectory()}}
 \item \href{#method-advi_fit-transformed_draws}{\code{VB_Fit$transformed_draws()}}
 \item \href{#method-advi_fit-generated_quantities}{\code{VB_Fit$generated_quantities()}}
+\item \href{#method-advi_fit-WAIC}{\code{VB_Fit$WAIC()}}
+\item \href{#method-advi_fit-diagnose}{\code{VB_Fit$diagnose()}}
 \item \href{#method-advi_fit-clone}{\code{VB_Fit$clone()}}
 }
 }
@@ -331,6 +333,46 @@ to be calculated using posterior samples.}
 \subsection{Returns}{
 The `VB_Fit` object itself (invisibly).
 Results are appended to the `generate_fit` field.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-WAIC"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-WAIC}{}}}
+\subsection{Method \code{WAIC()}}{
+Compute WAIC from pointwise generated log likelihood.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$WAIC(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `draws()`, such as `chains` or `best_chains`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A `waic_BayesRTMB` object.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-diagnose"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-diagnose}{}}}
+\subsection{Method \code{diagnose()}}{
+Run basic diagnostics for the variational fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$diagnose(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `diagnose_vb_fit()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A `diagnose_BayesRTMB` object.
 }
 }
 \if{html}{\out{<hr>}}

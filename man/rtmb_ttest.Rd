@@ -17,6 +17,7 @@ rtmb_ttest(
   fixed = NULL,
   var.equal = TRUE,
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   ...
 )
 }
@@ -47,6 +48,8 @@ Default is `prior_flat()`.}
 \item{var.equal}{Logical; whether to assume equal variances. Default is TRUE.}
 
 \item{missing}{Missing value handling strategy: "listwise".}
+
+\item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
 \item{...}{Additional arguments.}
 }

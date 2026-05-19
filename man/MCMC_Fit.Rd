@@ -52,6 +52,10 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \item{\code{log_ml}}{Numeric value storing the calculated log marginal likelihood from bridge sampling.}
 
 \item{\code{comparison_fit}}{An \code{MCMC_Fit} object containing the fitted comparison model.}
+
+\item{\code{max_treedepth}}{Maximum tree depth requested for NUTS/HMC.}
+
+\item{\code{pd_error_count}}{Positive-definite/singularity errors treated as lp = -Inf by chain.}
 }
 \if{html}{\out{</div>}}
 }
@@ -66,6 +70,8 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \item \href{#method-mcmc_fit-unconstrain_draws}{\code{MCMC_Fit$unconstrain_draws()}}
 \item \href{#method-mcmc_fit-log_prob}{\code{MCMC_Fit$log_prob()}}
 \item \href{#method-mcmc_fit-bridgesampling}{\code{MCMC_Fit$bridgesampling()}}
+\item \href{#method-mcmc_fit-WAIC}{\code{MCMC_Fit$WAIC()}}
+\item \href{#method-mcmc_fit-diagnose}{\code{MCMC_Fit$diagnose()}}
 \item \href{#method-mcmc_fit-bayes_factor}{\code{MCMC_Fit$bayes_factor()}}
 \item \href{#method-mcmc_fit-transformed_draws}{\code{MCMC_Fit$transformed_draws()}}
 \item \href{#method-mcmc_fit-generated_quantities}{\code{MCMC_Fit$generated_quantities()}}
@@ -122,7 +128,9 @@ Create a new `MCMC_Fit` object.
   accept,
   treedepth,
   laplace,
-  posterior_mean
+  posterior_mean,
+  max_treedepth = NULL,
+  pd_error_count = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -144,6 +152,10 @@ Create a new `MCMC_Fit` object.
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
 \item{\code{posterior_mean}}{Posterior mean estimates.}
+
+\item{\code{max_treedepth}}{Maximum tree depth requested for NUTS/HMC.}
+
+\item{\code{pd_error_count}}{Positive-definite/singularity errors treated as `lp = -Inf` by chain.}
 }
 \if{html}{\out{</div>}}
 }
@@ -310,6 +322,46 @@ Estimate the marginal likelihood by bridge sampling.
 }
 \subsection{Returns}{
 Bridge sampling result.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-WAIC"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-WAIC}{}}}
+\subsection{Method \code{WAIC()}}{
+Compute WAIC from pointwise generated log likelihood.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$WAIC(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `draws()`, such as `chains` or `best_chains`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A `waic_BayesRTMB` object.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-diagnose"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-diagnose}{}}}
+\subsection{Method \code{diagnose()}}{
+Run basic diagnostics for the MCMC fit.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$diagnose(...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{...}}{Additional arguments passed to `diagnose_mcmc_fit()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A `diagnose_BayesRTMB` object.
 }
 }
 \if{html}{\out{<hr>}}
