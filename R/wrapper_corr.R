@@ -38,10 +38,35 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     data_eval <- as.data.frame(data_eval)
   }
 
+  eval_col_range <- function(expr, data_env) {
+    if (is.null(data_env) || !is.call(expr)) return(NULL)
+    data_names <- names(data_env)
+    if (is.null(data_names)) return(NULL)
+
+    range_expr <- expr
+    if (identical(expr[[1]], as.name("cbind")) && length(expr) == 2L) {
+      range_expr <- expr[[2]]
+    }
+    if (!is.call(range_expr) || !identical(range_expr[[1]], as.name(":"))) {
+      return(NULL)
+    }
+
+    left <- as.character(range_expr[[2]])
+    right <- as.character(range_expr[[3]])
+    if (length(left) != 1L || length(right) != 1L) return(NULL)
+    if (!left %in% data_names || !right %in% data_names) return(NULL)
+
+    idx <- match(c(left, right), data_names)
+    data_env[, seq.int(idx[1L], idx[2L]), drop = FALSE]
+  }
+
   # Evaluation logic for response variables (Y_mat)
   if (!is.null(data_eval)) {
     # Evaluate x in the context of data (NSE support for cbind(a, b))
-    Y_mat <- eval(x_expr, data_eval, parent.frame())
+    Y_mat <- eval_col_range(x_expr, data_eval)
+    if (is.null(Y_mat)) {
+      Y_mat <- eval(x_expr, data_eval, parent.frame())
+    }
   } else {
     Y_mat <- x
   }

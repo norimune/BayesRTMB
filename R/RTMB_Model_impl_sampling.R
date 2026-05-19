@@ -11,6 +11,88 @@
 
   set.seed(seed)
   orig_pl <- self$par_list
+  data_na_summary <- function(dat) {
+    if (is.null(dat)) return(character(0))
+    out <- character(0)
+    for (nm in names(dat)) {
+      x <- dat[[nm]]
+      if (is.atomic(x) || is.matrix(x) || is.array(x) || is.data.frame(x)) {
+        n_na <- sum(is.na(x))
+        if (n_na > 0L) out <- c(out, sprintf("%s (%d NA)", nm, n_na))
+      }
+    }
+    out
+  }
+  stop_nonfinite_lp <- function(context) {
+    na_vars <- data_na_summary(self$data)
+    if (length(na_vars) > 0L) {
+      stop(
+        context,
+        " produced non-finite log-probability values. The model data contain missing values in: ",
+        paste(na_vars, collapse = ", "),
+        ". If these NA values are not handled explicitly in the model code, remove/impute them or use a wrapper/missing-data option that supports NA.",
+        call. = FALSE
+      )
+    }
+    stop(context, " produced non-finite log-probability values.", call. = FALSE)
+  }
+  mcmc_pd_error_to_neginf <- isTRUE(getOption("BayesRTMB.mcmc_pd_error_to_neginf", TRUE))
+  is_positive_definite_error <- function(msg) {
+    grepl(
+      paste(
+        c(
+          "not positive definite",
+          "positive[- ]definite",
+          "leading minor",
+          "computationally singular",
+          "reciprocal condition number",
+          "\\bsingular\\b",
+          "Cholesky",
+          "\\bchol\\b",
+          "\\bLLT\\b",
+          "\\bLDLT\\b"
+        ),
+        collapse = "|"
+      ),
+      msg,
+      ignore.case = TRUE
+    )
+  }
+  wrap_mcmc_pd_errors <- function(ad_obj) {
+    if (!mcmc_pd_error_to_neginf) return(ad_obj)
+    pd_error_state <- new.env(parent = emptyenv())
+    pd_error_state$post_warmup <- FALSE
+    pd_error_state$count <- 0L
+    ad_obj$rtmb_pd_error_state <- pd_error_state
+    orig_fn <- ad_obj$fn
+    orig_gr <- ad_obj$gr
+    ad_obj$fn <- function(x, ...) {
+      tryCatch(
+        orig_fn(x, ...),
+        error = function(e) {
+          if (is_positive_definite_error(conditionMessage(e))) {
+            if (isTRUE(pd_error_state$post_warmup)) pd_error_state$count <- pd_error_state$count + 1L
+            return(Inf)
+          }
+          stop(e)
+        }
+      )
+    }
+    ad_obj$gr <- function(x, ...) {
+      n <- length(x)
+      tryCatch(
+        orig_gr(x, ...),
+        error = function(e) {
+          if (is_positive_definite_error(conditionMessage(e))) {
+            if (isTRUE(pd_error_state$post_warmup)) pd_error_state$count <- pd_error_state$count + 1L
+            return(rep(0, n))
+          }
+          stop(e)
+        }
+      )
+    }
+    ad_obj
+  }
 
   if (!is.null(save_csv)) {
     if (!is.list(save_csv)) stop("save_csv must be specified in the format list(name='...', dir='...').")
@@ -140,8 +222,17 @@
     ad_obj <- tryCatch({
       RTMB::MakeADFun(func = f_ad, parameters = unc_init_list_new, random = use_random, map = local_map, silent = TRUE)
     }, error = function(e) stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE))
+    ad_obj <- wrap_mcmc_pd_errors(ad_obj)
+
+    init_lp <- tryCatch(-ad_obj$fn(ad_obj$par), error = function(e) NA_real_)
+    if (!is.finite(init_lp)) {
+      stop_nonfinite_lp(sprintf("MCMC initialization for chain %d", c))
+    }
 
     res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info)
+    if (is.null(res$lp) || all(!is.finite(res$lp))) {
+      stop_nonfinite_lp(sprintf("MCMC sampling for chain %d", c))
+    }
 
     P_all_true <- length(local_pl_full$names)
     iter_total <- sampling + warmup
@@ -186,6 +277,7 @@
   accept_mat <- array(NA, dim = c(length(mcmc_index), chains))
   td_mat <- array(NA, dim = c(length(mcmc_index), chains))
   eps_vec <- numeric(chains)
+  pd_error_counts <- integer(chains)
   fit <- array(NA, dim = c(length(mcmc_index), chains, P_fixed + 1))
   dimnames(fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = c("lp", pl_fixed$names))
 
@@ -196,10 +288,29 @@
 
   for (c in 1:chains) {
     res <- results_list[[c]]
+    pd_error_counts[c] <- if (!is.null(res$pd_error_count)) res$pd_error_count else 0L
     fit[, c, 1] <- res$lp[mcmc_index]
     for (j in 1:P_fixed) fit[, c, j + 1] <- res$para[mcmc_index, fixed_idx[j]]
     if (P_random > 0) { for (j in 1:P_random) random_fit[, c, j] <- res$para[mcmc_index, random_idx[j]] }
     accept_mat[, c] <- res$accept[mcmc_index]; td_mat[, c] <- res$treedepth[mcmc_index]; eps_vec[c] <- res$eps
+  }
+  if (all(!is.finite(fit[, , "lp"]))) {
+    stop_nonfinite_lp("MCMC retained samples")
+  }
+  if (any(!is.finite(fit[, , "lp"]))) {
+    warning(
+      "Some retained MCMC draws have non-finite log-probability values. ",
+      "They will be ignored by summaries that use finite values, but diagnostics should be interpreted carefully.",
+      call. = FALSE
+    )
+  }
+  if (sum(pd_error_counts) > 0L) {
+    warning(
+      "During post-warmup MCMC sampling, ",
+      sum(pd_error_counts),
+      " matrix positive-definite/singularity errors were treated as lp = -Inf.",
+      call. = FALSE
+    )
   }
 
   eps_chains <- eps_vec; accept_chains <- apply(accept_mat, 2, mean); treedepth_chains <- apply(td_mat, 2, max)

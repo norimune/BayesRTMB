@@ -883,6 +883,32 @@ RTMB_Model <- R6::R6Class(
       add_se_message <- function(msg) {
         if (!msg %in% se_messages) se_messages <<- c(se_messages, msg)
       }
+      data_na_summary <- function(dat) {
+        if (is.null(dat)) return(character(0))
+        out <- character(0)
+        for (nm in names(dat)) {
+          x <- dat[[nm]]
+          if (is.atomic(x) || is.matrix(x) || is.array(x) || is.data.frame(x)) {
+            n_na <- sum(is.na(x))
+            if (n_na > 0L) out <- c(out, sprintf("%s (%d NA)", nm, n_na))
+          }
+        }
+        out
+      }
+      optimizer_error_messages <- character(0)
+      format_optimizer_error <- function(msg) {
+        na_vars <- data_na_summary(self$data)
+        if (grepl("NA/NaN|NaN|NA", msg) && length(na_vars) > 0L) {
+          paste0(
+            "Optimization error: ", msg,
+            ". The model data contain missing values in: ",
+            paste(na_vars, collapse = ", "),
+            ". If the model does not handle missing values explicitly, remove/impute them or use a wrapper/missing-data option that supports NA."
+          )
+        } else {
+          paste0("Optimization error: ", msg)
+        }
+      }
 
       reml_state <- NULL
       if (isTRUE(reml)) {
@@ -927,7 +953,11 @@ RTMB_Model <- R6::R6Class(
             opt <- optim(base_ad_obj$par, base_ad_obj$fn, base_ad_obj$gr, method = method, control = control); opt$objective <- opt$value
           }
           list(opt = opt, ad_obj = base_ad_obj)
-        }, error = function(e) { warning("Optimization error: ", e$message, call. = FALSE); NULL })
+        }, error = function(e) {
+          msg <- conditionMessage(e)
+          optimizer_error_messages <<- c(optimizer_error_messages, msg)
+          NULL
+        })
 
         if (!is.null(res)) {
           opt_results[[i]] <- res; obj_vals[i] <- res$opt$objective
@@ -936,7 +966,24 @@ RTMB_Model <- R6::R6Class(
       }
       if (verbose) cat("\n")
       valid_idx <- which(!is.na(obj_vals))
-      if (length(valid_idx) == 0L) stop("All optimization attempts failed.", call. = FALSE)
+      if (length(valid_idx) == 0L) {
+        na_vars <- data_na_summary(self$data)
+        if (length(na_vars) > 0L && any(grepl("NA/NaN|NaN|NA", optimizer_error_messages))) {
+          stop(
+            "All optimization attempts failed. RTMB reported an NA/NaN-related optimization error, and the model data contain missing values in: ",
+            paste(na_vars, collapse = ", "),
+            ". If these NA values are not handled explicitly in the model code, remove/impute them or use a wrapper/missing-data option that supports NA.",
+            call. = FALSE
+          )
+        }
+        stop("All optimization attempts failed.", call. = FALSE)
+      }
+      if (length(optimizer_error_messages) > 0L) {
+        warning(
+          paste(unique(vapply(optimizer_error_messages, format_optimizer_error, character(1L))), collapse = "\n"),
+          call. = FALSE
+        )
+      }
       converged_idx <- valid_idx[!is.na(conv_codes[valid_idx]) & conv_codes[valid_idx] == 0L]
       if (length(converged_idx) > 0L) {
         best_idx <- converged_idx[which.min(obj_vals[converged_idx])]

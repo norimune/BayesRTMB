@@ -70,6 +70,9 @@ NUTS_method <- function(model,
   }
 
   for (i in 2:iter) {
+    if (!is.null(model$rtmb_pd_error_state)) {
+      model$rtmb_pd_error_state$post_warmup <- i > warmup
+    }
     q_old <- para_fixed[i-1, ]
     p_old <- rnorm(P_fixed, mean = 0, sd = sqrt(1 / M_inv))
     gr_old <- gr_NUTS(q_old)
@@ -157,7 +160,8 @@ NUTS_method <- function(model,
 
   return(list(
     para_fixed = para_fixed, para_full = para_full,
-    lp = Re(lp), accept = accept, treedepth = treedepth_record, eps = eps
+    lp = Re(lp), accept = accept, treedepth = treedepth_record, eps = eps,
+    pd_error_count = if (!is.null(model$rtmb_pd_error_state)) model$rtmb_pd_error_state$count else 0L
   ))
 }
 
