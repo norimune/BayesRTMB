@@ -35,19 +35,25 @@ Detailed model writing, mixed models, GLMMs, and model comparison are covered in
 
 # 0. Installation and Environment Check
 
-BayesRTMB can be installed from GitHub.
-If you use `remotes`, install it as follows.
+BayesRTMB can be installed from CRAN.
 
 ```{r eval=FALSE}
-install.packages("remotes")
-remotes::install_github("norimune/BayesRTMB")
+install.packages("BayesRTMB")
 ```
 
+The development version can be installed from GitHub.
 If you use `pak`, install it as follows.
 
 ```{r eval=FALSE}
 install.packages("pak")
 pak::pak("norimune/BayesRTMB")
+```
+
+If you use `remotes`, install it as follows.
+
+```{r eval=FALSE}
+install.packages("remotes")
+remotes::install_github("norimune/BayesRTMB")
 ```
 
 ## Windows Users: Check Rtools

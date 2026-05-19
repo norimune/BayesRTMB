@@ -35,19 +35,25 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 # 0. インストールと環境確認
 
-BayesRTMB は GitHub からインストールできます。
+BayesRTMB は CRAN からインストールできます。
+
+```{r eval=FALSE}
+install.packages("BayesRTMB")
+```
+
+開発版は GitHub からインストールできます。
+`pak` を使う場合は、次のようにします。
+
+```{r eval=FALSE}
+install.packages("pak")
+pak::pak("norimune/BayesRTMB")
+```
+
 `remotes` を使う場合は、次のようにします。
 
 ```{r eval=FALSE}
 install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
-```
-
-`pak` を使う場合は、次のようにインストールできます。
-
-```{r eval=FALSE}
-install.packages("pak")
-pak::pak("norimune/BayesRTMB")
 ```
 
 ## Windows ユーザー向け: Rtools の確認

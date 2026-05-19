@@ -1,9 +1,0 @@
-{
-  "r.rterm.windows": "C:\\Program Files\\R\\R-4.3.1\\bin\\x64\\R.exe",
-  "r.rpath.windows": "C:\\Program Files\\R\\R-4.3.1\\bin\\x64\\R.exe",
-  "r.lsp.enabled": true,
-  "files.associations": {
-    "*.rmd": "rmd",
-    "*.Rmd": "rmd"
-  }
-}

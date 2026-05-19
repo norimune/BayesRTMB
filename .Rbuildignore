@@ -1,5 +1,7 @@
 ^.*\.Rproj$
 ^\.Rproj\.user$
+^\.RData$
+^\.Rhistory$
 ^README\.Rmd$
 ^LICENSE\.md$
 ^^test/\.*\\.csv$$

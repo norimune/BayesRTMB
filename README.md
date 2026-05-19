@@ -33,7 +33,13 @@ classical analyses where supported.
 
 ## Installation
 
-You can install the development version from GitHub with either `pak` or
+You can install BayesRTMB from CRAN.
+
+``` r
+install.packages("BayesRTMB")
+```
+
+The development version can be installed from GitHub with either `pak` or
 `remotes`.
 
 ``` r
