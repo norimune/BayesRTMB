@@ -81,7 +81,8 @@ space.</p>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  distance_eps <span class="op">=</span> <span class="fl">1e-04</span></span>
+<span>  distance_eps <span class="op">=</span> <span class="fl">1e-04</span>,</span>
+<span>  missing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"listwise"</span>, <span class="st">"fiml"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -160,7 +161,7 @@ with the default flat prior, `prior_weak()` is used. For choice methods
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Simulate rating data for Multidimensional Unfolding (MDU)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">50</span>  <span class="co"># Number of persons</span></span></span>
@@ -181,14 +182,41 @@ with the default flat prior, `prior_weak()` is used. For choice methods
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Fit a 2-dimensional MDU model</span></span></span>
 <span class="r-in"><span>  <span class="va">fit_mdu</span> <span class="op">&lt;-</span> <span class="fu">rtmb_mdu</span><span class="op">(</span><span class="va">Y</span>, ndim <span class="op">=</span> <span class="fl">2</span>, distance <span class="op">=</span> <span class="st">"squared"</span>, method <span class="op">=</span> <span class="st">"rating"</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  <span class="co"># MAP estimation</span></span></span>
 <span class="r-in"><span>  <span class="va">map_mdu</span> <span class="op">&lt;-</span> <span class="va">fit_mdu</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  <span class="va">map_mdu</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 980.68</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -996.12</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[1]    3.27114     0.49418    2.30257    4.23970 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[2]    3.07622     0.49162    2.11266    4.03977 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[3]    4.63414     0.75250    3.15926    6.10902 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[4]    2.90268     0.47793    1.96595    3.83941 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[5]    3.97631     0.62346    2.75434    5.19828 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[6]    2.90966     0.48232    1.96433    3.85498 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[7]    3.33538     0.49973    2.35592    4.31483 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[8]    4.20276     0.65068    2.92746    5.47806 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[9]    3.36881     0.50718    2.37475    4.36287 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> alpha[10]   3.87143     0.59246    2.71023    5.03263 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  </span></span>
 <span class="r-in"><span>  <span class="co"># Note: MDU models have many parameters, so MCMC sampling might take time.</span></span></span>
+<span class="r-in"><span>  <span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span>  <span class="co"># mcmc_mdu &lt;- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-in"><span>  <span class="co"># }</span></span></span>
+<span class="r-in"><span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

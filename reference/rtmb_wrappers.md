@@ -14,10 +14,15 @@ estimation, summary, and expansion remains consistent.
 **1. Unified Inference Methods:** Every model object returned by a
 wrapper function provides the following methods:
 
-- `$optimize()`: Performs MAP estimation (comparable to MLE).
+- `$classic()`: Performs standard frequentist estimation (MLE/REML)
+  using \`prior_flat()\`. Supports robust standard errors and
+  Satterthwaite/Between-Within degrees of freedom approximations.
 
-- `$sample()`: Performs MCMC sampling (NUTS) for full Bayesian
-  inference.
+- `$optimize()`: Performs Maximum A Posteriori (MAP) estimation
+  (Empirical Bayes).
+
+- `$sample()`: Performs MCMC sampling (NUTS via tmbstan) for full
+  Bayesian inference.
 
 - `$variational()`: Performs Variational Inference (ADVI) for fast
   posterior approximation.
@@ -44,21 +49,23 @@ distribution using the \`prior\` argument:
 you must specify `y_range = c(min, max)` to let the model set
 appropriate global scales for the priors.*
 
-**3. Weakly Informative Priors (`y_range`):** By providing the
-theoretical range of your response variable via `y_range` while keeping
-the default `prior = prior_flat()`, the wrappers automatically switch to
-[`prior_weak()`](https://norimune.github.io/BayesRTMB/reference/prior_weak.md).
-These priors are designed to be broad enough to cover any reasonable
-value but narrow enough to stabilize the estimation and prevent the
-sampler from wandering into non-sensical parameter space.
+**3. Model Comparison and Bayes Factors:** Model comparison is performed
+exclusively via Bridge Sampling. To compare a full model against a
+nested null model, use the `$bayes_factor(fixed = list(...))` method on
+an MCMC fit object. For example, `fit$bayes_factor(fixed = list(b = 0))`
+tests the hypothesis that the fixed effect `b` is exactly zero.
 
-**4. Fixed vs. Random Effects:** For mixed-effect models (e.g.,
-`rtmb_glmer`), random effects are marginalized using the Laplace
-approximation during `$optimize(laplace = TRUE)`. When using
-`$sample()`, random effects are treated as unknown parameters and
-sampled alongside fixed effects.
+**4. Standard Errors and Degrees of Freedom:** The `$classic()` and
+`$optimize()` methods provide advanced summary options:
 
-**5. Fixed parameters:** Use `fixed = list(...)` to fix model parameters
-to specified values. For example, `fixed = list(delta = 0)` fixes the
-parameter `delta` to zero, and `fixed = list("b[x]" = 0)` fixes one
-element of a vector parameter.
+- `se_method`: Calculate \`"robust"\` (Huber-White) or
+  \`"cluster-robust"\` standard errors by providing a cluster variable.
+
+- `df_method`: Use \`"satterthwaite"\` for mixed models or \`"bw"\`
+  (Between-Within) for multilevel correlation models to obtain accurate
+  p-values and confidence intervals.
+
+**5. Fixed parameters:** Use `fixed = list(...)` during model
+construction to fix model parameters to specified values. For example,
+`fixed = list(delta = 0)` fixes the parameter `delta` to zero. This same
+syntax is used in `$bayes_factor()` to define the restricted model.

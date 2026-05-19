@@ -74,16 +74,16 @@ rtmb_table(skill, cond, data = debate)$classic()
 #> p[skill:1, cond:0]  0.14333    0.02023   0.10368   0.18299 7.08479 <.0001
 #> p[skill:2, cond:0]  0.17667    0.02202   0.13351   0.21982 8.02322 <.0001
 #> p[skill:3, cond:0]  0.18000    0.02218   0.13653   0.22347 8.11501 <.0001
-#> p[skill:1, cond:1]  0.14333    0.02023   0.10368   0.18298 7.08478 <.0001
+#> p[skill:1, cond:1]  0.14333    0.02023   0.10368   0.18299 7.08480 <.0001
 #> p[skill:2, cond:1]  0.15000    0.02062   0.10959   0.19041 7.27606 <.0001
 #> p[skill:3, cond:1]  0.20667    0.02338   0.16085   0.25249 8.84031 <.0001
 #> 
 #> Expected Counts (Independence) and Pearson Residuals:
 #>                    Expected Residual
-#> E[skill:1, cond:0] 42.99996  0.00001
-#> E[skill:2, cond:0] 49.00006  0.57142
-#> E[skill:3, cond:0] 58.00007 -0.52523
-#> E[skill:1, cond:1] 42.99991  0.00001
+#> E[skill:1, cond:0] 43.00001  0.00000
+#> E[skill:2, cond:0] 49.00000  0.57143
+#> E[skill:3, cond:0] 58.00000 -0.52523
+#> E[skill:1, cond:1] 43.00001  0.00000
 #> E[skill:2, cond:1] 49.00000 -0.57143
 #> E[skill:3, cond:1] 58.00000  0.52523
 rtmb_table(table(debate$skill, debate$cond))$classic()
@@ -129,8 +129,8 @@ rtmb_table(table(debate$skill, debate$cond))$classic()
 #>                                                                                   z value
 #> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 7.08479
 #> p[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 8.02322
-#> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 8.11500
-#> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 7.08479
+#> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 8.11501
+#> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 7.08480
 #> p[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 7.27606
 #> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 8.84030
 #>                                                                                       Pr
@@ -146,9 +146,9 @@ rtmb_table(table(debate$skill, debate$cond))$classic()
 #> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 42.99999
 #> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 49.00002
 #> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 57.99998
-#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 42.99999
-#> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 49.00003
-#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 57.99999
+#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 43.00000
+#> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 49.00002
+#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 57.99998
 #>                                                                                   Residual
 #> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0]  0.00000
 #> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0]  0.57143

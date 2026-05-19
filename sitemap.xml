@@ -54,6 +54,8 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/exponential_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fa_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/fabs.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/fiml_multi_normal_CF_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/fiml_multi_normal_fa_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/gamma_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/gaussian_process_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/generate_random_init.html</loc></url>

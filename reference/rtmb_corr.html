@@ -72,7 +72,8 @@ It supports simple correlation, multilevel correlation, and classical frequentis
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  fixed <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  missing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"listwise"</span>, <span class="st">"fiml"</span>, <span class="st">"pairwise"</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -120,7 +121,7 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Simulate bivariate normal data with a true correlation of 0.5</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">50</span></span></span>
@@ -133,13 +134,15 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">fit_corr</span> <span class="op">&lt;-</span> <span class="fu">rtmb_corr</span><span class="op">(</span>data <span class="op">=</span> <span class="va">data_corr</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
+<span class="r-in"><span>    <span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span>    <span class="va">mcmc_corr</span> <span class="op">&lt;-</span> <span class="va">fit_corr</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>    <span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>corr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-in"><span>    <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_corr</span><span class="op">)</span></span></span>
+<span class="r-in"><span>    <span class="co"># }</span></span></span>
 <span class="r-in"><span>  <span class="op">}</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-err co"><span class="r-pr">#&gt;</span> <span class="error">Error:</span> The response data matrix must be numeric.</span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

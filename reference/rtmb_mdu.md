@@ -20,7 +20,8 @@ rtmb_mdu(
   init = NULL,
   fixed = NULL,
   view = NULL,
-  distance_eps = 1e-04
+  distance_eps = 1e-04,
+  missing = c("listwise", "fiml")
 )
 ```
 
@@ -99,7 +100,7 @@ An \`RTMB_Model\` object.
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+
   # Simulate rating data for Multidimensional Unfolding (MDU)
   set.seed(123)
   N <- 50  # Number of persons
@@ -120,12 +121,38 @@ if (FALSE) { # \dontrun{
 
   # Fit a 2-dimensional MDU model
   fit_mdu <- rtmb_mdu(Y, ndim = 2, distance = "squared", method = "rating")
+#> Pre-checking model code...
+#> Checking RTMB setup...
   
   # MAP estimation
   map_mdu <- fit_mdu$optimize()
+#> Starting RTMB optimization...
+#> 
   map_mdu$summary()
+#> 
+#> Call:
+#> MAP Estimation via RTMB
+#> 
+#> Negative Log-Posterior: 980.68
+#> Approx. Log Marginal Likelihood (Laplace): -996.12
+#> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
+#> 
+#> Point Estimates and 95% Wald CI:
+#>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> alpha[1]    3.27114     0.49418    2.30257    4.23970 
+#> alpha[2]    3.07622     0.49162    2.11266    4.03977 
+#> alpha[3]    4.63414     0.75250    3.15926    6.10902 
+#> alpha[4]    2.90268     0.47793    1.96595    3.83941 
+#> alpha[5]    3.97631     0.62346    2.75434    5.19828 
+#> alpha[6]    2.90966     0.48232    1.96433    3.85498 
+#> alpha[7]    3.33538     0.49973    2.35592    4.31483 
+#> alpha[8]    4.20276     0.65068    2.92746    5.47806 
+#> alpha[9]    3.36881     0.50718    2.37475    4.36287 
+#> alpha[10]   3.87143     0.59246    2.71023    5.03263 
+#> 
   
   # Note: MDU models have many parameters, so MCMC sampling might take time.
+  # \donttest{
   # mcmc_mdu <- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)
-} # }
+  # }
 ```

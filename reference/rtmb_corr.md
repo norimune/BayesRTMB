@@ -16,7 +16,8 @@ rtmb_corr(
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
-  fixed = NULL
+  fixed = NULL,
+  missing = c("listwise", "fiml", "pairwise")
 )
 ```
 
@@ -70,7 +71,7 @@ rtmb_corr(
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
+
   # Simulate bivariate normal data with a true correlation of 0.5
   set.seed(123)
   N <- 50
@@ -83,11 +84,13 @@ if (FALSE) { # \dontrun{
 
     fit_corr <- rtmb_corr(data = data_corr)
 
+    # \donttest{
     mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
     mcmc_corr$summary()
 
     bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
     print(bf_corr)
+    # }
   }
-} # }
+#> Error: The response data matrix must be numeric.
 ```

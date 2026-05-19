@@ -15,7 +15,8 @@ make_glmer_re_terms(
   resid_group = NULL,
   resid_time = NULL,
   within = NULL,
-  factors = NULL
+  factors = NULL,
+  missing = "listwise"
 )
 ```
 
