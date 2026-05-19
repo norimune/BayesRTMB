@@ -1,0 +1,661 @@
+---
+title: "モデルの書き方"
+description: "BayesRTMBでrtmb_code()を使ってモデルを書くための基本文法と実例を解説します。"
+output: 
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{モデルの書き方}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options: 
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+BayesRTMB では、`rtmb_lm()` や `rtmb_glmer()` のようなラッパー関数を使うだけでなく、`rtmb_code()` を使って自分でモデルを書くことができます。
+
+自分でモデルを書くと、既存のラッパー関数では表現しにくい潜在変数モデル、混合分布モデル、独自の階層モデル、生成量を含むモデルなどを柔軟に定義できます。
+
+このページでは、最小の二項モデルから始めて、回帰モデル、階層モデル、順序モデル、混合分布モデルへ進みながら、`rtmb_code()` の書き方を説明します。
+
+# 最小モデル
+
+最初に、もっとも単純な二項分布モデルを書いてみます。10回の試行のうち6回成功した、というデータを考えます。
+
+```{r}
+library(BayesRTMB)
+
+Trial <- 10
+Y <- 6
+
+data_list <- list(
+  Trial = Trial,
+  Y = Y
+)
+```
+
+モデルは次のように書けます。
+
+```{r}
+code_binom <- rtmb_code(
+  parameters = {
+    theta <- Dim(lower = 0, upper = 1)
+  },
+  model = {
+    Y ~ binomial(Trial, theta)
+    theta ~ beta(1, 1)
+  }
+)
+```
+
+ここで、`theta` は成功確率です。確率なので `lower = 0, upper = 1` という制約をつけています。
+
+`model` ブロックには、データの尤度とパラメータの事前分布を書きます。
+
+```r
+Y ~ binomial(Trial, theta)
+theta ~ beta(1, 1)
+```
+
+このように、BayesRTMB では Stan に近い感覚で、確率モデルをそのまま書くことができます。
+
+モデルオブジェクトは `rtmb_model()` で作成します。
+
+```{r}
+mdl_binom <- rtmb_model(data = data_list, code = code_binom)
+```
+
+作成したモデルに対して、MAP推定、MCMC、変分推論を実行できます。
+
+```{r}
+fit_map  <- mdl_binom$optimize()
+fit_mcmc <- mdl_binom$sample()
+fit_vb   <- mdl_binom$variational()
+```
+
+# rtmb_code の構造
+
+`rtmb_code()` は、いくつかのブロックに分けてモデルを書きます。
+
+```{r}
+code <- rtmb_code(
+  setup = {
+    # データから定数や前処理済みオブジェクトを作る
+  },
+  parameters = {
+    # 推定するパラメータを宣言する
+  },
+  transform = {
+    # パラメータから派生量を作る
+  },
+  model = {
+    # 尤度と事前分布を書く
+  },
+  generate = {
+    # 推定後に計算したい量を書く
+  }
+)
+```
+
+すべてのブロックが必須ではありません。最小モデルでは `parameters` と `model` だけでも十分です。ただし、モデルが少し複雑になると、`setup`、`transform`、`generate` を使い分けることで、コードが読みやすくなります。
+
+## setup
+
+`setup` は、モデル評価の前に一度だけ実行される前処理ブロックです。データの次元、平均、標準偏差、デザイン行列など、推定中に何度も変わらないものをここで作ります。
+
+```{r}
+setup = {
+  N <- length(Y)
+  P <- ncol(X)
+  X_mean <- apply(X, 2, mean)
+  X_sd <- apply(X, 2, sd)
+}
+```
+
+`setup` に書くとよいものは、主に次のようなものです。
+
+- `N`, `P`, `K` などの次元
+- デザイン行列やグループ番号
+- 中心化済みの説明変数
+- 事前分布のスケール
+- データから計算される十分統計量
+
+最近の BayesRTMB では、`model` ブロックをできるだけ読みやすくするために、前処理は `setup` に寄せる書き方を推奨しています。
+
+## parameters
+
+`parameters` は、推定するパラメータを宣言するブロックです。`Dim()` を使って、次元や制約を指定します。
+
+```{r}
+parameters = {
+  alpha <- Dim()
+  beta <- Dim(P)
+  sigma <- Dim(lower = 0)
+}
+```
+
+`Dim()` の基本は次のとおりです。
+
+| 書き方 | 意味 |
+| :--- | :--- |
+| `Dim()` | スカラー |
+| `Dim(P)` | 長さ `P` のベクトル |
+| `Dim(c(N, P))` | `N x P` 行列 |
+| `Dim(lower = 0)` | 正の値に制約 |
+| `Dim(lower = 0, upper = 1)` | 0から1の範囲に制約 |
+| `Dim(G, random = TRUE)` | ランダム効果として扱う |
+
+## transform
+
+`transform` は、パラメータやデータから派生量を作るブロックです。線形予測子、平均構造、標準化効果量、相関行列などを書く場所です。
+
+```{r}
+transform = {
+  mu <- alpha + X %*% beta
+}
+```
+
+`transform` で作った量は、`model` ブロックの中で使えます。また、推定後の出力にも含まれます。MAP推定では、デルタ法によって標準誤差や信頼区間も計算されます。
+
+ただし、`transform` ブロックの中で作ったすべての途中変数を保存したいとは限りません。その場合は、`report()` を使って、明示的に保存したい量だけを指定できます。
+
+```{r}
+transform = {
+  eta <- alpha + X %*% beta
+  mu <- inv_logit(eta)
+  report(mu, beta)
+}
+```
+
+この例では、`eta` は計算途中で使うだけなので出力には含めず、`mu` と `beta` だけを保存対象にしています。
+
+## model
+
+`model` は、尤度と事前分布を書くブロックです。
+
+```{r}
+model = {
+  Y ~ normal(mu, sigma)
+  alpha ~ normal(0, 10)
+  beta ~ normal(0, 2.5)
+  sigma ~ exponential(1)
+}
+```
+
+`~` の左側に確率変数、右側に分布を書きます。`Y ~ normal(mu, sigma)` は、観測値 `Y` が平均 `mu`、標準偏差 `sigma` の正規分布に従う、という意味です。
+
+同じ内容は、対数確率を明示的に足し合わせる形でも書けます。
+
+```{r}
+model = {
+  lp <- lp + normal_lpdf(Y, mu, sigma)
+  lp <- lp + normal_lpdf(alpha, 0, 10)
+  lp <- lp + normal_lpdf(beta, 0, 2.5)
+  lp <- lp + exponential_lpdf(sigma, 1)
+}
+```
+
+つまり、`Y ~ normal(mu, sigma)` と `lp <- lp + normal_lpdf(Y, mu, sigma)` は、同じモデルを表す2つの書き方です。通常は `~` を使ったほうが読みやすいですが、特殊な尤度を自分で組み立てたいときには `lp <- lp + ..._lpdf(...)` の形が便利です。Stanと違って、`BayesRTMB`パッケージでは`Y ~ normal(mu, sigma)`と書いても正規化定数は計算されます。なのでbridgesamplingをしたいときでも`~`を使った記法を使って問題ありません。
+
+ただし、`lp` は対数確率を足し合わせるための予約語です。`parameters` ブロックで `lp = Dim()` のように宣言したり、一般の作業用変数として使ったりしないでください。
+
+## generate
+
+`generate` は、推定後に計算したい量を書くブロックです。事後予測チェックや予測値の生成に便利です。
+
+```{r}
+generate = {
+  Y_rep <- rnorm(length(Y), mu, sigma)
+}
+```
+
+`generate` に書いた計算は、尤度評価には入りません。そのため、重い計算を書いても推定速度には直接影響しません。
+
+`generate` ブロックは、事後予測チェックや予測値の計算に便利です。
+
+```{r}
+code_ppc <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha <- Dim()
+    beta <- Dim(P)
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    mu <- alpha + X %*% beta
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha ~ normal(0, 10)
+    beta ~ normal(0, 2.5)
+    sigma ~ exponential(1)
+  },
+  generate = {
+    Y_rep <- rnorm(N, mu, sigma)
+    residual <- Y - mu
+  }
+)
+```
+
+`Y_rep` は事後予測分布からの複製データ、`residual` は残差です。これらは推定後に取り出して、モデル診断に使えます。
+
+モデル定義時に書き忘れた場合でも、推定後に `generated_quantities()` で追加できます。
+
+```{r}
+new_generate <- rtmb_code(
+  generate = {
+    abs_residual <- abs(Y - mu)
+  }
+)
+
+fit_reg <- mdl_reg$optimize()
+fit_reg$generated_quantities(new_generate)
+```
+
+# 回帰モデル
+
+次に、回帰モデルを書きます。ここでは `debate` データを使い、満足度 `sat` を発言量 `talk`、パフォーマンス `perf`、スキル `skill` で説明します。
+
+```{r}
+data(debate)
+
+Y <- debate$sat
+X_names <- c("talk", "perf", "skill")
+X <- as.matrix(debate[, X_names])
+
+data_reg <- list(
+  Y = Y,
+  X = X
+)
+```
+
+`X` は `as.matrix()` で数値行列にしておくのが安全です。`data.frame` のまま `%*%` を使うと、列の型によってエラーになることがあります。
+
+```{r}
+code_reg <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha <- Dim()
+    beta <- Dim(P)
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    mu <- alpha + X %*% beta
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha ~ normal(0, 10)
+    beta ~ normal(0, 2.5)
+    sigma ~ exponential(1)
+  }
+)
+```
+
+このモデルでは、`beta <- Dim(P)` として、説明変数の数に応じた回帰係数ベクトルを宣言しています。
+
+`par_names` を使うと、出力の名前を読みやすくできます。
+
+```{r}
+mdl_reg <- rtmb_model(
+  data = data_reg,
+  code = code_reg,
+  par_names = list(beta = X_names)
+)
+
+mdl_reg$optimize()
+```
+
+`beta[1]`, `beta[2]` ではなく、`beta[talk]`, `beta[perf]`, `beta[skill]` のように表示されます。
+
+## 中心化した回帰モデル
+
+回帰モデルでは、説明変数を中心化しておくと、切片の推定が安定しやすくなります。切片が「説明変数がすべて0のときの平均」ではなく、「説明変数が平均的な値のときの平均」に近い意味を持つためです。
+
+```{r}
+data_reg2 <- list(
+  Y = debate$sat,
+  X = as.matrix(debate[, c("talk", "perf", "skill")])
+)
+
+code_reg2 <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+    X_mean <- apply(X, 2, mean)
+    X_c <- X - rep(1, N) %*% t(X_mean)
+  },
+  parameters = {
+    alpha_c <- Dim()
+    beta <- Dim(P)
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    alpha <- alpha_c - sum(X_mean * beta)
+    mu <- alpha_c + X_c %*% beta
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    alpha_c ~ normal(0, 10)
+    beta ~ normal(0, 2.5)
+    sigma ~ exponential(1)
+  },
+  generate = {
+    Y_rep <- rnorm(length(Y), mu, sigma)
+  }
+)
+```
+
+ここでは、`setup` で中心化済みの `X_c` を作っています。`alpha_c` は中心化後の切片です。`transform` では、元の尺度での切片 `alpha` も計算しています。
+
+```{r}
+alpha <- alpha_c - sum(X_mean * beta)
+```
+
+このようにしておくと、推定では安定しやすい中心化切片 `alpha_c` を使いながら、必要に応じて元の尺度での切片 `alpha` も確認できます。
+
+# 事前分布を書く
+
+自分で `rtmb_code()` を書く場合、事前分布は `model` ブロックに明示的に書きます。
+
+```{r}
+model = {
+  Y ~ normal(mu, sigma)
+  alpha ~ normal(0, 10)
+  beta ~ normal(0, 2.5)
+  sigma ~ exponential(1)
+}
+```
+
+基本的な考え方は次のとおりです。
+
+- 位置パラメータには `normal(0, scale)` を使うことが多い
+- 正のスケールパラメータには `exponential(rate)` や `gamma()` を使う
+- 確率パラメータには `beta(a, b)` を使う
+- 制約と事前分布のサポートを合わせる
+
+たとえば、`sigma` は正の値なので、宣言では `Dim(lower = 0)` とし、事前分布も `exponential()` のような正の分布を使います。
+
+```{r}
+parameters = {
+  sigma <- Dim(lower = 0)
+}
+model = {
+  sigma ~ exponential(1)
+}
+```
+
+# 制約つきパラメータ
+
+`Dim()` の `type` を使うと、特殊な制約を持つパラメータを定義できます。
+
+| 型 | 使い道 |
+| :--- | :--- |
+| `type = "ordered"` | 昇順に並ぶカットポイント |
+| `type = "simplex"` | 混合率やカテゴリ確率 |
+| `type = "centered"` | 和が0になる効果 |
+| `type = "CF_corr"` | 相関行列のコレスキー因子 |
+| `type = "centered_tri"` | 識別制約つきの座標行列 |
+
+たとえば、順序ロジスティックモデルでは、カットポイントが昇順である必要があります。
+
+```{r}
+parameters = {
+  cutpoints <- Dim(K - 1, type = "ordered")
+}
+```
+
+混合分布モデルの混合率には、和が1になる正のベクトルが必要です。
+
+```{r}
+parameters = {
+  theta <- Dim(K, type = "simplex")
+}
+```
+
+# 階層モデル
+
+階層モデルでは、ランダム効果を `random = TRUE` として宣言します。
+
+ここでは、グループごとに切片が異なる線形モデルを書きます。
+
+```{r}
+Y <- debate$sat
+X_names <- c("talk", "perf", "skill")
+X <- as.matrix(debate[, X_names])
+group <- as.integer(as.factor(debate$group))
+G <- length(unique(group))
+
+data_hlm <- list(
+  Y = Y,
+  X = X,
+  group = group,
+  G = G
+)
+```
+
+```{r}
+code_hlm <- rtmb_code(
+  setup = {
+    N <- length(Y)
+    P <- ncol(X)
+  },
+  parameters = {
+    alpha <- Dim()
+    beta <- Dim(P)
+    tau <- Dim(lower = 0)
+    sigma <- Dim(lower = 0)
+    r <- Dim(G, random = TRUE)
+  },
+  transform = {
+    mu <- alpha + X %*% beta + tau * r[group]
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    r ~ normal(0, 1)
+    alpha ~ normal(0, 10)
+    beta ~ normal(0, 2.5)
+    tau ~ exponential(1)
+    sigma ~ exponential(1)
+  }
+)
+```
+
+ここでは、`r` が標準正規分布に従うランダム効果で、`tau` がその標準偏差です。
+
+```r
+r <- Dim(G, random = TRUE)
+r ~ normal(0, 1)
+mu <- alpha + X %*% beta + tau * r[group]
+```
+
+`random = TRUE` にしたパラメータは、MAP推定ではラプラス近似の対象になります。
+
+```{r}
+mdl_hlm <- rtmb_model(
+  data = data_hlm,
+  code = code_hlm,
+  par_names = list(beta = X_names)
+)
+
+fit_hlm <- mdl_hlm$optimize()
+fit_hlm$random_effects
+```
+
+ランダム効果の推定値は、`random_effects` に保存されます。
+
+# 順序モデル
+
+順序カテゴリカルデータには、`ordered_logistic()` を使えます。
+
+```{r}
+Y <- as.integer(debate$sat)
+X <- as.matrix(debate[, c("talk", "perf", "skill")])
+K <- length(sort(unique(Y)))
+
+data_ord <- list(
+  Y = Y,
+  X = X,
+  K = K
+)
+```
+
+```{r}
+code_ord <- rtmb_code(
+  setup = {
+    P <- ncol(X)
+  },
+  parameters = {
+    beta <- Dim(P)
+    cutpoints <- Dim(K - 1, type = "ordered")
+  },
+  transform = {
+    eta <- X %*% beta
+  },
+  model = {
+    Y ~ ordered_logistic(eta, cutpoints)
+    beta ~ normal(0, 2.5)
+    cutpoints ~ normal(0, 5)
+  }
+)
+```
+
+`cutpoints` は必ず順序を持つ必要があるので、`type = "ordered"` としています。
+
+二値データやカウントデータでは、確率そのものではなく、線形予測子を直接受け取る分布が便利です。
+
+```{r}
+Y ~ bernoulli_logit(eta)
+Y ~ poisson(exp(eta))
+```
+
+ロジットスケールや対数スケールで計算するため、数値的に安定しやすくなります。
+
+# 混合分布モデル
+
+混合分布モデルは、制約つきパラメータと複数初期値を使うモデリングのいい例です。
+
+```{r}
+set.seed(123)
+N <- 300
+K <- 3
+
+theta_true <- c(0.3, 0.2, 0.5)
+mu_true <- c(-3, 0, 4)
+sigma_true <- c(0.6, 1.0, 0.8)
+
+z <- sample(seq_len(K), size = N, replace = TRUE, prob = theta_true)
+Y <- rnorm(N, mu_true[z], sigma_true[z])
+
+data_mix <- list(
+  Y = Y,
+  K = K
+)
+```
+
+```{r}
+code_mix <- rtmb_code(
+  parameters = {
+    theta <- Dim(K, type = "simplex")
+    mu <- Dim(K)
+    sigma <- Dim(K, lower = 0)
+  },
+  model = {
+    Y ~ normal_mixture(theta, mu, sigma)
+    mu ~ normal(0, 5)
+    sigma ~ exponential(1)
+  }
+)
+```
+
+`theta` は混合率なので、`type = "simplex"` を使います。
+
+混合分布は局所解が生じやすいため、MAP推定では `num_estimate` を多めにして、複数の初期値から最もよい解を選ぶのが有効です。通常は、自分で初期値を細かく指定するよりも、まずは `init` を指定せずに `num_estimate` を増やすほうが手軽です。
+
+```{r}
+mdl_mix <- rtmb_model(data_mix, code_mix)
+fit_mix <- mdl_mix$optimize(num_estimate = 20)
+```
+
+MCMCを行う場合は、MAP推定で得られたパラメータ推定値を初期値として使うと安定しやすくなります。必要に応じて `init_jitter` で少しだけ揺らします。
+
+```{r}
+fit_mix_mcmc <- mdl_mix$sample(
+  init = fit_mix$estimate("parameters"),
+  init_jitter = 0.2
+)
+```
+
+混合分布では、ラベルスイッチングにも注意が必要です。成分の順序に意味がないため、MCMCでは成分ラベルが入れ替わることがあります。
+
+
+
+# よくある注意点
+
+## data.frame と matrix
+
+行列積 `%*%` を使う場合、`X` は `matrix` にしておくのが安全です。
+
+```{r}
+X <- as.matrix(debate[, c("talk", "perf", "skill")])
+```
+
+`data.frame` のまま渡すと、列型によっては `X %*% beta` でエラーになります。
+
+## model ブロックを複雑にしすぎない
+
+`model` ブロックは、尤度と事前分布が見えるように書くのがおすすめです。
+
+前処理は `setup`、派生量は `transform` に分けると、ユーザーが `print_code()` で見たときにも読みやすくなります。
+
+## AD型に対する if 文
+
+推定中のパラメータを使った条件分岐は、`RTMB`のAD計算で問題になることがあります。
+
+```{r}
+if (theta > 0) ...
+```
+
+のような書き方は避け、滑らかな関数や制約つきパラメータ化で表現するほうが安全です。
+
+## 初期値
+
+複雑なモデルでは、初期値が重要です。
+
+```{r}
+init <- list(
+  alpha = mean(Y),
+  beta = rep(0, ncol(X)),
+  sigma = sd(Y)
+)
+
+mdl <- rtmb_model(data_reg, code_reg, init = init)
+```
+
+特に、混合分布モデル、因子分析、多次元展開法、項目反応理論のような潜在変数モデルでは、適切な初期値が推定の安定性に大きく影響します。
+
+## random = TRUE
+
+`random = TRUE` は、ランダム効果や潜在変数をラプラス近似で周辺化したいときに使います。
+
+ただし、すべてのパラメータに付ければよいわけではありません。固定効果として推定したい回帰係数や切片には、通常 `random = TRUE` は付けません。
+
+# 次に読む記事
+
+`rtmb_code()` の内部的な構造をさらに詳しく知りたい場合は、[内部構造](ja-rtmb_internals.html) を参照してください。
+
+既存のモデルを短く書きたい場合は、[ラッパー関数の使い方](ja-wrapper_functions.html) が便利です。
+
+階層モデルや GLMM を wrapper で詳しく扱いたい場合は、[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html) を参照してください。
+
+まずパッケージ全体をざっと試したい場合は、[クイックスタート](ja-quick_start.html) を参照してください。

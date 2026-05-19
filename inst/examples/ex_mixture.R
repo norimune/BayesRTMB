@@ -1,0 +1,22 @@
+
+  # Simulate 1D mixture data (2 components)
+  set.seed(123)
+  N <- 100
+  group <- rbinom(N, 1, 0.4)
+  y <- ifelse(group == 1, rnorm(N, 5, 1), rnorm(N, 0, 1))
+  dat <- data.frame(y)
+
+  # Fit a 1D Gaussian mixture model with 2 components
+  fit_mix <- rtmb_mixture(y ~ 1, k = 2, data = dat)
+  
+  # MAP estimation
+  map_mix <- fit_mix$optimize()
+  map_mix$summary()
+
+  # MCMC sampling (chains and iterations reduced for faster execution)
+  \dontrun{
+  mcmc_mix <- fit_mix$sample(sampling = 500, warmup = 500, chains = 2)
+  # MCMC summary provides estimates for component means, standard deviations,
+  # and mixture probabilities
+  mcmc_mix$summary()
+  }

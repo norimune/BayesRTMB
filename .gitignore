@@ -1,0 +1,17 @@
+.Rproj.user
+.Rhistory
+.Rdata
+.httr-oauth
+.DS_Store
+.quarto
+workspace.rmd
+inst/doc
+modeling.rmd
+/test/
+BWMU_functions.R
+/BayesRTMB_mcmc/
+docs
+/..Rcheck/
+scratch/
+/.agent_shared/
+debug.rmd

@@ -1,0 +1,427 @@
+---
+title: "RTMB Internals and Inference Algorithms"
+description: "Explains how BayesRTMB turns rtmb_code() into RTMB automatic differentiation objects and routes models to MCMC, MAP, variational inference, and classical estimation."
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{RTMB Internals and Inference Algorithms}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+This article explains how BayesRTMB represents models internally, how those models are converted into RTMB automatic differentiation objects, and how the same model object is routed to MCMC, MAP estimation, variational inference, or classical estimation.
+
+Most users do not need to know these details in order to fit ordinary models. Wrapper functions such as `rtmb_lm()` and `rtmb_glmer()`, together with the basic `rtmb_code()` and `rtmb_model()` workflow, are usually enough.
+
+The internal design becomes useful when you want to:
+
+- write more complex `rtmb_code()` models;
+- read the output of `print_code()` from wrapper functions;
+- understand `random = TRUE`, Laplace approximation, `marginal`, `fixed`, and `map`;
+- compare `sample()`, `optimize()`, `variational()`, and `classic()`;
+- understand how standard errors and intervals are calculated.
+
+# 1. Overall Flow
+
+At a high level, BayesRTMB proceeds as follows.
+
+```text
+rtmb_code()
+  -> rtmb_model()
+    -> RTMB_Model
+      -> build_ad_obj()
+        -> RTMB::MakeADFun()
+          -> sample() / optimize() / variational() / classic()
+            -> MCMC_Fit / MAP_Fit / VB_Fit / Classic_Fit
+```
+
+Users usually write only `rtmb_code()` and call `rtmb_model()`.
+
+`rtmb_model()` checks the model code and data, then creates an `RTMB_Model` R6 object. This object stores the model definition, data, parameter declarations, transformation blocks, generated-quantity blocks, and wrapper metadata.
+
+When an inference method is called, BayesRTMB builds the automatic differentiation object needed by `RTMB::MakeADFun()`. The resulting fit is returned as a method-specific object.
+
+BayesRTMB is organized around the functional priority MCMC, MAP, VB, and then classical estimation. MCMC is the central method when the full posterior distribution matters. MAP provides fast point estimation and approximate checks. VB provides approximate inference for larger models. Classical estimation is a supplementary route for flat-prior wrapper models.
+
+| Method | Main use | Return value |
+|---|---|---|
+| `sample()` | MCMC with NUTS | `MCMC_Fit` |
+| `optimize()` | MAP / ML / marginal MAP | `MAP_Fit` |
+| `variational()` | Approximate posterior inference with ADVI | `VB_Fit` |
+| `classic()` | Classical estimation for supported flat-prior wrapper models | `Classic_Fit` |
+
+# 2. Blocks in `rtmb_code()`
+
+`rtmb_code()` describes a model as a set of named blocks.
+
+```{r}
+code <- rtmb_code(
+  data = {
+    # Declare data names used by the model
+  },
+  setup = {
+    # Preprocess data
+  },
+  parameters = {
+    # Declare estimable parameters
+  },
+  transform = {
+    # Build linear predictors and derived quantities
+  },
+  model = {
+    # Write likelihood and prior distributions
+  },
+  generate = {
+    # Compute generated quantities after fitting
+  }
+)
+```
+
+Not every block is required. The minimal model usually needs only `parameters` and `model`.
+
+## data
+
+The `data` block declares data names used by the model. `rtmb_model()` checks whether these names exist in the supplied data list.
+
+## setup
+
+The `setup` block is evaluated once before model evaluation. It is the right place to compute data dimensions, design matrices, centered predictors, group indices, and constants used later in the model.
+
+Wrapper functions often place preprocessing in `setup` so that `print_code()` shows enough information to reproduce the model.
+
+## parameters
+
+The `parameters` block declares estimable parameters with `Dim()`.
+
+```{r}
+parameters = {
+  alpha <- Dim()
+  beta  <- Dim(P)
+  sigma <- Dim(lower = 0)
+  r     <- Dim(G, random = TRUE)
+}
+```
+
+`Dim()` stores dimension, constraints, initial values, and whether a parameter should be treated as a random effect.
+
+## transform
+
+The `transform` block creates derived quantities from parameters and data.
+
+```{r}
+transform = {
+  mu <- alpha + X %*% beta
+}
+```
+
+Quantities created in `transform` can be used in the `model` block and can also appear in summaries. For MAP and classical estimation, standard errors and intervals can be calculated by the delta method or simulation-based propagation.
+
+Only primary parameters declared in `parameters` can be used as Laplace-random targets. Derived quantities created in `transform` cannot be specified directly as `marginal` variables.
+
+## model
+
+The `model` block contains likelihood and prior distributions.
+
+```{r}
+model = {
+  beta ~ normal(0, 10)
+  sigma ~ exponential(1)
+  Y ~ normal(mu, sigma)
+}
+```
+
+BayesRTMB encourages Stan-like sampling syntax. Internally, this is converted into additions to the log probability.
+
+Conceptually, the following two lines describe the same contribution.
+
+```{r}
+Y ~ normal(mu, sigma)
+```
+
+```{r}
+lp <- lp + normal_lpdf(Y, mu, sigma)
+```
+
+In ordinary `rtmb_code(model = { ... })`, you do not need to initialize `lp`. BayesRTMB prepares it internally when constructing the executable log-probability function.
+
+## generate
+
+The `generate` block computes quantities after fitting.
+
+```{r}
+generate = {
+  y_rep <- rnorm(length(Y), mu, sigma)
+}
+```
+
+Generated quantities are not part of likelihood evaluation or optimization. They are useful for posterior predictive checks, predictions, simulations, residuals, item information, factor scores, and other post-estimation quantities.
+
+# 3. Parameter Representation
+
+Users usually think about parameters on their natural constrained scale:
+
+- `sigma` is positive;
+- `theta` is between 0 and 1;
+- ordered cutpoints must be increasing;
+- simplex vectors must sum to 1.
+
+Optimization and HMC are easier on unconstrained real-valued spaces. BayesRTMB therefore maintains two representations.
+
+| Representation | Meaning |
+|---|---|
+| constrained scale | Natural user-facing scale |
+| unconstrained scale | Scale used by optimizers and samplers |
+
+For example, `sigma <- Dim(lower = 0)` is displayed as a positive `sigma`, but internally it is transformed from an unconstrained value.
+
+Important helper functions include:
+
+- `to_unconstrained()`;
+- `to_constrained()`;
+- `constrained_vector_to_list()`;
+- `unconstrained_vector_to_list()`;
+- `generate_flat_names()`.
+
+These transformations are central to `fixed`, `map`, random effects, Laplace approximation, and printed summaries.
+
+# 4. Jacobian Correction
+
+When constrained parameters are transformed to an unconstrained space, density calculations can require a Jacobian adjustment.
+
+If `y` is the natural constrained parameter and `x` is the unconstrained parameter, the relation is:
+
+$$
+\log p_X(x) = \log p_Y(y) + \log \left| \frac{dy}{dx} \right|
+$$
+
+BayesRTMB users write models on the natural scale. Internally, functions such as `to_unconstrained()`, `to_constrained()`, and `calc_log_jacobian()` add the required correction depending on the inference route.
+
+The target is controlled by `jacobian_target`.
+
+| `jacobian_target` | Meaning |
+|---|---|
+| `"all"` | Apply correction to all transformed parameters |
+| `"random"` | Apply correction to the random side integrated by Laplace approximation |
+| `"none"` | Do not add the correction |
+
+For MCMC, BayesRTMB samples in the unconstrained space, so the posterior density generally uses `jacobian_target = "all"`.
+
+For `optimize()` with Laplace approximation, the density transformation needed for the integrated random side uses `jacobian_target = "random"`.
+
+For ordinary optimization without Laplace approximation, internal objective construction usually uses `jacobian_target = "none"`.
+
+Most users do not need to set this option directly. The distinction matters when understanding profile likelihoods, Laplace approximation, or low-level internals.
+
+# 5. RTMB Automatic Differentiation Objects
+
+RTMB provides an R interface to the TMB automatic differentiation engine.
+
+BayesRTMB calls `RTMB::MakeADFun()` through `RTMB_Model$build_ad_obj()`. This creates an object that can evaluate function values, gradients, and Hessian-related quantities.
+
+The model code is not compiled from a separate Stan-like language. Instead, the R model function is evaluated with AD objects. Arithmetic, matrix operations, distribution functions, and transformations are recorded as an automatic differentiation graph.
+
+`rtmb_model()` performs pre-checks before fitting:
+
+- undefined variables in `setup` or `parameters`;
+- whether `model` and `transform` can run with initial values;
+- whether `log_prob` returns a scalar;
+- whether `MakeADFun()` can compute gradients.
+
+These checks aim to catch structural problems before they become harder-to-read RTMB/TMB errors.
+
+# 6. Inference Methods
+
+## sample
+
+`sample()` runs MCMC using NUTS.
+
+```{r}
+fit <- mdl$sample()
+```
+
+MCMC is the central method when you want the full posterior distribution, not only a point estimate. It supports posterior means, posterior medians, intervals, diagnostics, posterior predictive checks, and bridge sampling.
+
+MCMC samples are drawn on the unconstrained scale and returned on the natural constrained scale.
+
+## optimize
+
+`optimize()` performs MAP, ML, or marginal MAP estimation.
+
+```{r}
+fit <- mdl$optimize()
+```
+
+With priors, the result is MAP estimation. With flat-prior models, it is interpreted as maximum likelihood or a closely related estimate.
+
+`optimize()` is useful for checking model behavior before MCMC, and for obtaining fast estimates for hierarchical models with Laplace approximation. Confidence intervals and log marginal likelihood approximations should be interpreted as approximations on the unconstrained parameter space.
+
+Common options include:
+
+- `laplace`;
+- `marginal`;
+- `se_method`;
+- `df_method`;
+- `map`;
+- `fixed`.
+
+## variational
+
+`variational()` approximates the posterior distribution with ADVI.
+
+```{r}
+fit <- mdl$variational()
+```
+
+VB can be useful for large models or as an initial approximate check before MCMC. It is faster than MCMC, but it is approximate and can underestimate uncertainty. When possible, compare final uncertainty assessments with MCMC.
+
+## classic
+
+`classic()` treats supported wrapper models with `prior_flat()` as classical frequentist analyses.
+
+```{r}
+fit <- mdl$classic()
+```
+
+It is available only for wrapper-derived models that can be interpreted as classical analyses under flat priors.
+
+`Classic_Fit` supports frequentist post-processing where appropriate, such as degrees of freedom, p values, AIC, BIC, ANOVA, likelihood-ratio tests, correlation tests, and contingency-table tests.
+
+Functionally, `classic()` is lower priority than MCMC, MAP, and VB. It is a supplementary path for checking standard analyses and comparing Bayesian and frequentist workflows.
+
+# 7. `optimize()` vs `classic()`
+
+`optimize()` and `classic()` share low-level RTMB machinery, but their responsibilities differ.
+
+`optimize()` is the API for MAP / ML / marginal MAP. It can be used with informative priors.
+
+`classic()` is the API for frequentist interpretation of supported wrapper models with flat priors.
+
+Internally, `.fit_rtmb()` builds the `MakeADFun()` object, runs optimization, and returns raw components such as `sdreport()` output. It does not itself construct user-facing fit objects.
+
+| Layer | Role |
+|---|---|
+| `.fit_rtmb()` | Returns raw RTMB optimization components |
+| `.inference_pipeline()` | Constructs `MAP_Fit` for `optimize()` |
+| `.classic_pipeline()` | Constructs `Classic_Fit` for `classic()` |
+
+This separation lets the same optimization engine support different summaries, degrees of freedom, prior correction, and post-processing behavior.
+
+# 8. Laplace Approximation and `random`
+
+In hierarchical, latent-variable, and mixed models, it is often better to integrate over some parameters rather than optimize all parameters as fixed effects.
+
+Parameters declared with `random = TRUE` are eligible for Laplace approximation.
+
+```{r}
+parameters = {
+  alpha <- Dim()
+  tau   <- Dim(lower = 0)
+  r     <- Dim(G, random = TRUE)
+}
+```
+
+With `optimize(laplace = TRUE)`, BayesRTMB passes random-effect parameters to `RTMB::MakeADFun(random = ...)`. In `optimize()`, `laplace = TRUE` is the default.
+
+`optimize(marginal = ...)` can temporarily treat primary parameters as random so that marginal MAP / empirical Bayes style estimation can be performed. In flat-prior models, marginalizing fixed effects can correspond to restricted maximum likelihood (REML)-like estimation.
+
+```{r}
+fit <- mdl$optimize(marginal = c("mean", "delta"))
+```
+
+Two internal sets are important:
+
+| Name | Meaning |
+|---|---|
+| `marginal_vars` | Primary parameter names requested by the user or wrapper through `optimize(marginal = ...)` |
+| `laplace_random_vars` | All variables actually passed to `MakeADFun(random = ...)` |
+
+In mixed models, both original random effects and primary parameters selected by `marginal` may be integrated by Laplace approximation. Therefore, `laplace_random_vars` can be broader than `marginal_vars`.
+
+# 9. Standard Errors and Intervals
+
+`optimize()` and `classic()` can report standard errors and intervals, not only point estimates.
+
+Important `se_method` options include:
+
+| `se_method` | Meaning |
+|---|---|
+| `"wald"` | Wald standard errors based on `sdreport()` and the delta method |
+| `"sampling"` | Simulation-based error propagation from approximate normal samples |
+| `"none"` | Do not compute standard errors or intervals |
+
+`se_method = "none"` is a lightweight mode. It does not mean that standard errors are zero; it means they are not calculated.
+
+Derived quantities created in `transform` can be handled by the delta method or by simulation-based propagation. Generated quantities are naturally handled from MCMC draws or by post-estimation generation.
+
+If `sdreport()` cannot provide reliable standard errors, BayesRTMB emits diagnostic messages. Examples include non-positive-definite Hessians, unavailable covariance matrices, Hessian fallbacks, and generalized-inverse fallbacks.
+
+# 10. Writing AD-Friendly Code
+
+RTMB model code looks like ordinary R code, but internally it is evaluated with automatic differentiation objects. Some ordinary R patterns can therefore be problematic.
+
+## Avoid parameter-dependent `if` statements
+
+Avoid branches where the computation path changes based on a parameter value.
+
+```{r}
+# Avoid this pattern
+if (sigma > 1) {
+  lp <- lp + normal_lpdf(y, 0, sigma)
+} else {
+  lp <- lp + normal_lpdf(y, 0, 1)
+}
+```
+
+Prefer smooth functions, constrained parameterizations, or explicit AD-compatible alternatives.
+
+## Be careful with apply-style functions
+
+Functions such as `apply()`, `lapply()`, `sapply()`, and `ifelse()` may not always behave as expected with AD objects. BayesRTMB catches some cases early, but explicit loops or vectorized arithmetic are often safer.
+
+## Use blocks for their intended purposes
+
+Data-only preprocessing belongs in `setup`.
+
+Derived quantities based on parameters belong in `transform`.
+
+Likelihood and priors belong in `model`.
+
+Generated quantities belong in `generate`.
+
+Keeping this separation makes `print_code()` readable and improves the stability of pre-checks and automatic differentiation.
+
+# 11. Relationship to Stan, TMB, and RTMB
+
+BayesRTMB uses RTMB as its computational backend. RTMB is an R interface to TMB's automatic differentiation engine.
+
+BayesRTMB is similar to Stan in that users write probabilistic models with constrained parameters and priors. It differs in that model code is written as R expressions through `rtmb_code()`, rather than in a separate Stan language file.
+
+| Topic | BayesRTMB | Stan |
+|---|---|---|
+| Model language | R through `rtmb_code()` | Stan language |
+| Automatic differentiation | RTMB / TMB | Stan Math |
+| Constraints | `Dim()` and internal transformations | Stan parameter constraints |
+| Inference | MAP / classic / NUTS / ADVI | MAP / NUTS / ADVI and others |
+| Wrappers | `rtmb_lm()`, `rtmb_glmer()`, and others | Usually hand-written models |
+| Generated model inspection | `print_code()` | Stan code itself |
+
+# 12. Summary
+
+BayesRTMB's internal structure can be summarized as follows.
+
+- `rtmb_code()` describes a model as a block-structured object.
+- `rtmb_model()` checks the data and code, then creates an `RTMB_Model`.
+- `RTMB_Model` stores model code, data, parameter declarations, transformations, generated quantities, and wrapper metadata.
+- `build_ad_obj()` creates the automatic differentiation object used by `RTMB::MakeADFun()`.
+- `sample()`, `optimize()`, `variational()`, and `classic()` run different inference methods from the same model representation.
+- `optimize()` and `classic()` share a low-level engine, but their responsibilities and return objects are distinct.
+- For Laplace approximation, the distinction between `random = TRUE`, `marginal_vars`, and `laplace_random_vars` is important.
+
+For practical model-writing examples, see [Writing Model Codes](writing_models.html). To understand wrapper-generated models, see [Wrapper Functions](wrapper_functions.html) and `print_code()`. For a detailed mixed-model and GLMM workflow, see [Hierarchical Models and GLMMs](rtmb_glmer.html).

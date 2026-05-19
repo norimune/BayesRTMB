@@ -1,0 +1,648 @@
+---
+title: "rtmb_glmer() で階層モデル・GLMM・分散分析を書く"
+description: "lme4 風の式から階層モデル、一般化線形混合モデル、順序モデル、残差構造つきモデルを作り、MCMC、MAP、VB、classic を使い分ける方法を説明します。"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{rtmb_glmer() で階層モデル・GLMMを書く}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+このページでは、`rtmb_glmer()` を使って階層モデルや一般化線形混合モデルを書く方法を説明します。
+
+`rtmb_glmer()` は、`lme4::glmer()` に近い式でモデルを書き、内部で BayesRTMB の `rtmb_code()` を生成するラッパー関数です。標準的な mixed model から始めて、MCMC、MAP 推定、変分推論、頻度主義的な分析を同じモデルから切り替えて使えます。
+
+BayesRTMB の推定法の優先度は、基本的に次の順で考えると分かりやすくなります。
+
+1. `sample()`: MCMC で事後分布を直接調べる。
+2. `optimize()`: MAP / ML を高速に確認する。random effects がある場合は Laplace 近似が便利。
+3. `variational()`: ADVI で近似事後分布をすばやく見る。
+4. `classic()`: `prior_flat()` の wrapper モデルを頻度主義的に確認する。
+
+# 1. rtmb_glmer() とは
+
+`rtmb_glmer()` は、次のような式を受け取ります。
+
+```{r}
+mdl <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  family = "gaussian"
+)
+```
+
+固定効果は `y ~ x` の部分、ランダム効果は `(1 | group)` の部分で指定します。返り値は推定結果ではなく、`RTMB_Model` オブジェクトです。
+
+```{r}
+fit_mcmc <- mdl$sample()
+fit_map  <- mdl$optimize(laplace = TRUE)
+fit_vb   <- mdl$variational()
+fit_cl   <- mdl$classic()
+```
+
+`rtmb_glmer()` は簡単に使うための入口ですが、内部では一貫した `rtmb_code()` を生成しています。どのようなモデルが作られたかは、`print_code()` で確認できます。
+
+```{r}
+mdl$print_code()
+```
+
+# 2. 最小例: ランダム切片モデル
+
+まず、グループごとに切片が異なる正規モデルを考えます。
+
+```{r}
+library(BayesRTMB)
+
+dat <- data.frame(
+  y = rnorm(120),
+  x = rnorm(120),
+  group = factor(rep(1:20, each = 6))
+)
+
+mdl <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  family = "gaussian",
+  prior = prior_normal()
+)
+```
+
+BayesRTMB では、まず MCMC で事後分布を確認するのが基本です。
+
+```{r}
+fit <- mdl$sample(
+  sampling = 1000,
+  warmup = 1000,
+  chains = 4
+)
+
+fit$summary()
+```
+
+出力は次のように、固定効果、分散パラメータ、事後区間、MCMC 診断が並びます。
+
+```text
+## variable       mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat
+## lp          -171.42  2.31 -169.88 -177.1 -168.4      1420      1695  1.00
+## Intercept_c    0.05  0.15    0.04  -0.25   0.35      2350      2410  1.00
+## b[x]           0.31  0.09    0.30   0.13   0.48      2288      2104  1.00
+## sigma          0.91  0.07    0.90   0.78   1.06      1812      2060  1.00
+## sd[group:Int]  0.43  0.11    0.41   0.24   0.68      1265      1532  1.00
+```
+
+`optimize(laplace = TRUE)` を使うと、ランダム効果を Laplace 近似で周辺化しながら、固定効果や分散パラメータをすばやく推定できます。
+
+```{r}
+fit_map <- mdl$optimize(laplace = TRUE)
+fit_map$summary()
+fit_map$random_effects
+```
+
+MAP 推定では、点推定と Wald 型または sampling-based の区間が表示されます。
+
+```text
+## Call:
+## MAP Estimation via RTMB
+## 
+## Negative Log-Posterior: 169.88
+## Approx. Log Marginal Likelihood (Laplace): -175.21
+## 
+## Point Estimates and 95% Wald CI:
+##        variable  Estimate  Std. Error  Lower 95%  Upper 95%
+##     Intercept_c     0.042       0.151     -0.254      0.338
+##            b[x]     0.301       0.090      0.125      0.478
+##           sigma     0.902       0.071      0.773      1.054
+##   sd[group:Int]     0.407       0.109      0.240      0.690
+```
+
+MAP 推定は、モデルの挙動を素早く確認したい場合や、MCMC の前に初期値やスケール感を見たい場合に便利です。最終的な不確実性を報告する場合は、可能であれば MCMC の結果も確認してください。
+
+# 3. formula の書き方と可視化
+
+`rtmb_glmer()` は、`lme4` 風の random effect 記法を使います。
+
+| 式 | 意味 |
+|---|---|
+| `(1 | group)` | グループごとのランダム切片 |
+| `(x | group)` | グループごとのランダム切片とランダム傾き |
+| `(0 + x | group)` | グループごとのランダム傾き |
+| `(1 | school) + (1 | class)` | 複数のランダム効果 |
+
+交互作用も通常の R formula と同じように書けます。
+
+```{r}
+mdl_int <- rtmb_glmer(
+  y ~ x1 * x2 + (1 | group),
+  data = dat,
+  family = "gaussian",
+  prior = prior_normal()
+)
+```
+
+連続変数の中心化には `gmc` と `cwc` を使えます。
+
+```{r}
+mdl_centered <- rtmb_glmer(
+  y ~ x + (x | group),
+  data = dat,
+  gmc = "x"
+)
+```
+
+`gmc` は grand mean centering、`cwc` は centering within cluster です。階層モデルでは、固定効果とランダム効果の解釈を安定させるために、中心化が役に立つことがあります。
+
+クラスター内中心化を使う場合は、`cwc` にクラスター変数と中心化したい変数を指定します。
+
+```{r}
+mdl_cwc <- rtmb_glmer(
+  y ~ x + (x | group),
+  data = dat,
+  cwc = list(cluster = "group", pars = "x"),
+  prior = prior_normal()
+)
+```
+
+この例では、`x` から各 `group` 内の平均を引いた値を使ってモデルを作ります。個人内・クラスター内の変動に注目したい場合や、ランダム傾きモデルの推定を安定させたい場合に使いやすい指定です。
+
+## ワイド型データと factors
+
+反復測定データがワイド型で保存されている場合でも、`rtmb_glmer()` は内部でロング型に変換できます。Gaussian model で応答を `cbind(...)` として書き、`within` に測定内要因を指定します。
+
+```{r}
+mdl_wide <- rtmb_glmer(
+  cbind(y_t1, y_t2, y_t3) ~ cond + (1 | id),
+  data = dat_wide,
+  family = "gaussian",
+  within = list(time = c("t1", "t2", "t3")),
+  prior = prior_normal()
+)
+```
+
+この例では、`y_t1`, `y_t2`, `y_t3` の3列を内部でロング型に展開し、`time` という測定内要因を持つデータとして扱います。ワイド型のまま保存されている反復測定データを、事前に手で reshape しなくてもモデル化できます。
+
+また、データ内では数値や文字列として入っている変数を、モデル作成時に factor として扱いたい場合は `factors` を使えます。
+
+```{r}
+mdl_factor <- rtmb_glmer(
+  y ~ cond + time + (1 | id),
+  data = dat,
+  family = "gaussian",
+  factors = c("cond", "time"),
+  prior = prior_normal()
+)
+```
+
+`factors` に指定した変数は、内部で `as.factor()` されてから model matrix が作られます。カテゴリ変数を数値の連続量として誤って扱うことを避けたい場合に便利です。
+
+## conditional_effects
+
+推定後は、`conditional_effects()` で予測値を可視化できます。
+
+```{r}
+fit_int <- mdl_int$sample()
+
+ce <- conditional_effects(fit_int, effect = "x1:x2")
+plot(ce)
+summary(ce)
+```
+
+`summary()` では、予測値と区間がグリッドごとに表示されます。
+
+```text
+##     x1     x2  estimate   lower   upper
+## -2.10  -1.00    -0.842  -1.284  -0.398
+## -1.05  -1.00    -0.511  -0.829  -0.189
+##  0.00  -1.00    -0.181  -0.432   0.069
+##  1.05  -1.00     0.150  -0.160   0.462
+##  2.10  -1.00     0.480   0.032   0.931
+```
+
+`effect = "x1"` のように1変数を指定すると、その変数に沿った予測値を描きます。`effect = "x1:x2"` のように交互作用を指定すると、`x2` の代表値ごとに `x1` の効果を描きます。
+
+より詳しく交互作用を調べたい場合は、`simple_effects()` を使えます。
+
+```{r}
+simple_effects(fit_int, effect = "x1:x2")
+```
+
+```text
+## Simple effects of x1 conditional on x2
+## 
+##   moderator  Estimate  Lower 95%  Upper 95%
+##     -1.00       0.314      0.102      0.529
+##      0.00       0.468      0.289      0.650
+##      1.00       0.623      0.372      0.882
+```
+
+固定効果の事後分布や係数の概観には、通常のプロット関数も使えます。
+
+```{r}
+plot_forest(fit_int, pars = "b")
+plot_dens(fit_int, pars = "b")
+```
+
+# 4. family の選び方
+
+`rtmb_glmer()` では、目的変数の分布を `family` で指定します。
+
+| `family` | 主なリンク | 用途 |
+|---|---|---|
+| `"gaussian"` | identity | 連続量、通常の線形混合モデル |
+| `"lognormal"` | log | 正の連続量、右に歪んだ分布 |
+| `"student_t"` | identity | 外れ値に頑健な連続量モデル |
+| `"gamma"` | log | 正の連続量、ガンマ分布 |
+| `"bernoulli"` | logit | 0/1 の2値データ |
+| `"binomial"` | logit | 成功数 / 試行数 |
+| `"poisson"` | log | カウントデータ |
+| `"neg_binomial"` | log | 過分散のあるカウントデータ |
+| `"ordered"` | logit | 順序カテゴリデータ |
+| `"sequential"` | logit | sequential / continuation-ratio 型の順序カテゴリデータ |
+
+2値データなら次のように書けます。
+
+```{r}
+mdl_bin <- rtmb_glmer(
+  y_bin ~ x + (1 | group),
+  data = dat,
+  family = "bernoulli",
+  prior = prior_normal()
+)
+```
+
+カウントデータでは、ポアソン分布や負の二項分布を使います。
+
+```{r}
+mdl_count <- rtmb_glmer(
+  count ~ x + (1 | group),
+  data = dat,
+  family = "neg_binomial",
+  prior = prior_normal()
+)
+```
+
+# 5. 推定法の使い分け
+
+## MCMC
+
+MCMC は、BayesRTMB で事後分布を直接調べる中心的な推定法です。
+
+```{r}
+fit_mcmc <- mdl$sample(
+  sampling = 1000,
+  warmup = 1000,
+  chains = 4
+)
+```
+
+係数の不確実性、事後予測、Bayes factor、bridge sampling を使う分析では、MCMC の結果を基準に考えるのが自然です。
+
+## MAP
+
+MAP 推定は、モデルをすばやく確認したい場合に便利です。
+
+```{r}
+fit_map <- mdl$optimize(laplace = TRUE)
+```
+
+random effects を含む mixed model では、`laplace = TRUE` によってランダム効果を Laplace 近似で周辺化できます。これは高速なモデル確認に向いています。
+
+## VB
+
+変分推論は、MCMC より軽く近似的な事後分布を見たい場合に使えます。
+
+```{r}
+fit_vb <- mdl$variational()
+```
+
+VB は便利ですが近似推論です。最終的な区間推定やモデル比較では、必要に応じて MCMC と照合してください。
+
+## classic
+
+`classic()` は、`prior_flat()` の wrapper モデルを頻度主義的に確認するための推定経路です。
+
+```{r}
+fit_cl <- mdl$classic()
+```
+
+informative prior を含むモデルでは `classic()` は使いません。ベイズ推定として事前分布を入れる場合は、`sample()`、`optimize()`、`variational()` を使います。
+
+# 6. prior の設計
+
+`rtmb_glmer()` の prior は、`prior` 引数で指定します。
+
+## prior_flat
+
+`prior_flat()` は、追加の prior density を置かない指定です。wrapper のデフォルトです。
+
+```{r}
+mdl <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  prior = prior_flat()
+)
+```
+
+`classic()` が対象にするのは、原則として wrapper 由来かつ `prior_flat()` のモデルです。
+
+## prior_normal
+
+初心者が手動で指定しやすい基本 prior は `prior_normal()` です。
+
+```{r}
+mdl <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  prior = prior_normal(
+    mu_sd = 10,
+    b_sd = 2,
+    sigma_rate = 1,
+    tau_rate = 1
+  )
+)
+```
+
+`prior_normal()` は、固定効果に正規 prior、標準偏差やランダム効果のスケールに指数 prior を置く、分かりやすい手動 prior です。まず事前分布の意味を理解したい場合は、`prior_normal()` から始めると見通しがよくなります。
+
+## prior_weak
+
+`prior_weak()` は、目的変数の範囲 `y_range` を使って、データの尺度に合った弱情報 prior を作ります。
+
+```{r}
+mdl <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  prior = prior_weak(),
+  y_range = c(1, 5)
+)
+```
+
+`prior_weak()` の考え方は、目的変数の取りうる範囲から「切片や平均がどの程度の大きさになりうるか」「説明変数の効果がどの程度なら大きすぎないか」を決めることです。
+
+連続量モデルでは、たとえば `y_range = c(1, 5)` と指定すると、範囲の半分や中心値を使って、切片・平均、回帰係数、残差標準偏差、ランダム効果のスケールに対する prior が自動的に構成されます。固定効果の prior scale は、説明変数の標準偏差も考慮して調整されます。
+
+2値・カウント・順序カテゴリモデルでは、応答の尺度に合わせて、線形予測子上で極端になりすぎない弱情報 prior が使われます。細かい値を手で決めるよりも、まず穏当な出発点を置きたい場合に便利です。
+
+また、`y_range` を指定し、`prior` が `prior_flat()` のままなら、内部で `prior_weak()` に切り替わります。
+
+```{r}
+mdl <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  y_range = c(1, 5)
+)
+```
+
+bridge sampling や Bayes factor のようなモデル比較では、事前分布の設計が結果に直接影響します。`prior_flat()` は頻度主義的な確認には便利ですが、ベイズ的なモデル比較の prior としては慎重に扱う必要があります。
+
+そのような場合、`prior_weak()` は「データの尺度に合った穏当な事前分布」を置くための出発点になります。万能な自動 prior ではありませんが、`y_range` によって目的変数の理論的な範囲を明示できるため、bridge sampling を使う分析では有用です。
+
+## prior_rhs と prior_ssp
+
+固定効果が多い場合は、正則化 prior を使えます。
+
+```{r}
+mdl_rhs <- rtmb_glmer(
+  y ~ . + (1 | group),
+  data = dat,
+  prior = prior_rhs(),
+  y_range = c(1, 5)
+)
+
+mdl_ssp <- rtmb_glmer(
+  y ~ . + (1 | group),
+  data = dat,
+  prior = prior_ssp(),
+  y_range = c(1, 5)
+)
+```
+
+`prior_rhs()` は regularized horseshoe、`prior_ssp()` は spike-and-slab prior です。どちらも係数が多いモデルで使います。正則化 prior を使うモデルでは、MCMC で事後分布を確認することを勧めます。
+
+## prior_jzs
+
+`prior_jzs()` は、JZS prior を使うための指定です。
+
+```{r}
+mdl_jzs <- rtmb_glmer(
+  y ~ x + (1 | group),
+  data = dat,
+  prior = prior_jzs()
+)
+```
+
+JZS prior は、効果量や回帰係数に Cauchy 型の広い prior を置く考え方で、Bayes factor の文脈でよく使われます。BayesRTMB では、特に `rtmb_ttest()` で JZS prior を使った Bayes factor を計算できます。
+
+`rtmb_glmer()` でも `prior_jzs()` は指定できますが、通常の GLMM で最初に選ぶ prior というより、JZS prior に基づくモデル比較を明示的に行いたい場合の選択肢です。一般的な階層モデルでは、まず `prior_normal()` か `prior_weak()` から始めるほうが解釈しやすくなります。
+
+# 7. 順序カテゴリモデル
+
+順序カテゴリデータには、`family = "ordered"` または `family = "sequential"` を使えます。
+
+```{r}
+mdl_ord <- rtmb_glmer(
+  rating ~ x + (1 | group),
+  data = dat,
+  family = "ordered",
+  prior = prior_normal()
+)
+```
+
+`ordered` は通常の ordered logistic model です。`cutpoints` は順序制約を持つパラメータとして推定されます。
+
+`sequential` は continuation-ratio / sequential logistic 型の順序モデルです。
+
+```{r}
+mdl_seq <- rtmb_glmer(
+  rating ~ x + (1 | group),
+  data = dat,
+  family = "sequential",
+  prior = prior_normal()
+)
+```
+
+`sequential` では、カテゴリ遷移ごとに異なる係数を持ちます。たとえばカテゴリが 1, 2, 3, 4 の場合、`1->2`, `2->3`, `3->4` という遷移ラベルで係数が表示されます。これは、通常の `ordered` の cutpoints とは意味が異なります。
+
+# 8. 異分散と残差相関
+
+連続量モデルでは、残差分散が条件によって異なるモデルを書けます。
+
+```{r}
+mdl_sigma <- rtmb_glmer(
+  y ~ cond + (1 | id),
+  data = dat,
+  family = "gaussian",
+  sigma_by = "cond",
+  prior = prior_normal()
+)
+```
+
+`sigma_by` は、`gaussian`、`lognormal`、`student_t` のような連続 family で使えます。
+
+反復測定データでは、残差相関構造も指定できます。
+
+```{r}
+mdl_ar1 <- rtmb_glmer(
+  y ~ time + cond,
+  data = dat,
+  family = "gaussian",
+  resid_corr = "ar1",
+  resid_time = "time",
+  resid_group = "id",
+  prior = prior_normal()
+)
+```
+
+`resid_corr` には `"ar1"`、`"cs"`、`"toep"`、`"un"` を指定できます。現在、残差相関構造は Gaussian model 向けの機能です。
+
+`resid_time` は、各相関ブロック内での時点やラグを表す変数です。一方、`resid_group` は、どの観測が同じ相関ブロックに属するかを表す変数です。たとえば反復測定データでは、`resid_group = "id"` によって個人ごとに残差相関行列を作り、その個人内で `resid_time = "time"` を使って AR(1) のラグを決めます。
+
+この例では、`id` 内の反復測定の相関を `resid_corr = "ar1"` で直接表現しているため、式には `(1 | id)` を入れていません。`(1 | id)` と `resid_corr` を同時に入れることもできますが、ランダム切片による個人差と残差相関による個人内相関を同時に推定することになり、データが少ない場合は冗長になったり識別が不安定になったりします。まずは、ランダム効果で表すモデルと、残差相関で表すモデルを分けて比較するのが分かりやすいです。
+
+# 9. 分散分析・lsmeans・古典的 mixed model として使う
+
+実験計画に近いデータで、分散分析表、推定周辺平均、ペア比較、平均のグラフを主に報告したい場合は、`rtmb_lmer()` から始めると分かりやすくなります。
+
+ここでは、パッケージに含まれる `training` データを使います。このデータは、社会的スキルについてのトレーニング効果を4時点で測定したワイド型データです。`a` はトレーニング条件で、`0` が統制群、`1` が介入群です。`b` はもともとのスキル判定を質的に分類した変数、`age` は年齢です。
+
+`rtmb_lmer()` は、`rtmb_glmer(..., family = "gaussian")` の便利な別名です。ワイド型の反復測定データは、左辺に `cbind()` を使い、`within = list(time = 4)` を指定すると、内部でロング型データとして扱われます。また、`factors =` で指定した変数は内部で factor 型として扱われます。
+
+```r
+data(training)
+
+mdl_aov <- rtmb_lmer(
+  cbind(time1, time2, time3, time4) ~ a * time + b + age + (1 | ID),
+  data = training,
+  within = list(time = 4),
+  factors = c("a", "b", "time"),
+  prior = prior_flat()
+)
+
+fit_aov <- mdl_aov$classic()
+```
+
+`prior_flat()` の wrapper モデルに対して `classic()` を呼ぶと、頻度主義的な mixed model として確認できます。分散分析表は `anova()` で表示できます。
+
+```r
+anova(fit_aov)
+```
+
+```text
+## ANOVA Table (Wald F-tests)
+##        num_df den_df F value   Pr(>F)
+## a           1      7  8.4229 0.022913
+## time        3     30  4.8719 0.007062
+## b           2      7  3.3997 0.092967
+## age         1      7  2.4916 0.158466
+## a:time      3     30  9.6016 0.000133
+```
+
+推定周辺平均は `lsmeans()` で計算できます。
+
+```r
+emm <- lsmeans(fit_aov, specs = "a")
+emm
+```
+
+```text
+##     estimate Std. Error df Lower 95% Upper 95%
+## a=0  4.06011    6.23673  7 -10.68740  18.80763
+## a=1  5.54280    6.23673  7  -9.20471  20.29031
+```
+
+交互作用がある場合は、条件ごとの平均や単純効果を見ることが重要です。
+
+```r
+emm_time <- lsmeans(fit_aov, specs = c("a", "time"))
+emm_time
+plot(emm_time)
+```
+
+```text
+##            estimate Std. Error df Lower 95% Upper 95%
+## a=0:time=1  4.36303    6.24966  7 -10.41508  19.14114
+## a=1:time=1  3.22864    6.24966  7 -11.54947  18.00674
+## a=0:time=2  4.19970    6.24966  7 -10.57841  18.97780
+## a=1:time=2  4.76030    6.24966  7 -10.01780  19.53841
+## a=0:time=3  3.68303    6.24966  7 -11.09508  18.46114
+## a=1:time=3  6.43364    6.24966  7  -8.34447  21.21174
+## a=0:time=4  3.99470    6.27546  7 -10.84441  18.83380
+## a=1:time=4  7.74864    6.27546  7  -7.09047  22.58774
+```
+
+モデル比較には `anova(fit1, fit2)`、`AIC()`、`BIC()` も使えます。
+
+```r
+fit0 <- rtmb_lmer(
+  cbind(time1, time2, time3, time4) ~ a + time + b + age + (1 | ID),
+  data = training,
+  within = list(time = 4),
+  factors = c("a", "b", "time"),
+  prior = prior_flat()
+)$classic()
+
+fit1 <- rtmb_lmer(
+  cbind(time1, time2, time3, time4) ~ a * time + b + age + (1 | ID),
+  data = training,
+  within = list(time = 4),
+  factors = c("a", "b", "time"),
+  prior = prior_flat()
+)$classic()
+
+anova(fit0, fit1)
+AIC(fit0, fit1)
+BIC(fit0, fit1)
+```
+
+```text
+## Likelihood Ratio Tests
+##  Model Df  logLik   AIC    BIC  Chisq Chi Df Pr(>Chisq)
+##   fit0 10 -88.298 196.6 215.31     NA     NA         NA
+##   fit1 13 -77.250 180.5 204.82 22.096      3 6.2287e-05
+##
+## AIC(fit0, fit1)
+## [1] 196.5955
+##
+## BIC(fit0, fit1)
+## [1] 215.3075
+```
+
+ここでの `classic()` は、ベイズ推定ではなく、BayesRTMB のモデル表現を頻度主義的な分析として使うための経路です。ベイズ的に不確実性を評価したい場合は、同じモデルを `sample()` で推定します。
+
+# 10. print_code() で内部モデルを見る
+
+`rtmb_glmer()` が作るモデルは、`print_code()` で確認できます。
+
+```{r}
+mdl$print_code()
+```
+
+現在の BayesRTMB では、生成される `model` ブロックはできるだけ sampling syntax を使う方針です。
+
+```{r}
+Y ~ normal(eta, sigma)
+r_re ~ normal(0, 1)
+```
+
+`setup` には、モデルを再現するために必要な前処理が表示されます。ラッパー関数の中でこっそりデータを加工するのではなく、ユーザーが `rtmb_code()` として読み直せる形にすることを重視しています。
+
+`rtmb_glmer()` が作る `RTMB_Model` には、wrapper metadata も保存されます。特に `extra$source`、`extra$prior_type`、`extra$marginal` は、`classic()` や `optimize(marginal = "auto")` の動作に関わります。
+
+# 11. 実践上の注意点
+
+- 最終的な不確実性を見たい場合は、まず MCMC を考えます。
+- `optimize(laplace = TRUE)` は、mixed model の高速な確認に向いています。
+- `variational()` は便利な近似推論ですが、必要に応じて MCMC と照合してください。
+- `classic()` は wrapper 由来かつ `prior_flat()` のモデルを頻度主義的に確認するための経路です。
+- bridge sampling や Bayes factor では prior の影響が大きいため、`prior_weak()` や明示的な `prior_normal()` など、目的に合った事前分布を設計してください。
+- `family = "sequential"` は、通常の ordered logistic とは異なり、カテゴリ遷移ごとに異なる係数を持ちます。
+- `sigma_by` と `resid_corr` は、連続量モデル、特に Gaussian 系のモデルで使う機能です。
+
+より低水準のモデルコードを書きたい場合は、[モデルコードの書き方](ja-writing_models.html) を参照してください。`rtmb_glmer()` が内部で何をしているかをさらに詳しく知りたい場合は、[BayesRTMB の内部構造](ja-rtmb_internals.html) も参考になります。

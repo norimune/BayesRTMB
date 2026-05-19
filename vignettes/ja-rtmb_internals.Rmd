@@ -1,0 +1,456 @@
+---
+title: "BayesRTMB の内部構造"
+description: "rtmb_code() が RTMB の自動微分オブジェクトに変換され、MCMC、MAP 推定、変分推論、古典的推定へ渡される流れを解説します。"
+output: rmarkdown::html_vignette
+vignette: >
+  %\VignetteIndexEntry{BayesRTMB の内部構造}
+  %\VignetteEngine{knitr::rmarkdown}
+  %\VignetteEncoding{UTF-8}
+---
+
+```{r, include = FALSE}
+knitr::opts_chunk$set(
+  collapse = TRUE,
+  comment = "#>",
+  eval = FALSE
+)
+```
+
+このページでは、BayesRTMB が内部でどのようにモデルを表現し、RTMB の自動微分オブジェクトへ変換し、推定結果を作っているかを説明します。
+
+通常の分析では、この内部構造を意識する必要はありません。`rtmb_lm()` や `rtmb_glmer()` などのラッパー関数、または `rtmb_code()` と `rtmb_model()` の基本的な使い方を知っていれば十分です。
+
+ただし、次のような場合には内部構造を知っておくと役に立ちます。
+
+- 自分で複雑な `rtmb_code()` を書きたい。
+- `print_code()` の出力を読んで、ラッパー関数が作ったモデルを理解したい。
+- `random = TRUE`、Laplace 近似、`marginal`、`fixed`、`map` を組み合わせたい。
+- `sample()`、`optimize()`、`variational()`、`classic()` の違いを整理したい。
+- 標準誤差や信頼区間がどのように計算されているかを知りたい。
+
+# 1. 全体の流れ
+
+BayesRTMB の内部処理は、おおまかに次の流れで進みます。
+
+```text
+rtmb_code()
+  -> rtmb_model()
+    -> RTMB_Model
+      -> build_ad_obj()
+        -> RTMB::MakeADFun()
+          -> sample() / optimize() / variational() / classic()
+            -> MCMC_Fit / MAP_Fit / VB_Fit / Classic_Fit
+```
+
+ユーザーが書くのは、主に `rtmb_code()` と `rtmb_model()` までです。
+
+`rtmb_model()` は、モデルコードとデータを検査し、`RTMB_Model` という R6 オブジェクトを作ります。この `RTMB_Model` が、モデル定義、データ、パラメータ定義、変換ブロック、生成量ブロック、ラッパー関数由来のメタデータを保持します。
+
+その後、推定メソッドに応じて `RTMB::MakeADFun()` のための自動微分オブジェクトが作られます。得られた結果は、推定方法ごとに次の fit object として返されます。
+
+BayesRTMB は、機能的には MCMC、MAP、VB、classic の順に重心を置いています。MCMC は事後分布を直接扱う中心的な推定法、MAP は高速な点推定と近似的な確認、VB は大きなモデルの近似推論、classic は wrapper 由来モデルを頻度主義的に確認するための補助的な入口です。
+
+| メソッド | 主な用途 | 返り値 |
+|---|---|---|
+| `sample()` | NUTS による MCMC | `MCMC_Fit` |
+| `optimize()` | MAP / ML / marginal MAP | `MAP_Fit` |
+| `variational()` | ADVI による近似事後分布 | `VB_Fit` |
+| `classic()` | 頻度主義的推定 | `Classic_Fit` |
+
+# 2. rtmb_code の各ブロック
+
+`rtmb_code()` は、モデルをいくつかのブロックに分けて書くための関数です。
+
+```{r}
+code <- rtmb_code(
+  data = {
+    # 入力データの宣言
+  },
+  setup = {
+    # データ前処理
+  },
+  parameters = {
+    # 推定パラメータの宣言
+  },
+  transform = {
+    # パラメータやデータから作る派生量
+  },
+  model = {
+    # 尤度と事前分布
+  },
+  generate = {
+    # 推定後に計算したい生成量
+  }
+)
+```
+
+すべてのブロックが必須ではありません。最小限必要なのは `parameters` と `model` です。
+
+## data
+
+`data` ブロックは、モデルで使うデータ名を宣言するためのブロックです。`rtmb_model()` は、ここに書かれた変数が実際に `data` list に含まれているかを確認します。
+
+## setup
+
+`setup` ブロックは、データ前処理のためのブロックです。
+
+`rtmb_model()` は、まず `data` list を環境に展開し、その環境内で `setup` を評価します。そこで作られた変数や更新された変数は、再び `data` list に戻されます。
+
+たとえば、ラッパー関数が作るコードでは、ユーザーが `print_code()` を見て同じモデルを再現できるように、必要な前処理を `setup` に明示する方針をとっています。
+
+## parameters
+
+`parameters` ブロックでは、推定するパラメータを `Dim()` で宣言します。
+
+```{r}
+parameters = {
+  alpha <- Dim()
+  beta  <- Dim(P)
+  sigma <- Dim(lower = 0)
+  r     <- Dim(G, random = TRUE)
+}
+```
+
+`Dim()` は、次元、制約、初期値、ランダム効果かどうかといった情報を持つパラメータ定義を作ります。
+
+`rtmb_model()` はこのブロックを評価し、内部で `par_list` を作ります。`par_list` は、制約変換、初期値生成、flat vector との対応、`MakeADFun()` への受け渡しに使われる重要な情報です。
+
+## transform
+
+`transform` ブロックは、パラメータやデータから派生量を作る場所です。
+
+```{r}
+transform = {
+  mu <- alpha + X %*% beta
+}
+```
+
+`transform` で作った量は、`model` ブロックの中で使えます。また、推定後の summary に含めることもできます。MAP 推定や古典的推定では、必要に応じてデルタ法やシミュレーションにより標準誤差や区間推定が計算されます。
+
+ただし、`transform` で作った量は primary parameter ではありません。たとえば `optimize(marginal = ...)` で Laplace 周辺化の対象にできるのは、`parameters` ブロックで宣言されたパラメータだけです。
+
+## model
+
+`model` ブロックは、尤度と事前分布を書く場所です。
+
+```{r}
+model = {
+  beta ~ normal(0, 10)
+  sigma ~ exponential(1)
+  Y ~ normal(mu, sigma)
+}
+```
+
+BayesRTMB では、Stan に近い `~` の sampling syntax を推奨しています。内部では `model_code()` がこの表記を、対数確率 `lp` への加算に変換します。
+
+概念的には、次の2つは同じモデルを表します。
+
+```{r}
+Y ~ normal(mu, sigma)
+```
+
+```{r}
+lp <- lp + normal_lpdf(Y, mu, sigma)
+```
+
+ただし、現在の BayesRTMB では、`model_code()` が実行用の `log_prob` 関数を作るときに `lp <- 0` を内部で用意します。そのため、通常の `rtmb_code(model = { ... })` には `lp <- 0` を書きません。
+
+`lp` は内部で使う予約語です。`parameters` ブロックで `lp <- Dim()` のように宣言したり、一般の作業用変数として使ったりしないでください。
+
+## generate
+
+`generate` ブロックは、推定後に計算したい量を書く場所です。
+
+```{r}
+generate = {
+  y_rep <- rnorm(length(Y), mu, sigma)
+}
+```
+
+`generate` は、尤度評価や最適化の目的関数には入りません。事後予測、予測値、シミュレーション、因子得点、回転後の因子負荷量など、推定後に見たい量を置くためのブロックです。
+
+モデル定義時に書かなかった生成量も、推定後に `generated_quantities()` で追加できます。
+
+# 3. パラメータ表現
+
+ユーザーは、通常、パラメータを自然な尺度で考えます。
+
+- 標準偏差 `sigma` は正の値。
+- 確率 `theta` は 0 から 1 の範囲。
+- ordered cutpoints は昇順。
+- simplex は合計が 1。
+
+一方で、勾配ベースの最適化や HMC は、制約のない実数空間で動かすほうが扱いやすくなります。
+
+そのため BayesRTMB は、内部で次の2つの表現を使い分けます。
+
+| 表現 | 意味 |
+|---|---|
+| constrained scale | ユーザーが考える自然な尺度 |
+| unconstrained scale | 最適化やサンプリングに使う制約なし尺度 |
+
+たとえば、`sigma <- Dim(lower = 0)` と宣言した場合、ユーザー向けには正の `sigma` として表示されますが、内部では実数全体を動く値に変換されます。
+
+この変換は、主に次の helper によって扱われます。
+
+- `to_unconstrained()`
+- `to_constrained()`
+- `constrained_vector_to_list()`
+- `unconstrained_vector_to_list()`
+- `generate_flat_names()`
+
+この層は、`fixed`、`map`、ランダム効果、Laplace 近似、summary 表示の整合性に深く関わります。
+
+# 4. ヤコビアン補正
+
+制約付きのパラメータを非制約空間へ変換すると、確率密度の尺度も変わります。そのため、事後分布を正しく扱うにはヤコビアン補正が必要になります。
+
+概念的には、自然尺度のパラメータを `y`、非制約尺度のパラメータを `x` とすると、次の関係を考えます。
+
+$$
+\log p_X(x) = \log p_Y(y) + \log \left| \frac{dy}{dx} \right|
+$$
+
+BayesRTMB では、ユーザーは自然尺度でモデルを書きます。内部では `to_unconstrained()`、`to_constrained()`、`calc_log_jacobian()` を使い、推定方法に応じて必要なヤコビアン補正を目的関数に反映します。
+
+補正の対象は `jacobian_target` によって制御されます。
+
+| `jacobian_target` | 意味 |
+|---|---|
+| `"all"` | すべての変換パラメータに補正を入れる |
+| `"random"` | Laplace で積分する random 側に補正を入れる |
+| `"none"` | 補正を入れない |
+
+用途としては、MCMC では非制約空間で事後分布全体をサンプリングするため、基本的に `jacobian_target = "all"` を使います。
+
+一方、`optimize()` で Laplace 近似を使う場合は、Laplace で積分する random 側の密度変換が必要になるため、基本的に `jacobian_target = "random"` を使います。Laplace 近似を使わない通常の最適化では、内部目的関数上では `jacobian_target = "none"` が使われます。
+
+通常のユーザーがこの設定を直接操作する必要はほとんどありません。ただし、profile likelihood や Laplace 近似を含む内部処理では、この区別が重要になります。
+
+# 5. RTMB の自動微分オブジェクト
+
+RTMB は、TMB の自動微分エンジンを R から使うためのパッケージです。
+
+BayesRTMB では、`RTMB_Model$build_ad_obj()` が `RTMB::MakeADFun()` を呼び出し、関数値、勾配、ヘッセ行列などを評価できるオブジェクトを作ります。
+
+このとき、モデル関数は通常の数値ではなく AD 型の値を使って評価されます。四則演算、`log()`、`exp()`、行列演算、分布関数などの計算過程が、自動微分のための計算グラフとして記録されます。
+
+Stan のようにモデルコードを C++ に書き換えて明示的にコンパイルするのではなく、R で書いたモデル関数を AD 型で評価し、`MakeADFun()` object として高速に関数値や導関数を評価できるようにする、というイメージです。
+
+`rtmb_model()` はモデル作成時に pre-check を行います。
+
+- `setup` や `parameters` に未定義変数がないか。
+- `model` や `transform` が初期値で実行できるか。
+- `log_prob` がスカラーの数値を返すか。
+- `MakeADFun()` で勾配が計算できるか。
+
+この段階で構造的なエラーを早めに検出することで、RTMB/TMB 側の分かりにくいエラーをなるべく避ける設計になっています。
+
+# 6. 推定メソッドごとの違い
+
+## sample
+
+`sample()` は、NUTS による MCMC サンプリングを行います。
+
+```{r}
+fit <- mdl$sample()
+```
+
+BayesRTMB では、MCMC が事後分布を直接調べるための中心的な推定法です。点推定だけでなく、事後平均、事後中央値、信用区間、収束診断、事後予測、bridge sampling による周辺尤度推定などを扱えます。
+
+MCMC では、非制約尺度でサンプリングを行い、結果を自然尺度に戻して表示します。`generate` ブロックがあれば、サンプルごとの生成量も計算できます。
+
+## optimize
+
+`optimize()` は、MAP 推定、最尤推定、marginal MAP を担当する高速な推定 API です。
+
+```{r}
+fit <- mdl$optimize()
+```
+
+事前分布を含むモデルでは MAP 推定になります。追加 prior がない flat-prior 型のモデルでは、最尤推定と同じものとして解釈できます。
+
+`optimize()` は、MCMC の前にモデルの挙動を素早く確認したい場合や、階層モデルで Laplace 近似を使って点推定を得たい場合に便利です。ただし、信頼区間やlog_mlは無制約パラメータ空間において多変量正規分布への近似が成り立つときに正確になります。返り値は `MAP_Fit` です。
+
+
+主なオプションには、次のものがあります。
+
+- `laplace`
+- `marginal`
+- `se_method`
+- `df_method`
+- `map`
+- `fixed`
+
+## variational
+
+`variational()` は、ADVI による近似事後分布を計算します。
+
+```{r}
+fit <- mdl$variational()
+```
+
+大きなモデルや、MCMC の前におおまかな事後分布を確認したい場合に便利です。平均場近似、full-rank 近似、hybrid 型の近似を使い分ける設計になっています。
+
+VB は MCMC より速く動くことがありますが、近似推論です。デフォルトの`meanfield`では制約なしパラメータ空間において独立な多変量正規分布を仮定した推定になるので、信頼区間は小さめに推定されます。`fullrank`を使えば独立でない多変量正規分布を仮定しますが、計算速度が遅くなります。どちらにせよ、最終的な不確実性評価では、可能であれば MCMC の結果と照合するのが安全です。
+
+## classic
+
+`classic()` は、BayesRTMB のラッパー関数を頻度主義的分析として使うための API です。
+
+```{r}
+fit <- mdl$classic()
+```
+
+`classic()` は、原則として次の条件を満たすモデルだけを対象にします。
+
+- wrapper 由来のモデルである。
+- `prior_flat()` のモデルである。
+
+これは、informative prior を含むモデルに対して、あたかも通常の頻度主義的推定であるかのように表示しないための設計です。
+
+`classic()` は `Classic_Fit` を返します。`Classic_Fit` では、モデルに応じて自由度、p 値、AIC、BIC、ANOVA、尤度比検定、相関検定、分割表検定など、頻度主義的な後処理を扱います。
+
+このパッケージの機能的な優先度としては、`classic()` は MCMC、MAP、VB の後に位置づけられます。標準的な検定や頻度主義的な分析とベイズ推定の比較のための補助的な推定経路です。
+
+# 7. optimize と classic の推定結果の違い
+
+BayesRTMB の設計では、`optimize()` と `classic()` の責務を明確に分けています。
+
+`optimize()` は、MAP / ML / marginal MAP のための API です。informative prior を含むモデルも扱います。
+
+`classic()` は、wrapper 由来かつ flat-prior のモデルだけを対象にする頻度主義的 API です。内部的には固定効果をLaplace近似で周辺化した制約付き最尤法（REML）を行うことで、モーメント法と一致する推定量を得ています。
+
+低水準では、どちらも RTMB による最適化エンジンを共有します。内部の `.fit_rtmb()` は、`MakeADFun()` object を作り、最適化を行い、`sdreport()` や共分散などの raw components を返します。
+
+ただし、`.fit_rtmb()` 自体は fit object を作りません。
+
+| 層 | 役割 |
+|---|---|
+| `.fit_rtmb()` | RTMB 最適化の raw components を返す |
+| `.inference_pipeline()` | `optimize()` 用に `MAP_Fit` を作る |
+| `.classic_pipeline()` | `classic()` 用に `Classic_Fit` を作る |
+
+この分離により、同じ最適化エンジンを共有しながら、MAP 推定と頻度主義的分析の表示、自由度、prior correction、後処理を分けています。
+
+# 8. Laplace 近似と random
+
+階層モデルや潜在変数モデルでは、すべてのパラメータを同時に固定効果のように扱うよりも、一部を積分消去したいことがあります。
+
+BayesRTMB では、`Dim(..., random = TRUE)` と宣言したパラメータは、Laplace 近似の対象になりえます。
+
+```{r}
+parameters = {
+  alpha <- Dim()
+  tau   <- Dim(lower = 0)
+  r     <- Dim(G, random = TRUE)
+}
+```
+
+`optimize(laplace = TRUE)` では、`random = TRUE` のパラメータを `RTMB::MakeADFun(random = ...)` に渡し、Laplace 近似で周辺化します。`optimize`では`laplace = TRUE`がデフォルトです。
+
+また、`optimize(marginal = ...)` を使うと、`parameters` ブロックで宣言された primary parameter を一時的に random として扱い、marginal MAP / empirical Bayes 型の推定を行えます。flat priorにおいて固定効果を`marginal`に指定すれば、制約付き最尤法(REML)と一致します。
+
+```{r}
+fit <- mdl$optimize(marginal = c("mean", "delta"))
+```
+
+ここで重要なのが、`marginal_vars` と `laplace_random_vars` の区別です。
+
+| 名前 | 意味 |
+|---|---|
+| `marginal_vars` | `optimize(marginal = ...)` でユーザーまたは wrapper が指定した primary parameter 名 |
+| `laplace_random_vars` | 実際に `MakeADFun(random = ...)` に渡されたすべての変数名 |
+
+mixed model では、もともとの random effects と、`marginal` で指定された primary parameter の両方が Laplace 対象になることがあります(REML)
+。そのため、`laplace_random_vars` は `marginal_vars` より広い集合になることがあります。
+
+`marginal = "auto"` は、wrapper が `extra$marginal` に保存した primary parameter 名を使います。ここに入れられるのは、`parameters` ブロックで宣言されたパラメータだけです。`transform` や `generate` で作られた派生量は指定できません。`optimize`でREML推定をしたいときはラッパー関数を使って`marginal = "auto"`とすれば簡単に実行できます。また、そのときは自動的に自由度推定が`df_method = "satterthwaite"`となり、t分布で信頼区間を計算します。`df_method = Inf`とすれば正規分布を仮定します。
+
+# 9. 標準誤差と区間推定
+
+`optimize()` と `classic()` では、点推定だけでなく標準誤差や区間推定も扱います。
+
+`optimize()` の `se_method` には、主に次の選択肢があります。
+
+| `se_method` | 意味 |
+|---|---|
+| `"wald"` | `sdreport()` やデルタ法にもとづく Wald 型の標準誤差 |
+| `"sampling"` | 近似多変量正規サンプルによる誤差伝播 |
+| `"none"` | 標準誤差と区間推定を計算しない |
+
+`se_method = "none"` は軽量モードです。標準誤差を 0 とみなすのではなく、標準誤差や信頼区間を計算しない、という意味です。
+
+`transform` で作られた派生量は、Wald 型ではデルタ法、`se_method = "sampling"` ではシミュレーションにもとづいて不確実性を伝播します。
+
+`generate` は基本的に推定後の生成量です。生成量の標準誤差や区間を必要とする場合は、MCMC サンプルや `generated_quantities()` の結果を使って確認するのが自然です。
+
+`sdreport()` が信頼できる標準誤差を返せない場合、BayesRTMB は診断メッセージを出します。たとえば、`pdHess = FALSE`、`cov.fixed` が返らない、標準誤差が非有限、Hessian fallback、`MASS::ginv()` fallback などが該当します。
+
+# 10. AD 型のコードを書くときの注意点
+
+RTMB では、モデルコードは通常の R のように見えますが、内部では自動微分の計算グラフとして記録されます。そのため、普通の R では問題なくても、AD 型の計算では避けたほうがよい書き方があります。
+
+## パラメータに依存する if 文
+
+パラメータの値によって計算経路が変わる `if` 文は避けてください。
+
+```{r}
+# 避けたい例
+if (sigma > 1) {
+  lp <- lp + normal_lpdf(y, 0, sigma)
+} else {
+  lp <- lp + normal_lpdf(y, 0, 1)
+}
+```
+
+このような分岐は、計算グラフの記録と相性がよくありません。滑らかな関数、制約つきパラメータ化、または RTMB が提供する AD 対応の条件分岐を検討します。
+
+## apply 系の関数
+
+`apply()`、`lapply()`、`sapply()`、`ifelse()` などは、AD 型のモデルコードでは期待通りに動かないことがあります。BayesRTMB は一部を事前に検出してエラーにします。
+
+必要な場合は、明示的な `for` ループやベクトル化された演算に書き換えるほうが安全です。
+
+## setup と transform を使い分ける
+
+データだけから決まる前処理は `setup` に置きます。こちらはAD型の計算を気にする必要はありません。自由なRの処理が可能です。
+
+パラメータから決まる派生量は `transform` に置きます。こちらはAD型計算が行われます。
+
+尤度や事前分布は `model` に置きます。
+
+生成量は`generate`に置きます。こちらのブロックではAD型計算がされないので、自由にRコードで計算ができます。複雑な計算やAD計算でエラーが出る場合はこちらで計算しておくほうがいいかも知れません。
+
+この分担を守ると、`print_code()` で見たときにモデルの意味が読みやすくなり、内部の pre-check や自動微分も安定しやすくなります。
+
+# 11. Stan、TMB、RTMB との関係
+
+BayesRTMB は、RTMB をバックエンドとして使います。RTMB は、TMB の自動微分エンジンを R から使えるようにしたパッケージです。
+
+Stan と似ている点は、ユーザーが確率モデルを書き、制約変換や勾配ベースの推定を使えることです。
+
+一方で、BayesRTMB では R の構文でモデルを書き、`rtmb_code()` のブロックを通じて RTMB の目的関数を作ります。ラッパー関数が生成したモデルも `print_code()` で確認できるため、標準的な分析から独自モデルへ進みやすい設計になっています。また、テープの記録ではC++へコンパイルをする必要がないので、スピーディーに分析が可能です。
+
+| 観点 | BayesRTMB | Stan |
+|---|---|---|
+| モデル記述 | R の `rtmb_code()` | Stan 専用言語 |
+| 自動微分 | RTMB / TMB | Stan Math |
+| 制約変換 | `Dim()` と内部変換 | Stan の parameter 制約 |
+| 推定 | MAP / classic / NUTS / ADVI | MAP / NUTS / ADVI など |
+| ラッパー関数 | `rtmb_lm()`、`rtmb_glmer()` など | 基本的には手書き |
+| 生成コード確認 | `print_code()` | Stan コードそのもの |
+
+# 12. まとめ
+
+BayesRTMB の内部構造は、次のように整理できます。
+
+- `rtmb_code()` は、モデルをブロック構造として記述する入口です。
+- `rtmb_model()` は、データとコードを検査し、`RTMB_Model` を作ります。
+- `RTMB_Model` は、モデル、パラメータ、変換、生成量、wrapper metadata を保持します。
+- `build_ad_obj()` は、`RTMB::MakeADFun()` のための自動微分オブジェクトを作ります。
+- `sample()`、`optimize()`、`variational()`、`classic()` は、同じモデル表現から異なる推定を実行します。
+- `optimize()` と `classic()` は低水準エンジンを共有しますが、責務と返り値は明確に分かれています。
+- Laplace 近似では、`random = TRUE` と `marginal` の扱い、特に `marginal_vars` と `laplace_random_vars` の区別が重要です。
+
+より実践的なモデルの書き方は、[モデルコードの書き方](ja-writing_models.html) を参照してください。ラッパー関数がどのような `rtmb_code()` を作るかは、[ラッパー関数の使い方](ja-wrapper_functions.html) と `print_code()` が参考になります。階層モデルや GLMM の具体的な使い方は、[階層モデル・GLMM](ja-rtmb_glmer.html) で確認できます。
