@@ -33,6 +33,8 @@
   x <- x[is.finite(x)]
   if (length(x) == 0L) return(NA_real_)
   if (length(unique(x)) == 1L) return(x[1L])
+  # Avoid density estimation warning when values are nearly constant
+  if (diff(range(x)) < 1e-7) return(mean(x))
   d <- density(x)
   d$x[which.max(d$y)]
 }
@@ -332,6 +334,8 @@ RTMB_Fit_Base <- R6::R6Class(
         x <- x[is.finite(x)]
         if (length(x) == 0L) return(NA_real_)
         if (length(unique(x)) == 1L) return(x[1L])
+        # Avoid density estimation warning when values are nearly constant
+        if (diff(range(x)) < 1e-7) return(mean(x))
         d <- density(x)
         d$x[which.max(d$y)]
       }
