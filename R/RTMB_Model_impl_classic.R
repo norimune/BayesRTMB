@@ -117,6 +117,7 @@
   }
 
   settings <- private$.resolve_classic_settings(df_method)
+  has_random_parameters <- any(vapply(self$par_list, function(p) isTRUE(p$random), logical(1)))
 
   # For classic mode, we use .fit_rtmb with apply_prior_correction = FALSE.
   # Constraint targets (fixed parameters for REML) are handled via target_vars.
@@ -137,12 +138,34 @@
     apply_prior_correction = FALSE
   )
 
+  info_log_lik <- NULL
+  restricted_log_lik <- NULL
+  if (isTRUE(settings$use_reml)) {
+    restricted_log_lik <- -raw$opt$objective
+    raw_ic <- model_to_fit$.__enclos_env__$private$.fit_rtmb(
+      laplace = has_random_parameters,
+      init = raw$par,
+      num_estimate = 1,
+      control = list(),
+      optimizer = "nlminb",
+      method = "BFGS",
+      map = map,
+      se = FALSE,
+      reml = FALSE,
+      target_vars = character(0),
+      jacobian_target = NULL,
+      apply_prior_correction = FALSE
+    )
+    info_log_lik <- -raw_ic$opt$objective
+  }
+
   comp <- private$.build_classic_components(
     raw = raw,
     settings = settings,
     se_method = se_method,
     num_samples = num_samples,
-    seed = seed
+    seed = seed,
+    info_log_lik = info_log_lik
   )
 
   fit <- Classic_Fit$new(
@@ -151,6 +174,7 @@
     par = raw$par,
     objective = raw$opt$objective,
     log_lik = comp$log_lik,
+    restricted_log_lik = restricted_log_lik,
     convergence = raw$opt$convergence,
     sd_rep = raw$sd_rep,
     df_fixed = comp$df_fixed,
@@ -394,7 +418,7 @@
   fit
 }
 
-.build_classic_components <- function(self, private, raw, settings, se_method, num_samples, seed) {
+.build_classic_components <- function(self, private, raw, settings, se_method, num_samples, seed, info_log_lik = NULL) {
   # Extract components from raw
   ad_obj         <- raw$ad_obj
   opt            <- raw$opt
@@ -935,7 +959,7 @@
   df_generate <- apply_df_map_to_summary(df_generate)
 
   # 5. Log-likelihood and Vcov
-  log_lik <- -opt$objective
+  log_lik <- if (!is.null(info_log_lik)) info_log_lik else -opt$objective
 
 
   # Build V_fixed_full (vcov)

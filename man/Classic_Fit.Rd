@@ -38,6 +38,8 @@ An R6 class representing the results of a classical (frequentist) estimation.
 
 \item{\code{log_lik}}{Log-likelihood.}
 
+\item{\code{restricted_log_lik}}{Restricted log-likelihood, if classical estimation used REML-style marginalization.}
+
 \item{\code{convergence}}{Convergence code.}
 
 \item{\code{sd_rep}}{TMB sdreport object.}
@@ -145,6 +147,7 @@ Create a new `Classic_Fit` object.
   par = NULL,
   objective = NULL,
   log_lik = NULL,
+  restricted_log_lik = NULL,
   convergence = NULL,
   sd_rep = NULL,
   df_fixed = NULL,
@@ -182,7 +185,9 @@ Create a new `Classic_Fit` object.
 
 \item{\code{objective}}{Final objective value.}
 
-\item{\code{log_lik}}{Log-likelihood.}
+\item{\code{log_lik}}{Full log-likelihood used for information criteria.}
+
+\item{\code{restricted_log_lik}}{Restricted log-likelihood, if classical estimation used REML-style marginalization.}
 
 \item{\code{convergence}}{Convergence code.}
 

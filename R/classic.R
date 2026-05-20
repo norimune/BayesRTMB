@@ -16,6 +16,7 @@
 #' @field par_vec Numeric vector of parameter estimates.
 #' @field objective Final objective value.
 #' @field log_lik Log-likelihood.
+#' @field restricted_log_lik Restricted log-likelihood, if classical estimation used REML-style marginalization.
 #' @field convergence Convergence code.
 #' @field sd_rep TMB sdreport object.
 #' @field df_fixed Dataframe of fixed effects results.
@@ -58,6 +59,7 @@ Classic_Fit <- R6::R6Class(
     },
     objective = NULL,
     log_lik = NULL,
+    restricted_log_lik = NULL,
     convergence = NULL,
     sd_rep = NULL,
     df_fixed = NULL,
@@ -88,7 +90,8 @@ Classic_Fit <- R6::R6Class(
     #' @param par_vec Numeric vector of parameter estimates.
     #' @param par List of parameter estimates.
     #' @param objective Final objective value.
-    #' @param log_lik Log-likelihood.
+    #' @param log_lik Full log-likelihood used for information criteria.
+    #' @param restricted_log_lik Restricted log-likelihood, if classical estimation used REML-style marginalization.
     #' @param convergence Convergence code.
     #' @param sd_rep TMB sdreport object.
     #' @param df_fixed Dataframe of fixed effects results.
@@ -113,6 +116,7 @@ Classic_Fit <- R6::R6Class(
     #' @param show_df Logical; whether to display degrees of freedom in the summary output.
     #' @param ... Additional arguments passed to the constructor.
     initialize = function(model, par_vec = NULL, par = NULL, objective = NULL, log_lik = NULL,
+                          restricted_log_lik = NULL,
                           convergence = NULL, sd_rep = NULL, df_fixed = NULL, random_effects = NULL,
                           df_transform = NULL, df_generate = NULL, opt_history = NULL,
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
@@ -130,6 +134,7 @@ Classic_Fit <- R6::R6Class(
         log_lik <- dots$log_ml
       }
       self$log_lik <- log_lik
+      self$restricted_log_lik <- restricted_log_lik
       
       self$convergence <- convergence
       self$sd_rep <- sd_rep
