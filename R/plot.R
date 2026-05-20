@@ -629,3 +629,76 @@ plot_pairs <- function(x, pars = NULL) {
         gap = 0.2,
         main = "Pairs Plot")
 }
+
+#' Plot least-squares marginal means
+#'
+#' Calculate and plot marginal means for a fitted model.
+#'
+#' @param fit A fitted model object (e.g. `Classic_Fit`).
+#' @param specs Character vector specifying the variables for which marginal means are calculated.
+#' @param ... Additional arguments passed to \code{\link{lsmeans}} or the plot method.
+#'
+#' @return Invisibly returns the plotted object.
+#' @export
+plot_lsmeans <- function(fit, specs, ...) {
+  res <- lsmeans(fit, specs, ...)
+  plot(res, ...)
+}
+
+#' Plot conditional effects
+#'
+#' Calculate and plot conditional effects for a fitted model.
+#'
+#' @param fit A fitted model object (e.g., `MCMC_Fit`, `MAP_Fit`, `VB_Fit`).
+#' @param effect Name of the variable to visualize (e.g., "X1" or "X1:X2").
+#' @param ... Additional arguments passed to \code{\link{conditional_effects}} or the plot method.
+#'
+#' @return Invisibly returns the plotted object of class \code{ce_rtmb}.
+#' @export
+plot_conditional_effects <- function(fit, effect, ...) {
+  res <- conditional_effects(fit, effect, ...)
+  plot(res, ...)
+}
+
+#' Plot item/category response curves
+#'
+#' Calculate and plot item/category response curves for a fitted IRT model.
+#'
+#' @param fit A fitted IRT model object.
+#' @param ... Additional arguments passed to \code{\link{item_curve}} or the plot method.
+#'
+#' @return Invisibly returns the plotted object of class \code{rtmb_item_curve}.
+#' @export
+plot_item_curve <- function(fit, ...) {
+  res <- item_curve(fit, ...)
+  plot(res, ...)
+}
+
+#' Plot item information functions
+#'
+#' Calculate and plot item information functions for a fitted IRT model.
+#'
+#' @param fit A fitted IRT model object.
+#' @param ... Additional arguments passed to \code{\link{item_info}} or the plot method.
+#'
+#' @return Invisibly returns the plotted object of class \code{rtmb_item_info}.
+#' @export
+plot_item_info <- function(fit, ...) {
+  res <- item_info(fit, ...)
+  plot(res, ...)
+}
+
+#' Plot test information function
+#'
+#' Calculate and plot test information function for a fitted IRT model.
+#'
+#' @param fit A fitted IRT model object.
+#' @param ... Additional arguments passed to \code{\link{test_info}} or the plot method.
+#'
+#' @return Invisibly returns the plotted object of class \code{rtmb_test_info}.
+#' @export
+plot_test_info <- function(fit, ...) {
+  res <- test_info(fit, ...)
+  plot(res, ...)
+}
+
