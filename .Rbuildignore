@@ -19,3 +19,4 @@
 ^\.agent_shared$
 ^vignettes_archive$
 ^scratch$
+^rlang$
