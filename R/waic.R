@@ -87,3 +87,75 @@ print.waic_BayesRTMB <- function(x, digits = max(3L, getOption("digits") - 2L), 
   if (length(exprs) == 0L) return(NULL)
   as.call(c(list(as.name("{")), exprs))
 }
+
+.rtmb_assignment_names <- function(exprs) {
+  find_assignments <- function(x) {
+    if (!is.call(x)) return(character())
+    if ((identical(x[[1L]], as.name("<-")) || identical(x[[1L]], as.name("="))) &&
+        is.name(x[[2L]])) {
+      return(as.character(x[[2L]]))
+    }
+    unique(unlist(lapply(as.list(x)[-1L], find_assignments), use.names = FALSE))
+  }
+  unique(unlist(lapply(exprs, find_assignments), use.names = FALSE))
+}
+
+.rtmb_list_call_add_log_lik <- function(ret_call, log_lik_name = "log_lik") {
+  if (is.call(ret_call) && identical(ret_call[[1L]], as.name("list"))) {
+    args <- as.list(ret_call)[-1L]
+    arg_names <- names(args)
+    if (is.null(arg_names)) arg_names <- rep("", length(args))
+    if (!log_lik_name %in% arg_names) {
+      args[[length(args) + 1L]] <- as.name(log_lik_name)
+      arg_names <- c(arg_names, log_lik_name)
+      names(args) <- arg_names
+    }
+    return(as.call(c(list(as.name("list")), args)))
+  }
+  NULL
+}
+
+.rtmb_waic_generate_ast <- function(existing = NULL, waic = NULL, log_lik_name = "log_lik") {
+  waic_exprs <- .rtmb_block_exprs(waic)
+  existing_exprs <- .rtmb_block_exprs(existing)
+  if (length(waic_exprs) == 0L) return(existing)
+
+  if (length(existing_exprs) == 0L) {
+    ret_call <- as.call(c(list(as.name("list")), stats::setNames(list(as.name(log_lik_name)), log_lik_name)))
+    return(as.call(c(list(as.name("{")), waic_exprs, list(as.call(list(as.name("return"), ret_call))))))
+  }
+
+  last_idx <- length(existing_exprs)
+  last_expr <- existing_exprs[[last_idx]]
+  if (is.call(last_expr) && identical(last_expr[[1L]], as.name("return"))) {
+    ret_expr <- last_expr[[2L]]
+    ret_call <- .rtmb_list_call_add_log_lik(ret_expr, log_lik_name)
+    if (!is.null(ret_call)) {
+      existing_exprs[[last_idx]] <- as.call(list(as.name("return"), ret_call))
+      return(as.call(c(list(as.name("{")), existing_exprs[-last_idx], waic_exprs, existing_exprs[last_idx])))
+    }
+    if (is.name(ret_expr)) {
+      add_expr <- as.call(list(as.name("<-"), as.call(list(as.name("$"), ret_expr, as.name(log_lik_name))), as.name(log_lik_name)))
+      return(as.call(c(list(as.name("{")), existing_exprs[-last_idx], waic_exprs, list(add_expr), existing_exprs[last_idx])))
+    }
+  }
+
+  if (is.call(last_expr) && identical(last_expr[[1L]], as.name("list"))) {
+    ret_call <- .rtmb_list_call_add_log_lik(last_expr, log_lik_name)
+    existing_exprs[[last_idx]] <- as.call(list(as.name("return"), ret_call))
+    return(as.call(c(list(as.name("{")), existing_exprs[-last_idx], waic_exprs, existing_exprs[last_idx])))
+  }
+
+  if (is.name(last_expr)) {
+    add_expr <- as.call(list(as.name("<-"), as.call(list(as.name("$"), last_expr, as.name(log_lik_name))), as.name(log_lik_name)))
+    return(as.call(c(list(as.name("{")), existing_exprs[-last_idx], waic_exprs, list(add_expr), list(as.call(list(as.name("return"), last_expr))))))
+  }
+
+  returned_names <- .rtmb_assignment_names(existing_exprs)
+  ret_args <- lapply(returned_names, as.name)
+  names(ret_args) <- returned_names
+  ret_args[[length(ret_args) + 1L]] <- as.name(log_lik_name)
+  names(ret_args)[length(ret_args)] <- log_lik_name
+  ret_call <- as.call(c(list(as.name("list")), ret_args))
+  as.call(c(list(as.name("{")), existing_exprs, waic_exprs, list(as.call(list(as.name("return"), ret_call)))))
+}

@@ -220,8 +220,12 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       var_common <- rowSums(Lambda * (Lambda %*% CF_Omega))
       communality <- var_common / var_total
       out <- list(communality = communality)
-      if (WAIC) out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE)
     })
+    waic_expr <- if (isTRUE(WAIC)) {
+      quote({ out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })
+    } else {
+      quote({})
+    }
     score_expr <- if (score) {
       quote({
         # Use explicit matrix creation to ensure AD type is preserved
@@ -230,7 +234,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       })
     } else quote({})
     ret_expr <- quote({ return(out) })
-    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
     p_names <- list(
@@ -308,8 +312,12 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
       var_total <- diag(Sigma); var_common <- rowSums(L_raw^2); communality <- var_common / var_total
       out <- list(communality = communality)
-      if (WAIC) out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE)
     })
+    waic_expr <- if (isTRUE(WAIC)) {
+      quote({ out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })
+    } else {
+      quote({})
+    }
 
     if (!is.null(rotate)) {
       rot_loadings_name <- paste0("L_", rotate)
@@ -361,7 +369,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     } else { has_phi <- FALSE; rot_expr <- quote({}); score_expr <- if (score) quote({ Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE); out$score <- Y_c %*% solve(Sigma, L_raw) }) else quote({}) }
 
     ret_expr <- quote({ return(out) })
-    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
     p_names <- list(

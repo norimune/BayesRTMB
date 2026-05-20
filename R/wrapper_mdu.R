@@ -805,7 +805,7 @@ rtmb_mdu <- function(data, ndim = 2,
           }
         })
       }
-      code_obj$generate <- pair_ll_ast
+      code_obj$generate <- .rtmb_waic_generate_ast(NULL, pair_ll_ast)
     }
     code_obj$env <- parent.frame()
 
@@ -947,7 +947,7 @@ rtmb_mdu <- function(data, ndim = 2,
     if (!is.null(transform_ast)) code_obj$transform <- transform_ast
     code_obj$model <- model_ast
     if (isTRUE(WAIC)) {
-      code_obj$generate <- if (distance == "squared" && alpha_type == "random") {
+      rating_ll_ast <- if (distance == "squared" && alpha_type == "random") {
         quote({
           log_lik <- numeric(N * M)
           idx_ll <- 1
@@ -992,6 +992,7 @@ rtmb_mdu <- function(data, ndim = 2,
           }
         })
       }
+      code_obj$generate <- .rtmb_waic_generate_ast(NULL, rating_ll_ast)
     }
     code_obj$env <- parent.frame()
 
@@ -1147,7 +1148,7 @@ rtmb_mdu <- function(data, ndim = 2,
     if (!is.null(transform_ast)) code_obj$transform <- transform_ast
     code_obj$model <- model_ast
     if (isTRUE(WAIC)) {
-      code_obj$generate <- if (method == "Best") {
+      choice_ll_ast <- if (method == "Best") {
         bquote({
           log_lik <- numeric(N * P)
           idx_ll <- 1
@@ -1176,6 +1177,7 @@ rtmb_mdu <- function(data, ndim = 2,
           }
         })
       }
+      code_obj$generate <- .rtmb_waic_generate_ast(NULL, choice_ll_ast)
     }
     code_obj$env <- parent.frame()
 

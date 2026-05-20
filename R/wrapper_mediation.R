@@ -428,7 +428,8 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
       generate_exprs[[length(generate_exprs) + 1]] <- as.call(c(list(as.name("c")), log_lik_names))
       generate_exprs[[length(generate_exprs)]] <- as.call(list(as.name("<-"), as.name("log_lik"), generate_exprs[[length(generate_exprs)]]))
     }
-    mdl_code$generate <- as.call(c(list(as.name("{")), generate_exprs))
+    gen_ast <- as.call(c(list(as.name("{")), generate_exprs))
+    mdl_code$generate <- if (isTRUE(WAIC)) .rtmb_waic_generate_ast(NULL, gen_ast) else gen_ast
   }
   mdl_code$env <- tmp_env
 

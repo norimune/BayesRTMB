@@ -383,7 +383,7 @@ bf
 1. **[ラッパー関数の使い方](ja-wrapper_functions.html)**  
    回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT など、標準的な分析をラッパー関数で行う方法を確認できます。
 
-2. **[階層モデル・GLMM](ja-rtmb_glmer.html)**  
+2. **[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html)**  
    `rtmb_glmer()` を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。
 
 3. **[モデルコードの書き方](ja-writing_models.html)**  

@@ -421,7 +421,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
 
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
-     if (!is.null(generate_ast)) mdl_code$generate <- generate_ast
+     if (!is.null(generate_ast)) mdl_code$generate <- .rtmb_waic_generate_ast(NULL, generate_ast)
      class(mdl_code) <- "rtmb_code"
 
      v_names <- list(mu = var_names, sigma_between = var_names, sigma_within = var_names)
@@ -621,7 +621,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
 
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
-     if (!is.null(generate_ast)) mdl_code$generate <- generate_ast
+     if (!is.null(generate_ast)) mdl_code$generate <- .rtmb_waic_generate_ast(NULL, generate_ast)
      class(mdl_code) <- "rtmb_code"
 
      dat_list <- list(Y = Y_mat, P_y = P_y, P_x = P_x)

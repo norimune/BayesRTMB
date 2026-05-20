@@ -521,14 +521,16 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- L_mat %*% t(L_mat))
     }
   }
+  generate_base_exprs <- generate_exprs
   if (isTRUE(WAIC)) {
-    generate_exprs[[length(generate_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
-    generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
+    waic_exprs <- list(as.name("{"))
+    waic_exprs[[length(waic_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
+    waic_exprs[[length(waic_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
     if (has_cov_prob) {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(pi_mat <- matrix(mu[1] * 0, N, K))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(pi_mat <- matrix(mu[1] * 0, N, K))
       if (link == "ordered") {
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(eta <- X_prob %*% b)
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(for (i in 1:N) {
+        waic_exprs[[length(waic_exprs) + 1]] <- quote(eta <- X_prob %*% b)
+        waic_exprs[[length(waic_exprs) + 1]] <- quote(for (i in 1:N) {
           F_prev <- 0
           for (k in 1:(K - 1)) {
             F_k <- inv_logit(cutpoints[k] - eta[i])
@@ -538,8 +540,8 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
           pi_mat[i, K] <- 1 - F_prev
         })
       } else {
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_mat <- X_prob %*% b)
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(for (i in 1:N) {
+        waic_exprs[[length(waic_exprs) + 1]] <- quote(eta_mat <- X_prob %*% b)
+        waic_exprs[[length(waic_exprs) + 1]] <- quote(for (i in 1:N) {
           q_cum <- 1
           for (k in 1:(K - 1)) {
             q_k <- inv_logit(alpha[k] + eta_mat[i, k])
@@ -549,15 +551,19 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
           pi_mat[i, K] <- q_cum
         })
       }
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(log(pi_mat + 1e-15) + log_dens_mat))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_lik <- log_sum_exp(log(pi_mat + 1e-15) + log_dens_mat))
     } else {
       if (prob_smoothing) {
-        generate_exprs[[length(generate_exprs) + 1]] <- quote(theta <- softmax(logit_theta))
+        waic_exprs[[length(waic_exprs) + 1]] <- quote(theta <- softmax(logit_theta))
       }
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(t(t(log_dens_mat) + log(theta))))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_lik <- log_sum_exp(t(t(log_dens_mat) + log(theta))))
     }
   }
-  generate_ast <- as.call(generate_exprs)
+  generate_ast <- if (isTRUE(WAIC)) {
+    .rtmb_waic_generate_ast(as.call(generate_base_exprs), as.call(waic_exprs))
+  } else {
+    as.call(generate_base_exprs)
+  }
 
   mdl_code <- list(setup = setup_ast, parameters = param_ast, model = model_ast, generate = generate_ast, env = parent.frame())
   class(mdl_code) <- "rtmb_code"

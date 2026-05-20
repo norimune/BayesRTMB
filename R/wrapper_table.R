@@ -119,9 +119,9 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
   setup$dirichlet_alpha <- dirichlet_alpha_val
 
   gen_ast <- if (isTRUE(WAIC)) {
-    quote({
+    .rtmb_waic_generate_ast(NULL, quote({
       log_lik <- multinomial_lpmf(Y, N, p)
-    })
+    }))
   } else {
     quote({
       # mu and chisq_val are already reported in transform

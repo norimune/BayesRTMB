@@ -422,21 +422,27 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- L_corr %*% t(L_corr))
     }
   }
+  generate_base_exprs <- generate_exprs
   if (isTRUE(WAIC)) {
-    generate_exprs[[length(generate_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
-    generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
+    waic_exprs <- list(as.name("{"))
+    waic_exprs[[length(waic_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
+    waic_exprs[[length(waic_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
     if (has_cov_prob) {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_prob <- X_prob %*% b)
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_pi_mat <- matrix(eta_prob[1] * 0, N, K))
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(for (i in 1:N) {
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(eta_prob <- X_prob %*% b)
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_pi_mat <- matrix(eta_prob[1] * 0, N, K))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(for (i in 1:N) {
         log_pi_mat[i, ] <- log_softmax(c(0, eta_prob[i, ]))
       })
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(log_pi_mat + log_dens_mat))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_lik <- log_sum_exp(log_pi_mat + log_dens_mat))
     } else {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(log_lik <- log_sum_exp(t(t(log_dens_mat) + log(theta))))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_lik <- log_sum_exp(t(t(log_dens_mat) + log(theta))))
     }
   }
-  generate_ast <- as.call(generate_exprs)
+  generate_ast <- if (isTRUE(WAIC)) {
+    .rtmb_waic_generate_ast(as.call(generate_base_exprs), as.call(waic_exprs))
+  } else {
+    as.call(generate_base_exprs)
+  }
 
   mdl_code <- list(
     setup = setup_ast,

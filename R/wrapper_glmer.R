@@ -1347,7 +1347,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   code_obj <- list(setup = setup_ast, parameters = param_ast)
   if (!is.null(tran_ast)) code_obj$transform <- tran_ast
   code_obj$model <- model_ast
-  generate <- .rtmb_merge_generate_ast(generate, waic_ast)
+  generate <- .rtmb_waic_generate_ast(generate, waic_ast)
   if (!is.null(generate)) code_obj$generate <- generate
 
   par_names_list <- list()

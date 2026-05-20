@@ -213,7 +213,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     }
 
     gq_body[[2]][[4]] <- as.call(c(list(as.name("{")), gq_loop_body))
-    code_obj$generate <- as.call(c(list(as.name("{")), gq_body))
+    code_obj$generate <- .rtmb_waic_generate_ast(NULL, as.call(c(list(as.name("{")), gq_body)))
   }
 
   par_names_list <- list()

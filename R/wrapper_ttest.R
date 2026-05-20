@@ -316,6 +316,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
 
   model_ast <- as.call(c(list(as.name("{")), model_body))
   code_obj <- if (isTRUE(WAIC)) {
+    waic_ast <- .rtmb_waic_generate_ast(NULL, waic_ast)
     eval(substitute(
       rtmb_code(setup = S, parameters = P, transform = T, model = M, generate = G),
       list(S = setup_ast, P = param_ast, T = tran_ast, M = model_ast, G = waic_ast)
