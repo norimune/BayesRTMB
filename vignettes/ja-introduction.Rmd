@@ -41,7 +41,7 @@ fit_freq <- mdl$classic()
 - **[日本語版の概要](ja-introduction.html)**
 - **[クイックスタート](ja-quick_start.html)**
 - **[ラッパー関数の使い方](ja-wrapper_functions.html)**
-- **[階層モデル・GLMM](ja-rtmb_glmer.html)**
+- **[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html)**
 - **[モデルコードの書き方](ja-writing_models.html)**
 - **[RTMB の仕組みと推定アルゴリズム](ja-rtmb_internals.html)**
 
@@ -423,7 +423,9 @@ mdl_hlm <- rtmb_glmer(
 fit_hlm <- mdl_hlm$optimize()
 ```
 
-# モデル比較と bridge sampling
+# モデル比較（bridge sampling / WAIC）
+
+## bridge sampling による周辺尤度と Bayes factor
 
 MCMC の結果に対して、bridge sampling による周辺尤度を計算できます。
 
@@ -455,6 +457,43 @@ bf
 ## Evidence            : Decisive evidence for Model 1 
 ## Comparison model    : Parameters fixed at list("b[talk]" = 0) 
 ```
+
+## WAIC によるモデル比較
+
+BayesRTMB では、`rtmb_code()` の `generate` ブロックで、観測ごとの対数尤度を `log_lik` という変数に格納しておくと、推定後に `$WAIC()` メソッドを使って WAIC（広く使える情報量基準）を計算できます。
+
+たとえば、手書きモデルの `generate` ブロックに以下のように `log_lik` を定義します。
+
+```{r eval=FALSE}
+  generate = {
+    # 観測ごとの対数尤度を計算して log_lik に代入する（sum = FALSE を指定）
+    log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  }
+```
+
+※ ラッパー関数（`rtmb_lm()` など）を使う場合は、`WAIC = TRUE` を引数に指定することで、自動的に内部で `log_lik` が生成されます。
+
+```{r eval=FALSE}
+mdl_lm <- rtmb_lm(sat ~ talk + perf, data = debate, WAIC = TRUE)
+fit_mcmc <- mdl_lm$sample()
+
+# WAIC の計算
+fit_mcmc$WAIC()
+```
+
+計算結果は以下のように出力されます。
+
+```text
+## WAIC
+##   WAIC (elpd scale): -400.07398
+##   -2 WAIC: 800.14796
+##   p_waic: 4.70921
+##   lppd: -395.36477
+##   nobs: 300, draws: 4000
+```
+
+`WAIC()` メソッドは、MCMC (`MCMC_Fit`) や変分推論 (`VB_Fit`)、および `se_method = "sampling"` を指定した MAP 推定 (`MAP_Fit`) の結果に対して利用できます。
+
 
 # 次のステップ
 

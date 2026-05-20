@@ -423,7 +423,9 @@ mdl_hlm <- rtmb_glmer(
 fit_hlm <- mdl_hlm$optimize()
 ```
 
-# Model Comparison and Bridge Sampling
+# Model Comparison (Bridge Sampling / WAIC)
+
+## Marginal Likelihood and Bayes Factor by Bridge Sampling
 
 For MCMC results, bridge sampling can be used to compute the marginal likelihood.
 
@@ -455,6 +457,43 @@ bf
 ## Evidence            : Decisive evidence for Model 1 
 ## Comparison model    : Parameters fixed at list("b[talk]" = 0) 
 ```
+
+## Model Comparison by WAIC
+
+In BayesRTMB, if you store the pointwise log likelihood for each observation in a variable named `log_lik` within the `generate` block of `rtmb_code()`, you can calculate the WAIC (Widely Applicable Information Criterion) using the `$WAIC()` method after estimation.
+
+For example, define `log_lik` in the `generate` block of a custom model as follows:
+
+```{r eval=FALSE}
+  generate = {
+    # Compute the pointwise log likelihood and assign it to log_lik (specify sum = FALSE)
+    log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  }
+```
+
+*Note: When using wrapper functions (e.g., `rtmb_lm()`), you can specify `WAIC = TRUE` in the arguments to automatically generate `log_lik` internally.*
+
+```{r eval=FALSE}
+mdl_lm <- rtmb_lm(sat ~ talk + perf, data = debate, WAIC = TRUE)
+fit_mcmc <- mdl_lm$sample()
+
+# Compute WAIC
+fit_mcmc$WAIC()
+```
+
+The output will be displayed as follows:
+
+```text
+## WAIC
+##   WAIC (elpd scale): -400.07398
+##   -2 WAIC: 800.14796
+##   p_waic: 4.70921
+##   lppd: -395.36477
+##   nobs: 300, draws: 4000
+```
+
+The `$WAIC()` method is available for results from MCMC (`MCMC_Fit`), variational inference (`VB_Fit`), and MAP estimation (`MAP_Fit`) with `se_method = "sampling"`.
+
 
 # Next Steps
 
