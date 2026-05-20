@@ -40,6 +40,10 @@ An R6 class representing the results of a classical (frequentist) estimation.
 
 \item{\code{restricted_log_lik}}{Restricted log-likelihood, if classical estimation used REML-style marginalization.}
 
+\item{\code{rss}}{Residual sum of squares for classical linear models, if available.}
+
+\item{\code{df_residual}}{Residual degrees of freedom for classical linear models, if available.}
+
 \item{\code{convergence}}{Convergence code.}
 
 \item{\code{sd_rep}}{TMB sdreport object.}
@@ -170,6 +174,8 @@ Create a new `Classic_Fit` object.
   df_method = "auto",
   idx_fix_active = NULL,
   show_df = TRUE,
+  rss = NULL,
+  df_residual = NULL,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -232,6 +238,10 @@ Create a new `Classic_Fit` object.
 \item{\code{idx_fix_active}}{Numeric vector; mapping between active parameters and full unconstrained vector.}
 
 \item{\code{show_df}}{Logical; whether to display degrees of freedom in the summary output.}
+
+\item{\code{rss}}{Residual sum of squares for classical linear models, if available.}
+
+\item{\code{df_residual}}{Residual degrees of freedom for classical linear models, if available.}
 
 \item{\code{...}}{Additional arguments passed to the constructor.}
 }

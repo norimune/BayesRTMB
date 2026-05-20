@@ -17,6 +17,8 @@
 #' @field objective Final objective value.
 #' @field log_lik Log-likelihood.
 #' @field restricted_log_lik Restricted log-likelihood, if classical estimation used REML-style marginalization.
+#' @field rss Residual sum of squares for classical linear models, if available.
+#' @field df_residual Residual degrees of freedom for classical linear models, if available.
 #' @field convergence Convergence code.
 #' @field sd_rep TMB sdreport object.
 #' @field df_fixed Dataframe of fixed effects results.
@@ -60,6 +62,8 @@ Classic_Fit <- R6::R6Class(
     objective = NULL,
     log_lik = NULL,
     restricted_log_lik = NULL,
+    rss = NULL,
+    df_residual = NULL,
     convergence = NULL,
     sd_rep = NULL,
     df_fixed = NULL,
@@ -92,6 +96,8 @@ Classic_Fit <- R6::R6Class(
     #' @param objective Final objective value.
     #' @param log_lik Full log-likelihood used for information criteria.
     #' @param restricted_log_lik Restricted log-likelihood, if classical estimation used REML-style marginalization.
+    #' @param rss Residual sum of squares for classical linear models, if available.
+    #' @param df_residual Residual degrees of freedom for classical linear models, if available.
     #' @param convergence Convergence code.
     #' @param sd_rep TMB sdreport object.
     #' @param df_fixed Dataframe of fixed effects results.
@@ -122,7 +128,8 @@ Classic_Fit <- R6::R6Class(
                           transform = NULL, generate = NULL, se_samples = NULL, par_unc = NULL,
                           vcov_unc = NULL, ci_method = "wald", laplace = TRUE, map = NULL,
                           test_results = list(), view = NULL, fit = NULL, vcov = NULL, 
-                          df_method = "auto", idx_fix_active = NULL, show_df = TRUE, ...) {
+                          df_method = "auto", idx_fix_active = NULL, show_df = TRUE,
+                          rss = NULL, df_residual = NULL, ...) {
       self$model <- model
       self$par_vec <- par_vec
       self$par <- if (!is.null(par)) par else if (!is.null(df_fixed)) self$.construct_par_list(df_fixed) else if (!is.null(fit)) self$.construct_par_list(fit) else NULL
@@ -135,6 +142,8 @@ Classic_Fit <- R6::R6Class(
       }
       self$log_lik <- log_lik
       self$restricted_log_lik <- restricted_log_lik
+      self$rss <- rss
+      self$df_residual <- df_residual
       
       self$convergence <- convergence
       self$sd_rep <- sd_rep
@@ -2073,10 +2082,80 @@ anova.Classic_Fit <- function(object, ...) {
     call <- match.call(expand.dots = FALSE)
     dot_exprs <- as.list(call$...)
     labels <- c(deparse1(call$object), vapply(dot_exprs, deparse1, character(1)))
-    return(.anova_classic_lrt(c(list(object), dots), labels = labels))
+    fits <- c(list(object), dots)
+    if (all(vapply(fits, .is_classic_lm_fit, logical(1)))) {
+      return(.anova_classic_lm_f(fits, labels = labels))
+    }
+    return(.anova_classic_lrt(fits, labels = labels))
   }
 
   object$anova(...)
+}
+
+.is_classic_lm_fit <- function(x) {
+  inherits(x, "Classic_Fit") &&
+    !is.null(x$model) &&
+    identical(x$model$type, "lm") &&
+    is.finite(x$rss) &&
+    is.finite(x$df_residual)
+}
+
+.anova_classic_lm_f <- function(fits, labels = NULL) {
+  if (length(fits) < 2L) {
+    stop("At least two Classic_Fit objects are required for model comparison.", call. = FALSE)
+  }
+  if (is.null(labels) || length(labels) != length(fits)) {
+    labels <- paste0("Model ", seq_along(fits))
+  }
+
+  ll <- lapply(fits, stats::logLik)
+  loglik <- vapply(ll, as.numeric, numeric(1))
+  df <- vapply(ll, function(x) as.numeric(attr(x, "df"))[1], numeric(1))
+  nobs <- vapply(ll, function(x) as.numeric(attr(x, "nobs"))[1], numeric(1))
+  rss <- vapply(fits, function(x) as.numeric(x$rss)[1], numeric(1))
+  res_df <- vapply(fits, function(x) as.numeric(x$df_residual)[1], numeric(1))
+
+  if (length(unique(nobs[!is.na(nobs)])) > 1L) {
+    warning("Models appear to have different numbers of observations; F tests may not be valid.", call. = FALSE)
+  }
+
+  ord <- order(df, rss, decreasing = c(FALSE, TRUE))
+  labels <- labels[ord]
+  fits <- fits[ord]
+  loglik <- loglik[ord]
+  df <- df[ord]
+  rss <- rss[ord]
+  res_df <- res_df[ord]
+
+  df_diff <- c(NA_real_, diff(df))
+  rss_diff <- c(NA_real_, -diff(rss))
+  f_val <- rep(NA_real_, length(fits))
+  p_val <- rep(NA_real_, length(fits))
+  scale <- rss[length(rss)] / res_df[length(res_df)]
+  df2 <- res_df[length(res_df)]
+  ok <- !is.na(df_diff) & df_diff > 0 & !is.na(rss_diff) & rss_diff >= 0 &
+    is.finite(scale) & scale > 0 & is.finite(df2) & df2 > 0
+  f_val[ok] <- (rss_diff[ok] / df_diff[ok]) / scale
+  p_val[ok] <- stats::pf(f_val[ok], df1 = df_diff[ok], df2 = df2, lower.tail = FALSE)
+
+  res <- data.frame(
+    Model = labels,
+    Df = df,
+    Res.Df = res_df,
+    RSS = rss,
+    `Df Diff` = df_diff,
+    `Sum of Sq` = rss_diff,
+    F = f_val,
+    `Pr(>F)` = p_val,
+    logLik = loglik,
+    AIC = vapply(fits, stats::AIC, numeric(1)),
+    BIC = vapply(fits, stats::BIC, numeric(1)),
+    check.names = FALSE
+  )
+  rownames(res) <- seq_len(nrow(res))
+  class(res) <- c("anova_classic_lm_f", "anova", "data.frame")
+  attr(res, "heading") <- "Analysis of Variance Table (F tests)"
+  res
 }
 
 .anova_classic_lrt <- function(fits, labels = NULL) {
@@ -2151,6 +2230,9 @@ print.anova_classic_lrt <- function(x, digits = max(3L, getOption("digits") - 2L
   print(x_print, digits = digits, na.print = "", row.names = FALSE, ...)
   invisible(x)
 }
+
+#' @export
+print.anova_classic_lm_f <- print.anova_classic_lrt
 
 #' @export
 print.Classic_Fit <- function(x, ...) x$print(...)

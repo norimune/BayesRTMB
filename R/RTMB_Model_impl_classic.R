@@ -195,7 +195,9 @@
     vcov = comp$vcov,
     df_method = settings$df_method,
     idx_fix_active = raw$idx_fix_active,
-    show_df = settings$show_df
+    show_df = settings$show_df,
+    rss = comp$rss,
+    df_residual = comp$df_residual
   )
 
   class(fit) <- unique(c(
@@ -960,6 +962,16 @@
 
   # 5. Log-likelihood and Vcov
   log_lik <- if (!is.null(info_log_lik)) info_log_lik else -opt$objective
+  rss <- NULL
+  df_residual <- NULL
+  if (identical(self$type, "lm") && !is.null(con_est_list$sigma) && !is.null(self$data$Y)) {
+    n_y <- length(as.numeric(self$data$Y))
+    p_fixed <- if (is.null(df_fixed)) 0L else sum(gsub("\\[.*\\]$", "", rownames(df_fixed)) != "sigma")
+    df_residual <- n_y - p_fixed
+    if (is.finite(df_residual) && df_residual > 0) {
+      rss <- as.numeric(con_est_list$sigma)^2 * df_residual
+    }
+  }
 
 
   # Build V_fixed_full (vcov)
@@ -1003,6 +1015,8 @@
     se_samples = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
     vcov = V_fixed_full,
     log_lik = log_lik,
+    rss = rss,
+    df_residual = df_residual,
     test_results = test_results
   )
 }
