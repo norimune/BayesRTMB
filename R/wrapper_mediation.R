@@ -315,17 +315,29 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
       init_list[[s_name]] <- 1.0
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ normal(.(lin_pred_expr), .(as.name(s_name))))
       if (isTRUE(WAIC)) {
-        generate_exprs[[length(generate_exprs) + 1]] <- bquote(.(as.name(paste0("log_lik_", i))) <- normal_lpdf(.(as.name(paste0("Y_", i))), .(lin_pred_expr), .(as.name(s_name)), sum = FALSE))
+        generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(
+          as.name("<-"),
+          as.name(paste0("log_lik_", i)),
+          bquote(normal_lpdf(.(as.name(paste0("Y_", i))), .(lin_pred_expr), .(as.name(s_name)), sum = FALSE))
+        ))
       }
     } else if (f_type %in% c("binomial", "bernoulli")) {
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ bernoulli_logit(.(lin_pred_expr)))
       if (isTRUE(WAIC)) {
-        generate_exprs[[length(generate_exprs) + 1]] <- bquote(.(as.name(paste0("log_lik_", i))) <- bernoulli_logit_lpmf(.(as.name(paste0("Y_", i))), .(lin_pred_expr), sum = FALSE))
+        generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(
+          as.name("<-"),
+          as.name(paste0("log_lik_", i)),
+          bquote(bernoulli_logit_lpmf(.(as.name(paste0("Y_", i))), .(lin_pred_expr), sum = FALSE))
+        ))
       }
     } else if (f_type == "poisson") {
       model_exprs[[length(model_exprs) + 1]] <- bquote(.(as.name(paste0("Y_", i))) ~ poisson_log(.(lin_pred_expr)))
       if (isTRUE(WAIC)) {
-        generate_exprs[[length(generate_exprs) + 1]] <- bquote(.(as.name(paste0("log_lik_", i))) <- poisson_lpmf(.(as.name(paste0("Y_", i))), exp(.(lin_pred_expr)), sum = FALSE))
+        generate_exprs[[length(generate_exprs) + 1]] <- as.call(list(
+          as.name("<-"),
+          as.name(paste0("log_lik_", i)),
+          bquote(poisson_lpmf(.(as.name(paste0("Y_", i))), exp(.(lin_pred_expr)), sum = FALSE))
+        ))
       }
     }
 
