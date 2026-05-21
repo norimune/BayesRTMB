@@ -145,7 +145,7 @@ NUTS_method <- function(model,
     } else {
       eps <- eps_bar
     }
-    if (i %% 100 == 0) {
+    if (i %% 200 == 0) {
       msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
       if (!is.null(update_progress)) {
         update_progress(amt = 1, msg = msg)
