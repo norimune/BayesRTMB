@@ -154,7 +154,8 @@
       reml = FALSE,
       target_vars = character(0),
       jacobian_target = NULL,
-      apply_prior_correction = FALSE
+      apply_prior_correction = FALSE,
+      verbose = FALSE
     )
     info_log_lik <- -raw_ic$opt$objective
   }
