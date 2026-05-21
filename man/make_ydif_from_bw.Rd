@@ -7,9 +7,13 @@
 make_ydif_from_bw(Best, Worst, sets)
 }
 \arguments{
-\item{Best}{Matrix or data frame of best responses (N persons x P tasks).}
+\item{Best}{Matrix or data frame of best responses (N persons x P tasks).
+Values must be positions within the corresponding row of `sets`, from
+`1` to `ncol(sets)`.}
 
-\item{Worst}{Matrix or data frame of worst responses (N persons x P tasks).}
+\item{Worst}{Matrix or data frame of worst responses (N persons x P tasks).
+Values must be positions within the corresponding row of `sets`, from
+`1` to `ncol(sets)`.}
 
 \item{sets}{Matrix or data frame of presented item sets (P tasks x C items).}
 }
@@ -19,6 +23,6 @@ An integer matrix of pair indices (`Y_dif`).
 \description{
 Converts separate `Best` and `Worst` response matrices into `Y_dif` pair
 indices for Best-Worst MDU models. The returned index is the position of the
-ordered `(best, worst)` pair among all `C * (C - 1)` pairs generated from
-each row of `sets`.
+ordered `(best, worst)` pair among all `C * (C - 1)` position pairs generated
+from each row of `sets`.
 }

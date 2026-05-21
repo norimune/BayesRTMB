@@ -20,3 +20,4 @@
 ^vignettes_archive$
 ^scratch$
 ^rlang$
+^CRAN-SUBMISSION$

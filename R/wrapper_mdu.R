@@ -205,11 +205,12 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   list(delta = delta, tau = tau, sigma = max(sigma, min_sigma))
 }
 
-#' Restore Best and Worst Responses from Best-Worst Pair Indices
+#' Make Best and Worst Responses from Best-Worst Pair Indices
 #'
 #' @description
 #' Converts a matrix of Best-Worst pair indices (`Y_dif`) into separate `Best`
-#' and `Worst` data frames, using the presented item-set matrix.
+#' and `Worst` data frames. The returned values are positions within each row of
+#' `sets`, not the item labels stored in `sets`.
 #'
 #' @param Y_dif Matrix or data frame of pair indices (N persons x P tasks).
 #'   Each value must be an integer from 1 to `C * (C - 1)`, where `C` is the
@@ -218,7 +219,7 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
 #'
 #' @return A list with two data frames: `Best` and `Worst`.
 #' @export
-restore_bw_from_ydif <- function(Y_dif, sets) {
+make_bw_from_ydif <- function(Y_dif, sets) {
   Y_dif <- .as_mdu_integer_matrix(Y_dif, "Y_dif")
   sets <- .as_mdu_integer_matrix(sets, "sets")
 
@@ -253,8 +254,8 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
   for (n in seq_len(N)) {
     for (p in seq_len(P)) {
       ans <- Y_dif_int[n, p]
-      Best[n, p] <- sets[p, best_rel[ans]]
-      Worst[n, p] <- sets[p, worst_rel[ans]]
+      Best[n, p] <- best_rel[ans]
+      Worst[n, p] <- worst_rel[ans]
     }
   }
 
@@ -269,16 +270,24 @@ restore_bw_from_ydif <- function(Y_dif, sets) {
   )
 }
 
+#' @rdname make_bw_from_ydif
+#' @export
+restore_bw_from_ydif <- make_bw_from_ydif
+
 #' Make Best-Worst Pair Indices from Best and Worst Responses
 #'
 #' @description
 #' Converts separate `Best` and `Worst` response matrices into `Y_dif` pair
 #' indices for Best-Worst MDU models. The returned index is the position of the
-#' ordered `(best, worst)` pair among all `C * (C - 1)` pairs generated from
-#' each row of `sets`.
+#' ordered `(best, worst)` pair among all `C * (C - 1)` position pairs generated
+#' from each row of `sets`.
 #'
 #' @param Best Matrix or data frame of best responses (N persons x P tasks).
+#'   Values must be positions within the corresponding row of `sets`, from
+#'   `1` to `ncol(sets)`.
 #' @param Worst Matrix or data frame of worst responses (N persons x P tasks).
+#'   Values must be positions within the corresponding row of `sets`, from
+#'   `1` to `ncol(sets)`.
 #' @param sets Matrix or data frame of presented item sets (P tasks x C items).
 #'
 #' @return An integer matrix of pair indices (`Y_dif`).
@@ -305,6 +314,16 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
     stop("'sets' must have at least two columns.", call. = FALSE)
   }
 
+  best_dimnames <- dimnames(Best)
+  Best <- matrix(as.integer(Best), nrow = N, ncol = P, dimnames = best_dimnames)
+  Worst <- matrix(as.integer(Worst), nrow = N, ncol = P, dimnames = dimnames(Worst))
+  if (any(Best < 1 | Best > C)) {
+    stop("Each Best response must be a position from 1 to ncol(sets).", call. = FALSE)
+  }
+  if (any(Worst < 1 | Worst > C)) {
+    stop("Each Worst response must be a position from 1 to ncol(sets).", call. = FALSE)
+  }
+
   idx_i <- rep(seq_len(C), each = C)
   idx_j <- rep(seq_len(C), times = C)
   mask <- idx_i != idx_j
@@ -314,14 +333,8 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
   Y_dif <- matrix(NA_integer_, nrow = N, ncol = P)
   for (n in seq_len(N)) {
     for (p in seq_len(P)) {
-      b_rel <- which(sets[p, ] == Best[n, p])
-      w_rel <- which(sets[p, ] == Worst[n, p])
-      if (length(b_rel) != 1L) {
-        stop("Each Best response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
-      }
-      if (length(w_rel) != 1L) {
-        stop("Each Worst response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
-      }
+      b_rel <- Best[n, p]
+      w_rel <- Worst[n, p]
       if (b_rel == w_rel) {
         stop("Best and Worst responses cannot be the same item within a task.", call. = FALSE)
       }
@@ -435,10 +448,20 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
     ))
   }
 
-  convert_response <- function(x, name) {
+  convert_response <- function(x, name, as_position = FALSE) {
     x <- .as_mdu_integer_matrix(x, paste0("data$", name))
     if (ncol(x) != P) {
       stop("'", name, "' must have the same number of columns as nrow(sets).", call. = FALSE)
+    }
+    if (as_position) {
+      if (is.character(x) || is.factor(x)) {
+        stop("'", name, "' must contain set positions from 1 to ncol(sets).", call. = FALSE)
+      }
+      res <- matrix(as.integer(x), nrow = nrow(x), ncol = ncol(x))
+      if (any(!is.na(res) & (res < 1 | res > C))) {
+        stop("'", name, "' must contain set positions from 1 to ncol(sets).", call. = FALSE)
+      }
+      return(res)
     }
     if (use_names || is.character(x) || is.factor(x)) {
       res <- matrix(match(as.character(x), item_names), nrow = nrow(x), ncol = ncol(x))
@@ -451,14 +474,15 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
     res
   }
 
-  Best <- convert_response(data$Best, "Best")
+  position_input <- method == "Best-Worst"
+  Best <- convert_response(data$Best, "Best", as_position = position_input)
   if (anyNA(Best)) {
     stop("'data$Best' cannot contain missing values for choice MDU.", call. = FALSE)
   }
   N <- nrow(Best)
   Worst <- NULL
   if (method == "Best-Worst") {
-    Worst <- convert_response(data$Worst, "Worst")
+    Worst <- convert_response(data$Worst, "Worst", as_position = TRUE)
     if (anyNA(Worst)) {
       stop("'data$Worst' cannot contain missing values for Best-Worst MDU.", call. = FALSE)
     }
@@ -473,17 +497,14 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 
   for (n in seq_len(N)) {
     for (p in seq_len(P)) {
-      b <- Best[n, p]
-      if (is.na(b)) next
-      b_rel <- which(S[p, ] == b)
-      if (length(b_rel) != 1L) {
-        stop("Each Best response must be one of the items in its corresponding row of 'sets'.", call. = FALSE)
-      }
+      b_rel <- Best[n, p]
+      if (is.na(b_rel)) next
       Y_best[n, p] <- b_rel
+      b <- S[p, b_rel]
       score_mat[n, b] <- score_mat[n, b] + 1
 
       if (method == "Best-Worst") {
-        w <- Worst[n, p]
+        w <- S[p, Worst[n, p]]
         score_mat[n, w] <- score_mat[n, w] - 1
       }
     }
