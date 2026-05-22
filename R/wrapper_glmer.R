@@ -1395,7 +1395,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
   view_vars <- c()
   if (has_intercept) {
-    view_vars <- c(if (use_centering) c("Intercept", "Intercept_c") else "Intercept")
+    view_vars <- c("Intercept")
   }
   if (K > 0) view_vars <- c(view_vars, "b")
   if (family %in% c("ordered", "sequential")) view_vars <- c(view_vars, "cutpoints")
