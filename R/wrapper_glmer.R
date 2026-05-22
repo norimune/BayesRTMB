@@ -790,7 +790,8 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
       setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- res$random$terms[[.(b)]]$num_ranef)
     }
   } else {
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(na_act <- if (.(missing) == "listwise") na.omit else na.pass)
+    na_action_expr <- if (missing == "listwise") quote(na.omit) else quote(na.pass)
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(na_act <- .(na_action_expr))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(mf <- model.frame(formula, df, na.action = na_act))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- model.response(mf))
     if (is.matrix(Y_setup_raw)) {
