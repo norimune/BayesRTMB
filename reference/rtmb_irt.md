@@ -15,7 +15,8 @@ rtmb_irt(
   init = NULL,
   fixed = NULL,
   view = NULL,
-  missing = c("listwise", "fiml")
+  missing = c("listwise", "fiml"),
+  WAIC = FALSE
 )
 ```
 
@@ -57,6 +58,11 @@ rtmb_irt(
 
   Missing value handling strategy: "listwise" (default) or "fiml" (Full
   Information Maximum Likelihood).
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 ## Examples
 

@@ -107,10 +107,10 @@
 <div class="section level3">
 <h3 id="windows-users">Windows Users<a class="anchor" aria-label="anchor" href="#windows-users"></a>
 </h3>
-<p>Windows users need Rtools because BayesRTMB depends on the RTMB/TMB ecosystem.</p>
+<p>For ordinary use, Windows users can install the CRAN binary package without Rtools. Rtools is only needed for source installation, development, or compiling custom TMB C++ templates.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
-<p>If this check fails, install the Rtools version that matches your R version from the <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools page</a>, restart R, and try again.</p>
+<p>If you install BayesRTMB from source and this check fails, install the Rtools version that matches your R version from the <a href="https://cran.r-project.org/bin/windows/Rtools/" class="external-link">Rtools page</a>, restart R, and try again.</p>
 </div>
 </div>
 <div class="section level2">

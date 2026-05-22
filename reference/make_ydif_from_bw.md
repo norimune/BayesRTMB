@@ -3,7 +3,7 @@
 Converts separate \`Best\` and \`Worst\` response matrices into
 \`Y_dif\` pair indices for Best-Worst MDU models. The returned index is
 the position of the ordered \`(best, worst)\` pair among all \`C \* (C -
-1)\` pairs generated from each row of \`sets\`.
+1)\` position pairs generated from each row of \`sets\`.
 
 ## Usage
 
@@ -15,11 +15,15 @@ make_ydif_from_bw(Best, Worst, sets)
 
 - Best:
 
-  Matrix or data frame of best responses (N persons x P tasks).
+  Matrix or data frame of best responses (N persons x P tasks). Values
+  must be positions within the corresponding row of \`sets\`, from \`1\`
+  to \`ncol(sets)\`.
 
 - Worst:
 
-  Matrix or data frame of worst responses (N persons x P tasks).
+  Matrix or data frame of worst responses (N persons x P tasks). Values
+  must be positions within the corresponding row of \`sets\`, from \`1\`
+  to \`ncol(sets)\`.
 
 - sets:
 

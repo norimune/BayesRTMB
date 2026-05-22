@@ -18,6 +18,7 @@ rtmb_ttest(
   fixed = NULL,
   var.equal = TRUE,
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   ...
 )
 ```
@@ -79,6 +80,11 @@ rtmb_ttest(
 - missing:
 
   Missing value handling strategy: "listwise".
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 

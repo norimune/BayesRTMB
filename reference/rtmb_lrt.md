@@ -21,6 +21,7 @@ rtmb_lrt(
   y_range = NULL,
   fixed = NULL,
   two_stage = FALSE,
+  WAIC = FALSE,
   ...
 )
 ```
@@ -91,6 +92,11 @@ rtmb_lrt(
   Logical; if TRUE, estimate the latent-rank measurement model first and
   then estimate the rank regression with delta-method uncertainty
   propagation. Currently supported for \`\$optimize()\` only.
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 

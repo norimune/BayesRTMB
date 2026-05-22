@@ -70,6 +70,7 @@
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  centering <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cwc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  within <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -81,6 +82,7 @@
 <span>  resid_group <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  generate <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  missing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"listwise"</span>, <span class="st">"fiml"</span><span class="op">)</span>,</span>
+<span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  .force_sum <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -126,6 +128,10 @@
 <dd><p>Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.</p></dd>
 
 
+<dt id="arg-centering">centering<a class="anchor" aria-label="anchor" href="#arg-centering"></a></dt>
+<dd><p>Alias for `gmc`.</p></dd>
+
+
 <dt id="arg-cwc">cwc<a class="anchor" aria-label="anchor" href="#arg-cwc"></a></dt>
 <dd><p>List for Centering Within Cluster (CWC). Should contain <code>cluster</code> (group variable) and <code>pars</code> (variable names to center).</p></dd>
 
@@ -168,6 +174,10 @@
 
 <dt id="arg-missing">missing<a class="anchor" aria-label="anchor" href="#arg-missing"></a></dt>
 <dd><p>Missing value handling strategy: "listwise".</p></dd>
+
+
+<dt id="arg-waic">WAIC<a class="anchor" aria-label="anchor" href="#arg-waic"></a></dt>
+<dd><p>Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.</p></dd>
 
 
 <dt id="arg--force-sum">.force_sum<a class="anchor" aria-label="anchor" href="#arg--force-sum"></a></dt>

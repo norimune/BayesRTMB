@@ -83,6 +83,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lognormal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lower_tri_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/lsmeans.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/make_bw_from_ydif.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/make_glmer_Z_matrix.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/make_glmer_re_terms.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/make_init_mdu.html</loc></url>
@@ -106,10 +107,15 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot.ce_rtmb.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot.rtmb_lsmeans.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_acf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/plot_conditional_effects.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_dens.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_forest.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/plot_item_curve.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/plot_item_info.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/plot_lsmeans.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_mdu.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_pairs.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/plot_test_info.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/plot_trace.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/poisson_lpmf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/positive_centered_tri_multi_normal_lpdf.html</loc></url>
@@ -131,7 +137,6 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quantile95.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/r_hat.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.html</loc></url>
-<url><loc>https://norimune.github.io/BayesRTMB/reference/restore_bw_from_ydif.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_corr.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_fa.html</loc></url>

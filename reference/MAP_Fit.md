@@ -121,6 +121,10 @@ estimation.
 
   Character vector of parameter names to prioritize in summary.
 
+- `fallback_needed`:
+
+  Logical; whether Hessian/SE fallback was used during optimization.
+
 ## Methods
 
 ### Public methods
@@ -138,6 +142,10 @@ estimation.
 - [`MAP_Fit$print()`](#method-map_fit-print)
 
 - [`MAP_Fit$generated_quantities()`](#method-map_fit-generated_quantities)
+
+- [`MAP_Fit$WAIC()`](#method-map_fit-WAIC)
+
+- [`MAP_Fit$diagnose()`](#method-map_fit-diagnose)
 
 - [`MAP_Fit$profile()`](#method-map_fit-profile)
 
@@ -208,7 +216,8 @@ Create a new \`MAP_Fit\` object.
       laplace_random_vars = NULL,
       idx_fix_active = NULL,
       show_df = TRUE,
-      view = NULL
+      view = NULL,
+      fallback_needed = NULL
     )
 
 #### Arguments
@@ -317,6 +326,10 @@ Create a new \`MAP_Fit\` object.
 - `view`:
 
   Character vector of parameter names to prioritize in summary.
+
+- `fallback_needed`:
+
+  Logical; whether Hessian/SE fallback was used during optimization.
 
 ------------------------------------------------------------------------
 
@@ -472,6 +485,40 @@ Compute generated quantities from the MAP estimate.
 
 The \`MAP_Fit\` object itself (invisibly). Results are added or updated
 in the \`generate\` list and \`df_generate\`.
+
+------------------------------------------------------------------------
+
+### Method `WAIC()`
+
+Compute an approximate WAIC from sampling-based uncertainty propagation.
+
+#### Usage
+
+    MAP_Fit$WAIC()
+
+#### Returns
+
+A \`waic_BayesRTMB\` object.
+
+------------------------------------------------------------------------
+
+### Method `diagnose()`
+
+Run basic diagnostics for the MAP fit.
+
+#### Usage
+
+    MAP_Fit$diagnose(...)
+
+#### Arguments
+
+- `...`:
+
+  Additional arguments passed to \`diagnose_map_fit()\`.
+
+#### Returns
+
+A \`diagnose_BayesRTMB\` object.
 
 ------------------------------------------------------------------------
 

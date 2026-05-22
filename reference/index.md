@@ -48,14 +48,24 @@ Functions for visualizing MCMC samples and model results.
 
 - [`plot_acf()`](https://norimune.github.io/BayesRTMB/reference/plot_acf.md)
   : Plot autocorrelation for one variable across chains
+- [`plot_conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/plot_conditional_effects.md)
+  : Plot conditional effects
 - [`plot_dens()`](https://norimune.github.io/BayesRTMB/reference/plot_dens.md)
   : Plot posterior densities for MCMC samples
 - [`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)
   : Plot parameter estimates and credible intervals (Forest Plot)
+- [`plot_item_curve()`](https://norimune.github.io/BayesRTMB/reference/plot_item_curve.md)
+  : Plot item/category response curves
+- [`plot_item_info()`](https://norimune.github.io/BayesRTMB/reference/plot_item_info.md)
+  : Plot item information functions
+- [`plot_lsmeans()`](https://norimune.github.io/BayesRTMB/reference/plot_lsmeans.md)
+  : Plot least-squares marginal means
 - [`plot_mdu()`](https://norimune.github.io/BayesRTMB/reference/plot_mdu.md)
   : Plot Multidimensional Unfolding Configuration
 - [`plot_pairs()`](https://norimune.github.io/BayesRTMB/reference/plot_pairs.md)
   : Plot pairs for posterior samples
+- [`plot_test_info()`](https://norimune.github.io/BayesRTMB/reference/plot_test_info.md)
+  : Plot test information function
 - [`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)
   : Plot MCMC trace plots
 
@@ -239,6 +249,9 @@ Functions used within rtmb_code for stability and transformations.
   Logit function
 - [`lsmeans()`](https://norimune.github.io/BayesRTMB/reference/lsmeans.md)
   : Least Squares Means (Marginal Means)
+- [`make_bw_from_ydif()`](https://norimune.github.io/BayesRTMB/reference/make_bw_from_ydif.md)
+  [`restore_bw_from_ydif()`](https://norimune.github.io/BayesRTMB/reference/make_bw_from_ydif.md)
+  : Make Best and Worst Responses from Best-Worst Pair Indices
 - [`make_glmer_Z_matrix()`](https://norimune.github.io/BayesRTMB/reference/make_glmer_Z_matrix.md)
   : Reconstruct an Observation-Level Random-Effect Design Matrix
 - [`make_glmer_re_terms()`](https://norimune.github.io/BayesRTMB/reference/make_glmer_re_terms.md)
@@ -263,14 +276,24 @@ Functions used within rtmb_code for stability and transformations.
   : Plot marginal means with error bars
 - [`plot_acf()`](https://norimune.github.io/BayesRTMB/reference/plot_acf.md)
   : Plot autocorrelation for one variable across chains
+- [`plot_conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/plot_conditional_effects.md)
+  : Plot conditional effects
 - [`plot_dens()`](https://norimune.github.io/BayesRTMB/reference/plot_dens.md)
   : Plot posterior densities for MCMC samples
 - [`plot_forest()`](https://norimune.github.io/BayesRTMB/reference/plot_forest.md)
   : Plot parameter estimates and credible intervals (Forest Plot)
+- [`plot_item_curve()`](https://norimune.github.io/BayesRTMB/reference/plot_item_curve.md)
+  : Plot item/category response curves
+- [`plot_item_info()`](https://norimune.github.io/BayesRTMB/reference/plot_item_info.md)
+  : Plot item information functions
+- [`plot_lsmeans()`](https://norimune.github.io/BayesRTMB/reference/plot_lsmeans.md)
+  : Plot least-squares marginal means
 - [`plot_mdu()`](https://norimune.github.io/BayesRTMB/reference/plot_mdu.md)
   : Plot Multidimensional Unfolding Configuration
 - [`plot_pairs()`](https://norimune.github.io/BayesRTMB/reference/plot_pairs.md)
   : Plot pairs for posterior samples
+- [`plot_test_info()`](https://norimune.github.io/BayesRTMB/reference/plot_test_info.md)
+  : Plot test information function
 - [`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)
   : Plot MCMC trace plots
 - [`print(`*`<bayes_factor>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.bayes_factor.md)
@@ -307,8 +330,6 @@ Functions used within rtmb_code for stability and transformations.
   Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
-- [`restore_bw_from_ydif()`](https://norimune.github.io/BayesRTMB/reference/restore_bw_from_ydif.md)
-  : Restore Best and Worst Responses from Best-Worst Pair Indices
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)

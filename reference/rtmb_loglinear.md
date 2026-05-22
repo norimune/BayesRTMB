@@ -6,7 +6,14 @@ regression) on a contingency table or raw data.
 ## Usage
 
 ``` r
-rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
+rtmb_loglinear(
+  formula,
+  data,
+  prior = prior_flat(),
+  fixed = NULL,
+  WAIC = FALSE,
+  ...
+)
 ```
 
 ## Arguments
@@ -26,6 +33,11 @@ rtmb_loglinear(formula, data, prior = prior_flat(), fixed = NULL, ...)
 - fixed:
 
   Optional named list of fixed values for specific parameters.
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 

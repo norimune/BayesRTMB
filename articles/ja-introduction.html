@@ -113,7 +113,7 @@ vignette で扱います。</p>
 <li><strong><a href="ja-introduction.html">日本語版の概要</a></strong></li>
 <li><strong><a href="ja-quick_start.html">クイックスタート</a></strong></li>
 <li><strong><a href="ja-wrapper_functions.html">ラッパー関数の使い方</a></strong></li>
-<li><strong><a href="ja-rtmb_glmer.html">階層モデル・GLMM</a></strong></li>
+<li><strong><a href="ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></strong></li>
 <li><strong><a href="ja-writing_models.html">モデルコードの書き方</a></strong></li>
 <li><strong><a href="ja-rtmb_internals.html">RTMB
 の仕組みと推定アルゴリズム</a></strong></li>
@@ -501,8 +501,11 @@ Laplace 近似が使われます。</p>
 <span><span class="va">fit_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="モデル比較と-bridge-sampling">モデル比較と bridge sampling<a class="anchor" aria-label="anchor" href="#%E3%83%A2%E3%83%87%E3%83%AB%E6%AF%94%E8%BC%83%E3%81%A8-bridge-sampling"></a>
+<h2 id="モデル比較bridge-sampling-waic">モデル比較（bridge sampling / WAIC）<a class="anchor" aria-label="anchor" href="#%E3%83%A2%E3%83%87%E3%83%AB%E6%AF%94%E8%BC%83bridge-sampling-waic"></a>
 </h2>
+<div class="section level3">
+<h3 id="bridge-sampling-による周辺尤度と-bayes-factor">bridge sampling による周辺尤度と Bayes factor<a class="anchor" aria-label="anchor" href="#bridge-sampling-%E3%81%AB%E3%82%88%E3%82%8B%E5%91%A8%E8%BE%BA%E5%B0%A4%E5%BA%A6%E3%81%A8-bayes-factor"></a>
+</h3>
 <p>MCMC の結果に対して、bridge sampling
 による周辺尤度を計算できます。</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
@@ -523,6 +526,43 @@ Laplace 近似が使われます。</p>
 <span><span class="co">## Log Bayes Factor    : 11.8703 (Approx. Error = 0.0040)</span></span>
 <span><span class="co">## Evidence            : Decisive evidence for Model 1 </span></span>
 <span><span class="co">## Comparison model    : Parameters fixed at list("b[talk]" = 0) </span></span></code></pre>
+</div>
+<div class="section level3">
+<h3 id="waic-によるモデル比較">WAIC によるモデル比較<a class="anchor" aria-label="anchor" href="#waic-%E3%81%AB%E3%82%88%E3%82%8B%E3%83%A2%E3%83%87%E3%83%AB%E6%AF%94%E8%BC%83"></a>
+</h3>
+<p>BayesRTMB では、<code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> の <code>generate</code>
+ブロックで、観測ごとの対数尤度を <code>log_lik</code>
+という変数に格納しておくと、推定後に <code>$WAIC()</code>
+メソッドを使って WAIC（広く使える情報量基準）を計算できます。</p>
+<p>たとえば、手書きモデルの <code>generate</code> ブロックに以下のように
+<code>log_lik</code> を定義します。</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span>  <span class="va">generate</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># 観測ごとの対数尤度を計算して log_lik に代入する（sum = FALSE を指定）</span></span>
+<span>    <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span></code></pre></div>
+<p>※ ラッパー関数（<code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>
+など）を使う場合は、<code>WAIC = TRUE</code>
+を引数に指定することで、自動的に内部で <code>log_lik</code>
+が生成されます。</p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span>, WAIC <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># WAIC の計算</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>計算結果は以下のように出力されます。</p>
+<pre class="text"><code><span><span class="co">## WAIC</span></span>
+<span><span class="co">##   WAIC (elpd scale): -400.07398</span></span>
+<span><span class="co">##   -2 WAIC: 800.14796</span></span>
+<span><span class="co">##   p_waic: 4.70921</span></span>
+<span><span class="co">##   lppd: -395.36477</span></span>
+<span><span class="co">##   nobs: 300, draws: 4000</span></span></code></pre>
+<p><code>WAIC()</code> メソッドは、MCMC (<code>MCMC_Fit</code>)
+や変分推論 (<code>VB_Fit</code>)、および
+<code>se_method = "sampling"</code> を指定した MAP 推定
+(<code>MAP_Fit</code>) の結果に対して利用できます。</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="次のステップ">次のステップ<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AE%E3%82%B9%E3%83%86%E3%83%83%E3%83%97"></a>

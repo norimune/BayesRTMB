@@ -21,7 +21,8 @@ rtmb_mdu(
   fixed = NULL,
   view = NULL,
   distance_eps = 1e-04,
-  missing = c("listwise", "fiml")
+  missing = c("listwise", "fiml"),
+  WAIC = FALSE
 )
 ```
 
@@ -97,6 +98,11 @@ rtmb_mdu(
 
   Missing value handling strategy: "listwise" (default) or "fiml" (Full
   Information Maximum Likelihood).
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 ## Value
 

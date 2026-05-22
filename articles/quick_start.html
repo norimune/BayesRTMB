@@ -123,18 +123,20 @@ covered in other vignettes.</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="windows-users-check-rtools">Windows Users: Check Rtools<a class="anchor" aria-label="anchor" href="#windows-users-check-rtools"></a>
+<h3 id="windows-users">Windows Users<a class="anchor" aria-label="anchor" href="#windows-users"></a>
 </h3>
-<p>BayesRTMB uses RTMB / TMB internally. On Windows, Rtools is required
-to compile these dependencies.</p>
-<p>You can check whether Rtools is available with the following
-code.</p>
+<p>BayesRTMB uses RTMB / TMB internally. For ordinary use, Windows users
+can install the CRAN binary package without Rtools. Rtools is only
+needed for source installation, development, or compiling custom TMB C++
+templates.</p>
+<p>If you install BayesRTMB from source, you can check whether Rtools is
+available with the following code.</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>If this returns <code>TRUE</code>, or reports that build tools are
-available, your setup is ready. If Rtools is not found, install the
-Rtools version that matches your R version, then restart R or
-RStudio.</p>
+available, your source-install setup is ready. If Rtools is not found,
+install the Rtools version that matches your R version, then restart R
+or RStudio.</p>
 </div>
 </div>
 <div class="section level2">

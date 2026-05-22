@@ -15,6 +15,7 @@ rtmb_glmer(
   init = NULL,
   fixed = NULL,
   gmc = NULL,
+  centering = NULL,
   cwc = NULL,
   view = NULL,
   within = NULL,
@@ -26,6 +27,7 @@ rtmb_glmer(
   resid_group = NULL,
   generate = NULL,
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   .force_sum = FALSE
 )
 ```
@@ -76,6 +78,10 @@ rtmb_glmer(
   Character vector of variable names for Grand Mean Centering (GMC). If
   "all", all numeric variables are centered.
 
+- centering:
+
+  Alias for \`gmc\`.
+
 - cwc:
 
   List for Centering Within Cluster (CWC). Should contain `cluster`
@@ -122,6 +128,11 @@ rtmb_glmer(
 - missing:
 
   Missing value handling strategy: "listwise".
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - .force_sum:
 

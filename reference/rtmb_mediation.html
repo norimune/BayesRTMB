@@ -74,6 +74,7 @@ indirect, direct, and total effects.</p>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -109,6 +110,10 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 
 <dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
+
+
+<dt id="arg-waic">WAIC<a class="anchor" aria-label="anchor" href="#arg-waic"></a></dt>
+<dd><p>Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

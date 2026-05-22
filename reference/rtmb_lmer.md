@@ -14,6 +14,7 @@ rtmb_lmer(
   init = NULL,
   fixed = NULL,
   gmc = NULL,
+  centering = NULL,
   cwc = NULL,
   view = NULL,
   sigma_by = NULL,
@@ -24,6 +25,7 @@ rtmb_lmer(
   resid_group = NULL,
   within = NULL,
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   ...
 )
 ```
@@ -66,6 +68,10 @@ rtmb_lmer(
 - gmc:
 
   Character vector of variable names for GMC
+
+- centering:
+
+  Alias for \`gmc\`.
 
 - cwc:
 
@@ -114,6 +120,11 @@ rtmb_lmer(
 - missing:
 
   Missing value handling strategy: "listwise".
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 

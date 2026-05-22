@@ -79,6 +79,14 @@ only by marginal-likelihood model comparison.
 
   An `MCMC_Fit` object containing the fitted comparison model.
 
+- `max_treedepth`:
+
+  Maximum tree depth requested for NUTS/HMC.
+
+- `pd_error_count`:
+
+  Positive-definite/singularity errors treated as lp = -Inf by chain.
+
 ## Methods
 
 ### Public methods
@@ -98,6 +106,10 @@ only by marginal-likelihood model comparison.
 - [`MCMC_Fit$log_prob()`](#method-mcmc_fit-log_prob)
 
 - [`MCMC_Fit$bridgesampling()`](#method-mcmc_fit-bridgesampling)
+
+- [`MCMC_Fit$WAIC()`](#method-mcmc_fit-WAIC)
+
+- [`MCMC_Fit$diagnose()`](#method-mcmc_fit-diagnose)
 
 - [`MCMC_Fit$bayes_factor()`](#method-mcmc_fit-bayes_factor)
 
@@ -161,7 +173,9 @@ Create a new \`MCMC_Fit\` object.
       accept,
       treedepth,
       laplace,
-      posterior_mean
+      posterior_mean,
+      max_treedepth = NULL,
+      pd_error_count = NULL
     )
 
 #### Arguments
@@ -197,6 +211,15 @@ Create a new \`MCMC_Fit\` object.
 - `posterior_mean`:
 
   Posterior mean estimates.
+
+- `max_treedepth`:
+
+  Maximum tree depth requested for NUTS/HMC.
+
+- `pd_error_count`:
+
+  Positive-definite/singularity errors treated as \`lp = -Inf\` by
+  chain.
 
 ------------------------------------------------------------------------
 
@@ -411,6 +434,47 @@ Estimate the marginal likelihood by bridge sampling.
 #### Returns
 
 Bridge sampling result.
+
+------------------------------------------------------------------------
+
+### Method `WAIC()`
+
+Compute WAIC from pointwise generated log likelihood.
+
+#### Usage
+
+    MCMC_Fit$WAIC(...)
+
+#### Arguments
+
+- `...`:
+
+  Additional arguments passed to \`draws()\`, such as \`chains\` or
+  \`best_chains\`.
+
+#### Returns
+
+A \`waic_BayesRTMB\` object.
+
+------------------------------------------------------------------------
+
+### Method `diagnose()`
+
+Run basic diagnostics for the MCMC fit.
+
+#### Usage
+
+    MCMC_Fit$diagnose(...)
+
+#### Arguments
+
+- `...`:
+
+  Additional arguments passed to \`diagnose_mcmc_fit()\`.
+
+#### Returns
+
+A \`diagnose_BayesRTMB\` object.
 
 ------------------------------------------------------------------------
 

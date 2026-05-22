@@ -46,12 +46,16 @@ install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
 ```
 
-### Windows ユーザー向け: Rtools の確認
+### Windows ユーザー向け
 
-BayesRTMB は内部で RTMB / TMB を利用します。 Windows
-では、これらの依存パッケージをコンパイルするために Rtools が必要です。
+BayesRTMB は内部で RTMB / TMB を利用します。 通常利用では、Windows
+ユーザーも CRAN のバイナリ版をインストールすれば Rtools は不要です。
+Rtools
+が必要になるのは、ソースからインストールする場合、パッケージ開発を行う場合、または通常の
+TMB のように独自の C++ テンプレートをコンパイルする場合です。
 
-Rtools が利用できるかどうかは、次のコードで確認できます。
+BayesRTMB をソースからインストールする場合は、Rtools
+が利用できるかどうかを次のコードで確認できます。
 
 ``` r
 
@@ -59,7 +63,7 @@ pkgbuild::check_build_tools(debug = TRUE)
 ```
 
 `TRUE`
-が返る、またはビルドツールが利用可能であることが表示されれば、準備はできています。
+が返る、またはビルドツールが利用可能であることが表示されれば、ソースインストールの準備はできています。
 Rtools が見つからない場合は、利用している R のバージョンに対応する
 Rtools をインストールし、R または RStudio を再起動してください。
 
@@ -427,7 +431,7 @@ bf
     回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT
     など、標準的な分析をラッパー関数で行う方法を確認できます。
 
-2.  **[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
+2.  **[階層モデル・GLMM・分散分析](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
     [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
     を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。
 

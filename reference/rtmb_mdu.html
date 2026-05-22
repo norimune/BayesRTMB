@@ -82,7 +82,8 @@ space.</p>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  distance_eps <span class="op">=</span> <span class="fl">1e-04</span>,</span>
-<span>  missing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"listwise"</span>, <span class="st">"fiml"</span><span class="op">)</span></span>
+<span>  missing <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"listwise"</span>, <span class="st">"fiml"</span><span class="op">)</span>,</span>
+<span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -156,6 +157,10 @@ with the default flat prior, `prior_weak()` is used. For choice methods
 
 <dt id="arg-missing">missing<a class="anchor" aria-label="anchor" href="#arg-missing"></a></dt>
 <dd><p>Missing value handling strategy: "listwise" (default) or "fiml" (Full Information Maximum Likelihood).</p></dd>
+
+
+<dt id="arg-waic">WAIC<a class="anchor" aria-label="anchor" href="#arg-waic"></a></dt>
+<dd><p>Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.</p></dd>
 
 </dl></div>
     <div class="section level2">

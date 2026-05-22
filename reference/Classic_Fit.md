@@ -63,6 +63,19 @@ estimation.
 
   Log-likelihood.
 
+- `restricted_log_lik`:
+
+  Restricted log-likelihood, if classical estimation used REML-style
+  marginalization.
+
+- `rss`:
+
+  Residual sum of squares for classical linear models, if available.
+
+- `df_residual`:
+
+  Residual degrees of freedom for classical linear models, if available.
+
 - `convergence`:
 
   Convergence code.
@@ -156,6 +169,10 @@ estimation.
 
 - [`Classic_Fit$BIC()`](#method-Classic_Fit-BIC)
 
+- [`Classic_Fit$WAIC()`](#method-Classic_Fit-WAIC)
+
+- [`Classic_Fit$diagnose()`](#method-Classic_Fit-diagnose)
+
 - [`Classic_Fit$print()`](#method-Classic_Fit-print)
 
 - [`Classic_Fit$logLik()`](#method-Classic_Fit-logLik)
@@ -222,6 +239,7 @@ Create a new \`Classic_Fit\` object.
       par = NULL,
       objective = NULL,
       log_lik = NULL,
+      restricted_log_lik = NULL,
       convergence = NULL,
       sd_rep = NULL,
       df_fixed = NULL,
@@ -244,6 +262,8 @@ Create a new \`Classic_Fit\` object.
       df_method = "auto",
       idx_fix_active = NULL,
       show_df = TRUE,
+      rss = NULL,
+      df_residual = NULL,
       ...
     )
 
@@ -267,7 +287,12 @@ Create a new \`Classic_Fit\` object.
 
 - `log_lik`:
 
-  Log-likelihood.
+  Full log-likelihood used for information criteria.
+
+- `restricted_log_lik`:
+
+  Restricted log-likelihood, if classical estimation used REML-style
+  marginalization.
 
 - `convergence`:
 
@@ -357,6 +382,14 @@ Create a new \`Classic_Fit\` object.
 - `show_df`:
 
   Logical; whether to display degrees of freedom in the summary output.
+
+- `rss`:
+
+  Residual sum of squares for classical linear models, if available.
+
+- `df_residual`:
+
+  Residual degrees of freedom for classical linear models, if available.
 
 - `...`:
 
@@ -512,6 +545,36 @@ Get the BIC of the fitted model.
 #### Usage
 
     Classic_Fit$BIC()
+
+------------------------------------------------------------------------
+
+### Method `WAIC()`
+
+WAIC is not defined for classical fits.
+
+#### Usage
+
+    Classic_Fit$WAIC()
+
+------------------------------------------------------------------------
+
+### Method `diagnose()`
+
+Run basic diagnostics for the classical fit.
+
+#### Usage
+
+    Classic_Fit$diagnose(...)
+
+#### Arguments
+
+- `...`:
+
+  Additional arguments passed to \`diagnose_classic_fit()\`.
+
+#### Returns
+
+A \`diagnose_BayesRTMB\` object.
 
 ------------------------------------------------------------------------
 

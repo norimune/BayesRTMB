@@ -117,6 +117,18 @@
 <dd><p>Log-likelihood.</p></dd>
 
 
+<dt><code>restricted_log_lik</code></dt>
+<dd><p>Restricted log-likelihood, if classical estimation used REML-style marginalization.</p></dd>
+
+
+<dt><code>rss</code></dt>
+<dd><p>Residual sum of squares for classical linear models, if available.</p></dd>
+
+
+<dt><code>df_residual</code></dt>
+<dd><p>Residual degrees of freedom for classical linear models, if available.</p></dd>
+
+
 <dt><code>convergence</code></dt>
 <dd><p>Convergence code.</p></dd>
 
@@ -205,6 +217,8 @@
 <li><p><a href="#method-Classic_Fit-compute_bootstrap"><code>Classic_Fit$compute_bootstrap()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-AIC"><code>Classic_Fit$AIC()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-BIC"><code>Classic_Fit$BIC()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-WAIC"><code>Classic_Fit$WAIC()</code></a></p></li>
+<li><p><a href="#method-Classic_Fit-diagnose"><code>Classic_Fit$diagnose()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-print"><code>Classic_Fit$print()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-logLik"><code>Classic_Fit$logLik()</code></a></p></li>
 <li><p><a href="#method-Classic_Fit-EAP"><code>Classic_Fit$EAP()</code></a></p></li>
@@ -253,6 +267,7 @@
 <span>  par <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  objective <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  log_lik <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  restricted_log_lik <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  convergence <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  sd_rep <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  df_fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -275,6 +290,8 @@
 <span>  df_method <span class="op">=</span> <span class="st">"auto"</span>,</span>
 <span>  idx_fix_active <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  show_df <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  rss <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  df_residual <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
@@ -298,7 +315,11 @@
 
 
 <dt><code>log_lik</code></dt>
-<dd><p>Log-likelihood.</p></dd>
+<dd><p>Full log-likelihood used for information criteria.</p></dd>
+
+
+<dt><code>restricted_log_lik</code></dt>
+<dd><p>Restricted log-likelihood, if classical estimation used REML-style marginalization.</p></dd>
 
 
 <dt><code>convergence</code></dt>
@@ -387,6 +408,14 @@
 
 <dt><code>show_df</code></dt>
 <dd><p>Logical; whether to display degrees of freedom in the summary output.</p></dd>
+
+
+<dt><code>rss</code></dt>
+<dd><p>Residual sum of squares for classical linear models, if available.</p></dd>
+
+
+<dt><code>df_residual</code></dt>
+<dd><p>Residual degrees of freedom for classical linear models, if available.</p></dd>
 
 
 <dt><code>...</code></dt>
@@ -543,15 +572,43 @@ If TRUE, update the object in place.</p></dd>
 </div>
 
 
-</div><p></p><hr><a id="method-Classic_Fit-print"></a><div class="section">
-<h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
-<p>Print the fit results.</p><div class="section">
+</div><p></p><hr><a id="method-Classic_Fit-WAIC"></a><div class="section">
+<h3 id="method-waic-">Method <code>WAIC()</code><a class="anchor" aria-label="anchor" href="#method-waic-"></a></h3>
+<p>WAIC is not defined for classical fits.</p><div class="section">
 <h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+
+</div><p></p><hr><a id="method-Classic_Fit-diagnose"></a><div class="section">
+<h3 id="method-diagnose-">Method <code>diagnose()</code><a class="anchor" aria-label="anchor" href="#method-diagnose-"></a></h3>
+<p>Run basic diagnostics for the classical fit.</p><div class="section">
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>...</code></dt>
+<dd><p>Additional arguments passed to `diagnose_classic_fit()`.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<p>A `diagnose_BayesRTMB` object.</p>
+</div>
+
+</div><p></p><hr><a id="method-Classic_Fit-print"></a><div class="section">
+<h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
+<p>Print the fit results.</p><div class="section">
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `summary()`.</p></dd>
 
@@ -562,7 +619,7 @@ If TRUE, update the object in place.</p></dd>
 </div><p></p><hr><a id="method-Classic_Fit-logLik"></a><div class="section">
 <h3 id="method-loglik-">Method <code><a href="https://rdrr.io/r/stats/logLik.html" class="external-link">logLik()</a></code><a class="anchor" aria-label="anchor" href="#method-loglik-"></a></h3>
 <p>Get the Log-Likelihood of the fitted model.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">logLik</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -570,24 +627,8 @@ If TRUE, update the object in place.</p></dd>
 </div><p></p><hr><a id="method-Classic_Fit-EAP"></a><div class="section">
 <h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
 <p>EAP estimates are not available for Classic_Fit.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
-</div>
-
-<div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
-<p></p><div class="arguments"><dl><dt><code>...</code></dt>
-<dd><p>Ignored.</p></dd>
-
-
-</dl><p></p></div>
-</div>
-
-</div><p></p><hr><a id="method-Classic_Fit-MAP"></a><div class="section">
-<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
-<p>MAP estimates are not available for Classic_Fit.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
@@ -599,15 +640,31 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 
-</div><p></p><hr><a id="method-Classic_Fit-summary"></a><div class="section">
-<h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
-<p>Display a summary of the estimation results.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>view <span class="op">=</span> <span class="cn">NULL</span>, digits <span class="op">=</span> <span class="fl">5</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div><p></p><hr><a id="method-Classic_Fit-MAP"></a><div class="section">
+<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
+<p>MAP estimates are not available for Classic_Fit.</p><div class="section">
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
 <h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>...</code></dt>
+<dd><p>Ignored.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+
+</div><p></p><hr><a id="method-Classic_Fit-summary"></a><div class="section">
+<h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
+<p>Display a summary of the estimation results.</p><div class="section">
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span>view <span class="op">=</span> <span class="cn">NULL</span>, digits <span class="op">=</span> <span class="fl">5</span>, max_rows <span class="op">=</span> <span class="fl">10</span>, ranef <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>view</code></dt>
 <dd><p>Character vector of parameter names to prioritize or filter by.</p></dd>
 
@@ -630,12 +687,12 @@ If TRUE, update the object in place.</p></dd>
 </div><p></p><hr><a id="method-Classic_Fit-anova"></a><div class="section">
 <h3 id="method-anova-">Method <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code><a class="anchor" aria-label="anchor" href="#method-anova-"></a></h3>
 <p>Perform ANOVA (Wald F-tests / Chisq-tests) on the fitted model.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">anova</span><span class="op">(</span>method <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"reml"</span>, <span class="st">"ls"</span><span class="op">)</span>, type <span class="op">=</span> <span class="fl">3</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>method</code></dt>
 <dd><p>Character; "reml" (standard) or "ls" (experimental).</p></dd>
 
@@ -647,14 +704,14 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>A data frame containing the ANOVA table.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-lsmeans"></a><div class="section">
 <h3 id="method-lsmeans-">Method <code><a href="lsmeans.html">lsmeans()</a></code><a class="anchor" aria-label="anchor" href="#method-lsmeans-"></a></h3>
 <p>Calculate Least Squares Means (Marginal Means) and contrasts.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span></span>
 <span>  specs <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  pairwise <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -665,7 +722,7 @@ If TRUE, update the object in place.</p></dd>
 </div>
 
 <div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Character vector of factors to calculate means for.</p></dd>
 
@@ -689,19 +746,19 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>A data frame containing the marginal means or contrasts.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.calc_contrast"></a><div class="section">
 <h3 id="method-calc-contrast-">Method <code>.calc_contrast()</code><a class="anchor" aria-label="anchor" href="#method-calc-contrast-"></a></h3>
 <p>(Internal) Calculate metrics for a contrast.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.calc_contrast</span><span class="op">(</span><span class="va">L</span>, <span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>L</code></dt>
 <dd><p>Contrast matrix.</p></dd>
 
@@ -713,19 +770,19 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>A data frame with estimate, SE, df, t-value, and p-value.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.get_lsmeans_df"></a><div class="section">
 <h3 id="method-get-lsmeans-df-">Method <code>.get_lsmeans_df()</code><a class="anchor" aria-label="anchor" href="#method-get-lsmeans-df-"></a></h3>
 <p>(Internal) Get representative DF for lsmeans.</p><div class="section">
-<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
+<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.get_lsmeans_df</span><span class="op">(</span><span class="va">specs</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>specs</code></dt>
 <dd><p>Variable names for lsmeans.</p></dd>
 
@@ -733,19 +790,19 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
 <p>Degrees of freedom.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-.construct_par_list"></a><div class="section">
 <h3 id="method-construct-par-list-">Method <code>.construct_par_list()</code><a class="anchor" aria-label="anchor" href="#method-construct-par-list-"></a></h3>
 <p>(Internal) Construct a list of parameters from the fit.</p><div class="section">
-<h4 id="usage-17">Usage<a class="anchor" aria-label="anchor" href="#usage-17"></a></h4>
+<h4 id="usage-19">Usage<a class="anchor" aria-label="anchor" href="#usage-19"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">.construct_par_list</span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fit</code></dt>
 <dd><p>The fit result (dataframe or lm object).</p></dd>
 
@@ -753,19 +810,19 @@ If TRUE, update the object in place.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
+<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
 <p>A named list of parameters.</p>
 </div>
 
 </div><p></p><hr><a id="method-Classic_Fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-18">Usage<a class="anchor" aria-label="anchor" href="#usage-18"></a></h4>
+<h4 id="usage-20">Usage<a class="anchor" aria-label="anchor" href="#usage-20"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">Classic_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
+<h4 id="arguments-16">Arguments<a class="anchor" aria-label="anchor" href="#arguments-16"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

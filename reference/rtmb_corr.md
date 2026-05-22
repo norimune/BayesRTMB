@@ -17,7 +17,8 @@ rtmb_corr(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  missing = c("listwise", "fiml", "pairwise")
+  missing = c("listwise", "fiml", "pairwise"),
+  WAIC = FALSE
 )
 ```
 
@@ -72,6 +73,11 @@ rtmb_corr(
 
   Missing value handling strategy: "listwise" (default), "pairwise", or
   "fiml" (Full Information Maximum Likelihood).
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 ## Examples
 

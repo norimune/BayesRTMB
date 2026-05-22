@@ -70,6 +70,7 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 <span>  correct <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -100,6 +101,10 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
 <dd><p>Optional named list of fixed values for specific parameters.</p></dd>
+
+
+<dt id="arg-waic">WAIC<a class="anchor" aria-label="anchor" href="#arg-waic"></a></dt>
+<dd><p>Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

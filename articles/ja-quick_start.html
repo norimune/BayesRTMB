@@ -122,16 +122,19 @@ vignette で扱います。</p>
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"remotes"</span><span class="op">)</span></span>
 <span><span class="fu">remotes</span><span class="fu">::</span><span class="fu">install_github</span><span class="op">(</span><span class="st">"norimune/BayesRTMB"</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
-<h3 id="windows-ユーザー向け-rtools-の確認">Windows ユーザー向け: Rtools の確認<a class="anchor" aria-label="anchor" href="#windows-%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E5%90%91%E3%81%91-rtools-%E3%81%AE%E7%A2%BA%E8%AA%8D"></a>
+<h3 id="windows-ユーザー向け">Windows ユーザー向け<a class="anchor" aria-label="anchor" href="#windows-%E3%83%A6%E3%83%BC%E3%82%B6%E3%83%BC%E5%90%91%E3%81%91"></a>
 </h3>
-<p>BayesRTMB は内部で RTMB / TMB を利用します。 Windows
-では、これらの依存パッケージをコンパイルするために Rtools
-が必要です。</p>
-<p>Rtools が利用できるかどうかは、次のコードで確認できます。</p>
+<p>BayesRTMB は内部で RTMB / TMB を利用します。 通常利用では、Windows
+ユーザーも CRAN のバイナリ版をインストールすれば Rtools は不要です。
+Rtools
+が必要になるのは、ソースからインストールする場合、パッケージ開発を行う場合、または通常の
+TMB のように独自の C++ テンプレートをコンパイルする場合です。</p>
+<p>BayesRTMB をソースからインストールする場合は、Rtools
+が利用できるかどうかを次のコードで確認できます。</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu">pkgbuild</span><span class="fu">::</span><span class="fu">check_build_tools</span><span class="op">(</span>debug <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><code>TRUE</code>
-が返る、またはビルドツールが利用可能であることが表示されれば、準備はできています。
+が返る、またはビルドツールが利用可能であることが表示されれば、ソースインストールの準備はできています。
 Rtools が見つからない場合は、利用している R のバージョンに対応する
 Rtools をインストールし、R または RStudio を再起動してください。</p>
 </div>
@@ -437,7 +440,7 @@ Cauchy 事前分布を置いた Bayes factor を計算できます。</p>
 <li><p><strong><a href="ja-wrapper_functions.html">ラッパー関数の使い方</a></strong><br>
 回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT
 など、標準的な分析をラッパー関数で行う方法を確認できます。</p></li>
-<li><p><strong><a href="ja-rtmb_glmer.html">階層モデル・GLMM</a></strong><br><code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>
+<li><p><strong><a href="ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></strong><br><code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>
 を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。</p></li>
 <li><p><strong><a href="ja-writing_models.html">モデルコードの書き方</a></strong><br><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> の <code>setup</code>, <code>parameters</code>,
 <code>transform</code>, <code>model</code>, <code>generate</code>

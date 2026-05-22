@@ -173,6 +173,10 @@ MAP fit object"></head><body>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
 
 
+<dt><code>fallback_needed</code></dt>
+<dd><p>Logical; whether Hessian/SE fallback was used during optimization.</p></dd>
+
+
 </dl><p></p></div>
     </div>
     <div class="section level2">
@@ -188,6 +192,8 @@ MAP fit object"></head><body>
 <li><p><a href="#method-map_fit-summary"><code>MAP_Fit$summary()</code></a></p></li>
 <li><p><a href="#method-map_fit-print"><code>MAP_Fit$print()</code></a></p></li>
 <li><p><a href="#method-map_fit-generated_quantities"><code>MAP_Fit$generated_quantities()</code></a></p></li>
+<li><p><a href="#method-map_fit-WAIC"><code>MAP_Fit$WAIC()</code></a></p></li>
+<li><p><a href="#method-map_fit-diagnose"><code>MAP_Fit$diagnose()</code></a></p></li>
 <li><p><a href="#method-map_fit-profile"><code>MAP_Fit$profile()</code></a></p></li>
 <li><p><a href="#method-map_fit-clone"><code>MAP_Fit$clone()</code></a></p></li>
 </ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href="RTMB_Fit_Base.html#method-EAP"><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
@@ -248,7 +254,8 @@ MAP fit object"></head><body>
 <span>  laplace_random_vars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  idx_fix_active <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  show_df <span class="op">=</span> <span class="cn">TRUE</span>,</span>
-<span>  view <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  fallback_needed <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -352,6 +359,10 @@ MAP fit object"></head><body>
 
 <dt><code>view</code></dt>
 <dd><p>Character vector of parameter names to prioritize in summary.</p></dd>
+
+
+<dt><code>fallback_needed</code></dt>
+<dd><p>Logical; whether Hessian/SE fallback was used during optimization.</p></dd>
 
 
 </dl><p></p></div>
@@ -505,10 +516,42 @@ MAP fit object"></head><body>
 <p>The `MAP_Fit` object itself (invisibly). Results are added or updated in the `generate` list and `df_generate`.</p>
 </div>
 
+</div><p></p><hr><a id="method-map_fit-WAIC"></a><div class="section">
+<h3 id="method-waic-">Method <code>WAIC()</code><a class="anchor" aria-label="anchor" href="#method-waic-"></a></h3>
+<p>Compute an approximate WAIC from sampling-based uncertainty propagation.</p><div class="section">
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<p>A `waic_BayesRTMB` object.</p>
+</div>
+
+</div><p></p><hr><a id="method-map_fit-diagnose"></a><div class="section">
+<h3 id="method-diagnose-">Method <code>diagnose()</code><a class="anchor" aria-label="anchor" href="#method-diagnose-"></a></h3>
+<p>Run basic diagnostics for the MAP fit.</p><div class="section">
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>...</code></dt>
+<dd><p>Additional arguments passed to `diagnose_map_fit()`.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<p>A `diagnose_BayesRTMB` object.</p>
+</div>
+
 </div><p></p><hr><a id="method-map_fit-profile"></a><div class="section">
 <h3 id="method-profile-">Method <code><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile()</a></code><a class="anchor" aria-label="anchor" href="#method-profile-"></a></h3>
 <p>Calculate Profile Likelihood confidence intervals for specific parameters.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">profile</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span>,</span>
@@ -522,7 +565,7 @@ MAP fit object"></head><body>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector of parameter names to profile. If NULL, all fixed parameters are profiled.</p></dd>
 
@@ -558,19 +601,19 @@ MAP fit object"></head><body>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>A data frame containing the profile-based confidence intervals, with the raw profile objects stored in the "profiles" attribute.</p>
 </div>
 
 </div><p></p><hr><a id="method-map_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MAP_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

@@ -525,8 +525,11 @@ Laplace approximation.</p>
 <span><span class="va">fit_hlm</span> <span class="op">&lt;-</span> <span class="va">mdl_hlm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
-<h2 id="model-comparison-and-bridge-sampling">Model Comparison and Bridge Sampling<a class="anchor" aria-label="anchor" href="#model-comparison-and-bridge-sampling"></a>
+<h2 id="model-comparison-bridge-sampling-waic">Model Comparison (Bridge Sampling / WAIC)<a class="anchor" aria-label="anchor" href="#model-comparison-bridge-sampling-waic"></a>
 </h2>
+<div class="section level3">
+<h3 id="marginal-likelihood-and-bayes-factor-by-bridge-sampling">Marginal Likelihood and Bayes Factor by Bridge Sampling<a class="anchor" aria-label="anchor" href="#marginal-likelihood-and-bayes-factor-by-bridge-sampling"></a>
+</h3>
 <p>For MCMC results, bridge sampling can be used to compute the marginal
 likelihood.</p>
 <div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
@@ -547,6 +550,44 @@ factor.</p>
 <span><span class="co">## Log Bayes Factor    : 11.8703 (Approx. Error = 0.0040)</span></span>
 <span><span class="co">## Evidence            : Decisive evidence for Model 1 </span></span>
 <span><span class="co">## Comparison model    : Parameters fixed at list("b[talk]" = 0) </span></span></code></pre>
+</div>
+<div class="section level3">
+<h3 id="model-comparison-by-waic">Model Comparison by WAIC<a class="anchor" aria-label="anchor" href="#model-comparison-by-waic"></a>
+</h3>
+<p>In BayesRTMB, if you store the pointwise log likelihood for each
+observation in a variable named <code>log_lik</code> within the
+<code>generate</code> block of <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>, you can
+calculate the WAIC (Widely Applicable Information Criterion) using the
+<code>$WAIC()</code> method after estimation.</p>
+<p>For example, define <code>log_lik</code> in the <code>generate</code>
+block of a custom model as follows:</p>
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span>  <span class="va">generate</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="co"># Compute the pointwise log likelihood and assign it to log_lik (specify sum = FALSE)</span></span>
+<span>    <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span></code></pre></div>
+<p><em>Note: When using wrapper functions (e.g.,
+<code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>), you can specify <code>WAIC = TRUE</code> in the
+arguments to automatically generate <code>log_lik</code>
+internally.</em></p>
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_lm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span>, WAIC <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_lm</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="co"># Compute WAIC</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<p>The output will be displayed as follows:</p>
+<pre class="text"><code><span><span class="co">## WAIC</span></span>
+<span><span class="co">##   WAIC (elpd scale): -400.07398</span></span>
+<span><span class="co">##   -2 WAIC: 800.14796</span></span>
+<span><span class="co">##   p_waic: 4.70921</span></span>
+<span><span class="co">##   lppd: -395.36477</span></span>
+<span><span class="co">##   nobs: 300, draws: 4000</span></span></code></pre>
+<p>The <code>$WAIC()</code> method is available for results from MCMC
+(<code>MCMC_Fit</code>), variational inference (<code>VB_Fit</code>),
+and MAP estimation (<code>MAP_Fit</code>) with
+<code>se_method = "sampling"</code>.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="next-steps">Next Steps<a class="anchor" aria-label="anchor" href="#next-steps"></a>

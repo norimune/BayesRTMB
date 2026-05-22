@@ -98,6 +98,10 @@ Automatic Differentiation Variational Inference (ADVI).
 
 - [`VB_Fit$generated_quantities()`](#method-advi_fit-generated_quantities)
 
+- [`VB_Fit$WAIC()`](#method-advi_fit-WAIC)
+
+- [`VB_Fit$diagnose()`](#method-advi_fit-diagnose)
+
 - [`VB_Fit$clone()`](#method-advi_fit-clone)
 
 Inherited methods
@@ -438,6 +442,47 @@ Compute generated quantities from posterior draws.
 
 The \`VB_Fit\` object itself (invisibly). Results are appended to the
 \`generate_fit\` field.
+
+------------------------------------------------------------------------
+
+### Method `WAIC()`
+
+Compute WAIC from pointwise generated log likelihood.
+
+#### Usage
+
+    VB_Fit$WAIC(...)
+
+#### Arguments
+
+- `...`:
+
+  Additional arguments passed to \`draws()\`, such as \`chains\` or
+  \`best_chains\`.
+
+#### Returns
+
+A \`waic_BayesRTMB\` object.
+
+------------------------------------------------------------------------
+
+### Method `diagnose()`
+
+Run basic diagnostics for the variational fit.
+
+#### Usage
+
+    VB_Fit$diagnose(...)
+
+#### Arguments
+
+- `...`:
+
+  Additional arguments passed to \`diagnose_vb_fit()\`.
+
+#### Returns
+
+A \`diagnose_BayesRTMB\` object.
 
 ------------------------------------------------------------------------
 

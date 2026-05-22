@@ -13,10 +13,12 @@ rtmb_lm(
   init = NULL,
   fixed = NULL,
   gmc = NULL,
+  centering = NULL,
   view = NULL,
   factors = NULL,
   contrasts = "treatment",
   missing = c("listwise", "fiml"),
+  WAIC = FALSE,
   ...
 )
 ```
@@ -57,6 +59,10 @@ rtmb_lm(
 
   Character vector of variable names for GMC
 
+- centering:
+
+  Alias for \`gmc\`.
+
 - view:
 
   Optional character vector of parameter names to show first in summary.
@@ -72,6 +78,11 @@ rtmb_lm(
 - missing:
 
   Missing value handling strategy: "listwise".
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 

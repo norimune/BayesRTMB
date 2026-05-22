@@ -78,6 +78,7 @@ and Gaussian Process smoothing on the mean profiles.</p>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  two_stage <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -146,6 +147,10 @@ Specifying this automatically enables weakly informative priors if `prior` is `p
 <dd><p>Logical; if TRUE, estimate the latent-rank measurement model
 first and then estimate the rank regression with delta-method uncertainty
 propagation. Currently supported for `$optimize()` only.</p></dd>
+
+
+<dt id="arg-waic">WAIC<a class="anchor" aria-label="anchor" href="#arg-waic"></a></dt>
+<dd><p>Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

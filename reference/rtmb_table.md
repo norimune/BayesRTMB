@@ -14,6 +14,7 @@ rtmb_table(
   correct = TRUE,
   prior = prior_flat(),
   fixed = NULL,
+  WAIC = FALSE,
   ...
 )
 ```
@@ -44,6 +45,11 @@ rtmb_table(
 - fixed:
 
   Optional named list of fixed values for specific parameters.
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 

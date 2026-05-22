@@ -17,7 +17,8 @@ rtmb_fa(
   y_range = NULL,
   init = NULL,
   fixed = NULL,
-  missing = c("listwise", "fiml")
+  missing = c("listwise", "fiml"),
+  WAIC = FALSE
 )
 ```
 
@@ -68,6 +69,11 @@ rtmb_fa(
 
   Missing value handling strategy: "listwise" (default) or "fiml" (Full
   Information Maximum Likelihood).
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 ## Examples
 

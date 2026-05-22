@@ -16,6 +16,7 @@ rtmb_mediation(
   y_range = NULL,
   fixed = NULL,
   view = NULL,
+  WAIC = FALSE,
   ...
 )
 ```
@@ -52,6 +53,11 @@ rtmb_mediation(
 - view:
 
   Character vector of parameter names to prioritize in summary.
+
+- WAIC:
+
+  Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
+  WAIC.
 
 - ...:
 
