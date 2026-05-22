@@ -11,6 +11,7 @@
 #' @param init Initial values
 
 #' @param gmc Character vector of variable names for GMC
+#' @param centering Alias for `gmc`.
 #' @param cwc List for CWC
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param factors Character vector of variable names to be treated as factors.
@@ -37,6 +38,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        init = NULL,
                        fixed = NULL,
                        gmc = NULL,
+                       centering = NULL,
                        cwc = NULL,
                        view = NULL,
                        sigma_by = NULL,
@@ -57,6 +59,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              init = init,
              fixed = fixed,
              gmc = gmc,
+             centering = centering,
              cwc = cwc,
              view = view,
              sigma_by = sigma_by,
@@ -84,6 +87,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param init List of initial values
 
 #' @param gmc Character vector of variable names for GMC
+#' @param centering Alias for `gmc`.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param fixed Optional named list of fixed values for specific parameters.
@@ -98,6 +102,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
                        y_range = NULL,
                        init = NULL, fixed = NULL,
                        gmc = NULL,
+                       centering = NULL,
                        view = NULL,
                        factors = NULL,
                        contrasts = "treatment",
@@ -110,6 +115,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
              init = init,
              fixed = fixed,
              gmc = gmc,
+             centering = centering,
              view = view,
              factors = factors,
              contrasts = contrasts, missing = missing, WAIC = WAIC, ...)
@@ -127,6 +133,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param init List of initial values.
 
 #' @param gmc Character vector of variable names for GMC
+#' @param centering Alias for `gmc`.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param fixed Optional named list of fixed values for specific parameters.
@@ -141,6 +148,7 @@ rtmb_lm <- function(formula, data,
                     y_range = NULL,
                     init = NULL, fixed = NULL,
                     gmc = NULL,
+                    centering = NULL,
                     view = NULL,
                     factors = NULL,
                     contrasts = "treatment",
@@ -153,6 +161,7 @@ rtmb_lm <- function(formula, data,
              init = init,
              fixed = fixed,
              gmc = gmc,
+             centering = centering,
              view = view,
              factors = factors,
              contrasts = contrasts, missing = missing, WAIC = WAIC, ...)

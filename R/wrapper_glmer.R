@@ -272,6 +272,7 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' @param init List of initial values (generated automatically based on glm if omitted)
 
 #' @param gmc Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.
+#' @param centering Alias for `gmc`.
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param factors Character vector of variable names to be treated as factors.
@@ -294,6 +295,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        init = NULL,
                        fixed = NULL,
                        gmc = NULL,
+                       centering = NULL,
                        cwc = NULL,
                        view = NULL,
                        within = NULL,
@@ -307,6 +309,13 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        missing = c("listwise", "fiml"),
                        WAIC = FALSE,
                        .force_sum = FALSE) {
+
+  if (!is.null(centering)) {
+    if (!is.null(gmc) && !identical(gmc, centering)) {
+      stop("Specify only one of 'gmc' or 'centering', or use identical values.", call. = FALSE)
+    }
+    gmc <- centering
+  }
 
   valid_families <- c(
     "gaussian", "lognormal", "student_t", "bernoulli", "binomial",

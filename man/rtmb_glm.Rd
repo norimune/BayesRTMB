@@ -13,6 +13,7 @@ rtmb_glm(
   init = NULL,
   fixed = NULL,
   gmc = NULL,
+  centering = NULL,
   view = NULL,
   factors = NULL,
   contrasts = "treatment",
@@ -40,6 +41,8 @@ Default is `prior_flat()`.}
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 
 \item{gmc}{Character vector of variable names for GMC}
+
+\item{centering}{Alias for `gmc`.}
 
 \item{view}{Optional character vector of parameter names to show first in summary.}
 

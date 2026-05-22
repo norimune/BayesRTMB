@@ -14,6 +14,7 @@ rtmb_glmer(
   init = NULL,
   fixed = NULL,
   gmc = NULL,
+  centering = NULL,
   cwc = NULL,
   view = NULL,
   within = NULL,
@@ -48,6 +49,8 @@ rtmb_glmer(
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 
 \item{gmc}{Character vector of variable names for Grand Mean Centering (GMC). If "all", all numeric variables are centered.}
+
+\item{centering}{Alias for `gmc`.}
 
 \item{cwc}{List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).}
 

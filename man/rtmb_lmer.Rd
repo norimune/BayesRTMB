@@ -13,6 +13,7 @@ rtmb_lmer(
   init = NULL,
   fixed = NULL,
   gmc = NULL,
+  centering = NULL,
   cwc = NULL,
   view = NULL,
   sigma_by = NULL,
@@ -46,6 +47,8 @@ Default is `prior_flat()`.}
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 
 \item{gmc}{Character vector of variable names for GMC}
+
+\item{centering}{Alias for `gmc`.}
 
 \item{cwc}{List for CWC}
 
