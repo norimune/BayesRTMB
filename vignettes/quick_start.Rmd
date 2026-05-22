@@ -56,18 +56,19 @@ install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
 ```
 
-## Windows Users: Check Rtools
+## Windows Users
 
 BayesRTMB uses RTMB / TMB internally.
-On Windows, Rtools is required to compile these dependencies.
+For ordinary use, Windows users can install the CRAN binary package without Rtools.
+Rtools is only needed for source installation, development, or compiling custom TMB C++ templates.
 
-You can check whether Rtools is available with the following code.
+If you install BayesRTMB from source, you can check whether Rtools is available with the following code.
 
 ```{r eval=FALSE}
 pkgbuild::check_build_tools(debug = TRUE)
 ```
 
-If this returns `TRUE`, or reports that build tools are available, your setup is ready.
+If this returns `TRUE`, or reports that build tools are available, your source-install setup is ready.
 If Rtools is not found, install the Rtools version that matches your R version, then restart R or RStudio.
 
 # 1. Write a Minimal Model

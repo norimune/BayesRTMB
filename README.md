@@ -53,15 +53,16 @@ remotes::install_github("norimune/BayesRTMB")
 
 ### Windows Users
 
-Windows users need Rtools because BayesRTMB depends on the RTMB/TMB
-ecosystem.
+For ordinary use, Windows users can install the CRAN binary package
+without Rtools. Rtools is only needed for source installation,
+development, or compiling custom TMB C++ templates.
 
 ``` r
 pkgbuild::check_build_tools(debug = TRUE)
 ```
 
-If this check fails, install the Rtools version that matches your R
-version from the [Rtools
+If you install BayesRTMB from source and this check fails, install the
+Rtools version that matches your R version from the [Rtools
 page](https://cran.r-project.org/bin/windows/Rtools/), restart R, and
 try again.
 

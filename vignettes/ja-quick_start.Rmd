@@ -56,18 +56,19 @@ install.packages("remotes")
 remotes::install_github("norimune/BayesRTMB")
 ```
 
-## Windows ユーザー向け: Rtools の確認
+## Windows ユーザー向け
 
 BayesRTMB は内部で RTMB / TMB を利用します。
-Windows では、これらの依存パッケージをコンパイルするために Rtools が必要です。
+通常利用では、Windows ユーザーも CRAN のバイナリ版をインストールすれば Rtools は不要です。
+Rtools が必要になるのは、ソースからインストールする場合、パッケージ開発を行う場合、または通常の TMB のように独自の C++ テンプレートをコンパイルする場合です。
 
-Rtools が利用できるかどうかは、次のコードで確認できます。
+BayesRTMB をソースからインストールする場合は、Rtools が利用できるかどうかを次のコードで確認できます。
 
 ```{r eval=FALSE}
 pkgbuild::check_build_tools(debug = TRUE)
 ```
 
-`TRUE` が返る、またはビルドツールが利用可能であることが表示されれば、準備はできています。
+`TRUE` が返る、またはビルドツールが利用可能であることが表示されれば、ソースインストールの準備はできています。
 Rtools が見つからない場合は、利用している R のバージョンに対応する Rtools をインストールし、R または RStudio を再起動してください。
 
 # 1. 最小モデルを書く
@@ -391,4 +392,3 @@ bf
 
 4. **[RTMB の仕組みと推定アルゴリズム](ja-rtmb_internals.html)**  
    MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。
-
