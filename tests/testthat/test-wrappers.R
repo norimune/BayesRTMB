@@ -29,6 +29,9 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
   # Extremely short sampling just to test code path
   res_lm <- fit_lm$sample(chains = 1, sampling = 10, warmup = 10)
   expect_true(inherits(res_lm, "mcmc_fit"))
+  expect_identical(res_lm$nuts_variant, "multinomial")
+  expect_identical(res_lm$metric_type, "diag")
+  expect_identical(res_lm$metric_adaptation, "stan_window")
 
   res_lm_dense <- fit_lm$sample(
     chains = 1, sampling = 5, warmup = 25,

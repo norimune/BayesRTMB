@@ -7,10 +7,10 @@
                          metric_shrinkage, metric_min, metric_max,
                          parallel, laplace, init, init_jitter,
                          save_csv, map, fixed) {
-  nuts_variant <- match.arg(nuts_variant, c("slice", "multinomial"))
+  nuts_variant <- match.arg(nuts_variant, c("multinomial", "slice"))
   metric <- match.arg(metric, c("diag", "dense"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
-  metric_adaptation <- match.arg(metric_adaptation, c("cumulative", "window", "stan_window"))
+  metric_adaptation <- match.arg(metric_adaptation, c("stan_window", "cumulative", "window"))
   if (!is.null(fixed)) {
     return(private$.dispatch_fixed(.method_to_call = "sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
       seed = seed, delta = delta, max_treedepth = max_treedepth,

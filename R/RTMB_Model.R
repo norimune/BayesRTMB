@@ -534,19 +534,19 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Random seed.
     #' @param delta Target acceptance rate for HMC/NUTS. Default is 0.8.
     #' @param max_treedepth Maximum tree depth for HMC/NUTS. Default is 10.
-    #' @param nuts_variant NUTS proposal selection variant: `"slice"` for the
-    #'   original implementation or `"multinomial"` for the experimental
-    #'   Hamiltonian-weighted variant.
+    #' @param nuts_variant NUTS proposal selection variant. `"multinomial"` uses
+    #'   Stan-style Hamiltonian-weighted proposal selection; `"slice"` uses the
+    #'   original slice-based implementation. Default is `"multinomial"`.
     #' @param metric Mass matrix adaptation type. `"diag"` adapts only marginal
     #'   variances; `"dense"` adapts a full covariance metric for correlated
     #'   parameters. Default is `"diag"`.
     #' @param metric_init Initial metric source. `"identity"` starts from the
     #'   unit metric; `"hessian"` starts from an inverse Hessian approximation at
     #'   the chain initial value when available. Default is `"identity"`.
-    #' @param metric_adaptation Metric learning mode during warmup. `"cumulative"`
-    #'   uses all slow-window warmup draws accumulated so far; `"window"` uses
-    #'   only the current adaptation window; `"stan_window"` uses the current
-    #'   expanding Stan-style slow window. Default is `"cumulative"`.
+    #' @param metric_adaptation Metric learning mode during warmup. `"stan_window"`
+    #'   uses the current expanding Stan-style slow window; `"cumulative"` uses
+    #'   all slow-window warmup draws accumulated so far; `"window"` uses only
+    #'   the current adaptation window. Default is `"stan_window"`.
     #' @param metric_regularization Logical; whether to shrink the adapted
     #'   metric toward the unit metric during warmup. Default is TRUE.
     #' @param metric_shrinkage Non-negative scalar controlling the strength of
@@ -564,10 +564,10 @@ RTMB_Model <- R6::R6Class(
     sample = function(sampling = 1000, warmup = 1000, chains = 4,
                       thin = 1, seed = sample.int(1e6, 1),
                       delta = 0.8, max_treedepth = 10,
-                      nuts_variant = c("slice", "multinomial"),
+                      nuts_variant = c("multinomial", "slice"),
                       metric = c("diag", "dense"),
                       metric_init = c("identity", "hessian"),
-                      metric_adaptation = c("cumulative", "window", "stan_window"),
+                      metric_adaptation = c("stan_window", "cumulative", "window"),
                       metric_regularization = TRUE,
                       metric_shrinkage = 5,
                       metric_min = 1e-6,
@@ -583,14 +583,6 @@ RTMB_Model <- R6::R6Class(
         )
       }
       nuts_variant <- match.arg(nuts_variant)
-      if (identical(nuts_variant, "multinomial")) {
-        warning(
-          "nuts_variant = 'multinomial' is experimental and may currently produce lower ESS ",
-          "or less stable posterior summaries than nuts_variant = 'slice'. ",
-          "Use 'slice' for routine inference.",
-          call. = FALSE
-        )
-      }
       metric <- match.arg(metric)
       metric_init <- match.arg(metric_init)
       metric_adaptation <- match.arg(metric_adaptation)
