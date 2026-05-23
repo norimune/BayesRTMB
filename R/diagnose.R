@@ -150,6 +150,56 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
     checks[[length(checks) + 1L]] <- .diagnostic_row("treedepth", td_status, td_msg)
   }
 
+  if (!is.null(fit$divergent)) {
+    n_divergent <- sum(fit$divergent, na.rm = TRUE)
+    checks[[length(checks) + 1L]] <- .diagnostic_row(
+      "divergent",
+      if (n_divergent > 0L) "warning" else "ok",
+      paste("divergent transitions:", n_divergent)
+    )
+  }
+
+  if (!is.null(fit$n_leapfrog)) {
+    max_leapfrog <- suppressWarnings(max(fit$n_leapfrog, na.rm = TRUE))
+    mean_leapfrog <- suppressWarnings(mean(fit$n_leapfrog, na.rm = TRUE))
+    if (is.finite(max_leapfrog) && is.finite(mean_leapfrog)) {
+      checks[[length(checks) + 1L]] <- .diagnostic_row(
+        "leapfrog",
+        "ok",
+        sprintf("mean leapfrog steps %.1f; maximum %.0f", mean_leapfrog, max_leapfrog)
+      )
+    }
+  }
+
+  if (!is.null(fit$metric_type)) {
+    checks[[length(checks) + 1L]] <- .diagnostic_row(
+      "metric",
+      "ok",
+      paste(
+        "NUTS metric:", fit$metric_type,
+        "initial:", fit$metric_init %||% "unknown",
+        "adaptation:", fit$metric_adaptation %||% "unknown"
+      )
+    )
+  }
+  if (identical(fit$metric_type, "dense") && length(fit$metric) > 0L) {
+    cond_vals <- vapply(fit$metric, function(m) {
+      if (!is.matrix(m)) return(NA_real_)
+      eig <- tryCatch(eigen(m, symmetric = TRUE, only.values = TRUE)$values, error = function(e) NA_real_)
+      eig <- eig[is.finite(eig) & eig > 0]
+      if (length(eig) == 0L) return(NA_real_)
+      max(eig) / min(eig)
+    }, numeric(1))
+    max_cond <- suppressWarnings(max(cond_vals, na.rm = TRUE))
+    if (is.finite(max_cond)) {
+      checks[[length(checks) + 1L]] <- .diagnostic_row(
+        "metric_condition",
+        if (max_cond > 1e8) "warning" else "ok",
+        sprintf("maximum dense metric condition number %.2e", max_cond)
+      )
+    }
+  }
+
   summ <- tryCatch(fit$summary(max_rows = NULL, inc_random = FALSE, inc_transform = FALSE, inc_generate = FALSE), error = function(e) NULL)
   if (is.data.frame(summ)) {
     if ("rhat" %in% names(summ)) {
@@ -189,7 +239,13 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
     if (.has_generated_log_lik(fit)) "pointwise log_lik is available for WAIC" else "pointwise log_lik is not available"
   )
 
-  .new_diagnose_result("MCMC_Fit", do.call(rbind, checks), list(laplace = fit$laplace))
+  .new_diagnose_result("MCMC_Fit", do.call(rbind, checks), list(
+    laplace = fit$laplace,
+    metric = fit$metric_type,
+    metric_init = fit$metric_init,
+    metric_adaptation = fit$metric_adaptation,
+    nuts_variant = fit$nuts_variant
+  ))
 }
 
 diagnose_vb_fit <- function(fit, rel_obj_warning = 1e-3, rel_obj_problem = 1e-2, ...) {

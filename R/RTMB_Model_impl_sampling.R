@@ -1,10 +1,27 @@
 #' @noRd
 .sample_impl <- function(self, private, sampling, warmup, chains, thin, seed, delta, 
-                         max_treedepth, parallel, laplace, init, init_jitter, 
+                         max_treedepth, nuts_variant, metric,
+                         metric_init,
+                         metric_adaptation,
+                         metric_regularization,
+                         metric_shrinkage, metric_min, metric_max,
+                         parallel, laplace, init, init_jitter,
                          save_csv, map, fixed) {
+  nuts_variant <- match.arg(nuts_variant, c("slice", "multinomial"))
+  metric <- match.arg(metric, c("diag", "dense"))
+  metric_init <- match.arg(metric_init, c("identity", "hessian"))
+  metric_adaptation <- match.arg(metric_adaptation, c("cumulative", "window"))
   if (!is.null(fixed)) {
     return(private$.dispatch_fixed(.method_to_call = "sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
       seed = seed, delta = delta, max_treedepth = max_treedepth,
+      nuts_variant = nuts_variant,
+      metric = metric,
+      metric_init = metric_init,
+      metric_adaptation = metric_adaptation,
+      metric_regularization = metric_regularization,
+      metric_shrinkage = metric_shrinkage,
+      metric_min = metric_min,
+      metric_max = metric_max,
       parallel = parallel, laplace = laplace, init = init,
       init_jitter = init_jitter, save_csv = save_csv, map = map, fixed = fixed))
   }
@@ -229,7 +246,7 @@
       stop_nonfinite_lp(sprintf("MCMC initialization for chain %d", c))
     }
 
-    res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info)
+    res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info, nuts_variant = nuts_variant, metric = metric, metric_init = metric_init, metric_adaptation = metric_adaptation, metric_regularization = metric_regularization, metric_shrinkage = metric_shrinkage, metric_min = metric_min, metric_max = metric_max)
     if (is.null(res$lp) || all(!is.finite(res$lp))) {
       stop_nonfinite_lp(sprintf("MCMC sampling for chain %d", c))
     }
@@ -276,7 +293,11 @@
   mcmc_index <- seq(from = (warmup + 1), to = (warmup + sampling), by = thin)
   accept_mat <- array(NA, dim = c(length(mcmc_index), chains))
   td_mat <- array(NA, dim = c(length(mcmc_index), chains))
+  leapfrog_mat <- array(NA, dim = c(length(mcmc_index), chains))
+  divergent_mat <- array(FALSE, dim = c(length(mcmc_index), chains))
+  energy_mat <- array(NA, dim = c(length(mcmc_index), chains))
   eps_vec <- numeric(chains)
+  metric_list <- vector("list", chains)
   pd_error_counts <- integer(chains)
   fit <- array(NA, dim = c(length(mcmc_index), chains, P_fixed + 1))
   dimnames(fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = c("lp", pl_fixed$names))
@@ -293,6 +314,10 @@
     for (j in 1:P_fixed) fit[, c, j + 1] <- res$para[mcmc_index, fixed_idx[j]]
     if (P_random > 0) { for (j in 1:P_random) random_fit[, c, j] <- res$para[mcmc_index, random_idx[j]] }
     accept_mat[, c] <- res$accept[mcmc_index]; td_mat[, c] <- res$treedepth[mcmc_index]; eps_vec[c] <- res$eps
+    leapfrog_mat[, c] <- res$n_leapfrog[mcmc_index]
+    divergent_mat[, c] <- res$divergent[mcmc_index]
+    energy_mat[, c] <- res$energy[mcmc_index]
+    metric_list[[c]] <- res$metric
   }
   if (all(!is.finite(fit[, , "lp"]))) {
     stop_nonfinite_lp("MCMC retained samples")
@@ -323,7 +348,7 @@
   if (!is.null(save_info)) {
     for (c in 1:chains) {
       backup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, ".csv"))
-      df_metrics <- data.frame(iteration = mcmc_index, accept = accept_mat[, c], treedepth = td_mat[, c], eps = eps_vec[c])
+      df_metrics <- data.frame(iteration = mcmc_index, accept = accept_mat[, c], treedepth = td_mat[, c], n_leapfrog = leapfrog_mat[, c], divergent = divergent_mat[, c], energy = energy_mat[, c], eps = eps_vec[c])
       df_out <- if (!is.null(random_fit)) cbind(df_metrics, as.data.frame(fit[, c, ]), as.data.frame(random_fit[, c, ])) else cbind(df_metrics, as.data.frame(fit[, c, ]))
       write.csv(df_out, file = backup_file, row.names = FALSE)
     }
@@ -334,7 +359,15 @@
     eps = eps_chains, accept = accept_chains, treedepth = treedepth_chains,
     laplace = laplace, posterior_mean = posterior_mean,
     max_treedepth = max_treedepth,
-    pd_error_count = pd_error_counts
+    pd_error_count = pd_error_counts,
+    n_leapfrog = leapfrog_mat,
+    divergent = divergent_mat,
+    energy = energy_mat,
+    metric = metric_list,
+    metric_type = metric,
+    metric_init = metric_init,
+    metric_adaptation = metric_adaptation,
+    nuts_variant = nuts_variant
   )
   if (!is.null(self$transform)) res_obj$transformed_draws(self$transform)
   if (!is.null(self$generate)) res_obj$generated_quantities(self$code$generate)

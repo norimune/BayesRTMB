@@ -29,4 +29,16 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
   # Extremely short sampling just to test code path
   res_lm <- fit_lm$sample(chains = 1, sampling = 10, warmup = 10)
   expect_true(inherits(res_lm, "mcmc_fit"))
+
+  res_lm_dense <- fit_lm$sample(
+    chains = 1, sampling = 5, warmup = 25,
+    metric = "dense", metric_init = "hessian",
+    metric_adaptation = "cumulative",
+    nuts_variant = "multinomial"
+  )
+  expect_true(inherits(res_lm_dense, "mcmc_fit"))
+  expect_identical(res_lm_dense$metric_type, "dense")
+  expect_identical(res_lm_dense$metric_init, "hessian")
+  expect_identical(res_lm_dense$metric_adaptation, "cumulative")
+  expect_true(is.matrix(res_lm_dense$metric[[1]]))
 })

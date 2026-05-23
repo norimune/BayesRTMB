@@ -30,6 +30,14 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @param eps Step size used by the sampler.
 #' @param accept Acceptance statistics from sampling.
 #' @param treedepth Tree depth used in HMC/NUTS sampling.
+#' @param n_leapfrog Number of leapfrog steps for retained draws.
+#' @param divergent Logical matrix indicating divergent transitions.
+#' @param energy Hamiltonian energy for retained draws.
+#' @param metric Per-chain inverse mass matrix used by NUTS.
+#' @param metric_type Mass matrix adaptation type used by NUTS.
+#' @param metric_init Initial metric source used by NUTS.
+#' @param metric_adaptation Metric learning mode used during warmup.
+#' @param nuts_variant NUTS proposal selection variant used for sampling.
 #' @param laplace Logical; whether Laplace approximation was used.
 #' @param posterior_mean Posterior mean estimates.
 #' @param pars Names of parameters to extract or summarize.
@@ -64,6 +72,14 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @field eps Step size used by the sampler.
 #' @field accept Acceptance statistics from sampling.
 #' @field treedepth Tree depth used in HMC/NUTS sampling.
+#' @field n_leapfrog Number of leapfrog steps for retained draws.
+#' @field divergent Logical matrix indicating divergent transitions.
+#' @field energy Hamiltonian energy for retained draws.
+#' @field metric Per-chain inverse mass matrix used by NUTS.
+#' @field metric_type Mass matrix adaptation type used by NUTS.
+#' @field metric_init Initial metric source used by NUTS.
+#' @field metric_adaptation Metric learning mode used during warmup.
+#' @field nuts_variant NUTS proposal selection variant used for sampling.
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field posterior_mean Posterior mean estimates.
 #' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
@@ -90,6 +106,14 @@ MCMC_Fit <- R6::R6Class(
     eps            = NULL,
     accept         = NULL,
     treedepth      = NULL,
+    n_leapfrog     = NULL,
+    divergent      = NULL,
+    energy         = NULL,
+    metric         = NULL,
+    metric_type    = NULL,
+    metric_init    = NULL,
+    metric_adaptation = NULL,
+    nuts_variant   = NULL,
     laplace        = NULL,
     posterior_mean = NULL,
     log_ml          = NULL,
@@ -144,14 +168,34 @@ MCMC_Fit <- R6::R6Class(
     #' @param posterior_mean Posterior mean estimates.
     #' @param max_treedepth Maximum tree depth requested for NUTS/HMC.
     #' @param pd_error_count Positive-definite/singularity errors treated as `lp = -Inf` by chain.
+    #' @param n_leapfrog Number of leapfrog steps for retained draws.
+    #' @param divergent Logical matrix indicating divergent transitions.
+    #' @param energy Hamiltonian energy for retained draws.
+    #' @param metric Per-chain inverse mass matrix used by NUTS.
+    #' @param metric_type Mass matrix adaptation type used by NUTS.
+    #' @param metric_init Initial metric source used by NUTS.
+    #' @param metric_adaptation Metric learning mode used during warmup.
+    #' @param nuts_variant NUTS proposal selection variant used for sampling.
     initialize = function(model, fit, random_fit, eps, accept, treedepth, laplace,
-                          posterior_mean, max_treedepth = NULL, pd_error_count = NULL) {
+                          posterior_mean, max_treedepth = NULL, pd_error_count = NULL,
+                          n_leapfrog = NULL, divergent = NULL, energy = NULL,
+                          metric = NULL, metric_type = NULL, metric_init = NULL,
+                          metric_adaptation = NULL,
+                          nuts_variant = NULL) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
       self$eps <- eps
       self$accept <- accept
       self$treedepth <- treedepth
+      self$n_leapfrog <- n_leapfrog
+      self$divergent <- divergent
+      self$energy <- energy
+      self$metric <- metric
+      self$metric_type <- metric_type
+      self$metric_init <- metric_init
+      self$metric_adaptation <- metric_adaptation
+      self$nuts_variant <- nuts_variant
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
       self$max_treedepth <- max_treedepth

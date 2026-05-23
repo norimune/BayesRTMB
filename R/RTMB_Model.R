@@ -534,6 +534,24 @@ RTMB_Model <- R6::R6Class(
     #' @param seed Random seed.
     #' @param delta Target acceptance rate for HMC/NUTS. Default is 0.8.
     #' @param max_treedepth Maximum tree depth for HMC/NUTS. Default is 10.
+    #' @param nuts_variant NUTS proposal selection variant: `"slice"` for the
+    #'   original implementation or `"multinomial"` for the experimental
+    #'   Hamiltonian-weighted variant.
+    #' @param metric Mass matrix adaptation type. `"diag"` adapts only marginal
+    #'   variances; `"dense"` adapts a full covariance metric for correlated
+    #'   parameters. Default is `"diag"`.
+    #' @param metric_init Initial metric source. `"identity"` starts from the
+    #'   unit metric; `"hessian"` starts from an inverse Hessian approximation at
+    #'   the chain initial value when available. Default is `"identity"`.
+    #' @param metric_adaptation Metric learning mode during warmup. `"cumulative"`
+    #'   uses all slow-window warmup draws accumulated so far; `"window"` uses
+    #'   only the current adaptation window. Default is `"cumulative"`.
+    #' @param metric_regularization Logical; whether to shrink the adapted
+    #'   metric toward the unit metric during warmup. Default is TRUE.
+    #' @param metric_shrinkage Non-negative scalar controlling the strength of
+    #'   metric shrinkage. Larger values shrink more strongly toward 1. Default is 5.
+    #' @param metric_min Minimum allowed diagonal metric value. Default is 1e-6.
+    #' @param metric_max Maximum allowed diagonal metric value. Default is 1e6.
     #' @param parallel Logical; whether to run chains in parallel. Default is FALSE.
     #' @param laplace Logical; whether to use Laplace approximation. Default is FALSE.
     #' @param init Optional initial values for parameters.
@@ -545,6 +563,14 @@ RTMB_Model <- R6::R6Class(
     sample = function(sampling = 1000, warmup = 1000, chains = 4,
                       thin = 1, seed = sample.int(1e6, 1),
                       delta = 0.8, max_treedepth = 10,
+                      nuts_variant = c("slice", "multinomial"),
+                      metric = c("diag", "dense"),
+                      metric_init = c("identity", "hessian"),
+                      metric_adaptation = c("cumulative", "window"),
+                      metric_regularization = TRUE,
+                      metric_shrinkage = 5,
+                      metric_min = 1e-6,
+                      metric_max = 1e6,
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL) {
@@ -555,8 +581,17 @@ RTMB_Model <- R6::R6Class(
           call. = FALSE
         )
       }
+      nuts_variant <- match.arg(nuts_variant)
+      metric <- match.arg(metric)
+      metric_init <- match.arg(metric_init)
+      metric_adaptation <- match.arg(metric_adaptation)
       .sample_impl(self, private, sampling, warmup, chains, thin, seed, delta, 
-                   max_treedepth, parallel, laplace, init, init_jitter, 
+                   max_treedepth, nuts_variant, metric,
+                   metric_init,
+                   metric_adaptation,
+                   metric_regularization,
+                   metric_shrinkage, metric_min, metric_max,
+                   parallel, laplace, init, init_jitter,
                    save_csv, map, fixed)
     },
 
@@ -1597,4 +1632,3 @@ RTMB_Model <- R6::R6Class(
   evaluate_node(code_model)
   return(lp_corr)
 }
-
