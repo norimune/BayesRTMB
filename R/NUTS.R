@@ -35,6 +35,7 @@ NUTS_method <- function(model,
   gr_NUTS <- nuts_core$gr_NUTS
   calc_H <- nuts_core$calc_H
   safe_uturn <- nuts_core$safe_uturn
+  safe_multinomial_uturn <- nuts_core$safe_multinomial_uturn
   BuildTree <- if (identical(nuts_variant, "multinomial")) nuts_core$BuildTreeMultinomial else nuts_core$BuildTreeSlice
   FindReasonableEpsilon <- nuts_core$FindReasonableEpsilon
   log_sum_exp2 <- nuts_core$log_sum_exp2
@@ -121,6 +122,7 @@ NUTS_method <- function(model,
 
     j <- 0; q_new <- q_old; n <- 1; s <- 1
     log_weight <- H_old
+    rho <- p_old
     n_leapfrog <- 0L
     divergent <- FALSE
     alpha_sum <- 0; n_alpha_sum <- 0
@@ -138,13 +140,18 @@ NUTS_method <- function(model,
         log_weight_new <- log_sum_exp2(log_weight, out$log_weight)
         if (is.finite(log_weight_new) && runif(1) < exp(out$log_weight - log_weight_new)) q_new <- out$q
         log_weight <- log_weight_new
+        rho <- rho + out$rho
       } else {
         if (out$s == 1) {
           if (runif(1) < out$n / n) q_new <- out$q
         }
         n <- n + out$n
       }
-      s <- out$s * safe_uturn(q_plus, q_minus, p_minus, M_inv) * safe_uturn(q_plus, q_minus, p_plus, M_inv)
+      s <- if (identical(nuts_variant, "multinomial")) {
+        out$s * safe_multinomial_uturn(rho, p_minus, M_inv) * safe_multinomial_uturn(rho, p_plus, M_inv)
+      } else {
+        out$s * safe_uturn(q_plus, q_minus, p_minus, M_inv) * safe_uturn(q_plus, q_minus, p_plus, M_inv)
+      }
       n_leapfrog <- n_leapfrog + out$n_leapfrog
       divergent <- divergent || isTRUE(out$divergent)
       alpha_sum <- alpha_sum + out$alpha; n_alpha_sum <- n_alpha_sum + out$n_alpha
@@ -349,6 +356,12 @@ create_NUTS_core <- function(ad_obj) {
     if (dot_prod >= 0) 1L else 0L
   }
 
+  safe_multinomial_uturn <- function(rho, p, M_inv) {
+    dot_prod <- sum(as.numeric(rho) * metric_mul(M_inv, p))
+    if (!is.finite(dot_prod)) return(0L)
+    if (dot_prod >= 0) 1L else 0L
+  }
+
   log_sum_exp2 <- function(a, b) {
     if (!is.finite(a)) return(b)
     if (!is.finite(b)) return(a)
@@ -452,6 +465,7 @@ create_NUTS_core <- function(ad_obj) {
         q       = q_prime,
         n       = if (is.finite(log_weight_prime)) 1L else 0L,
         log_weight = log_weight_prime,
+        rho     = p_prime,
         s       = s_prime,
         alpha   = alpha_prime,
         n_alpha = 1L,
@@ -477,12 +491,10 @@ create_NUTS_core <- function(ad_obj) {
     }
     out1$log_weight <- log_weight_total
     out1$n <- out1$n + out2$n
+    out1$rho <- out1$rho + out2$rho
 
-    dq <- out1$q_plus - out1$q_minus
-    sum1 <- sum(dq * metric_mul(M_inv, out1$p_minus))
-    sum2 <- sum(dq * metric_mul(M_inv, out1$p_plus))
-
-    s_uturn <- isTRUE(sum1 >= 0) && isTRUE(sum2 >= 0)
+    s_uturn <- isTRUE(safe_multinomial_uturn(out1$rho, out1$p_minus, M_inv) == 1L) &&
+      isTRUE(safe_multinomial_uturn(out1$rho, out1$p_plus, M_inv) == 1L)
     out1$s <- if (isTRUE(out1$s == 1L) && isTRUE(out2$s == 1L) && s_uturn) 1L else 0L
 
     out1$alpha <- out1$alpha + out2$alpha
@@ -522,6 +534,7 @@ create_NUTS_core <- function(ad_obj) {
   return(list(
     fn_NUTS = fn_NUTS, gr_NUTS = gr_NUTS, calc_H = calc_H,
     safe_uturn = safe_uturn,
+    safe_multinomial_uturn = safe_multinomial_uturn,
     rmomentum = rmomentum,
     regularize_metric = regularize_metric,
     hessian_metric = hessian_metric,

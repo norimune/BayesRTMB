@@ -582,6 +582,14 @@ RTMB_Model <- R6::R6Class(
         )
       }
       nuts_variant <- match.arg(nuts_variant)
+      if (identical(nuts_variant, "multinomial")) {
+        warning(
+          "nuts_variant = 'multinomial' is experimental and may currently produce lower ESS ",
+          "or less stable posterior summaries than nuts_variant = 'slice'. ",
+          "Use 'slice' for routine inference.",
+          call. = FALSE
+        )
+      }
       metric <- match.arg(metric)
       metric_init <- match.arg(metric_init)
       metric_adaptation <- match.arg(metric_adaptation)
