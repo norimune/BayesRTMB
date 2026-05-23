@@ -77,14 +77,6 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   init_delta <- init_delta_tri
   init_theta <- sweep(init_theta, 2, colMeans(init_theta), "-")
 
-  init_alpha <- if (alpha == "random") {
-    a <- colMeans(Y, na.rm = TRUE)
-    a[!is.finite(a)] <- mean(Y, na.rm = TRUE)
-    as.numeric(a)
-  } else {
-    mean(Y, na.rm = TRUE)
-  }
-
   D_sq <- matrix(NA_real_, N, M)
   for (i in seq_len(N)) {
     for (j in seq_len(M)) {
@@ -93,17 +85,61 @@ make_init_mdu <- function(Y, D, distance = c("squared", "euclidean"),
   }
   D_used <- if (distance == "squared") D_sq + distance_eps else sqrt(D_sq + distance_eps)
 
-  alpha_for_mu <- if (length(init_alpha) == M) {
-    matrix(init_alpha, N, M, byrow = TRUE)
+  y_obs <- is.finite(Y)
+  y_vals <- as.numeric(Y[y_obs])
+  d_vals <- as.numeric(D_used[y_obs])
+  item_idx <- col(Y)[y_obs]
+  grand_mean <- mean(y_vals)
+
+  if (alpha == "random") {
+    y_bar <- colMeans(Y, na.rm = TRUE)
+    d_bar <- colMeans(D_used, na.rm = TRUE)
+    y_bar[!is.finite(y_bar)] <- grand_mean
+    d_bar[!is.finite(d_bar)] <- mean(d_vals)
+    y_centered <- y_vals - y_bar[item_idx]
+    d_centered <- d_vals - d_bar[item_idx]
   } else {
-    matrix(init_alpha, N, M)
+    y_bar <- grand_mean
+    d_bar <- mean(d_vals)
+    y_centered <- y_vals - y_bar
+    d_centered <- d_vals - d_bar
+  }
+
+  denom <- sum(d_centered^2)
+  beta_hat <- if (is.finite(denom) && denom > 0) {
+    -sum(d_centered * y_centered) / denom
+  } else {
+    NA_real_
+  }
+
+  if (is.finite(beta_hat) && beta_hat > 1e-6) {
+    coord_scale <- if (distance == "squared") sqrt(beta_hat) else beta_hat
+    init_theta <- init_theta * coord_scale
+    init_delta <- init_delta * coord_scale
+    D_sq <- D_sq * coord_scale^2
+    D_used <- if (distance == "squared") D_sq + distance_eps else sqrt(D_sq + distance_eps)
+    init_beta <- 1
+    init_alpha <- y_bar + beta_hat * d_bar
+  } else {
+    init_beta <- 1
+    init_alpha <- if (alpha == "random") {
+      a <- colMeans(Y + D_used, na.rm = TRUE)
+      a[!is.finite(a)] <- mean(y_vals + d_vals)
+      as.numeric(a)
+    } else {
+      mean(y_vals + d_vals)
+    }
+  }
+
+  if (alpha == "random") {
+    init_alpha <- as.numeric(init_alpha)
+    alpha_for_mu <- matrix(init_alpha, N, M, byrow = TRUE)
+  } else {
+    init_alpha <- as.numeric(init_alpha)
+    alpha_for_mu <- matrix(init_alpha, N, M)
   }
 
   utility_init <- alpha_for_mu - D_used
-  init_beta <- sum(Y * utility_init, na.rm = TRUE) / sum(utility_init^2, na.rm = TRUE)
-  if (!is.finite(init_beta) || init_beta <= 0) init_beta <- 1
-  init_beta <- max(init_beta, 1e-4)
-
   mu <- init_beta * utility_init
   init_sigma <- apply(Y - mu, 2, stats::sd, na.rm = TRUE)
   y_sd <- stats::sd(as.numeric(Y), na.rm = TRUE)

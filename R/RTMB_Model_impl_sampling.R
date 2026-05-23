@@ -274,7 +274,7 @@
   results_list <- list()
   if (parallel) {
     iter <- sampling + warmup
-    total_updates <- chains * (1 + floor(iter / 100))
+    total_updates <- chains * (1 + floor(iter / 200))
     progressr::with_progress({
       p <- progressr::progressor(steps = total_updates)
       results_list <- withCallingHandlers({
