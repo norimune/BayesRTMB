@@ -57,6 +57,9 @@ NUTS_method <- function(model,
   energy_record <- numeric(iter)
   eps_record <- numeric(iter)
   metric_condition_record <- numeric(iter)
+  warmup_phase_record <- rep(NA_character_, iter)
+  warmup_window_record <- rep(NA_integer_, iter)
+  metric_updated_record <- rep(FALSE, iter)
   accept <- numeric(iter)
   accept[1] <- 1
 
@@ -91,6 +94,7 @@ NUTS_method <- function(model,
 
   next_window <- init_buffer + base_window
   window_size <- base_window
+  window_id <- 0L
 
   w_mean <- rep(0, P_fixed)
   w_var  <- if (identical(metric, "dense")) matrix(0, P_fixed, P_fixed) else rep(0, P_fixed)
@@ -116,6 +120,16 @@ NUTS_method <- function(model,
     H_old <- calc_H(q_old, p_old, M_inv)
     energy_record[i] <- -H_old
     eps_record[i] <- eps
+    if (i <= warmup) {
+      warmup_phase_record[i] <- if (base_window > 0 && i >= init_buffer && i <= warmup - term_buffer) {
+        "slow"
+      } else if (i < init_buffer) {
+        "initial"
+      } else {
+        "terminal"
+      }
+      warmup_window_record[i] <- if (identical(warmup_phase_record[i], "slow")) window_id + 1L else NA_integer_
+    }
 
     if (identical(nuts_variant, "multinomial")) {
       transition <- RunMultinomialTransition(q_old, p_old, gr_old, H_old, eps, max_treedepth, M_inv)
@@ -214,11 +228,13 @@ NUTS_method <- function(model,
             metric_min = metric_min,
             metric_max = metric_max
           )
+          metric_updated_record[i] <- TRUE
           }
 
           w_mean <- rep(0, P_fixed)
           w_var <- if (identical(metric, "dense")) matrix(0, P_fixed, P_fixed) else rep(0, P_fixed)
           w_n <- 0
+          window_id <- window_id + 1L
           window_size <- window_size * 2
           next_window <- i + window_size
           if (next_window > warmup - term_buffer) next_window <- warmup - term_buffer
@@ -250,13 +266,16 @@ NUTS_method <- function(model,
     idx <- 2:warmup
     data.frame(
       iteration = idx,
+      phase = warmup_phase_record[idx],
+      window = warmup_window_record[idx],
       accept = accept[idx],
       treedepth = treedepth_record[idx],
       n_leapfrog = n_leapfrog_record[idx],
       divergent = divergent_record[idx],
       energy = Re(energy_record[idx]),
       eps = eps_record[idx],
-      metric_condition = metric_condition_record[idx]
+      metric_condition = metric_condition_record[idx],
+      metric_updated = metric_updated_record[idx]
     )
   } else {
     data.frame()
@@ -388,15 +407,19 @@ create_NUTS_core <- function(ad_obj) {
     if (dot_prod >= 0) 1L else 0L
   }
 
-  safe_multinomial_uturn <- function(rho, p, M_inv) {
-    dot_prod <- sum(as.numeric(rho) * metric_mul(M_inv, p))
-    if (!is.finite(dot_prod)) return(0L)
-    if (dot_prod >= 0) 1L else 0L
+  sharp_momentum <- function(p, M_inv) {
+    metric_mul(M_inv, p)
   }
 
-  multinomial_criterion <- function(p_left, p_right, rho, M_inv) {
-    isTRUE(safe_multinomial_uturn(rho, p_left, M_inv) == 1L) &&
-      isTRUE(safe_multinomial_uturn(rho, p_right, M_inv) == 1L)
+  safe_multinomial_uturn <- function(rho, p_sharp) {
+    dot_prod <- sum(as.numeric(rho) * as.numeric(p_sharp))
+    if (!is.finite(dot_prod)) return(0L)
+    if (dot_prod > 0) 1L else 0L
+  }
+
+  multinomial_criterion <- function(p_sharp_left, p_sharp_right, rho) {
+    isTRUE(safe_multinomial_uturn(rho, p_sharp_left) == 1L) &&
+      isTRUE(safe_multinomial_uturn(rho, p_sharp_right) == 1L)
   }
 
   log_sum_exp2 <- function(a, b) {
@@ -451,16 +474,13 @@ create_NUTS_core <- function(ad_obj) {
     }
 
     total_n <- out1$n + out2$n
-    if (total_n > 0L) {
+    if (isTRUE(out2$s == 1L) && total_n > 0L) {
       prob <- out2$n / total_n
       if (isTRUE(runif(1) < prob)) out1$q <- out2$q
     }
 
-    dq <- out1$q_plus - out1$q_minus
-    sum1 <- sum(dq * metric_mul(M_inv, out1$p_minus))
-    sum2 <- sum(dq * metric_mul(M_inv, out1$p_plus))
-
-    s_uturn <- isTRUE(sum1 >= 0) && isTRUE(sum2 >= 0)
+    s_uturn <- isTRUE(safe_uturn(out1$q_plus, out1$q_minus, out1$p_minus, M_inv) == 1L) &&
+      isTRUE(safe_uturn(out1$q_plus, out1$q_minus, out1$p_plus, M_inv) == 1L)
 
     out1$n <- total_n
 
@@ -485,26 +505,28 @@ create_NUTS_core <- function(ad_obj) {
       H_prime <- calc_H(q_prime, p_prime, M_inv)
       divergent_prime <- !is.finite(H_prime) || isTRUE(H0 - H_prime > 1000)
 
-      if (!is.finite(H_prime)) {
-        s_prime <- 0L
-        log_weight_prime <- -Inf
-        alpha_prime <- 0
+      log_weight_prime <- if (is.finite(H_prime)) H_prime - H0 else -Inf
+      s_prime <- if (isTRUE(!divergent_prime)) 1L else 0L
+      alpha_prime <- if (!is.finite(log_weight_prime)) {
+        0
+      } else if (log_weight_prime > 0) {
+        1
       } else {
-        s_prime <- if (isTRUE(H0 - H_prime <= 1000)) 1L else 0L
-        log_weight_prime <- H_prime
-        alpha_raw <- exp(H_prime - H0)
-        alpha_prime <- if (is.na(alpha_raw)) 0 else min(1, alpha_raw)
+        exp(log_weight_prime)
       }
+      p_sharp_prime <- sharp_momentum(p_prime, M_inv)
 
       return(list(
-        p_minus = p_prime, q_minus = q_prime, gr_minus = gr_prime,
-        p_plus  = p_prime, q_plus  = q_prime, gr_plus  = gr_prime,
-        q       = q_prime,
-        n       = if (is.finite(log_weight_prime)) 1L else 0L,
+        p_beg = p_prime, q_beg = q_prime, gr_beg = gr_prime,
+        p_end = p_prime, q_end = q_prime, gr_end = gr_prime,
+        p_sharp_beg = p_sharp_prime,
+        p_sharp_end = p_sharp_prime,
+        q = q_prime,
         log_weight = log_weight_prime,
-        rho     = p_prime,
-        s       = s_prime,
-        alpha   = alpha_prime,
+        rho = p_prime,
+        valid = isTRUE(s_prime == 1L),
+        s = s_prime,
+        alpha = alpha_prime,
         n_alpha = 1L,
         n_leapfrog = 1L,
         divergent = divergent_prime
@@ -512,123 +534,131 @@ create_NUTS_core <- function(ad_obj) {
     }
 
     out1 <- BuildTreeMultinomial(p, q, gr, log_u, v, j - 1L, eps, H0, M_inv)
-    if (isTRUE(out1$s == 0L)) return(out1)
-    init_p_minus <- out1$p_minus
-    init_p_plus <- out1$p_plus
+    if (!isTRUE(out1$valid)) return(out1)
 
-    if (v == -1L) {
-      out2 <- BuildTreeMultinomial(out1$p_minus, out1$q_minus, out1$gr_minus, log_u, v, j - 1L, eps, H0, M_inv)
-      out1$p_minus <- out2$p_minus; out1$q_minus <- out2$q_minus; out1$gr_minus <- out2$gr_minus
-    } else {
-      out2 <- BuildTreeMultinomial(out1$p_plus, out1$q_plus, out1$gr_plus, log_u, v, j - 1L, eps, H0, M_inv)
-      out1$p_plus <- out2$p_plus; out1$q_plus <- out2$q_plus; out1$gr_plus <- out2$gr_plus
-    }
+    out2 <- BuildTreeMultinomial(out1$p_end, out1$q_end, out1$gr_end, log_u, v, j - 1L, eps, H0, M_inv)
 
-    out1$alpha <- out1$alpha + out2$alpha
-    out1$n_alpha <- out1$n_alpha + out2$n_alpha
-    out1$n_leapfrog <- out1$n_leapfrog + out2$n_leapfrog
-    out1$divergent <- out1$divergent || out2$divergent
+    alpha_total <- out1$alpha + out2$alpha
+    n_alpha_total <- out1$n_alpha + out2$n_alpha
+    n_leapfrog_total <- out1$n_leapfrog + out2$n_leapfrog
+    divergent_total <- out1$divergent || out2$divergent
 
-    if (isTRUE(out2$s == 0L)) {
+    if (!isTRUE(out2$valid)) {
+      out1$alpha <- alpha_total
+      out1$n_alpha <- n_alpha_total
+      out1$n_leapfrog <- n_leapfrog_total
+      out1$divergent <- divergent_total
+      out1$valid <- FALSE
       out1$s <- 0L
       return(out1)
     }
 
-    if (is.finite(out2$log_weight)) {
-      log_weight_total <- log_sum_exp2(out1$log_weight, out2$log_weight)
-      if (is.finite(log_weight_total) && runif(1) < exp(out2$log_weight - log_weight_total)) {
-        out1$q <- out2$q
-      }
-      out1$log_weight <- log_weight_total
-    }
-    out1$n <- out1$n + out2$n
-    rho_init <- out1$rho
-    rho_final <- out2$rho
-    out1$rho <- rho_init + rho_final
-
-    if (v == -1L) {
-      p_left_minus <- out2$p_minus
-      p_left_plus <- out2$p_plus
-      p_right_minus <- init_p_minus
-      p_right_plus <- init_p_plus
-      rho_left <- rho_final
-      rho_right <- rho_init
-    } else {
-      p_left_minus <- init_p_minus
-      p_left_plus <- init_p_plus
-      p_right_minus <- out2$p_minus
-      p_right_plus <- out2$p_plus
-      rho_left <- rho_init
-      rho_right <- rho_final
+    log_weight_total <- log_sum_exp2(out1$log_weight, out2$log_weight)
+    q_propose <- out1$q
+    if (out2$log_weight > log_weight_total) {
+      q_propose <- out2$q
+    } else if (is.finite(log_weight_total) &&
+               isTRUE(runif(1) < exp(out2$log_weight - log_weight_total))) {
+      q_propose <- out2$q
     }
 
-    s_uturn <- multinomial_criterion(out1$p_minus, out1$p_plus, out1$rho, M_inv) &&
-      multinomial_criterion(p_left_minus, p_right_minus, rho_left + p_right_minus, M_inv) &&
-      multinomial_criterion(p_left_plus, p_right_plus, rho_right + p_left_plus, M_inv)
-    out1$s <- if (isTRUE(out1$s == 1L) && isTRUE(out2$s == 1L) && s_uturn) 1L else 0L
+    rho_total <- out1$rho + out2$rho
+    s_uturn <- multinomial_criterion(out1$p_sharp_beg, out2$p_sharp_end, rho_total) &&
+      multinomial_criterion(out1$p_sharp_beg, out2$p_sharp_beg, out1$rho + out2$p_beg) &&
+      multinomial_criterion(out1$p_sharp_end, out2$p_sharp_end, out2$rho + out1$p_end)
 
-    return(out1)
+    list(
+      p_beg = out1$p_beg, q_beg = out1$q_beg, gr_beg = out1$gr_beg,
+      p_end = out2$p_end, q_end = out2$q_end, gr_end = out2$gr_end,
+      p_sharp_beg = out1$p_sharp_beg,
+      p_sharp_end = out2$p_sharp_end,
+      q = q_propose,
+      log_weight = log_weight_total,
+      rho = rho_total,
+      valid = isTRUE(s_uturn),
+      s = if (isTRUE(s_uturn)) 1L else 0L,
+      alpha = alpha_total,
+      n_alpha = n_alpha_total,
+      n_leapfrog = n_leapfrog_total,
+      divergent = divergent_total
+    )
   }
 
   RunMultinomialTransition <- function(q_old, p_old, gr_old, H0, eps, max_treedepth, M_inv) {
-    q_minus <- q_old; q_plus <- q_old
-    p_minus <- p_old; p_plus <- p_old
-    gr_minus <- gr_old; gr_plus <- gr_old
+    q_bck <- q_old; q_fwd <- q_old
+    p_bck <- p_old; p_fwd <- p_old
+    gr_bck <- gr_old; gr_fwd <- gr_old
 
     q_new <- q_old
-    log_weight <- H0
+    log_weight <- 0
     rho <- p_old
+    p_sharp_old <- sharp_momentum(p_old, M_inv)
+    p_fwd_fwd <- p_old
+    p_fwd_bck <- p_old
+    p_bck_fwd <- p_old
+    p_bck_bck <- p_old
+    p_sharp_fwd_fwd <- p_sharp_old
+    p_sharp_fwd_bck <- p_sharp_old
+    p_sharp_bck_fwd <- p_sharp_old
+    p_sharp_bck_bck <- p_sharp_old
+
     j <- 0L
-    s <- 1L
     n_leapfrog <- 0L
     divergent <- FALSE
     alpha_sum <- 0
-    n_alpha_sum <- 0L
 
-    while (s == 1L && j < max_treedepth) {
+    while (j < max_treedepth) {
       v <- ifelse(runif(1) > 0.5, -1L, 1L)
-      old_p_minus <- p_minus
-      old_p_plus <- p_plus
-      old_rho <- rho
       if (v == -1L) {
-        out <- BuildTreeMultinomial(p_minus, q_minus, gr_minus, NULL, v, j, eps, H0, M_inv)
+        rho_fwd <- rho
+        p_fwd_bck <- p_bck_bck
+        p_sharp_fwd_bck <- p_sharp_bck_bck
+        out <- BuildTreeMultinomial(p_bck, q_bck, gr_bck, NULL, v, j, eps, H0, M_inv)
+        q_bck <- out$q_end; p_bck <- out$p_end; gr_bck <- out$gr_end
+        p_bck_fwd <- out$p_beg
+        p_bck_bck <- out$p_end
+        p_sharp_bck_fwd <- out$p_sharp_beg
+        p_sharp_bck_bck <- out$p_sharp_end
+        rho_bck <- out$rho
       } else {
-        out <- BuildTreeMultinomial(p_plus, q_plus, gr_plus, NULL, v, j, eps, H0, M_inv)
+        rho_bck <- rho
+        p_bck_fwd <- p_fwd_fwd
+        p_sharp_bck_fwd <- p_sharp_fwd_fwd
+        out <- BuildTreeMultinomial(p_fwd, q_fwd, gr_fwd, NULL, v, j, eps, H0, M_inv)
+        q_fwd <- out$q_end; p_fwd <- out$p_end; gr_fwd <- out$gr_end
+        p_fwd_bck <- out$p_beg
+        p_fwd_fwd <- out$p_end
+        p_sharp_fwd_bck <- out$p_sharp_beg
+        p_sharp_fwd_fwd <- out$p_sharp_end
+        rho_fwd <- out$rho
       }
 
       n_leapfrog <- n_leapfrog + out$n_leapfrog
       divergent <- divergent || isTRUE(out$divergent)
       alpha_sum <- alpha_sum + out$alpha
-      n_alpha_sum <- n_alpha_sum + out$n_alpha
 
-      if (isTRUE(out$s == 0L)) break
+      if (!isTRUE(out$valid)) break
 
-      if (is.finite(out$log_weight)) {
-        log_weight_new <- log_sum_exp2(log_weight, out$log_weight)
-        if (is.finite(log_weight_new) && isTRUE(runif(1) < exp(out$log_weight - log_weight_new))) {
-          q_new <- out$q
-        }
-        log_weight <- log_weight_new
-      }
-
-      if (v == -1L) {
-        p_minus <- out$p_minus; q_minus <- out$q_minus; gr_minus <- out$gr_minus
-        rho <- out$rho + old_rho
-        s <- multinomial_criterion(p_minus, p_plus, rho, M_inv) &&
-          multinomial_criterion(out$p_minus, old_p_minus, out$rho + old_p_minus, M_inv) &&
-          multinomial_criterion(out$p_plus, old_p_plus, old_rho + out$p_plus, M_inv)
-      } else {
-        p_plus <- out$p_plus; q_plus <- out$q_plus; gr_plus <- out$gr_plus
-        rho <- old_rho + out$rho
-        s <- multinomial_criterion(p_minus, p_plus, rho, M_inv) &&
-          multinomial_criterion(old_p_minus, out$p_minus, old_rho + out$p_minus, M_inv) &&
-          multinomial_criterion(old_p_plus, out$p_plus, out$rho + old_p_plus, M_inv)
-      }
-      s <- if (isTRUE(s)) 1L else 0L
       j <- j + 1L
+
+      if (out$log_weight > log_weight) {
+        q_new <- out$q
+      } else if (is.finite(out$log_weight) &&
+                 isTRUE(runif(1) < exp(out$log_weight - log_weight))) {
+        q_new <- out$q
+      }
+      log_weight <- log_sum_exp2(log_weight, out$log_weight)
+      rho <- rho_bck + rho_fwd
+
+      persist <- multinomial_criterion(p_sharp_bck_bck, p_sharp_fwd_fwd, rho)
+      persist <- persist &&
+        multinomial_criterion(p_sharp_bck_bck, p_sharp_fwd_bck, rho_bck + p_fwd_bck)
+      persist <- persist &&
+        multinomial_criterion(p_sharp_bck_fwd, p_sharp_fwd_fwd, rho_fwd + p_bck_fwd)
+      if (!isTRUE(persist)) break
     }
 
-    accept_stat <- alpha_sum / n_alpha_sum
+    accept_stat <- alpha_sum / n_leapfrog
     if (is.na(accept_stat)) accept_stat <- 0
 
     list(

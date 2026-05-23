@@ -191,9 +191,17 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
         utils::tail(x$eps, 1L)
       }, numeric(1)), na.rm = TRUE))
       max_cond_w <- suppressWarnings(max(warmup_df$metric_condition, na.rm = TRUE))
+      n_metric_updates <- if ("metric_updated" %in% names(warmup_df)) {
+        sum(warmup_df$metric_updated, na.rm = TRUE)
+      } else {
+        NA_integer_
+      }
       msg <- sprintf("mean warmup acceptance %.3f; median final warmup eps %.3g", mean_accept_w, final_eps_w)
       if (is.finite(max_cond_w)) {
         msg <- paste0(msg, sprintf("; max metric condition %.2e", max_cond_w))
+      }
+      if (is.finite(n_metric_updates)) {
+        msg <- paste0(msg, sprintf("; metric updates %d", n_metric_updates))
       }
       checks[[length(checks) + 1L]] <- .diagnostic_row("warmup", "ok", msg)
     }

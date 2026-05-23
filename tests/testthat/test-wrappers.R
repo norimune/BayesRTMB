@@ -43,6 +43,7 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
   expect_true(is.matrix(res_lm_dense$metric[[1]]))
   expect_true(is.list(res_lm_dense$warmup_diagnostics))
   expect_true(is.data.frame(res_lm_dense$warmup_diagnostics[[1]]))
+  expect_true(all(c("phase", "window", "metric_updated") %in% names(res_lm_dense$warmup_diagnostics[[1]])))
 
   res_lm_stan_window <- fit_lm$sample(
     chains = 1, sampling = 3, warmup = 20,
@@ -50,4 +51,5 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
   )
   expect_identical(res_lm_stan_window$metric_adaptation, "stan_window")
   expect_true(is.data.frame(res_lm_stan_window$warmup_diagnostics[[1]]))
+  expect_true("metric_updated" %in% names(res_lm_stan_window$warmup_diagnostics[[1]]))
 })
