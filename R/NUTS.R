@@ -6,7 +6,7 @@ NUTS_method <- function(model,
                         nuts_variant = c("slice", "multinomial"),
                         metric = c("diag", "dense"),
                         metric_init = c("identity", "hessian"),
-                        metric_adaptation = c("cumulative", "window"),
+                        metric_adaptation = c("cumulative", "window", "stan_window"),
                         metric_regularization = TRUE,
                         metric_shrinkage = 5,
                         metric_min = 1e-6,
@@ -55,6 +55,8 @@ NUTS_method <- function(model,
   n_leapfrog_record <- numeric(iter)
   divergent_record <- logical(iter)
   energy_record <- numeric(iter)
+  eps_record <- numeric(iter)
+  metric_condition_record <- numeric(iter)
   accept <- numeric(iter)
   accept[1] <- 1
 
@@ -113,6 +115,7 @@ NUTS_method <- function(model,
     gr_old <- gr_NUTS(q_old)
     H_old <- calc_H(q_old, p_old, M_inv)
     energy_record[i] <- -H_old
+    eps_record[i] <- eps
 
     if (identical(nuts_variant, "multinomial")) {
       transition <- RunMultinomialTransition(q_old, p_old, gr_old, H_old, eps, max_treedepth, M_inv)
@@ -226,8 +229,10 @@ NUTS_method <- function(model,
           }
         }
       }
+      metric_condition_record[i] <- nuts_core$metric_condition(M_inv)
     } else {
       eps <- eps_bar
+      metric_condition_record[i] <- nuts_core$metric_condition(M_inv)
     }
     if (i %% 200 == 0) {
       msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
@@ -241,6 +246,21 @@ NUTS_method <- function(model,
 
   if (exists("para_fixed")) para_fixed <- Re(para_fixed)
   if (exists("para_full") && !is.null(para_full)) para_full <- Re(para_full)
+  warmup_diagnostics <- if (warmup >= 2L) {
+    idx <- 2:warmup
+    data.frame(
+      iteration = idx,
+      accept = accept[idx],
+      treedepth = treedepth_record[idx],
+      n_leapfrog = n_leapfrog_record[idx],
+      divergent = divergent_record[idx],
+      energy = Re(energy_record[idx]),
+      eps = eps_record[idx],
+      metric_condition = metric_condition_record[idx]
+    )
+  } else {
+    data.frame()
+  }
 
   return(list(
     para_fixed = para_fixed, para_full = para_full,
@@ -249,6 +269,7 @@ NUTS_method <- function(model,
     energy = Re(energy_record), metric = M_inv, metric_type = metric,
     metric_init = metric_init, metric_adaptation = metric_adaptation,
     nuts_variant = nuts_variant,
+    warmup_diagnostics = warmup_diagnostics,
     pd_error_count = if (!is.null(model$rtmb_pd_error_state)) model$rtmb_pd_error_state$count else 0L
   ))
 }
@@ -265,6 +286,18 @@ create_NUTS_core <- function(ad_obj) {
   metric_quad <- function(M_inv, p) {
     p <- as.numeric(p)
     sum(p * metric_mul(M_inv, p))
+  }
+
+  metric_condition <- function(M_inv) {
+    if (!is.matrix(M_inv)) {
+      vals <- M_inv[is.finite(M_inv) & M_inv > 0]
+      if (length(vals) == 0L) return(NA_real_)
+      return(max(vals) / min(vals))
+    }
+    vals <- tryCatch(eigen(M_inv, symmetric = TRUE, only.values = TRUE)$values, error = function(e) NA_real_)
+    vals <- vals[is.finite(vals) & vals > 0]
+    if (length(vals) == 0L) return(NA_real_)
+    max(vals) / min(vals)
   }
 
   rmomentum <- function(M_inv) {
@@ -285,8 +318,9 @@ create_NUTS_core <- function(ad_obj) {
       new_var[!is.finite(new_var)] <- 1
       new_var <- pmax(new_var, 1e-8)
       if (metric_regularization && metric_shrinkage > 0) {
-        shrink <- metric_shrinkage / (w_n + metric_shrinkage)
-        new_var <- (1 - shrink) * new_var + shrink
+        sample_weight <- w_n / (w_n + metric_shrinkage)
+        jitter_weight <- metric_shrinkage / (w_n + metric_shrinkage)
+        new_var <- sample_weight * new_var + 1e-3 * jitter_weight
       }
       return(pmin(pmax(new_var, metric_min), metric_max))
     }
@@ -297,8 +331,10 @@ create_NUTS_core <- function(ad_obj) {
     cov_mat <- (cov_mat + t(cov_mat)) / 2
     diag(cov_mat) <- pmax(diag(cov_mat), 1e-8)
     if (metric_regularization && metric_shrinkage > 0) {
-      shrink <- metric_shrinkage / (w_n + metric_shrinkage)
-      cov_mat <- (1 - shrink) * cov_mat + shrink * diag(P)
+      sample_weight <- w_n / (w_n + metric_shrinkage)
+      jitter_weight <- metric_shrinkage / (w_n + metric_shrinkage)
+      cov_mat <- sample_weight * cov_mat
+      diag(cov_mat) <- diag(cov_mat) + 1e-3 * jitter_weight
     }
 
     eig <- tryCatch(eigen(cov_mat, symmetric = TRUE), error = function(e) NULL)
@@ -634,6 +670,7 @@ create_NUTS_core <- function(ad_obj) {
     fn_NUTS = fn_NUTS, gr_NUTS = gr_NUTS, calc_H = calc_H,
     safe_uturn = safe_uturn,
     safe_multinomial_uturn = safe_multinomial_uturn,
+    metric_condition = metric_condition,
     rmomentum = rmomentum,
     regularize_metric = regularize_metric,
     hessian_metric = hessian_metric,

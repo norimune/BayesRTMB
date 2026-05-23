@@ -545,7 +545,8 @@ RTMB_Model <- R6::R6Class(
     #'   the chain initial value when available. Default is `"identity"`.
     #' @param metric_adaptation Metric learning mode during warmup. `"cumulative"`
     #'   uses all slow-window warmup draws accumulated so far; `"window"` uses
-    #'   only the current adaptation window. Default is `"cumulative"`.
+    #'   only the current adaptation window; `"stan_window"` uses the current
+    #'   expanding Stan-style slow window. Default is `"cumulative"`.
     #' @param metric_regularization Logical; whether to shrink the adapted
     #'   metric toward the unit metric during warmup. Default is TRUE.
     #' @param metric_shrinkage Non-negative scalar controlling the strength of
@@ -566,7 +567,7 @@ RTMB_Model <- R6::R6Class(
                       nuts_variant = c("slice", "multinomial"),
                       metric = c("diag", "dense"),
                       metric_init = c("identity", "hessian"),
-                      metric_adaptation = c("cumulative", "window"),
+                      metric_adaptation = c("cumulative", "window", "stan_window"),
                       metric_regularization = TRUE,
                       metric_shrinkage = 5,
                       metric_min = 1e-6,

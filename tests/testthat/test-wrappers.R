@@ -41,4 +41,13 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
   expect_identical(res_lm_dense$metric_init, "hessian")
   expect_identical(res_lm_dense$metric_adaptation, "cumulative")
   expect_true(is.matrix(res_lm_dense$metric[[1]]))
+  expect_true(is.list(res_lm_dense$warmup_diagnostics))
+  expect_true(is.data.frame(res_lm_dense$warmup_diagnostics[[1]]))
+
+  res_lm_stan_window <- fit_lm$sample(
+    chains = 1, sampling = 3, warmup = 20,
+    metric_adaptation = "stan_window"
+  )
+  expect_identical(res_lm_stan_window$metric_adaptation, "stan_window")
+  expect_true(is.data.frame(res_lm_stan_window$warmup_diagnostics[[1]]))
 })

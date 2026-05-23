@@ -38,6 +38,7 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @param metric_init Initial metric source used by NUTS.
 #' @param metric_adaptation Metric learning mode used during warmup.
 #' @param nuts_variant NUTS proposal selection variant used for sampling.
+#' @param warmup_diagnostics Per-chain warmup diagnostics.
 #' @param laplace Logical; whether Laplace approximation was used.
 #' @param posterior_mean Posterior mean estimates.
 #' @param pars Names of parameters to extract or summarize.
@@ -80,6 +81,7 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @field metric_init Initial metric source used by NUTS.
 #' @field metric_adaptation Metric learning mode used during warmup.
 #' @field nuts_variant NUTS proposal selection variant used for sampling.
+#' @field warmup_diagnostics Per-chain warmup diagnostics.
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field posterior_mean Posterior mean estimates.
 #' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
@@ -114,6 +116,7 @@ MCMC_Fit <- R6::R6Class(
     metric_init    = NULL,
     metric_adaptation = NULL,
     nuts_variant   = NULL,
+    warmup_diagnostics = NULL,
     laplace        = NULL,
     posterior_mean = NULL,
     log_ml          = NULL,
@@ -176,12 +179,14 @@ MCMC_Fit <- R6::R6Class(
     #' @param metric_init Initial metric source used by NUTS.
     #' @param metric_adaptation Metric learning mode used during warmup.
     #' @param nuts_variant NUTS proposal selection variant used for sampling.
+    #' @param warmup_diagnostics Per-chain warmup diagnostics.
     initialize = function(model, fit, random_fit, eps, accept, treedepth, laplace,
                           posterior_mean, max_treedepth = NULL, pd_error_count = NULL,
                           n_leapfrog = NULL, divergent = NULL, energy = NULL,
                           metric = NULL, metric_type = NULL, metric_init = NULL,
                           metric_adaptation = NULL,
-                          nuts_variant = NULL) {
+                          nuts_variant = NULL,
+                          warmup_diagnostics = NULL) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
@@ -196,6 +201,7 @@ MCMC_Fit <- R6::R6Class(
       self$metric_init <- metric_init
       self$metric_adaptation <- metric_adaptation
       self$nuts_variant <- nuts_variant
+      self$warmup_diagnostics <- warmup_diagnostics
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
       self$max_treedepth <- max_treedepth

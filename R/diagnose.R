@@ -182,6 +182,22 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
       )
     )
   }
+  if (!is.null(fit$warmup_diagnostics) && length(fit$warmup_diagnostics) > 0L) {
+    warmup_df <- do.call(rbind, fit$warmup_diagnostics)
+    if (is.data.frame(warmup_df) && nrow(warmup_df) > 0L) {
+      mean_accept_w <- suppressWarnings(mean(warmup_df$accept, na.rm = TRUE))
+      final_eps_w <- suppressWarnings(stats::median(vapply(fit$warmup_diagnostics, function(x) {
+        if (!is.data.frame(x) || nrow(x) == 0L) return(NA_real_)
+        utils::tail(x$eps, 1L)
+      }, numeric(1)), na.rm = TRUE))
+      max_cond_w <- suppressWarnings(max(warmup_df$metric_condition, na.rm = TRUE))
+      msg <- sprintf("mean warmup acceptance %.3f; median final warmup eps %.3g", mean_accept_w, final_eps_w)
+      if (is.finite(max_cond_w)) {
+        msg <- paste0(msg, sprintf("; max metric condition %.2e", max_cond_w))
+      }
+      checks[[length(checks) + 1L]] <- .diagnostic_row("warmup", "ok", msg)
+    }
+  }
   if (identical(fit$metric_type, "dense") && length(fit$metric) > 0L) {
     cond_vals <- vapply(fit$metric, function(m) {
       if (!is.matrix(m)) return(NA_real_)

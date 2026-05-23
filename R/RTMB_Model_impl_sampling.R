@@ -10,7 +10,7 @@
   nuts_variant <- match.arg(nuts_variant, c("slice", "multinomial"))
   metric <- match.arg(metric, c("diag", "dense"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
-  metric_adaptation <- match.arg(metric_adaptation, c("cumulative", "window"))
+  metric_adaptation <- match.arg(metric_adaptation, c("cumulative", "window", "stan_window"))
   if (!is.null(fixed)) {
     return(private$.dispatch_fixed(.method_to_call = "sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
       seed = seed, delta = delta, max_treedepth = max_treedepth,
@@ -298,6 +298,7 @@
   energy_mat <- array(NA, dim = c(length(mcmc_index), chains))
   eps_vec <- numeric(chains)
   metric_list <- vector("list", chains)
+  warmup_diagnostics <- vector("list", chains)
   pd_error_counts <- integer(chains)
   fit <- array(NA, dim = c(length(mcmc_index), chains, P_fixed + 1))
   dimnames(fit) <- list(iteration = NULL, chain = paste0("chain", 1:chains), variable = c("lp", pl_fixed$names))
@@ -318,6 +319,7 @@
     divergent_mat[, c] <- res$divergent[mcmc_index]
     energy_mat[, c] <- res$energy[mcmc_index]
     metric_list[[c]] <- res$metric
+    warmup_diagnostics[[c]] <- res$warmup_diagnostics
   }
   if (all(!is.finite(fit[, , "lp"]))) {
     stop_nonfinite_lp("MCMC retained samples")
@@ -351,6 +353,10 @@
       df_metrics <- data.frame(iteration = mcmc_index, accept = accept_mat[, c], treedepth = td_mat[, c], n_leapfrog = leapfrog_mat[, c], divergent = divergent_mat[, c], energy = energy_mat[, c], eps = eps_vec[c])
       df_out <- if (!is.null(random_fit)) cbind(df_metrics, as.data.frame(fit[, c, ]), as.data.frame(random_fit[, c, ])) else cbind(df_metrics, as.data.frame(fit[, c, ]))
       write.csv(df_out, file = backup_file, row.names = FALSE)
+      warmup_file <- file.path(save_info$dir, paste0(save_info$name, "-", c, "-warmup.csv"))
+      if (is.data.frame(warmup_diagnostics[[c]]) && nrow(warmup_diagnostics[[c]]) > 0L) {
+        write.csv(warmup_diagnostics[[c]], file = warmup_file, row.names = FALSE)
+      }
     }
   }
 
@@ -367,7 +373,8 @@
     metric_type = metric,
     metric_init = metric_init,
     metric_adaptation = metric_adaptation,
-    nuts_variant = nuts_variant
+    nuts_variant = nuts_variant,
+    warmup_diagnostics = warmup_diagnostics
   )
   if (!is.null(self$transform)) res_obj$transformed_draws(self$transform)
   if (!is.null(self$generate)) res_obj$generated_quantities(self$code$generate)
