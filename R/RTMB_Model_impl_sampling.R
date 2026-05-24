@@ -8,7 +8,7 @@
                          parallel, laplace, init, init_jitter,
                          save_csv, map, fixed) {
   nuts_variant <- match.arg(nuts_variant, c("multinomial", "slice"))
-  metric <- match.arg(metric, c("diag", "dense"))
+  metric <- match.arg(metric, c("diag", "dense", "hybrid"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
   metric_adaptation <- match.arg(metric_adaptation, c("stan_window", "cumulative", "window"))
   if (!is.null(fixed)) {
@@ -241,12 +241,38 @@
     }, error = function(e) stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE))
     ad_obj <- wrap_mcmc_pd_errors(ad_obj)
 
+    metric_random_idx <- integer(0)
+    if (identical(metric, "hybrid") && !isTRUE(laplace)) {
+      active_is_random <- rep(FALSE, length(ad_obj$par))
+      active_pos <- 1L
+      for (name in names(local_par_list)) {
+        p <- local_par_list[[name]]
+        L_unc <- p$unc_length
+        if (L_unc <= 0L) next
+        map_i <- local_map[[name]]
+        n_active <- L_unc
+        if (!is.null(map_i)) {
+          non_na <- !is.na(map_i)
+          n_active <- length(unique(as.character(map_i[non_na])))
+        }
+        if (n_active > 0L) {
+          idx <- active_pos:(active_pos + n_active - 1L)
+          idx <- idx[idx <= length(active_is_random)]
+          if (isTRUE(p$random)) active_is_random[idx] <- TRUE
+          active_pos <- active_pos + n_active
+        }
+      }
+      if ((active_pos - 1L) == length(ad_obj$par)) {
+        metric_random_idx <- which(active_is_random)
+      }
+    }
+
     init_lp <- tryCatch(-ad_obj$fn(ad_obj$par), error = function(e) NA_real_)
     if (!is.finite(init_lp)) {
       stop_nonfinite_lp(sprintf("MCMC initialization for chain %d", c))
     }
 
-    res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info, nuts_variant = nuts_variant, metric = metric, metric_init = metric_init, metric_adaptation = metric_adaptation, metric_regularization = metric_regularization, metric_shrinkage = metric_shrinkage, metric_min = metric_min, metric_max = metric_max)
+    res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info, nuts_variant = nuts_variant, metric = metric, metric_random_idx = metric_random_idx, metric_init = metric_init, metric_adaptation = metric_adaptation, metric_regularization = metric_regularization, metric_shrinkage = metric_shrinkage, metric_min = metric_min, metric_max = metric_max)
     if (is.null(res$lp) || all(!is.finite(res$lp))) {
       stop_nonfinite_lp(sprintf("MCMC sampling for chain %d", c))
     }

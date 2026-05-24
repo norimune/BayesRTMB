@@ -4,7 +4,8 @@ NUTS_method <- function(model,
                         update_progress = NULL,
                         laplace, save_info = NULL,
                         nuts_variant = c("multinomial", "slice"),
-                        metric = c("diag", "dense"),
+                        metric = c("diag", "dense", "hybrid"),
+                        metric_random_idx = NULL,
                         metric_init = c("identity", "hessian"),
                         metric_adaptation = c("stan_window", "cumulative", "window"),
                         metric_regularization = TRUE,
@@ -41,6 +42,62 @@ NUTS_method <- function(model,
 
   q_fixed_init <- model$par
   P_fixed <- length(q_fixed_init)
+  metric_random_idx <- if (identical(metric, "hybrid") && !is.null(metric_random_idx)) {
+    sort(unique(as.integer(metric_random_idx)))
+  } else {
+    integer(0)
+  }
+  metric_random_idx <- metric_random_idx[is.finite(metric_random_idx) &
+                                           metric_random_idx >= 1L &
+                                           metric_random_idx <= P_fixed]
+  metric_layout <- list(
+    dense_idx = setdiff(seq_len(P_fixed), metric_random_idx),
+    diag_idx = metric_random_idx,
+    dim = P_fixed
+  )
+
+  init_metric_var <- function() {
+    if (identical(metric, "dense")) {
+      return(matrix(0, P_fixed, P_fixed))
+    }
+    if (identical(metric, "hybrid")) {
+      return(list(
+        type = "hybrid_var",
+        dense_idx = metric_layout$dense_idx,
+        diag_idx = metric_layout$diag_idx,
+        dense = matrix(0, length(metric_layout$dense_idx), length(metric_layout$dense_idx)),
+        diag = rep(0, length(metric_layout$diag_idx)),
+        dim = P_fixed
+      ))
+    }
+    rep(0, P_fixed)
+  }
+
+  update_metric_var <- function(var, delta_old, delta_new) {
+    if (identical(metric, "dense")) {
+      return(var + tcrossprod(delta_old, delta_new))
+    }
+    if (identical(metric, "hybrid")) {
+      if (length(metric_layout$dense_idx) > 0L) {
+        idx <- metric_layout$dense_idx
+        var$dense <- var$dense + tcrossprod(delta_old[idx], delta_new[idx])
+      }
+      if (length(metric_layout$diag_idx) > 0L) {
+        idx <- metric_layout$diag_idx
+        var$diag <- var$diag + delta_old[idx] * delta_new[idx]
+      }
+      return(var)
+    }
+    var + delta_old * delta_new
+  }
+
+  min_metric_samples <- function() {
+    if (identical(metric, "dense")) return(max(5L, P_fixed + 1L))
+    if (identical(metric, "hybrid") && length(metric_layout$dense_idx) > 0L) {
+      return(max(5L, length(metric_layout$dense_idx) + 1L))
+    }
+    3L
+  }
 
 
   para_fixed <- array(NA, dim=c(iter, P_fixed))
@@ -64,11 +121,11 @@ NUTS_method <- function(model,
   accept[1] <- 1
 
   M_inv <- if (identical(metric_init, "hessian")) {
-    nuts_core$hessian_metric(q_fixed_init, metric, metric_min, metric_max)
+    nuts_core$hessian_metric(q_fixed_init, metric, metric_min, metric_max, metric_layout)
   } else {
     NULL
   }
-  if (is.null(M_inv)) M_inv <- if (identical(metric, "dense")) diag(P_fixed) else rep(1, P_fixed)
+  if (is.null(M_inv)) M_inv <- nuts_core$identity_metric(P_fixed, metric, metric_layout)
   eps <- FindReasonableEpsilon(q_fixed_init, M_inv)
 
   # Dual Averaging parameters
@@ -97,10 +154,10 @@ NUTS_method <- function(model,
   window_id <- 0L
 
   w_mean <- rep(0, P_fixed)
-  w_var  <- if (identical(metric, "dense")) matrix(0, P_fixed, P_fixed) else rep(0, P_fixed)
+  w_var  <- init_metric_var()
   w_n    <- 0
   c_mean <- rep(0, P_fixed)
-  c_var  <- if (identical(metric, "dense")) matrix(0, P_fixed, P_fixed) else rep(0, P_fixed)
+  c_var  <- init_metric_var()
   c_n    <- 0
 
   msg_start <- paste0("chain ", chain, " started...")
@@ -194,20 +251,12 @@ NUTS_method <- function(model,
         w_n <- w_n + 1
         delta_q <- q_new - w_mean
         w_mean <- w_mean + delta_q / w_n
-        if (identical(metric, "dense")) {
-          w_var <- w_var + tcrossprod(delta_q, q_new - w_mean)
-        } else {
-          w_var <- w_var + delta_q * (q_new - w_mean)
-        }
+        w_var <- update_metric_var(w_var, delta_q, q_new - w_mean)
 
         c_n <- c_n + 1
         delta_q_c <- q_new - c_mean
         c_mean <- c_mean + delta_q_c / c_n
-        if (identical(metric, "dense")) {
-          c_var <- c_var + tcrossprod(delta_q_c, q_new - c_mean)
-        } else {
-          c_var <- c_var + delta_q_c * (q_new - c_mean)
-        }
+        c_var <- update_metric_var(c_var, delta_q_c, q_new - c_mean)
 
         if (i == next_window || i == warmup - term_buffer) {
           metric_stats <- if (identical(metric_adaptation, "cumulative")) {
@@ -215,24 +264,23 @@ NUTS_method <- function(model,
           } else {
             list(var = w_var, n = w_n)
           }
-          min_metric_samples <- if (identical(metric, "dense")) max(5L, P_fixed + 1L) else 3L
-          if (metric_stats$n < min_metric_samples) {
+          if (metric_stats$n < min_metric_samples()) {
             metric_stats <- NULL
           }
           if (!is.null(metric_stats)) {
-          M_inv <- nuts_core$regularize_metric(
-            metric_stats$var, metric_stats$n,
-            metric = metric,
-            metric_regularization = metric_regularization,
-            metric_shrinkage = metric_shrinkage,
-            metric_min = metric_min,
-            metric_max = metric_max
-          )
-          metric_updated_record[i] <- TRUE
+            M_inv <- nuts_core$regularize_metric(
+              metric_stats$var, metric_stats$n,
+              metric = metric,
+              metric_regularization = metric_regularization,
+              metric_shrinkage = metric_shrinkage,
+              metric_min = metric_min,
+              metric_max = metric_max
+            )
+            metric_updated_record[i] <- TRUE
           }
 
           w_mean <- rep(0, P_fixed)
-          w_var <- if (identical(metric, "dense")) matrix(0, P_fixed, P_fixed) else rep(0, P_fixed)
+          w_var <- init_metric_var()
           w_n <- 0
           window_id <- window_id + 1L
           window_size <- window_size * 2
@@ -297,8 +345,39 @@ create_NUTS_core <- function(ad_obj) {
   fn_NUTS <- function(q) -ad_obj$fn(q)
   gr_NUTS <- function(q) as.numeric(-ad_obj$gr(q))
 
+  is_hybrid_metric <- function(M_inv) {
+    is.list(M_inv) && identical(M_inv$type, "hybrid")
+  }
+
+  identity_metric <- function(P, metric, metric_layout = NULL) {
+    if (identical(metric, "dense")) return(diag(P))
+    if (identical(metric, "hybrid")) {
+      dense_idx <- if (!is.null(metric_layout$dense_idx)) metric_layout$dense_idx else seq_len(P)
+      diag_idx <- if (!is.null(metric_layout$diag_idx)) metric_layout$diag_idx else integer(0)
+      return(list(
+        type = "hybrid",
+        dense_idx = dense_idx,
+        diag_idx = diag_idx,
+        dense = if (length(dense_idx) > 0L) diag(length(dense_idx)) else matrix(0, 0, 0),
+        diag = rep(1, length(diag_idx)),
+        dim = P
+      ))
+    }
+    rep(1, P)
+  }
+
   metric_mul <- function(M_inv, p) {
     p <- as.numeric(p)
+    if (is_hybrid_metric(M_inv)) {
+      out <- numeric(M_inv$dim)
+      if (length(M_inv$dense_idx) > 0L) {
+        out[M_inv$dense_idx] <- drop(M_inv$dense %*% p[M_inv$dense_idx])
+      }
+      if (length(M_inv$diag_idx) > 0L) {
+        out[M_inv$diag_idx] <- M_inv$diag * p[M_inv$diag_idx]
+      }
+      return(out)
+    }
     if (is.matrix(M_inv)) drop(M_inv %*% p) else M_inv * p
   }
 
@@ -308,6 +387,19 @@ create_NUTS_core <- function(ad_obj) {
   }
 
   metric_condition <- function(M_inv) {
+    if (is_hybrid_metric(M_inv)) {
+      vals <- numeric(0)
+      if (length(M_inv$dense_idx) > 0L) {
+        vals <- c(vals, tryCatch(
+          eigen(M_inv$dense, symmetric = TRUE, only.values = TRUE)$values,
+          error = function(e) NA_real_
+        ))
+      }
+      if (length(M_inv$diag_idx) > 0L) vals <- c(vals, M_inv$diag)
+      vals <- vals[is.finite(vals) & vals > 0]
+      if (length(vals) == 0L) return(NA_real_)
+      return(max(vals) / min(vals))
+    }
     if (!is.matrix(M_inv)) {
       vals <- M_inv[is.finite(M_inv) & M_inv > 0]
       if (length(vals) == 0L) return(NA_real_)
@@ -320,6 +412,18 @@ create_NUTS_core <- function(ad_obj) {
   }
 
   rmomentum <- function(M_inv) {
+    if (is_hybrid_metric(M_inv)) {
+      z <- rnorm(M_inv$dim)
+      out <- numeric(M_inv$dim)
+      if (length(M_inv$dense_idx) > 0L) {
+        R <- tryCatch(chol(M_inv$dense), error = function(e) NULL)
+        out[M_inv$dense_idx] <- if (is.null(R)) z[M_inv$dense_idx] else as.numeric(backsolve(R, z[M_inv$dense_idx]))
+      }
+      if (length(M_inv$diag_idx) > 0L) {
+        out[M_inv$diag_idx] <- z[M_inv$diag_idx] / sqrt(M_inv$diag)
+      }
+      return(out)
+    }
     z <- rnorm(if (is.matrix(M_inv)) nrow(M_inv) else length(M_inv))
     if (!is.matrix(M_inv)) return(z / sqrt(M_inv))
     R <- tryCatch(chol(M_inv), error = function(e) NULL)
@@ -332,6 +436,38 @@ create_NUTS_core <- function(ad_obj) {
                                 metric_shrinkage,
                                 metric_min,
                                 metric_max) {
+    if (is.list(w_var) && identical(w_var$type, "hybrid_var")) {
+      dense_metric <- if (length(w_var$dense_idx) > 0L) {
+        regularize_metric(
+          w_var$dense, w_n, "dense",
+          metric_regularization = metric_regularization,
+          metric_shrinkage = metric_shrinkage,
+          metric_min = metric_min,
+          metric_max = metric_max
+        )
+      } else {
+        matrix(0, 0, 0)
+      }
+      diag_metric <- if (length(w_var$diag_idx) > 0L) {
+        regularize_metric(
+          w_var$diag, w_n, "diag",
+          metric_regularization = metric_regularization,
+          metric_shrinkage = metric_shrinkage,
+          metric_min = metric_min,
+          metric_max = metric_max
+        )
+      } else {
+        numeric(0)
+      }
+      return(list(
+        type = "hybrid",
+        dense_idx = w_var$dense_idx,
+        diag_idx = w_var$diag_idx,
+        dense = dense_metric,
+        diag = diag_metric,
+        dim = w_var$dim
+      ))
+    }
     if (!identical(metric, "dense")) {
       new_var <- w_var / max(1, w_n - 1)
       new_var[!is.finite(new_var)] <- 1
@@ -372,7 +508,7 @@ create_NUTS_core <- function(ad_obj) {
     cov_mat
   }
 
-  hessian_metric <- function(q, metric, metric_min, metric_max) {
+  hessian_metric <- function(q, metric, metric_min, metric_max, metric_layout = NULL) {
     H <- tryCatch({
       if (!is.null(ad_obj$he)) ad_obj$he(q) else stats::optimHess(q, ad_obj$fn, ad_obj$gr)
     }, error = function(e) NULL)
@@ -380,6 +516,38 @@ create_NUTS_core <- function(ad_obj) {
     H <- as.matrix(H)
     if (nrow(H) != length(q) || ncol(H) != length(q) || any(!is.finite(H))) return(NULL)
     H <- (H + t(H)) / 2
+
+    if (identical(metric, "hybrid")) {
+      dense_idx <- if (!is.null(metric_layout$dense_idx)) metric_layout$dense_idx else seq_along(q)
+      diag_idx <- if (!is.null(metric_layout$diag_idx)) metric_layout$diag_idx else integer(0)
+      dense_metric <- if (length(dense_idx) > 0L) {
+        H_dense <- H[dense_idx, dense_idx, drop = FALSE]
+        eig <- tryCatch(eigen(H_dense, symmetric = TRUE), error = function(e) NULL)
+        if (is.null(eig) || any(!is.finite(eig$values)) || any(eig$values <= 0)) return(NULL)
+        vals <- pmin(pmax(1 / eig$values, metric_min), metric_max)
+        cov_mat <- eig$vectors %*% (vals * t(eig$vectors))
+        cov_mat <- (cov_mat + t(cov_mat)) / 2
+        if (inherits(try(chol(cov_mat), silent = TRUE), "try-error")) return(NULL)
+        cov_mat
+      } else {
+        matrix(0, 0, 0)
+      }
+      diag_metric <- if (length(diag_idx) > 0L) {
+        d <- diag(H)[diag_idx]
+        if (any(!is.finite(d) | d <= 0)) return(NULL)
+        pmin(pmax(1 / d, metric_min), metric_max)
+      } else {
+        numeric(0)
+      }
+      return(list(
+        type = "hybrid",
+        dense_idx = dense_idx,
+        diag_idx = diag_idx,
+        dense = dense_metric,
+        diag = diag_metric,
+        dim = length(q)
+      ))
+    }
 
     if (!identical(metric, "dense")) {
       d <- diag(H)
@@ -700,6 +868,7 @@ create_NUTS_core <- function(ad_obj) {
     fn_NUTS = fn_NUTS, gr_NUTS = gr_NUTS, calc_H = calc_H,
     safe_uturn = safe_uturn,
     safe_multinomial_uturn = safe_multinomial_uturn,
+    identity_metric = identity_metric,
     metric_condition = metric_condition,
     rmomentum = rmomentum,
     regularize_metric = regularize_metric,

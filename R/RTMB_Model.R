@@ -539,7 +539,8 @@ RTMB_Model <- R6::R6Class(
     #'   original slice-based implementation. Default is `"multinomial"`.
     #' @param metric Mass matrix adaptation type. `"diag"` adapts only marginal
     #'   variances; `"dense"` adapts a full covariance metric for correlated
-    #'   parameters. Default is `"diag"`.
+    #'   parameters; `"hybrid"` uses a dense metric for fixed parameters and a
+    #'   diagonal metric for random parameters. Default is `"diag"`.
     #' @param metric_init Initial metric source. `"identity"` starts from the
     #'   unit metric; `"hessian"` starts from an inverse Hessian approximation at
     #'   the chain initial value when available. Default is `"identity"`.
@@ -565,7 +566,7 @@ RTMB_Model <- R6::R6Class(
                       thin = 1, seed = sample.int(1e6, 1),
                       delta = 0.8, max_treedepth = 10,
                       nuts_variant = c("multinomial", "slice"),
-                      metric = c("diag", "dense"),
+                      metric = c("diag", "dense", "hybrid"),
                       metric_init = c("identity", "hessian"),
                       metric_adaptation = c("stan_window", "cumulative", "window"),
                       metric_regularization = TRUE,

@@ -51,6 +51,30 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
   expect_true(is.data.frame(res_lm_dense$warmup_diagnostics[[1]]))
   expect_true(all(c("phase", "window", "metric_updated") %in% names(res_lm_dense$warmup_diagnostics[[1]])))
 
+  dat_re <- list(Y = rnorm(8), group = rep(1:4, each = 2), G = 4)
+  code_re <- rtmb_code(
+    parameters = {
+      mu = Dim()
+      sigma = Dim(lower = 0)
+      tau = Dim(lower = 0)
+      r = Dim(G, random = TRUE)
+    },
+    model = {
+      Y ~ normal(mu + r[group] * tau, sigma)
+      r ~ normal(0, 1)
+      tau ~ exponential(1)
+      sigma ~ exponential(1)
+    }
+  )
+  res_hybrid <- rtmb_model(dat_re, code_re)$sample(
+    chains = 1, sampling = 3, warmup = 20,
+    metric = "hybrid", nuts_variant = "multinomial"
+  )
+  expect_identical(res_hybrid$metric_type, "hybrid")
+  expect_true(is.list(res_hybrid$metric[[1]]))
+  expect_true(length(res_hybrid$metric[[1]]$dense_idx) > 0)
+  expect_true(length(res_hybrid$metric[[1]]$diag_idx) > 0)
+
   res_lm_stan_window <- fit_lm$sample(
     chains = 1, sampling = 3, warmup = 20,
     metric_adaptation = "stan_window"

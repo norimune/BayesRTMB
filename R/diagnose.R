@@ -253,10 +253,19 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
       checks[[length(checks) + 1L]] <- .diagnostic_row("warmup", "ok", msg)
     }
   }
-  if (identical(fit$metric_type, "dense") && length(fit$metric) > 0L) {
+  if (fit$metric_type %in% c("dense", "hybrid") && length(fit$metric) > 0L) {
     cond_vals <- vapply(fit$metric, function(m) {
-      if (!is.matrix(m)) return(NA_real_)
-      eig <- tryCatch(eigen(m, symmetric = TRUE, only.values = TRUE)$values, error = function(e) NA_real_)
+      if (is.list(m) && identical(m$type, "hybrid")) {
+        eig <- numeric(0)
+        if (length(m$dense_idx) > 0L) {
+          eig <- c(eig, tryCatch(eigen(m$dense, symmetric = TRUE, only.values = TRUE)$values, error = function(e) NA_real_))
+        }
+        if (length(m$diag_idx) > 0L) eig <- c(eig, m$diag)
+      } else if (is.matrix(m)) {
+        eig <- tryCatch(eigen(m, symmetric = TRUE, only.values = TRUE)$values, error = function(e) NA_real_)
+      } else {
+        return(NA_real_)
+      }
       eig <- eig[is.finite(eig) & eig > 0]
       if (length(eig) == 0L) return(NA_real_)
       max(eig) / min(eig)
@@ -266,7 +275,7 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
       checks[[length(checks) + 1L]] <- .diagnostic_row(
         "metric_condition",
         if (max_cond > 1e8) "warning" else "ok",
-        sprintf("maximum dense metric condition number %.2e", max_cond)
+        sprintf("maximum %s metric condition number %.2e", fit$metric_type, max_cond)
       )
     }
   }
