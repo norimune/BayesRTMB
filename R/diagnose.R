@@ -43,12 +43,59 @@
   do.call(rbind, tabs)
 }
 
+.selected_optimizer_status <- function(fit) {
+  hist <- fit$opt_history
+  if (is.data.frame(hist) && nrow(hist) > 0L) {
+    if ("selected" %in% names(hist) && any(hist$selected %in% TRUE)) {
+      idx <- which(hist$selected %in% TRUE)[1L]
+    } else if ("objective" %in% names(hist)) {
+      idx <- suppressWarnings(which.min(hist$objective))
+      if (length(idx) == 0L || is.na(idx)) idx <- 1L
+    } else {
+      idx <- 1L
+    }
+
+    status <- if ("status" %in% names(hist)) hist$status[idx][1L] else NA_character_
+    code <- if ("code" %in% names(hist)) hist$code[idx][1L] else fit$convergence
+    message <- if ("message" %in% names(hist)) hist$message[idx][1L] else NA_character_
+
+    if (is.na(status) || !nzchar(status)) {
+      status <- if (!is.na(code) && code == 0L) "converged" else "not converged"
+    }
+
+    return(list(status = status, code = code, message = message))
+  }
+
+  status <- if (identical(fit$convergence, 0L) || identical(fit$convergence, 0)) "converged" else "not converged"
+  list(status = status, code = fit$convergence, message = NA_character_)
+}
+
+.optimizer_status_message <- function(opt) {
+  status <- opt$status %||% "not converged"
+  status <- sub("\\s*\\([0-9]+\\)\\s*$", "", status)
+  msg <- opt$message %||% NA_character_
+  code <- opt$code %||% NA
+
+  if (identical(status, "converged")) return("optimizer converged")
+  if (!identical(status, "not converged")) {
+    return(paste("optimizer ended with", status))
+  }
+
+  detail <- paste0(
+    "optimizer not converged",
+    if (!is.na(code)) paste0(" (code: ", code, ")") else "",
+    if (!is.na(msg) && nzchar(msg)) paste0("; message: ", msg) else ""
+  )
+  detail
+}
+
 diagnose_map_fit <- function(fit, ...) {
   checks <- list()
+  opt <- .selected_optimizer_status(fit)
   checks[[length(checks) + 1L]] <- .diagnostic_row(
     "convergence",
-    if (identical(fit$convergence, 0L) || identical(fit$convergence, 0)) "ok" else "warning",
-    if (identical(fit$convergence, 0L) || identical(fit$convergence, 0)) "optimizer converged" else paste("optimizer convergence code:", fit$convergence)
+    if (identical(opt$status, "converged")) "ok" else "warning",
+    .optimizer_status_message(opt)
   )
   checks[[length(checks) + 1L]] <- .diagnostic_row(
     "finite_objective",
@@ -307,6 +354,12 @@ diagnose_vb_fit <- function(fit, rel_obj_warning = 1e-3, rel_obj_problem = 1e-2,
 
 diagnose_classic_fit <- function(fit, ...) {
   checks <- list()
+  opt <- .selected_optimizer_status(fit)
+  checks[[length(checks) + 1L]] <- .diagnostic_row(
+    "convergence",
+    if (identical(opt$status, "converged")) "ok" else "warning",
+    .optimizer_status_message(opt)
+  )
   checks[[length(checks) + 1L]] <- .diagnostic_row(
     "finite_logLik",
     if (is.finite(as.numeric(fit$logLik()))) "ok" else "warning",

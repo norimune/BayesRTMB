@@ -974,6 +974,22 @@ RTMB_Model <- R6::R6Class(
 
       opt_results <- vector("list", num_estimate); obj_vals <- rep(NA_real_, num_estimate)
       conv_codes <- rep(NA_integer_, num_estimate); messages <- rep(NA_character_, num_estimate)
+      opt_status <- rep("not converged", num_estimate)
+      classify_optimizer_status <- function(code, message, objective) {
+        objective <- suppressWarnings(as.numeric(objective)[1L])
+        if (!is.finite(objective)) return("not converged")
+        if (!is.na(code) && code == 0L) return("converged")
+
+        msg <- if (!is.na(message) && nzchar(message)) trimws(message) else ""
+        if (identical(optimizer, "nlminb") && nzchar(msg)) {
+          msg_lower <- tolower(msg)
+          if (grepl("singular convergence|false convergence", msg_lower)) {
+            return(sub("\\s*\\([0-9]+\\)\\s*$", "", msg))
+          }
+        }
+
+        "not converged"
+      }
 
       for (i in seq_len(num_estimate)) {
         if (num_estimate > 1L && verbose) cat(sprintf("Optimization run %d/%d...\r", i, num_estimate))
@@ -998,6 +1014,7 @@ RTMB_Model <- R6::R6Class(
         if (!is.null(res)) {
           opt_results[[i]] <- res; obj_vals[i] <- res$opt$objective
           conv_codes[i] <- res$opt$convergence; messages[i] <- if (!is.null(res$opt$message)) as.character(res$opt$message) else NA_character_
+          opt_status[i] <- classify_optimizer_status(conv_codes[i], messages[i], obj_vals[i])
         }
       }
       if (verbose) cat("\n")
@@ -1020,9 +1037,16 @@ RTMB_Model <- R6::R6Class(
           call. = FALSE
         )
       }
-      converged_idx <- valid_idx[!is.na(conv_codes[valid_idx]) & conv_codes[valid_idx] == 0L]
-      if (length(converged_idx) > 0L) {
-        best_idx <- converged_idx[which.min(obj_vals[converged_idx])]
+      acceptable_idx <- valid_idx[opt_status[valid_idx] != "not converged"]
+      if (length(acceptable_idx) > 0L) {
+        best_idx <- acceptable_idx[which.min(obj_vals[acceptable_idx])]
+        if (!identical(opt_status[best_idx], "converged")) {
+          warning(
+            "Best optimization run ended with ", opt_status[best_idx],
+            ". Estimates may be usable, but check opt_history or try more starts.",
+            call. = FALSE
+          )
+        }
       } else {
         best_idx <- valid_idx[which.min(obj_vals[valid_idx])]
         best_code <- conv_codes[best_idx]
@@ -1031,21 +1055,12 @@ RTMB_Model <- R6::R6Class(
           " convergence code = ", if (is.na(best_code)) "NA" else best_code,
           if (!is.na(best_message) && nzchar(best_message)) paste0("; message = ", best_message) else ""
         )
-        if (num_estimate > 1L) {
-          warning(
-            "No optimization run converged; BEST is selected by the lowest objective among non-converged runs (",
-            detail,
-            ").",
-            call. = FALSE
-          )
-        } else {
-          warning(
-            "Optimization did not converge (",
-            detail,
-            "). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.",
-            call. = FALSE
-          )
-        }
+        warning(
+          "No optimization run reached an acceptable optimizer status; BEST is selected by the lowest objective among not converged runs (",
+          detail,
+          "). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.",
+          call. = FALSE
+        )
       }
       best_res <- opt_results[[best_idx]]
 
@@ -1061,13 +1076,15 @@ RTMB_Model <- R6::R6Class(
         objective = obj_vals,
         code = conv_codes,
         message = messages,
+        status = opt_status,
+        selected = seq_len(num_estimate) == best_idx,
         stringsAsFactors = FALSE
       )
 
       if (num_estimate > 1L && isTRUE(verbose)) {
         cat("\nConvergence Diagnostics per estimate:\n")
         for (i in seq_len(num_estimate)) {
-          status <- if (!is.na(conv_codes[i]) && conv_codes[i] == 0L) "Converged" else "Not Converged"
+          status <- opt_status[i]
           best_marker <- if (i == best_idx) "  <-- BEST" else ""
           cat(sprintf("  est%d: objective = %10.2f (%s)%s\n", i, obj_vals[i], status, best_marker))
         }

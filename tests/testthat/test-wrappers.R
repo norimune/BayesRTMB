@@ -4,6 +4,9 @@ test_that("Wrappers optimize correctly", {
   fit_lm <- rtmb_lm(mpg ~ wt, data = mtcars)
   res_lm <- fit_lm$optimize()
   expect_true(inherits(res_lm, "map_fit"))
+  expect_true(all(c("status", "selected") %in% names(res_lm$opt_history)))
+  expect_true(any(res_lm$opt_history$selected))
+  expect_true(all(res_lm$opt_history$status %in% c("converged", "not converged") | grepl("convergence", res_lm$opt_history$status)))
   
   # rtmb_ttest
   fit_t <- rtmb_ttest(mpg ~ am, data = mtcars)
