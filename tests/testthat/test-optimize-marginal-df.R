@@ -29,6 +29,21 @@ test_that("optimize() marginal MAP and Satterthwaite DF work correctly", {
   expect_true(is.infinite(tab_tt["delta", "df"]))
 })
 
+test_that("JZS unequal-variance t-test uses an explicit delta parameter", {
+  set.seed(2)
+  Y1 <- rnorm(20, mean = 10, sd = 1)
+  Y2 <- rnorm(25, mean = 11, sd = 2)
+
+  mdl_tt <- rtmb_ttest(Y1, Y2, prior = prior_jzs(r = 0.707), var.equal = FALSE)
+
+  expect_true(all(c("total_mean", "sd", "delta") %in% names(mdl_tt$par_list)))
+  expect_false(any(c("mean0", "mean1") %in% names(mdl_tt$par_list)))
+  expect_true(all(c("total_mean", "delta") %in% mdl_tt$extra$marginal))
+
+  fit_null <- mdl_tt$optimize(fixed = list(delta = 0), se_method = "none")
+  expect_s3_class(fit_null, "map_fit")
+})
+
 test_that("Mixed model metadata separation and profile() logic", {
   skip_if_not_installed("lme4")
   data("sleepstudy", package = "lme4")
