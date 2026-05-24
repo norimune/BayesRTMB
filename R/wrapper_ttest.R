@@ -29,6 +29,10 @@
 #' This corresponds to the Welch-type unequal-variance t-test, but the
 #' degrees of freedom are computed by the package's internal Satterthwaite
 #' procedure rather than by a separate closed-form formula.
+#' When `prior_jzs()` is combined with `var.equal = FALSE`, BayesRTMB uses
+#' a Welch-style JZS extension: the effect size `delta` is an explicit
+#' parameter with a Cauchy prior, and the group mean difference is scaled by
+#' the root-mean-square of the two group standard deviations.
 #'
 #' @example inst/examples/ex_ttest.R
 #' @export
@@ -241,17 +245,29 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     
     # Structure for independent t-tests
     if (!var.equal) {
-      # Heteroscedastic (Welch style): Use group means as parameters to trigger Satterthwaite on diff
-      param_ast <- quote({ mean0 = Dim(1); mean1 = Dim(1); sd = Dim(2, lower = 0) })
-      tran_ast <- quote({ 
-        diff <- mean0 - mean1
-        total_mean <- (mean0 + mean1)/2
-        sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
-        delta <- diff / sd_pooled
-      })
+      if (use_delta_param) {
+        param_ast <- quote({ total_mean = Dim(1); sd = Dim(2, lower = 0); delta = Dim(1) })
+        tran_ast <- quote({
+          sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
+          diff <- delta * sd_pooled
+          mean0 <- total_mean + diff/2
+          mean1 <- total_mean - diff/2
+        })
+        view_vars <- c("diff", "delta", "total_mean", "mean0", "mean1", "sd")
+        marginal <- c("total_mean", "delta")
+      } else {
+        # Heteroscedastic (Welch style): Use group means as parameters to trigger Satterthwaite on diff.
+        param_ast <- quote({ mean0 = Dim(1); mean1 = Dim(1); sd = Dim(2, lower = 0) })
+        tran_ast <- quote({
+          diff <- mean0 - mean1
+          total_mean <- (mean0 + mean1)/2
+          sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
+          delta <- diff / sd_pooled
+        })
+        view_vars <- c("diff", "delta", "mean0", "mean1", "sd")
+        marginal <- c("mean0", "mean1")
+      }
       model_body <- list(quote(Y1 ~ normal(mean0, sd[1])), quote(Y2 ~ normal(mean1, sd[2])))
-      view_vars <- c("diff", "delta", "mean0", "mean1", "sd")
-      marginal <- c("mean0", "mean1")
       waic_ast <- quote({
         log_lik <- c(
           normal_lpdf(Y1, mean0, sd[1], sum = FALSE),
@@ -282,11 +298,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     }
     
     if (is_jzs) {
-       if (!var.equal) {
-          model_body[[length(model_body)+1]] <- quote((mean0 - mean1)/sqrt((sd[1]^2 + sd[2]^2)/2) ~ cauchy(0, r))
-       } else if (var.equal) {
-          model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
-       }
+       model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
     }
     if (is_weak) {
       if (!var.equal) {
