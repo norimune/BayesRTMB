@@ -4,7 +4,7 @@ NUTS_method <- function(model,
                         update_progress = NULL,
                         laplace, save_info = NULL,
                         nuts_variant = c("multinomial", "slice"),
-                        metric = c("diag", "dense", "hybrid"),
+                        metric = c("auto", "diag", "dense", "hybrid"),
                         metric_random_idx = NULL,
                         metric_init = c("identity", "hessian"),
                         metric_adaptation = c("stan_window", "cumulative", "window"),
@@ -15,6 +15,9 @@ NUTS_method <- function(model,
 
   nuts_variant <- match.arg(nuts_variant)
   metric <- match.arg(metric)
+  metric_requested <- metric
+  metric_auto <- identical(metric_requested, "auto")
+  if (metric_auto) metric <- "hybrid"
   metric_init <- match.arg(metric_init)
   metric_adaptation <- match.arg(metric_adaptation)
   metric_regularization <- isTRUE(metric_regularization)
@@ -55,6 +58,222 @@ NUTS_method <- function(model,
     diag_idx = metric_random_idx,
     dim = P_fixed
   )
+
+  auto_max_dense_dim <- getOption("BayesRTMB.metric_auto_max_dense_dim", 100L)
+  if (!is.numeric(auto_max_dense_dim) || length(auto_max_dense_dim) != 1L ||
+      !is.finite(auto_max_dense_dim) || auto_max_dense_dim < 1) {
+    auto_max_dense_dim <- 100L
+  }
+  auto_max_dense_dim <- as.integer(auto_max_dense_dim)
+  auto_min_samples_per_dim <- getOption("BayesRTMB.metric_auto_min_samples_per_dim", 3)
+  if (!is.numeric(auto_min_samples_per_dim) || length(auto_min_samples_per_dim) != 1L ||
+      !is.finite(auto_min_samples_per_dim) || auto_min_samples_per_dim <= 0) {
+    auto_min_samples_per_dim <- 3
+  }
+  auto_max_condition <- getOption("BayesRTMB.metric_auto_max_condition", 1e8)
+  if (!is.numeric(auto_max_condition) || length(auto_max_condition) != 1L ||
+      !is.finite(auto_max_condition) || auto_max_condition <= 0) {
+    auto_max_condition <- 1e8
+  }
+  auto_low_corr_q90 <- getOption("BayesRTMB.metric_auto_low_corr_q90", 0.10)
+  if (!is.numeric(auto_low_corr_q90) || length(auto_low_corr_q90) != 1L ||
+      !is.finite(auto_low_corr_q90) || auto_low_corr_q90 < 0) {
+    auto_low_corr_q90 <- 0.10
+  }
+  auto_low_corr_density <- getOption("BayesRTMB.metric_auto_low_corr_density", 0.02)
+  if (!is.numeric(auto_low_corr_density) || length(auto_low_corr_density) != 1L ||
+      !is.finite(auto_low_corr_density) || auto_low_corr_density < 0) {
+    auto_low_corr_density <- 0.02
+  }
+  auto_corr_strong <- getOption("BayesRTMB.metric_auto_corr_strong", 0.30)
+  if (!is.numeric(auto_corr_strong) || length(auto_corr_strong) != 1L ||
+      !is.finite(auto_corr_strong) || auto_corr_strong < 0) {
+    auto_corr_strong <- 0.30
+  }
+
+  metric_auto_decision <- if (metric_auto) metric else NA_character_
+  metric_auto_reason <- if (metric_auto) "hybrid candidate selected" else NA_character_
+  metric_auto_dense_dim <- if (metric_auto) length(metric_layout$dense_idx) else NA_integer_
+  metric_auto_corr_q90 <- NA_real_
+  metric_auto_corr_density <- NA_real_
+  metric_auto_condition <- NA_real_
+  metric_auto_n <- NA_integer_
+  set_metric_auto_result <- function(decision, reason, n = NA_integer_,
+                                     corr_q90 = NA_real_,
+                                     corr_density = NA_real_,
+                                     condition = NA_real_) {
+    metric_auto_decision <<- decision
+    metric_auto_reason <<- reason
+    metric_auto_n <<- n
+    metric_auto_corr_q90 <<- corr_q90
+    metric_auto_corr_density <<- corr_density
+    metric_auto_condition <<- condition
+  }
+
+  coerce_metric_var_to_diag <- function(var) {
+    if (is.list(var) && identical(var$type, "hybrid_var")) {
+      out <- numeric(var$dim)
+      if (length(var$dense_idx) > 0L) {
+        out[var$dense_idx] <- diag(var$dense)
+      }
+      if (length(var$diag_idx) > 0L) {
+        out[var$diag_idx] <- var$diag
+      }
+      return(out)
+    }
+    if (is.matrix(var)) return(diag(var))
+    as.numeric(var)
+  }
+
+  dense_cov_from_metric_var <- function(var, n) {
+    if (n <= 1L) return(NULL)
+    if (is.list(var) && identical(var$type, "hybrid_var")) {
+      if (length(var$dense_idx) == 0L) return(matrix(0, 0, 0))
+      cov_mat <- var$dense / max(1, n - 1)
+    } else if (is.matrix(var)) {
+      cov_mat <- var / max(1, n - 1)
+    } else {
+      return(NULL)
+    }
+    cov_mat <- as.matrix(cov_mat)
+    cov_mat[!is.finite(cov_mat)] <- NA_real_
+    (cov_mat + t(cov_mat)) / 2
+  }
+
+  assess_auto_metric <- function(metric_stats, final_window = FALSE) {
+    p_dense <- length(metric_layout$dense_idx)
+    n_eff <- if (!is.null(metric_stats$n)) metric_stats$n else 0L
+    if (p_dense <= 1L) {
+      return(list(
+        decision = "diag",
+        reason = "dense block dimension is <= 1",
+        n = n_eff,
+        corr_q90 = NA_real_,
+        corr_density = NA_real_,
+        condition = NA_real_
+      ))
+    }
+    if (p_dense > auto_max_dense_dim) {
+      return(list(
+        decision = "diag",
+        reason = sprintf("dense block dimension %d exceeds auto threshold %d",
+                         p_dense, auto_max_dense_dim),
+        n = n_eff,
+        corr_q90 = NA_real_,
+        corr_density = NA_real_,
+        condition = NA_real_
+      ))
+    }
+    min_n <- ceiling(auto_min_samples_per_dim * p_dense)
+    if (n_eff < min_n) {
+      decision <- if (final_window) "diag" else "wait"
+      return(list(
+        decision = decision,
+        reason = sprintf("warmup draws for dense block are insufficient (%d < %d)",
+                         n_eff, min_n),
+        n = n_eff,
+        corr_q90 = NA_real_,
+        corr_density = NA_real_,
+        condition = NA_real_
+      ))
+    }
+    cov_mat <- dense_cov_from_metric_var(metric_stats$var, n_eff)
+    if (is.null(cov_mat) || length(cov_mat) == 0L ||
+        any(!is.finite(cov_mat))) {
+      return(list(
+        decision = "diag",
+        reason = "dense covariance estimate contains non-finite values",
+        n = n_eff,
+        corr_q90 = NA_real_,
+        corr_density = NA_real_,
+        condition = NA_real_
+      ))
+    }
+    d <- diag(cov_mat)
+    if (any(!is.finite(d) | d <= 0)) {
+      return(list(
+        decision = "diag",
+        reason = "dense covariance estimate has non-positive variances",
+        n = n_eff,
+        corr_q90 = NA_real_,
+        corr_density = NA_real_,
+        condition = NA_real_
+      ))
+    }
+    eig <- tryCatch(eigen(cov_mat, symmetric = TRUE, only.values = TRUE)$values,
+                    error = function(e) NA_real_)
+    if (length(eig) != p_dense || any(!is.finite(eig)) || any(eig <= 0)) {
+      return(list(
+        decision = "diag",
+        reason = "dense covariance estimate is singular or not positive definite",
+        n = n_eff,
+        corr_q90 = NA_real_,
+        corr_density = NA_real_,
+        condition = NA_real_
+      ))
+    }
+    condition <- max(eig) / min(eig)
+    sd <- sqrt(d)
+    cor_mat <- cov_mat / tcrossprod(sd)
+    abs_cor <- abs(cor_mat[lower.tri(cor_mat)])
+    abs_cor <- abs_cor[is.finite(abs_cor)]
+    corr_q90 <- if (length(abs_cor) > 0L) {
+      as.numeric(stats::quantile(abs_cor, 0.90, names = FALSE, na.rm = TRUE))
+    } else {
+      0
+    }
+    corr_density <- if (length(abs_cor) > 0L) {
+      mean(abs_cor > auto_corr_strong, na.rm = TRUE)
+    } else {
+      0
+    }
+    if (!is.finite(condition) || condition > auto_max_condition) {
+      return(list(
+        decision = "diag",
+        reason = sprintf("dense covariance condition %.2e exceeds auto threshold %.2e",
+                         condition, auto_max_condition),
+        n = n_eff,
+        corr_q90 = corr_q90,
+        corr_density = corr_density,
+        condition = condition
+      ))
+    }
+    if (corr_q90 < auto_low_corr_q90 && corr_density < auto_low_corr_density) {
+      return(list(
+        decision = "diag",
+        reason = sprintf("posterior correlations are low (q90 %.3f, density %.3f)",
+                         corr_q90, corr_density),
+        n = n_eff,
+        corr_q90 = corr_q90,
+        corr_density = corr_density,
+        condition = condition
+      ))
+    }
+    list(
+      decision = "hybrid",
+      reason = sprintf("hybrid retained (dense dim %d, corr q90 %.3f, condition %.2e)",
+                       p_dense, corr_q90, condition),
+      n = n_eff,
+      corr_q90 = corr_q90,
+      corr_density = corr_density,
+      condition = condition
+    )
+  }
+
+  if (metric_auto) {
+    p_dense_initial <- length(metric_layout$dense_idx)
+    if (p_dense_initial <= 1L) {
+      metric <- "diag"
+      set_metric_auto_result("diag", "dense block dimension is <= 1")
+    } else if (p_dense_initial > auto_max_dense_dim) {
+      metric <- "diag"
+      set_metric_auto_result(
+        "diag",
+        sprintf("dense block dimension %d exceeds auto threshold %d",
+                p_dense_initial, auto_max_dense_dim)
+      )
+    }
+  }
 
   init_metric_var <- function() {
     if (identical(metric, "dense")) {
@@ -117,6 +336,12 @@ NUTS_method <- function(model,
   warmup_phase_record <- rep(NA_character_, iter)
   warmup_window_record <- rep(NA_integer_, iter)
   metric_updated_record <- rep(FALSE, iter)
+  metric_type_record <- rep(metric, iter)
+  metric_auto_decision_record <- rep(NA_character_, iter)
+  metric_auto_reason_record <- rep(NA_character_, iter)
+  metric_auto_corr_q90_record <- rep(NA_real_, iter)
+  metric_auto_corr_density_record <- rep(NA_real_, iter)
+  metric_auto_condition_record <- rep(NA_real_, iter)
   accept <- numeric(iter)
   accept[1] <- 1
 
@@ -259,13 +484,56 @@ NUTS_method <- function(model,
         c_var <- update_metric_var(c_var, delta_q_c, q_new - c_mean)
 
         if (i == next_window || i == warmup - term_buffer) {
-          metric_stats <- if (identical(metric_adaptation, "cumulative")) {
+          final_slow_window <- i == warmup - term_buffer
+          metric_forced_update <- FALSE
+          metric_stats_raw <- if (identical(metric_adaptation, "cumulative")) {
             list(var = c_var, n = c_n)
           } else {
             list(var = w_var, n = w_n)
           }
+          metric_stats <- metric_stats_raw
           if (metric_stats$n < min_metric_samples()) {
             metric_stats <- NULL
+          }
+          if (metric_auto && identical(metric, "hybrid")) {
+            auto_eval <- assess_auto_metric(metric_stats_raw, final_window = final_slow_window)
+            metric_auto_decision_record[i] <- auto_eval$decision
+            metric_auto_reason_record[i] <- auto_eval$reason
+            metric_auto_corr_q90_record[i] <- auto_eval$corr_q90
+            metric_auto_corr_density_record[i] <- auto_eval$corr_density
+            metric_auto_condition_record[i] <- auto_eval$condition
+
+            if (identical(auto_eval$decision, "diag")) {
+              metric <- "diag"
+              c_var <- coerce_metric_var_to_diag(c_var)
+              set_metric_auto_result(
+                "diag", auto_eval$reason,
+                n = auto_eval$n,
+                corr_q90 = auto_eval$corr_q90,
+                corr_density = auto_eval$corr_density,
+                condition = auto_eval$condition
+              )
+              metric_stats <- list(
+                var = coerce_metric_var_to_diag(metric_stats_raw$var),
+                n = metric_stats_raw$n
+              )
+              if (metric_stats$n < min_metric_samples()) {
+                metric_stats <- NULL
+                M_inv <- nuts_core$identity_metric(P_fixed, metric, metric_layout)
+                metric_updated_record[i] <- TRUE
+                metric_forced_update <- TRUE
+              }
+            } else if (identical(auto_eval$decision, "wait")) {
+              metric_stats <- NULL
+            } else {
+              set_metric_auto_result(
+                "hybrid", auto_eval$reason,
+                n = auto_eval$n,
+                corr_q90 = auto_eval$corr_q90,
+                corr_density = auto_eval$corr_density,
+                condition = auto_eval$condition
+              )
+            }
           }
           if (!is.null(metric_stats)) {
             M_inv <- nuts_core$regularize_metric(
@@ -287,7 +555,7 @@ NUTS_method <- function(model,
           next_window <- i + window_size
           if (next_window > warmup - term_buffer) next_window <- warmup - term_buffer
 
-          if (!is.null(metric_stats)) {
+          if (!is.null(metric_stats) || isTRUE(metric_forced_update)) {
             eps <- FindReasonableEpsilon(q_new, M_inv)
             mu_DA <- log(10 * eps); Hbar <- 0; eps_bar <- 1; log_eps_bar <- log(eps_bar); da_iter <- 1
           }
@@ -298,6 +566,7 @@ NUTS_method <- function(model,
       eps <- eps_bar
       metric_condition_record[i] <- nuts_core$metric_condition(M_inv)
     }
+    metric_type_record[i] <- metric
     if (i %% 200 == 0) {
       msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
       if (!is.null(update_progress)) {
@@ -323,7 +592,13 @@ NUTS_method <- function(model,
       energy = Re(energy_record[idx]),
       eps = eps_record[idx],
       metric_condition = metric_condition_record[idx],
-      metric_updated = metric_updated_record[idx]
+      metric_updated = metric_updated_record[idx],
+      metric_type = metric_type_record[idx],
+      metric_auto_decision = metric_auto_decision_record[idx],
+      metric_auto_reason = metric_auto_reason_record[idx],
+      metric_auto_corr_q90 = metric_auto_corr_q90_record[idx],
+      metric_auto_corr_density = metric_auto_corr_density_record[idx],
+      metric_auto_condition = metric_auto_condition_record[idx]
     )
   } else {
     data.frame()
@@ -334,6 +609,30 @@ NUTS_method <- function(model,
     lp = Re(lp), accept = accept, treedepth = treedepth_record, eps = eps,
     n_leapfrog = n_leapfrog_record, divergent = divergent_record,
     energy = Re(energy_record), metric = M_inv, metric_type = metric,
+    metric_requested = metric_requested,
+    metric_auto = if (metric_auto) {
+      list(
+        requested = metric_requested,
+        effective = metric,
+        decision = metric_auto_decision,
+        reason = metric_auto_reason,
+        dense_dim = metric_auto_dense_dim,
+        n = metric_auto_n,
+        corr_q90 = metric_auto_corr_q90,
+        corr_density = metric_auto_corr_density,
+        condition = metric_auto_condition,
+        thresholds = list(
+          max_dense_dim = auto_max_dense_dim,
+          min_samples_per_dim = auto_min_samples_per_dim,
+          max_condition = auto_max_condition,
+          low_corr_q90 = auto_low_corr_q90,
+          low_corr_density = auto_low_corr_density,
+          corr_strong = auto_corr_strong
+        )
+      )
+    } else {
+      NULL
+    },
     metric_init = metric_init, metric_adaptation = metric_adaptation,
     nuts_variant = nuts_variant,
     warmup_diagnostics = warmup_diagnostics,

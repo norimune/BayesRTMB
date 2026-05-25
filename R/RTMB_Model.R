@@ -537,10 +537,13 @@ RTMB_Model <- R6::R6Class(
     #' @param nuts_variant NUTS proposal selection variant. `"multinomial"` uses
     #'   Stan-style Hamiltonian-weighted proposal selection; `"slice"` uses the
     #'   original slice-based implementation. Default is `"multinomial"`.
-    #' @param metric Mass matrix adaptation type. `"diag"` adapts only marginal
-    #'   variances; `"dense"` adapts a full covariance metric for correlated
-    #'   parameters; `"hybrid"` uses a dense metric for fixed parameters and a
-    #'   diagonal metric for random parameters. Default is `"diag"`.
+    #' @param metric Mass matrix adaptation type. `"auto"` starts from the
+    #'   hybrid strategy and falls back to `"diag"` during warmup when the dense
+    #'   covariance block is unstable or has very low correlation; `"diag"`
+    #'   adapts only marginal variances; `"dense"` adapts a full covariance
+    #'   metric for correlated parameters; `"hybrid"` uses a dense metric for
+    #'   fixed parameters and a diagonal metric for random parameters. Default
+    #'   is `"auto"`.
     #' @param metric_init Initial metric source. `"identity"` starts from the
     #'   unit metric; `"hessian"` starts from an inverse Hessian approximation at
     #'   the chain initial value when available. Default is `"identity"`.
@@ -566,7 +569,7 @@ RTMB_Model <- R6::R6Class(
                       thin = 1, seed = sample.int(1e6, 1),
                       delta = 0.8, max_treedepth = 10,
                       nuts_variant = c("multinomial", "slice"),
-                      metric = c("diag", "dense", "hybrid"),
+                      metric = c("auto", "diag", "dense", "hybrid"),
                       metric_init = c("identity", "hessian"),
                       metric_adaptation = c("stan_window", "cumulative", "window"),
                       metric_regularization = TRUE,

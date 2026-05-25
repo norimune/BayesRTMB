@@ -8,7 +8,7 @@
                          parallel, laplace, init, init_jitter,
                          save_csv, map, fixed) {
   nuts_variant <- match.arg(nuts_variant, c("multinomial", "slice"))
-  metric <- match.arg(metric, c("diag", "dense", "hybrid"))
+  metric <- match.arg(metric, c("auto", "diag", "dense", "hybrid"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
   metric_adaptation <- match.arg(metric_adaptation, c("stan_window", "cumulative", "window"))
   if (!is.null(fixed)) {
@@ -242,7 +242,7 @@
     ad_obj <- wrap_mcmc_pd_errors(ad_obj)
 
     metric_random_idx <- integer(0)
-    if (identical(metric, "hybrid") && !isTRUE(laplace)) {
+    if (metric %in% c("auto", "hybrid") && !isTRUE(laplace)) {
       active_is_random <- rep(FALSE, length(ad_obj$par))
       active_pos <- 1L
       for (name in names(local_par_list)) {
@@ -324,6 +324,8 @@
   energy_mat <- array(NA, dim = c(length(mcmc_index), chains))
   eps_vec <- numeric(chains)
   metric_list <- vector("list", chains)
+  metric_effective <- character(chains)
+  metric_auto <- vector("list", chains)
   warmup_diagnostics <- vector("list", chains)
   pd_error_counts <- integer(chains)
   fit <- array(NA, dim = c(length(mcmc_index), chains, P_fixed + 1))
@@ -345,6 +347,8 @@
     divergent_mat[, c] <- res$divergent[mcmc_index]
     energy_mat[, c] <- res$energy[mcmc_index]
     metric_list[[c]] <- res$metric
+    metric_effective[c] <- if (!is.null(res$metric_type)) res$metric_type else metric
+    metric_auto[c] <- list(res$metric_auto)
     warmup_diagnostics[[c]] <- res$warmup_diagnostics
   }
   if (all(!is.finite(fit[, , "lp"]))) {
@@ -368,6 +372,8 @@
 
   eps_chains <- eps_vec; accept_chains <- apply(accept_mat, 2, mean); treedepth_chains <- apply(td_mat, 2, max)
   names(eps_chains) <- names(accept_chains) <- names(treedepth_chains) <- paste0("chain", 1:chains)
+  names(metric_effective) <- paste0("chain", 1:chains)
+  metric_type <- if (length(unique(metric_effective)) == 1L) unname(unique(metric_effective)) else "mixed"
 
   posterior_mean <- numeric(length(self$pl_full$names)); names(posterior_mean) <- self$pl_full$names
   fixed_mean <- apply(fit[, , -1, drop = FALSE], 3, mean); posterior_mean[names(fixed_mean)] <- fixed_mean
@@ -396,7 +402,10 @@
     divergent = divergent_mat,
     energy = energy_mat,
     metric = metric_list,
-    metric_type = metric,
+    metric_type = metric_type,
+    metric_requested = metric,
+    metric_effective = metric_effective,
+    metric_auto = metric_auto,
     metric_init = metric_init,
     metric_adaptation = metric_adaptation,
     nuts_variant = nuts_variant,

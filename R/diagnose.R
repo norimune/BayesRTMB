@@ -219,15 +219,49 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
   }
 
   if (!is.null(fit$metric_type)) {
+    metric_requested <- if ("metric_requested" %in% names(fit)) fit$metric_requested else fit$metric_type
+    metric_effective <- if ("metric_effective" %in% names(fit)) fit$metric_effective else NULL
+    metric_label <- if (identical(metric_requested, "auto")) {
+      paste("NUTS metric: auto ->", fit$metric_type)
+    } else {
+      paste("NUTS metric:", fit$metric_type)
+    }
+    if (!is.null(metric_effective) && length(unique(metric_effective)) > 1L) {
+      metric_label <- paste0(
+        metric_label,
+        " (",
+        paste(names(table(metric_effective)), as.integer(table(metric_effective)),
+              sep = "=", collapse = ", "),
+        ")"
+      )
+    }
     checks[[length(checks) + 1L]] <- .diagnostic_row(
       "metric",
       "ok",
       paste(
-        "NUTS metric:", fit$metric_type,
+        metric_label,
         "initial:", fit$metric_init %||% "unknown",
         "adaptation:", fit$metric_adaptation %||% "unknown"
       )
     )
+  }
+  metric_auto <- if ("metric_auto" %in% names(fit)) fit$metric_auto else NULL
+  if (!is.null(metric_auto) && length(metric_auto) > 0L) {
+    auto_entries <- Filter(Negate(is.null), metric_auto)
+    if (length(auto_entries) > 0L) {
+      auto_effective <- vapply(auto_entries, function(x) x$effective %||% NA_character_, character(1))
+      auto_reasons <- unique(vapply(auto_entries, function(x) x$reason %||% NA_character_, character(1)))
+      auto_reasons <- auto_reasons[!is.na(auto_reasons)]
+      msg <- paste0(
+        "auto selected ",
+        paste(names(table(auto_effective)), as.integer(table(auto_effective)),
+              sep = "=", collapse = ", ")
+      )
+      if (length(auto_reasons) > 0L) {
+        msg <- paste0(msg, "; ", paste(utils::head(auto_reasons, 2L), collapse = " | "))
+      }
+      checks[[length(checks) + 1L]] <- .diagnostic_row("metric_auto", "ok", msg)
+    }
   }
   if (!is.null(fit$warmup_diagnostics) && length(fit$warmup_diagnostics) > 0L) {
     warmup_df <- do.call(rbind, fit$warmup_diagnostics)
@@ -253,7 +287,9 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
       checks[[length(checks) + 1L]] <- .diagnostic_row("warmup", "ok", msg)
     }
   }
-  if (fit$metric_type %in% c("dense", "hybrid") && length(fit$metric) > 0L) {
+  if (length(fit$metric) > 0L && any(vapply(fit$metric, function(m) {
+    (is.list(m) && identical(m$type, "hybrid")) || is.matrix(m)
+  }, logical(1)))) {
     cond_vals <- vapply(fit$metric, function(m) {
       if (is.list(m) && identical(m$type, "hybrid")) {
         eig <- numeric(0)
@@ -322,6 +358,9 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
   .new_diagnose_result("MCMC_Fit", do.call(rbind, checks), list(
     laplace = fit$laplace,
     metric = fit$metric_type,
+    metric_requested = if ("metric_requested" %in% names(fit)) fit$metric_requested else fit$metric_type,
+    metric_effective = if ("metric_effective" %in% names(fit)) fit$metric_effective else NULL,
+    metric_auto = if ("metric_auto" %in% names(fit)) fit$metric_auto else NULL,
     metric_init = fit$metric_init,
     metric_adaptation = fit$metric_adaptation,
     nuts_variant = fit$nuts_variant

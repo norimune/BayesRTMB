@@ -34,7 +34,10 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @param divergent Logical matrix indicating divergent transitions.
 #' @param energy Hamiltonian energy for retained draws.
 #' @param metric Per-chain inverse mass matrix used by NUTS.
-#' @param metric_type Mass matrix adaptation type used by NUTS.
+#' @param metric_type Effective mass matrix adaptation type used by NUTS.
+#' @param metric_requested Mass matrix adaptation type requested by the user.
+#' @param metric_effective Effective mass matrix adaptation type by chain.
+#' @param metric_auto Automatic metric selection details by chain, if used.
 #' @param metric_init Initial metric source used by NUTS.
 #' @param metric_adaptation Metric learning mode used during warmup.
 #' @param nuts_variant NUTS proposal selection variant used for sampling.
@@ -77,7 +80,10 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @field divergent Logical matrix indicating divergent transitions.
 #' @field energy Hamiltonian energy for retained draws.
 #' @field metric Per-chain inverse mass matrix used by NUTS.
-#' @field metric_type Mass matrix adaptation type used by NUTS.
+#' @field metric_type Effective mass matrix adaptation type used by NUTS.
+#' @field metric_requested Mass matrix adaptation type requested by the user.
+#' @field metric_effective Effective mass matrix adaptation type by chain.
+#' @field metric_auto Automatic metric selection details by chain, if used.
 #' @field metric_init Initial metric source used by NUTS.
 #' @field metric_adaptation Metric learning mode used during warmup.
 #' @field nuts_variant NUTS proposal selection variant used for sampling.
@@ -113,6 +119,9 @@ MCMC_Fit <- R6::R6Class(
     energy         = NULL,
     metric         = NULL,
     metric_type    = NULL,
+    metric_requested = NULL,
+    metric_effective = NULL,
+    metric_auto    = NULL,
     metric_init    = NULL,
     metric_adaptation = NULL,
     nuts_variant   = NULL,
@@ -175,7 +184,10 @@ MCMC_Fit <- R6::R6Class(
     #' @param divergent Logical matrix indicating divergent transitions.
     #' @param energy Hamiltonian energy for retained draws.
     #' @param metric Per-chain inverse mass matrix used by NUTS.
-    #' @param metric_type Mass matrix adaptation type used by NUTS.
+    #' @param metric_type Effective mass matrix adaptation type used by NUTS.
+    #' @param metric_requested Mass matrix adaptation type requested by the user.
+    #' @param metric_effective Effective mass matrix adaptation type by chain.
+    #' @param metric_auto Automatic metric selection details by chain, if used.
     #' @param metric_init Initial metric source used by NUTS.
     #' @param metric_adaptation Metric learning mode used during warmup.
     #' @param nuts_variant NUTS proposal selection variant used for sampling.
@@ -184,7 +196,8 @@ MCMC_Fit <- R6::R6Class(
                           posterior_mean, max_treedepth = NULL, pd_error_count = NULL,
                           n_leapfrog = NULL, divergent = NULL, energy = NULL,
                           metric = NULL, metric_type = NULL, metric_init = NULL,
-                          metric_adaptation = NULL,
+                          metric_requested = NULL, metric_effective = NULL,
+                          metric_auto = NULL, metric_adaptation = NULL,
                           nuts_variant = NULL,
                           warmup_diagnostics = NULL) {
       self$model <- model
@@ -198,6 +211,9 @@ MCMC_Fit <- R6::R6Class(
       self$energy <- energy
       self$metric <- metric
       self$metric_type <- metric_type
+      self$metric_requested <- metric_requested %||% metric_type
+      self$metric_effective <- metric_effective
+      self$metric_auto <- metric_auto
       self$metric_init <- metric_init
       self$metric_adaptation <- metric_adaptation
       self$nuts_variant <- nuts_variant
