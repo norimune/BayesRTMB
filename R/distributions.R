@@ -344,7 +344,8 @@ neg_binomial_lpmf <- function(x, size, prob, sum = TRUE) {
 #' @return The sum of the log-probability.
 #' @keywords internal
 neg_binomial_2_lpmf <- function(x, mu, size, sum = TRUE) {
-  res <- suppressWarnings(dnbinom(x, size = size, mu = mu, log = TRUE))
+  res <- lgamma(x + size) - lgamma(size) - lgamma(x + 1) +
+    size * log(size) + x * log(mu) - (x + size) * log(size + mu)
   if(sum) sum(res) else res
 }
 
