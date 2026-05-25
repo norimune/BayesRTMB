@@ -361,6 +361,18 @@
       call. = FALSE
     )
   }
+  n_divergent <- sum(divergent_mat, na.rm = TRUE)
+  n_transition <- sum(!is.na(divergent_mat))
+  if (n_divergent > 0L && n_transition > 0L) {
+    warning(
+      sprintf(
+        "%d of %d (%.2f%%) post-warmup MCMC transitions ended with a divergence. ",
+        n_divergent, n_transition, 100 * n_divergent / n_transition
+      ),
+      "Try increasing delta, checking parameterization, or inspecting divergent draws with diagnose().",
+      call. = FALSE
+    )
+  }
   if (sum(pd_error_counts) > 0L) {
     warning(
       "During post-warmup MCMC sampling, ",

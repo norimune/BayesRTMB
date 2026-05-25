@@ -59,10 +59,10 @@ NUTS_method <- function(model,
     dim = P_fixed
   )
 
-  auto_max_dense_dim <- getOption("BayesRTMB.metric_auto_max_dense_dim", 100L)
+  auto_max_dense_dim <- getOption("BayesRTMB.metric_auto_max_dense_dim", 200L)
   if (!is.numeric(auto_max_dense_dim) || length(auto_max_dense_dim) != 1L ||
       !is.finite(auto_max_dense_dim) || auto_max_dense_dim < 1) {
-    auto_max_dense_dim <- 100L
+    auto_max_dense_dim <- 200L
   }
   auto_max_dense_dim <- as.integer(auto_max_dense_dim)
   auto_min_samples_per_dim <- getOption("BayesRTMB.metric_auto_min_samples_per_dim", 3)
@@ -89,6 +89,19 @@ NUTS_method <- function(model,
   if (!is.numeric(auto_corr_strong) || length(auto_corr_strong) != 1L ||
       !is.finite(auto_corr_strong) || auto_corr_strong < 0) {
     auto_corr_strong <- 0.30
+  }
+  auto_small_dense_dim <- getOption("BayesRTMB.metric_auto_small_dense_dim", 5L)
+  if (!is.numeric(auto_small_dense_dim) || length(auto_small_dense_dim) != 1L ||
+      !is.finite(auto_small_dense_dim) || auto_small_dense_dim < 1) {
+    auto_small_dense_dim <- 5L
+  }
+  auto_small_dense_dim <- as.integer(auto_small_dense_dim)
+  auto_small_dense_low_corr_q90 <- getOption("BayesRTMB.metric_auto_small_dense_low_corr_q90", 0.25)
+  if (!is.numeric(auto_small_dense_low_corr_q90) ||
+      length(auto_small_dense_low_corr_q90) != 1L ||
+      !is.finite(auto_small_dense_low_corr_q90) ||
+      auto_small_dense_low_corr_q90 < 0) {
+    auto_small_dense_low_corr_q90 <- 0.25
   }
 
   metric_auto_decision <- if (metric_auto) metric else NA_character_
@@ -232,6 +245,19 @@ NUTS_method <- function(model,
         decision = "diag",
         reason = sprintf("dense covariance condition %.2e exceeds auto threshold %.2e",
                          condition, auto_max_condition),
+        n = n_eff,
+        corr_q90 = corr_q90,
+        corr_density = corr_density,
+        condition = condition
+      ))
+    }
+    if (p_dense <= auto_small_dense_dim && corr_q90 < auto_small_dense_low_corr_q90) {
+      return(list(
+        decision = "diag",
+        reason = sprintf(
+          "small dense block has modest posterior correlation (dim %d, q90 %.3f)",
+          p_dense, corr_q90
+        ),
         n = n_eff,
         corr_q90 = corr_q90,
         corr_density = corr_density,
@@ -627,7 +653,9 @@ NUTS_method <- function(model,
           max_condition = auto_max_condition,
           low_corr_q90 = auto_low_corr_q90,
           low_corr_density = auto_low_corr_density,
-          corr_strong = auto_corr_strong
+          corr_strong = auto_corr_strong,
+          small_dense_dim = auto_small_dense_dim,
+          small_dense_low_corr_q90 = auto_small_dense_low_corr_q90
         )
       )
     } else {

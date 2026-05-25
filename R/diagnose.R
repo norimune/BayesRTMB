@@ -155,7 +155,9 @@ diagnose_map_fit <- function(fit, ...) {
 }
 
 diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
-                              ess_warning = 400, ess_problem = 100, ...) {
+                              ess_warning = 400, ess_problem = 100,
+                              divergent_problem_rate = 0.01,
+                              divergent_strong_problem_rate = 0.05, ...) {
   checks <- list()
   ndraws <- dim(fit$fit)[1L]
   nchains <- dim(fit$fit)[2L]
@@ -199,10 +201,30 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
 
   if (!is.null(fit$divergent)) {
     n_divergent <- sum(fit$divergent, na.rm = TRUE)
+    n_transition <- sum(!is.na(fit$divergent))
+    divergent_rate <- if (n_transition > 0L) n_divergent / n_transition else NA_real_
+    divergent_status <- if (n_divergent == 0L) {
+      "ok"
+    } else if (is.finite(divergent_rate) && divergent_rate >= divergent_problem_rate) {
+      "problem"
+    } else {
+      "warning"
+    }
+    divergent_msg <- if (is.finite(divergent_rate)) {
+      sprintf(
+        "divergent transitions: %d of %d (%.2f%%)",
+        n_divergent, n_transition, 100 * divergent_rate
+      )
+    } else {
+      paste("divergent transitions:", n_divergent)
+    }
+    if (is.finite(divergent_rate) && divergent_rate >= divergent_strong_problem_rate) {
+      divergent_msg <- paste0(divergent_msg, "; high divergence rate")
+    }
     checks[[length(checks) + 1L]] <- .diagnostic_row(
       "divergent",
-      if (n_divergent > 0L) "warning" else "ok",
-      paste("divergent transitions:", n_divergent)
+      divergent_status,
+      divergent_msg
     )
   }
 
