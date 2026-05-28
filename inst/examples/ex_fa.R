@@ -16,14 +16,6 @@
   # Extract 2 factors, apply Promax rotation during model fitting, and calculate factor scores
   fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
 
-  # MCMC sampling for the 2 factor-model (chains and iterations reduced for faster execution)
-  \donttest{
-  mcmc_fa2 <- fit_fa2$sample(sampling=500, warmup=500, chains=2)
-  # The summary prioritizes rotated loadings (L_promax), standard deviations,
-  # and factor correlations
-  mcmc_fa2$summary()
-  }
-
   # Setting se_method = "sampling" enables standard errors and 95% CIs
   # for transformed and generated quantities, such as factor scores and post-hoc rotations.
   # (It uses multivariate normal sampling from the unconstrained parameter space)
@@ -47,23 +39,3 @@
 
   map_ssp <- fit_ssp$optimize()
   map_ssp$summary()
-
-  # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
-  \donttest{
-  mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
-
-  # --- 4. Resolving Label Switching in MCMC ---
-  # In Bayesian factor analysis, MCMC chains often suffer from label switching or sign flipping.
-  # This can be resolved by applying post-hoc Procrustes rotation to the posterior samples.
-
-  # Summary of unrotated loadings (may show poor convergence / large SE due to switching)
-  mcmc_ssp$summary("L")
-  mcmc_ssp$draws("L[BF1,1]") |> plot_dens()
-
-  # Apply Procrustes rotation targeting the loading matrix "L"
-  mcmc_ssp$rotate(target = "L")
-
-  # Summary of the rotated loadings (L_rot) with stabilized estimates
-  mcmc_ssp$summary("L_rot")
-  mcmc_ssp$draws("L_rot[BF1,1]") |> plot_dens()
-  }

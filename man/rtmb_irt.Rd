@@ -101,15 +101,4 @@ Missing values (NA) in the data are automatically removed internally for efficie
 
   map_ord <- fit_ord$optimize()
   map_ord$summary()
-
-  # Note: For complex models like the Graded Response Model, the Wald CI from optimize()
-  # may become extremely wide due to parameter transformations.
-  # MCMC sampling is recommended for reliable interval estimation.
-
-  # MCMC sampling for the ordered model (chains and iterations reduced)
-  \donttest{
-  mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
-  mcmc_ord$summary()
-  mcmc_ord$summary()
-  }
 }

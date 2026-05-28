@@ -28,8 +28,8 @@ potentially conditional on the levels of another variable (interaction).
 \donttest{
   data(debate, package = "BayesRTMB")
   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
-  mcmc_fit <- fit$sample()
-  ce <- conditional_effects(mcmc_fit, effect = "talk:perf")
+  map_fit <- fit$optimize()
+  ce <- conditional_effects(map_fit, effect = "talk:perf")
   plot(ce)
   summary(ce)
 }

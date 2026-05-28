@@ -27,9 +27,9 @@ marginal likelihoods.
   data(debate, package = "BayesRTMB")
   fit1 <- rtmb_lm(sat ~ talk, data = debate)
   fit2 <- rtmb_lm(sat ~ talk + perf, data = debate)
-  mcmc1 <- fit1$sample(sampling = 500, warmup = 500)
-  mcmc2 <- fit2$sample(sampling = 500, warmup = 500)
-  bf <- bayes_factor(mcmc1, mcmc2)
+  map1 <- fit1$optimize()
+  map2 <- fit2$optimize()
+  bf <- bayes_factor(map1, map2)
   print(bf)
 }
 }

@@ -29,9 +29,9 @@ For continuous focal variables, it calculates the slope (simple slopes).
 \donttest{
   data(debate, package = "BayesRTMB")
   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
-  mcmc_fit <- fit$sample()
+  map_fit <- fit$optimize()
   # Effect of talk at different levels of performance
-  se <- simple_effects(mcmc_fit, effect = "talk:perf")
+  se <- simple_effects(map_fit, effect = "talk:perf")
   print(se)
 }
 }

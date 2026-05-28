@@ -16,8 +16,8 @@
 #' \donttest{
 #'   data(debate, package = "BayesRTMB")
 #'   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
-#'   mcmc_fit <- fit$sample()
-#'   ce <- conditional_effects(mcmc_fit, effect = "talk:perf")
+#'   map_fit <- fit$optimize()
+#'   ce <- conditional_effects(map_fit, effect = "talk:perf")
 #'   plot(ce)
 #'   summary(ce)
 #' }
@@ -350,9 +350,9 @@ summary.ce_rtmb <- function(object, ...) {
 #' \donttest{
 #'   data(debate, package = "BayesRTMB")
 #'   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
-#'   mcmc_fit <- fit$sample()
+#'   map_fit <- fit$optimize()
 #'   # Effect of talk at different levels of performance
-#'   se <- simple_effects(mcmc_fit, effect = "talk:perf")
+#'   se <- simple_effects(map_fit, effect = "talk:perf")
 #'   print(se)
 #' }
 #' @export
@@ -604,7 +604,7 @@ print.ce_simple <- function(x, digits = 3, ...) {
 #' @param ... Additional arguments.
 #' @examples
 #' \donttest{
-#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
 #'   map_fit <- fit$optimize()
 #'   ii <- item_info(map_fit)
 #'   plot(ii)
@@ -617,7 +617,7 @@ item_info <- function(x, ...) UseMethod("item_info")
 #' @param ... Additional arguments.
 #' @examples
 #' \donttest{
-#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
 #'   map_fit <- fit$optimize()
 #'   ti <- test_info(map_fit)
 #'   plot(ti)
@@ -800,7 +800,7 @@ item_curve <- function(x, ...) UseMethod("item_curve")
 #' @param ... Additional arguments.
 #' @examples
 #' \donttest{
-#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
 #'   map_fit <- fit$optimize()
 #'   ic <- item_curve(map_fit)
 #'   plot(ic)
@@ -1026,9 +1026,9 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 #'   data(debate, package = "BayesRTMB")
 #'   fit1 <- rtmb_lm(sat ~ talk, data = debate)
 #'   fit2 <- rtmb_lm(sat ~ talk + perf, data = debate)
-#'   mcmc1 <- fit1$sample(sampling = 500, warmup = 500)
-#'   mcmc2 <- fit2$sample(sampling = 500, warmup = 500)
-#'   bf <- bayes_factor(mcmc1, mcmc2)
+#'   map1 <- fit1$optimize()
+#'   map2 <- fit2$optimize()
+#'   bf <- bayes_factor(map1, map2)
 #'   print(bf)
 #' }
 #' @export
