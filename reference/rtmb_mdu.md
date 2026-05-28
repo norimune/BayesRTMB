@@ -163,7 +163,7 @@ An \`RTMB_Model\` object.
 #> 
   
   # Note: MDU models have many parameters, so MCMC sampling might take time.
-  if (FALSE) { # \dontrun{
+  # \donttest{
   # mcmc_mdu <- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)
-  } # }
+  # }
 ```

@@ -90,11 +90,61 @@ rtmb_corr(
 #> Pre-checking model code...
 #> Checking RTMB setup...
 
-  if (FALSE) { # \dontrun{
+  # \donttest{
   mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
+#> Starting sequential sampling (chains = 2)...
+#> chain 1 started... 
+#> chain 1: iter 200 warmup 
+#> chain 1: iter 400 warmup 
+#> chain 1: iter 600 sampling 
+#> chain 1: iter 800 sampling 
+#> chain 1: iter 1000 sampling 
+#> chain 2 started... 
+#> chain 2: iter 200 warmup 
+#> chain 2: iter 400 warmup 
+#> chain 2: iter 600 sampling 
+#> chain 2: iter 800 sampling 
+#> chain 2: iter 1000 sampling 
   mcmc_corr$summary()
+#>   variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat 
+#> lp          -1006.48  1.50  -1005.95  -1009.85  -1004.36       470       709  1.00 
+#> corr[rho]       0.30  0.05      0.31      0.19      0.39       740       676  1.00 
+#> mean[sat]       3.43  0.06      3.42      3.32      3.54       942       775  1.00 
+#> mean[perf]      4.69  0.10      4.73      4.50      4.89       909       841  1.00 
+#> sd[sat]         1.00  0.04      1.00      0.92      1.09      1212       754  1.01 
+#> sd[perf]        1.77  0.07      1.76      1.64      1.90      1107       674  1.00 
 
   bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
+#> Calculating marginal likelihood for the full model...
+#> Bridge Sampling Converged: LogML = -1013.141 (Error = 0.0074, ESS = 401.4)
+#> 
+#> --- Sampling from the comparison model ---
+#> Starting sequential sampling (chains = 2)...
+#> chain 1 started... 
+#> chain 1: iter 200 warmup 
+#> chain 1: iter 400 warmup 
+#> chain 1: iter 600 warmup 
+#> chain 1: iter 800 warmup 
+#> chain 1: iter 1000 warmup 
+#> chain 1: iter 1200 sampling 
+#> chain 1: iter 1400 sampling 
+#> chain 2 started... 
+#> chain 2: iter 200 warmup 
+#> chain 2: iter 400 warmup 
+#> chain 2: iter 600 warmup 
+#> chain 2: iter 800 warmup 
+#> chain 2: iter 1000 warmup 
+#> chain 2: iter 1200 sampling 
+#> chain 2: iter 1400 sampling 
+#> 
+#> --- Calculating marginal likelihood for the comparison model ---
+#> Bridge Sampling Converged: LogML = -1025.617 (Error = 0.0057, ESS = 348.9)
   print(bf_corr)
-  } # }
+#> --- Bayes Factor Analysis (Bridge Sampling) ---
+#> Bayes Factor (BF12) : 262002 
+#> Log Bayes Factor    : 12.4761 (Approx. Error = 0.0093)
+#> Evidence            : Decisive evidence for Model 1 
+#> Comparison model    : Parameters fixed at list(corr = 0) 
+#> 
+  # }
 ```

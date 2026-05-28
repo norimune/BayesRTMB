@@ -21,10 +21,14 @@ test_info(x, ...)
 ## Examples
 
 ``` r
-if (FALSE) { # \dontrun{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+# \donttest{
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+#> Error: Binary IRT models (type = 'binary') require responses to be exactly 0, 1, or NA. Found other values.
   map_fit <- fit$optimize()
+#> Error: object 'fit' not found
   ti <- test_info(map_fit)
+#> Error: object 'map_fit' not found
   plot(ti)
-} # }
+#> Error: object 'ti' not found
+# }
 ```

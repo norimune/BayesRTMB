@@ -152,7 +152,7 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span><span class="co"># Simulate data for 3 groups</span></span></span>
 <span class="r-in"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">60</span></span></span>
@@ -189,15 +189,52 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-in"><span>  data <span class="op">=</span> <span class="va">data_list</span>,</span></span>
 <span class="r-in"><span>  code <span class="op">=</span> <span class="va">model_code</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Perform Maximum A Posteriori (MAP) estimation</span></span></span>
 <span class="r-in"><span><span class="va">map_basic</span> <span class="op">&lt;-</span> <span class="va">mod_basic</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># The summary displays default parameter names: mu[1], mu[2], mu[3]</span></span></span>
 <span class="r-in"><span><span class="va">map_basic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 46.99</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -53.43</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1]     -0.12319     0.09499   -0.30936    0.06298 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2]      2.15920     0.10806    1.94742    2.37099 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3]     -1.11887     0.09722   -1.30942   -0.92832 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma      0.44555     0.04045    0.37292    0.53232 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Perform MCMC sampling using the named model (chains/iters reduced for speed)</span></span></span>
 <span class="r-in"><span><span class="va">mcmc_basic</span> <span class="op">&lt;-</span> <span class="va">mod_basic</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
 <span class="r-in"><span><span class="va">mcmc_basic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp        -49.82  1.39  -49.06  -53.16  -48.04       486       505  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1]      -0.12  0.10   -0.11   -0.32    0.07       828       634  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2]       2.16  0.11    2.16    1.93    2.38      1016       692  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3]      -1.12  0.10   -1.13   -1.31   -0.91       948       733  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma       0.47  0.04    0.45    0.39    0.56      1075       569  1.00 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- 2. Optional: Adding Custom Parameter Names and initial values ---</span></span></span>
 <span class="r-in"><span><span class="co"># You can optionally use 'par_names' to assign meaningful labels</span></span></span>
@@ -208,15 +245,52 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-in"><span>  init <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">3</span><span class="op">)</span>, sigma <span class="op">=</span> <span class="fl">1</span><span class="op">)</span>,</span></span>
 <span class="r-in"><span>  par_names <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="va">group_names</span><span class="op">)</span></span></span>
 <span class="r-in"><span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">map_named</span> <span class="op">&lt;-</span> <span class="va">mod_named</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]</span></span></span>
 <span class="r-in"><span><span class="va">map_named</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 46.99</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -53.43</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Control]      -0.12319     0.09499   -0.30936    0.06298 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_A]   2.15920     0.10806    1.94742    2.37099 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_B]  -1.11887     0.09722   -1.30942   -0.92832 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.44555     0.04045    0.37292    0.53232 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># Perform MCMC sampling using the named model (chains/iters reduced for speed)</span></span></span>
 <span class="r-in"><span><span class="va">mcmc_named</span> <span class="op">&lt;-</span> <span class="va">mod_named</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
 <span class="r-in"><span><span class="va">mcmc_named</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp               -49.93  1.55  -48.91  -54.37  -48.08       422       432  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Control]       -0.12  0.10   -0.11   -0.31    0.06       801       588  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_A]    2.16  0.12    2.20    1.93    2.39       828       568  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_B]   -1.12  0.11   -1.14   -1.32   -0.91       812       605  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma              0.47  0.05    0.47    0.39    0.56       901       511  1.00 </span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

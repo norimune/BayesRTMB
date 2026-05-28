@@ -100,14 +100,67 @@ For continuous focal variables, it calculates the slope (simple slopes).</p>
 
     <div class="section level2">
     <h2 id="ref-examples">Examples<a class="anchor" aria-label="anchor" href="#ref-examples"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="kw">if</span> <span class="op">(</span><span class="cn">FALSE</span><span class="op">)</span> <span class="op">{</span> <span class="co"># \dontrun{</span></span></span>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span class="r-in"><span><span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span>, package <span class="op">=</span> <span class="st">"BayesRTMB"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">mcmc_fit</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 4)...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1200 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 2000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1200 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 2000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 600 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 800 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1000 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1200 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 2000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4 started... </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 200 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 400 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 600 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 800 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1000 warmup </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1200 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1600 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1800 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 2000 sampling </span>
 <span class="r-in"><span>  <span class="co"># Effect of talk at different levels of performance</span></span></span>
 <span class="r-in"><span>  <span class="va">se</span> <span class="op">&lt;-</span> <span class="fu">simple_effects</span><span class="op">(</span><span class="va">mcmc_fit</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span></span>
-<span class="r-in"><span><span class="op">}</span> <span class="co"># }</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> --- Simple Effects Analysis ---</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>  moderator  perf          term estimate  lower upper</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       perf 2.930 Slope of talk    0.034 -0.103 0.172</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       perf 4.690 Slope of talk    0.264  0.171 0.354</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>       perf 6.450 Slope of talk    0.494  0.358 0.628</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
