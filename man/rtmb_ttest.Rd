@@ -80,16 +80,11 @@ the root-mean-square of the two group standard deviations.
 
   # Fit the Bayesian two-sample t-test model
   # r = 0.707 is the standard scale for the Cauchy prior on the effect size
-  fit_ttest <- rtmb_ttest(y1, y2, r = 0.707)
+  fit_ttest <- rtmb_ttest(y1, y2, prior = prior_jzs(r = 0.707))
 
   \donttest{
   # MCMC sampling (chains and iterations reduced for faster execution)
   mcmc_ttest <- fit_ttest$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ttest$summary()
-
-  # Calculate Bayes factor against the null hypothesis (effect size delta = 0)
-  # Specifying fixed = list(delta = 0) compares against a model with delta fixed to 0
-  bf_ttest <- mcmc_ttest$bayes_factor(fixed = list(delta = 0))
-  print(bf_ttest)
   }
 }

@@ -16,7 +16,7 @@ Calculate Item Information Function
 }
 \examples{
 \donttest{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
   map_fit <- fit$optimize()
   ii <- item_info(map_fit)
   plot(ii)

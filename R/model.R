@@ -105,10 +105,6 @@ NULL
 #' # The summary displays default parameter names: mu[1], mu[2], mu[3]
 #' map_basic$summary()
 #'
-#' # Perform MCMC sampling using the named model (chains/iters reduced for speed)
-#' mcmc_basic <- mod_basic$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_basic$summary()
-#'
 #' # --- 2. Optional: Adding Custom Parameter Names and initial values ---
 #' # You can optionally use 'par_names' to assign meaningful labels
 #' # to vector or matrix elements for easier interpretation.
@@ -122,10 +118,6 @@ NULL
 #' map_named <- mod_named$optimize()
 #' # The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]
 #' map_named$summary()
-#'
-#' # Perform MCMC sampling using the named model (chains/iters reduced for speed)
-#' mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
-#' mcmc_named$summary()
 #' }
 #' @param silent Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.
 #'

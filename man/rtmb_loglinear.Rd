@@ -45,10 +45,4 @@ on a contingency table or raw data.
   # MAP estimation
   map_log <- fit_log$optimize()
   map_log$summary()
-
-  # MCMC sampling (chains and iterations reduced for faster execution)
-  \donttest{
-  mcmc_log <- fit_log$sample(sampling = 500, warmup = 500, chains = 2)
-  mcmc_log$summary()
-  }
 }

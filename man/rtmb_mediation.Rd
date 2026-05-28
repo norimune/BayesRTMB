@@ -74,11 +74,4 @@ which is more accurate than the standard Sobel test (Delta Method).
   map_med <- fit_med$optimize()
   # The summary automatically calculates indirect, direct, and total effects
   map_med$summary()
-  
-  # MCMC sampling for more reliable confidence intervals of the indirect effect
-  # (chains and iterations reduced for faster execution)
-  \donttest{
-  mcmc_med <- fit_med$sample(sampling = 500, warmup = 500, chains = 2)
-  mcmc_med$summary()
-  }
 }

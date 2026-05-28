@@ -20,7 +20,7 @@ Item Response Curve for RTMB_Fit_Base
 }
 \examples{
 \donttest{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
   map_fit <- fit$optimize()
   ic <- item_curve(map_fit)
   plot(ic)

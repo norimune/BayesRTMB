@@ -16,7 +16,7 @@ Calculate Test Information Function
 }
 \examples{
 \donttest{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
   map_fit <- fit$optimize()
   ti <- test_info(map_fit)
   plot(ti)
