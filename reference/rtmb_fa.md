@@ -147,16 +147,16 @@ rtmb_fa(
   # and factor correlations
   mcmc_fa2$summary()
 #>              variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat 
-#> lp                     -2462.38  4.71  -2461.20  -2472.95  -2453.86       108       432  1.04 
-#> L_promax[BF1,Factor1]     -0.80  0.11     -0.80     -0.99     -0.59       157       323  1.01 
-#> L_promax[BF2,Factor1]     -0.06  0.06     -0.04     -0.16      0.04       412       290  1.00 
-#> L_promax[BF3,Factor1]     -0.10  0.09     -0.05     -0.28      0.07       390       421  1.01 
-#> L_promax[BF4,Factor1]     -0.05  0.09     -0.08     -0.23      0.11       319       473  1.00 
-#> L_promax[BF5,Factor1]      0.05  0.10      0.09     -0.16      0.22       299       443  1.01 
-#> L_promax[BF6,Factor1]      0.77  0.11      0.72      0.56      0.99       145       271  1.01 
-#> L_promax[BF7,Factor1]      0.02  0.06      0.01     -0.07      0.11       598       667  1.00 
-#> L_promax[BF8,Factor1]     -0.16  0.09     -0.15     -0.35     -0.01       421       365  1.00 
-#> L_promax[BF9,Factor1]      0.10  0.09      0.09     -0.05      0.27       444       671  1.00 
+#> lp                     -2462.25  4.59  -2461.22  -2471.81  -2454.60       230       634  1.00 
+#> L_promax[BF1,Factor1]     -0.82  0.11     -0.95     -0.99     -0.59       187       416  1.01 
+#> L_promax[BF2,Factor1]     -0.06  0.06     -0.06     -0.16      0.04       384       672  1.00 
+#> L_promax[BF3,Factor1]     -0.10  0.09     -0.08     -0.27      0.08       695       631  1.01 
+#> L_promax[BF4,Factor1]     -0.05  0.09     -0.06     -0.24      0.13       388       445  1.01 
+#> L_promax[BF5,Factor1]      0.04  0.09      0.06     -0.12      0.21       680       449  1.01 
+#> L_promax[BF6,Factor1]      0.75  0.11      0.69      0.57      0.98       186       181  1.01 
+#> L_promax[BF7,Factor1]      0.01  0.06      0.02     -0.08      0.11       654       770  1.00 
+#> L_promax[BF8,Factor1]     -0.16  0.08     -0.18     -0.32      0.00       646       690  1.00 
+#> L_promax[BF9,Factor1]      0.11  0.09      0.08     -0.06      0.28       413       458  1.00 
   # }
 
   # Setting se_method = "sampling" enables standard errors and 95% CIs
@@ -176,16 +176,16 @@ rtmb_fa(
 #> 
 #> Point Estimates and 95% Sampling-based CI:
 #>               variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_promax[BF1,Factor1]   -0.88412     0.19040   -0.99590   -0.29552 
-#> L_promax[BF2,Factor1]   -0.07323     0.04808   -0.16583    0.02137 
-#> L_promax[BF3,Factor1]   -0.11607     0.07986   -0.27315    0.04090 
-#> L_promax[BF4,Factor1]   -0.07882     0.08795   -0.24846    0.09597 
-#> L_promax[BF5,Factor1]    0.03564     0.08367   -0.12772    0.19089 
-#> L_promax[BF6,Factor1]    0.68867     0.12762    0.39206    0.88820 
-#> L_promax[BF7,Factor1]    0.01309     0.04747   -0.07218    0.09987 
-#> L_promax[BF8,Factor1]   -0.15549     0.09734   -0.35668    0.02904 
-#> L_promax[BF9,Factor1]    0.08481     0.09385   -0.10586    0.26402 
-#> L_promax[BF10,Factor1]  -0.10916     0.07976   -0.26512    0.04661 
+#> L_promax[BF1,Factor1]   -0.88412     0.19045   -0.99579   -0.29916 
+#> L_promax[BF2,Factor1]   -0.07323     0.05383   -0.16711    0.01892 
+#> L_promax[BF3,Factor1]   -0.11607     0.08270   -0.27486    0.04811 
+#> L_promax[BF4,Factor1]   -0.07882     0.08821   -0.24792    0.09878 
+#> L_promax[BF5,Factor1]    0.03564     0.08337   -0.12598    0.19492 
+#> L_promax[BF6,Factor1]    0.68867     0.12798    0.38591    0.88749 
+#> L_promax[BF7,Factor1]    0.01309     0.05165   -0.07151    0.10295 
+#> L_promax[BF8,Factor1]   -0.15549     0.09684   -0.34706    0.02727 
+#> L_promax[BF9,Factor1]    0.08481     0.09297   -0.09648    0.26530 
+#> L_promax[BF10,Factor1]  -0.10916     0.07964   -0.26156    0.05252 
 #> 
 
   # Post-hoc rotation using the fa_rotate() method
@@ -207,16 +207,16 @@ rtmb_fa(
 #> 
 #> Point Estimates and 95% Sampling-based CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_varimax[1,1]   -0.87739     0.18946   -0.98930   -0.27963 
-#> L_varimax[2,1]   -0.00088     0.13712   -0.34153    0.19608 
-#> L_varimax[3,1]   -0.12824     0.08587   -0.27944    0.04857 
-#> L_varimax[4,1]   -0.09712     0.09498   -0.27465    0.09389 
-#> L_varimax[5,1]    0.02261     0.08562   -0.13019    0.20885 
-#> L_varimax[6,1]    0.68707     0.12478    0.38952    0.87753 
-#> L_varimax[7,1]    0.08960     0.14207   -0.28461    0.28011 
-#> L_varimax[8,1]   -0.17801     0.10885   -0.38106    0.03885 
-#> L_varimax[9,1]    0.07460     0.09842   -0.11166    0.27545 
-#> L_varimax[10,1]  -0.08975     0.08971   -0.28869    0.05730 
+#> L_varimax[1,1]   -0.87739     0.18907   -0.98820   -0.29034 
+#> L_varimax[2,1]   -0.00088     0.13695   -0.34629    0.19880 
+#> L_varimax[3,1]   -0.12824     0.08883   -0.28335    0.04773 
+#> L_varimax[4,1]   -0.09712     0.09463   -0.26598    0.10075 
+#> L_varimax[5,1]    0.02261     0.08509   -0.13838    0.21208 
+#> L_varimax[6,1]    0.68707     0.12595    0.38894    0.87870 
+#> L_varimax[7,1]    0.08960     0.14184   -0.27815    0.29630 
+#> L_varimax[8,1]   -0.17801     0.10725   -0.37010    0.04470 
+#> L_varimax[9,1]    0.07460     0.09745   -0.09915    0.28085 
+#> L_varimax[10,1]  -0.08975     0.08811   -0.28202    0.05605 
 #> 
 
 
@@ -236,21 +236,21 @@ rtmb_fa(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 2433.06
-#> Approx. Log Marginal Likelihood (Laplace): -2692.30
+#> Negative Log-Posterior: 2433.05
+#> Approx. Log Marginal Likelihood (Laplace): -2716.78
 #> 
 #> Point Estimates and 95% Wald CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 #> L[BF1,Factor1]    0.00000     0.00000   -0.00000    0.00000 
-#> L[BF2,Factor1]    0.78286     0.07926    0.62751    0.93821 
-#> L[BF3,Factor1]   -0.11537     0.09039   -0.29252    0.06179 
-#> L[BF4,Factor1]   -0.18356     0.08405   -0.34831   -0.01882 
-#> L[BF5,Factor1]   -0.11921     0.08829   -0.29226    0.05383 
+#> L[BF2,Factor1]    0.78201     0.08335    0.61865    0.94538 
+#> L[BF3,Factor1]   -0.11589     0.09062   -0.29350    0.06172 
+#> L[BF4,Factor1]   -0.18487     0.08384   -0.34920   -0.02054 
+#> L[BF5,Factor1]   -0.11914     0.08861   -0.29282    0.05454 
 #> L[BF6,Factor1]    0.00000     0.00000   -0.00000    0.00000 
-#> L[BF7,Factor1]    0.85423     0.08408    0.68944    1.01902 
-#> L[BF8,Factor1]   -0.23762     0.08149   -0.39735   -0.07790 
-#> L[BF9,Factor1]   -0.07829     0.09694   -0.26828    0.11170 
-#> L[BF10,Factor1]   0.18712     0.09227    0.00628    0.36797 
+#> L[BF7,Factor1]    0.85548     0.08895    0.68114    1.02982 
+#> L[BF8,Factor1]   -0.23703     0.08306   -0.39982   -0.07424 
+#> L[BF9,Factor1]   -0.07986     0.09650   -0.26900    0.10928 
+#> L[BF10,Factor1]   0.18645     0.09386    0.00248    0.37042 
 #> 
 
   # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
@@ -282,16 +282,16 @@ rtmb_fa(
   # Summary of unrotated loadings (may show poor convergence / large SE due to switching)
   mcmc_ssp$summary("L")
 #>        variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
-#> L[BF1,Factor1]    0.02  0.08  -0.00  -0.12   0.19       347       316  1.01 
-#> L[BF2,Factor1]    0.82  0.10   0.74   0.64   1.00       205       220  1.01 
-#> L[BF3,Factor1]   -0.05  0.07  -0.00  -0.24   0.04       489      1000  1.00 
-#> L[BF4,Factor1]   -0.11  0.09  -0.01  -0.30   0.02       441       846  1.00 
-#> L[BF5,Factor1]   -0.05  0.07  -0.00  -0.21   0.03       623       778  1.00 
-#> L[BF6,Factor1]    0.01  0.09   0.00  -0.13   0.16       542       242  1.00 
-#> L[BF7,Factor1]    0.83  0.11   0.90   0.63   1.00       208       447  1.01 
-#> L[BF8,Factor1]   -0.16  0.11  -0.20  -0.35   0.01       239       691  1.01 
-#> L[BF9,Factor1]   -0.04  0.06  -0.00  -0.19   0.05       793       776  1.00 
-#> L[BF10,Factor1]   0.13  0.11   0.01  -0.02   0.34       275       893  1.01 
+#> L[BF1,Factor1]   -0.05  0.25  -0.00  -0.96   0.18        25        32  1.06 
+#> L[BF2,Factor1]    0.74  0.26   0.75  -0.09   1.00        18        30  1.08 
+#> L[BF3,Factor1]   -0.05  0.07  -0.00  -0.22   0.05       595       877  1.00 
+#> L[BF4,Factor1]   -0.10  0.10  -0.01  -0.30   0.02       128       604  1.03 
+#> L[BF5,Factor1]   -0.04  0.07  -0.00  -0.21   0.06       264       368  1.01 
+#> L[BF6,Factor1]    0.07  0.21  -0.00  -0.14   0.76        26        28  1.07 
+#> L[BF7,Factor1]    0.77  0.26   0.88  -0.02   1.00        26        29  1.06 
+#> L[BF8,Factor1]   -0.16  0.11  -0.22  -0.35   0.01        60       474  1.03 
+#> L[BF9,Factor1]   -0.03  0.07  -0.00  -0.19   0.07       330       127  1.00 
+#> L[BF10,Factor1]   0.12  0.11   0.01  -0.05   0.33        21        35  1.07 
   mcmc_ssp$draws("L[BF1,1]") |> plot_dens()
 #> Error: The variable name specified in 'pars' was not found.
 
@@ -305,16 +305,16 @@ rtmb_fa(
   # Summary of the rotated loadings (L_rot) with stabilized estimates
   mcmc_ssp$summary("L_rot")
 #>            variable   mean    sd    map   q2.5  q97.5  ess_bulk  ess_tail  rhat 
-#> L_rot[BF1,Factor1]    0.07  0.06   0.05  -0.04   0.21       331       393  1.00 
-#> L_rot[BF2,Factor1]    0.82  0.10   0.75   0.64   1.00       208       367  1.01 
-#> L_rot[BF3,Factor1]   -0.05  0.07  -0.00  -0.23   0.04       505      1049  1.00 
-#> L_rot[BF4,Factor1]   -0.11  0.09  -0.01  -0.29   0.02       445       856  1.00 
-#> L_rot[BF5,Factor1]   -0.05  0.07  -0.00  -0.22   0.03       615       778  1.00 
-#> L_rot[BF6,Factor1]   -0.03  0.06  -0.04  -0.15   0.09       480       272  1.01 
-#> L_rot[BF7,Factor1]    0.83  0.11   0.90   0.63   1.00       208       503  1.01 
-#> L_rot[BF8,Factor1]   -0.16  0.10  -0.19  -0.35   0.01       240       562  1.01 
-#> L_rot[BF9,Factor1]   -0.04  0.06  -0.00  -0.20   0.05       815       776  1.00 
-#> L_rot[BF10,Factor1]   0.14  0.11   0.01  -0.02   0.34       282       884  1.01 
+#> L_rot[BF1,Factor1]   -0.02  0.05  -0.03  -0.10   0.10       585       610  1.00 
+#> L_rot[BF2,Factor1]    0.81  0.11   0.75   0.64   1.00       134       122  1.01 
+#> L_rot[BF3,Factor1]   -0.05  0.07  -0.00  -0.22   0.05       657       904  1.00 
+#> L_rot[BF4,Factor1]   -0.11  0.09  -0.01  -0.30   0.01       331       754  1.01 
+#> L_rot[BF5,Factor1]   -0.05  0.07  -0.00  -0.21   0.05       644       866  1.00 
+#> L_rot[BF6,Factor1]    0.05  0.06   0.04  -0.06   0.17       473       650  1.01 
+#> L_rot[BF7,Factor1]    0.83  0.11   0.88   0.64   1.00       168       319  1.01 
+#> L_rot[BF8,Factor1]   -0.17  0.10  -0.21  -0.36   0.00       253       518  1.01 
+#> L_rot[BF9,Factor1]   -0.03  0.06   0.00  -0.20   0.05       646       819  1.00 
+#> L_rot[BF10,Factor1]   0.13  0.10   0.01  -0.01   0.33       269       925  1.00 
   mcmc_ssp$draws("L_rot[BF1,1]") |> plot_dens()
 #> Error: The variable name specified in 'pars' was not found.
   # }

@@ -116,7 +116,7 @@ rtmb_corr(
 
   bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
 #> Calculating marginal likelihood for the full model...
-#> Bridge Sampling Converged: LogML = -1013.141 (Error = 0.0074, ESS = 401.4)
+#> Bridge Sampling Converged: LogML = -1013.139 (Error = 0.0073, ESS = 401.4)
 #> 
 #> --- Sampling from the comparison model ---
 #> Starting sequential sampling (chains = 2)...
@@ -138,11 +138,11 @@ rtmb_corr(
 #> chain 2: iter 1400 sampling 
 #> 
 #> --- Calculating marginal likelihood for the comparison model ---
-#> Bridge Sampling Converged: LogML = -1025.617 (Error = 0.0057, ESS = 348.9)
+#> Bridge Sampling Converged: LogML = -1025.621 (Error = 0.0054, ESS = 348.9)
   print(bf_corr)
 #> --- Bayes Factor Analysis (Bridge Sampling) ---
-#> Bayes Factor (BF12) : 262002 
-#> Log Bayes Factor    : 12.4761 (Approx. Error = 0.0093)
+#> Bayes Factor (BF12) : 263467.2 
+#> Log Bayes Factor    : 12.4817 (Approx. Error = 0.0091)
 #> Evidence            : Decisive evidence for Model 1 
 #> Comparison model    : Parameters fixed at list(corr = 0) 
 #> 
