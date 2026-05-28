@@ -1,17 +1,19 @@
 ## R CMD check results
 
-0 errors | 0 warnings | 0 notes
-
-## check_win_devel() results
+0 errors | 0 warnings | 1 note
 
 There was 1 NOTE:
 
 * checking CRAN incoming feasibility ... NOTE
+  New submission
   Possibly misspelled words in DESCRIPTION:
-    RTMB
+    Gelman
+    Kristensen
+    al
+    et
 
-RTMB is the name of an R package used as the automatic differentiation
-engine by BayesRTMB.
+This is a new submission. The possibly misspelled words are author names
+(Gelman, Kristensen) and the abbreviation "et al." used in references.
 
 ## Resubmission
 
