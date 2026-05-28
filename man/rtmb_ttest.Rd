@@ -66,6 +66,10 @@ The result is model-based and reproducible from the printed model code.
 This corresponds to the Welch-type unequal-variance t-test, but the
 degrees of freedom are computed by the package's internal Satterthwaite
 procedure rather than by a separate closed-form formula.
+When `prior_jzs()` is combined with `var.equal = FALSE`, BayesRTMB uses
+a Welch-style JZS extension: the effect size `delta` is an explicit
+parameter with a Cauchy prior, and the group mean difference is scaled by
+the root-mean-square of the two group standard deviations.
 }
 \examples{
 
@@ -78,7 +82,7 @@ procedure rather than by a separate closed-form formula.
   # r = 0.707 is the standard scale for the Cauchy prior on the effect size
   fit_ttest <- rtmb_ttest(y1, y2, r = 0.707)
 
-  \dontrun{
+  \donttest{
   # MCMC sampling (chains and iterations reduced for faster execution)
   mcmc_ttest <- fit_ttest$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ttest$summary()

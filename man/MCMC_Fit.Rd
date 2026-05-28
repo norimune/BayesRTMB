@@ -45,6 +45,30 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 
 \item{\code{treedepth}}{Tree depth used in HMC/NUTS sampling.}
 
+\item{\code{n_leapfrog}}{Number of leapfrog steps for retained draws.}
+
+\item{\code{divergent}}{Logical matrix indicating divergent transitions.}
+
+\item{\code{energy}}{Hamiltonian energy for retained draws.}
+
+\item{\code{metric}}{Per-chain inverse mass matrix used by NUTS.}
+
+\item{\code{metric_type}}{Effective mass matrix adaptation type used by NUTS.}
+
+\item{\code{metric_requested}}{Mass matrix adaptation type requested by the user.}
+
+\item{\code{metric_effective}}{Effective mass matrix adaptation type by chain.}
+
+\item{\code{metric_auto}}{Automatic metric selection details by chain, if used.}
+
+\item{\code{metric_init}}{Initial metric source used by NUTS.}
+
+\item{\code{metric_adaptation}}{Metric learning mode used during warmup.}
+
+\item{\code{nuts_variant}}{NUTS proposal selection variant used for sampling.}
+
+\item{\code{warmup_diagnostics}}{Per-chain warmup diagnostics.}
+
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
 \item{\code{posterior_mean}}{Posterior mean estimates.}
@@ -130,7 +154,19 @@ Create a new `MCMC_Fit` object.
   laplace,
   posterior_mean,
   max_treedepth = NULL,
-  pd_error_count = NULL
+  pd_error_count = NULL,
+  n_leapfrog = NULL,
+  divergent = NULL,
+  energy = NULL,
+  metric = NULL,
+  metric_type = NULL,
+  metric_init = NULL,
+  metric_requested = NULL,
+  metric_effective = NULL,
+  metric_auto = NULL,
+  metric_adaptation = NULL,
+  nuts_variant = NULL,
+  warmup_diagnostics = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -156,6 +192,30 @@ Create a new `MCMC_Fit` object.
 \item{\code{max_treedepth}}{Maximum tree depth requested for NUTS/HMC.}
 
 \item{\code{pd_error_count}}{Positive-definite/singularity errors treated as `lp = -Inf` by chain.}
+
+\item{\code{n_leapfrog}}{Number of leapfrog steps for retained draws.}
+
+\item{\code{divergent}}{Logical matrix indicating divergent transitions.}
+
+\item{\code{energy}}{Hamiltonian energy for retained draws.}
+
+\item{\code{metric}}{Per-chain inverse mass matrix used by NUTS.}
+
+\item{\code{metric_type}}{Effective mass matrix adaptation type used by NUTS.}
+
+\item{\code{metric_init}}{Initial metric source used by NUTS.}
+
+\item{\code{metric_requested}}{Mass matrix adaptation type requested by the user.}
+
+\item{\code{metric_effective}}{Effective mass matrix adaptation type by chain.}
+
+\item{\code{metric_auto}}{Automatic metric selection details by chain, if used.}
+
+\item{\code{metric_adaptation}}{Metric learning mode used during warmup.}
+
+\item{\code{nuts_variant}}{NUTS proposal selection variant used for sampling.}
+
+\item{\code{warmup_diagnostics}}{Per-chain warmup diagnostics.}
 }
 \if{html}{\out{</div>}}
 }

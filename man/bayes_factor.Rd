@@ -22,7 +22,7 @@ Compare two models by calculating the Bayes Factor based on their
 marginal likelihoods.
 }
 \examples{
-\dontrun{
+\donttest{
   # Compare two models using Bayes Factor
   data(debate, package = "BayesRTMB")
   fit1 <- rtmb_lm(sat ~ talk, data = debate)

@@ -25,7 +25,7 @@ Calculate and visualize the predicted values (marginal effects) of a variable,
 potentially conditional on the levels of another variable (interaction).
 }
 \examples{
-\dontrun{
+\donttest{
   data(debate, package = "BayesRTMB")
   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
   mcmc_fit <- fit$sample()

@@ -77,7 +77,7 @@ The returned \code{RTMB_Model} instance provides the following core methods:
 }
 }
 \examples{
-\dontrun{
+\donttest{
 # Simulate data for 3 groups
 set.seed(123)
 N <- 60

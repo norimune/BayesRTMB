@@ -64,7 +64,7 @@ covariance structures.
   map_mix$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
-  \dontrun{
+  \donttest{
   mcmc_mix <- fit_mix$sample(sampling = 500, warmup = 500, chains = 2)
   # MCMC summary provides estimates for component means, standard deviations,
   # and mixture probabilities

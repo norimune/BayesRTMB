@@ -15,8 +15,8 @@ item_info(x, ...)
 Calculate Item Information Function
 }
 \examples{
-\dontrun{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+\donttest{
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
   map_fit <- fit$optimize()
   ii <- item_info(map_fit)
   plot(ii)

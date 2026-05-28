@@ -62,7 +62,7 @@ NULL
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #' # Simulate data for 3 groups
 #' set.seed(123)
 #' N <- 60

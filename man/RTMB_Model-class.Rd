@@ -530,6 +530,14 @@ Draw posterior samples from the model.
   seed = sample.int(1e+06, 1),
   delta = 0.8,
   max_treedepth = 10,
+  nuts_variant = c("multinomial", "slice"),
+  metric = c("auto", "diag", "dense", "hybrid"),
+  metric_init = c("identity", "hessian"),
+  metric_adaptation = c("stan_window", "cumulative", "window"),
+  metric_regularization = TRUE,
+  metric_shrinkage = 5,
+  metric_min = 1e-06,
+  metric_max = 1e+06,
   parallel = FALSE,
   laplace = FALSE,
   init = NULL,
@@ -556,6 +564,37 @@ Draw posterior samples from the model.
 \item{\code{delta}}{Target acceptance rate for HMC/NUTS. Default is 0.8.}
 
 \item{\code{max_treedepth}}{Maximum tree depth for HMC/NUTS. Default is 10.}
+
+\item{\code{nuts_variant}}{NUTS proposal selection variant. `"multinomial"` uses
+Stan-style Hamiltonian-weighted proposal selection; `"slice"` uses the
+original slice-based implementation. Default is `"multinomial"`.}
+
+\item{\code{metric}}{Mass matrix adaptation type. `"auto"` starts from the
+hybrid strategy and falls back to `"diag"` during warmup when the dense
+covariance block is unstable or has very low correlation; `"diag"`
+adapts only marginal variances; `"dense"` adapts a full covariance
+metric for correlated parameters; `"hybrid"` uses a dense metric for
+fixed parameters and a diagonal metric for random parameters. Default
+is `"auto"`.}
+
+\item{\code{metric_init}}{Initial metric source. `"identity"` starts from the
+unit metric; `"hessian"` starts from an inverse Hessian approximation at
+the chain initial value when available. Default is `"identity"`.}
+
+\item{\code{metric_adaptation}}{Metric learning mode during warmup. `"stan_window"`
+uses the current expanding Stan-style slow window; `"cumulative"` uses
+all slow-window warmup draws accumulated so far; `"window"` uses only
+the current adaptation window. Default is `"stan_window"`.}
+
+\item{\code{metric_regularization}}{Logical; whether to shrink the adapted
+metric toward the unit metric during warmup. Default is TRUE.}
+
+\item{\code{metric_shrinkage}}{Non-negative scalar controlling the strength of
+metric shrinkage. Larger values shrink more strongly toward 1. Default is 5.}
+
+\item{\code{metric_min}}{Minimum allowed diagonal metric value. Default is 1e-6.}
+
+\item{\code{metric_max}}{Maximum allowed diagonal metric value. Default is 1e6.}
 
 \item{\code{parallel}}{Logical; whether to run chains in parallel. Default is FALSE.}
 

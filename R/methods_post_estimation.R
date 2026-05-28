@@ -13,7 +13,7 @@
 #' @return An object of class `ce_rtmb` containing the predicted values and their credible intervals.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   data(debate, package = "BayesRTMB")
 #'   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
 #'   mcmc_fit <- fit$sample()
@@ -347,7 +347,7 @@ summary.ce_rtmb <- function(object, ...) {
 #' @return A `ce_simple` object (data frame) containing the estimated effects and their credible intervals.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   data(debate, package = "BayesRTMB")
 #'   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
 #'   mcmc_fit <- fit$sample()
@@ -603,8 +603,8 @@ print.ce_simple <- function(x, digits = 3, ...) {
 #' @param x An object of class RTMB_Fit_Base
 #' @param ... Additional arguments.
 #' @examples
-#' \dontrun{
-#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+#' \donttest{
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
 #'   map_fit <- fit$optimize()
 #'   ii <- item_info(map_fit)
 #'   plot(ii)
@@ -616,8 +616,8 @@ item_info <- function(x, ...) UseMethod("item_info")
 #' @param x An object of class RTMB_Fit_Base
 #' @param ... Additional arguments.
 #' @examples
-#' \dontrun{
-#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+#' \donttest{
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
 #'   map_fit <- fit$optimize()
 #'   ti <- test_info(map_fit)
 #'   plot(ti)
@@ -799,8 +799,8 @@ item_curve <- function(x, ...) UseMethod("item_curve")
 #' @param items Index or item names to restrict the calculation to specific items (optional).
 #' @param ... Additional arguments.
 #' @examples
-#' \dontrun{
-#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+#' \donttest{
+#'   fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
 #'   map_fit <- fit$optimize()
 #'   ic <- item_curve(map_fit)
 #'   plot(ic)
@@ -1021,7 +1021,7 @@ sort_loadings <- function(loadings, cutoff = 0.0, round_digits = 3) {
 #'   approximate estimation error, and interpretation.
 #'
 #' @examples
-#' \dontrun{
+#' \donttest{
 #'   # Compare two models using Bayes Factor
 #'   data(debate, package = "BayesRTMB")
 #'   fit1 <- rtmb_lm(sat ~ talk, data = debate)
