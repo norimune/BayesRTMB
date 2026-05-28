@@ -99,66 +99,16 @@ marginal likelihoods.</p>
 <span class="r-in"><span>  <span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
-<span class="r-in"><span>  <span class="va">mcmc1</span> <span class="op">&lt;-</span> <span class="va">fit1</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 4)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1000 sampling </span>
-<span class="r-in"><span>  <span class="va">mcmc2</span> <span class="op">&lt;-</span> <span class="va">fit2</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 4)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 3: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 4: iter 1000 sampling </span>
-<span class="r-in"><span>  <span class="va">bf</span> <span class="op">&lt;-</span> <span class="fu">bayes_factor</span><span class="op">(</span><span class="va">mcmc1</span>, <span class="va">mcmc2</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Calculating marginal likelihood for Model 1...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -414.976 (Error = 0.0044, ESS = 383.1)</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Calculating marginal likelihood for Model 2...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -404.592 (Error = 0.0053, ESS = 326.0)</span>
+<span class="r-in"><span>  <span class="va">map1</span> <span class="op">&lt;-</span> <span class="va">fit1</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span>  <span class="va">map2</span> <span class="op">&lt;-</span> <span class="va">fit2</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-in"><span>  <span class="va">bf</span> <span class="op">&lt;-</span> <span class="fu">bayes_factor</span><span class="op">(</span><span class="va">map1</span>, <span class="va">map2</span><span class="op">)</span></span></span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Bayes Factor (BF12) : 0 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : -10.3844 (Approx. Error = 0.0069)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : -10.3811</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Evidence            : Decisive evidence for Model 2 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>

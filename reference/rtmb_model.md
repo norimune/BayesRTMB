@@ -175,29 +175,6 @@ map_basic$summary()
 #> sigma      0.44555     0.04045    0.37292    0.53232 
 #> 
 
-# Perform MCMC sampling using the named model (chains/iters reduced for speed)
-mcmc_basic <- mod_basic$sample(sampling = 500, warmup = 500, chains = 2)
-#> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
-mcmc_basic$summary()
-#> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp        -49.82  1.39  -49.06  -53.16  -48.04       486       505  1.01 
-#> mu[1]      -0.12  0.10   -0.11   -0.32    0.07       828       634  1.00 
-#> mu[2]       2.16  0.11    2.16    1.93    2.38      1016       692  1.00 
-#> mu[3]      -1.12  0.10   -1.13   -1.31   -0.91       948       733  1.00 
-#> sigma       0.47  0.04    0.45    0.39    0.56      1075       569  1.00 
-
 # --- 2. Optional: Adding Custom Parameter Names and initial values ---
 # You can optionally use 'par_names' to assign meaningful labels
 # to vector or matrix elements for easier interpretation.
@@ -229,28 +206,5 @@ map_named$summary()
 #> mu[Treatment_B]  -1.11887     0.09722   -1.30942   -0.92832 
 #> sigma             0.44555     0.04045    0.37292    0.53232 
 #> 
-
-# Perform MCMC sampling using the named model (chains/iters reduced for speed)
-mcmc_named <- mod_named$sample(sampling = 500, warmup = 500, chains = 2)
-#> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
-mcmc_named$summary()
-#>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp               -49.93  1.55  -48.91  -54.37  -48.08       422       432  1.00 
-#> mu[Control]       -0.12  0.10   -0.11   -0.31    0.06       801       588  1.00 
-#> mu[Treatment_A]    2.16  0.12    2.20    1.93    2.39       828       568  1.00 
-#> mu[Treatment_B]   -1.12  0.11   -1.14   -1.32   -0.91       812       605  1.00 
-#> sigma              0.47  0.05    0.47    0.39    0.56       901       511  1.00 
 # }
 ```

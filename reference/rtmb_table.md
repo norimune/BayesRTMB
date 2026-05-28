@@ -86,12 +86,12 @@ rtmb_table(skill, cond, data = debate)$classic()
 #> 
 #> Expected Counts (Independence) and Pearson Residuals:
 #>                    Expected Residual
-#> E[skill:1, cond:0] 42.99996  0.00001
+#> E[skill:1, cond:0] 43.00000  0.00000
 #> E[skill:2, cond:0] 48.99997  0.57143
-#> E[skill:3, cond:0] 58.00005 -0.52523
-#> E[skill:1, cond:1] 42.99996  0.00001
-#> E[skill:2, cond:1] 48.99997 -0.57143
-#> E[skill:3, cond:1] 58.00005  0.52522
+#> E[skill:3, cond:0] 58.00004 -0.52523
+#> E[skill:1, cond:1] 42.99999  0.00000
+#> E[skill:2, cond:1] 48.99996 -0.57142
+#> E[skill:3, cond:1] 58.00004  0.52522
 rtmb_table(table(debate$skill, debate$cond))$classic()
 #> Pre-checking model code...
 #> Checking RTMB setup...
@@ -133,7 +133,7 @@ rtmb_table(table(debate$skill, debate$cond))$classic()
 #> p[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1]   0.19041
 #> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1]   0.25249
 #>                                                                                   z value
-#> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 7.08479
+#> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 7.08480
 #> p[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 8.02322
 #> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 8.11501
 #> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 7.08480
@@ -149,18 +149,18 @@ rtmb_table(table(debate$skill, debate$cond))$classic()
 #> 
 #> Expected Counts (Independence) and Pearson Residuals:
 #>                                                                                   Expected
-#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 43.00002
-#> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 48.99997
-#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 58.00002
-#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 43.00002
-#> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 48.99997
-#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 58.00002
+#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 43.00009
+#> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 48.99996
+#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 57.99999
+#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 43.00007
+#> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 48.99994
+#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 57.99996
 #>                                                                                   Residual
-#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0]  0.00000
+#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] -0.00001
 #> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0]  0.57143
-#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] -0.52523
-#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1]  0.00000
+#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] -0.52522
+#> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] -0.00001
 #> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] -0.57142
-#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1]  0.52522
+#> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1]  0.52523
 # }
 ```

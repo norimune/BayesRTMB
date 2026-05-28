@@ -93,21 +93,21 @@ rtmb_irt(
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 334.06
-#> Approx. Log Marginal Likelihood (Laplace): -324.16
+#> Approx. Log Marginal Likelihood (Laplace): -326.51
 #> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
 #> 
 #> Point Estimates and 95% Wald CI:
-#> variable     Estimate   Std. Error      Lower 95%                                Upper 95% 
-#> a[Item1]      0.00019      0.00668        0.00000         76035476184877509457739776.00000 
-#> a[Item2]      0.00027      0.01158        0.00000  584436671864052778030630657064960.00000 
-#> a[Item3]      0.33900      0.63533        0.00861                                 13.34998 
-#> a[Item4]      0.52734      0.55112        0.06800                                  4.08956 
-#> a[Item5]      0.33854      0.63574        0.00853                                 13.43000 
-#> b[Item1]  -2110.73476  73390.74097  -145953.94095                             141732.47142 
-#> b[Item2]  -1804.94657  77043.98503  -152808.38282                             149198.48969 
-#> b[Item3]     -1.35714      2.47991       -6.21767                                  3.50339 
-#> b[Item4]     -0.90803      0.92076       -2.71269                                  0.89663 
-#> b[Item5]     -1.35888      2.48812       -6.23550                                  3.51775 
+#> variable     Estimate   Std. Error     Lower 95%       Upper 95% 
+#> a[Item1]      0.00017      0.00222       0.00000  14803403.02410 
+#> a[Item2]      0.00024      0.00268       0.00000    524214.81653 
+#> a[Item3]      0.33853      0.63664       0.00849        13.50088 
+#> a[Item4]      0.52727      0.55116       0.06796         4.09068 
+#> a[Item5]      0.33846      0.63717       0.00845        13.55001 
+#> b[Item1]  -2340.60797  30040.17736  -61218.27250     56537.05656 
+#> b[Item2]  -2001.47440  21926.82445  -44977.26074     40974.31193 
+#> b[Item3]     -1.35900      2.49182      -6.24287         3.52488 
+#> b[Item4]     -0.90809      0.92095      -2.71311         0.89693 
+#> b[Item5]     -1.35941      2.49533      -6.25018         3.53135 
 #> 
 
   # --- 2. Ordered Data (e.g., Likert scale) ---
@@ -210,50 +210,4 @@ rtmb_irt(
 #> b[Item4,Threshold1]  -1.20024     0.30906   -1.80599   -0.59450 
 #> b[Item5,Threshold1]  -1.53616     0.30305   -2.13012   -0.94220 
 #> 
-
-  # Note: For complex models like the Graded Response Model, the Wald CI from optimize()
-  # may become extremely wide due to parameter transformations.
-  # MCMC sampling is recommended for reliable interval estimation.
-
-  # MCMC sampling for the ordered model (chains and iterations reduced)
-  # \donttest{
-  mcmc_ord <- fit_ord$sample(sampling = 500, warmup = 500, chains = 2)
-#> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
-  mcmc_ord$summary()
-#>            variable     mean      sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp                   -687.35   49.81  -638.60  -756.13  -621.76         3       129  1.87 
-#> a[Item1]                0.88    0.40     0.63     0.30     1.81         5       285  1.31 
-#> a[Item2]              370.89  412.94     0.08     0.92  1259.27         3        34  1.98 
-#> a[Item3]                0.76    0.30     0.62     0.28     1.47         7       109  1.23 
-#> a[Item4]                1.20    0.52     0.90     0.51     2.47         4       183  1.39 
-#> a[Item5]                1.05    0.37     0.91     0.49     1.98        29       136  1.07 
-#> b[Item1,Threshold1]    -1.73    0.34    -1.58    -2.46    -1.16        13       518  1.12 
-#> b[Item2,Threshold1]  -248.86  276.23    -2.44  -827.71    -1.32         3        22  2.02 
-#> b[Item3,Threshold1]    -1.30    0.28    -1.26    -1.90    -0.79        88       354  1.05 
-#> b[Item4,Threshold1]    -1.18    0.34    -1.14    -1.87    -0.62        19       342  1.08 
-  mcmc_ord$summary()
-#>            variable     mean      sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp                   -687.35   49.81  -638.60  -756.13  -621.76         3       129  1.87 
-#> a[Item1]                0.88    0.40     0.63     0.30     1.81         5       285  1.31 
-#> a[Item2]              370.89  412.94     0.08     0.92  1259.27         3        34  1.98 
-#> a[Item3]                0.76    0.30     0.62     0.28     1.47         7       109  1.23 
-#> a[Item4]                1.20    0.52     0.90     0.51     2.47         4       183  1.39 
-#> a[Item5]                1.05    0.37     0.91     0.49     1.98        29       136  1.07 
-#> b[Item1,Threshold1]    -1.73    0.34    -1.58    -2.46    -1.16        13       518  1.12 
-#> b[Item2,Threshold1]  -248.86  276.23    -2.44  -827.71    -1.32         3        22  2.02 
-#> b[Item3,Threshold1]    -1.30    0.28    -1.26    -1.90    -0.79        88       354  1.05 
-#> b[Item4,Threshold1]    -1.18    0.34    -1.14    -1.87    -0.62        19       342  1.08 
-  # }
 ```

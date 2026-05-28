@@ -142,12 +142,12 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Expected Counts (Independence) and Pearson Residuals:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                    Expected Residual</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:1, cond:0] 42.99996  0.00001</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:1, cond:0] 43.00000  0.00000</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:2, cond:0] 48.99997  0.57143</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:3, cond:0] 58.00005 -0.52523</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:1, cond:1] 42.99996  0.00001</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:2, cond:1] 48.99997 -0.57143</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:3, cond:1] 58.00005  0.52522</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:3, cond:0] 58.00004 -0.52523</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:1, cond:1] 42.99999  0.00000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:2, cond:1] 48.99996 -0.57142</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[skill:3, cond:1] 58.00004  0.52522</span>
 <span class="r-in"><span><span class="fu">rtmb_table</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/table.html" class="external-link">table</a></span><span class="op">(</span><span class="va">debate</span><span class="op">$</span><span class="va">skill</span>, <span class="va">debate</span><span class="op">$</span><span class="va">cond</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
@@ -189,7 +189,7 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 <span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1]   0.19041</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1]   0.25249</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                                                                   z value</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 7.08479</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 7.08480</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 8.02322</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 8.11501</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> p[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 7.08480</span>
@@ -205,19 +205,19 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Expected Counts (Independence) and Pearson Residuals:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                                                                   Expected</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 43.00002</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 48.99997</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 58.00002</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 43.00002</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 48.99997</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 58.00002</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] 43.00009</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0] 48.99996</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] 57.99999</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] 43.00007</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] 48.99994</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1] 57.99996</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>                                                                                   Residual</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0]  0.00000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:0] -0.00001</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:0]  0.57143</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] -0.52523</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1]  0.00000</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:0] -0.52522</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:1, table(debate$skill, debate$cond)_col:1] -0.00001</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:2, table(debate$skill, debate$cond)_col:1] -0.57142</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1]  0.52522</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> E[table(debate$skill, debate$cond)_row:3, table(debate$skill, debate$cond)_col:1]  0.52523</span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

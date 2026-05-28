@@ -213,29 +213,6 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-out co"><span class="r-pr">#&gt;</span> sigma      0.44555     0.04045    0.37292    0.53232 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Perform MCMC sampling using the named model (chains/iters reduced for speed)</span></span></span>
-<span class="r-in"><span><span class="va">mcmc_basic</span> <span class="op">&lt;-</span> <span class="va">mod_basic</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
-<span class="r-in"><span><span class="va">mcmc_basic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp        -49.82  1.39  -49.06  -53.16  -48.04       486       505  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[1]      -0.12  0.10   -0.11   -0.32    0.07       828       634  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2]       2.16  0.11    2.16    1.93    2.38      1016       692  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[3]      -1.12  0.10   -1.13   -1.31   -0.91       948       733  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma       0.47  0.04    0.45    0.39    0.56      1075       569  1.00 </span>
-<span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="co"># --- 2. Optional: Adding Custom Parameter Names and initial values ---</span></span></span>
 <span class="r-in"><span><span class="co"># You can optionally use 'par_names' to assign meaningful labels</span></span></span>
 <span class="r-in"><span><span class="co"># to vector or matrix elements for easier interpretation.</span></span></span>
@@ -267,29 +244,6 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_B]  -1.11887     0.09722   -1.30942   -0.92832 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.44555     0.04045    0.37292    0.53232 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span><span class="co"># Perform MCMC sampling using the named model (chains/iters reduced for speed)</span></span></span>
-<span class="r-in"><span><span class="va">mcmc_named</span> <span class="op">&lt;-</span> <span class="va">mod_named</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
-<span class="r-in"><span><span class="va">mcmc_named</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp               -49.93  1.55  -48.91  -54.37  -48.08       422       432  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Control]       -0.12  0.10   -0.11   -0.31    0.06       801       588  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_A]    2.16  0.12    2.20    1.93    2.39       828       568  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[Treatment_B]   -1.12  0.11   -1.14   -1.32   -0.91       812       605  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma              0.47  0.05    0.47    0.39    0.56       901       511  1.00 </span>
 <span class="r-in"><span><span class="co"># }</span></span></span>
 </code></pre></div>
     </div>

@@ -32,13 +32,14 @@ item_curve(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...)
 
 ``` r
 # \donttest{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
-#> Error: Binary IRT models (type = 'binary') require responses to be exactly 0, 1, or NA. Found other values.
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
+#> Pre-checking model code...
+#> Checking RTMB setup...
   map_fit <- fit$optimize()
-#> Error: object 'fit' not found
+#> Starting RTMB optimization...
+#> 
   ic <- item_curve(map_fit)
-#> Error: object 'map_fit' not found
   plot(ic)
-#> Error: object 'ic' not found
+
 # }
 ```

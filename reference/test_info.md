@@ -22,13 +22,14 @@ test_info(x, ...)
 
 ``` r
 # \donttest{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
-#> Error: Binary IRT models (type = 'binary') require responses to be exactly 0, 1, or NA. Found other values.
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL", type = "ordered")
+#> Pre-checking model code...
+#> Checking RTMB setup...
   map_fit <- fit$optimize()
-#> Error: object 'fit' not found
+#> Starting RTMB optimization...
+#> 
   ti <- test_info(map_fit)
-#> Error: object 'map_fit' not found
   plot(ti)
-#> Error: object 'ti' not found
+
 # }
 ```
