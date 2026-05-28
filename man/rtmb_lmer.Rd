@@ -108,7 +108,7 @@ RTMB-based Linear Mixed Model (LMM) wrapper function
   map_glmer$summary()
 
   # MCMC sampling (chains and iterations reduced for faster execution)
-  \dontrun{
+  \donttest{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_glmer$summary()
   }
@@ -148,7 +148,7 @@ RTMB-based Linear Mixed Model (LMM) wrapper function
   map_ssp$summary("b")
 
   # For models with complex penalties, MCMC often provides more reliable credible intervals
-  \dontrun{
+  \donttest{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_ssp$summary("b")
   mcmc_ssp$summary("b")

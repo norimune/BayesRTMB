@@ -25,6 +25,6 @@
   map_mdu$summary()
   
   # Note: MDU models have many parameters, so MCMC sampling might take time.
-  \dontrun{
+  \donttest{
   # mcmc_mdu <- fit_mdu$sample(sampling = 500, warmup = 500, chains = 2)
   }

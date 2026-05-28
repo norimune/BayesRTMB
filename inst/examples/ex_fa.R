@@ -17,7 +17,7 @@
   fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
 
   # MCMC sampling for the 2 factor-model (chains and iterations reduced for faster execution)
-  \dontrun{
+  \donttest{
   mcmc_fa2 <- fit_fa2$sample(sampling=500, warmup=500, chains=2)
   # The summary prioritizes rotated loadings (L_promax), standard deviations,
   # and factor correlations
@@ -49,7 +49,7 @@
   map_ssp$summary()
 
   # MCMC sampling for the SSP model (chains and iterations reduced for faster execution)
-  \dontrun{
+  \donttest{
   mcmc_ssp <- fit_ssp$sample(sampling = 500, warmup = 500, chains = 2)
 
   # --- 4. Resolving Label Switching in MCMC ---

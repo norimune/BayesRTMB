@@ -53,7 +53,7 @@ It supports simple correlation, multilevel correlation, and classical frequentis
 
   fit_corr <- rtmb_corr(cbind(sat, perf), data = debate)
 
-  \dontrun{
+  \donttest{
   mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_corr$summary()
 

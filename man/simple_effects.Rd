@@ -26,7 +26,7 @@ For categorical focal variables, it calculates pairwise differences (contrasts).
 For continuous focal variables, it calculates the slope (simple slopes).
 }
 \examples{
-\dontrun{
+\donttest{
   data(debate, package = "BayesRTMB")
   fit <- rtmb_lm(sat ~ talk * perf, data = debate)
   mcmc_fit <- fit$sample()

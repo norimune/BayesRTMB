@@ -19,8 +19,8 @@
 Item Response Curve for RTMB_Fit_Base
 }
 \examples{
-\dontrun{
-  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2pl")
+\donttest{
+  fit <- rtmb_irt(data = BigFive[, 1:5], model = "2PL")
   map_fit <- fit$optimize()
   ic <- item_curve(map_fit)
   plot(ic)

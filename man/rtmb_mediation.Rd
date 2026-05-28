@@ -77,7 +77,7 @@ which is more accurate than the standard Sobel test (Delta Method).
   
   # MCMC sampling for more reliable confidence intervals of the indirect effect
   # (chains and iterations reduced for faster execution)
-  \dontrun{
+  \donttest{
   mcmc_med <- fit_med$sample(sampling = 500, warmup = 500, chains = 2)
   mcmc_med$summary()
   }
