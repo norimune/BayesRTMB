@@ -14,7 +14,7 @@
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
-#' @param ... Additional arguments passed to the model construction.
+#' @param ... Reserved; unused arguments are rejected.
 #'
 #' @details
 #' The function identifies mediation paths by looking for variables that are
@@ -33,6 +33,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
                            y_range = NULL, fixed = NULL, view = NULL,
                            WAIC = FALSE, ...) {
 
+  .check_unused_dots(..., .fn = "rtmb_mediation()")
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
   n_eq <- length(formula)
@@ -62,13 +63,11 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     prior <- prior_weak()
   }
 
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), or prior_weak().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak"),
+    context = "rtmb_mediation()"
+  )
 
   # Prepare family list
   if (!is.list(family)) {
@@ -127,7 +126,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     X_list[[i]] <- X_mat
 
     # Add range variables for weak priors dynamically
-    if (inherits(prior, "rtmb_prior") && prior$type %in% c("weak", "rhs", "ssp")) {
+    if (inherits(prior, "rtmb_prior") && prior$type == "weak") {
        f_type <- family_list[[i]]
        if (!(f_type %in% c("bernoulli", "binomial", "poisson"))) {
          range_i <- if (is.list(y_range)) y_range[[y_name]] else y_range

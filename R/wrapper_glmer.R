@@ -267,7 +267,10 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' @param family Character string of the distribution family (e.g., "gaussian",
 #'   "binomial", "poisson", "ordered", "sequential")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
-#' @param prior An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is `prior_flat()`.
+#' @param prior An object of class "rtmb_prior" specifying the prior
+#'   distribution. Use `prior_flat()`, `prior_normal()`, `prior_weak()`,
+#'   `prior_rhs()`, or `prior_ssp()`. `prior_jzs()` is available for
+#'   continuous families. Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.
 #' @param init List of initial values (generated automatically based on glm if omitted)
 
@@ -502,15 +505,21 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     prior <- prior_weak()
   }
 
-  if (!inherits(prior, "rtmb_prior")) {
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak", "rhs", "ssp", "jzs"),
+    context = "rtmb_glmer()"
+  )
+
+  prior_type <- prior$type
+  if (identical(prior_type, "jzs") &&
+      !(family %in% c("gaussian", "lognormal", "student_t"))) {
     stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), prior_weak(), prior_rhs(), or prior_ssp().",
+      "prior_jzs() is currently supported only for continuous rtmb_glmer() families ",
+      "('gaussian', 'lognormal', and 'student_t').",
       call. = FALSE
     )
   }
-
-  prior_type <- prior$type
 
   is_flat <- identical(prior_type, "flat")
   is_normal <- identical(prior_type, "normal")

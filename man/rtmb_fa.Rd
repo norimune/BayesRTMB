@@ -26,7 +26,8 @@ rtmb_fa(
 
 \item{score}{Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).}
 
-\item{prior}{Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
+\item{prior}{Prior configuration: `prior_flat()`, `prior_normal()`, or
+`prior_weak()`. `prior_ssp()` is accepted when `rotate = "ssp"`.
 Hyperparameters can be specified within these functions (e.g., `prior_normal(mean_sd = 10, sd_rate = 10)`).
 Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).}
 

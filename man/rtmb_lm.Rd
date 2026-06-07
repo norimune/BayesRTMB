@@ -28,7 +28,8 @@ rtmb_lm(
 
 \item{prior}{An object of class `"rtmb_prior"`.
 Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+`prior_jzs()` for JZS regression priors, or `prior_weak()`, `prior_rhs()`,
+`prior_ssp()` for weakly informative or regularized Bayesian inference.
 Default is `prior_flat()`.}
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.}

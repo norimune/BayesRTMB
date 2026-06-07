@@ -40,7 +40,10 @@ rtmb_glmer(
 
 \item{laplace}{Logical; whether to marginalize random effects using Laplace approximation}
 
-\item{prior}{An object of class "rtmb_prior" specifying the prior distribution. Use prior_weak(), prior_rhs(), or prior_ssp(). Default is `prior_flat()`.}
+\item{prior}{An object of class "rtmb_prior" specifying the prior
+distribution. Use `prior_flat()`, `prior_normal()`, `prior_weak()`,
+`prior_rhs()`, or `prior_ssp()`. `prior_jzs()` is available for
+continuous families. Default is `prior_flat()`.}
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative or regularized priors with continuous models.}
 

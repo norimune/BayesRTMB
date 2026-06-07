@@ -283,13 +283,11 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        prior <- prior_weak()
      }
 
-     if (!inherits(prior, "rtmb_prior")) {
-       stop(
-         "prior must be an object of class 'rtmb_prior'. ",
-         "Use prior_flat(), prior_normal(), or prior_weak().",
-         call. = FALSE
-       )
-     }
+     prior <- .validate_prior_type(
+       prior,
+       allowed = c("flat", "normal", "weak"),
+       context = "rtmb_corr()"
+     )
 
      prior_type <- prior$type
 
@@ -490,13 +488,11 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        prior <- prior_weak()
      }
 
-     if (!inherits(prior, "rtmb_prior")) {
-       stop(
-         "prior must be an object of class 'rtmb_prior'. ",
-         "Use prior_flat(), prior_normal(), or prior_weak().",
-         call. = FALSE
-       )
-     }
+     prior <- .validate_prior_type(
+       prior,
+       allowed = c("flat", "normal", "weak"),
+       context = "rtmb_corr()"
+     )
 
      prior_type <- prior$type
 

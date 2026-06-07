@@ -24,13 +24,15 @@ rtmb_table(
 
 \item{correct}{Logical; if TRUE, apply Yates' continuity correction for 2x2 classic analyses.}
 
-\item{prior}{Prior specification (Bayesian mode). Default is `prior_flat()`.}
+\item{prior}{Prior specification (Bayesian mode). Use `prior_flat()` for a
+uniform Dirichlet prior or `prior_normal(dirichlet_alpha = ...)` to set the
+Dirichlet concentration. Default is `prior_flat()`.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 
 \item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
-\item{...}{Additional arguments.}
+\item{...}{Reserved; unused arguments are rejected.}
 }
 \value{
 An `RTMB_Model` object.

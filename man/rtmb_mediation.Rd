@@ -34,7 +34,7 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 
 \item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
-\item{...}{Additional arguments passed to the model construction.}
+\item{...}{Reserved; unused arguments are rejected.}
 }
 \value{
 An `RTMB_Model` object.

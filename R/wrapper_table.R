@@ -8,10 +8,12 @@
 #' @param y Variable name (optional if x is a formula).
 #' @param data A data frame.
 #' @param correct Logical; if TRUE, apply Yates' continuity correction for 2x2 classic analyses.
-#' @param prior Prior specification (Bayesian mode). Default is `prior_flat()`.
+#' @param prior Prior specification (Bayesian mode). Use `prior_flat()` for a
+#'   uniform Dirichlet prior or `prior_normal(dirichlet_alpha = ...)` to set the
+#'   Dirichlet concentration. Default is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
-#' @param ... Additional arguments.
+#' @param ... Reserved; unused arguments are rejected.
 #'
 #' @return An `RTMB_Model` object.
 #'
@@ -25,12 +27,14 @@
 rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_flat(),
                        fixed = NULL, WAIC = FALSE, ...) {
 
+  .check_unused_dots(..., .fn = "rtmb_table()")
   x_expr <- substitute(x)
   y_expr <- substitute(y)
-  if (is.null(prior)) prior <- prior_flat()
-  if (!inherits(prior, "rtmb_prior")) {
-    stop("prior must be an object of class 'rtmb_prior'.", call. = FALSE)
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal"),
+    context = "rtmb_table()"
+  )
 
   # 1. Extract table or variables
   if (!is.null(data)) {

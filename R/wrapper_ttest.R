@@ -12,14 +12,15 @@
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Required when using weakly informative priors.
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-#' or `prior_weak()` for weakly informative Bayesian inference.
+#' `prior_jzs()` for JZS t-test priors, or `prior_weak()` for weakly
+#' informative Bayesian inference.
 #' Default is `prior_flat()`.
 #' @param init List of initial values.
 #' @param var.equal Logical; whether to assume equal variances. Default is TRUE.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param missing Missing value handling strategy: "listwise".
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
-#' @param ... Additional arguments.
+#' @param ... Reserved; unused arguments are rejected.
 #' @return An `RTMB_Model` object.
 #'
 #' @details
@@ -44,6 +45,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
                        var.equal = TRUE, missing = c("listwise", "fiml"),
                        WAIC = FALSE, ...) {
 
+  .check_unused_dots(..., .fn = "rtmb_ttest()")
   missing <- match.arg(missing)
   x_expr <- substitute(x)
   y_expr <- substitute(y)
@@ -148,13 +150,11 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
   }
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), prior_jzs(), or prior_weak().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "jzs", "weak"),
+    context = "rtmb_ttest()"
+  )
   prior_type <- prior$type
   is_jzs <- prior_type == "jzs"
   is_weak <- prior_type == "weak"

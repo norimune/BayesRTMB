@@ -38,7 +38,8 @@ rtmb_ttest(
 
 \item{prior}{An object of class `"rtmb_prior"`.
 Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-or `prior_weak()` for weakly informative Bayesian inference.
+`prior_jzs()` for JZS t-test priors, or `prior_weak()` for weakly
+informative Bayesian inference.
 Default is `prior_flat()`.}
 
 \item{init}{List of initial values.}
@@ -51,7 +52,7 @@ Default is `prior_flat()`.}
 
 \item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
-\item{...}{Additional arguments.}
+\item{...}{Reserved; unused arguments are rejected.}
 }
 \value{
 An `RTMB_Model` object.

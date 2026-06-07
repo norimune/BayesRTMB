@@ -37,7 +37,7 @@ Specifying this automatically enables weakly informative priors if `prior` is `p
 
 \item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
-\item{...}{Additional arguments passed to `rtmb_model`.}
+\item{...}{Reserved; unused arguments are rejected.}
 }
 \value{
 A \code{RTMB_Model} object.

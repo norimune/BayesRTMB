@@ -5,7 +5,8 @@
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-#' or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+#' `prior_jzs()` for JZS regression priors, or `prior_weak()`, `prior_rhs()`,
+#' `prior_ssp()` for weakly informative or regularized Bayesian inference.
 #' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable
 #' @param init Initial values
@@ -27,7 +28,7 @@
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param missing Missing value handling strategy: "listwise".
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
-#' @param ... Additional arguments passed to \code{rtmb_model()}.
+#' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #'
 #' @return RTMB_Model object
 #' @export
@@ -71,7 +72,8 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
              within = within,
              missing = missing,
              WAIC = WAIC,
-             .force_sum = TRUE)
+             .force_sum = TRUE,
+             ...)
 }
 
 #' RTMB-based GLM wrapper function (no random effects)
@@ -81,7 +83,8 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-#' or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+#' `prior_jzs()` for continuous-family JZS priors, or `prior_weak()`,
+#' `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
 #' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values
@@ -127,7 +130,8 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param data Data frame
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-#' or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+#' `prior_jzs()` for JZS regression priors, or `prior_weak()`, `prior_rhs()`,
+#' `prior_ssp()` for weakly informative or regularized Bayesian inference.
 #' Default is `prior_flat()`.
 #' @param y_range Theoretical minimum and maximum values of the response variable as a vector c(min, max). Specifying this automatically enables weakly informative priors.
 #' @param init List of initial values.

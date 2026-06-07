@@ -37,7 +37,8 @@ rtmb_lmer(
 
 \item{prior}{An object of class `"rtmb_prior"`.
 Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+`prior_jzs()` for JZS regression priors, or `prior_weak()`, `prior_rhs()`,
+`prior_ssp()` for weakly informative or regularized Bayesian inference.
 Default is `prior_flat()`.}
 
 \item{y_range}{Theoretical minimum and maximum values of the response variable}
@@ -75,7 +76,7 @@ If omitted and the LHS is \code{cbind()}, the within-factor name is inferred fro
 
 \item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
-\item{...}{Additional arguments passed to \code{rtmb_model()}.}
+\item{...}{Additional arguments passed to \code{rtmb_glmer()}.}
 }
 \value{
 RTMB_Model object

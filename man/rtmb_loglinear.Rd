@@ -8,6 +8,7 @@ rtmb_loglinear(
   formula,
   data,
   prior = prior_flat(),
+  y_range = NULL,
   fixed = NULL,
   WAIC = FALSE,
   ...
@@ -19,6 +20,9 @@ rtmb_loglinear(
 \item{data}{A data frame (required if `formula` is used).}
 
 \item{prior}{An object of class "rtmb_prior" specifying the prior distribution.}
+
+\item{y_range}{Optional theoretical minimum and maximum values of the count
+response. If supplied with the default flat prior, `prior_weak()` is used.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 

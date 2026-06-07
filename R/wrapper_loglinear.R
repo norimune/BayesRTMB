@@ -7,19 +7,18 @@
 #' @param formula A formula (e.g., `~ A + B + A:B`) or a contingency table.
 #' @param data A data frame (required if `formula` is used).
 #' @param prior An object of class "rtmb_prior" specifying the prior distribution.
+#' @param y_range Optional theoretical minimum and maximum values of the count
+#'   response. If supplied with the default flat prior, `prior_weak()` is used.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Additional arguments passed to `rtmb_glm()`.
 #' @return An `RTMB_Model` object.
 #' @example inst/examples/ex_loglinear.R
 #' @export
-rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL,
-                           WAIC = FALSE, ...) {
+rtmb_loglinear <- function(formula, data, prior = prior_flat(), y_range = NULL,
+                           fixed = NULL, WAIC = FALSE, ...) {
 
   if (is.null(prior)) prior <- prior_flat()
-  if (!inherits(prior, "rtmb_prior")) {
-    stop("prior must be an object of class 'rtmb_prior'.", call. = FALSE)
-  }
   if (missing(data) || is.null(data)) {
     stop("'data' must be supplied as a data frame, table, or matrix.", call. = FALSE)
   }
@@ -70,12 +69,16 @@ rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL,
 
   # Call the engine
   # We use rtmb_glmer which handles formulas, random effects, and priors.
-  args <- list(...)
-  if (!is.null(args$y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
+  if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
   }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak", "rhs", "ssp"),
+    context = "rtmb_loglinear()"
+  )
 
-  # For rtmb_table, we default to prior_weak with Stan-style values if requested
+  # For log-linear models, use weak Poisson defaults when requested.
   if (inherits(prior, "rtmb_prior") && identical(prior$type, "weak")) {
     # Stan-style defaults for log-linear (Poisson)
     if (is.null(prior$sd_ratio)) prior$sd_ratio <- 5.0 # For Intercept (alpha_prior_sd)
@@ -120,6 +123,7 @@ rtmb_loglinear <- function(formula, data, prior = prior_flat(), fixed = NULL,
     data = data,
     family = "poisson",
     prior = prior,
+    y_range = y_range,
     generate = gen_block, fixed = fixed, WAIC = WAIC,
     ...
   )

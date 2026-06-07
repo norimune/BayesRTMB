@@ -57,13 +57,11 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     prior <- prior_weak()
   }
 
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), prior_weak(), prior_rhs(), or prior_ssp().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak", "rhs", "ssp"),
+    context = "rtmb_lrt()"
+  )
 
   # NSE for formula: handle case where formula is just a variable name in data
   formula_expr <- substitute(formula)

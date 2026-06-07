@@ -17,7 +17,7 @@
 #'   Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
-#' @param ... Additional arguments passed to `rtmb_model`.
+#' @param ... Reserved; unused arguments are rejected.
 #' @return A \code{RTMB_Model} object.
 #' @example inst/examples/ex_mixture.R
 #' @export
@@ -26,6 +26,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
                          prior = prior_flat(), y_range = NULL, fixed = NULL,
                          WAIC = FALSE, ...) {
 
+  .check_unused_dots(..., .fn = "rtmb_mixture()")
   if (!is.numeric(k) || length(k) != 1L || is.na(k) || k < 2 || k != as.integer(k)) {
     stop("'k' must be an integer greater than or equal to 2.", call. = FALSE)
   }
@@ -40,13 +41,11 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     prior <- prior_weak()
   }
 
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), prior_weak(), prior_rhs(), or prior_ssp().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak", "rhs", "ssp"),
+    context = "rtmb_mixture()"
+  )
 
   # NSE for formula: handle case where formula is just a variable name in data
   formula_expr <- substitute(formula)

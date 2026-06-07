@@ -9,7 +9,8 @@
 #' @param nfactors Number of factors (K).
 #' @param rotate String specifying the rotation method (e.g., "varimax", "promax", "ssp"). If NULL, no rotation is applied. Specifying "ssp" performs regularized factor analysis.
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
-#' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
+#' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or
+#'   `prior_weak()`. `prior_ssp()` is accepted when `rotate = "ssp"`.
 #'   Hyperparameters can be specified within these functions (e.g., `prior_normal(mean_sd = 10, sd_rate = 10)`).
 #'   Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).
 #' @param y_range A numeric vector of length 2 specifying the theoretical min and max values of the items.
@@ -73,19 +74,18 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   # --- 2. Prior Handling (Extracting from prior object) ---
   if (is.null(prior)) prior <- prior_flat()
+  is_ssp <- !is.null(rotate) && rotate == "ssp"
 
   # Automatically switch to prior_weak() if y_range is provided and prior is default flat
   if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
   }
 
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), or prior_weak().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = if (is_ssp) c("flat", "normal", "weak", "ssp") else c("flat", "normal", "weak"),
+    context = "rtmb_fa()"
+  )
 
   prior_type <- prior$type
   
@@ -121,9 +121,6 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     prior_sd_rate = prior_sd_rate,
     prior_loadings_sd = prior_loadings_sd
   )
-
-  # Determine if SSP model is used
-  is_ssp <- !is.null(rotate) && rotate == "ssp"
 
   # --- 3. Simplified Setup AST ---
   if (missing == "listwise") {

@@ -10,6 +10,42 @@
   return(res)
 }
 
+.validate_prior_type <- function(prior, allowed, context = "This wrapper") {
+  if (is.null(prior)) prior <- prior_flat()
+  if (!inherits(prior, "rtmb_prior")) {
+    stop(
+      "prior must be an object of class 'rtmb_prior'. ",
+      "Use one of: ", paste(paste0("prior_", allowed, "()"), collapse = ", "), ".",
+      call. = FALSE
+    )
+  }
+  prior_type <- prior$type
+  if (!is.character(prior_type) || length(prior_type) != 1L ||
+      is.na(prior_type) || !(prior_type %in% allowed)) {
+    got <- if (is.null(prior_type)) "unknown" else as.character(prior_type)[1L]
+    stop(
+      context, " supports only: ",
+      paste(paste0("prior_", allowed, "()"), collapse = ", "),
+      ". Received prior type '", got, "'.",
+      call. = FALSE
+    )
+  }
+  prior
+}
+
+.check_unused_dots <- function(..., .fn = "This function") {
+  dots <- list(...)
+  if (length(dots) == 0L) return(invisible(NULL))
+  dot_names <- names(dots)
+  if (is.null(dot_names)) dot_names <- rep("", length(dots))
+  labels <- ifelse(nzchar(dot_names), dot_names, paste0("..", seq_along(dots)))
+  stop(
+    .fn, " got unused argument(s): ",
+    paste(labels, collapse = ", "),
+    call. = FALSE
+  )
+}
+
 
 #' Specify a flat prior
 #'

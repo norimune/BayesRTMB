@@ -59,15 +59,11 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   if (is.null(person_names)) person_names <- paste0("Person", 1:nrow(Y))
 
   # Prior Handling
-  if (is.null(prior)) prior <- prior_flat()
-
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), or prior_weak().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak"),
+    context = "rtmb_irt()"
+  )
 
   prior_type <- prior$type
   

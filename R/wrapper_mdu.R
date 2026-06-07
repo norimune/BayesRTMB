@@ -743,13 +743,11 @@ rtmb_mdu <- function(data, ndim = 2,
   if (!is.null(y_range) && inherits(prior, "rtmb_prior") && identical(prior$type, "flat")) {
     prior <- prior_weak()
   }
-  if (!inherits(prior, "rtmb_prior")) {
-    stop(
-      "prior must be an object of class 'rtmb_prior'. ",
-      "Use prior_flat(), prior_normal(), or prior_weak().",
-      call. = FALSE
-    )
-  }
+  prior <- .validate_prior_type(
+    prior,
+    allowed = c("flat", "normal", "weak"),
+    context = "rtmb_mdu()"
+  )
 
   prior_type <- prior$type
   if (prior_type == "weak" && method == "rating" && is.null(y_range)) {
