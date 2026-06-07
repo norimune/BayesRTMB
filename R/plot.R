@@ -428,6 +428,8 @@ plot_forest <- function(x, prob = 0.95,
 #'   stored distance when available.
 #' @param point_estimate Character; point estimate used when `delta` is a fit
 #'   object. Passed to `estimate()`.
+#' @param prefer_rotated Logical; when `delta` is a fitted object, prefer
+#'   rotated generated quantities (`delta_rot` and `theta_rot`) if available.
 #' @param main,xlab,ylab Plot title and axis labels.
 #' @param ... Additional arguments passed to `plot()`.
 #'
@@ -440,9 +442,11 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
                      circle_scale = 1, alpha = 0.2, contour_n = 60,
                      distance = c("auto", "squared", "euclidean"),
                      point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
+                     prefer_rotated = TRUE,
                      main = "MDU Configuration", xlab = NULL, ylab = NULL, ...) {
   point_estimate <- match.arg(point_estimate)
   distance <- match.arg(distance)
+  prefer_rotated <- isTRUE(prefer_rotated)
 
   if (!is.matrix(delta) && is.function(delta$estimate)) {
     fit <- delta
@@ -456,11 +460,27 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
       joint_map = "joint_map"
     )
     est <- fit$estimate(type = est_type, pars = "all", drop = FALSE)
-    if (is.null(est$delta)) {
+    use_rotated <- prefer_rotated && !is.null(est$delta_rot)
+    if (use_rotated) {
+      delta <- est$delta_rot
+      if (is.null(theta)) {
+        if (!is.null(est$theta_rot)) {
+          theta <- est$theta_rot
+        } else if (!is.null(est$theta)) {
+          warning(
+            "Using 'delta_rot' but 'theta_rot' was not found. ",
+            "Use rotate(..., linked = 'theta') to rotate person coordinates as well.",
+            call. = FALSE
+          )
+          theta <- est$theta
+        }
+      }
+    } else if (is.null(est$delta)) {
       stop("The fitted object does not contain 'delta'.", call. = FALSE)
+    } else {
+      delta <- est$delta
+      if (is.null(theta)) theta <- est$theta
     }
-    delta <- est$delta
-    if (is.null(theta)) theta <- est$theta
     if (is.null(item_alpha)) item_alpha <- est$alpha
     if (is.null(item_alpha) && is.null(phi)) phi <- est$phi
   }
@@ -492,6 +512,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
   if (is.null(item_labels)) {
     item_labels <- rownames(delta)
     if (is.null(item_labels)) item_labels <- seq_len(nrow(delta))
+    item_labels <- sub("^[Ii]tem\\s*([0-9]+)$", "\\1", as.character(item_labels))
   }
   if (length(item_labels) != nrow(delta)) {
     stop("'item_labels' must have the same length as nrow(delta).", call. = FALSE)
@@ -560,7 +581,12 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
   points(x_theta, y_theta, pch = 16, col = grDevices::rgb(0, 0, 0, 0.12), cex = 0.45)
   text(x_delta, y_delta, labels = item_labels, font = 2, cex = 0.9)
 
-  invisible(list(delta = cbind(x_delta, y_delta), theta = cbind(x_theta, y_theta), item_alpha = item_alpha))
+  invisible(list(
+    delta = cbind(x_delta, y_delta),
+    theta = cbind(x_theta, y_theta),
+    item_alpha = item_alpha,
+    item_labels = item_labels
+  ))
 }
 
 #' Plot pairs for posterior samples
@@ -701,4 +727,3 @@ plot_test_info <- function(fit, ...) {
   res <- test_info(fit, ...)
   plot(res, ...)
 }
-

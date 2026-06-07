@@ -491,20 +491,54 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param target Character string specifying the target variable to base the rotation on.
     #' @param reference Matrix to rotate towards. If NULL, the target's point estimate is used.
     #' @param linked Character vector of variable names to be rotated in the same direction.
-    #' @param overwrite Logical; whether to overwrite the stored draws. If FALSE, adds to generated quantities. Default is FALSE.
-    #' @param suffix Character string to append to the rotated variable names when overwrite is FALSE. Default is "rot".
-    #' @param ... Additional arguments passed to the rotation function.
+    #' @param principal Logical; if TRUE and `reference` is NULL, the point estimate
+    #'   is first rotated to its principal axes and then used as the Procrustes
+    #'   reference. This is useful for MDU configurations.
     #' @return The updated object invisibly.
-    rotate = function(target, reference = NULL, linked = NULL) {
-      message("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...")
+    rotate = function(target, reference = NULL, linked = NULL, principal = FALSE) {
+      principal <- isTRUE(principal)
+      if (principal && is.null(reference)) {
+        message("Applying orthogonal Procrustes rotation to principal-axis reference (Saving to generate as _rot)...")
+      } else {
+        message("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...")
+      }
 
       target_map <- self$get_point_estimate(target)
+      if (length(dim(target_map)) != 2L) {
+        stop("rotate() is only applicable to matrix (2D) parameters.", call. = FALSE)
+      }
+
+      principal_reference <- function(x) {
+        x <- as.matrix(x)
+        x_centered <- sweep(x, 2, colMeans(x, na.rm = TRUE), "-")
+        svd_res <- tryCatch(svd(x_centered), error = function(e) NULL)
+        if (is.null(svd_res) || is.null(svd_res$v)) {
+          stop("Failed to compute principal axes for the reference matrix.", call. = FALSE)
+        }
+        Q_ref <- svd_res$v
+        x_rot <- x %*% Q_ref
+
+        for (j in seq_len(ncol(x_rot))) {
+          idx <- which.max(abs(x_rot[, j]))
+          if (length(idx) == 1L && is.finite(x_rot[idx, j]) && x_rot[idx, j] < 0) {
+            x_rot[, j] <- -x_rot[, j]
+          }
+        }
+        x_rot
+      }
 
       ref_name <- paste0(target, "_ref")
       if (!is.null(reference)) {
+        if (principal) {
+          warning("'principal = TRUE' is ignored because an explicit reference was supplied.", call. = FALSE)
+        }
+        reference <- as.matrix(reference)
+        if (!identical(dim(reference), dim(target_map))) {
+          stop("'reference' must have the same dimensions as the target parameter.", call. = FALSE)
+        }
         self$model$data[[ref_name]] <- reference
       } else {
-        self$model$data[[ref_name]] <- target_map
+        self$model$data[[ref_name]] <- if (principal) principal_reference(target_map) else target_map
       }
 
       exprs <- list()

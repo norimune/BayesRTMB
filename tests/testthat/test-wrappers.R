@@ -67,20 +67,20 @@ test_that("Wrappers sample correctly (skip on CRAN)", {
       sigma ~ exponential(1)
     }
   )
-  res_hybrid <- rtmb_model(dat_re, code_re)$sample(
+  res_hybrid <- suppressWarnings(rtmb_model(dat_re, code_re)$sample(
     chains = 1, sampling = 3, warmup = 20,
     metric = "hybrid", nuts_variant = "multinomial", delta = 0.99
-  )
+  ))
   expect_identical(res_hybrid$metric_type, "hybrid")
   expect_true(is.list(res_hybrid$metric[[1]]))
   expect_true(length(res_hybrid$metric[[1]]$dense_idx) > 0)
   expect_true(length(res_hybrid$metric[[1]]$diag_idx) > 0)
 
-  res_lm_stan_window <- fit_lm$sample(
+  res_lm_stan_window <- suppressWarnings(fit_lm$sample(
     chains = 1, sampling = 3, warmup = 20,
     metric = "diag", delta = 0.99,
     metric_adaptation = "stan_window"
-  )
+  ))
   expect_identical(res_lm_stan_window$metric_adaptation, "stan_window")
   expect_true(is.data.frame(res_lm_stan_window$warmup_diagnostics[[1]]))
   expect_true("metric_updated" %in% names(res_lm_stan_window$warmup_diagnostics[[1]]))
@@ -98,4 +98,37 @@ test_that("Wrappers reject unsupported priors and unused dots", {
   expect_error(rtmb_lmer(mpg ~ wt + (1 | cyl), data = mtcars, typo_arg = 1), "unused argument")
   expect_error(rtmb_ttest(mpg ~ am, data = mtcars, typo_arg = 1), "unused argument")
   expect_error(rtmb_table(matrix(c(1, 2, 3, 4), 2), typo_arg = 1), "unused argument")
+})
+
+test_that("rotate can use a principal-axis reference", {
+  X <- matrix(
+    c(2, 1,
+      1, 2,
+     -1, -2,
+     -2, -1),
+    ncol = 2,
+    byrow = TRUE
+  )
+
+  code <- rtmb_code(
+    parameters = {
+      coords = Dim(c(4, 2))
+    },
+    model = {
+      coords ~ normal(X, 0.01)
+    }
+  )
+
+  fit <- rtmb_model(list(X = X), code, init = list(coords = X), silent = TRUE)$optimize(
+    num_estimate = 1,
+    se_method = "none"
+  )
+  fit$rotate("coords", principal = TRUE)
+
+  coords_rot <- fit$generate$coords_rot
+  coords_centered <- sweep(coords_rot, 2, colMeans(coords_rot), "-")
+  ss <- crossprod(coords_centered)
+
+  expect_lt(abs(ss[1, 2]), 1e-6)
+  expect_true(ss[1, 1] >= ss[2, 2])
 })

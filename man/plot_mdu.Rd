@@ -20,6 +20,7 @@ plot_mdu(
   contour_n = 60,
   distance = c("auto", "squared", "euclidean"),
   point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
+  prefer_rotated = TRUE,
   main = "MDU Configuration",
   xlab = NULL,
   ylab = NULL,
@@ -65,6 +66,9 @@ stored distance when available.}
 
 \item{point_estimate}{Character; point estimate used when `delta` is a fit
 object. Passed to `estimate()`.}
+
+\item{prefer_rotated}{Logical; when `delta` is a fitted object, prefer
+rotated generated quantities (`delta_rot` and `theta_rot`) if available.}
 
 \item{main, xlab, ylab}{Plot title and axis labels.}
 
