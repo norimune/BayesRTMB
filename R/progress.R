@@ -79,37 +79,35 @@
   msg <- as.character(msg[1])
   if (!nzchar(msg)) return(invisible(FALSE))
 
-  tmp <- paste0(path, ".tmp")
   ok <- tryCatch({
-    if (file.exists(tmp)) unlink(tmp, force = TRUE)
-    writeLines(msg, tmp, useBytes = TRUE)
-    if (file.exists(path)) unlink(path, force = TRUE)
-    file.rename(tmp, path)
+    cat(msg, "\n", file = path, append = TRUE, sep = "")
+    TRUE
   }, error = function(e) FALSE, warning = function(w) FALSE)
-  if (!isTRUE(ok) && file.exists(tmp)) unlink(tmp, force = TRUE)
   invisible(isTRUE(ok))
 }
 
 #' @noRd
 .rtmb_read_progress_file <- function(path) {
-  if (!file.exists(path)) return("")
+  if (!file.exists(path)) return(character(0))
   x <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
   x <- x[nzchar(x)]
-  if (length(x) == 0L) return("")
-  x[length(x)]
+  if (length(x) == 0L) return(character(0))
+  x
 }
 
 #' @noRd
-.rtmb_report_progress_files <- function(files, last) {
+.rtmb_report_progress_files <- function(files, line_counts) {
   for (i in seq_along(files)) {
-    msg <- .rtmb_read_progress_file(files[i])
-    if (nzchar(msg) && !identical(msg, last[i])) {
-      cat(msg, "\n", sep = "")
+    messages <- .rtmb_read_progress_file(files[i])
+    n_messages <- length(messages)
+    if (n_messages > line_counts[i]) {
+      new_messages <- messages[(line_counts[i] + 1L):n_messages]
+      cat(paste0(new_messages, "\n"), sep = "")
       .rtmb_flush_console()
-      last[i] <- msg
+      line_counts[i] <- n_messages
     }
   }
-  last
+  line_counts
 }
 
 #' @noRd
@@ -120,12 +118,12 @@
     poll_interval <- 0.5
   }
 
-  last <- rep("", length(files))
+  line_counts <- integer(length(files))
   repeat {
-    last <- .rtmb_report_progress_files(files, last)
+    line_counts <- .rtmb_report_progress_files(files, line_counts)
     if (all(vapply(futures, future::resolved, logical(1)))) break
     Sys.sleep(poll_interval)
   }
-  last <- .rtmb_report_progress_files(files, last)
+  line_counts <- .rtmb_report_progress_files(files, line_counts)
   lapply(futures, future::value)
 }

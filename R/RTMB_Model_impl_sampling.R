@@ -325,14 +325,10 @@
             msg <- as.character(msg[1])
             if (!nzchar(msg)) return(invisible(FALSE))
 
-            tmp <- paste0(path, ".tmp")
             ok <- tryCatch({
-              if (file.exists(tmp)) unlink(tmp, force = TRUE)
-              writeLines(msg, tmp, useBytes = TRUE)
-              if (file.exists(path)) unlink(path, force = TRUE)
-              file.rename(tmp, path)
+              cat(msg, "\n", file = path, append = TRUE, sep = "")
+              TRUE
             }, error = function(e) FALSE, warning = function(w) FALSE)
-            if (!isTRUE(ok) && file.exists(tmp)) unlink(tmp, force = TRUE)
             invisible(isTRUE(ok))
           }
           write_progress <- function(msg = "", amt = 1, ...) {
@@ -625,14 +621,10 @@
             msg <- as.character(msg[1])
             if (!nzchar(msg)) return(invisible(FALSE))
 
-            tmp <- paste0(path, ".tmp")
             ok <- tryCatch({
-              if (file.exists(tmp)) unlink(tmp, force = TRUE)
-              writeLines(msg, tmp, useBytes = TRUE)
-              if (file.exists(path)) unlink(path, force = TRUE)
-              file.rename(tmp, path)
+              cat(msg, "\n", file = path, append = TRUE, sep = "")
+              TRUE
             }, error = function(e) FALSE, warning = function(w) FALSE)
-            if (!isTRUE(ok) && file.exists(tmp)) unlink(tmp, force = TRUE)
             invisible(isTRUE(ok))
           }
           write_progress <- function(msg = "", amt = 1, ...) {
