@@ -317,9 +317,24 @@
       futures <- lapply(seq_len(chains), function(c) {
         progress_file <- progress_files[c]
         future::future({
+          write_progress_file <- function(path, msg) {
+            if (is.numeric(msg)) msg <- ""
+            msg <- as.character(msg[1])
+            if (!nzchar(msg)) return(invisible(FALSE))
+
+            tmp <- paste0(path, ".tmp")
+            ok <- tryCatch({
+              if (file.exists(tmp)) unlink(tmp, force = TRUE)
+              writeLines(msg, tmp, useBytes = TRUE)
+              if (file.exists(path)) unlink(path, force = TRUE)
+              file.rename(tmp, path)
+            }, error = function(e) FALSE, warning = function(w) FALSE)
+            if (!isTRUE(ok) && file.exists(tmp)) unlink(tmp, force = TRUE)
+            invisible(isTRUE(ok))
+          }
           write_progress <- function(msg = "", amt = 1, ...) {
             if (is.numeric(msg)) { amt <- msg; msg <- "" }
-            .rtmb_write_progress_file(progress_file, msg)
+            write_progress_file(progress_file, msg)
           }
           withCallingHandlers({
             run_chain(c, f_ad = f_ad_global, p_callback = write_progress)
