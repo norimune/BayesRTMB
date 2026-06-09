@@ -309,6 +309,26 @@
           run_chain(c, f_ad = f_ad_global, p_callback = function(...) invisible(NULL))
         }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
       }, warning = function(w) { if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
+    } else if (identical(progress_mode, "message")) {
+      progress_dir <- .rtmb_progress_file_dir()
+      on.exit(unlink(progress_dir, recursive = TRUE, force = TRUE), add = TRUE)
+      progress_files <- file.path(progress_dir, paste0("chain_", seq_len(chains), ".txt"))
+      .rtmb_progress_line("Preparing parallel workers...", progress_mode)
+      futures <- lapply(seq_len(chains), function(c) {
+        progress_file <- progress_files[c]
+        future::future({
+          write_progress <- function(msg = "", amt = 1, ...) {
+            if (is.numeric(msg)) { amt <- msg; msg <- "" }
+            .rtmb_write_progress_file(progress_file, msg)
+          }
+          withCallingHandlers({
+            run_chain(c, f_ad = f_ad_global, p_callback = write_progress)
+          }, warning = function(w) {
+            if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning")
+          })
+        }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+      })
+      results_list <- .rtmb_collect_progress_futures(futures, progress_files)
     } else {
       progress_handler <- .rtmb_progressr_handler(progress_mode)
       results_list <- progressr::with_progress({

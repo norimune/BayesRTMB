@@ -10,7 +10,18 @@
 
 #' @noRd
 .rtmb_progress_line <- function(msg, progress) {
-  if (!identical(progress, "none") && nzchar(msg)) cat(msg, "\n", sep = "")
+  if (!identical(progress, "none") && nzchar(msg)) {
+    cat(msg, "\n", sep = "")
+    .rtmb_flush_console()
+  }
+}
+
+#' @noRd
+.rtmb_flush_console <- function() {
+  if (interactive()) {
+    try(utils::flush.console(), silent = TRUE)
+  }
+  invisible(NULL)
 }
 
 #' @noRd
@@ -36,10 +47,12 @@
     if (identical(mode, "message")) {
       if (!is.null(msg) && length(msg) > 0L && nzchar(msg[1])) {
         cat(msg[1], "\n", sep = "")
+        .rtmb_flush_console()
       } else {
         pct <- floor(100 * current / total)
         while (pct >= next_percent && next_percent <= 100L) {
           cat(sprintf("%s: %d%%\n", label, next_percent))
+          .rtmb_flush_console()
           next_percent <<- next_percent + as.integer(message_step)
         }
       }
@@ -60,6 +73,7 @@
       pb <<- NULL
     } else if (identical(mode, "message") && next_percent <= 100L) {
       cat(sprintf("%s: 100%%\n", label))
+      .rtmb_flush_console()
       next_percent <<- 110L
     }
     invisible(NULL)
@@ -77,6 +91,7 @@
         msg <- state$message
         if (!is.null(msg) && length(msg) > 0L && nzchar(msg[1])) {
           cat(msg[1], "\n", sep = "")
+          .rtmb_flush_console()
         }
       }
     ),
@@ -92,4 +107,70 @@
   if (identical(progress, "none")) return(NULL)
   if (identical(progress, "message")) return(.rtmb_progressr_message_handler())
   progressr::handler_txtprogressbar(style = 3L, clear = FALSE)
+}
+
+#' @noRd
+.rtmb_progress_file_dir <- function() {
+  stamp <- format(Sys.time(), "%Y%m%d%H%M%OS3")
+  stamp <- gsub("[^0-9]", "", stamp)
+  path <- file.path(tempdir(), paste0("BayesRTMB-progress-", Sys.getpid(), "-", stamp))
+  dir.create(path, recursive = TRUE, showWarnings = FALSE)
+  path
+}
+
+#' @noRd
+.rtmb_write_progress_file <- function(path, msg) {
+  if (is.numeric(msg)) msg <- ""
+  msg <- as.character(msg[1])
+  if (!nzchar(msg)) return(invisible(FALSE))
+
+  tmp <- paste0(path, ".tmp")
+  ok <- tryCatch({
+    if (file.exists(tmp)) unlink(tmp, force = TRUE)
+    writeLines(msg, tmp, useBytes = TRUE)
+    if (file.exists(path)) unlink(path, force = TRUE)
+    file.rename(tmp, path)
+  }, error = function(e) FALSE, warning = function(w) FALSE)
+  if (!isTRUE(ok) && file.exists(tmp)) unlink(tmp, force = TRUE)
+  invisible(isTRUE(ok))
+}
+
+#' @noRd
+.rtmb_read_progress_file <- function(path) {
+  if (!file.exists(path)) return("")
+  x <- tryCatch(readLines(path, warn = FALSE), error = function(e) character(0))
+  x <- x[nzchar(x)]
+  if (length(x) == 0L) return("")
+  x[length(x)]
+}
+
+#' @noRd
+.rtmb_report_progress_files <- function(files, last) {
+  for (i in seq_along(files)) {
+    msg <- .rtmb_read_progress_file(files[i])
+    if (nzchar(msg) && !identical(msg, last[i])) {
+      cat(msg, "\n", sep = "")
+      .rtmb_flush_console()
+      last[i] <- msg
+    }
+  }
+  last
+}
+
+#' @noRd
+.rtmb_collect_progress_futures <- function(futures, files) {
+  poll_interval <- getOption("BayesRTMB.progress_poll_interval", 0.5)
+  if (!is.numeric(poll_interval) || length(poll_interval) != 1L ||
+      !is.finite(poll_interval) || poll_interval <= 0) {
+    poll_interval <- 0.5
+  }
+
+  last <- rep("", length(files))
+  repeat {
+    last <- .rtmb_report_progress_files(files, last)
+    if (all(vapply(futures, future::resolved, logical(1)))) break
+    Sys.sleep(poll_interval)
+  }
+  last <- .rtmb_report_progress_files(files, last)
+  lapply(futures, future::value)
 }
