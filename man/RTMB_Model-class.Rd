@@ -544,7 +544,8 @@ Draw posterior samples from the model.
   init_jitter = 0.1,
   save_csv = NULL,
   map = NULL,
-  fixed = NULL
+  fixed = NULL,
+  progress = c("auto", "none", "bar", "message")
 )}\if{html}{\out{</div>}}
 }
 
@@ -609,6 +610,11 @@ metric shrinkage. Larger values shrink more strongly toward 1. Default is 5.}
 \item{\code{map}}{Optional list specifying parameters to fix (factors).}
 
 \item{\code{fixed}}{Optional list specifying parameter values to fix.}
+
+\item{\code{progress}}{Progress reporting style. `"auto"` uses a progress bar in
+interactive sessions and line-based messages otherwise; `"none"`
+suppresses progress; `"bar"` uses a text progress bar; `"message"` uses
+line-based progress messages. Default is `"auto"`.}
 }
 \if{html}{\out{</div>}}
 }

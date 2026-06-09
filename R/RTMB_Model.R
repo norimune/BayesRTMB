@@ -564,6 +564,10 @@ RTMB_Model <- R6::R6Class(
     #' @param save_csv Optional list for saving MCMC results. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
+    #' @param progress Progress reporting style. `"auto"` uses a progress bar in
+    #'   interactive sessions and line-based messages otherwise; `"none"`
+    #'   suppresses progress; `"bar"` uses a text progress bar; `"message"` uses
+    #'   line-based progress messages. Default is `"auto"`.
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling = 1000, warmup = 1000, chains = 4,
                       thin = 1, seed = sample.int(1e6, 1),
@@ -578,7 +582,8 @@ RTMB_Model <- R6::R6Class(
                       metric_max = 1e6,
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
-                      map = NULL, fixed = NULL) {
+                      map = NULL, fixed = NULL,
+                      progress = c("auto", "none", "bar", "message")) {
       if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
         stop(
           "two_stage estimation for rtmb_lrt() is currently implemented only for optimize(). ",
@@ -590,6 +595,7 @@ RTMB_Model <- R6::R6Class(
       metric <- match.arg(metric)
       metric_init <- match.arg(metric_init)
       metric_adaptation <- match.arg(metric_adaptation)
+      progress <- match.arg(progress)
       .sample_impl(self, private, sampling, warmup, chains, thin, seed, delta, 
                    max_treedepth, nuts_variant, metric,
                    metric_init,
@@ -597,7 +603,7 @@ RTMB_Model <- R6::R6Class(
                    metric_regularization,
                    metric_shrinkage, metric_min, metric_max,
                    parallel, laplace, init, init_jitter,
-                   save_csv, map, fixed)
+                   save_csv, map, fixed, progress)
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).

@@ -6,11 +6,12 @@
                          metric_regularization,
                          metric_shrinkage, metric_min, metric_max,
                          parallel, laplace, init, init_jitter,
-                         save_csv, map, fixed) {
+                         save_csv, map, fixed, progress) {
   nuts_variant <- match.arg(nuts_variant, c("multinomial", "slice"))
   metric <- match.arg(metric, c("auto", "diag", "dense", "hybrid"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
   metric_adaptation <- match.arg(metric_adaptation, c("stan_window", "cumulative", "window"))
+  progress_mode <- .rtmb_resolve_progress(progress)
   if (!is.null(fixed)) {
     return(private$.dispatch_fixed(.method_to_call = "sample", sampling = sampling, warmup = warmup, chains = chains, thin = thin,
       seed = seed, delta = delta, max_treedepth = max_treedepth,
@@ -23,7 +24,8 @@
       metric_min = metric_min,
       metric_max = metric_max,
       parallel = parallel, laplace = laplace, init = init,
-      init_jitter = init_jitter, save_csv = save_csv, map = map, fixed = fixed))
+      init_jitter = init_jitter, save_csv = save_csv, map = map, fixed = fixed,
+      progress = progress))
   }
 
   set.seed(seed)
@@ -154,9 +156,9 @@
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = chains)
       else future::plan(future::multisession, workers = chains)
     }
-    cat(paste0("Starting parallel sampling (chains = ", chains, ")...\n"))
+    .rtmb_progress_line(paste0("Starting parallel sampling (chains = ", chains, ")..."), progress_mode)
   } else {
-    cat(paste0("Starting sequential sampling (chains = ", chains, ")...\n"))
+    .rtmb_progress_line(paste0("Starting sequential sampling (chains = ", chains, ")..."), progress_mode)
   }
 
   # --- [IMPORTANT] Data extraction to avoid serialization ---
@@ -301,19 +303,38 @@
   if (parallel) {
     iter <- sampling + warmup
     total_updates <- chains * (1 + floor(iter / 200))
-    progressr::with_progress({
-      p <- progressr::progressor(steps = total_updates)
+    if (identical(progress_mode, "none")) {
       results_list <- withCallingHandlers({
         future.apply::future_lapply(1:chains, function(c) {
-          run_chain(c, f_ad = f_ad_global, p_callback = function(msg = "", amt = 1, ...) {
-            if (is.numeric(msg)) { amt <- msg; msg <- "" }
-            p(amount = amt, message = as.character(msg))
-          })
+          run_chain(c, f_ad = f_ad_global, p_callback = function(...) invisible(NULL))
         }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
       }, warning = function(w) { if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
-    })
+    } else {
+      progress_handler <- .rtmb_progressr_handler(progress_mode)
+      results_list <- progressr::with_progress({
+        p <- progressr::progressor(steps = total_updates)
+        withCallingHandlers({
+          future.apply::future_lapply(1:chains, function(c) {
+            run_chain(c, f_ad = f_ad_global, p_callback = function(msg = "", amt = 1, ...) {
+              if (is.numeric(msg)) { amt <- msg; msg <- "" }
+              p(amount = amt, message = as.character(msg))
+            })
+          }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
+        }, warning = function(w) { if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
+      }, handlers = progress_handler, enable = TRUE)
+    }
   } else {
-    results_list <- lapply(1:chains, function(c) run_chain(c, f_ad = f_ad_global, p_callback = NULL))
+    iter <- sampling + warmup
+    total_updates <- chains * (1 + floor(iter / 200))
+    meter <- .rtmb_progress_meter(total_updates, progress_mode, label = "sampling")
+    on.exit(meter$finish(), add = TRUE)
+    results_list <- lapply(1:chains, function(c) {
+      run_chain(c, f_ad = f_ad_global, p_callback = function(msg = "", amt = 1, ...) {
+        if (is.numeric(msg)) { amt <- msg; msg <- "" }
+        meter$advance(amt, msg = as.character(msg))
+      })
+    })
+    meter$finish()
   }
 
   mcmc_index <- seq(from = (warmup + 1), to = (warmup + sampling), by = thin)
@@ -423,8 +444,8 @@
     nuts_variant = nuts_variant,
     warmup_diagnostics = warmup_diagnostics
   )
-  if (!is.null(self$transform)) res_obj$transformed_draws(self$transform)
-  if (!is.null(self$generate)) res_obj$generated_quantities(self$code$generate)
+  if (!is.null(self$transform)) res_obj$transformed_draws(self$transform, progress = progress_mode)
+  if (!is.null(self$generate)) res_obj$generated_quantities(self$code$generate, progress = progress_mode)
   return(res_obj)
 }
 

@@ -466,13 +466,19 @@ A list of class \code{bayes_factor_rtmb} containing Bayes factor results.
 \subsection{Method \code{transformed_draws()}}{
 Compute transformed parameters from posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$transformed_draws(tran_fn = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$transformed_draws(
+  tran_fn = NULL,
+  progress = c("auto", "none", "bar", "message")
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{tran_fn}}{A function for transformed parameters.}
+
+\item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`. Default is `"auto"`.}
 }
 \if{html}{\out{</div>}}
 }
@@ -486,7 +492,10 @@ Transformed parameter draws.
 \subsection{Method \code{generated_quantities()}}{
 Compute generated quantities from posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$generated_quantities(
+  code,
+  progress = c("auto", "none", "bar", "message")
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -494,6 +503,9 @@ Compute generated quantities from posterior draws.
 \describe{
 \item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
 to be calculated using posterior samples.}
+
+\item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`. Default is `"auto"`.}
 }
 \if{html}{\out{</div>}}
 }

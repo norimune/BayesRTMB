@@ -913,8 +913,11 @@ MCMC_Fit <- R6::R6Class(
 
 
     #' @description Compute transformed parameters from posterior draws.
+    #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+    #'   or `"message"`. Default is `"auto"`.
     #' @return Transformed parameter draws.
-    transformed_draws = function(tran_fn = NULL) {
+    transformed_draws = function(tran_fn = NULL, progress = c("auto", "none", "bar", "message")) {
+      progress_mode <- .rtmb_resolve_progress(progress)
       all_draws <- self$draws(
         inc_random = TRUE,
         inc_transform = FALSE,
@@ -982,13 +985,11 @@ MCMC_Fit <- R6::R6Class(
         variable = tran_names
       )
 
-      cat("Calculating transformed parameters...\n")
+      .rtmb_progress_line("Calculating transformed parameters...", progress_mode)
 
       total_steps <- iter * chains
-      pb <- txtProgressBar(min = 0, max = total_steps, style = 3)
-      counter <- 0
-
-      update_interval <- max(1, floor(total_steps / 100))
+      meter <- .rtmb_progress_meter(total_steps, progress_mode, label = "transformed parameters")
+      on.exit(meter$finish(), add = TRUE)
 
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
@@ -996,14 +997,10 @@ MCMC_Fit <- R6::R6Class(
           res <- wrapper_tran_fn(self$model$data, p_list)
           tran_array[i, c, ] <- unlist(res, use.names = FALSE)
 
-          counter <- counter + 1
-          if (counter %% update_interval == 0) {
-            setTxtProgressBar(pb, counter)
-          }
+          meter$advance(1)
         }
       }
-      setTxtProgressBar(pb, total_steps)
-      close(pb)
+      meter$finish()
 
       self$transform_fit <- tran_array
       return(invisible(self))
@@ -1012,9 +1009,12 @@ MCMC_Fit <- R6::R6Class(
     #' @description Compute generated quantities from posterior draws.
     #' @param code An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
     #' to be calculated using posterior samples.
+    #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+    #'   or `"message"`. Default is `"auto"`.
     #' @return The `MCMC_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.
-    generated_quantities = function(code) {
+    generated_quantities = function(code, progress = c("auto", "none", "bar", "message")) {
+      progress_mode <- .rtmb_resolve_progress(progress)
       raw_code <- substitute(code)
 
       if (is.name(raw_code)) {
@@ -1041,7 +1041,7 @@ MCMC_Fit <- R6::R6Class(
         stop("'code' must be specified in the format rtmb_code(generate = { ... }) or { ... }.")
       }
 
-      cat("Running generated_quantities...\n")
+      .rtmb_progress_line("Running generated_quantities...", progress_mode)
 
       gen_fn <- eval(bquote(transform_code(.(gen_ast))))
       environment(gen_fn) <- parent.env(globalenv())
@@ -1077,7 +1077,7 @@ MCMC_Fit <- R6::R6Class(
       test_gq <- gen_fn(self$model$data, test_p_list)
 
       if (is.null(test_gq) || length(test_gq) == 0) {
-        cat("No generated quantities returned.\n")
+        .rtmb_progress_line("No generated quantities returned.", progress_mode)
         return(invisible(self))
       }
 
@@ -1104,10 +1104,8 @@ MCMC_Fit <- R6::R6Class(
       )
 
       total_steps <- iter * chains
-      pb <- txtProgressBar(min = 0, max = total_steps, style = 3)
-      counter <- 0
-
-      update_interval <- max(1, floor(total_steps / 100))
+      meter <- .rtmb_progress_meter(total_steps, progress_mode, label = "generated quantities")
+      on.exit(meter$finish(), add = TRUE)
 
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
@@ -1131,15 +1129,10 @@ MCMC_Fit <- R6::R6Class(
           res <- gen_fn(self$model$data, p_list)
           new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
 
-          counter <- counter + 1
-
-          if (counter %% update_interval == 0) {
-            setTxtProgressBar(pb, counter)
-          }
+          meter$advance(1)
         }
       }
-      setTxtProgressBar(pb, total_steps)
-      close(pb)
+      meter$finish()
 
       if (is.null(self$generate_fit)) {
         self$generate_fit <- new_gq_array
@@ -1154,7 +1147,7 @@ MCMC_Fit <- R6::R6Class(
         self$generate_fit <- merged_gq
       }
 
-      cat("Generated quantities added to samples.\n")
+      .rtmb_progress_line("Generated quantities added to samples.", progress_mode)
       invisible(self)
     },
 
