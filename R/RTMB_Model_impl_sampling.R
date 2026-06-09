@@ -335,6 +335,7 @@
             if (is.numeric(msg)) { amt <- msg; msg <- "" }
             write_progress_file(progress_file, msg)
           }
+          write_progress(paste0("chain ", c, " preparing..."))
           withCallingHandlers({
             run_chain(c, f_ad = f_ad_global, p_callback = write_progress)
           }, warning = function(w) {
@@ -631,6 +632,7 @@
             if (is.numeric(msg)) { amt <- msg; msg <- "" }
             write_progress_file(progress_file, msg)
           }
+          write_progress(paste0("est", c, " preparing..."))
           withCallingHandlers({
             run_advi_worker(c, f_ad = f_ad_global, p_callback = write_progress, p_interval = update_interval)
           }, warning = function(w) {

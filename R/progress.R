@@ -112,10 +112,10 @@
 
 #' @noRd
 .rtmb_collect_progress_futures <- function(futures, files) {
-  poll_interval <- getOption("BayesRTMB.progress_poll_interval", 0.5)
+  poll_interval <- getOption("BayesRTMB.progress_poll_interval", 0.1)
   if (!is.numeric(poll_interval) || length(poll_interval) != 1L ||
       !is.finite(poll_interval) || poll_interval <= 0) {
-    poll_interval <- 0.5
+    poll_interval <- 0.1
   }
 
   line_counts <- integer(length(files))
