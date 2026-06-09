@@ -11,8 +11,8 @@
 #' @param laplace Logical; whether Laplace approximation is used. Default is FALSE.
 #' @param print_freq Integer; frequency of printing progress to the console. Set to 0 to disable. Default is 500.
 #' @param method Character; type of variational distribution. One of "meanfield", "fullrank", or "hybrid". Default is "meanfield".
-#' @param update_progress Optional function to update a progress bar.
-#' @param update_interval Integer; interval for updating the progress bar. Default is 100.
+#' @param update_progress Optional function for progress reporting.
+#' @param update_interval Integer; interval for progress updates. Default is 100.
 #' @return A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, `rel_obj_final`, and `converged`.
 ADVI_method <- function(model, par_list, pl_full,
                         iter = 3000, tol_rel_obj = 0.001,
@@ -99,7 +99,7 @@ ADVI_method <- function(model, par_list, pl_full,
     b1_t <- b1_t * beta1
     b2_t <- b2_t * beta2
 
-    # --- update progress bar ---
+    # --- update progress ---
     if (!is.null(update_progress) && t %% update_interval == 0) {
       update_progress(1)
     }

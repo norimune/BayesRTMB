@@ -478,7 +478,7 @@ Compute transformed parameters from posterior draws.
 \item{\code{tran_fn}}{A function for transformed parameters.}
 
 \item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
-or `"message"`. Default is `"auto"`.}
+or `"message"`. `"auto"` and `"bar"` use line-based messages.}
 }
 \if{html}{\out{</div>}}
 }
@@ -505,7 +505,7 @@ Compute generated quantities from posterior draws.
 to be calculated using posterior samples.}
 
 \item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
-or `"message"`. Default is `"auto"`.}
+or `"message"`. `"auto"` and `"bar"` use line-based messages.}
 }
 \if{html}{\out{</div>}}
 }

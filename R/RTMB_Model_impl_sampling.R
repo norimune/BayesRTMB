@@ -142,13 +142,10 @@
   P_random <- if (!is.null(pl_random)) length(pl_random$names) else 0
 
   if (parallel) {
-    if (!requireNamespace("future", quietly = TRUE) ||
-        !requireNamespace("future.apply", quietly = TRUE) ||
-        !requireNamespace("progressr", quietly = TRUE)) {
+    if (!requireNamespace("future", quietly = TRUE)) {
       stop(
-        "parallel = TRUE for sample() requires the suggested packages ",
-        "'future', 'future.apply', and 'progressr'. ",
-        "Please install them or use parallel = FALSE.",
+        "parallel = TRUE for sample() requires the suggested package 'future'. ",
+        "Please install it or use parallel = FALSE.",
         call. = FALSE
       )
     }
@@ -296,20 +293,26 @@
     }
     res$para <- para_final
     res$para_full <- NULL
+    if (!is.null(p_callback)) {
+      p_callback(msg = paste0("chain", c, " done"), amt = 1)
+    }
     return(res)
   }
 
   results_list <- list()
   if (parallel) {
     iter <- sampling + warmup
-    total_updates <- chains * (1 + floor(iter / 200))
+    total_updates <- chains * (2 + floor(iter / 200))
     if (identical(progress_mode, "none")) {
       results_list <- withCallingHandlers({
-        future.apply::future_lapply(1:chains, function(c) {
-          run_chain(c, f_ad = f_ad_global, p_callback = function(...) invisible(NULL))
-        }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
+        futures <- lapply(seq_len(chains), function(c) {
+          future::future({
+            run_chain(c, f_ad = f_ad_global, p_callback = function(...) invisible(NULL))
+          }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+        })
+        lapply(futures, future::value)
       }, warning = function(w) { if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
-    } else if (identical(progress_mode, "message")) {
+    } else {
       progress_dir <- .rtmb_progress_file_dir()
       on.exit(unlink(progress_dir, recursive = TRUE, force = TRUE), add = TRUE)
       progress_files <- file.path(progress_dir, paste0("chain_", seq_len(chains), ".txt"))
@@ -344,23 +347,10 @@
         }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
       })
       results_list <- .rtmb_collect_progress_futures(futures, progress_files)
-    } else {
-      progress_handler <- .rtmb_progressr_handler(progress_mode)
-      results_list <- progressr::with_progress({
-        p <- progressr::progressor(steps = total_updates)
-        withCallingHandlers({
-          future.apply::future_lapply(1:chains, function(c) {
-            run_chain(c, f_ad = f_ad_global, p_callback = function(msg = "", amt = 1, ...) {
-              if (is.numeric(msg)) { amt <- msg; msg <- "" }
-              p(amount = amt, message = as.character(msg))
-            })
-          }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
-        }, warning = function(w) { if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
-      }, handlers = progress_handler, enable = TRUE)
     }
   } else {
     iter <- sampling + warmup
-    total_updates <- chains * (1 + floor(iter / 200))
+    total_updates <- chains * (2 + floor(iter / 200))
     meter <- .rtmb_progress_meter(total_updates, progress_mode, label = "sampling")
     on.exit(meter$finish(), add = TRUE)
     results_list <- lapply(1:chains, function(c) {
@@ -488,15 +478,16 @@
 .variational_impl <- function(self, private, iter, tol_rel_obj, window_size, num_samples, 
                               num_estimate, alpha, laplace, print_freq, 
                               method = c("meanfield", "fullrank", "hybrid"), 
-                              parallel, seed, init, save_csv, map, fixed) {
+                              parallel, seed, init, save_csv, map, fixed, progress) {
   if (!is.null(fixed)) {
     return(private$.dispatch_fixed(.method_to_call = "variational", iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
       num_samples = num_samples, num_estimate = num_estimate, alpha = alpha,
       laplace = laplace, print_freq = print_freq, method = method,
-      parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map, fixed = fixed))
+      parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map, fixed = fixed, progress = progress))
   }
 
   set.seed(seed); method <- match.arg(method)
+  progress_mode <- .rtmb_resolve_progress(progress)
   if (!is.null(save_csv)) {
     save_name <- if (!is.null(save_csv$name)) save_csv$name else "model_vb"
     save_dir <- if (!is.null(save_csv$dir)) save_csv$dir else "BayesRTMB_vb"
@@ -505,11 +496,10 @@
   } else { save_info <- NULL }
 
   if (parallel && num_estimate > 1) {
-    if (!requireNamespace("future", quietly = TRUE) ||
-        !requireNamespace("future.apply", quietly = TRUE)) {
+    if (!requireNamespace("future", quietly = TRUE)) {
       stop(
-        "parallel = TRUE for variational() requires the suggested packages ",
-        "'future' and 'future.apply'. Please install them or use parallel = FALSE.",
+        "parallel = TRUE for variational() requires the suggested package 'future'. ",
+        "Please install it or use parallel = FALSE.",
         call. = FALSE
       )
     }
@@ -517,8 +507,10 @@
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = num_estimate)
       else future::plan(future::multisession, workers = num_estimate)
     }
-    cat(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")...\n"))
-  } else { cat(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")...\n")) }
+    .rtmb_progress_line(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")..."), progress_mode)
+  } else {
+    .rtmb_progress_line(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")..."), progress_mode)
+  }
 
   # --- Data extraction to avoid serialization ---
   local_data <- self$data; local_par_list <- self$par_list; local_pl_full <- self$pl_full
@@ -586,26 +578,88 @@
       ad_obj$gr <- function(x, ...) { if (length(x) != n_fixed) { g <- orig_gr(x[idx_fixed_mask], ...); g_full <- rep(0, length(x)); g_full[idx_fixed_mask] <- g; return(g_full) }; return(orig_gr(x, ...)) }
     }
 
-    res <- ADVI_method(model = ad_obj, par_list = local_par_list, pl_full = local_pl_full, iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size, num_samples = num_samples, alpha = alpha, laplace = laplace, print_freq = if (is.null(p_callback)) print_freq else 0, method = method, update_progress = p_callback, update_interval = p_interval)
+    if (!is.null(p_callback)) {
+      p_callback(msg = paste0("est", c, " started..."), amt = 1)
+    }
+
+    callback_count <- 0L
+    advi_progress <- NULL
+    if (!is.null(p_callback) && p_interval > 0L) {
+      advi_progress <- function(amount = 1, ...) {
+        amount <- max(1L, as.integer(amount))
+        callback_count <<- callback_count + amount
+        iter_now <- min(iter, callback_count * p_interval)
+        p_callback(msg = paste0("est", c, ": iter ", iter_now), amt = amount)
+      }
+    }
+
+    res <- ADVI_method(model = ad_obj, par_list = local_par_list, pl_full = local_pl_full, iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size, num_samples = num_samples, alpha = alpha, laplace = laplace, print_freq = if (is.null(advi_progress)) print_freq else 0, method = method, update_progress = advi_progress, update_interval = p_interval)
+    if (!is.null(p_callback)) {
+      p_callback(msg = paste0("est", c, " done"), amt = 1)
+    }
     return(res)
   }
 
   results_list <- list()
+  update_interval <- max(1L, floor(iter / 5L))
   if (parallel && num_estimate > 1) {
-    if (requireNamespace("progressr", quietly = TRUE)) {
-      progressr::handlers(global = TRUE); update_interval <- max(1, floor(iter / 100)); total_steps <- ceiling(iter / update_interval) * num_estimate
-      results_list <- progressr::with_progress({
-        p <- progressr::progressor(steps = total_steps)
-        withCallingHandlers({
-          future.apply::future_lapply(1:num_estimate, function(c) {
-            run_advi_worker(c = c, f_ad = f_ad_global, p_callback = function(amount = 1) p(amount = amount), p_interval = update_interval)
-          }, future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
-        }, warning = function(w) { if (grepl("BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
-      })
+    if (identical(progress_mode, "none")) {
+      results_list <- withCallingHandlers({
+        futures <- lapply(seq_len(num_estimate), function(c) {
+          future::future({
+            run_advi_worker(c, f_ad = f_ad_global, p_callback = NULL, p_interval = 0L)
+          }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+        })
+        lapply(futures, future::value)
+      }, warning = function(w) { if (grepl("BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
     } else {
-      results_list <- future.apply::future_lapply(1:num_estimate, function(c) run_advi_worker(c, f_ad = f_ad_global, p_callback = NULL, p_interval = 0), future.seed = TRUE, future.packages = c("RTMB", "BayesRTMB"), future.globals = TRUE)
+      progress_dir <- .rtmb_progress_file_dir()
+      on.exit(unlink(progress_dir, recursive = TRUE, force = TRUE), add = TRUE)
+      progress_files <- file.path(progress_dir, paste0("est_", seq_len(num_estimate), ".txt"))
+      .rtmb_progress_line("Preparing parallel VB workers...", progress_mode)
+      futures <- lapply(seq_len(num_estimate), function(c) {
+        progress_file <- progress_files[c]
+        future::future({
+          write_progress_file <- function(path, msg) {
+            if (is.numeric(msg)) msg <- ""
+            msg <- as.character(msg[1])
+            if (!nzchar(msg)) return(invisible(FALSE))
+
+            tmp <- paste0(path, ".tmp")
+            ok <- tryCatch({
+              if (file.exists(tmp)) unlink(tmp, force = TRUE)
+              writeLines(msg, tmp, useBytes = TRUE)
+              if (file.exists(path)) unlink(path, force = TRUE)
+              file.rename(tmp, path)
+            }, error = function(e) FALSE, warning = function(w) FALSE)
+            if (!isTRUE(ok) && file.exists(tmp)) unlink(tmp, force = TRUE)
+            invisible(isTRUE(ok))
+          }
+          write_progress <- function(msg = "", amt = 1, ...) {
+            if (is.numeric(msg)) { amt <- msg; msg <- "" }
+            write_progress_file(progress_file, msg)
+          }
+          withCallingHandlers({
+            run_advi_worker(c, f_ad = f_ad_global, p_callback = write_progress, p_interval = update_interval)
+          }, warning = function(w) {
+            if (grepl("BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning")
+          })
+        }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+      })
+      results_list <- .rtmb_collect_progress_futures(futures, progress_files)
     }
-  } else { results_list <- lapply(1:num_estimate, function(c) { if (print_freq > 0) cat(sprintf("\n--- Starting VB estimation: est%d ---\n", c)); run_advi_worker(c, f_ad = f_ad_global, p_callback = NULL, p_interval = 0) }) }
+  } else {
+    total_updates <- num_estimate * (2 + ceiling(iter / update_interval))
+    meter <- .rtmb_progress_meter(total_updates, progress_mode, label = "VB estimation")
+    on.exit(meter$finish(), add = TRUE)
+    results_list <- lapply(seq_len(num_estimate), function(c) {
+      run_advi_worker(c, f_ad = f_ad_global, p_callback = function(msg = "", amt = 1, ...) {
+        if (is.numeric(msg)) { amt <- msg; msg <- "" }
+        meter$advance(amt, msg = as.character(msg))
+      }, p_interval = update_interval)
+    })
+    meter$finish()
+  }
 
   P_fixed <- dim(results_list[[1]]$fit)[3] - 1; P_random <- if (!is.null(results_list[[1]]$random_fit)) dim(results_list[[1]]$random_fit)[3] else 0
   fit <- array(NA, dim = c(num_samples, num_estimate, P_fixed + 1)); dimnames(fit) <- list(iteration = NULL, chain = paste0("est", 1:num_estimate), variable = dimnames(results_list[[1]]$fit)[[3]])
@@ -640,11 +694,9 @@
   }
   
   res_obj <- VB_Fit$new(model = self, fit = fit, random_fit = random_fit, elbo_history = elbo_history_list, laplace = laplace, posterior_mean = posterior_mean, ELBO = elbo_final_vec, rel_obj_vals = rel_obj_vec, best_chain = best_chain, mu_history = results_list[[best_chain]]$mu_history)
-  if (!is.null(self$transform)) { cat("Calculating transformed parameters...\n"); res_obj$transformed_draws(self$transform) }
+  if (!is.null(self$transform)) res_obj$transformed_draws(self$transform, progress = progress_mode)
   if (!is.null(self$generate)) {
-    # --- Post-calculation of generated quantities ---
-    # Execute the model's generate block for each posterior sample
-    cat("Calculating generated quantities...\n"); res_obj$generated_quantities(self$code$generate) 
+    res_obj$generated_quantities(self$code$generate, progress = progress_mode)
   }
   return(res_obj)
 }

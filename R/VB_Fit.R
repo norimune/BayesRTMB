@@ -525,8 +525,11 @@ VB_Fit <- R6::R6Class(
 
     #' @description Compute transformed parameters from posterior draws.
     #' @param tran_fn An optional user-supplied function that takes data and parameter lists to return transformed quantities.
+    #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+    #'   or `"message"`. `"auto"` and `"bar"` use line-based messages.
     #' @return The `VB_Fit` object itself, invisibly.
-    transformed_draws = function(tran_fn = NULL) {
+    transformed_draws = function(tran_fn = NULL, progress = c("auto", "none", "bar", "message")) {
+      progress_mode <- .rtmb_resolve_progress(progress)
       all_draws <- self$draws(
         inc_random = TRUE,
         inc_transform = FALSE,
@@ -577,18 +580,22 @@ VB_Fit <- R6::R6Class(
         variable = tran_names
       )
 
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
-      counter <- 0
+      .rtmb_progress_line("Calculating transformed parameters...", progress_mode)
+
+      total_steps <- iter * chains
+      meter <- .rtmb_progress_meter(total_steps, progress_mode, label = "transformed parameters")
+      on.exit(meter$finish(), add = TRUE)
+
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
           res <- wrapper_tran_fn(self$model$data, p_list)
           tran_array[i, c, ] <- unlist(res, use.names = FALSE)
-          counter <- counter + 1
-          setTxtProgressBar(pb, counter)
+
+          meter$advance(1)
         }
       }
-      close(pb)
+      meter$finish()
 
       self$transform_fit <- tran_array
       return(invisible(self))
@@ -597,9 +604,12 @@ VB_Fit <- R6::R6Class(
     #' @description Compute generated quantities from posterior draws.
     #' @param code An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
     #' to be calculated using posterior samples.
+    #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+    #'   or `"message"`. `"auto"` and `"bar"` use line-based messages.
     #' @return The `VB_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.
-    generated_quantities = function(code) {
+    generated_quantities = function(code, progress = c("auto", "none", "bar", "message")) {
+      progress_mode <- .rtmb_resolve_progress(progress)
       raw_code <- substitute(code)
 
       if (is.name(raw_code)) {
@@ -625,6 +635,8 @@ VB_Fit <- R6::R6Class(
       } else {
         stop("'code' must be specified in the format rtmb_code(generate = { ... }) or { ... }.")
       }
+
+      .rtmb_progress_line("Running generated_quantities...", progress_mode)
 
       gen_fn <- eval(bquote(transform_code(.(gen_ast))))
       environment(gen_fn) <- parent.env(globalenv())
@@ -656,7 +668,10 @@ VB_Fit <- R6::R6Class(
       }
       test_gq <- gen_fn(self$model$data, test_p_list)
 
-      if (is.null(test_gq) || length(test_gq) == 0) return(invisible(self))
+      if (is.null(test_gq) || length(test_gq) == 0) {
+        .rtmb_progress_line("No generated quantities returned.", progress_mode)
+        return(invisible(self))
+      }
 
       gq_names <- character(0)
       for (name in names(test_gq)) {
@@ -671,8 +686,10 @@ VB_Fit <- R6::R6Class(
       dimnames(new_gq_array) <- list(iteration = NULL, chain = paste0("est", seq_len(chains)), variable = gq_names)
 
       # 6. Execute for all estimates and samples
-      pb <- txtProgressBar(min = 0, max = iter * chains, style = 3)
-      counter <- 0
+      total_steps <- iter * chains
+      meter <- .rtmb_progress_meter(total_steps, progress_mode, label = "generated quantities")
+      on.exit(meter$finish(), add = TRUE)
+
       for (c in seq_len(chains)) {
         for (i in seq_len(iter)) {
           p_list <- constrained_vector_to_list(all_draws[i, c, -1], self$model$par_list)
@@ -695,11 +712,11 @@ VB_Fit <- R6::R6Class(
           }
           res <- gen_fn(self$model$data, p_list)
           new_gq_array[i, c, ] <- unlist(res, use.names = FALSE)
-          counter <- counter + 1
-          setTxtProgressBar(pb, counter)
+
+          meter$advance(1)
         }
       }
-      close(pb)
+      meter$finish()
 
       # 7. Merge with existing results
       if (is.null(self$generate_fit)) {
@@ -713,7 +730,7 @@ VB_Fit <- R6::R6Class(
         self$generate_fit <- merged_gq
       }
 
-      cat("Generated quantities added to samples.\n")
+      .rtmb_progress_line("Generated quantities added to samples.", progress_mode)
       invisible(self)
     },
 

@@ -611,10 +611,10 @@ metric shrinkage. Larger values shrink more strongly toward 1. Default is 5.}
 
 \item{\code{fixed}}{Optional list specifying parameter values to fix.}
 
-\item{\code{progress}}{Progress reporting style. `"auto"` uses a progress bar in
-interactive sessions and line-based messages otherwise; `"none"`
-suppresses progress; `"bar"` uses a text progress bar; `"message"` uses
-line-based progress messages. Default is `"auto"`.}
+\item{\code{progress}}{Progress reporting style. `"auto"`, `"bar"`, and
+`"message"` use line-based progress messages; `"none"` suppresses
+progress. `"bar"` is accepted for backward compatibility. Default is
+`"auto"`.}
 }
 \if{html}{\out{</div>}}
 }
@@ -643,7 +643,8 @@ Run Automatic Differentiation Variational Inference (ADVI).
   init = NULL,
   save_csv = NULL,
   map = NULL,
-  fixed = NULL
+  fixed = NULL,
+  progress = c("auto", "none", "bar", "message")
 )}\if{html}{\out{</div>}}
 }
 
@@ -679,6 +680,10 @@ Run Automatic Differentiation Variational Inference (ADVI).
 \item{\code{map}}{Optional list specifying parameters to fix (factors).}
 
 \item{\code{fixed}}{Optional list specifying parameter values to fix.}
+
+\item{\code{progress}}{Progress reporting style. `"auto"` and `"bar"` use
+line-based progress messages; `"none"` suppresses progress. Default is
+`"auto"`.}
 }
 \if{html}{\out{</div>}}
 }

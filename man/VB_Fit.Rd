@@ -299,13 +299,19 @@ The object itself, invisibly.
 \subsection{Method \code{transformed_draws()}}{
 Compute transformed parameters from posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$transformed_draws(tran_fn = NULL)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$transformed_draws(
+  tran_fn = NULL,
+  progress = c("auto", "none", "bar", "message")
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
 \item{\code{tran_fn}}{An optional user-supplied function that takes data and parameter lists to return transformed quantities.}
+
+\item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`. `"auto"` and `"bar"` use line-based messages.}
 }
 \if{html}{\out{</div>}}
 }
@@ -319,7 +325,10 @@ The `VB_Fit` object itself, invisibly.
 \subsection{Method \code{generated_quantities()}}{
 Compute generated quantities from posterior draws.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$generated_quantities(code)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$generated_quantities(
+  code,
+  progress = c("auto", "none", "bar", "message")
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -327,6 +336,9 @@ Compute generated quantities from posterior draws.
 \describe{
 \item{\code{code}}{An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
 to be calculated using posterior samples.}
+
+\item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`. `"auto"` and `"bar"` use line-based messages.}
 }
 \if{html}{\out{</div>}}
 }

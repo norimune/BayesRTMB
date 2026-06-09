@@ -914,7 +914,7 @@ MCMC_Fit <- R6::R6Class(
 
     #' @description Compute transformed parameters from posterior draws.
     #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
-    #'   or `"message"`. Default is `"auto"`.
+    #'   or `"message"`. `"auto"` and `"bar"` use line-based messages.
     #' @return Transformed parameter draws.
     transformed_draws = function(tran_fn = NULL, progress = c("auto", "none", "bar", "message")) {
       progress_mode <- .rtmb_resolve_progress(progress)
@@ -1010,7 +1010,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param code An `rtmb_code(\{ ... \})` or `\{ ... \}` block containing the logic
     #' to be calculated using posterior samples.
     #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
-    #'   or `"message"`. Default is `"auto"`.
+    #'   or `"message"`. `"auto"` and `"bar"` use line-based messages.
     #' @return The `MCMC_Fit` object itself (invisibly).
     #' Results are appended to the `generate_fit` field.
     generated_quantities = function(code, progress = c("auto", "none", "bar", "message")) {

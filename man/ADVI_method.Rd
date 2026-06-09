@@ -43,9 +43,9 @@ ADVI_method(
 
 \item{method}{Character; type of variational distribution. One of "meanfield", "fullrank", or "hybrid". Default is "meanfield".}
 
-\item{update_progress}{Optional function to update a progress bar.}
+\item{update_progress}{Optional function for progress reporting.}
 
-\item{update_interval}{Integer; interval for updating the progress bar. Default is 100.}
+\item{update_interval}{Integer; interval for progress updates. Default is 100.}
 }
 \value{
 A list containing `fit`, `random_fit`, `elbo_history`, `elbo_final`, `rel_obj_final`, and `converged`.
