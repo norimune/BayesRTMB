@@ -111,14 +111,16 @@
 }
 
 #' @noRd
-.rtmb_collect_progress_futures <- function(futures, files) {
+.rtmb_collect_progress_futures <- function(futures, files, line_counts = NULL) {
   poll_interval <- getOption("BayesRTMB.progress_poll_interval", 0.1)
   if (!is.numeric(poll_interval) || length(poll_interval) != 1L ||
       !is.finite(poll_interval) || poll_interval <= 0) {
     poll_interval <- 0.1
   }
 
-  line_counts <- integer(length(files))
+  if (is.null(line_counts) || length(line_counts) != length(files)) {
+    line_counts <- integer(length(files))
+  }
   repeat {
     line_counts <- .rtmb_report_progress_files(files, line_counts)
     if (all(vapply(futures, future::resolved, logical(1)))) break
