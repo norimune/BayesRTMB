@@ -112,7 +112,8 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
   }
 
   # 3. Create design matrix
-  rhs <- delete.response(terms(form))
+  fixed_form <- nobars(form)
+  rhs <- delete.response(terms(fixed_form))
   # Ensure all factor levels are known to model.matrix
   mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
   xlev <- .getXlevels(terms(rhs), mf_raw)
@@ -398,7 +399,8 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
       form <- model_obj$formula
       raw_data <- model_obj$raw_data
       X_mean <- model_obj$data$X_mean
-      rhs <- delete.response(terms(form))
+      fixed_form <- nobars(form)
+      rhs <- delete.response(terms(fixed_form))
       
       # Ensure all factor levels are known to model.matrix
       mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
@@ -492,8 +494,13 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
       model_obj <- fit$model
       form <- model_obj$formula
       X_mean <- model_obj$data$X_mean
-      rhs <- delete.response(terms(form))
-      X_new <- model.matrix(rhs, data = newdata)
+      raw_data <- model_obj$raw_data
+      fixed_form <- nobars(form)
+      rhs <- delete.response(terms(fixed_form))
+
+      mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
+      xlev <- .getXlevels(terms(rhs), mf_raw)
+      X_new <- model.matrix(rhs, data = newdata, xlev = xlev)
       
       all_pars <- dimnames(fit$draws(inc_transform=TRUE))[[3]]
       if (any(grepl("^beta(\\[|$)", all_pars))) {
