@@ -594,7 +594,10 @@ NUTS_method <- function(model,
     }
     metric_type_record[i] <- metric
     if (i %% 200 == 0) {
-      msg <- paste0("chain ", chain, ": iter ", i, ifelse(i <= warmup, " warmup", " sampling"))
+      phase <- ifelse(i <= warmup, " warmup", " sampling")
+      pct <- floor(100 * i / iter)
+      msg <- paste0("chain ", chain, ": iter ", i, "/", iter,
+                    " (", pct, "%)", phase)
       if (!is.null(update_progress)) {
         update_progress(amt = 1, msg = msg)
       } else {

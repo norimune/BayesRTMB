@@ -294,7 +294,7 @@
     res$para <- para_final
     res$para_full <- NULL
     if (!is.null(p_callback)) {
-      p_callback(msg = paste0("chain", c, " done"), amt = 1)
+      p_callback(msg = paste0("chain ", c, " done (100%)"), amt = 1)
     }
     return(res)
   }
