@@ -473,6 +473,36 @@ MCMC_Fit <- R6::R6Class(
       return(res_df)
     },
 
+    #' @description Summarize R-hat values.
+    #' @param pars Character or numeric vector specifying parameters to include.
+    #' @param chains Numeric vector specifying chains to include.
+    #' @param best_chains Integer; number of best chains to retain based on mean log-posterior.
+    #' @param inc_random Logical; whether to include random effects. Default is FALSE.
+    #' @param inc_transform Logical; whether to include transformed parameters. Default is TRUE.
+    #' @param inc_generate Logical; whether to include generated quantities. Default is TRUE.
+    #' @param finite Logical; whether to drop non-finite or missing R-hat values. Default is TRUE.
+    #' @param ... Additional arguments.
+    #' @return A numeric vector of R-hat values with class \code{"rhat_summary"}.
+    rhat_summary = function(pars = NULL,
+                            chains = NULL,
+                            best_chains = NULL,
+                            inc_random = FALSE,
+                            inc_transform = TRUE,
+                            inc_generate = TRUE,
+                            finite = TRUE, ...) {
+      rhat_summary(
+        self,
+        pars = pars,
+        chains = chains,
+        best_chains = best_chains,
+        inc_random = inc_random,
+        inc_transform = inc_transform,
+        inc_generate = inc_generate,
+        finite = finite,
+        ...
+      )
+    },
+
     #' @description Transform posterior draws to the unconstrained scale.
     #' @return Posterior draws on the unconstrained scale.
     unconstrain_draws = function() {

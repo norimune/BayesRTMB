@@ -91,6 +91,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \item \href{#method-mcmc_fit-print}{\code{MCMC_Fit$print()}}
 \item \href{#method-mcmc_fit-draws}{\code{MCMC_Fit$draws()}}
 \item \href{#method-mcmc_fit-summary}{\code{MCMC_Fit$summary()}}
+\item \href{#method-mcmc_fit-rhat_summary}{\code{MCMC_Fit$rhat_summary()}}
 \item \href{#method-mcmc_fit-unconstrain_draws}{\code{MCMC_Fit$unconstrain_draws()}}
 \item \href{#method-mcmc_fit-log_prob}{\code{MCMC_Fit$log_prob()}}
 \item \href{#method-mcmc_fit-bridgesampling}{\code{MCMC_Fit$bridgesampling()}}
@@ -318,6 +319,49 @@ Summarize posterior draws.
 }
 \subsection{Returns}{
 A summary object.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-rhat_summary"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-rhat_summary}{}}}
+\subsection{Method \code{rhat_summary()}}{
+Summarize R-hat values.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$rhat_summary(
+  pars = NULL,
+  chains = NULL,
+  best_chains = NULL,
+  inc_random = FALSE,
+  inc_transform = TRUE,
+  inc_generate = TRUE,
+  finite = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Character or numeric vector specifying parameters to include.}
+
+\item{\code{chains}}{Numeric vector specifying chains to include.}
+
+\item{\code{best_chains}}{Integer; number of best chains to retain based on mean log-posterior.}
+
+\item{\code{inc_random}}{Logical; whether to include random effects. Default is FALSE.}
+
+\item{\code{inc_transform}}{Logical; whether to include transformed parameters. Default is TRUE.}
+
+\item{\code{inc_generate}}{Logical; whether to include generated quantities. Default is TRUE.}
+
+\item{\code{finite}}{Logical; whether to drop non-finite or missing R-hat values. Default is TRUE.}
+
+\item{\code{...}}{Additional arguments.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A numeric vector of R-hat values with class \code{"rhat_summary"}.
 }
 }
 \if{html}{\out{<hr>}}
