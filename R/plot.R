@@ -563,7 +563,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
     }
     max_item_radius <- max(item_radius, na.rm = TRUE)
     if (is.finite(max_item_radius) && max_item_radius > 0) {
-      item_radius <- item_radius / max_item_radius * radius * 0.35 * circle_scale
+      item_radius <- item_radius * circle_scale
       circle_col <- grDevices::rgb(0.1, 0.25, 0.9, alpha = alpha)
       angle <- seq(0, 2 * pi, length.out = 160)
       for (m in seq_along(item_radius)) {
