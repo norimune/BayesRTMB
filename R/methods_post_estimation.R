@@ -32,6 +32,233 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
   stop(sprintf("No conditional_effects method for object of class '%s'.", class(fit)[1]))
 }
 
+.ce_make_base_data <- function(raw_data) {
+  base_data <- lapply(raw_data, function(x) {
+    if (is.numeric(x)) {
+      mean(x, na.rm = TRUE)
+    } else if (is.factor(x) || is.character(x)) {
+      tbl <- table(x)
+      factor(names(tbl)[which.max(tbl)], levels = levels(as.factor(x)))
+    } else {
+      x[1]
+    }
+  })
+  as.data.frame(base_data)
+}
+
+.ce_model_matrix <- function(fit, newdata) {
+  model_obj <- fit$model
+  fixed_form <- nobars(model_obj$formula)
+  rhs <- delete.response(terms(fixed_form))
+  mf_raw <- model.frame(rhs, data = model_obj$raw_data, na.action = na.pass)
+  xlev <- .getXlevels(terms(rhs), mf_raw)
+  model.matrix(rhs, data = newdata, xlev = xlev)
+}
+
+.ce_prepare_newdata <- function(fit, effect, sd_multiplier = 1, resolution = 100) {
+  model_obj <- fit$model
+  if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
+    stop("This model object does not contain a formula or the original data.")
+  }
+
+  raw_data <- model_obj$raw_data
+  eff_vars <- strsplit(effect, ":")[[1]]
+  if (length(eff_vars) > 2) {
+    stop("Interaction plots for 3 or more variables are not currently supported.")
+  }
+  eff1 <- eff_vars[1]
+  eff2 <- if (length(eff_vars) == 2) eff_vars[2] else NULL
+
+  base_data <- .ce_make_base_data(raw_data)
+
+  val1 <- raw_data[[eff1]]
+  if (is.null(val1)) stop(sprintf("Variable '%s' not found in the data.", eff1))
+  is_numeric1 <- is.numeric(val1)
+  if (is_numeric1) {
+    seq1 <- seq(min(val1, na.rm = TRUE), max(val1, na.rm = TRUE), length.out = resolution)
+  } else {
+    seq1 <- sort(unique(val1))
+  }
+
+  if (!is.null(eff2)) {
+    val2 <- raw_data[[eff2]]
+    if (is.null(val2)) stop(sprintf("Variable '%s' not found in the data.", eff2))
+
+    if (is.numeric(val2) && length(unique(val2)) > 5) {
+      seq2 <- c(mean(val2, na.rm = TRUE) - sd_multiplier * sd(val2, na.rm = TRUE),
+                mean(val2, na.rm = TRUE),
+                mean(val2, na.rm = TRUE) + sd_multiplier * sd(val2, na.rm = TRUE))
+      seq2 <- round(seq2, 2)
+    } else {
+      seq2 <- sort(unique(val2))
+    }
+
+    grid_data <- expand.grid(eff1 = seq1, eff2 = seq2)
+    names(grid_data) <- c(eff1, eff2)
+
+    newdata <- base_data[rep(1, nrow(grid_data)), , drop = FALSE]
+    newdata[[eff1]] <- grid_data[[eff1]]
+    newdata[[eff2]] <- grid_data[[eff2]]
+  } else {
+    newdata <- base_data[rep(1, length(seq1)), , drop = FALSE]
+    newdata[[eff1]] <- seq1
+  }
+
+  list(
+    newdata = newdata,
+    X_new = .ce_model_matrix(fit, newdata),
+    effect_vars = eff_vars,
+    is_numeric = is_numeric1
+  )
+}
+
+.ce_inv_link <- function(fam) {
+  if (is.null(fam)) fam <- "gaussian"
+  switch(fam,
+         "gaussian" = , "lognormal" = , "student_t" = function(x) x,
+         "poisson" = , "neg_binomial" = , "gamma" = exp,
+         "bernoulli" = , "binomial" = plogis,
+         function(x) x)
+}
+
+.ce_inv_link_deriv <- function(fam, eta) {
+  if (is.null(fam)) fam <- "gaussian"
+  switch(fam,
+         "gaussian" = , "lognormal" = , "student_t" = rep(1, length(eta)),
+         "poisson" = , "neg_binomial" = , "gamma" = exp(eta),
+         "bernoulli" = , "binomial" = {
+           p <- plogis(eta)
+           p * (1 - p)
+         },
+         rep(1, length(eta)))
+}
+
+.ce_beta_from_lists <- function(fit, con, tran = NULL) {
+  if (!is.null(con$beta)) {
+    return(as.numeric(con$beta))
+  }
+  if (is.null(con$b)) {
+    stop("Could not find fixed effect parameters (b or beta) in the fit object.")
+  }
+
+  b <- as.numeric(con$b)
+  intercept <- NULL
+  if (!is.null(con$Intercept)) {
+    intercept <- as.numeric(con$Intercept)
+  } else if (!is.null(tran$Intercept)) {
+    intercept <- as.numeric(tran$Intercept)
+  } else if (!is.null(con$Intercept_c)) {
+    x_mean <- fit$model$data$X_mean
+    if (!is.null(x_mean) && length(b) > 0) {
+      intercept <- as.numeric(con$Intercept_c) - sum(b * as.numeric(x_mean))
+    } else {
+      intercept <- as.numeric(con$Intercept_c)
+    }
+  }
+
+  if (!is.null(intercept)) c(intercept, b) else b
+}
+
+.ce_beta_from_unc <- function(fit, u) {
+  model_obj <- fit$model
+  con <- model_obj$to_constrained(model_obj$unconstrained_vector_to_list(u))
+  tran <- NULL
+  if (!is.null(model_obj$transform)) {
+    tran <- tryCatch(model_obj$transform(model_obj$data, con), error = function(e) NULL)
+  }
+  .ce_beta_from_lists(fit, con, tran)
+}
+
+.ce_beta_from_fit <- function(fit) {
+  .ce_beta_from_lists(fit, fit$par, fit$transform)
+}
+
+.ce_align_beta_design <- function(X_new, beta) {
+  if (ncol(X_new) != length(beta)) {
+    if (ncol(X_new) == length(beta) + 1 && colnames(X_new)[1] == "(Intercept)") {
+      X_new <- X_new[, -1, drop = FALSE]
+    } else if (length(beta) == ncol(X_new) + 1) {
+      X_new <- cbind(`(Intercept)` = 1, X_new)
+    } else {
+      stop(sprintf(
+        "Dimension mismatch: Design matrix has %d columns, but fixed effects have %d parameters.",
+        ncol(X_new), length(beta)
+      ))
+    }
+  }
+  list(X = X_new, beta = beta)
+}
+
+.ce_beta_delta_info <- function(fit, X_new) {
+  beta0_raw <- if (!is.null(fit$par_unc)) .ce_beta_from_unc(fit, fit$par_unc) else .ce_beta_from_fit(fit)
+  aligned <- .ce_align_beta_design(X_new, beta0_raw)
+  beta0 <- aligned$beta
+  X_aligned <- aligned$X
+
+  V_beta <- NULL
+  V_unc <- fit$vcov_unc
+  u0 <- fit$par_unc
+  if (!is.null(V_unc) && !is.null(u0) &&
+      is.matrix(V_unc) && nrow(V_unc) == length(u0) && ncol(V_unc) == length(u0) &&
+      all(is.finite(V_unc))) {
+    J <- matrix(0, length(beta0), length(u0))
+    for (i in seq_along(u0)) {
+      step <- max(1e-6, abs(u0[i]) * 1e-6)
+      u_tmp <- u0
+      u_tmp[i] <- u_tmp[i] + step
+      beta_i_raw <- .ce_beta_from_unc(fit, u_tmp)
+      beta_i <- .ce_align_beta_design(X_new, beta_i_raw)$beta
+      J[, i] <- (beta_i - beta0) / step
+    }
+    V_beta <- J %*% V_unc %*% t(J)
+  } else if (!is.null(fit$vcov) && is.matrix(fit$vcov) &&
+             nrow(fit$vcov) == length(beta0) && ncol(fit$vcov) == length(beta0) &&
+             all(is.finite(fit$vcov))) {
+    V_beta <- fit$vcov
+  }
+
+  list(beta = beta0, X = X_aligned, V = V_beta)
+}
+
+.ce_wald_interval <- function(estimate, se, prob = 0.95) {
+  alpha <- 1 - prob
+  z <- stats::qnorm(1 - alpha / 2)
+  list(lower = estimate - z * se, upper = estimate + z * se)
+}
+
+.ce_has_sampling_draws <- function(fit) {
+  !is.null(fit$se_samples)
+}
+
+.conditional_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
+  prep <- .ce_prepare_newdata(fit, effect, sd_multiplier = sd_multiplier, resolution = resolution)
+  info <- .ce_beta_delta_info(fit, prep$X_new)
+
+  eta <- as.numeric(info$X %*% info$beta)
+  inv_link <- .ce_inv_link(fit$model$family)
+  estimate <- inv_link(eta)
+
+  se <- rep(NA_real_, length(estimate))
+  if (!is.null(info$V)) {
+    var_eta <- rowSums((info$X %*% info$V) * info$X)
+    deriv <- .ce_inv_link_deriv(fit$model$family, eta)
+    se <- abs(deriv) * sqrt(pmax(var_eta, 0))
+  }
+  ci <- .ce_wald_interval(estimate, se, prob = prob)
+
+  res_df <- data.frame(
+    estimate = estimate,
+    se = se,
+    lower = ci$lower,
+    upper = ci$upper
+  )
+  res_df <- cbind(prep$newdata[, prep$effect_vars, drop = FALSE], res_df)
+
+  res <- list(data = res_df, effect_vars = prep$effect_vars, is_numeric = prep$is_numeric)
+  class(res) <- "ce_rtmb"
+  res
+}
+
 #' Calculate conditional effects for MCMC fit objects
 #' @method conditional_effects mcmc_fit
 #' @param fit An object of class `MCMC_Fit`.
@@ -196,6 +423,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
 
   res_df <- data.frame(
     estimate   = apply(mu, 1, mean),
+    se         = apply(mu, 1, sd),
     lower      = apply(mu, 1, quantile, probs = lower_q),
     upper      = apply(mu, 1, quantile, probs = upper_q)
   )
@@ -209,7 +437,22 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
 
 #' @method conditional_effects map_fit
 #' @export
-conditional_effects.map_fit <- conditional_effects.mcmc_fit
+conditional_effects.map_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
+  if (.ce_has_sampling_draws(fit)) {
+    conditional_effects.mcmc_fit(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier,
+                                 resolution = resolution, ...)
+  } else {
+    .conditional_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier,
+                               resolution = resolution, ...)
+  }
+}
+
+#' @method conditional_effects Classic_Fit
+#' @export
+conditional_effects.Classic_Fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
+  .conditional_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier,
+                             resolution = resolution, ...)
+}
 
 #' @method conditional_effects advi_fit
 #' @export
@@ -329,6 +572,99 @@ print.ce_rtmb <- function(x, ...) {
 #' @export
 summary.ce_rtmb <- function(object, ...) {
   return(object$data)
+}
+
+.simple_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+  eff_vars <- strsplit(effect, ":")[[1]]
+  if (length(eff_vars) != 2) {
+    stop("simple_effects requires an interaction of exactly two variables (e.g., 'A:B').")
+  }
+
+  focal <- eff_vars[1]
+  mod <- eff_vars[2]
+
+  prep <- .ce_prepare_newdata(fit, effect = effect, resolution = 10, sd_multiplier = sd_multiplier)
+  mod_vals <- unique(prep$newdata[[mod]])
+  raw_data <- fit$model$raw_data
+  base_data <- .ce_make_base_data(raw_data)
+  beta_info <- .ce_beta_delta_info(fit, .ce_model_matrix(fit, base_data))
+  inv_link <- .ce_inv_link(fit$model$family)
+  inv_link_deriv <- function(eta) .ce_inv_link_deriv(fit$model$family, eta)
+
+  effect_summary <- function(X_hi, X_lo) {
+    X_hi <- .ce_align_beta_design(X_hi, beta_info$beta)$X
+    X_lo <- .ce_align_beta_design(X_lo, beta_info$beta)$X
+    eta_hi <- as.numeric(X_hi %*% beta_info$beta)
+    eta_lo <- as.numeric(X_lo %*% beta_info$beta)
+    estimate <- inv_link(eta_hi) - inv_link(eta_lo)
+
+    se <- NA_real_
+    if (!is.null(beta_info$V)) {
+      grad <- as.numeric(inv_link_deriv(eta_hi) * X_hi - inv_link_deriv(eta_lo) * X_lo)
+      se <- sqrt(pmax(as.numeric(t(grad) %*% beta_info$V %*% grad), 0))
+    }
+    ci <- .ce_wald_interval(estimate, se, prob = prob)
+    c(estimate = estimate, se = se, lower = ci$lower, upper = ci$upper)
+  }
+
+  results <- data.frame()
+
+  if (prep$is_numeric) {
+    eps <- 1e-4
+    f_val <- mean(raw_data[[focal]], na.rm = TRUE)
+
+    for (mv in mod_vals) {
+      newdata1 <- base_data
+      newdata2 <- base_data
+      newdata1[[mod]] <- mv
+      newdata2[[mod]] <- mv
+      newdata1[[focal]] <- f_val
+      newdata2[[focal]] <- f_val + eps
+
+      est <- effect_summary(.ce_model_matrix(fit, newdata2), .ce_model_matrix(fit, newdata1)) / c(eps, eps, eps, eps)
+
+      res_row <- data.frame(
+        moderator = mod,
+        mod_value = mv,
+        term = paste("Slope of", focal),
+        estimate = est[["estimate"]],
+        se = est[["se"]],
+        lower = est[["lower"]],
+        upper = est[["upper"]]
+      )
+      results <- rbind(results, res_row)
+    }
+  } else {
+    focal_vals <- sort(unique(raw_data[[focal]]))
+    if (length(focal_vals) < 2) stop("Focal variable must have at least 2 levels.")
+
+    for (mv in mod_vals) {
+      sub_newdata <- base_data[rep(1, length(focal_vals)), , drop = FALSE]
+      sub_newdata[[mod]] <- mv
+      sub_newdata[[focal]] <- focal_vals
+      X_sub <- .ce_model_matrix(fit, sub_newdata)
+
+      for (i in 1:(length(focal_vals) - 1)) {
+        for (j in (i + 1):length(focal_vals)) {
+          est <- effect_summary(X_sub[j, , drop = FALSE], X_sub[i, , drop = FALSE])
+          res_row <- data.frame(
+            moderator = mod,
+            mod_value = mv,
+            term = paste(focal_vals[j], "-", focal_vals[i]),
+            estimate = est[["estimate"]],
+            se = est[["se"]],
+            lower = est[["lower"]],
+            upper = est[["upper"]]
+          )
+          results <- rbind(results, res_row)
+        }
+      }
+    }
+  }
+
+  names(results)[2] <- mod
+  class(results) <- c("ce_simple", "data.frame")
+  results
 }
 
 
@@ -471,6 +807,7 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
         mod_value = mv,
         term = paste("Slope of", focal),
         estimate = mean(slope_samples),
+        se = sd(slope_samples),
         lower = quantile(slope_samples, (1-prob)/2),
         upper = quantile(slope_samples, 1-(1-prob)/2)
       )
@@ -561,6 +898,7 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
             mod_value = mv,
             term = paste(lvls[j], "-", lvls[i]),
             estimate = mean(diff_samples),
+            se = sd(diff_samples),
             lower = quantile(diff_samples, (1-prob)/2),
             upper = quantile(diff_samples, 1-(1-prob)/2)
           )
@@ -577,7 +915,19 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
 
 #' @method simple_effects map_fit
 #' @export
-simple_effects.map_fit <- simple_effects.mcmc_fit
+simple_effects.map_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+  if (.ce_has_sampling_draws(fit)) {
+    simple_effects.mcmc_fit(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier, ...)
+  } else {
+    .simple_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier, ...)
+  }
+}
+
+#' @method simple_effects Classic_Fit
+#' @export
+simple_effects.Classic_Fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+  .simple_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier, ...)
+}
 #' @method simple_effects advi_fit
 #' @export
 simple_effects.advi_fit <- simple_effects.mcmc_fit
