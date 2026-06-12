@@ -8,6 +8,10 @@
 #' @param effect Name of the variable to visualize (e.g., "X1" or "X1:X2").
 #' @param prob Probability for the credible/confidence interval (default is 0.95).
 #' @param sd_multiplier Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).
+#' @param sd_slice Logical or NULL. If TRUE, continuous moderators are evaluated at
+#'   mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used.
+#'   If NULL (default), sd slicing is used automatically when the moderator has 6 or more
+#'   unique values.
 #' @param ... Additional arguments.
 #'
 #' @return An object of class `ce_rtmb` containing the predicted values and their credible intervals.
@@ -22,14 +26,24 @@
 #'   summary(ce)
 #' }
 #' @export
-conditional_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+conditional_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
   UseMethod("conditional_effects")
 }
 
 #' @method conditional_effects default
 #' @export
-conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
   stop(sprintf("No conditional_effects method for object of class '%s'.", class(fit)[1]))
+}
+
+.ce_resolve_sd_slice <- function(x, sd_slice) {
+  if (!is.null(sd_slice)) {
+    if (!is.logical(sd_slice) || length(sd_slice) != 1L || is.na(sd_slice)) {
+      stop("'sd_slice' must be TRUE, FALSE, or NULL.", call. = FALSE)
+    }
+    return(isTRUE(sd_slice))
+  }
+  is.numeric(x) && length(unique(x[!is.na(x)])) >= 6
 }
 
 .ce_make_base_data <- function(raw_data) {
@@ -55,7 +69,7 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
   model.matrix(rhs, data = newdata, xlev = xlev)
 }
 
-.ce_prepare_newdata <- function(fit, effect, sd_multiplier = 1, resolution = 100) {
+.ce_prepare_newdata <- function(fit, effect, sd_multiplier = 1, sd_slice = NULL, resolution = 100) {
   model_obj <- fit$model
   if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
     stop("This model object does not contain a formula or the original data.")
@@ -84,7 +98,7 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
     val2 <- raw_data[[eff2]]
     if (is.null(val2)) stop(sprintf("Variable '%s' not found in the data.", eff2))
 
-    if (is.numeric(val2) && length(unique(val2)) > 5) {
+    if (.ce_resolve_sd_slice(val2, sd_slice)) {
       seq2 <- c(mean(val2, na.rm = TRUE) - sd_multiplier * sd(val2, na.rm = TRUE),
                 mean(val2, na.rm = TRUE),
                 mean(val2, na.rm = TRUE) + sd_multiplier * sd(val2, na.rm = TRUE))
@@ -230,8 +244,8 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
   !is.null(fit$se_samples)
 }
 
-.conditional_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
-  prep <- .ce_prepare_newdata(fit, effect, sd_multiplier = sd_multiplier, resolution = resolution)
+.conditional_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, resolution = 100, ...) {
+  prep <- .ce_prepare_newdata(fit, effect, sd_multiplier = sd_multiplier, sd_slice = sd_slice, resolution = resolution)
   info <- .ce_beta_delta_info(fit, prep$X_new)
 
   eta <- as.numeric(info$X %*% info$beta)
@@ -265,12 +279,16 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
 #' @param effect Name of the explanatory variable to visualize (e.g., "X1" or "X1:X2").
 #' @param prob Probability for the credible/confidence interval (default is 0.95).
 #' @param sd_multiplier Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).
+#' @param sd_slice Logical or NULL. If TRUE, continuous moderators are evaluated at
+#'   mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used.
+#'   If NULL (default), sd slicing is used automatically when the moderator has 6 or more
+#'   unique values.
 #' @param resolution Grid resolution to calculate for continuous variables (default is 100).
 #' @param ... Additional arguments.
 #'
 #' @return A `ce_rtmb` object.
 #' @export
-conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
+conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, resolution = 100, ...) {
   model_obj <- fit$model
   if (is.null(model_obj$formula) || is.null(model_obj$raw_data)) {
     stop("This model object does not contain a formula or the original data.")
@@ -317,8 +335,8 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
     val2 <- raw_data[[eff2]]
     if (is.null(val2)) stop(sprintf("Variable '%s' not found in the data.", eff2))
 
-    # If the second variable is continuous and has many unique values, restrict to 3 representative points (Mean-1SD, Mean, Mean+1SD)
-    if (is.numeric(val2) && length(unique(val2)) > 5) {
+    # If requested, restrict the moderator to 3 representative points (Mean-1SD, Mean, Mean+1SD)
+    if (.ce_resolve_sd_slice(val2, sd_slice)) {
       seq2 <- c(mean(val2, na.rm=TRUE) - sd_multiplier * sd(val2, na.rm=TRUE),
                 mean(val2, na.rm=TRUE),
                 mean(val2, na.rm=TRUE) + sd_multiplier * sd(val2, na.rm=TRUE))
@@ -437,21 +455,21 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
 
 #' @method conditional_effects map_fit
 #' @export
-conditional_effects.map_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
+conditional_effects.map_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, resolution = 100, ...) {
   if (.ce_has_sampling_draws(fit)) {
     conditional_effects.mcmc_fit(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier,
-                                 resolution = resolution, ...)
+                                 sd_slice = sd_slice, resolution = resolution, ...)
   } else {
     .conditional_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier,
-                               resolution = resolution, ...)
+                               sd_slice = sd_slice, resolution = resolution, ...)
   }
 }
 
 #' @method conditional_effects Classic_Fit
 #' @export
-conditional_effects.Classic_Fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, resolution = 100, ...) {
+conditional_effects.Classic_Fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, resolution = 100, ...) {
   .conditional_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier,
-                             resolution = resolution, ...)
+                             sd_slice = sd_slice, resolution = resolution, ...)
 }
 
 #' @method conditional_effects advi_fit
@@ -574,7 +592,7 @@ summary.ce_rtmb <- function(object, ...) {
   return(object$data)
 }
 
-.simple_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+.simple_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
   eff_vars <- strsplit(effect, ":")[[1]]
   if (length(eff_vars) != 2) {
     stop("simple_effects requires an interaction of exactly two variables (e.g., 'A:B').")
@@ -583,7 +601,8 @@ summary.ce_rtmb <- function(object, ...) {
   focal <- eff_vars[1]
   mod <- eff_vars[2]
 
-  prep <- .ce_prepare_newdata(fit, effect = effect, resolution = 10, sd_multiplier = sd_multiplier)
+  prep <- .ce_prepare_newdata(fit, effect = effect, resolution = 10,
+                              sd_multiplier = sd_multiplier, sd_slice = sd_slice)
   mod_vals <- unique(prep$newdata[[mod]])
   raw_data <- fit$model$raw_data
   base_data <- .ce_make_base_data(raw_data)
@@ -679,6 +698,10 @@ summary.ce_rtmb <- function(object, ...) {
 #' @param effect Character string of the interaction (e.g., "A:B"). The first variable is the focal variable.
 #' @param prob Probability for the credible/confidence interval (default is 0.95).
 #' @param sd_multiplier Multiplier for SD for continuous moderators (default is 1).
+#' @param sd_slice Logical or NULL. If TRUE, continuous moderators are evaluated at
+#'   mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used.
+#'   If NULL (default), sd slicing is used automatically when the moderator has 6 or more
+#'   unique values.
 #' @param ... Additional arguments.
 #'
 #' @return A `ce_simple` object (data frame) containing the estimated effects and their credible intervals.
@@ -693,7 +716,7 @@ summary.ce_rtmb <- function(object, ...) {
 #'   print(se)
 #' }
 #' @export
-simple_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+simple_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
   UseMethod("simple_effects")
 }
 
@@ -703,9 +726,11 @@ simple_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
 #' @param effect Interaction term (e.g., "A:B").
 #' @param prob Probability for credible intervals.
 #' @param sd_multiplier Multiplier for SD for continuous moderators.
+#' @param sd_slice Logical or NULL; controls whether continuous moderators are
+#'   evaluated at mean - SD, mean, and mean + SD.
 #' @param ... Additional arguments.
 #' @export
-simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
   eff_vars <- strsplit(effect, ":")[[1]]
   if (length(eff_vars) != 2) {
     stop("simple_effects requires an interaction of exactly two variables (e.g., 'A:B').")
@@ -716,7 +741,8 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
   
   # 1. Reuse conditional_effects logic to get predicted values
   # We use a higher resolution for moderators if continuous
-  ce <- conditional_effects(fit, effect = effect, resolution = 10, sd_multiplier = sd_multiplier, ...)
+  ce <- conditional_effects(fit, effect = effect, resolution = 10,
+                            sd_multiplier = sd_multiplier, sd_slice = sd_slice, ...)
   df <- ce$data
   
   # Identify levels/values of the moderator
@@ -915,18 +941,21 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
 
 #' @method simple_effects map_fit
 #' @export
-simple_effects.map_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
+simple_effects.map_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
   if (.ce_has_sampling_draws(fit)) {
-    simple_effects.mcmc_fit(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier, ...)
+    simple_effects.mcmc_fit(fit, effect = effect, prob = prob,
+                            sd_multiplier = sd_multiplier, sd_slice = sd_slice, ...)
   } else {
-    .simple_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier, ...)
+    .simple_effects_delta(fit, effect = effect, prob = prob,
+                          sd_multiplier = sd_multiplier, sd_slice = sd_slice, ...)
   }
 }
 
 #' @method simple_effects Classic_Fit
 #' @export
-simple_effects.Classic_Fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, ...) {
-  .simple_effects_delta(fit, effect = effect, prob = prob, sd_multiplier = sd_multiplier, ...)
+simple_effects.Classic_Fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, ...) {
+  .simple_effects_delta(fit, effect = effect, prob = prob,
+                        sd_multiplier = sd_multiplier, sd_slice = sd_slice, ...)
 }
 #' @method simple_effects advi_fit
 #' @export

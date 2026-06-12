@@ -4,7 +4,14 @@
 \alias{simple_effects}
 \title{Calculate Simple Effects}
 \usage{
-simple_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
+simple_effects(
+  fit,
+  effect,
+  prob = 0.95,
+  sd_multiplier = 1,
+  sd_slice = NULL,
+  ...
+)
 }
 \arguments{
 \item{fit}{Model fit object (e.g., `map_fit`, `mcmc_fit`).}
@@ -14,6 +21,8 @@ simple_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
 \item{prob}{Probability for the credible/confidence interval (default is 0.95).}
 
 \item{sd_multiplier}{Multiplier for SD for continuous moderators (default is 1).}
+
+\item{sd_slice}{Logical or NULL. If TRUE, continuous moderators are evaluated at mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used. If NULL (default), sd slicing is used automatically when the moderator has 6 or more unique values.}
 
 \item{...}{Additional arguments.}
 }

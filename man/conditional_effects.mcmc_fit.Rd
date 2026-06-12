@@ -9,6 +9,7 @@
   effect,
   prob = 0.95,
   sd_multiplier = 1,
+  sd_slice = NULL,
   resolution = 100,
   ...
 )
@@ -21,6 +22,8 @@
 \item{prob}{Probability for the credible/confidence interval (default is 0.95).}
 
 \item{sd_multiplier}{Numeric. Multiplier for standard deviation when splitting continuous moderators (default is 1).}
+
+\item{sd_slice}{Logical or NULL. If TRUE, continuous moderators are evaluated at mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used. If NULL (default), sd slicing is used automatically when the moderator has 6 or more unique values.}
 
 \item{resolution}{Grid resolution to calculate for continuous variables (default is 100).}
 

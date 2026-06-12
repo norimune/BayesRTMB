@@ -4,7 +4,14 @@
 \alias{simple_effects.mcmc_fit}
 \title{Simple effects for MCMC fit objects}
 \usage{
-\method{simple_effects}{mcmc_fit}(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
+\method{simple_effects}{mcmc_fit}(
+  fit,
+  effect,
+  prob = 0.95,
+  sd_multiplier = 1,
+  sd_slice = NULL,
+  ...
+)
 }
 \arguments{
 \item{fit}{An object of class `MCMC_Fit`.}
@@ -14,6 +21,8 @@
 \item{prob}{Probability for credible intervals.}
 
 \item{sd_multiplier}{Multiplier for SD for continuous moderators.}
+
+\item{sd_slice}{Logical or NULL; controls whether continuous moderators are evaluated at mean - SD, mean, and mean + SD.}
 
 \item{...}{Additional arguments.}
 }
