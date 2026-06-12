@@ -4,14 +4,30 @@
 \alias{plot_conditional_effects}
 \title{Plot conditional effects}
 \usage{
-plot_conditional_effects(fit, effect, ...)
+plot_conditional_effects(
+  fit,
+  effect,
+  prob = 0.95,
+  sd_multiplier = 1,
+  sd_slice = NULL,
+  resolution = 100,
+  ...
+)
 }
 \arguments{
 \item{fit}{A fitted model object (e.g., `MCMC_Fit`, `MAP_Fit`, `VB_Fit`).}
 
 \item{effect}{Name of the variable to visualize (e.g., "X1" or "X1:X2").}
 
-\item{...}{Additional arguments passed to \code{\link{conditional_effects}} or the plot method.}
+\item{prob}{Probability for the credible/confidence interval.}
+
+\item{sd_multiplier}{Numeric multiplier for standard deviation when splitting continuous moderators.}
+
+\item{sd_slice}{Logical or NULL; controls whether continuous moderators are evaluated at mean - SD, mean, and mean + SD.}
+
+\item{resolution}{Grid resolution to calculate for continuous variables.}
+
+\item{...}{Additional arguments passed to the plot method.}
 }
 \value{
 Invisibly returns the plotted object of class \code{ce_rtmb}.

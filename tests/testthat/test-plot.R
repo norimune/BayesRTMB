@@ -9,7 +9,7 @@ test_that("plot_mdu compacts default Item labels", {
   res <- plot_mdu(
     delta, theta,
     show_density = FALSE,
-    show_phi = FALSE,
+    show_radius = FALSE,
     main = ""
   )
 
@@ -37,12 +37,12 @@ test_that("plot_mdu prefers rotated MDU coordinates from fitted objects", {
   grDevices::pdf(file = tempfile(fileext = ".pdf"))
   on.exit(grDevices::dev.off(), add = TRUE)
 
-  res_rot <- plot_mdu(fit, show_density = FALSE, show_phi = FALSE, main = "")
+  res_rot <- plot_mdu(fit, show_density = FALSE, show_radius = FALSE, main = "")
   res_raw <- plot_mdu(
     fit,
     prefer_rotated = FALSE,
     show_density = FALSE,
-    show_phi = FALSE,
+    show_radius = FALSE,
     main = ""
   )
 
@@ -50,4 +50,17 @@ test_that("plot_mdu prefers rotated MDU coordinates from fitted objects", {
   expect_equal(unname(res_rot$theta), theta_rot)
   expect_equal(unname(res_raw$delta), delta)
   expect_equal(unname(res_raw$theta), theta)
+})
+
+test_that("plot_mdu supports deprecated show_phi alias", {
+  delta <- matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE)
+  theta <- matrix(c(0.2, 0.1, 0.8, 0.9, 0.4, 0.6), ncol = 2, byrow = TRUE)
+
+  grDevices::pdf(file = tempfile(fileext = ".pdf"))
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  expect_warning(
+    plot_mdu(delta, theta, show_density = FALSE, show_phi = FALSE, main = ""),
+    "deprecated"
+  )
 })

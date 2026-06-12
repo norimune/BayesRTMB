@@ -418,7 +418,7 @@ plot_forest <- function(x, prob = 0.95,
 #' @param signs Numeric vector of length 2. Use `-1` to flip an axis.
 #' @param item_labels Optional item labels. Defaults to row names or item
 #'   numbers.
-#' @param show_phi Logical; whether to draw circles based on item alpha.
+#' @param show_radius Logical; whether to draw radius circles based on item alpha.
 #' @param show_density Logical; whether to draw density contours for `theta`.
 #' @param circle_scale Numeric multiplier for item radii.
 #' @param alpha Circle transparency.
@@ -430,6 +430,7 @@ plot_forest <- function(x, prob = 0.95,
 #'   object. Passed to `estimate()`.
 #' @param prefer_rotated Logical; when `delta` is a fitted object, prefer
 #'   rotated generated quantities (`delta_rot` and `theta_rot`) if available.
+#' @param show_phi Deprecated alias for `show_radius`.
 #' @param main,xlab,ylab Plot title and axis labels.
 #' @param ... Additional arguments passed to `plot()`.
 #'
@@ -438,15 +439,22 @@ plot_forest <- function(x, prob = 0.95,
 #' @export
 plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
                      dims = c(1, 2), radius = NULL, signs = c(1, 1),
-                     item_labels = NULL, show_phi = TRUE, show_density = TRUE,
+                     item_labels = NULL, show_radius = TRUE, show_density = TRUE,
                      circle_scale = 1, alpha = 0.2, contour_n = 60,
                      distance = c("auto", "squared", "euclidean"),
                      point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
                      prefer_rotated = TRUE,
+                     show_phi = NULL,
                      main = "MDU Configuration", xlab = NULL, ylab = NULL, ...) {
   point_estimate <- match.arg(point_estimate)
   distance <- match.arg(distance)
   prefer_rotated <- isTRUE(prefer_rotated)
+  phi_supplied <- !is.null(phi)
+
+  if (!is.null(show_phi)) {
+    warning("'show_phi' is deprecated; use 'show_radius' instead.", call. = FALSE)
+    show_radius <- show_phi
+  }
 
   if (!is.matrix(delta) && is.function(delta$estimate)) {
     fit <- delta
@@ -485,7 +493,12 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
     if (is.null(item_alpha) && is.null(phi)) phi <- est$phi
   }
   if (distance == "auto") distance <- "squared"
-  if (is.null(item_alpha) && !is.null(phi)) item_alpha <- phi
+  if (is.null(item_alpha) && !is.null(phi)) {
+    if (phi_supplied) {
+      warning("'phi' is deprecated; use 'item_alpha' instead.", call. = FALSE)
+    }
+    item_alpha <- phi
+  }
 
   delta <- as.matrix(delta)
   if (is.null(theta)) {
@@ -551,7 +564,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
     }
   }
 
-  if (isTRUE(show_phi) && !is.null(item_alpha)) {
+  if (isTRUE(show_radius) && !is.null(item_alpha)) {
     item_alpha <- as.numeric(item_alpha)
     if (length(item_alpha) == 1L) {
       item_radius <- rep(0, nrow(delta))
@@ -677,12 +690,24 @@ plot_lsmeans <- function(fit, specs, ...) {
 #'
 #' @param fit A fitted model object (e.g., `MCMC_Fit`, `MAP_Fit`, `VB_Fit`).
 #' @param effect Name of the variable to visualize (e.g., "X1" or "X1:X2").
-#' @param ... Additional arguments passed to \code{\link{conditional_effects}} or the plot method.
+#' @param prob Probability for the credible/confidence interval.
+#' @param sd_multiplier Numeric multiplier for standard deviation when splitting continuous moderators.
+#' @param sd_slice Logical or NULL; controls whether continuous moderators are
+#'   evaluated at mean - SD, mean, and mean + SD.
+#' @param resolution Grid resolution to calculate for continuous variables.
+#' @param ... Additional arguments passed to the plot method.
 #'
 #' @return Invisibly returns the plotted object of class \code{ce_rtmb}.
 #' @export
-plot_conditional_effects <- function(fit, effect, ...) {
-  res <- conditional_effects(fit, effect, ...)
+plot_conditional_effects <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
+                                     sd_slice = NULL, resolution = 100, ...) {
+  res <- conditional_effects(
+    fit, effect,
+    prob = prob,
+    sd_multiplier = sd_multiplier,
+    sd_slice = sd_slice,
+    resolution = resolution
+  )
   plot(res, ...)
 }
 

@@ -486,6 +486,7 @@ conditional_effects.vb_fit <- conditional_effects.mcmc_fit
 #' @param ... Additional arguments.
 #' @export
 plot.ce_rtmb <- function(x, ...) {
+  plot_args <- list(...)
   df <- x$data
   eff_vars <- x$effect_vars
   eff1 <- eff_vars[1]
@@ -496,14 +497,21 @@ plot.ce_rtmb <- function(x, ...) {
   y_low <- df$lower
   y_up  <- df$upper
 
+  merge_plot_args <- function(defaults) {
+    defaults[intersect(names(defaults), names(plot_args))] <- NULL
+    c(defaults, plot_args)
+  }
+
   if (!has_interaction) {
     # --- Without interaction ---
     col_line <- rgb(0, 0.45, 0.7)
     col_ribbon <- rgb(0, 0.45, 0.7, 0.2)
 
     if (x$is_numeric) {
-      plot(x_val, y_est, type = "n", ylim = range(c(y_low, y_up)),
-           xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1), ...)
+      do.call(plot, merge_plot_args(list(
+        x = x_val, y = y_est, type = "n", ylim = range(c(y_low, y_up)),
+        xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1)
+      )))
       polygon(c(x_val, rev(x_val)), c(y_low, rev(y_up)), col = col_ribbon, border = NA)
       lines(x_val, y_est, col = col_line, lwd = 2)
     } else {
@@ -511,9 +519,11 @@ plot.ce_rtmb <- function(x, ...) {
       x_num <- as.numeric(x_fct)
       lvls <- levels(x_fct)
       
-      plot(x_num, y_est, type = "n", ylim = range(c(y_low, y_up)),
-           xlim = c(0.5, length(lvls) + 0.5), xaxt = "n",
-           xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1), ...)
+      do.call(plot, merge_plot_args(list(
+        x = x_num, y = y_est, type = "n", ylim = range(c(y_low, y_up)),
+        xlim = c(0.5, length(lvls) + 0.5), xaxt = "n",
+        xlab = eff1, ylab = "Predicted value", main = paste("Conditional effect of", eff1)
+      )))
       axis(1, at = 1:length(lvls), labels = lvls)
       segments(x0 = x_num, y0 = y_low, x1 = x_num, y1 = y_up, col = col_line, lwd = 2)
       points(x_num, y_est, col = col_line, pch = 16, cex = 1.5)
@@ -533,9 +543,11 @@ plot.ce_rtmb <- function(x, ...) {
     })
 
     if (x$is_numeric) {
-      plot(x_val, y_est, type = "n", ylim = range(c(y_low, y_up)),
-           xlab = eff1, ylab = "Predicted value",
-           main = paste("Conditional effect of", eff1, "by", eff2), ...)
+      do.call(plot, merge_plot_args(list(
+        x = x_val, y = y_est, type = "n", ylim = range(c(y_low, y_up)),
+        xlab = eff1, ylab = "Predicted value",
+        main = paste("Conditional effect of", eff1, "by", eff2)
+      )))
 
       for (i in seq_along(groups)) {
         idx <- df[[eff2]] == groups[i]
@@ -548,10 +560,12 @@ plot.ce_rtmb <- function(x, ...) {
       x_num <- as.numeric(x_fct)
       lvls <- levels(x_fct)
 
-      plot(x_num, y_est, type = "n", ylim = range(c(y_low, y_up)),
-           xlim = c(0.5, length(lvls) + 0.5), xaxt = "n",
-           xlab = eff1, ylab = "Predicted value",
-           main = paste("Conditional effect of", eff1, "by", eff2), ...)
+      do.call(plot, merge_plot_args(list(
+        x = x_num, y = y_est, type = "n", ylim = range(c(y_low, y_up)),
+        xlim = c(0.5, length(lvls) + 0.5), xaxt = "n",
+        xlab = eff1, ylab = "Predicted value",
+        main = paste("Conditional effect of", eff1, "by", eff2)
+      )))
       axis(1, at = 1:length(lvls), labels = lvls)
 
       # Shift X-axis slightly to avoid overlapping error bars
