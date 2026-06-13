@@ -14,13 +14,14 @@ to_long(data, within = NULL, label = NULL, value = "Value", id = NULL)
   \item A character vector of column names.
   \item A range string like \code{"time1:time4"}.
   \item A prefix string like \code{"time"} (matches all columns starting with "time").
+  \item Multiple range/prefix/name specifications when \code{value} has the same length.
 }}
 
 \item{label}{The name for the new column that will contain the level names (e.g., "Time"). 
 If NULL, it defaults to the prefix used in \code{within} or "Condition".}
 
-\item{value}{The name for the new column that will contain the measurement values. 
-Default is "Value".}
+\item{value}{The name for the new column that will contain the measurement values.
+Can be a character vector for multiple measurement groups. Default is "Value".}
 
 \item{id}{The identifier columns that should be repeated for each row. 
 If NULL (default), all columns NOT specified in \code{within} are treated as IDs.}

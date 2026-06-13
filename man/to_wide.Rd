@@ -11,7 +11,8 @@ to_wide(data, within = "Condition", value = "Value", id = NULL)
 
 \item{within}{The name of the column containing within-subjects factor levels (e.g., "Condition").}
 
-\item{value}{The name of the column containing measurement values (e.g., "Value").}
+\item{value}{The name of the column containing measurement values (e.g., "Value").
+Can be a character vector for multiple measurement columns.}
 
 \item{id}{The identifier columns (e.g., "Subject", "Group"). If NULL, 
 inferred as all columns except \code{within} and \code{value}.}
