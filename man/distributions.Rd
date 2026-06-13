@@ -43,6 +43,7 @@ In `rtmb_code`, you can specify distributions in two ways:
   \item \code{multi_normal(mean, Sigma)}: Standard multivariate normal distribution.
   \item \code{multi_student_t(df, mean, Sigma)}: Multivariate Student's t-distribution.
   \item \code{multi_cauchy(mean, Sigma)}: Multivariate Cauchy distribution (Student-t with df=1).
+  \item \code{gaussian_process(x, mean, magnitude, smoothing, noise)}: Gaussian process prior with a squared exponential kernel.
   \item \code{lkj_corr(eta)}: LKJ prior for correlation matrices.
   \item \code{dirichlet(alpha)}: Dirichlet distribution for simplexes.
   \item \code{lower_tri_normal(mean, sd)}: Normal distribution for elements of a lower-triangular matrix.

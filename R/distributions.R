@@ -40,6 +40,7 @@
 #'   \item \code{multi_normal(mean, Sigma)}: Standard multivariate normal distribution.
 #'   \item \code{multi_student_t(df, mean, Sigma)}: Multivariate Student's t-distribution.
 #'   \item \code{multi_cauchy(mean, Sigma)}: Multivariate Cauchy distribution (Student-t with df=1).
+#'   \item \code{gaussian_process(x, mean, magnitude, smoothing, noise)}: Gaussian process prior with a squared exponential kernel.
 #'   \item \code{lkj_corr(eta)}: LKJ prior for correlation matrices.
 #'   \item \code{dirichlet(alpha)}: Dirichlet distribution for simplexes.
 #'   \item \code{lower_tri_normal(mean, sd)}: Normal distribution for elements of a lower-triangular matrix.
@@ -1219,18 +1220,27 @@ sufficient_multi_normal_fa_lpdf <- function(S_mat, N, y_bar, mu, psi,Lambda) {
 #' @description
 #' Calculates the log-density of a Gaussian Process with a Squared Exponential (RBF) kernel.
 #'
-#' @param y Observation vector (N).
-#' @param x Coordinate vector or matrix (N x D).
-#' @param mean Mean vector (scalar or length N).
+#' @param y Observation vector (N), or matrix (M x N) whose rows are independent GP realizations on the same coordinates.
+#' @param x Coordinate vector or matrix (N x D), where N matches \code{length(y)} for vector \code{y} or \code{ncol(y)} for matrix \code{y}.
+#' @param mean Mean vector (scalar, length N, or M x N matrix for matrix \code{y}).
 #' @param magnitude Signal standard deviation (alpha).
 #' @param smoothing Length-scale (rho).
 #' @param noise Measurement noise standard deviation (sigma).
-#' @param sum Logical; whether to return the sum of log-densities.
+#' @param sum Logical; whether to return the sum of log-densities. If \code{FALSE} and \code{y} is a matrix, returns one log-density per row.
 #' @return Log-density value.
 #' @export
 gaussian_process_lpdf <- function(y, x, mean = 0, magnitude = 1, smoothing = 1, noise = 0.01, sum = TRUE) {
-  N <- length(y)
-  X <- if(is.matrix(x)) x else as.matrix(x)
+  y_is_matrix <- is.matrix(y)
+  N <- if (y_is_matrix) ncol(y) else length(y)
+  X <- if (is.matrix(x)) x else as.matrix(x)
+  if (nrow(X) != N) {
+    stop(
+      "gaussian_process_lpdf(): number of coordinate rows must match ",
+      if (y_is_matrix) "ncol(y)" else "length(y)",
+      ".",
+      call. = FALSE
+    )
+  }
 
   # Construct covariance matrix K
   K <- matrix(0, N, N)
@@ -1250,5 +1260,9 @@ gaussian_process_lpdf <- function(y, x, mean = 0, magnitude = 1, smoothing = 1, 
   diag(K) <- diag(K) + noise^2 + 1e-8
 
   # Evaluate as Multivariate Normal
+  if (y_is_matrix && N == 1L) {
+    mean_vec <- if (is.matrix(mean)) mean[, 1] else mean
+    return(normal_lpdf(y[, 1], mean = mean_vec, sd = sqrt(K[1, 1]), sum = sum))
+  }
   return(multi_normal_lpdf(y, mean = mean, Sigma = K, sum = sum))
 }

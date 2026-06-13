@@ -15,11 +15,11 @@ gaussian_process_lpdf(
 )
 }
 \arguments{
-\item{y}{Observation vector (N).}
+\item{y}{Observation vector (N), or matrix (M x N) whose rows are independent GP realizations on the same coordinates.}
 
-\item{x}{Coordinate vector or matrix (N x D).}
+\item{x}{Coordinate vector or matrix (N x D), where N matches \code{length(y)} for vector \code{y} or \code{ncol(y)} for matrix \code{y}.}
 
-\item{mean}{Mean vector (scalar or length N).}
+\item{mean}{Mean vector (scalar, length N, or M x N matrix for matrix \code{y}).}
 
 \item{magnitude}{Signal standard deviation (alpha).}
 
@@ -27,7 +27,7 @@ gaussian_process_lpdf(
 
 \item{noise}{Measurement noise standard deviation (sigma).}
 
-\item{sum}{Logical; whether to return the sum of log-densities.}
+\item{sum}{Logical; whether to return the sum of log-densities. If \code{FALSE} and \code{y} is a matrix, returns one log-density per row.}
 }
 \value{
 Log-density value.
