@@ -32,6 +32,8 @@ Used to convert unconstrained vectors into structured matrices (e.g., for factor
   \item \code{to_lower_tri(x, M, D)}: Fills a matrix of size M x D with elements from vector \code{x} in a lower-triangular fashion.
   \item \code{to_centered_matrix(x, R, C)}: Creates an R x C matrix where each column sums to zero.
   \item \code{to_centered_tri(x, R, C)}: Creates an R x C matrix with column-wise sum-to-zero constraints on the lower elements (useful for identification in factor analysis).
+  \item \code{rtmb_vector(value, length)}: Creates an AD-compatible vector initialized with \code{value}.
+  \item \code{rtmb_array(value, dim)}: Creates an AD-compatible array initialized with \code{value}.
 }
 
 \strong{4. Linear Algebra for AD:}

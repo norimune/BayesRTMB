@@ -29,6 +29,8 @@
 #'   \item \code{to_lower_tri(x, M, D)}: Fills a matrix of size M x D with elements from vector \code{x} in a lower-triangular fashion.
 #'   \item \code{to_centered_matrix(x, R, C)}: Creates an R x C matrix where each column sums to zero.
 #'   \item \code{to_centered_tri(x, R, C)}: Creates an R x C matrix with column-wise sum-to-zero constraints on the lower elements (useful for identification in factor analysis).
+#'   \item \code{rtmb_vector(value, length)}: Creates an AD-compatible vector initialized with \code{value}.
+#'   \item \code{rtmb_array(value, dim)}: Creates an AD-compatible array initialized with \code{value}.
 #' }
 #'
 #' \strong{4. Linear Algebra for AD:}
@@ -41,6 +43,63 @@
 #' @family utilities
 #' @import RTMB
 NULL
+
+#' Create an AD-compatible vector
+#'
+#' @description
+#' Creates a fixed-length vector that is safe to use inside `rtmb_code()` when
+#' subsequent assignments may involve RTMB automatic-differentiation values.
+#' This is a safer alternative to `numeric(length)` in model code.
+#'
+#' @param value Initial value. Usually a scalar such as `0`.
+#' @param length Length of the vector.
+#' @return An AD-compatible vector.
+#' @export
+rtmb_vector <- function(value = 0, length) {
+  if (missing(length)) {
+    stop("'length' must be supplied.", call. = FALSE)
+  }
+  if (!is.numeric(length) || length(length) != 1L || is.na(length) || length < 0) {
+    stop("'length' must be a non-negative scalar.", call. = FALSE)
+  }
+  length <- as.integer(length)
+  if (length == 0L) {
+    return(RTMB::advector(numeric(0)))
+  }
+  if (length(value) == 1L) {
+    return(RTMB::advector(rep(value, length)))
+  }
+  if (length(value) != length) {
+    stop("'value' must be length 1 or have the requested vector length.", call. = FALSE)
+  }
+  RTMB::advector(value)
+}
+
+#' Create an AD-compatible array
+#'
+#' @description
+#' Creates a fixed-size vector, matrix, or higher-dimensional array that is safe
+#' to use inside `rtmb_code()` when subsequent assignments may involve RTMB
+#' automatic-differentiation values. This is a safer alternative to
+#' `array(value, dim)` or `matrix(value, ...)` in model code.
+#'
+#' @param value Initial value. Usually a scalar such as `0`.
+#' @param dim Integer dimension vector.
+#' @return An AD-compatible array.
+#' @export
+rtmb_array <- function(value = 0, dim) {
+  if (missing(dim)) {
+    stop("'dim' must be supplied.", call. = FALSE)
+  }
+  if (!is.numeric(dim) || any(is.na(dim)) || any(dim < 0)) {
+    stop("'dim' must be a non-negative numeric vector.", call. = FALSE)
+  }
+  dim <- as.integer(dim)
+  len <- prod(dim)
+  out <- rtmb_vector(value, len)
+  dim(out) <- dim
+  out
+}
 
 #' Inverse logit function
 #'
