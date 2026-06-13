@@ -9,6 +9,7 @@ rtmb_mdu(
   ndim = 2,
   distance = c("squared", "euclidean"),
   alpha = c("random", "fix"),
+  lambda = c("fix", "random"),
   method = c("rating", "Best", "Best-Worst", "MDS"),
   sets = NULL,
   prior = prior_flat(),
@@ -35,6 +36,10 @@ distance.}
 
 \item{alpha}{Character; `"random"` estimates item-specific alpha values as
 random effects (default), while `"fix"` estimates a single common alpha.}
+
+\item{lambda}{Character; for choice methods, `"fix"` estimates a common
+inverse-temperature parameter (default), while `"random"` estimates
+person-specific inverse-temperature parameters with a log-normal hierarchy.}
 
 \item{method}{Character; `"rating"` for continuous ratings, `"Best"` for
 best-only choice tasks, `"Best-Worst"` for best-worst choice tasks, or

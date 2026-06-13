@@ -100,6 +100,36 @@ test_that("Wrappers reject unsupported priors and unused dots", {
   expect_error(rtmb_table(matrix(c(1, 2, 3, 4), 2), typo_arg = 1), "unused argument")
 })
 
+test_that("rtmb_mdu supports hierarchical lambda for choice models", {
+  sets <- matrix(
+    c(1, 2, 3,
+      2, 3, 4),
+    nrow = 2,
+    byrow = TRUE
+  )
+  best <- matrix(
+    c(1, 2,
+      2, 3,
+      3, 1),
+    nrow = 3,
+    byrow = TRUE
+  )
+
+  mdl <- rtmb_mdu(
+    list(Best = best),
+    ndim = 1,
+    method = "Best",
+    sets = sets,
+    lambda = "random",
+    prior = prior_normal()
+  )
+
+  expect_equal(mdl$extra$lambda, "random")
+  expect_true(all(c("lambda_mu", "sigma_lambda", "lambda_raw") %in% names(mdl$par_list)))
+  expect_true("lambda_raw" %in% names(mdl$par_names))
+  expect_error(rtmb_mdu(matrix(rnorm(20), nrow = 5), lambda = "random"), "only available")
+})
+
 test_that("rotate can use a principal-axis reference", {
   X <- matrix(
     c(2, 1,
