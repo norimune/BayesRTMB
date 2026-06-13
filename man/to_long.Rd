@@ -4,7 +4,14 @@
 \alias{to_long}
 \title{Convert Wide Data to Long Format}
 \usage{
-to_long(data, within = NULL, label = NULL, value = "Value", id = NULL)
+to_long(
+  data,
+  within = NULL,
+  label = NULL,
+  value = "Value",
+  id = NULL,
+  sort = FALSE
+)
 }
 \arguments{
 \item{data}{A data frame in wide format.}
@@ -27,6 +34,10 @@ Can be a character vector for multiple measurement groups. Default is "Value".}
 
 \item{id}{The identifier columns that should be repeated for each row. 
 If NULL (default), all columns NOT specified in \code{within} are treated as IDs.}
+
+\item{sort}{Logical; if TRUE, sort the output by \code{id} and the within
+label. If FALSE (default), preserve the original row order of \code{data}
+and the within-column order inside each row.}
 }
 \value{
 A data frame in long format.

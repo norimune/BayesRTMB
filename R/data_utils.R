@@ -21,11 +21,17 @@
 #'   Can be a character vector for multiple measurement groups. Default is "Value".
 #' @param id The identifier columns that should be repeated for each row. 
 #'   If NULL (default), all columns NOT specified in \code{within} are treated as IDs.
+#' @param sort Logical; if TRUE, sort the output by \code{id} and the within
+#'   label. If FALSE (default), preserve the original row order of \code{data}
+#'   and the within-column order inside each row.
 #' @return A data frame in long format.
 #' @export
-to_long <- function(data, within = NULL, label = NULL, value = "Value", id = NULL) {
+to_long <- function(data, within = NULL, label = NULL, value = "Value", id = NULL, sort = FALSE) {
   if (is.null(within)) {
     stop("Argument 'within' is required. Specify columns to gather (e.g., 'time1:time4' or 'time').")
+  }
+  if (!is.logical(sort) || length(sort) != 1L || is.na(sort)) {
+    stop("'sort' must be TRUE or FALSE.", call. = FALSE)
   }
   
   all_names <- names(data)
@@ -128,6 +134,11 @@ to_long <- function(data, within = NULL, label = NULL, value = "Value", id = NUL
 
   # 4. Perform reshape
   data_res <- as.data.frame(data)
+  order_col <- "..rtmb_row_order"
+  while (order_col %in% names(data_res)) {
+    order_col <- paste0(".", order_col)
+  }
+  data_res[[order_col]] <- seq_len(nrow(data_res))
   label_levels <- if (is.list(target_cols)) target_cols[[1]] else target_cols
   
   # stats::reshape requires a list of varying column names
@@ -137,13 +148,19 @@ to_long <- function(data, within = NULL, label = NULL, value = "Value", id = NUL
                         v.names = value, 
                         timevar = label, 
                         times = label_levels, 
-                        idvar = id)
+                        idvar = c(id, order_col))
   
   # Ensure the label column is a factor with levels in original column order
   res[[label]] <- factor(res[[label]], levels = label_levels)
 
-  # Sort by ID and label for readability
-  res <- res[do.call(order, res[c(id, label)]), ]
+  if (sort) {
+    # Sort by ID and label for readability.
+    res <- res[do.call(order, res[c(id, label)]), ]
+  } else {
+    # Preserve the source row order, then the within-column order inside each row.
+    res <- res[do.call(order, res[c(order_col, label)]), ]
+  }
+  res[[order_col]] <- NULL
   rownames(res) <- NULL
   
   return(res)

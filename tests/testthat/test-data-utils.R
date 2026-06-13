@@ -10,6 +10,34 @@ test_that("to_long preserves range column order before sorting", {
   expect_identical(as.character(res$Condition[res$id == 1]), paste0("X", 1:12))
 })
 
+test_that("to_long preserves input row order by default", {
+  dat <- data.frame(
+    id = c(2L, 1L),
+    X1 = c(20L, 10L),
+    X2 = c(21L, 11L)
+  )
+
+  res <- to_long(dat, within = "X1:X2", id = "id")
+
+  expect_identical(res$id, c(2L, 2L, 1L, 1L))
+  expect_identical(as.character(res$Condition), c("X1", "X2", "X1", "X2"))
+  expect_identical(res$Value, c(20L, 21L, 10L, 11L))
+})
+
+test_that("to_long can sort by id and label when requested", {
+  dat <- data.frame(
+    id = c(2L, 1L),
+    X1 = c(20L, 10L),
+    X2 = c(21L, 11L)
+  )
+
+  res <- to_long(dat, within = "X1:X2", id = "id", sort = TRUE)
+
+  expect_identical(res$id, c(1L, 1L, 2L, 2L))
+  expect_identical(as.character(res$Condition), c("X1", "X2", "X1", "X2"))
+  expect_identical(res$Value, c(10L, 11L, 20L, 21L))
+})
+
 test_that("to_long handles multiple within groups", {
   dat <- data.frame(
     id = 1:2,
