@@ -371,6 +371,21 @@ categorical_lpmf <- function(x, prob, sum = TRUE) {
 #' @return The sum of the log-probability.
 #' @keywords internal
 categorical_logit_lpmf <- function(x, eta, sum = TRUE) {
+  if (any(is.na(x))) {
+    stop("categorical_logit() received NA category index.", call. = FALSE)
+  }
+  n_cat <- length(eta)
+  if (any(x < 1 | x > n_cat)) {
+    stop(
+      sprintf(
+        "categorical_logit() category index is outside the logit vector length: valid categories are 1..%d, but observed range is %d..%d. If this comes from matrix data, check whether you used x[t] instead of x[t, ].",
+        n_cat,
+        min(x),
+        max(x)
+      ),
+      call. = FALSE
+    )
+  }
   res <- eta[x] - log_sum_exp(eta)
   if(sum) sum(res) else res
 }

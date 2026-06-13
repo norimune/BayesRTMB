@@ -482,6 +482,11 @@ with_rtmb_error_handling <- function(expr, block_name) {
                    block_name, call_str), call. = FALSE)
     }
 
+    if (grepl("categorical_logit\\(\\) category index is outside", msg)) {
+      stop(sprintf("[Error in '%s' block] %s\n  [Location]: %s",
+                   block_name, msg, call_str), call. = FALSE)
+    }
+
     # 4. Destruction of advector / Failure of type conversion
     if (grepl("lost class attribute", msg) || grepl("Invalid argument to 'advector'", msg) ||
         grepl("non-numeric argument to mathematical function", msg)) {
@@ -499,6 +504,57 @@ with_rtmb_error_handling <- function(expr, block_name) {
     stop(sprintf("[Error in '%s' block]\n  [Message]: %s\n  [Location]: %s",
                  block_name, msg, call_str), call. = FALSE)
   })
+}
+
+#' Format MakeADFun Backend Errors with BayesRTMB Hints
+#'
+#' @keywords internal
+.rtmb_format_makeadfun_error <- function(msg, context = "MakeADFun") {
+  hints <- character(0)
+
+  if (grepl("not a valid 'advector'|illegal operation|lost class attribute|Invalid argument to 'advector'", msg)) {
+    hints <- c(
+      hints,
+      "An automatic-differentiation (AD) object was used after an invalid operation.",
+      "Common causes in rtmb_code():",
+      "  1. Indexing a matrix as x[t] when you intended a row, x[t, ].",
+      "  2. Passing a logit/probability vector with the wrong length to categorical_logit().",
+      "  3. Assigning past the end of an AD vector, such as vec[t + 1] when vec has length Trial_t.",
+      "  4. Growing or rebuilding an AD vector inside a loop; initialize with rep(theta[1] * 0, N) or a fixed-size matrix first."
+    )
+  }
+
+  if (grepl("incorrect number of dimensions", msg)) {
+    hints <- c(
+      hints,
+      "An object was indexed with the wrong number of dimensions.",
+      "For example, use x[t, ] for a matrix row and x[t, c] for one matrix cell."
+    )
+  }
+
+  if (grepl("subscript out of bounds|attempt to select", msg)) {
+    hints <- c(
+      hints,
+      "A vector, matrix, or array index is outside its valid range.",
+      "Check that category labels match the length of the probability/logit vector."
+    )
+  }
+
+  if (grepl("Comparison is generally unsafe for AD types", msg)) {
+    hints <- c(
+      hints,
+      "A comparison was applied to an AD value.",
+      "Avoid pmin(), pmax(), ifelse(), or if-statements on parameters/transformed parameters; clip data before rtmb_model() when possible."
+    )
+  }
+
+  hint_text <- if (length(hints) > 0L) {
+    paste0("\n[Hint]:\n  ", paste(hints, collapse = "\n  "))
+  } else {
+    ""
+  }
+
+  paste0("Failed to setup ", context, ".\n[Error]: ", msg, hint_text)
 }
 
 #' Internal function to convert an environment to a list while maintaining original order

@@ -237,7 +237,7 @@
     # Use the f_ad provided from outside
     ad_obj <- tryCatch({
       RTMB::MakeADFun(func = f_ad, parameters = unc_init_list_new, random = use_random, map = local_map, silent = TRUE)
-    }, error = function(e) stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE))
+    }, error = function(e) stop(.rtmb_format_makeadfun_error(e$message, context = "MakeADFun in parallel worker"), call. = FALSE))
     ad_obj <- wrap_mcmc_pd_errors(ad_obj)
 
     metric_random_idx <- integer(0)
@@ -597,7 +597,7 @@
     # Use the f_ad provided from outside
     ad_obj <- tryCatch({
       RTMB::MakeADFun(func = f_ad, parameters = unc_init_list_new, random = use_random, map = local_map, silent = TRUE)
-    }, error = function(e) stop("Failed to setup MakeADFun in parallel worker.\n[Error]: ", e$message, call. = FALSE))
+    }, error = function(e) stop(.rtmb_format_makeadfun_error(e$message, context = "MakeADFun in parallel worker"), call. = FALSE))
 
     if (!is.null(use_random)) {
       orig_fn <- ad_obj$fn; orig_gr <- ad_obj$gr; idx_fixed_mask <- ad_obj$env$lfixed(); n_fixed <- sum(idx_fixed_mask)

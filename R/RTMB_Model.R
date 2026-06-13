@@ -356,7 +356,7 @@ RTMB_Model <- R6::R6Class(
           )
         },
         error = function(e) {
-          stop("Failed to setup MakeADFun.\n[Error]: ", e$message, call. = FALSE)
+          stop(.rtmb_format_makeadfun_error(e$message), call. = FALSE)
         }
       )
 
