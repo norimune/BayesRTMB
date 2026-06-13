@@ -41,3 +41,15 @@ test_that("classic wrapper scale rows omit test output", {
   expect_true(all(is.na(coefs[scale_rows, "t value"])))
   expect_true(all(coefs[scale_rows, "Pr"] == ""))
 })
+
+test_that("simple_effects for classic fits includes test output", {
+  fit <- rtmb_lm(mpg ~ wt * hp, data = mtcars)$classic()
+
+  res <- simple_effects(fit, effect = "wt:hp", sd_slice = TRUE)
+
+  expect_s3_class(res, "ce_simple")
+  expect_true(all(c("se", "df", "t value", "Pr") %in% names(res)))
+  expect_true(all(is.finite(res$df)))
+  expect_true(all(is.finite(res$`t value`)))
+  expect_true(all(res$Pr >= 0 & res$Pr <= 1))
+})

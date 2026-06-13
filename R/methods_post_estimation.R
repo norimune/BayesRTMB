@@ -203,11 +203,36 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
   list(X = X_new, beta = beta)
 }
 
+.ce_match_beta_parameter_names <- function(beta_names, fit = NULL) {
+  if (is.null(beta_names)) return(NULL)
+
+  available <- if (is.null(fit)) {
+    character(0)
+  } else {
+    unique(c(
+      rownames(fit$df_fixed %||% NULL),
+      rownames(fit$fit %||% NULL),
+      rownames(fit$vcov %||% NULL)
+    ))
+  }
+
+  vapply(beta_names, function(nm) {
+    candidates <- unique(c(
+      nm,
+      if (identical(nm, "(Intercept)")) c("Intercept", "Intercept_c") else character(0),
+      if (!identical(nm, "(Intercept)")) paste0("b[", nm, "]") else character(0)
+    ))
+    hit <- candidates[candidates %in% available]
+    if (length(hit) > 0L) hit[[1L]] else nm
+  }, character(1))
+}
+
 .ce_beta_delta_info <- function(fit, X_new) {
   beta0_raw <- if (!is.null(fit$par_unc)) .ce_beta_from_unc(fit, fit$par_unc) else .ce_beta_from_fit(fit)
   aligned <- .ce_align_beta_design(X_new, beta0_raw)
   beta0 <- aligned$beta
   X_aligned <- aligned$X
+  beta_names <- .ce_match_beta_parameter_names(colnames(X_aligned), fit)
 
   V_beta <- NULL
   V_unc <- fit$vcov_unc
@@ -226,12 +251,17 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
     }
     V_beta <- J %*% V_unc %*% t(J)
   } else if (!is.null(fit$vcov) && is.matrix(fit$vcov) &&
+             !is.null(beta_names) && all(beta_names %in% rownames(fit$vcov)) &&
+             all(beta_names %in% colnames(fit$vcov)) &&
+             all(is.finite(fit$vcov[beta_names, beta_names, drop = FALSE]))) {
+    V_beta <- fit$vcov[beta_names, beta_names, drop = FALSE]
+  } else if (!is.null(fit$vcov) && is.matrix(fit$vcov) &&
              nrow(fit$vcov) == length(beta0) && ncol(fit$vcov) == length(beta0) &&
              all(is.finite(fit$vcov))) {
     V_beta <- fit$vcov
   }
 
-  list(beta = beta0, X = X_aligned, V = V_beta)
+  list(beta = beta0, X = X_aligned, V = V_beta, beta_names = beta_names)
 }
 
 .ce_wald_interval <- function(estimate, se, prob = 0.95) {
@@ -242,6 +272,52 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
 
 .ce_has_sampling_draws <- function(fit) {
   !is.null(fit$se_samples)
+}
+
+.ce_classic_df_from_gradient <- function(fit, grad, beta_names, tol = 1e-8) {
+  if (!inherits(fit, "Classic_Fit") || is.null(grad) || is.null(beta_names)) {
+    return(Inf)
+  }
+  df_tab <- fit$df_fixed
+  if (is.null(df_tab) || !"df" %in% names(df_tab)) {
+    return(Inf)
+  }
+
+  param_names <- .ce_match_beta_parameter_names(beta_names, fit)
+  active <- which(is.finite(grad) & abs(grad) > tol & param_names %in% rownames(df_tab))
+  if (length(active) == 0L) {
+    return(Inf)
+  }
+
+  df_vals <- suppressWarnings(as.numeric(df_tab[param_names[active], "df"]))
+  df_vals <- df_vals[is.finite(df_vals)]
+  if (length(df_vals) == 0L) Inf else min(df_vals)
+}
+
+.ce_classic_test_columns <- function(fit, estimate, se, grad, beta_names) {
+  df_val <- .ce_classic_df_from_gradient(fit, grad, beta_names)
+  stat <- if (is.finite(se) && se > 0) estimate / se else NA_real_
+  p_val <- if (is.finite(stat)) {
+    if (is.finite(df_val)) {
+      2 * stats::pt(-abs(stat), df = df_val)
+    } else {
+      2 * stats::pnorm(-abs(stat))
+    }
+  } else {
+    NA_real_
+  }
+
+  data.frame(
+    df = df_val,
+    `t value` = stat,
+    Pr = p_val,
+    check.names = FALSE
+  )
+}
+
+.ce_append_classic_test <- function(row, fit, estimate, se, grad, beta_names) {
+  if (!inherits(fit, "Classic_Fit")) return(row)
+  cbind(row, .ce_classic_test_columns(fit, estimate, se, grad, beta_names))
 }
 
 .conditional_effects_delta <- function(fit, effect, prob = 0.95, sd_multiplier = 1, sd_slice = NULL, resolution = 100, ...) {
@@ -632,12 +708,16 @@ summary.ce_rtmb <- function(object, ...) {
     estimate <- inv_link(eta_hi) - inv_link(eta_lo)
 
     se <- NA_real_
+    grad <- NULL
     if (!is.null(beta_info$V)) {
       grad <- as.numeric(inv_link_deriv(eta_hi) * X_hi - inv_link_deriv(eta_lo) * X_lo)
       se <- sqrt(pmax(as.numeric(t(grad) %*% beta_info$V %*% grad), 0))
     }
     ci <- .ce_wald_interval(estimate, se, prob = prob)
-    c(estimate = estimate, se = se, lower = ci$lower, upper = ci$upper)
+    out <- c(estimate = estimate, se = se, lower = ci$lower, upper = ci$upper)
+    attr(out, "grad") <- grad
+    attr(out, "beta_names") <- colnames(X_hi)
+    out
   }
 
   results <- data.frame()
@@ -654,7 +734,11 @@ summary.ce_rtmb <- function(object, ...) {
       newdata1[[focal]] <- f_val
       newdata2[[focal]] <- f_val + eps
 
-      est <- effect_summary(.ce_model_matrix(fit, newdata2), .ce_model_matrix(fit, newdata1)) / c(eps, eps, eps, eps)
+      est_raw <- effect_summary(.ce_model_matrix(fit, newdata2), .ce_model_matrix(fit, newdata1))
+      grad <- attr(est_raw, "grad")
+      if (!is.null(grad)) grad <- grad / eps
+      beta_names <- attr(est_raw, "beta_names")
+      est <- est_raw / c(eps, eps, eps, eps)
 
       res_row <- data.frame(
         moderator = mod,
@@ -664,6 +748,13 @@ summary.ce_rtmb <- function(object, ...) {
         se = est[["se"]],
         lower = est[["lower"]],
         upper = est[["upper"]]
+      )
+      res_row <- .ce_append_classic_test(
+        res_row, fit,
+        estimate = est[["estimate"]],
+        se = est[["se"]],
+        grad = grad,
+        beta_names = beta_names
       )
       results <- rbind(results, res_row)
     }
@@ -688,6 +779,13 @@ summary.ce_rtmb <- function(object, ...) {
             se = est[["se"]],
             lower = est[["lower"]],
             upper = est[["upper"]]
+          )
+          res_row <- .ce_append_classic_test(
+            res_row, fit,
+            estimate = est[["estimate"]],
+            se = est[["se"]],
+            grad = attr(est, "grad"),
+            beta_names = attr(est, "beta_names")
           )
           results <- rbind(results, res_row)
         }
@@ -719,6 +817,8 @@ summary.ce_rtmb <- function(object, ...) {
 #' @param ... Additional arguments.
 #'
 #' @return A `ce_simple` object (data frame) containing the estimated effects and their credible intervals.
+#'   For `Classic_Fit` objects, test columns (`df`, `t value`, and `Pr`) are also returned when
+#'   standard errors are available.
 #'
 #' @examples
 #' \donttest{

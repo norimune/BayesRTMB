@@ -28,6 +28,8 @@ simple_effects(
 }
 \value{
 A `ce_simple` object (data frame) containing the estimated effects and their credible intervals.
+For `Classic_Fit` objects, test columns (`df`, `t value`, and `Pr`) are also returned when
+standard errors are available.
 }
 \description{
 Calculate the effect of a focal variable at different levels of a moderator.
