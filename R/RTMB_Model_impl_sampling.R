@@ -477,6 +477,31 @@
 }
 
 #' @noRd
+.rtmb_vb_chain_score <- function(elbo_final_vec, rel_obj_vec, fit) {
+  score <- elbo_final_vec
+  nonfinite_score <- !is.finite(score)
+  if (any(nonfinite_score)) {
+    lp_idx <- match("lp", dimnames(fit)[[3]])
+    if (!is.na(lp_idx)) {
+      for (c in which(nonfinite_score)) {
+        lp_vals <- fit[, c, lp_idx]
+        lp_vals <- lp_vals[is.finite(lp_vals)]
+        if (length(lp_vals) > 0L) {
+          score[c] <- mean(lp_vals)
+        }
+      }
+    }
+  }
+  if (!any(is.finite(score))) {
+    finite_rel <- is.finite(rel_obj_vec)
+    if (any(finite_rel)) {
+      score[finite_rel] <- -rel_obj_vec[finite_rel]
+    }
+  }
+  score
+}
+
+#' @noRd
 .variational_impl <- function(self, private, iter, tol_rel_obj, window_size, num_samples, 
                               num_estimate, alpha, laplace, print_freq, 
                               method = c("meanfield", "fullrank", "hybrid"), 
@@ -685,7 +710,24 @@
     }
   }
 
-  best_chain <- which.max(elbo_final_vec)
+  chain_score <- .rtmb_vb_chain_score(elbo_final_vec, rel_obj_vec, fit)
+  if (!any(is.finite(chain_score))) {
+    stop(
+      "VB estimation finished, but no estimate had a finite ELBO, finite lp draw, or finite rel_obj. ",
+      "Try smaller 'alpha', stronger priors, different initial values, or checking the model parameterization.",
+      call. = FALSE
+    )
+  }
+  best_chain <- which.max(chain_score)
+  if (!is.finite(elbo_final_vec[best_chain])) {
+    warning(
+      sprintf(
+        "All or some final VB ELBO values were non-finite; selected est%d using fallback diagnostics.",
+        best_chain
+      ),
+      call. = FALSE
+    )
+  }
   posterior_mean <- numeric(length(self$pl_full$names)); names(posterior_mean) <- self$pl_full$names
   fixed_mean <- apply(fit[, best_chain, -1, drop = FALSE], 3, mean); posterior_mean[names(fixed_mean)] <- fixed_mean
   if (!is.null(random_fit)) { random_mean <- apply(random_fit[, best_chain, , drop = FALSE], 3, mean); posterior_mean[names(random_mean)] <- random_mean }

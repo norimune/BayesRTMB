@@ -303,12 +303,25 @@ ADVI_method <- function(model, par_list, pl_full,
     para_final[i, ] <- unlist(con_list, use.names = FALSE)
   }
 
-  if (method == "hybrid") {
-    elbo_final <- mean(lp_final) + sum(L_diag) + sum(omega) + entropy_const
-  } else if (method == "fullrank") {
-    elbo_final <- mean(lp_final) + sum(L_diag) + entropy_const
+  finite_lp_final <- lp_final[is.finite(lp_final)]
+  final_lp_mean <- if (length(finite_lp_final) > 0L) {
+    mean(finite_lp_final)
   } else {
-    elbo_final <- mean(lp_final) + sum(omega) + entropy_const
+    NA_real_
+  }
+
+  if (method == "hybrid") {
+    elbo_final <- final_lp_mean + sum(L_diag) + sum(omega) + entropy_const
+  } else if (method == "fullrank") {
+    elbo_final <- final_lp_mean + sum(L_diag) + entropy_const
+  } else {
+    elbo_final <- final_lp_mean + sum(omega) + entropy_const
+  }
+  if (!is.finite(elbo_final)) {
+    finite_elbo_history <- elbo_history[is.finite(elbo_history)]
+    if (length(finite_elbo_history) > 0L) {
+      elbo_final <- finite_elbo_history[length(finite_elbo_history)]
+    }
   }
 
   fit <- array(NA, dim = c(num_samples, 1, length(fixed_names) + 1))
