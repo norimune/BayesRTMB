@@ -100,6 +100,29 @@ test_that("Wrappers reject unsupported priors and unused dots", {
   expect_error(rtmb_table(matrix(c(1, 2, 3, 4), 2), typo_arg = 1), "unused argument")
 })
 
+test_that("rtmb_glmer cwc accepts unquoted cluster with all numeric fixed effects", {
+  dat <- data.frame(
+    y = c(1, 2, 3, 4, 5, 6),
+    x = c(1, 2, 3, 10, 11, 12),
+    z = c(2, 4, 6, 20, 22, 24),
+    f = factor(c("a", "b", "a", "a", "b", "a")),
+    ID = rep(c("g1", "g2"), each = 3)
+  )
+
+  mdl <- rtmb_glmer(
+    y ~ x + z + f + (1 | ID),
+    data = dat,
+    family = "gaussian",
+    cwc = list(ID, "all")
+  )
+
+  centered <- mdl$raw_data
+  expect_equal(unname(tapply(centered$x, centered$ID, mean)), c(0, 0), tolerance = 1e-12)
+  expect_equal(unname(tapply(centered$z, centered$ID, mean)), c(0, 0), tolerance = 1e-12)
+  expect_identical(centered$y, dat$y)
+  expect_identical(centered$f, dat$f)
+})
+
 test_that("rtmb_mdu supports hierarchical lambda for choice models", {
   sets <- matrix(
     c(1, 2, 3,

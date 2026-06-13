@@ -55,7 +55,7 @@ continuous families. Default is `prior_flat()`.}
 
 \item{centering}{Alias for `gmc`.}
 
-\item{cwc}{List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).}
+\item{cwc}{List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center). You can also use \code{cwc = list(ID, "x")} or \code{cwc = list(ID, "all")}; \code{"all"} centers all numeric fixed-effect variables within the cluster.}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 
