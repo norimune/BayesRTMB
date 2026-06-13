@@ -36,6 +36,31 @@ test_that("to_long handles multiple within groups", {
   expect_identical(res$y[res$id == 1], c(11L, 13L, 15L))
 })
 
+test_that("to_long concatenates list of column name vectors for one value", {
+  dat <- data.frame(
+    id = 1:2,
+    v1 = 1:2,
+    v2 = 3:4,
+    w1 = 11:12,
+    w2 = 13:14
+  )
+  A_name <- c("v1", "v2")
+  B_name <- c("w1", "w2")
+
+  res <- to_long(
+    dat,
+    within = list(A_name, B_name),
+    label = "item",
+    value = "score",
+    id = "id"
+  )
+
+  expect_identical(names(res), c("id", "item", "score"))
+  expect_identical(levels(res$item), c("v1", "v2", "w1", "w2"))
+  expect_identical(as.character(res$item[res$id == 1]), c("v1", "v2", "w1", "w2"))
+  expect_identical(res$score[res$id == 1], c(1L, 3L, 11L, 13L))
+})
+
 test_that("to_long warns when multiple within groups have different lengths", {
   dat <- data.frame(
     id = 1:2,

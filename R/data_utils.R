@@ -11,6 +11,8 @@
 #'     \item A character vector of column names.
 #'     \item A range string like \code{"time1:time4"}.
 #'     \item A prefix string like \code{"time"} (matches all columns starting with "time").
+#'     \item A list of column-name vectors or range/prefix specifications to
+#'       concatenate into one long value column.
 #'     \item Multiple range/prefix/name specifications when \code{value} has the same length.
 #'   }
 #' @param label The name for the new column that will contain the level names (e.g., "Time"). 
@@ -70,7 +72,7 @@ to_long <- function(data, within = NULL, label = NULL, value = "Value", id = NUL
   }
 
   # 1. Handle 'within' specification
-  if (length(value) > 1 || is.list(within)) {
+  if (length(value) > 1) {
     within_specs <- if (is.list(within)) within else as.list(within)
     if (length(within_specs) != length(value)) {
       stop(sprintf(
@@ -95,6 +97,12 @@ to_long <- function(data, within = NULL, label = NULL, value = "Value", id = NUL
       )
       stop("Cannot reshape multiple 'within' groups unless they have the same number of columns.", call. = FALSE)
     }
+  } else if (is.list(within)) {
+    resolved <- lapply(within, resolve_within)
+    target_cols <- unlist(lapply(resolved, `[[`, "cols"), use.names = FALSE)
+    inferred_labels <- vapply(resolved, `[[`, character(1), "label")
+    non_default_labels <- inferred_labels[inferred_labels != "Condition"]
+    inferred_label <- if (length(non_default_labels) > 0L) non_default_labels[1] else "Condition"
   } else {
     resolved <- resolve_within(within)
     target_cols <- resolved$cols
