@@ -377,6 +377,15 @@ NUTS_method <- function(model,
     NULL
   }
   if (is.null(M_inv)) M_inv <- nuts_core$identity_metric(P_fixed, metric, metric_layout)
+  M_inv_chol <- NULL
+  current_metric_condition <- NA_real_
+  refresh_metric_cache <- function() {
+    M_inv_chol <<- nuts_core$metric_chol(M_inv)
+    current_metric_condition <<- nuts_core$metric_condition(M_inv)
+    invisible(NULL)
+  }
+  refresh_metric_cache()
+  metric_condition_record[1] <- current_metric_condition
   eps <- FindReasonableEpsilon(q_fixed_init, M_inv)
 
   # Dual Averaging parameters
@@ -423,7 +432,7 @@ NUTS_method <- function(model,
       model$rtmb_pd_error_state$post_warmup <- i > warmup
     }
     q_old <- para_fixed[i-1, ]
-    p_old <- nuts_core$rmomentum(M_inv)
+    p_old <- nuts_core$rmomentum(M_inv, M_inv_chol)
     gr_old <- gr_NUTS(q_old)
     H_old <- calc_H(q_old, p_old, M_inv)
     energy_record[i] <- -H_old
@@ -546,6 +555,7 @@ NUTS_method <- function(model,
               if (metric_stats$n < min_metric_samples()) {
                 metric_stats <- NULL
                 M_inv <- nuts_core$identity_metric(P_fixed, metric, metric_layout)
+                refresh_metric_cache()
                 metric_updated_record[i] <- TRUE
                 metric_forced_update <- TRUE
               }
@@ -570,6 +580,7 @@ NUTS_method <- function(model,
               metric_min = metric_min,
               metric_max = metric_max
             )
+            refresh_metric_cache()
             metric_updated_record[i] <- TRUE
           }
 
@@ -587,10 +598,10 @@ NUTS_method <- function(model,
           }
         }
       }
-      metric_condition_record[i] <- nuts_core$metric_condition(M_inv)
+      metric_condition_record[i] <- current_metric_condition
     } else {
       eps <- eps_bar
-      metric_condition_record[i] <- nuts_core$metric_condition(M_inv)
+      metric_condition_record[i] <- current_metric_condition
     }
     metric_type_record[i] <- metric
     if (i %% 200 == 0) {
@@ -741,12 +752,25 @@ create_NUTS_core <- function(ad_obj) {
     max(vals) / min(vals)
   }
 
-  rmomentum <- function(M_inv) {
+  metric_chol <- function(M_inv) {
+    if (is_hybrid_metric(M_inv)) {
+      dense_chol <- NULL
+      if (length(M_inv$dense_idx) > 0L) {
+        dense_chol <- tryCatch(chol(M_inv$dense), error = function(e) NULL)
+      }
+      return(list(type = "hybrid_chol", dense = dense_chol))
+    }
+    if (!is.matrix(M_inv)) return(NULL)
+    tryCatch(chol(M_inv), error = function(e) NULL)
+  }
+
+  rmomentum <- function(M_inv, M_chol = NULL) {
     if (is_hybrid_metric(M_inv)) {
       z <- rnorm(M_inv$dim)
       out <- numeric(M_inv$dim)
       if (length(M_inv$dense_idx) > 0L) {
-        R <- tryCatch(chol(M_inv$dense), error = function(e) NULL)
+        R <- if (is.list(M_chol) && identical(M_chol$type, "hybrid_chol")) M_chol$dense else NULL
+        if (is.null(R)) R <- tryCatch(chol(M_inv$dense), error = function(e) NULL)
         out[M_inv$dense_idx] <- if (is.null(R)) z[M_inv$dense_idx] else as.numeric(backsolve(R, z[M_inv$dense_idx]))
       }
       if (length(M_inv$diag_idx) > 0L) {
@@ -756,7 +780,8 @@ create_NUTS_core <- function(ad_obj) {
     }
     z <- rnorm(if (is.matrix(M_inv)) nrow(M_inv) else length(M_inv))
     if (!is.matrix(M_inv)) return(z / sqrt(M_inv))
-    R <- tryCatch(chol(M_inv), error = function(e) NULL)
+    R <- if (is.matrix(M_chol)) M_chol else NULL
+    if (is.null(R)) R <- tryCatch(chol(M_inv), error = function(e) NULL)
     if (is.null(R)) return(z)
     as.numeric(backsolve(R, z))
   }
@@ -1200,6 +1225,7 @@ create_NUTS_core <- function(ad_obj) {
     safe_multinomial_uturn = safe_multinomial_uturn,
     identity_metric = identity_metric,
     metric_condition = metric_condition,
+    metric_chol = metric_chol,
     rmomentum = rmomentum,
     regularize_metric = regularize_metric,
     hessian_metric = hessian_metric,

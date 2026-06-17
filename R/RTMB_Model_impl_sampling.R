@@ -277,10 +277,11 @@
     }
 
     P_all_true <- length(local_pl_full$names)
-    iter_total <- sampling + warmup
-    para_final <- array(NA, dim = c(iter_total, P_all_true))
+    retained_index <- seq(from = (warmup + 1), to = (warmup + sampling), by = thin)
+    para_final <- array(NA, dim = c(length(retained_index), P_all_true))
 
-    for (i in 1:iter_total) {
+    for (ii in seq_along(retained_index)) {
+      i <- retained_index[ii]
       x_in <- as.numeric(res$para_fixed[i, ])
       if (laplace && length(ad_obj$env$random) > 0) {
         ad_obj$fn(x_in)
@@ -289,9 +290,10 @@
         para_list <- ad_obj$env$parList(x = x_in)
       }
       con_list <- to_constrained(para_list, local_par_list)
-      para_final[i, ] <- unlist(con_list, use.names = FALSE)
+      para_final[ii, ] <- unlist(con_list, use.names = FALSE)
     }
     res$para <- para_final
+    res$retained_index <- retained_index
     res$para_full <- NULL
     if (!is.null(p_callback)) {
       p_callback(msg = paste0("chain ", c, " done (100%)"), amt = 1)
@@ -388,8 +390,8 @@
     res <- results_list[[c]]
     pd_error_counts[c] <- if (!is.null(res$pd_error_count)) res$pd_error_count else 0L
     fit[, c, 1] <- res$lp[mcmc_index]
-    for (j in 1:P_fixed) fit[, c, j + 1] <- res$para[mcmc_index, fixed_idx[j]]
-    if (P_random > 0) { for (j in 1:P_random) random_fit[, c, j] <- res$para[mcmc_index, random_idx[j]] }
+    for (j in 1:P_fixed) fit[, c, j + 1] <- res$para[, fixed_idx[j]]
+    if (P_random > 0) { for (j in 1:P_random) random_fit[, c, j] <- res$para[, random_idx[j]] }
     accept_mat[, c] <- res$accept[mcmc_index]; td_mat[, c] <- res$treedepth[mcmc_index]; eps_vec[c] <- res$eps
     leapfrog_mat[, c] <- res$n_leapfrog[mcmc_index]
     divergent_mat[, c] <- res$divergent[mcmc_index]
