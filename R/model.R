@@ -57,7 +57,6 @@ NULL
 #' @param init A list or numeric vector of initial values for parameters (optional). If not specified, initialized randomly.
 #' @param view Character vector of parameter names to be displayed preferentially at the top when outputting results like \code{summary()} (optional).
 #' @param fixed A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.
-
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
@@ -120,14 +119,21 @@ NULL
 #' map_named$summary()
 #' }
 #' @param silent Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.
+#' @param gr_test Logical; if TRUE, evaluate the gradient once after the AD tape is built.
+#'   By default, model creation checks that \code{MakeADFun()} can build the AD tape but skips
+#'   this extra gradient evaluation for speed.
 #'
 #' @return An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
 #'
 #' @export
-rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, fixed = NULL, silent = FALSE) {
+rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL, fixed = NULL, silent = FALSE, gr_test = FALSE) {
 
   if (is.null(silent)) silent <- FALSE
   if (getOption("BayesRTMB.silent", FALSE)) silent <- TRUE
+  if (is.null(gr_test)) gr_test <- FALSE
+  if (!is.logical(gr_test) || length(gr_test) != 1L || is.na(gr_test)) {
+    stop("gr_test must be TRUE or FALSE.", call. = FALSE)
+  }
 
   old_silent <- options(BayesRTMB.silent = silent)
   on.exit(options(old_silent), add = TRUE)
@@ -321,7 +327,8 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     par_names  = par_names,
     init       = init,
     view       = view,
-    code       = original_code
+    code       = original_code,
+    gr_test    = gr_test
   )
 
 

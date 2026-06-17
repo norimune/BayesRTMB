@@ -153,9 +153,9 @@
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = chains)
       else future::plan(future::multisession, workers = chains)
     }
-    .rtmb_progress_line(paste0("Starting parallel sampling (chains = ", chains, ")..."), progress_mode)
+    .rtmb_progress_start_line(paste0("Starting parallel sampling (chains = ", chains, ")..."))
   } else {
-    .rtmb_progress_line(paste0("Starting sequential sampling (chains = ", chains, ")..."), progress_mode)
+    .rtmb_progress_start_line(paste0("Starting sequential sampling (chains = ", chains, ")..."))
   }
 
   # --- [IMPORTANT] Data extraction to avoid serialization ---
@@ -534,9 +534,9 @@
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = num_estimate)
       else future::plan(future::multisession, workers = num_estimate)
     }
-    .rtmb_progress_line(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")..."), progress_mode)
+    .rtmb_progress_start_line(paste0("Starting parallel VB estimation (num_estimate = ", num_estimate, ")..."))
   } else {
-    .rtmb_progress_line(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")..."), progress_mode)
+    .rtmb_progress_start_line(paste0("Starting sequential VB estimation (num_estimate = ", num_estimate, ")..."))
   }
 
   # --- Data extraction to avoid serialization ---

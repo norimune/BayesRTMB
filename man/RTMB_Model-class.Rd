@@ -613,8 +613,9 @@ metric shrinkage. Larger values shrink more strongly toward 1. Default is 5.}
 
 \item{\code{progress}}{Progress reporting style. `"auto"`, `"bar"`, and
 `"message"` use line-based progress messages; `"none"` suppresses
-progress. `"bar"` is accepted for backward compatibility. Default is
-`"auto"`.}
+detailed progress but still prints the high-level start message unless
+\code{silent = TRUE} was used when creating the model. `"bar"` is
+accepted for backward compatibility. Default is `"auto"`.}
 }
 \if{html}{\out{</div>}}
 }
@@ -682,8 +683,9 @@ Run Automatic Differentiation Variational Inference (ADVI).
 \item{\code{fixed}}{Optional list specifying parameter values to fix.}
 
 \item{\code{progress}}{Progress reporting style. `"auto"` and `"bar"` use
-line-based progress messages; `"none"` suppresses progress. Default is
-`"auto"`.}
+line-based progress messages; `"none"` suppresses detailed progress but
+still prints the high-level start message unless \code{silent = TRUE}
+was used when creating the model. Default is `"auto"`.}
 }
 \if{html}{\out{</div>}}
 }

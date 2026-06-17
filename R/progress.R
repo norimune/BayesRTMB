@@ -15,6 +15,14 @@
 }
 
 #' @noRd
+.rtmb_progress_start_line <- function(msg) {
+  if (!isTRUE(getOption("BayesRTMB.silent", FALSE)) && nzchar(msg)) {
+    cat(msg, "\n", sep = "")
+    .rtmb_flush_console()
+  }
+}
+
+#' @noRd
 .rtmb_flush_console <- function() {
   if (interactive()) {
     try(utils::flush.console(), silent = TRUE)

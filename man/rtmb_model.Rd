@@ -11,7 +11,8 @@ rtmb_model(
   init = NULL,
   view = NULL,
   fixed = NULL,
-  silent = FALSE
+  silent = FALSE,
+  gr_test = FALSE
 )
 }
 \arguments{
@@ -28,6 +29,10 @@ rtmb_model(
 \item{fixed}{A named list of parameter values to fix (optional). Useful for scoring or plug-in estimation where some parameters (e.g., item parameters) are fixed to known values.}
 
 \item{silent}{Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.}
+
+\item{gr_test}{Logical; if TRUE, evaluate the gradient once after the AD tape is built.
+By default, model creation checks that \code{MakeADFun()} can build the AD tape but skips
+this extra gradient evaluation for speed.}
 }
 \value{
 An \code{RTMB_Model} class instance with a compiled and pre-tested automatic differentiation function.
