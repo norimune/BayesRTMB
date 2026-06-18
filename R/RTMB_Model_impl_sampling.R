@@ -6,7 +6,7 @@
                          metric_regularization,
                          metric_shrinkage, metric_min, metric_max,
                          parallel, laplace, init, init_jitter,
-                         save_csv, map, fixed, progress) {
+                         save_csv, map, fixed, globals, progress) {
   nuts_variant <- match.arg(nuts_variant, c("multinomial", "slice"))
   metric <- match.arg(metric, c("auto", "diag", "dense", "hybrid"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
@@ -25,7 +25,7 @@
       metric_max = metric_max,
       parallel = parallel, laplace = laplace, init = init,
       init_jitter = init_jitter, save_csv = save_csv, map = map, fixed = fixed,
-      progress = progress))
+      globals = globals, progress = progress))
   }
 
   set.seed(seed)
@@ -43,7 +43,7 @@
     out
   }
   stop_nonfinite_lp <- function(context) {
-    na_vars <- data_na_summary(self$data)
+    na_vars <- data_na_summary(local_data)
     if (length(na_vars) > 0L) {
       stop(
         context,
@@ -209,9 +209,19 @@
     code_model_local = local_code_model,
     shadow_list_local = local_shadow_list
   )
+  environment(f_ad_global) <- list2env(list(
+    data_local = local_data,
+    par_list_local = local_par_list,
+    log_prob_local = local_log_prob,
+    transform_local = local_transform,
+    jacobian_target = "all",
+    adreport = FALSE,
+    fixed_prior_specs_local = local_fixed_prior_specs,
+    code_model_local = local_code_model,
+    shadow_list_local = local_shadow_list
+  ), parent = asNamespace("BayesRTMB"))
 
   run_chain <- function(c, f_ad, p_callback = NULL) {
-    library(BayesRTMB)
     unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, local_par_list), local_par_list)
     unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
@@ -301,6 +311,46 @@
     return(res)
   }
 
+  worker_env <- list2env(list(
+    base_init = base_init,
+    local_par_list = local_par_list,
+    init_jitter = init_jitter,
+    local_map = local_map,
+    use_random = use_random,
+    metric = metric,
+    laplace = laplace,
+    sampling = sampling,
+    warmup = warmup,
+    delta = delta,
+    max_treedepth = max_treedepth,
+    save_info = save_info,
+    nuts_variant = nuts_variant,
+    metric_init = metric_init,
+    metric_adaptation = metric_adaptation,
+    metric_regularization = metric_regularization,
+    metric_shrinkage = metric_shrinkage,
+    metric_min = metric_min,
+    metric_max = metric_max,
+    thin = thin,
+    local_pl_full = local_pl_full,
+    local_data = local_data,
+    mcmc_pd_error_to_neginf = mcmc_pd_error_to_neginf
+  ), parent = asNamespace("BayesRTMB"))
+  environment(data_na_summary) <- worker_env
+  worker_env$data_na_summary <- data_na_summary
+  environment(stop_nonfinite_lp) <- worker_env
+  worker_env$stop_nonfinite_lp <- stop_nonfinite_lp
+  environment(is_positive_definite_error) <- worker_env
+  worker_env$is_positive_definite_error <- is_positive_definite_error
+  environment(wrap_mcmc_pd_errors) <- worker_env
+  worker_env$wrap_mcmc_pd_errors <- wrap_mcmc_pd_errors
+  environment(run_chain) <- worker_env
+
+  future_globals <- function(extra = list()) {
+    if (isTRUE(globals)) return(TRUE)
+    c(list(run_chain = run_chain, f_ad_global = f_ad_global), extra)
+  }
+
   results_list <- list()
   if (parallel) {
     iter <- sampling + warmup
@@ -308,9 +358,10 @@
     if (identical(progress_mode, "none")) {
       results_list <- withCallingHandlers({
         futures <- lapply(seq_len(chains), function(c) {
+          chain_id <- c
           future::future({
-            run_chain(c, f_ad = f_ad_global, p_callback = function(...) invisible(NULL))
-          }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+            run_chain(chain_id, f_ad = f_ad_global, p_callback = function(...) invisible(NULL))
+          }, seed = TRUE, packages = "RTMB", globals = future_globals(list(chain_id = chain_id)))
         })
         lapply(futures, future::value)
       }, warning = function(w) { if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
@@ -346,7 +397,7 @@
           }, warning = function(w) {
             if (grepl("package:BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning")
           })
-          }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+          }, seed = TRUE, packages = "RTMB", globals = future_globals(list(chain_id = chain_id, progress_file = progress_file)))
         })
         line_counts <- .rtmb_report_progress_files(progress_files, line_counts)
       }
@@ -507,12 +558,12 @@
 .variational_impl <- function(self, private, iter, tol_rel_obj, window_size, num_samples, 
                               num_estimate, alpha, laplace, print_freq, 
                               method = c("meanfield", "fullrank", "hybrid"), 
-                              parallel, seed, init, save_csv, map, fixed, progress) {
+                              parallel, seed, init, save_csv, map, fixed, globals, progress) {
   if (!is.null(fixed)) {
     return(private$.dispatch_fixed(.method_to_call = "variational", iter = iter, tol_rel_obj = tol_rel_obj, window_size = window_size,
       num_samples = num_samples, num_estimate = num_estimate, alpha = alpha,
       laplace = laplace, print_freq = print_freq, method = method,
-      parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map, fixed = fixed, progress = progress))
+      parallel = parallel, seed = seed, init = init, save_csv = save_csv, map = map, fixed = fixed, globals = globals, progress = progress))
   }
 
   set.seed(seed); method <- match.arg(method)
@@ -589,9 +640,19 @@
     code_model_local = local_code_model,
     shadow_list_local = local_shadow_list
   )
+  environment(f_ad_global) <- list2env(list(
+    data_local = local_data,
+    par_list_local = local_par_list,
+    log_prob_local = local_log_prob,
+    transform_local = local_transform,
+    jacobian_target = "all",
+    adreport = FALSE,
+    fixed_prior_specs_local = local_fixed_prior_specs,
+    code_model_local = local_code_model,
+    shadow_list_local = local_shadow_list
+  ), parent = asNamespace("BayesRTMB"))
 
   run_advi_worker <- function(c, f_ad, p_callback = NULL, p_interval = 0) {
-    library(BayesRTMB)
     unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, local_par_list), local_par_list)
     unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
     unc_init_list_new <- unconstrained_vector_to_list(unc_init_vec, local_par_list)
@@ -629,15 +690,38 @@
     return(res)
   }
 
+  worker_env <- list2env(list(
+    base_init = base_init,
+    local_par_list = local_par_list,
+    use_random = use_random,
+    local_map = local_map,
+    iter = iter,
+    tol_rel_obj = tol_rel_obj,
+    window_size = window_size,
+    num_samples = num_samples,
+    alpha = alpha,
+    laplace = laplace,
+    print_freq = print_freq,
+    method = method,
+    local_pl_full = local_pl_full
+  ), parent = asNamespace("BayesRTMB"))
+  environment(run_advi_worker) <- worker_env
+
+  future_globals <- function(extra = list()) {
+    if (isTRUE(globals)) return(TRUE)
+    c(list(run_advi_worker = run_advi_worker, f_ad_global = f_ad_global), extra)
+  }
+
   results_list <- list()
   update_interval <- max(1L, floor(iter / 5L))
   if (parallel && num_estimate > 1) {
     if (identical(progress_mode, "none")) {
       results_list <- withCallingHandlers({
         futures <- lapply(seq_len(num_estimate), function(c) {
+          estimate_id <- c
           future::future({
-            run_advi_worker(c, f_ad = f_ad_global, p_callback = NULL, p_interval = 0L)
-          }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+            run_advi_worker(estimate_id, f_ad = f_ad_global, p_callback = NULL, p_interval = 0L)
+          }, seed = TRUE, packages = "RTMB", globals = future_globals(list(estimate_id = estimate_id)))
         })
         lapply(futures, future::value)
       }, warning = function(w) { if (grepl("BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning") })
@@ -673,7 +757,11 @@
           }, warning = function(w) {
             if (grepl("BayesRTMB", conditionMessage(w))) invokeRestart("muffleWarning")
           })
-          }, seed = TRUE, packages = c("RTMB", "BayesRTMB"), globals = TRUE)
+          }, seed = TRUE, packages = "RTMB", globals = future_globals(list(
+            estimate_id = estimate_id,
+            progress_file = progress_file,
+            update_interval = update_interval
+          )))
         })
         line_counts <- .rtmb_report_progress_files(progress_files, line_counts)
       }

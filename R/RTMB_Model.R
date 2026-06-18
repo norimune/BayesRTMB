@@ -567,6 +567,9 @@ RTMB_Model <- R6::R6Class(
     #' @param save_csv Optional list for saving MCMC results. e.g., list(name = "model", dir = "BayesRTMB_mcmc").
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
+    #' @param globals Logical; if TRUE, let \pkg{future} discover globals
+    #'   automatically when \code{parallel = TRUE}. If FALSE, only the model
+    #'   object components required by BayesRTMB workers are exported. Default is FALSE.
     #' @param progress Progress reporting style. `"auto"`, `"bar"`, and
     #'   `"message"` use line-based progress messages; `"none"` suppresses
     #'   detailed progress but still prints the high-level start message unless
@@ -587,6 +590,7 @@ RTMB_Model <- R6::R6Class(
                       parallel = FALSE, laplace = FALSE,
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL,
+                      globals = FALSE,
                       progress = c("auto", "none", "bar", "message")) {
       if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
         stop(
@@ -600,6 +604,9 @@ RTMB_Model <- R6::R6Class(
       metric_init <- match.arg(metric_init)
       metric_adaptation <- match.arg(metric_adaptation)
       progress <- match.arg(progress)
+      if (!is.logical(globals) || length(globals) != 1L || is.na(globals)) {
+        stop("globals must be TRUE or FALSE.", call. = FALSE)
+      }
       .sample_impl(self, private, sampling, warmup, chains, thin, seed, delta, 
                    max_treedepth, nuts_variant, metric,
                    metric_init,
@@ -607,7 +614,7 @@ RTMB_Model <- R6::R6Class(
                    metric_regularization,
                    metric_shrinkage, metric_min, metric_max,
                    parallel, laplace, init, init_jitter,
-                   save_csv, map, fixed, progress)
+                   save_csv, map, fixed, globals, progress)
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).
@@ -626,6 +633,9 @@ RTMB_Model <- R6::R6Class(
     #' @param save_csv Optional list for saving VB results. e.g., list(name = "model", dir = "BayesRTMB_vb").
     #' @param map Optional list specifying parameters to fix (factors).
     #' @param fixed Optional list specifying parameter values to fix.
+    #' @param globals Logical; if TRUE, let \pkg{future} discover globals
+    #'   automatically when \code{parallel = TRUE}. If FALSE, only the model
+    #'   object components required by BayesRTMB workers are exported. Default is FALSE.
     #' @param progress Progress reporting style. `"auto"` and `"bar"` use
     #'   line-based progress messages; `"none"` suppresses detailed progress but
     #'   still prints the high-level start message unless \code{silent = TRUE}
@@ -638,6 +648,7 @@ RTMB_Model <- R6::R6Class(
                            method = c("meanfield", "fullrank", "hybrid"), parallel = FALSE,
                            seed = sample.int(1e6, 1), init = NULL, save_csv = NULL,
                            map = NULL, fixed = NULL,
+                           globals = FALSE,
                            progress = c("auto", "none", "bar", "message")) {
       if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
         stop(
@@ -647,9 +658,12 @@ RTMB_Model <- R6::R6Class(
         )
       }
       progress <- match.arg(progress)
+      if (!is.logical(globals) || length(globals) != 1L || is.na(globals)) {
+        stop("globals must be TRUE or FALSE.", call. = FALSE)
+      }
       .variational_impl(self, private, iter, tol_rel_obj, window_size, num_samples, 
                         num_estimate, alpha, laplace, print_freq, method, 
-                        parallel, seed, init, save_csv, map, fixed, progress)
+                        parallel, seed, init, save_csv, map, fixed, globals, progress)
     },
 
 
