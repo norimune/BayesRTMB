@@ -237,6 +237,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     if (model == "3PL") init$c <- rep(0.1, length(item_names))
   }
 
+  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = "Y")
   obj <- rtmb_model(data = list(Y = Y), code = code_obj, par_names = par_names_list,
                     init = init, fixed = fixed, view = view_vars)
   obj$type <- "irt"

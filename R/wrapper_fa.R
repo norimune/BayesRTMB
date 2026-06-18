@@ -234,6 +234,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
+    code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_fa))
     p_names <- list(
       mean = var_names,
       Lambda_star = list(var_names, factor_names),
@@ -369,6 +370,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
+    code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_fa))
     p_names <- list(
       mean = var_names,
       L_raw = list(var_names, factor_names),

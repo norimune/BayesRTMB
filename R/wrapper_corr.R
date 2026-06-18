@@ -419,6 +419,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      }
 
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
+     mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat))
      if (!is.null(generate_ast)) mdl_code$generate <- .rtmb_waic_generate_ast(NULL, generate_ast)
      class(mdl_code) <- "rtmb_code"
 
@@ -626,6 +627,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        dat_list$alpha_prior_sd <- alpha_prior_sd_val
        dat_list$sigma_rate_vec <- sigma_rate_val
      }
+     mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_list))
 
      v_names <- list(mean = var_names, sd = var_names)
      if (P == 2) {

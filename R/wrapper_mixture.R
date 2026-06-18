@@ -499,6 +499,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       if (!setup_from_formula) data_list$tau_scale <- prior$max_beta / 1.96
     }
   }
+  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
 
   init_list <- list()
   if (nrow(Y_mat) >= K_mix) {

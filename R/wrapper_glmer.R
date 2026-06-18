@@ -1440,6 +1440,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   }
 
   code_obj <- list(setup = setup_ast, parameters = param_ast)
+  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat))
   if (!is.null(tran_ast)) code_obj$transform <- tran_ast
   code_obj$model <- model_ast
   generate <- .rtmb_waic_generate_ast(generate, waic_ast)

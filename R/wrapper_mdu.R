@@ -1331,6 +1331,7 @@ rtmb_mdu <- function(data, ndim = 2,
     }
   }
 
+  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_mdu))
   obj <- rtmb_model(
     data = dat_mdu,
     code = code_obj,

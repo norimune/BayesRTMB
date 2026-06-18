@@ -448,6 +448,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     mdl_code$generate <- if (isTRUE(WAIC)) .rtmb_waic_generate_ast(NULL, gen_ast) else gen_ast
   }
   mdl_code$env <- tmp_env
+  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
 
   view_order <- c(b_vars, effect_names, s_vars)
   if (!is.null(view)) {

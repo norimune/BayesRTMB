@@ -613,6 +613,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       if (!setup_from_formula) data_list$tau_scale <- prior$max_beta / 1.96
     }
   }
+  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
 
   init_list <- list()
   if (nrow(Y_mat) >= K_mix) {
@@ -922,6 +923,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     }
   }
 
+  code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
   obj <- rtmb_model(data_list, code, par_names = par_names, init = init, view = c("b", "cutpoints", "alpha", "prob_mean"))
   obj$type <- "lrt_two_stage_regression"
   obj$extra <- list(source = "wrapper", prior_type = prior_type, marginal = "b")
