@@ -7,6 +7,15 @@
   )
 }
 
+.recommendation_row <- function(check, priority, message) {
+  data.frame(
+    check = check,
+    priority = priority,
+    message = message,
+    stringsAsFactors = FALSE
+  )
+}
+
 .diagnostic_status <- function(checks) {
   if (is.null(checks) || nrow(checks) == 0L) return("ok")
   if (any(checks$status == "problem", na.rm = TRUE)) "problem"
@@ -14,11 +23,33 @@
   else "ok"
 }
 
-.new_diagnose_result <- function(fit_type, checks, details = list()) {
+.empty_recommendations <- function() {
+  data.frame(
+    check = character(),
+    priority = character(),
+    message = character(),
+    stringsAsFactors = FALSE
+  )
+}
+
+.combine_recommendations <- function(recommendations) {
+  recommendations <- Filter(Negate(is.null), recommendations)
+  if (length(recommendations) == 0L) return(.empty_recommendations())
+  out <- do.call(rbind, recommendations)
+  priorities <- c(high = 1L, medium = 2L, low = 3L)
+  ord <- priorities[out$priority]
+  ord[is.na(ord)] <- 99L
+  out[order(ord), , drop = FALSE]
+}
+
+.new_diagnose_result <- function(fit_type, checks, details = list(),
+                                 recommendations = NULL) {
+  recommendations <- recommendations %||% .empty_recommendations()
   out <- list(
     fit_type = fit_type,
     status = .diagnostic_status(checks),
     checks = checks,
+    recommendations = recommendations,
     details = details
   )
   class(out) <- "diagnose_BayesRTMB"
@@ -89,7 +120,91 @@
   detail
 }
 
-diagnose_map_fit <- function(fit, ...) {
+.diagnostic_check_status <- function(checks, check) {
+  if (is.null(checks) || !is.data.frame(checks) || nrow(checks) == 0L) return(NA_character_)
+  idx <- which(checks$check == check)
+  if (length(idx) == 0L) return(NA_character_)
+  checks$status[idx[1L]]
+}
+
+.diagnostic_is_flagged <- function(checks, check) {
+  status <- .diagnostic_check_status(checks, check)
+  !is.na(status) && status %in% c("warning", "problem")
+}
+
+.diagnose_map_recommendations <- function(checks) {
+  recs <- list()
+  if (.diagnostic_is_flagged(checks, "convergence")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "convergence", "high",
+      "The optimizer did not converge cleanly. Try different initial values, increasing num_estimate, or adjusting optimizer control settings."
+    )
+  }
+  if (.diagnostic_is_flagged(checks, "finite_objective")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "finite_objective", "high",
+      "The objective is not finite. Check data for NA/Inf values, invalid link-function inputs, boundary values, and overly weak or incompatible priors."
+    )
+  }
+  if (.diagnostic_is_flagged(checks, "hessian") ||
+      .diagnostic_is_flagged(checks, "se_fallback") ||
+      .diagnostic_is_flagged(checks, "vcov_unc") ||
+      .diagnostic_is_flagged(checks, "standard_errors")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "standard_errors", "medium",
+      "Hessian-based uncertainty may be unreliable. Consider se_method = 'sampling', rescaling variables, checking boundary estimates, or simplifying/reparameterizing the model."
+    )
+  }
+  .combine_recommendations(recs)
+}
+
+.diagnose_classic_recommendations <- function(checks) {
+  recs <- list()
+  if (.diagnostic_is_flagged(checks, "convergence")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "convergence", "high",
+      "The optimizer did not converge cleanly. Try different initial values, increasing num_estimate, or adjusting optimizer control settings."
+    )
+  }
+  if (.diagnostic_is_flagged(checks, "finite_logLik")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "finite_logLik", "high",
+      "The log-likelihood is not finite. Check data for NA/Inf values, invalid link-function inputs, and boundary values."
+    )
+  }
+  if (.diagnostic_is_flagged(checks, "standard_errors")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "standard_errors", "medium",
+      "Some standard errors are non-finite. Check for boundary estimates, weak identification, or variables on very different scales."
+    )
+  }
+  .combine_recommendations(recs)
+}
+
+.diagnose_vb_recommendations <- function(checks) {
+  recs <- list()
+  if (.diagnostic_is_flagged(checks, "ELBO")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "ELBO", "high",
+      "The final ELBO contains non-finite values. Try different initial values, stronger priors, or checking the data and model code for NA/NaN-producing operations."
+    )
+  }
+  if (.diagnostic_is_flagged(checks, "relative_objective")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "relative_objective", "medium",
+      "The variational objective has not stabilized. Consider increasing iter or num_estimate, or using MCMC for a more reliable posterior check."
+    )
+  }
+  if (.diagnostic_is_flagged(checks, "best_chain")) {
+    recs[[length(recs) + 1L]] <- .recommendation_row(
+      "best_chain", "medium",
+      "No reliable best variational run was selected. Inspect ELBO traces, increase num_estimate, or retry with different initial values."
+    )
+  }
+  .combine_recommendations(recs)
+}
+
+diagnose_map_fit <- function(fit, recommend = TRUE, ...) {
   checks <- list()
   opt <- .selected_optimizer_status(fit)
   checks[[length(checks) + 1L]] <- .diagnostic_row(
@@ -147,18 +262,33 @@ diagnose_map_fit <- function(fit, ...) {
     if (.has_generated_log_lik(fit)) "pointwise log_lik is available for WAIC" else "pointwise log_lik is not available"
   )
 
-  .new_diagnose_result("MAP_Fit", do.call(rbind, checks), list(
+  checks_df <- do.call(rbind, checks)
+  recommendations <- if (isTRUE(recommend)) .diagnose_map_recommendations(checks_df) else .empty_recommendations()
+
+  .new_diagnose_result("MAP_Fit", checks_df, list(
     marginal_vars = fit$marginal_vars,
     laplace_random_vars = fit$laplace_random_vars,
     ci_method = fit$ci_method
-  ))
+  ), recommendations)
 }
 
 diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
                               ess_warning = 400, ess_problem = 100,
                               divergent_problem_rate = 0.01,
-                              divergent_strong_problem_rate = 0.05, ...) {
+                              divergent_strong_problem_rate = 0.05,
+                              recommend = TRUE, ...) {
   checks <- list()
+  min_accept <- NA_real_
+  max_td <- NA_real_
+  max_allowed <- NA_real_
+  n_divergent <- NA_integer_
+  n_transition <- NA_integer_
+  divergent_rate <- NA_real_
+  max_cond <- NA_real_
+  max_rhat <- NA_real_
+  min_ess <- NA_real_
+  pd_error_total <- NA_integer_
+  metric_auto_diag_reason <- character(0)
   ndraws <- dim(fit$fit)[1L]
   nchains <- dim(fit$fit)[2L]
   checks[[length(checks) + 1L]] <- .diagnostic_row(
@@ -283,6 +413,9 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
         msg <- paste0(msg, "; ", paste(utils::head(auto_reasons, 2L), collapse = " | "))
       }
       checks[[length(checks) + 1L]] <- .diagnostic_row("metric_auto", "ok", msg)
+      if (any(auto_effective == "diag", na.rm = TRUE)) {
+        metric_auto_diag_reason <- utils::head(auto_reasons, 2L)
+      }
     }
   }
   if (!is.null(fit$warmup_diagnostics) && length(fit$warmup_diagnostics) > 0L) {
@@ -364,10 +497,11 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
   }
 
   if (!is.null(fit$pd_error_count)) {
+    pd_error_total <- sum(fit$pd_error_count, na.rm = TRUE)
     checks[[length(checks) + 1L]] <- .diagnostic_row(
       "pd_errors",
-      if (sum(fit$pd_error_count, na.rm = TRUE) > 0L) "warning" else "ok",
-      paste("positive-definite/singularity fallback count:", sum(fit$pd_error_count, na.rm = TRUE))
+      if (pd_error_total > 0L) "warning" else "ok",
+      paste("positive-definite/singularity fallback count:", pd_error_total)
     )
   }
 
@@ -377,7 +511,71 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
     if (.has_generated_log_lik(fit)) "pointwise log_lik is available for WAIC" else "pointwise log_lik is not available"
   )
 
-  .new_diagnose_result("MCMC_Fit", do.call(rbind, checks), list(
+  checks_df <- do.call(rbind, checks)
+  recs <- list()
+  if (isTRUE(recommend)) {
+    if (is.finite(min_accept) && min_accept < 0.6) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "acceptance",
+        if (min_accept < 0.4) "high" else "medium",
+        "Mean acceptance is low. Try increasing delta, and if this persists, inspect model geometry and parameterization."
+      )
+    }
+    if (is.finite(max_td) && is.finite(max_allowed) && max_td >= max_allowed) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "treedepth", "medium",
+        "Some transitions reached max_treedepth. First check divergences and parameterization; if the fit is otherwise healthy, consider increasing max_treedepth."
+      )
+    }
+    if (is.finite(n_divergent) && n_divergent > 0L) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "divergent",
+        if (is.finite(divergent_rate) && divergent_rate >= divergent_problem_rate) "high" else "medium",
+        "Divergences were detected. Try increasing delta, for example delta = 0.9 or 0.95; if divergences remain, inspect parameterization and divergent draws."
+      )
+    }
+    if (is.finite(max_cond) && max_cond > 1e8) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "metric_condition", "medium",
+        "The mass-matrix condition number is very large. Consider rescaling predictors/parameters, using metric = 'diag', or simplifying the model."
+      )
+    }
+    if (is.finite(max_rhat) && max_rhat > rhat_warning) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "rhat",
+        if (max_rhat > rhat_problem) "high" else "medium",
+        "R-hat suggests incomplete mixing. Consider running more iterations, using more dispersed initial values, or checking for multimodality/label switching."
+      )
+    }
+    if (is.finite(min_ess) && min_ess < ess_warning) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "ess",
+        if (min_ess < ess_problem) "high" else "medium",
+        "Some effective sample sizes are low. Consider increasing sampling iterations or improving parameterization/metric choice."
+      )
+    }
+    if (is.finite(pd_error_total) && pd_error_total > 0L) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "pd_errors", "medium",
+        "Positive-definite or singularity fallbacks occurred. Consider metric = 'diag', rescaling variables, or checking whether the posterior geometry is weakly identified."
+      )
+    }
+    if (length(metric_auto_diag_reason) > 0L &&
+        (.diagnostic_is_flagged(checks_df, "ess") ||
+         .diagnostic_is_flagged(checks_df, "rhat"))) {
+      recs[[length(recs) + 1L]] <- .recommendation_row(
+        "metric_auto", "low",
+        paste0(
+          "metric = 'auto' selected a diagonal metric for at least one chain",
+          if (length(metric_auto_diag_reason) > 0L) paste0(" (", paste(metric_auto_diag_reason, collapse = " | "), ")") else "",
+          ". If mixing remains poor, compare with metric = 'hybrid' or inspect model scaling."
+        )
+      )
+    }
+  }
+  recommendations <- .combine_recommendations(recs)
+
+  .new_diagnose_result("MCMC_Fit", checks_df, list(
     laplace = fit$laplace,
     metric = fit$metric_type,
     metric_requested = if ("metric_requested" %in% names(fit)) fit$metric_requested else fit$metric_type,
@@ -386,10 +584,11 @@ diagnose_mcmc_fit <- function(fit, rhat_warning = 1.01, rhat_problem = 1.05,
     metric_init = fit$metric_init,
     metric_adaptation = fit$metric_adaptation,
     nuts_variant = fit$nuts_variant
-  ))
+  ), recommendations)
 }
 
-diagnose_vb_fit <- function(fit, rel_obj_warning = 1e-3, rel_obj_problem = 1e-2, ...) {
+diagnose_vb_fit <- function(fit, rel_obj_warning = 1e-3, rel_obj_problem = 1e-2,
+                            recommend = TRUE, ...) {
   checks <- list()
   checks[[length(checks) + 1L]] <- .diagnostic_row(
     "ELBO",
@@ -419,10 +618,13 @@ diagnose_vb_fit <- function(fit, rel_obj_warning = 1e-3, rel_obj_problem = 1e-2,
     "skipped",
     "ADVI is an approximate posterior; uncertainty and WAIC may be optimistic relative to MCMC"
   )
-  .new_diagnose_result("VB_Fit", do.call(rbind, checks), list(laplace = fit$laplace))
+  checks_df <- do.call(rbind, checks)
+  recommendations <- if (isTRUE(recommend)) .diagnose_vb_recommendations(checks_df) else .empty_recommendations()
+
+  .new_diagnose_result("VB_Fit", checks_df, list(laplace = fit$laplace), recommendations)
 }
 
-diagnose_classic_fit <- function(fit, ...) {
+diagnose_classic_fit <- function(fit, recommend = TRUE, ...) {
   checks <- list()
   opt <- .selected_optimizer_status(fit)
   checks[[length(checks) + 1L]] <- .diagnostic_row(
@@ -446,7 +648,10 @@ diagnose_classic_fit <- function(fit, ...) {
     )
   }
   checks[[length(checks) + 1L]] <- .diagnostic_row("WAIC", "skipped", "WAIC is not defined for Classic_Fit")
-  .new_diagnose_result("Classic_Fit", do.call(rbind, checks), list(df_method = fit$df_method))
+  checks_df <- do.call(rbind, checks)
+  recommendations <- if (isTRUE(recommend)) .diagnose_classic_recommendations(checks_df) else .empty_recommendations()
+
+  .new_diagnose_result("Classic_Fit", checks_df, list(df_method = fit$df_method), recommendations)
 }
 
 #' @export
@@ -458,6 +663,16 @@ print.diagnose_BayesRTMB <- function(x, ...) {
   if (!is.null(checks) && nrow(checks) > 0L) {
     for (i in seq_len(nrow(checks))) {
       cat(sprintf("[%s] %s: %s\n", checks$status[i], checks$check[i], checks$message[i]))
+    }
+  }
+  recommendations <- x$recommendations
+  if (!is.null(recommendations) && nrow(recommendations) > 0L) {
+    cat("\nRecommendations:\n")
+    for (i in seq_len(nrow(recommendations))) {
+      cat(sprintf("* [%s] %s: %s\n",
+                  recommendations$priority[i],
+                  recommendations$check[i],
+                  recommendations$message[i]))
     }
   }
   invisible(x)
