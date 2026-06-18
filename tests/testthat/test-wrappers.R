@@ -148,9 +148,16 @@ test_that("rtmb_mdu supports hierarchical lambda for choice models", {
   )
 
   expect_equal(mdl$extra$lambda, "random")
+  expect_equal(mdl$extra$distance, "euclidean")
   expect_true(all(c("lambda_mu", "sigma_lambda", "lambda_raw") %in% names(mdl$par_list)))
   expect_true("lambda_raw" %in% names(mdl$par_names))
   expect_error(rtmb_mdu(matrix(rnorm(20), nrow = 5), lambda = "random"), "only available")
+})
+
+test_that("rtmb_mdu defaults to euclidean distance for rating models", {
+  mdl <- rtmb_mdu(matrix(rnorm(20), nrow = 5), ndim = 1)
+
+  expect_equal(mdl$extra$distance, "euclidean")
 })
 
 test_that("rotate can use a principal-axis reference", {

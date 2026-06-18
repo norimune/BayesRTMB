@@ -7,7 +7,7 @@
 rtmb_mdu(
   data,
   ndim = 2,
-  distance = c("squared", "euclidean"),
+  distance = c("euclidean", "squared"),
   alpha = c("random", "fix"),
   lambda = c("fix", "random"),
   method = c("rating", "Best", "Best-Worst", "MDS"),
@@ -30,9 +30,8 @@ single matrix/data frame is treated as pre-coded `Y_dif` pair indices.}
 
 \item{ndim}{Number of unfolding dimensions.}
 
-\item{distance}{Character; `"squared"` uses squared Euclidean distance
-(default, often easier for optimization), while `"euclidean"` uses Euclidean
-distance.}
+\item{distance}{Character; `"euclidean"` uses Euclidean distance (default),
+while `"squared"` uses squared Euclidean distance.}
 
 \item{alpha}{Character; `"random"` estimates item-specific alpha values as
 random effects (default), while `"fix"` estimates a single common alpha.}

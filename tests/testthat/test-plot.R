@@ -52,6 +52,23 @@ test_that("plot_mdu prefers rotated MDU coordinates from fitted objects", {
   expect_equal(unname(res_raw$theta), theta)
 })
 
+test_that("plot_mdu reads MDU distance from fitted model metadata", {
+  delta <- matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE)
+  theta <- matrix(c(0.2, 0.1, 0.8, 0.9, 0.4, 0.6), ncol = 2, byrow = TRUE)
+
+  fit <- list(
+    model = list(extra = list(distance = "euclidean")),
+    estimate = function(...) {
+      list(delta = delta, theta = theta, alpha = c(1, 4))
+    }
+  )
+
+  grDevices::pdf(file = tempfile(fileext = ".pdf"))
+  on.exit(grDevices::dev.off(), add = TRUE)
+
+  expect_silent(plot_mdu(fit, show_density = FALSE, main = ""))
+})
+
 test_that("plot_mdu supports deprecated show_phi alias", {
   delta <- matrix(c(0, 0, 1, 1), ncol = 2, byrow = TRUE)
   theta <- matrix(c(0.2, 0.1, 0.8, 0.9, 0.4, 0.6), ncol = 2, byrow = TRUE)

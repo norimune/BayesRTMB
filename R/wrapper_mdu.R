@@ -628,9 +628,8 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 #'   for `method = "Best-Worst"`, `Worst`. For `method = "Best-Worst"`, a
 #'   single matrix/data frame is treated as pre-coded `Y_dif` pair indices.
 #' @param ndim Number of unfolding dimensions.
-#' @param distance Character; `"squared"` uses squared Euclidean distance
-#'   (default, often easier for optimization), while `"euclidean"` uses Euclidean
-#'   distance.
+#' @param distance Character; `"euclidean"` uses Euclidean distance (default),
+#'   while `"squared"` uses squared Euclidean distance.
 #' @param alpha Character; `"random"` estimates item-specific alpha values as
 #'   random effects (default), while `"fix"` estimates a single common alpha.
 #' @param lambda Character; for choice methods, `"fix"` estimates a common
@@ -661,7 +660,7 @@ make_ydif_from_bw <- function(Best, Worst, sets) {
 #' @example inst/examples/ex_mdu.R
 #' @export
 rtmb_mdu <- function(data, ndim = 2,
-                     distance = c("squared", "euclidean"),
+                     distance = c("euclidean", "squared"),
                      alpha = c("random", "fix"),
                      lambda = c("fix", "random"),
                      method = c("rating", "Best", "Best-Worst", "MDS"),
@@ -672,11 +671,9 @@ rtmb_mdu <- function(data, ndim = 2,
                      missing = c("listwise", "fiml"), WAIC = FALSE) {
 
   missing_arg <- match.arg(missing)
-  distance_missing <- missing(distance)
   method <- match.arg(method)
-  if (method == "MDS" && distance_missing) {
+  if (is.null(distance)) {
     distance <- "euclidean"
-    message("method = 'MDS' uses distance = 'euclidean' by default.")
   } else {
     distance <- match.arg(distance)
   }

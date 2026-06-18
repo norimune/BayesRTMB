@@ -458,7 +458,15 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
 
   if (!is.matrix(delta) && is.function(delta$estimate)) {
     fit <- delta
-    if (distance == "auto") distance <- fit$extra$distance %||% "squared"
+    if (distance == "auto") {
+      fit_distance <- fit$extra$distance %||% fit$model$extra$distance %||% NULL
+      fit_distance <- if (length(fit_distance)) as.character(fit_distance[1]) else NULL
+      distance <- if (!is.null(fit_distance) && fit_distance %in% c("squared", "euclidean")) {
+        fit_distance
+      } else {
+        "squared"
+      }
+    }
     est_type <- switch(
       point_estimate,
       EAP = "EAP",
