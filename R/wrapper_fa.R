@@ -319,7 +319,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     if (!is.null(rotate)) {
       rot_loadings_name <- paste0("L_", rotate)
-      if (exists(rotate, mode = "function")) { rot_fn <- match.fun(rotate); fn_call <- as.name(rotate) }
+      if (exists(rotate, where = asNamespace("stats"), mode = "function")) {
+        rot_fn <- get(rotate, envir = asNamespace("stats"), mode = "function")
+        fn_call <- call("::", as.name("stats"), as.name(rotate))
+      }
+      else if (exists(rotate, mode = "function")) { rot_fn <- match.fun(rotate); fn_call <- as.name(rotate) }
       else if (requireNamespace("GPArotation", quietly = TRUE) && exists(rotate, where = asNamespace("GPArotation"), mode = "function")) {
         rot_fn <- getFromNamespace(rotate, "GPArotation"); fn_call <- call("::", as.name("GPArotation"), as.name(rotate))
       } else stop("Rotation function not found: ", rotate)

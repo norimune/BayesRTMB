@@ -626,7 +626,10 @@ RTMB_Fit_Base <- R6::R6Class(
     fa_rotate = function(target = "L", linked = NULL, scores = NULL, rotate = "promax", ...) {
       message(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...", rotate, target, rotate))
 
-      if (exists(rotate, mode = "function")) {
+      if (exists(rotate, where = asNamespace("stats"), mode = "function")) {
+        rot_fn <- get(rotate, envir = asNamespace("stats"), mode = "function")
+        fn_call <- call("::", as.name("stats"), as.name(rotate))
+      } else if (exists(rotate, mode = "function")) {
         rot_fn <- match.fun(rotate)
         fn_call <- as.name(rotate)
       } else if (requireNamespace("GPArotation", quietly = TRUE) &&
