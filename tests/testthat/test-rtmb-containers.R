@@ -1,11 +1,17 @@
 test_that("rtmb_vector and rtmb_array create AD-compatible containers", {
   v <- rtmb_vector(0, 3)
   a <- rtmb_array(0, dim = c(2, 3))
+  v_seed <- rtmb_vector(0, 3, seed = RTMB::advector(0))
+  a_seed <- rtmb_array(0, dim = c(2, 3), seed = RTMB::advector(0))
 
   expect_true(methods::is(v, "advector"))
   expect_true(methods::is(a, "advector"))
+  expect_true(methods::is(v_seed, "advector"))
+  expect_true(methods::is(a_seed, "advector"))
   expect_equal(length(v), 3)
   expect_equal(dim(a), c(2L, 3L))
+  expect_equal(length(v_seed), 3)
+  expect_equal(dim(a_seed), c(2L, 3L))
 })
 
 test_that("rtmb containers can be assigned to inside rtmb_code", {

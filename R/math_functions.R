@@ -53,26 +53,57 @@ NULL
 #'
 #' @param value Initial value. Usually a scalar such as `0`.
 #' @param length Length of the vector.
+#' @param seed Optional AD value used to create the container. Usually this can
+#'   be left as `NULL`; inside `rtmb_code()`, BayesRTMB automatically provides an
+#'   AD seed from the model parameters when available.
 #' @return An AD-compatible vector.
 #' @export
-rtmb_vector <- function(value = 0, length) {
+rtmb_vector <- function(value = 0, length, seed = NULL) {
   if (missing(length)) {
     stop("'length' must be supplied.", call. = FALSE)
   }
-  if (!is.numeric(length) || length(length) != 1L || is.na(length) || length < 0) {
+  if (!is.numeric(length) || base::length(length) != 1L || is.na(length) || length < 0) {
     stop("'length' must be a non-negative scalar.", call. = FALSE)
   }
   length <- as.integer(length)
   if (length == 0L) {
     return(RTMB::advector(numeric(0)))
   }
-  if (length(value) == 1L) {
+
+  if (is.null(seed)) {
+    seed <- .rtmb_auto_ad_seed(parent.frame())
+  }
+
+  if (!is.null(seed)) {
+    if (base::length(seed) < 1L) {
+      stop("'seed' must contain at least one value.", call. = FALSE)
+    }
+    if (base::length(value) != 1L && base::length(value) != length) {
+      stop("'value' must be length 1 or have the requested vector length.", call. = FALSE)
+    }
+    return(seed[1] * rep(0, length) + value)
+  }
+
+  if (inherits(value, "advector")) {
+    if (base::length(value) == 1L) return(rep(value, length))
+    return(value)
+  }
+
+  if (base::length(value) == 1L) {
     return(RTMB::advector(rep(value, length)))
   }
-  if (length(value) != length) {
+  if (base::length(value) != length) {
     stop("'value' must be length 1 or have the requested vector length.", call. = FALSE)
   }
   RTMB::advector(value)
+}
+
+.rtmb_auto_ad_seed <- function(envir) {
+  if (exists(".rtmb_ad_seed", envir = envir, inherits = FALSE)) {
+    seed <- get(".rtmb_ad_seed", envir = envir, inherits = FALSE)
+    if (!is.null(seed)) return(seed)
+  }
+  NULL
 }
 
 #' Create an AD-compatible array
@@ -85,9 +116,11 @@ rtmb_vector <- function(value = 0, length) {
 #'
 #' @param value Initial value. Usually a scalar such as `0`.
 #' @param dim Integer dimension vector.
+#' @param seed Optional AD value used to create the container. See
+#'   `rtmb_vector()`.
 #' @return An AD-compatible array.
 #' @export
-rtmb_array <- function(value = 0, dim) {
+rtmb_array <- function(value = 0, dim, seed = NULL) {
   if (missing(dim)) {
     stop("'dim' must be supplied.", call. = FALSE)
   }
@@ -96,7 +129,7 @@ rtmb_array <- function(value = 0, dim) {
   }
   dim <- as.integer(dim)
   len <- prod(dim)
-  out <- rtmb_vector(value, len)
+  out <- rtmb_vector(value, len, seed = seed)
   dim(out) <- dim
   out
 }

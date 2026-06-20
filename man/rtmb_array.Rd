@@ -4,12 +4,15 @@
 \alias{rtmb_array}
 \title{Create an AD-compatible array}
 \usage{
-rtmb_array(value = 0, dim)
+rtmb_array(value = 0, dim, seed = NULL)
 }
 \arguments{
 \item{value}{Initial value. Usually a scalar such as \code{0}.}
 
 \item{dim}{Integer dimension vector.}
+
+\item{seed}{Optional AD value used to create the container. See
+\code{rtmb_vector()}.}
 }
 \value{
 An AD-compatible array.

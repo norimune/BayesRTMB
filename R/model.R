@@ -328,16 +328,19 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
 
   exec_model_ast <- code$model
 
-  comp_model <- eval(bquote(model_code(.(code$model), env = user_env)))
+  seed_candidates <- names(evaluated_par_list)[vapply(evaluated_par_list, function(p) p$length > 0L, logical(1))]
+  ad_seed_name <- if (length(seed_candidates) > 0L) seed_candidates[[1L]] else NULL
+
+  comp_model <- eval(bquote(model_code(.(code$model), env = user_env, ad_seed_name = .(ad_seed_name))))
 
   comp_transform <- NULL
   if ("transform" %in% names(code)) {
-    comp_transform <- eval(bquote(transform_code(.(code$transform), env = user_env)))
+    comp_transform <- eval(bquote(transform_code(.(code$transform), env = user_env, ad_seed_name = .(ad_seed_name))))
   }
 
   comp_generate <- NULL
   if ("generate" %in% names(code)) {
-    comp_generate <- eval(bquote(transform_code(.(code$generate), env = user_env)))
+    comp_generate <- eval(bquote(transform_code(.(code$generate), env = user_env, ad_seed_name = .(ad_seed_name))))
   }
 
   # --- 4. Pre-check (Sandbox execution) ---
@@ -891,7 +894,14 @@ rtmb_code <- function(...) {
 #' @param expr A block of code containing model description.
 #' @param env Environment to assign to the generated function.
 #' @return A standard R function object taking (dat, par).
-model_code <- function(expr, env = parent.frame()) {
+.rtmb_ad_seed_expr <- function(ad_seed_name = NULL) {
+  if (is.null(ad_seed_name) || !nzchar(ad_seed_name)) {
+    return(quote(.rtmb_ad_seed <- NULL))
+  }
+  substitute(.rtmb_ad_seed <- SEED, list(SEED = as.name(ad_seed_name)))
+}
+
+model_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
   raw_expr <- substitute(expr)
 
   if (is.name(raw_expr)) {
@@ -981,6 +991,7 @@ model_code <- function(expr, env = parent.frame()) {
   body_list <- c(
     list(as.name("{")),
     quote(RTMB::getAll(dat, par)),
+    list(.rtmb_ad_seed_expr(ad_seed_name)),
     quote(lp <- 0),
     unname(expr_elements),
     quote(return(lp))
@@ -1002,7 +1013,7 @@ model_code <- function(expr, env = parent.frame()) {
 #' @param expr A block of code containing calculations for transformed parameters.
 #' @param env Environment to assign to the generated function.
 #' @return A function taking (dat, par) that returns a named list.
-transform_code <- function(expr, env = parent.frame()) {
+transform_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
   raw_expr <- substitute(expr)
 
   raw_expr <- inject_namespace(raw_expr, pkg = "BayesRTMB")
@@ -1017,6 +1028,7 @@ transform_code <- function(expr, env = parent.frame()) {
     body_list <- c(
       list(as.name("{")),
       quote(RTMB::getAll(dat, par)),
+      list(.rtmb_ad_seed_expr(ad_seed_name)),
       list(quote(return(list())))
     )
     body_expr <- as.call(body_list)
@@ -1106,6 +1118,7 @@ transform_code <- function(expr, env = parent.frame()) {
   body_list <- c(
     list(as.name("{")),
     quote(RTMB::getAll(dat, par)),
+    list(.rtmb_ad_seed_expr(ad_seed_name)),
     unname(expr_elements),
     list(as.call(list(as.name("return"), ret_call)))
   )

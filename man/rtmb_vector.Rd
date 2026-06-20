@@ -4,12 +4,16 @@
 \alias{rtmb_vector}
 \title{Create an AD-compatible vector}
 \usage{
-rtmb_vector(value = 0, length)
+rtmb_vector(value = 0, length, seed = NULL)
 }
 \arguments{
 \item{value}{Initial value. Usually a scalar such as \code{0}.}
 
 \item{length}{Length of the vector.}
+
+\item{seed}{Optional AD value used to create the container. Usually this can
+be left as \code{NULL}; inside \code{rtmb_code()}, BayesRTMB automatically provides an
+AD seed from the model parameters when available.}
 }
 \value{
 An AD-compatible vector.
