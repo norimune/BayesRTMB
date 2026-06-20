@@ -129,7 +129,7 @@ print.rtmb_estimate_matrix <- function(x, digits = max(3L, getOption("digits") -
       lp_idx <- which(dimnames(samps)[[3]] == "lp")
       if (length(lp_idx) == 0) lp_idx <- 1
       
-      lp_vals <- samps[, , lp_idx]
+      lp_vals <- matrix(samps[, , lp_idx], nrow = dim(samps)[1L], ncol = dim(samps)[2L])
       max_idx <- which(lp_vals == max(lp_vals, na.rm = TRUE), arr.ind = TRUE)
       iter_idx <- max_idx[1, 1]
       chain_idx <- max_idx[1, 2]
@@ -358,7 +358,7 @@ RTMB_Fit_Base <- R6::R6Class(
             lp_idx <- which(dimnames(samps)[[3]] == "lp")
             if (length(lp_idx) == 0) lp_idx <- 1
 
-            lp_vals <- samps[, , lp_idx]
+            lp_vals <- matrix(samps[, , lp_idx], nrow = dim(samps)[1L], ncol = dim(samps)[2L])
             max_idx <- which(lp_vals == max(lp_vals, na.rm = TRUE), arr.ind = TRUE)
             iter_idx <- max_idx[1, 1]
             chain_idx <- max_idx[1, 2]

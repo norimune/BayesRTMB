@@ -52,6 +52,9 @@ from Automatic Differentiation Variational Inference (ADVI).
 \subsection{Public methods}{
 \itemize{
 \item \href{#method-advi_fit-get_point_estimate}{\code{VB_Fit$get_point_estimate()}}
+\item \href{#method-advi_fit-estimate}{\code{VB_Fit$estimate()}}
+\item \href{#method-advi_fit-EAP}{\code{VB_Fit$EAP()}}
+\item \href{#method-advi_fit-MAP}{\code{VB_Fit$MAP()}}
 \item \href{#method-advi_fit-new}{\code{VB_Fit$new()}}
 \item \href{#method-advi_fit-print}{\code{VB_Fit$print()}}
 \item \href{#method-advi_fit-draws}{\code{VB_Fit$draws()}}
@@ -68,9 +71,6 @@ from Automatic Differentiation Variational Inference (ADVI).
 \if{html}{\out{
 <details open><summary>Inherited methods</summary>
 <ul>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-EAP'><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-MAP'><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-estimate'><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-fa_rotate'><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href='../../BayesRTMB/html/RTMB_Fit_Base.html#method-RTMB_Fit_Base-rotate'><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul>
@@ -90,7 +90,7 @@ Get point estimate for a target parameter.
 \describe{
 \item{\code{target}}{Target parameter name.}
 
-\item{\code{chains}}{Numeric vector of chains to include. If NULL, all chains are used.}
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, the best chain is used.}
 
 \item{\code{best_chains}}{Integer; number of best chains to retain based on ELBO.}
 }
@@ -98,6 +98,112 @@ Get point estimate for a target parameter.
 }
 \subsection{Returns}{
 Matrix, array, vector, or scalar point estimate.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-estimate"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-estimate}{}}}
+\subsection{Method \code{estimate()}}{
+Get point estimates from variational draws.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$estimate(
+  pars = NULL,
+  type = c("mean", "EAP", "marginal_map", "joint_map", "MAP"),
+  component = c("all", "parameters", "transform", "generate"),
+  chains = NULL,
+  best_chains = NULL,
+  drop = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character or numeric vector of parameter names or indices to extract.
+Supports special keywords: "parameters", "transform", "generate", and "all".}
+
+\item{\code{type}}{Character string specifying the estimation type.}
+
+\item{\code{component}}{Character string specifying the component to filter by.}
+
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, the best chain is used.}
+
+\item{\code{best_chains}}{Number of best chains to include.}
+
+\item{\code{drop}}{Logical; if TRUE and only one parameter is selected, return the value directly instead of a list.}
+
+\item{\code{...}}{Additional arguments passed to draws().}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of point estimates, or a single value if `drop = TRUE`.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-EAP"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-EAP}{}}}
+\subsection{Method \code{EAP()}}{
+Calculate Expected A Posteriori (EAP) estimates from the best variational estimate by default.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = "parameters", chains = NULL, best_chains = NULL, drop = FALSE, ...)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
+
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, the best chain is used.}
+
+\item{\code{best_chains}}{Number of best chains to include.}
+
+\item{\code{drop}}{Logical; whether to drop the list if only one parameter is selected.}
+
+\item{\code{...}}{Additional arguments passed to `estimate()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of EAP estimates.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-advi_fit-MAP"></a>}}
+\if{latex}{\out{\hypertarget{method-advi_fit-MAP}{}}}
+\subsection{Method \code{MAP()}}{
+Calculate Maximum A Posteriori (MAP) estimates from the best variational estimate by default.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$MAP(
+  pars = "parameters",
+  chains = NULL,
+  best_chains = NULL,
+  type = c("marginal", "joint"),
+  drop = FALSE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{pars}}{Optional character vector of parameter names to extract.}
+
+\item{\code{chains}}{Numeric vector of chains to include. If NULL, the best chain is used.}
+
+\item{\code{best_chains}}{Number of best chains to include.}
+
+\item{\code{type}}{Character string; "marginal" or "joint" MAP.}
+
+\item{\code{drop}}{Logical; whether to drop the list if only one parameter is selected.}
+
+\item{\code{...}}{Additional arguments passed to `estimate()`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A named list of MAP estimates.
 }
 }
 \if{html}{\out{<hr>}}

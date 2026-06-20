@@ -40,13 +40,18 @@ VB_Fit <- R6::R6Class(
     best_chain     = NULL,
     mu_history     = NULL,
 
-    # 1. Constructor
+    # --- Point estimates ---
     #' @description Get point estimate for a target parameter.
     #' @param target Target parameter name.
-    #' @param chains Numeric vector of chains to include. If NULL, all chains are used.
+    #' @param chains Numeric vector of chains to include. If NULL, the best chain is used.
     #' @param best_chains Integer; number of best chains to retain based on ELBO.
     #' @return Matrix, array, vector, or scalar point estimate.
     get_point_estimate = function(target, chains = NULL, best_chains = NULL) {
+      if (is.null(chains) && is.null(best_chains) &&
+          !is.null(self$best_chain) && is.finite(self$best_chain)) {
+        chains <- self$best_chain
+      }
+
       target_draws <- self$draws(pars = target, chains = chains, best_chains = best_chains, inc_transform = TRUE, inc_generate = TRUE)
       if (dim(target_draws)[3] == 0) stop("Parameter not found: ", target)
 
@@ -71,6 +76,65 @@ VB_Fit <- R6::R6Class(
       if (length(t_dim) > 1) dim(target_map) <- t_dim
 
       return(target_map)
+    },
+
+    #' @description Get point estimates from variational draws.
+    #' @param pars Optional character or numeric vector of parameter names or indices to extract.
+    #'        Supports special keywords: "parameters", "transform", "generate", and "all".
+    #' @param type Character string specifying the estimation type.
+    #' @param component Character string specifying the component to filter by.
+    #' @param chains Numeric vector of chains to include. If NULL, the best chain is used.
+    #' @param best_chains Number of best chains to include.
+    #' @param drop Logical; if TRUE and only one parameter is selected, return the value directly instead of a list.
+    #' @param ... Additional arguments passed to draws().
+    #' @return A named list of point estimates, or a single value if `drop = TRUE`.
+    estimate = function(pars = NULL,
+                        type = c("mean", "EAP", "marginal_map", "joint_map", "MAP"),
+                        component = c("all", "parameters", "transform", "generate"),
+                        chains = NULL,
+                        best_chains = NULL,
+                        drop = TRUE,
+                        ...) {
+      if (is.null(chains) && is.null(best_chains) &&
+          !is.null(self$best_chain) && is.finite(self$best_chain)) {
+        chains <- self$best_chain
+      }
+
+      super$estimate(
+        pars = pars,
+        type = type,
+        component = component,
+        chains = chains,
+        best_chains = best_chains,
+        drop = drop,
+        ...
+      )
+    },
+
+    #' @description Calculate Expected A Posteriori (EAP) estimates from the best variational estimate by default.
+    #' @param pars Optional character vector of parameter names to extract.
+    #' @param chains Numeric vector of chains to include. If NULL, the best chain is used.
+    #' @param best_chains Number of best chains to include.
+    #' @param drop Logical; whether to drop the list if only one parameter is selected.
+    #' @param ... Additional arguments passed to `estimate()`.
+    #' @return A named list of EAP estimates.
+    EAP = function(pars = "parameters", chains = NULL, best_chains = NULL, drop = FALSE, ...) {
+      self$estimate(pars = pars, type = "EAP", chains = chains, best_chains = best_chains, drop = drop, ...)
+    },
+
+    #' @description Calculate Maximum A Posteriori (MAP) estimates from the best variational estimate by default.
+    #' @param pars Optional character vector of parameter names to extract.
+    #' @param chains Numeric vector of chains to include. If NULL, the best chain is used.
+    #' @param best_chains Number of best chains to include.
+    #' @param type Character string; "marginal" or "joint" MAP.
+    #' @param drop Logical; whether to drop the list if only one parameter is selected.
+    #' @param ... Additional arguments passed to `estimate()`.
+    #' @return A named list of MAP estimates.
+    MAP = function(pars = "parameters", chains = NULL, best_chains = NULL,
+                   type = c("marginal", "joint"), drop = FALSE, ...) {
+      type <- match.arg(type)
+      est_type <- if (type == "joint") "joint_map" else "marginal_map"
+      self$estimate(pars = pars, type = est_type, chains = chains, best_chains = best_chains, drop = drop, ...)
     },
 
     #' @description Create a new `VB_Fit` object.
