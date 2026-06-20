@@ -33,11 +33,12 @@ test_that("VB point estimates use the best estimate by default", {
     mu_history = NULL
   )
 
-  expect_equal(unname(vb_fit$EAP("theta", drop = TRUE)), 2)
+  expect_equal(unname(vb_fit$EAP("theta")), 2)
   expect_equal(unname(vb_fit$estimate("theta", type = "EAP", drop = TRUE)), 2)
-  expect_equal(unname(vb_fit$MAP("theta", type = "joint", drop = TRUE)), 3)
+  expect_equal(unname(vb_fit$MAP("theta", type = "joint")), 3)
   expect_equal(unname(vb_fit$get_point_estimate("theta")), 3)
 
-  expect_equal(unname(vb_fit$EAP("theta", chains = 1:2, drop = TRUE)), 101)
-  expect_equal(unname(vb_fit$MAP("theta", chains = 1:2, type = "joint", drop = TRUE)), 300)
+  expect_equal(unname(vb_fit$EAP("theta", chains = 1:2)), 101)
+  expect_equal(unname(vb_fit$MAP("theta", chains = 1:2, type = "joint")), 300)
+  expect_true(is.list(vb_fit$EAP("theta", drop = FALSE)))
 })

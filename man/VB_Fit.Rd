@@ -147,7 +147,7 @@ A named list of point estimates, or a single value if `drop = TRUE`.
 \subsection{Method \code{EAP()}}{
 Calculate Expected A Posteriori (EAP) estimates from the best variational estimate by default.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = "parameters", chains = NULL, best_chains = NULL, drop = FALSE, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = "parameters", chains = NULL, best_chains = NULL, drop = TRUE, ...)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -180,7 +180,7 @@ Calculate Maximum A Posteriori (MAP) estimates from the best variational estimat
   chains = NULL,
   best_chains = NULL,
   type = c("marginal", "joint"),
-  drop = FALSE,
+  drop = TRUE,
   ...
 )}\if{html}{\out{</div>}}
 }

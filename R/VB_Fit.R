@@ -118,7 +118,7 @@ VB_Fit <- R6::R6Class(
     #' @param drop Logical; whether to drop the list if only one parameter is selected.
     #' @param ... Additional arguments passed to `estimate()`.
     #' @return A named list of EAP estimates.
-    EAP = function(pars = "parameters", chains = NULL, best_chains = NULL, drop = FALSE, ...) {
+    EAP = function(pars = "parameters", chains = NULL, best_chains = NULL, drop = TRUE, ...) {
       self$estimate(pars = pars, type = "EAP", chains = chains, best_chains = best_chains, drop = drop, ...)
     },
 
@@ -131,7 +131,7 @@ VB_Fit <- R6::R6Class(
     #' @param ... Additional arguments passed to `estimate()`.
     #' @return A named list of MAP estimates.
     MAP = function(pars = "parameters", chains = NULL, best_chains = NULL,
-                   type = c("marginal", "joint"), drop = FALSE, ...) {
+                   type = c("marginal", "joint"), drop = TRUE, ...) {
       type <- match.arg(type)
       est_type <- if (type == "joint") "joint_map" else "marginal_map"
       self$estimate(pars = pars, type = est_type, chains = chains, best_chains = best_chains, drop = drop, ...)

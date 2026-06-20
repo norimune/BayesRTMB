@@ -103,7 +103,7 @@ Calculate Expected A Posteriori (EAP) estimates from posterior samples.
   pars = "parameters",
   chains = NULL,
   best_chains = NULL,
-  drop = FALSE,
+  drop = TRUE,
   ...
 )}\if{html}{\out{</div>}}
 }
@@ -138,7 +138,7 @@ Calculate Maximum A Posteriori (MAP) estimates.
   chains = NULL,
   best_chains = NULL,
   type = c("marginal", "joint"),
-  drop = FALSE,
+  drop = TRUE,
   ...
 )}\if{html}{\out{</div>}}
 }
