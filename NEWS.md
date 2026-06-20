@@ -1,3 +1,24 @@
+# BayesRTMB 0.2.1
+
+* Changed VB point estimates to use only the best variational estimate by
+  default, aligning `EAP()`, `MAP()`, and rotation references with the selected
+  best ELBO run while still allowing explicit `chains` or `best_chains`
+  selection.
+* Made `EAP()` and `MAP()` drop their list wrapper by default when a single
+  parameter is requested, matching the behavior of `estimate()`.
+* Added optional taped evaluation for transformed parameters and generated
+  quantities, with automatic fallback to R evaluation when taping is not
+  possible.
+* Improved parallel worker robustness by reducing exported globals and
+  preserving wrapper setup environments needed by generated model code.
+* Improved MCMC runtime behavior by caching metric calculations, speeding up
+  retained draw conversion, and refining progress checks.
+* Added diagnostic recommendations to help interpret common fitting warnings.
+* Improved matrix-valued Gaussian process log-density evaluation.
+* Updated MDU defaults and internals, including Euclidean distance as the
+  default MDU distance and more explicit use of namespace-qualified factor
+  rotations.
+
 # BayesRTMB 0.2.0
 
 * Reworked NUTS sampling internals with Stan-style multinomial tree expansion,
