@@ -68,7 +68,10 @@ test_that("se_method = 'none' and df_method = 'bw' rejection", {
   Y1 <- rnorm(20); Y2 <- rnorm(20)
   mdl_tt <- rtmb_ttest(Y1, Y2)
 
-  fit_none <- mdl_tt$optimize(se_method = "none", df_method = "satterthwaite")
+  expect_warning(
+    fit_none <- mdl_tt$optimize(se_method = "none", df_method = "satterthwaite"),
+    "df_method is ignored"
+  )
   tab_none <- fit_none$summary()
   
   expect_false(fit_none$show_df)

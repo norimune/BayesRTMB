@@ -117,8 +117,8 @@ test_that("rtmb_glmer cwc accepts unquoted cluster with all numeric fixed effect
   )
 
   centered <- mdl$raw_data
-  expect_equal(unname(tapply(centered$x, centered$ID, mean)), c(0, 0), tolerance = 1e-12)
-  expect_equal(unname(tapply(centered$z, centered$ID, mean)), c(0, 0), tolerance = 1e-12)
+  expect_equal(as.numeric(tapply(centered$x, centered$ID, mean)), c(0, 0), tolerance = 1e-12)
+  expect_equal(as.numeric(tapply(centered$z, centered$ID, mean)), c(0, 0), tolerance = 1e-12)
   expect_identical(centered$y, dat$y)
   expect_identical(centered$f, dat$f)
 })

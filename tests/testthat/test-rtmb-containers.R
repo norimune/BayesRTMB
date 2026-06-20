@@ -2,8 +2,8 @@ test_that("rtmb_vector and rtmb_array create AD-compatible containers", {
   v <- rtmb_vector(0, 3)
   a <- rtmb_array(0, dim = c(2, 3))
 
-  expect_s3_class(v, "advector")
-  expect_s3_class(a, "advector")
+  expect_true(methods::is(v, "advector"))
+  expect_true(methods::is(a, "advector"))
   expect_equal(length(v), 3)
   expect_equal(dim(a), c(2L, 3L))
 })

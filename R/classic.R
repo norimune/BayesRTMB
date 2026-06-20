@@ -819,7 +819,7 @@ Classic_Fit <- R6::R6Class(
         # --- Add t/z-test results for classic mode ---
         if (!is.null(self$sd_rep)) {
            u_est <- if (!is.null(self$sd_rep$par.fixed)) self$sd_rep$par.fixed else numeric(0)
-           u_se <- if (!is.null(self$sd_rep$cov.fixed)) sqrt(diag(self$sd_rep$cov.fixed)) else rep(NA, length(u_est))
+           u_se <- if (!is.null(self$sd_rep$cov.fixed)) sqrt(pmax(diag(self$sd_rep$cov.fixed), 0)) else rep(NA, length(u_est))
            u_t <- ifelse(is.na(u_se), NA_real_, u_est / pmax(u_se, 1e-12))
            
            # Map to df_print rows

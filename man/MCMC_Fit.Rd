@@ -512,7 +512,8 @@ Compute transformed parameters from posterior draws.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$transformed_draws(
   tran_fn = NULL,
-  progress = c("auto", "none", "bar", "message")
+  progress = c("auto", "none", "bar", "message"),
+  tape = c("auto", "none", "force")
 )}\if{html}{\out{</div>}}
 }
 
@@ -523,6 +524,10 @@ Compute transformed parameters from posterior draws.
 
 \item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
 or `"message"`. `"auto"` and `"bar"` use line-based messages.}
+
+\item{\code{tape}}{Derived-quantity evaluation mode. `"auto"` tries RTMB tape
+evaluation and falls back to R evaluation; `"none"` always uses R evaluation;
+`"force"` requires tape evaluation and errors if it fails.}
 }
 \if{html}{\out{</div>}}
 }
@@ -538,7 +543,8 @@ Compute generated quantities from posterior draws.
 \subsection{Usage}{
 \if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$generated_quantities(
   code,
-  progress = c("auto", "none", "bar", "message")
+  progress = c("auto", "none", "bar", "message"),
+  tape = c("auto", "none", "force")
 )}\if{html}{\out{</div>}}
 }
 
@@ -550,6 +556,10 @@ to be calculated using posterior samples.}
 
 \item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
 or `"message"`. `"auto"` and `"bar"` use line-based messages.}
+
+\item{\code{tape}}{Derived-quantity evaluation mode. `"auto"` tries RTMB tape
+evaluation and falls back to R evaluation; `"none"` always uses R evaluation;
+`"force"` requires tape evaluation and errors if it fails.}
 }
 \if{html}{\out{</div>}}
 }
