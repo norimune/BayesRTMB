@@ -1,5 +1,8 @@
 # BayesRTMB 0.2.1
 
+* Added `upgrade_fit()` to rebuild saved MCMC, VB, MAP, and classic fit objects
+  with the currently loaded class definitions, optionally upgrading their
+  embedded model objects as well.
 * Changed VB point estimates to use only the best variational estimate by
   default, aligning `EAP()`, `MAP()`, and rotation references with the selected
   best ELBO run while still allowing explicit `chains` or `best_chains`
