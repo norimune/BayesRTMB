@@ -7,19 +7,19 @@
 rtmb_array(value = 0, dim, seed = NULL)
 }
 \arguments{
-\item{value}{Initial value. Usually a scalar such as \code{0}.}
+\item{value}{Initial value. Usually a scalar such as `0`.}
 
 \item{dim}{Integer dimension vector.}
 
 \item{seed}{Optional AD value used to create the container. See
-\code{rtmb_vector()}.}
+`rtmb_vector()`.}
 }
 \value{
 An AD-compatible array.
 }
 \description{
 Creates a fixed-size vector, matrix, or higher-dimensional array that is safe
-to use inside \code{rtmb_code()} when subsequent assignments may involve RTMB
+to use inside `rtmb_code()` when subsequent assignments may involve RTMB
 automatic-differentiation values. This is a safer alternative to
-\code{array(value, dim)} or \code{matrix(value, ...)} in model code.
+`array(value, dim)` or `matrix(value, ...)` in model code.
 }

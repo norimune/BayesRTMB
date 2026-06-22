@@ -7,19 +7,19 @@
 rtmb_vector(value = 0, length, seed = NULL)
 }
 \arguments{
-\item{value}{Initial value. Usually a scalar such as \code{0}.}
+\item{value}{Initial value. Usually a scalar such as `0`.}
 
 \item{length}{Length of the vector.}
 
 \item{seed}{Optional AD value used to create the container. Usually this can
-be left as \code{NULL}; inside \code{rtmb_code()}, BayesRTMB automatically provides an
+be left as `NULL`; inside `rtmb_code()`, BayesRTMB automatically provides an
 AD seed from the model parameters when available.}
 }
 \value{
 An AD-compatible vector.
 }
 \description{
-Creates a fixed-length vector that is safe to use inside \code{rtmb_code()} when
+Creates a fixed-length vector that is safe to use inside `rtmb_code()` when
 subsequent assignments may involve RTMB automatic-differentiation values.
-This is a safer alternative to \code{numeric(length)} in model code.
+This is a safer alternative to `numeric(length)` in model code.
 }

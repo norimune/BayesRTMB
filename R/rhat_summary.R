@@ -31,11 +31,13 @@ rhat_summary <- function(fit, ...) {
   UseMethod("rhat_summary")
 }
 
+#' @rdname rhat_summary
 #' @export
 rhat_summary.default <- function(fit, ...) {
   stop(sprintf("No rhat_summary method for object of class '%s'.", class(fit)[1]), call. = FALSE)
 }
 
+#' @rdname rhat_summary
 #' @export
 #' @method rhat_summary mcmc_fit
 rhat_summary.mcmc_fit <- function(fit, pars = NULL,

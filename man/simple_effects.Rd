@@ -22,14 +22,17 @@ simple_effects(
 
 \item{sd_multiplier}{Multiplier for SD for continuous moderators (default is 1).}
 
-\item{sd_slice}{Logical or NULL. If TRUE, continuous moderators are evaluated at mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used. If NULL (default), sd slicing is used automatically when the moderator has 6 or more unique values.}
+\item{sd_slice}{Logical or NULL. If TRUE, continuous moderators are evaluated at
+mean - SD, mean, and mean + SD. If FALSE, all observed moderator values are used.
+If NULL (default), sd slicing is used automatically when the moderator has 6 or more
+unique values.}
 
 \item{...}{Additional arguments.}
 }
 \value{
 A `ce_simple` object (data frame) containing the estimated effects and their credible intervals.
-For `Classic_Fit` objects, test columns (`df`, `t value`, and `Pr`) are also returned when
-standard errors are available.
+  For `Classic_Fit` objects, test columns (`df`, `t value`, and `Pr`) are also returned when
+  standard errors are available.
 }
 \description{
 Calculate the effect of a focal variable at different levels of a moderator.

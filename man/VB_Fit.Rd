@@ -147,7 +147,13 @@ A named list of point estimates, or a single value if `drop = TRUE`.
 \subsection{Method \code{EAP()}}{
 Calculate Expected A Posteriori (EAP) estimates from the best variational estimate by default.
 \subsection{Usage}{
-\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(pars = "parameters", chains = NULL, best_chains = NULL, drop = TRUE, ...)}\if{html}{\out{</div>}}
+\if{html}{\out{<div class="r">}}\preformatted{VB_Fit$EAP(
+  pars = "parameters",
+  chains = NULL,
+  best_chains = NULL,
+  drop = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
 }
 
 \subsection{Arguments}{
@@ -421,8 +427,8 @@ Compute transformed parameters from posterior draws.
 or `"message"`. `"auto"` and `"bar"` use line-based messages.}
 
 \item{\code{tape}}{Derived-quantity evaluation mode. `"auto"` tries RTMB tape
-evaluation and falls back to R evaluation; `"none"` always uses R evaluation;
-`"force"` requires tape evaluation and errors if it fails.}
+evaluation and falls back to R evaluation on error; `"none"` always uses
+R evaluation; `"force"` requires tape evaluation and errors if it fails.}
 }
 \if{html}{\out{</div>}}
 }
@@ -453,8 +459,8 @@ to be calculated using posterior samples.}
 or `"message"`. `"auto"` and `"bar"` use line-based messages.}
 
 \item{\code{tape}}{Derived-quantity evaluation mode. `"auto"` tries RTMB tape
-evaluation and falls back to R evaluation; `"none"` always uses R evaluation;
-`"force"` requires tape evaluation and errors if it fails.}
+evaluation and falls back to R evaluation on error; `"none"` always uses
+R evaluation; `"force"` requires tape evaluation and errors if it fails.}
 }
 \if{html}{\out{</div>}}
 }

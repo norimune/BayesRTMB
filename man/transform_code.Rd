@@ -4,7 +4,7 @@
 \alias{transform_code}
 \title{Transformed Code Wrapper for RTMB}
 \usage{
-transform_code(expr, env = parent.frame())
+transform_code(expr, env = parent.frame(), ad_seed_name = NULL)
 }
 \arguments{
 \item{expr}{A block of code containing calculations for transformed parameters.}

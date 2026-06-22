@@ -51,7 +51,7 @@ Default is `prior_flat()`.}
 
 \item{centering}{Alias for `gmc`.}
 
-\item{cwc}{List for CWC. You can use \code{cwc = list(ID, "x")} or \code{cwc = list(ID, "all")}; \code{"all"} centers all numeric fixed-effect variables within the cluster.}
+\item{cwc}{List for CWC}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 

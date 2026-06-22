@@ -187,7 +187,7 @@ Rotate sampled parameters.
 
 \item{\code{linked}}{Character vector of variable names to be rotated in the same direction.}
 
-\item{\code{principal}}{Logical; if TRUE and \code{reference} is NULL, the point estimate
+\item{\code{principal}}{Logical; if TRUE and `reference` is NULL, the point estimate
 is first rotated to its principal axes and then used as the Procrustes
 reference. This is useful for MDU configurations.}
 }

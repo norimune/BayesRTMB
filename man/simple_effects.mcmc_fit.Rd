@@ -22,7 +22,8 @@
 
 \item{sd_multiplier}{Multiplier for SD for continuous moderators.}
 
-\item{sd_slice}{Logical or NULL; controls whether continuous moderators are evaluated at mean - SD, mean, and mean + SD.}
+\item{sd_slice}{Logical or NULL; controls whether continuous moderators are
+evaluated at mean - SD, mean, and mean + SD.}
 
 \item{...}{Additional arguments.}
 }

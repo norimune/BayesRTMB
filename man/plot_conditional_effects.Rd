@@ -23,7 +23,8 @@ plot_conditional_effects(
 
 \item{sd_multiplier}{Numeric multiplier for standard deviation when splitting continuous moderators.}
 
-\item{sd_slice}{Logical or NULL; controls whether continuous moderators are evaluated at mean - SD, mean, and mean + SD.}
+\item{sd_slice}{Logical or NULL; controls whether continuous moderators are
+evaluated at mean - SD, mean, and mean + SD.}
 
 \item{resolution}{Grid resolution to calculate for continuous variables.}
 
