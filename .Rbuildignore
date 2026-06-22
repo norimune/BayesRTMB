@@ -11,6 +11,7 @@
 ^BWMU_functions\.R$
 ^BayesRTMB_mcmc$
 ^modeling\.rmd$
+^debug\.rmd$
 ^test$
 ^workspace\.rmd$
 ^_pkgdown\.yml$
