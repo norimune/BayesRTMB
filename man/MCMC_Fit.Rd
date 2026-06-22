@@ -333,7 +333,7 @@ Summarize R-hat values.
   best_chains = NULL,
   inc_random = FALSE,
   inc_transform = TRUE,
-  inc_generate = TRUE,
+  inc_generate = FALSE,
   finite = TRUE,
   ...
 )}\if{html}{\out{</div>}}
@@ -352,7 +352,7 @@ Summarize R-hat values.
 
 \item{\code{inc_transform}}{Logical; whether to include transformed parameters. Default is TRUE.}
 
-\item{\code{inc_generate}}{Logical; whether to include generated quantities. Default is TRUE.}
+\item{\code{inc_generate}}{Logical; whether to include generated quantities. Default is FALSE.}
 
 \item{\code{finite}}{Logical; whether to drop non-finite or missing R-hat values. Default is TRUE.}
 

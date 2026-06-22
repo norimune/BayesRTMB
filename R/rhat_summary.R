@@ -11,7 +11,7 @@
 #' @param best_chains Integer; number of best chains to retain based on mean log-posterior.
 #' @param inc_random Logical; whether to include random effects. Default is \code{FALSE}.
 #' @param inc_transform Logical; whether to include transformed parameters. Default is \code{TRUE}.
-#' @param inc_generate Logical; whether to include generated quantities. Default is \code{TRUE}.
+#' @param inc_generate Logical; whether to include generated quantities. Default is \code{FALSE}.
 #' @param finite Logical; whether to drop non-finite or missing R-hat values. Default is \code{TRUE}.
 #' @param ... Additional arguments passed to methods.
 #'
@@ -43,23 +43,36 @@ rhat_summary.mcmc_fit <- function(fit, pars = NULL,
                                   best_chains = NULL,
                                   inc_random = FALSE,
                                   inc_transform = TRUE,
-                                  inc_generate = TRUE,
+                                  inc_generate = FALSE,
                                   finite = TRUE, ...) {
-  summ <- fit$summary(
+  draws_array <- fit$draws(
     pars = pars,
     chains = chains,
     best_chains = best_chains,
-    max_rows = NULL,
     inc_random = inc_random,
     inc_transform = inc_transform,
     inc_generate = inc_generate
   )
-  if (!("rhat" %in% names(summ))) {
-    stop("The fit summary does not contain an R-hat column.", call. = FALSE)
+
+  P <- dim(draws_array)[3]
+  param_names <- dimnames(draws_array)[[3]]
+  if (is.null(param_names)) param_names <- paste0("V", seq_len(P))
+
+  out <- rep(NA_real_, P)
+  for (p in seq_len(P)) {
+    mat_p <- as.matrix(draws_array[, , p])
+    valid_vec <- as.vector(mat_p)
+    valid_vec <- valid_vec[is.finite(valid_vec)]
+
+    if (length(valid_vec) == 0L) next
+
+    value_range <- range(valid_vec)
+    if ((value_range[2] - value_range[1]) < 1e-10) next
+
+    out[p] <- r_hat(mat_p)
   }
 
-  out <- as.numeric(summ$rhat)
-  names(out) <- summ$variable
+  names(out) <- param_names
   if (isTRUE(finite)) out <- out[is.finite(out)]
   class(out) <- c("rhat_summary", "numeric")
   attr(out, "thresholds") <- c(warning = 1.01, problem = 1.05)

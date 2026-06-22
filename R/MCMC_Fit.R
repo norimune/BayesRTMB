@@ -479,7 +479,7 @@ MCMC_Fit <- R6::R6Class(
     #' @param best_chains Integer; number of best chains to retain based on mean log-posterior.
     #' @param inc_random Logical; whether to include random effects. Default is FALSE.
     #' @param inc_transform Logical; whether to include transformed parameters. Default is TRUE.
-    #' @param inc_generate Logical; whether to include generated quantities. Default is TRUE.
+    #' @param inc_generate Logical; whether to include generated quantities. Default is FALSE.
     #' @param finite Logical; whether to drop non-finite or missing R-hat values. Default is TRUE.
     #' @param ... Additional arguments.
     #' @return A numeric vector of R-hat values with class \code{"rhat_summary"}.
@@ -488,7 +488,7 @@ MCMC_Fit <- R6::R6Class(
                             best_chains = NULL,
                             inc_random = FALSE,
                             inc_transform = TRUE,
-                            inc_generate = TRUE,
+                            inc_generate = FALSE,
                             finite = TRUE, ...) {
       rhat_summary(
         self,

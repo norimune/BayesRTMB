@@ -17,7 +17,7 @@ rhat_summary(fit, ...)
   best_chains = NULL,
   inc_random = FALSE,
   inc_transform = TRUE,
-  inc_generate = TRUE,
+  inc_generate = FALSE,
   finite = TRUE,
   ...
 )
@@ -38,7 +38,7 @@ If \code{NULL}, all available parameters are summarized.}
 
 \item{inc_transform}{Logical; whether to include transformed parameters. Default is \code{TRUE}.}
 
-\item{inc_generate}{Logical; whether to include generated quantities. Default is \code{TRUE}.}
+\item{inc_generate}{Logical; whether to include generated quantities. Default is \code{FALSE}.}
 
 \item{finite}{Logical; whether to drop non-finite or missing R-hat values. Default is \code{TRUE}.}
 }
