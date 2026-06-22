@@ -184,14 +184,11 @@ As a rough diagnostic, R-hat should be close to 1 and ESS should be sufficiently
 ## Parallel MCMC
 
 Ordinary MCMC can be run without additional setup.
-However, if you use parallel MCMC with `sample(parallel = TRUE)`, the suggested packages `future`, `future.apply`, and `progressr` are required.
-The `progressr` package is also used internally through `progressr::progressor()` for progress reporting.
+However, if you use parallel MCMC with `sample(parallel = TRUE)`, the suggested package `future` is required.
 
 ```{r eval=FALSE}
-install.packages(c("future", "future.apply", "progressr"))
+install.packages("future")
 ```
-
-These packages are listed in Suggests, so they are not required unless you use parallel execution.
 
 ```{r eval=FALSE}
 fit_mcmc <- mdl$sample(

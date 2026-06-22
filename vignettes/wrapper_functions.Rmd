@@ -19,7 +19,7 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 In BayesRTMB, you can freely define models using the `rtmb_code` block, but we also provide **wrapper functions** to quickly execute common statistical analyses (like t-tests, regressions, and factor analysis).
 
-These functions allow you to specify models with a syntax similar to standard R functions like `lm()` and `lme4::glmer()` (though `lme4` itself is not required to run `BayesRTMB`), while fully utilizing the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
+These functions allow you to specify models with syntax similar to standard R functions such as `lm()` and mixed-model formula interfaces, while fully utilizing the powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).
 
 
 This page introduces the usage of the main wrapper functions.
@@ -309,7 +309,7 @@ mcmc_glmer$draws("b[cond]") |> plot_dens()
 
 # 5. Post-Estimation Analysis (Interaction & Visualization)
 
-After fitting a regression model (LM, GLM, GLMER), you can use `conditional_effects()` and `simple_effects()` to analyze and visualize the results. These methods are currently available for models fitted using MCMC (`sample()`).
+After fitting a regression model (LM, GLM, GLMER), you can use `conditional_effects()` and `simple_effects()` to analyze and visualize the results. These methods are available for MCMC fits and can also be used with MAP or classic fits when the fitted object contains the standard errors or sampling-based uncertainty needed for the requested summary.
 
 ### Visualization with `conditional_effects()`
 
@@ -321,7 +321,7 @@ mdl_int <- rtmb_lm(sat ~ talk * perf, data = debate)
 fit_int <- mdl_int$sample()
 
 # Visualize the interaction effect
-# For continuous moderators, it automatically shows Mean ± 1SD
+# For continuous moderators, it automatically shows Mean +/- 1SD
 ce <- conditional_effects(fit_int, effect = "talk:perf")
 plot(ce)
 ```
@@ -347,7 +347,7 @@ print(se)
 ##  perf       6.450 Slope of talk    0.494  0.354 0.631
 ```
 
-By default, for continuous moderators, it evaluates the effect at the Mean and Mean ± 1SD. You can change this behavior by specifying the `sd_multiplier` argument.
+By default, for continuous moderators, it evaluates the effect at the Mean and Mean +/- 1SD. You can change this behavior by specifying the `sd_multiplier` argument.
 
 ---
 

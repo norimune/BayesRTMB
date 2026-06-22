@@ -1,0 +1,1696 @@
+---
+title: "BayesRTMB 分析リファレンス"
+description: "BayesRTMBで分析するときに使う関数、fit object、モデル比較、固定パラメータ、分布、ADテープ化のリファレンス。"
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{BayesRTMB 分析リファレンス}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+このページは、BayesRTMBで分析するときに、関数やメソッドの使い方を確認するためのリファレンスです。
+
+最初に全体像を知りたい場合は「Quick Start」、自作モデルの書き方を知りたい場合は「Writing Model Codes」、推定アルゴリズムの仕組みを知りたい場合は「RTMB Internals and Inference Algorithms」を見ます。このページでは、分析中に確認したくなる点を、一覧表と短い例でまとめます。
+
+特に次の用途を想定しています。
+
+-   どの関数を使えばよいかを素早く確認する。
+-   fit objectごとのメソッドと戻り値を確認する。
+-   MCMC、MAP、VB、classicの使い分けを確認する。
+-   モデル比較、Bayes factor、WAIC、AIC/BICの使い方を確認する。
+-   `fixed` によるパラメータ固定と制約付きモデルの作り方を確認する。
+-   `rtmb_code()` 内で使える分布、パラメータ型、ADテープ化の注意点を確認する。
+
+# 0. このページの読み方
+
+このページのコードチャンクは、原則として `eval = FALSE` です。そのまま実行できる完全な例と、`rtmb_code()` の中に置く部分コードの両方を含みます。`setup = { ... }`、`model = { ... }`、`generate = { ... }` だけが示されている場合は、`rtmb_code()` の該当ブロックに入れるコード片として読んでください。
+
+`fit` という名前は、このページでは任意のfit objectを表す仮名として使います。実際には `fit_mcmc`、`fit_map`、`fit_vb`、`fit_classic` など、推定法に応じたオブジェクトに置き換えます。
+
+このページでは、いくつかの用語を次の意味で使います。
+
+| 用語               | 意味                                                                  |
+|--------------------|-----------------------------------------------------------------------|
+| fit object         | `sample()`、`optimize()`、`variational()`、`classic()` が返す推定結果 |
+| primary parameters | `parameters` ブロックで宣言した推定パラメータ                         |
+| transform          | `transform` ブロックで作った派生量                                    |
+| generate           | `generate` ブロックで作った推定後の派生量                             |
+| draw               | MCMCやVBで得られる事後分布からのサンプル                              |
+
+## 目的別クイックナビ
+
+| 目的                                | まず見る場所                        | 使う関数・メソッド                                       |
+|-------------------------------------|-------------------------------------|----------------------------------------------------------|
+| ふつうにベイズ推論したい            | [4章 MCMC_Fit](#mcmc-fit)           | `mdl$sample()`, `fit$summary()`, `fit$diagnose()`        |
+| MAP推定やMCMCの初期値を作りたい     | [5章 MAP_Fit](#map-fit)             | `mdl$optimize(num_estimate = ...)`, `fit$estimate()`     |
+| VBで速く探索したい                  | [6章 VB_Fit](#vb-fit)               | `mdl$variational()`, `fit$plot_elbo()`, `fit$diagnose()` |
+| classicなAIC/BIC/ANOVAを使いたい    | [7章 Classic_Fit](#classic-fit)     | `mdl$classic()`, `AIC()`, `BIC()`, `anova()`             |
+| モデル比較をしたい                  | [8章 モデル比較](#model-comparison) | `fit$bayes_factor()`, `fit$WAIC()`, `AIC()`, `BIC()`     |
+| パラメータを固定したい              | [9章 fixed](#fixed-parameters)      | `fixed = list(...)`, `mdl$fixed_model()`                 |
+| 自作モデルを書きたい                | [10-14章](#rtmb-code-blocks)        | `rtmb_code()`, `Dim()`, 分布関数、ADテープ化の注意       |
+| 既存fitを最新版のメソッドで使いたい | [15.9](#upgrade-fit)                | `upgrade_fit()`                                          |
+
+# 1. 分析ワークフロー
+
+BayesRTMBの分析は、基本的に次の流れで進みます。
+
+``` text
+wrapper function or rtmb_code()
+  -> RTMB_Model
+    -> sample()       -> MCMC_Fit
+    -> optimize()     -> MAP_Fit
+    -> variational()  -> VB_Fit
+    -> classic()      -> Classic_Fit
+```
+
+ラッパー関数を使う場合は、`rtmb_lm()` や `rtmb_glmer()` が直接 `RTMB_Model` を返します。
+
+```{r}
+library(BayesRTMB)
+
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal()
+)
+
+fit_mcmc <- mdl$sample()
+fit_map  <- mdl$optimize()
+fit_vb   <- mdl$variational()
+```
+
+自作モデルを書く場合は、`rtmb_code()` でモデルを定義し、`rtmb_model()` に渡します。初心者には、`data` にはdata frameを渡し、`setup` でdata frame内の列とモデル内の変数を結び付ける書き方がわかりやすいです。
+
+```{r}
+df <- debate
+
+code <- rtmb_code(
+  setup = {
+    # data frameの列を、モデル内で使う変数名に結び付ける
+    Y <- sat
+    X <- talk
+
+    # setupでは、AD対象外の前処理や補助関数の定義もできる
+    center <- function(x) x - mean(x)
+    X_c <- center(X)
+  },
+  parameters = {
+    Intercept <- Dim()
+    b <- Dim()
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    mu <- Intercept + b * X_c
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    Intercept ~ normal(0, 10)
+    b ~ normal(0, 10)
+    sigma ~ exponential(1)
+  }
+)
+
+mdl <- rtmb_model(
+  data = df,
+  code = code
+)
+```
+
+この例では、`data = df` により `df$sat` や `df$talk` が `setup` 内で参照可能になります。`setup` は、欠測処理、index作成、デザイン行列の作成、補助関数の定義など、モデル計算の前に一度だけ決めたい処理を書く場所です。
+
+推定後は、fit objectに対して `summary()`、`estimate()`、`diagnose()`、`draws()` などを使います。
+
+```{r}
+fit_mcmc$summary()
+fit_mcmc$diagnose()
+fit_mcmc$EAP(pars = "parameters")
+fit_mcmc$MAP(pars = "parameters")
+```
+
+## 1.1 使い分けの目安
+
+迷った場合は、まず次の表を見ます。
+
+| 目的                               | 推奨                                        |
+|------------------------------------|---------------------------------------------|
+| 最終的なベイズ推論をしたい         | `sample()`                                  |
+| ESS、R-hat、divergenceを確認したい | `MCMC_Fit$diagnose()`                       |
+| Bayes factorを計算したい           | `MCMC_Fit$bayes_factor()`                   |
+| WAICを計算したい                   | `WAIC = TRUE` と `fit$WAIC()`               |
+| 速く点推定したい                   | `optimize()`                                |
+| MCMCの初期値を作りたい             | `optimize(num_estimate = ...)`              |
+| 大きなモデルを試したい             | `variational()`                             |
+| VBの収束を見たい                   | `VB_Fit$plot_elbo()`                        |
+| AIC/BIC/ANOVAを使いたい            | `classic()`                                 |
+| robust SEを使いたい                | `Classic_Fit$robust_se()`                   |
+| パラメータを固定したい             | `fixed = list(...)` または `$fixed_model()` |
+| MDUやFAの回転をしたい              | `$rotate()` または `$fa_rotate()`           |
+
+# 2. 関数一覧
+
+## 2.1 モデル定義
+
+| 関数            | 用途                                                                               |
+|-----------------|------------------------------------------------------------------------------------|
+| `rtmb_code()`   | `setup`、`parameters`、`transform`、`model`、`generate` ブロックでモデルを定義する |
+| `rtmb_model()`  | `rtmb_code()` とデータから `RTMB_Model` を作る                                     |
+| `Dim()`         | 推定するパラメータの次元、制約、型、random指定を宣言する                           |
+| `print_code()`  | wrapper関数が生成したモデルコードを確認する                                        |
+| `upgrade_fit()` | 古いバージョンで保存したfit objectを現在のクラス定義に作り直す                     |
+
+## 2.2 ラッパー関数
+
+| 関数               | 主な用途                                      |
+|--------------------|-----------------------------------------------|
+| `rtmb_lm()`        | 正規線形回帰                                  |
+| `rtmb_glm()`       | 一般化線形モデル                              |
+| `rtmb_lmer()`      | 線形混合モデル                                |
+| `rtmb_glmer()`     | 一般化線形混合モデル                          |
+| `rtmb_ttest()`     | Bayesian/classic t-test、効果量、Bayes factor |
+| `rtmb_corr()`      | 相関、偏相関、相関行列                        |
+| `rtmb_fa()`        | 因子分析                                      |
+| `rtmb_irt()`       | IRTモデル                                     |
+| `rtmb_lrt()`       | Latent rank theory                            |
+| `rtmb_mdu()`       | Multidimensional unfolding                    |
+| `rtmb_mediation()` | 媒介分析                                      |
+| `rtmb_mixture()`   | 混合分布モデル                                |
+| `rtmb_table()`     | 分割表モデル                                  |
+| `rtmb_loglinear()` | 対数線形モデル                                |
+
+## 2.3 推定メソッド
+
+| メソッド         | 返り値        | 主な用途                                                 |
+|------------------|---------------|----------------------------------------------------------|
+| `$sample()`      | `MCMC_Fit`    | 最終的なベイズ推論、信用区間、Bayes factor、WAIC         |
+| `$optimize()`    | `MAP_Fit`     | MAP/ML/marginal MAP、高速な点推定、初期値探索            |
+| `$variational()` | `VB_Fit`      | 近似事後分布、大きめのモデルの探索、MCMC前の確認         |
+| `$classic()`     | `Classic_Fit` | flat prior wrapper modelの頻度主義的推定、AIC/BIC、ANOVA |
+
+`sample()` が標準的なベイズ推論です。`optimize()` と `variational()` は速い確認や初期値探索に使えますが、不確実性評価やBayes factorではMCMCを優先します。
+
+# 3. fit object共通メソッド
+
+`MCMC_Fit`、`MAP_Fit`、`VB_Fit`、`Classic_Fit` には、共通して使えるメソッドがあります。ただし、fit objectの種類によって意味や利用できる範囲が異なります。
+
+この章の例では `fit` と書きますが、これは任意のfit objectを表す仮名です。MCMCでは `fit_mcmc`、MAPでは `fit_map`、VBでは `fit_vb`、classicでは `fit_classic` に読み替えてください。特に `EAP()` と `MAP()` はMCMC/VB向けで、classicの点推定では `estimate()` を使います。
+
+| メソッド       | 用途                                               |
+|----------------|----------------------------------------------------|
+| `$estimate()`  | 推定値をリストまたは単一オブジェクトとして取り出す |
+| `$EAP()`       | 事後平均を取り出す。MCMC/VB向け                    |
+| `$MAP()`       | 周辺MAPまたはjoint MAPを取り出す。MCMC/VB向け      |
+| `$summary()`   | 表形式の推定結果                                   |
+| `$print()`     | `summary()` を表示                                 |
+| `$diagnose()`  | fit objectに応じた診断                             |
+| `$rotate()`    | MDUなどの行列パラメータをProcrustes回転する        |
+| `$fa_rotate()` | 因子分析の負荷量を回転する                         |
+
+## 3.1 estimate(), EAP(), MAP()
+
+`estimate()` は、パラメータ、変換量、生成量を取り出すための共通APIです。
+
+```{r}
+# primary parametersだけを取り出す
+fit$estimate(pars = "parameters")
+
+# transformブロックで作った量を取り出す
+fit$estimate(pars = "transform")
+
+# generateブロックで作った量を取り出す
+fit$estimate(pars = "generate")
+
+# すべて取り出す
+fit$estimate(pars = "all")
+```
+
+`pars = "parameters"` は、`parameters` ブロックで宣言されたprimary parameterだけを返します。推定結果を初期値や固定値として再利用したいときは、通常これを使います。
+
+```{r}
+est <- fit$estimate(pars = "parameters", drop = FALSE)
+```
+
+`drop = TRUE` がデフォルトです。選択されたパラメータが1つだけの場合は、リストではなくベクトル、行列、配列そのものを返します。常にリストで受け取りたい場合は `drop = FALSE` を指定します。
+
+```{r}
+# bだけならベクトルで返る
+b_eap <- fit$EAP("b")
+
+# bだけでもlistとして返る
+b_eap_list <- fit$EAP("b", drop = FALSE)
+```
+
+`EAP()` は `estimate(type = "EAP")` のショートカットです。`MAP()` は周辺MAPを返すのがデフォルトです。
+
+```{r}
+fit$EAP(pars = "parameters")
+fit$MAP(pars = "parameters")
+fit$MAP(pars = "parameters", type = "joint")
+```
+
+## 3.2 parsとcomponent
+
+`estimate()` では、`pars` と `component` を使って対象を絞れます。
+
+```{r}
+# bとsigmaだけ
+fit$estimate(pars = c("b", "sigma"))
+
+# transformだけ
+fit$estimate(component = "transform")
+
+# generateだけ
+fit$estimate(component = "generate")
+
+# theta以外
+fit$estimate(pars = "-theta")
+```
+
+MCMC/VBでは、`pars = NULL` の場合、デフォルトではprimary parametersが返ります。Classic/MAPでは、推定済みの固定効果、変換量、生成量を含む結果が返ります。
+
+# 4. MCMC_Fit {#mcmc-fit}
+
+`MCMC_Fit` は、`sample()` が返すfit objectです。事後分布全体を使う分析、Bayes factor、WAIC、posterior predictive check、回転、generated quantitiesなどの中心になります。
+
+```{r}
+fit_mcmc <- mdl$sample(
+  chains = 4,
+  warmup = 1000,
+  sampling = 1000,
+  metric = "auto",
+  nuts_variant = "multinomial"
+)
+```
+
+## 4.1 主要メソッド
+
+| メソッド                  | 用途                                                                     |
+|---------------------------|--------------------------------------------------------------------------|
+| `$draws()`                | posterior drawsを3次元配列 `[iteration, chain, variable]` として取り出す |
+| `$summary()`              | mean, sd, MAP, quantile, ESS, R-hatを表示                                |
+| `$rhat_summary()`         | R-hatの要約                                                              |
+| `$diagnose()`             | acceptance, treedepth, divergence, ESS, R-hat, metricなどを診断          |
+| `$EAP()`                  | 事後平均                                                                 |
+| `$MAP()`                  | 周辺MAPまたはjoint MAP                                                   |
+| `$transformed_draws()`    | posterior drawごとにtransformブロックを再計算                            |
+| `$generated_quantities()` | posterior drawごとにgenerateブロックを追加計算                           |
+| `$WAIC()`                 | pointwise `log_lik` からWAICを計算                                       |
+| `$bridgesampling()`       | bridge samplingでlog marginal likelihoodを推定                           |
+| `$bayes_factor()`         | Bayes factorを計算                                                       |
+| `$unconstrain_draws()`    | bridge sampling等のために非制約尺度のdrawを返す                          |
+| `$log_prob()`             | 非制約尺度上のlog posterior関数を返す                                    |
+| `$resolve_switching()`    | mixtureなどのlabel switchingを後処理する                                 |
+| `$rotate()`               | 行列パラメータのProcrustes回転                                           |
+| `$fa_rotate()`            | 因子負荷量の回転                                                         |
+
+## 4.2 draws()
+
+```{r}
+# 全ての固定パラメータ、transform、generateを取得
+draws_all <- fit_mcmc$draws()
+
+# bだけ取得
+draws_b <- fit_mcmc$draws("b")
+
+# random effectsも含める
+draws_with_random <- fit_mcmc$draws(inc_random = TRUE)
+
+# transformやgenerateを含めない
+draws_par <- fit_mcmc$draws(
+  inc_transform = FALSE,
+  inc_generate = FALSE
+)
+```
+
+`draws()` の返り値は3次元配列です。第3次元の名前がパラメータ名です。
+
+```{r}
+dim(draws_b)
+dimnames(draws_b)[[3]]
+```
+
+## 4.3 summary()とdiagnose()
+
+```{r}
+fit_mcmc$summary()
+fit_mcmc$summary("b")
+fit_mcmc$diagnose()
+```
+
+`summary()` は、`mean`、`sd`、`map`、`q2.5`、`q97.5`、`ess_bulk`、`ess_tail`、`rhat` を表示します。
+
+`diagnose()` では、次のような情報を確認します。
+
+-   retained draws
+-   finite lp
+-   mean acceptance
+-   maximum treedepth
+-   divergent transitions
+-   mean/max leapfrog steps
+-   metric type
+-   warmup summary
+-   dense metric condition number
+-   R-hat
+-   ESS
+-   pointwise `log_lik` の有無
+
+MCMCの最終確認では、R-hat、ESS、divergence、treedepth、acceptanceをセットで確認します。
+
+```{r}
+d <- fit_mcmc$diagnose()
+print(d)
+```
+
+よくある警告と、最初に試すことは次の通りです。
+
+| 表示                    | まず確認すること                                                                                              |
+|-------------------------|---------------------------------------------------------------------------------------------------------------|
+| R-hatが大きい           | chainが同じ分布を探索できていません。`sampling` を増やす、初期値を変える、label switchingがないか確認します。 |
+| ESSが小さい             | 有効なサンプル数が足りません。`sampling` を増やすか、パラメータ化を見直します。                               |
+| divergenceがある        | 事後分布の形がNUTSにとって難しい可能性があります。`delta` を上げる、事前分布やパラメータ化を見直します。      |
+| treedepthに達する       | 1回の遷移が長くなっています。`max_treedepth` を上げる前に、パラメータ化やスケーリングを確認します。           |
+| acceptanceが低い        | ステップサイズが大きすぎる可能性があります。`delta` を上げるか、モデルのスケールを確認します。                |
+| bridge samplingが不安定 | MCMCの混合、proper prior、bridge samplingのESSとerrorを確認します。                                           |
+
+## 4.4 transformed_draws()とgenerated_quantities()
+
+`transform` や `generate` の計算を、推定後にposterior drawごとに追加できます。
+
+```{r}
+fit_mcmc$transformed_draws()
+
+fit_mcmc$generated_quantities({
+  y_rep <- rnorm(length(Y), mu, sigma)
+})
+```
+
+`generated_quantities()` には、`rtmb_code(generate = { ... })` または `{ ... }` を渡せます。
+
+```{r}
+gq_code <- rtmb_code(
+  generate = {
+    log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  }
+)
+
+fit_mcmc$generated_quantities(gq_code)
+fit_mcmc$WAIC()
+```
+
+`progress = "message"` を指定すると、Jobや並列実行でも進捗メッセージとして表示されます。
+
+```{r}
+fit_mcmc$generated_quantities(gq_code, progress = "message")
+```
+
+## 4.5 bridge samplingとBayes factor
+
+MCMC fitでは、bridge samplingで周辺尤度を推定できます。
+
+```{r}
+logml <- fit_mcmc$bridgesampling(
+  method = "normal",
+  use_neff = TRUE
+)
+
+logml
+attr(logml, "error")
+attr(logml, "ess")
+```
+
+`attr(logml, "error")` はbridge samplingの推定誤差の目安、`attr(logml, "ess")` はbridge weightに基づく有効サンプルサイズの目安です。誤差が大きい、またはESSが小さい場合は、`sampling` や `chains` を増やす、`method` を見直す、posterior drawの混合を確認する、という順に疑います。
+
+Bayes factorは、周辺尤度の比として計算されます。
+
+```{r}
+bf <- fit_mcmc$bayes_factor(
+  fixed = list("b[talk]" = 0),
+  sampling = 4000,
+  chains = 4
+)
+
+print(bf)
+```
+
+`fixed = list(...)` を指定すると、指定したパラメータを固定した比較モデルを内部で作り、そのモデルもMCMCで推定してからBayes factorを計算します。Bayes factorの解釈と診断は8.1節にもまとめています。
+
+すでに比較モデルを推定している場合は、`comparison_fit` を渡せます。
+
+```{r}
+mdl_null <- fit_mcmc$model$fixed_model(
+  fixed = list("b[talk]" = 0)
+)
+fit_null <- mdl_null$sample(chains = 4, sampling = 4000)
+
+bf <- fit_mcmc$bayes_factor(
+  comparison_fit = fit_null
+)
+```
+
+Bayes factorはpriorに敏感です。モデル比較を目的にする場合は、`prior_flat()` ではなく、分析目的に合ったproper priorを置きます。
+
+## 4.6 WAIC
+
+WAICには、観測ごとのlog likelihoodが必要です。自作モデルでは `generate` ブロックに `log_lik` を保存します。モデル比較としてのWAICの使い方は8.2節にまとめています。
+
+```{r}
+df <- debate
+
+code <- rtmb_code(
+  setup = {
+    Y <- sat
+  },
+  parameters = {
+    mu <- Dim()
+    sigma <- Dim(lower = 0)
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+  },
+  generate = {
+    log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  }
+)
+
+fit <- rtmb_model(data = df, code = code)$sample()
+fit$WAIC()
+```
+
+ラッパー関数では、対応している場合に `WAIC = TRUE` を指定します。
+
+```{r}
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal(),
+  WAIC = TRUE
+)
+
+fit <- mdl$sample()
+fit$WAIC()
+```
+
+# 5. MAP_Fit {#map-fit}
+
+`MAP_Fit` は、`optimize()` が返すfit objectです。MAP推定、最尤推定、marginal MAP、Laplace近似、初期値探索、プロファイル尤度などに使います。
+
+```{r}
+fit_map <- mdl$optimize(
+  num_estimate = 4,
+  laplace = TRUE
+)
+```
+
+## 5.1 主要メソッド
+
+| メソッド                  | 用途                                                     |
+|---------------------------|----------------------------------------------------------|
+| `$estimate()`             | 最良runの推定値を取り出す                                |
+| `$summary()`              | MAP推定値、標準誤差、区間を表示                          |
+| `$draws()`                | sampling-based SEがある場合などに擬似drawを取り出す      |
+| `$ranef()`                | random effectsを取り出す                                 |
+| `$generated_quantities()` | MAP推定値に対して生成量を追加                            |
+| `$profile()`              | profile likelihood区間                                   |
+| `$WAIC()`                 | `se_method = "sampling"` かつ `log_lik` がある場合にWAIC |
+| `$diagnose()`             | 最適化の収束、Hessian、SEなどを診断                      |
+
+## 5.2 num_estimateとbest run
+
+`optimize(num_estimate = K)` は、複数の初期値から最適化を行い、not convergedではないrunの中から最良の目的関数値を持つrunを選びます。最終的な `fit_map$estimate()` や `fit_map$summary()` は、選ばれたbest runに基づきます。
+
+各runの状態は `opt_history` で確認します。
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 8)
+fit_map$opt_history
+fit_map$diagnose()
+```
+
+局所解があり得るモデルでは、`num_estimate` を増やすことが有効です。
+
+```{r}
+fit_mix <- mdl_mix$optimize(num_estimate = 20)
+fit_mix$opt_history
+```
+
+## 5.3 optimize結果を初期値や固定値に使う
+
+MAP推定結果は、MCMCの初期値としてよく使います。
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 4)
+
+fit_mcmc <- mdl$sample(
+  init = fit_map$estimate(pars = "parameters", drop = FALSE)
+)
+```
+
+一部のパラメータをMAP推定値で固定した制約付きモデルを作ることもできます。
+
+```{r}
+est <- fit_map$estimate(pars = "parameters", drop = FALSE)
+
+mdl_fixed <- mdl$fixed_model(
+  fixed = list(
+    sigma = est$sigma
+  )
+)
+
+fit_fixed <- mdl_fixed$optimize()
+```
+
+ベクトルや行列パラメータの一部だけを固定する場合は、展開名を使います。
+
+```{r}
+mdl_null <- mdl$fixed_model(
+  fixed = list("b[talk]" = 0)
+)
+
+fit_null <- mdl_null$optimize()
+```
+
+## 5.4 profile()
+
+`profile()` は、特定のパラメータについてprofile likelihood区間を計算します。
+
+```{r}
+prof <- fit_map$profile(
+  pars = c("b[talk]", "sigma"),
+  level = 0.95
+)
+```
+
+Laplace近似を使っているfitでは、内部的にrandom側のヤコビアン補正を含めてprofile用の目的関数を再構築します。
+
+## 5.5 MAP_FitのWAIC
+
+`MAP_Fit$WAIC()` は、`se_method = "sampling"` による不確実性伝播があり、かつ `log_lik` が保存されている場合に使えます。
+
+```{r}
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal(),
+  WAIC = TRUE
+)
+
+fit_map <- mdl$optimize(se_method = "sampling")
+fit_map$WAIC()
+```
+
+MAPのWAICは近似的です。最終的な予測評価ではMCMCのWAICを優先します。
+
+# 6. VB_Fit {#vb-fit}
+
+`VB_Fit` は、`variational()` が返すfit objectです。ADVIによる近似事後分布を保存します。高速ですが近似であり、分散が過小評価されることがあります。
+
+```{r}
+fit_vb <- mdl$variational(
+  iter = 5000,
+  num_estimate = 4
+)
+```
+
+## 6.1 主要メソッド
+
+| メソッド                  | 用途                                      |
+|---------------------------|-------------------------------------------|
+| `$draws()`                | 近似事後分布からのdrawを取り出す          |
+| `$summary()`              | best estimateの近似事後要約               |
+| `$estimate()`             | best estimateをデフォルトにした点推定     |
+| `$EAP()`                  | best estimateの事後平均                   |
+| `$MAP()`                  | best estimateの周辺MAPまたはjoint MAP     |
+| `$plot_elbo()`            | ELBOの推移をプロット                      |
+| `$plot_trajectory()`      | 最後の最適化windowでのパラメータ軌跡      |
+| `$transformed_draws()`    | 近似drawごとにtransformを再計算           |
+| `$generated_quantities()` | 近似drawごとにgenerateを追加計算          |
+| `$WAIC()`                 | pointwise `log_lik` がある場合にWAIC      |
+| `$diagnose()`             | ELBO、best estimate、WAICの有無などを診断 |
+
+## 6.2 num_estimateとbest estimate
+
+`variational(num_estimate = K)` は、複数のVB推定を行い、ELBOが最も高いrunをbest estimateとして選びます。
+
+`VB_Fit` では、`summary()`、`estimate()`、`EAP()`、`MAP()` は、デフォルトでbest estimateだけを使います。全estimateのdrawを確認したい場合は `draws()` を使います。
+
+```{r}
+fit_vb$best_chain
+fit_vb$ELBO
+fit_vb$rel_obj_vals
+
+# デフォルトではbest estimateのEAP
+fit_vb$EAP(pars = "parameters")
+
+# 特定のestimateを指定
+fit_vb$EAP(pars = "parameters", chains = 2)
+
+# ELBO上位2つを使う
+fit_vb$EAP(pars = "parameters", best_chains = 2)
+```
+
+## 6.3 plot_elbo()による収束確認
+
+VBでは、ELBOが上昇し、その後ほぼ水平になることが収束の目安です。
+
+```{r}
+fit_vb$plot_elbo()
+fit_vb$plot_elbo(tail_n = 1000)
+fit_vb$plot_elbo(ests = "best", tail_n = 1000)
+```
+
+後半のELBOが明らかに上昇し続けている場合は、`iter` を増やします。複数のestimateでELBOが大きくばらつく場合は、`num_estimate` を増やすか、MCMCで確認します。
+
+```{r}
+fit_vb$diagnose()
+```
+
+VBの収束確認では、次の順に見ます。
+
+1.  `plot_elbo()` の後半が水平に近いか。
+2.  `rel_obj_vals` が小さく、最適化が止まる理由として不自然でないか。
+3.  `num_estimate` 間でELBOが極端に違わないか。
+4.  `diagnose()` がVB objectiveやWAICについて警告していないか。
+
+ELBOが水平であることは必要な目安ですが、十分条件ではありません。VBは近似なので、posterior uncertaintyが重要な結論ではMCMCで確認します。
+
+## 6.4 VBのWAIC
+
+VBでも `log_lik` があればWAICを計算できます。
+
+```{r}
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal(),
+  WAIC = TRUE
+)
+
+fit_vb <- mdl$variational()
+fit_vb$WAIC()
+```
+
+ただし、VBのposteriorは近似であり、事後分散やWAICが楽観的になることがあります。モデル選択の判断では、MCMCでも確認します。
+
+# 7. Classic_Fit {#classic-fit}
+
+`Classic_Fit` は、`classic()` が返すfit objectです。wrapper関数で作られたflat priorモデルを、頻度主義的な結果として扱うためのAPIです。
+
+```{r}
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_flat()
+)
+
+fit_classic <- mdl$classic()
+```
+
+## 7.1 主要メソッド
+
+| メソッド       | 用途                                   |
+|----------------|----------------------------------------|
+| `$estimate()`  | 推定値を取り出す                       |
+| `$summary()`   | 係数表、標準誤差、信頼区間、検定統計量 |
+| `$print()`     | `summary()` を表示                     |
+| `$diagnose()`  | classical fitの診断                    |
+| `$logLik()`    | log likelihood                         |
+| `$AIC()`       | AIC                                    |
+| `$BIC()`       | BIC                                    |
+| `$anova()`     | Wald型ANOVA、分割表検定、モデル比較    |
+| `$lsmeans()`   | marginal means、pairwise contrasts     |
+| `$robust_se()` | robustまたはcluster-robust SE          |
+| `$bootstrap()` | bootstrap SE。現在は主にmediation向け  |
+
+`Classic_Fit` では `EAP()` と `MAP()` は使いません。点推定は `estimate()` を使います。
+
+```{r}
+fit_classic$estimate()
+fit_classic$summary()
+fit_classic$diagnose()
+```
+
+Classic APIは、wrapper関数から作られる頻度主義的な出力を扱うためのものです。`anova()` はlm/glm/mixed modelや分割表など、モデルごとに定義された範囲で使えます。`rtmb_ttest()`、`rtmb_corr()`、`rtmb_fa()`、`rtmb_irt()` などでは、すべてのclassicメソッドが同じ意味で使えるわけではありません。`lsmeans()` は主にカテゴリカル因子を含む回帰系モデルで使う機能で、`bootstrap()` は現状では主にmediationでの利用を想定しています。
+
+## 7.2 ANOVA
+
+`anova()` は、モデルに応じてWald F test、Wald chi-square test、分割表検定、モデル比較を行います。
+
+```{r}
+fit_classic$anova()
+anova(fit_classic)
+```
+
+複数の `Classic_Fit` を渡すと、モデル比較になります。
+
+```{r}
+fit0 <- rtmb_lm(sat ~ 1, data = debate, prior = prior_flat())$classic()
+fit1 <- rtmb_lm(sat ~ talk + perf, data = debate, prior = prior_flat())$classic()
+
+anova(fit0, fit1)
+```
+
+## 7.3 AIC, BIC, logLik
+
+```{r}
+fit_classic$logLik()
+fit_classic$AIC()
+fit_classic$BIC()
+
+AIC(fit0, fit1)
+BIC(fit0, fit1)
+```
+
+`AIC()` と `BIC()` は、頻度主義的な情報量基準として使います。ベイズ的なモデル比較とは目的が異なります。
+
+## 7.4 robust_se()
+
+`robust_se()` は、lm/glm/mixed modelでrobust SEを計算します。
+
+```{r}
+# 元のfitを変更せず、robust SE版のコピーを返す
+fit_robust <- fit_classic$robust_se(type = "HC3")
+
+# cluster-robust
+fit_cluster <- fit_classic$robust_se(
+  cluster = "group_id",
+  type = "CR1"
+)
+
+# fit自体を更新
+fit_classic$robust_se(type = "HC3", inplace = TRUE)
+```
+
+## 7.5 lsmeans()
+
+`lsmeans()` は、カテゴリカル因子のmarginal meansやpairwise comparisonを計算します。
+
+```{r}
+fit_classic$lsmeans("group")
+fit_classic$lsmeans("group", pairwise = TRUE)
+fit_classic$lsmeans(c("group", "condition"), pairwise = TRUE)
+```
+
+`simple_effects()` や `conditional_effects()` も、対応するfitで標準誤差や不確実性が利用できる場合に使えます。
+
+```{r}
+conditional_effects(fit_classic, effect = "talk:perf")
+simple_effects(fit_classic, effect = "talk:perf")
+```
+
+# 8. モデル比較と評価指標 {#model-comparison}
+
+BayesRTMBでは、推定方法によってモデル評価の意味が異なります。
+
+| 方法    | 主な指標                                              | 推奨用途                       |
+|---------|-------------------------------------------------------|--------------------------------|
+| MCMC    | bridge sampling, Bayes factor, WAIC                   | ベイズ的なモデル比較、予測評価 |
+| MAP     | Laplace近似log marginal likelihood, profile, WAIC近似 | 速い確認、初期値探索、近似評価 |
+| VB      | ELBO, WAIC近似                                        | 探索的評価、大規模モデルの近似 |
+| classic | logLik, AIC, BIC, anova                               | 頻度主義的なモデル比較         |
+
+大まかな使い分けは次の通りです。仮説として明確なnested modelを比べるならBayes factor、予測性能を比べるならWAIC、頻度主義的な情報量基準として比較するならAIC/BICを使います。VBのELBOは同じモデル設定内のrun選択や収束確認には便利ですが、一般的なモデル比較指標としては扱いません。
+
+## 8.1 Bayes factor
+
+Bayes factorは、2つのモデルの周辺尤度の比です。BayesRTMBでは、MCMC fitのbridge samplingに基づいて計算します。
+
+```{r}
+fit_full <- mdl_full$sample(chains = 4, sampling = 4000)
+
+bf <- fit_full$bayes_factor(
+  fixed = list("b[talk]" = 0),
+  chains = 4,
+  sampling = 4000
+)
+```
+
+`fixed` は、nested null modelを作るための指定です。`fixed = list("b[talk]" = 0)` は、`b[talk]` を0に固定したモデルと比較します。
+
+Bayes factorを見るときは、値そのものだけでなく、bridge samplingの診断も確認します。
+
+```{r}
+logml <- fit_full$bridgesampling()
+
+attr(logml, "error")
+attr(logml, "ess")
+```
+
+`attr(logml, "error")` が大きい場合は、周辺尤度の数値誤差がBayes factorの判断に影響する可能性があります。`attr(logml, "ess")` が小さい場合は、bridge weightの一部に依存した不安定な推定になっている可能性があります。`bayes_factor()` で `error_threshold` を指定すると、誤差が大きい場合に警告・停止しやすくできます。
+
+```{r}
+bf <- fit_full$bayes_factor(
+  fixed = list("b[talk]" = 0),
+  chains = 4,
+  sampling = 8000,
+  error_threshold = 0.05
+)
+```
+
+Bayes factorはpriorに敏感です。比較したい仮説に対応するproper priorを事前に決めておきます。`prior_flat()` のような不適切事前分布は、周辺尤度やBayes factorの比較には向きません。
+
+## 8.2 WAIC
+
+WAICは、事後分布に基づく予測評価です。観測ごとの `log_lik` が必要です。
+
+```{r}
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal(),
+  WAIC = TRUE
+)
+
+fit1 <- mdl$sample()
+fit1$WAIC()
+```
+
+自作モデルでは `generate` ブロックに `log_lik` を置きます。
+
+```{r}
+generate = {
+  log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+}
+```
+
+`sum = FALSE` にして、観測ごとのlog likelihoodを返します。
+
+## 8.3 AIC/BIC
+
+AIC/BICは `Classic_Fit` に対して使います。
+
+```{r}
+fit0 <- mdl0$classic()
+fit1 <- mdl1$classic()
+
+AIC(fit0, fit1)
+BIC(fit0, fit1)
+anova(fit0, fit1)
+```
+
+## 8.4 ELBO
+
+VBではELBOが最適化対象です。ELBOが大きいほど、近似事後分布の目的関数上はよい解です。
+
+```{r}
+fit_vb$ELBO
+fit_vb$plot_elbo(tail_n = 1000)
+```
+
+ELBOは異なる推定法間の一般的なモデル比較指標ではありません。VBの収束確認や、同じモデル・同じ設定内のrun選択に使います。
+
+# 9. fixedによるパラメータ固定 {#fixed-parameters}
+
+`fixed` は、パラメータを指定値に固定したモデルを作るための仕組みです。これは単なる後処理ではなく、モデル自体を制約付きモデルに変換します。
+
+```{r}
+mdl_null <- mdl$fixed_model(
+  fixed = list("b[talk]" = 0)
+)
+
+fit_null <- mdl_null$sample()
+```
+
+ラッパー関数や推定メソッドにも `fixed` を渡せます。
+
+```{r}
+mdl_null <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal(),
+  fixed = list("b[talk]" = 0)
+)
+
+fit_null <- mdl_null$sample()
+```
+
+または、推定時に指定できます。
+
+```{r}
+fit_null <- mdl$sample(
+  fixed = list("b[talk]" = 0)
+)
+
+fit_null_map <- mdl$optimize(
+  fixed = list("b[talk]" = 0)
+)
+```
+
+## 9.1 固定するパラメータ名の確認
+
+`fixed` には、モデル内部で使われるパラメータ名を渡します。ベクトルや行列の一部を固定する場合は、`"b[talk]"` のような展開名を使います。
+
+名前を確認するには、次の方法が便利です。
+
+```{r}
+# summaryに表示される名前を見る
+fit_mcmc$summary()
+
+# primary parametersの名前を見る
+names(fit_mcmc$EAP(pars = "parameters", drop = FALSE))
+
+# MCMC drawの展開名を見る
+dimnames(fit_mcmc$draws())[[3]]
+
+# wrapperが作ったモデルコードを見る
+print_code(mdl)
+```
+
+`fit$estimate(pars = "parameters", drop = FALSE)` は、推定されたprimary parametersだけをリストで返します。これを `fixed` や次のMCMCの `init` に渡すと、transformやgenerateで作られた派生量を誤って使うことを避けられます。
+
+## 9.2 fixedの内部処理
+
+BayesRTMBでは、ユーザーは自然尺度でパラメータを指定します。内部では、制約付きパラメータを非制約尺度へ変換し、必要なヤコビアン補正を推定経路に応じて処理します。
+
+MCMCでは、非制約空間で事後分布をサンプリングするため、基本的にすべての制約変換に対応するヤコビアン補正が使われます。Laplace近似を含むMAPでは、random側または積分される側に必要な補正が使われます。
+
+`fixed` でパラメータを固定した場合も、固定値のprior contributionや制約変換の扱いが内部で調整されます。そのため、`fixed` を使って作ったnested modelは、Bayes factorやMAP推定で一貫したrestricted modelとして扱えます。
+
+## 9.3 fixedの制限
+
+`fixed` はrestricted modelを作るための機能ですが、すべての部分固定が安全にできるわけではありません。
+
+| ケース                                                                         | 推奨                                              |
+|--------------------------------------------------------------------------------|---------------------------------------------------|
+| スカラーparameterを固定する                                                    | `fixed = list(sigma = 1)` のように指定            |
+| ベクトルparameter全体を固定する                                                | `fixed = list(b = est$b)` のように全体を渡す      |
+| ベクトルの一部を固定する                                                       | `"b[talk]" = 0` のような展開名を使う              |
+| 多変量priorがかかったparameterの一部だけを固定する                             | 原則として避ける。比較用に縮小モデルを書き直す    |
+| simplex、相関行列、Cholesky因子など構造制約のあるparameterの一部だけを固定する | 原則として避ける。制約に合う別モデルとして書く    |
+| `lp <- lp + ...` で手動追加したpriorを含むparameterを固定する                  | `~` 記法のpriorにするか、固定モデルを明示的に書く |
+
+多変量priorや構造制約のあるparameterでは、一部の要素だけを固定すると、元の制約空間・ヤコビアン・prior contributionを正しく分解できないことがあります。BayesRTMBは危険なケースを検出した場合はエラーにします。Bayes factorを目的にする場合は、固定対象が明確なスカラーか、比較仮説に対応する縮小モデルとして自然に書ける形にするのが安全です。
+
+## 9.4 optimize結果を固定値として使う
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 4)
+
+est <- fit_map$estimate(
+  pars = "parameters",
+  drop = FALSE
+)
+
+mdl_fixed <- mdl$fixed_model(
+  fixed = list(
+    sigma = est$sigma
+  )
+)
+
+fit_fixed <- mdl_fixed$optimize()
+```
+
+特定の係数だけを固定する場合は、展開名を使います。
+
+```{r}
+mdl_fixed <- mdl$fixed_model(
+  fixed = list(
+    "b[talk]" = 0,
+    "b[perf]" = 0
+  )
+)
+```
+
+## 9.5 MCMC結果を固定値として使う
+
+MCMCのEAPやMAPを固定値として使うこともできます。
+
+```{r}
+fit_mcmc <- mdl$sample()
+
+eap <- fit_mcmc$EAP(
+  pars = "parameters",
+  drop = FALSE
+)
+
+mdl_fixed <- fit_mcmc$model$fixed_model(
+  fixed = list(
+    sigma = eap$sigma
+  )
+)
+
+fit_fixed <- mdl_fixed$sample()
+```
+
+ベクトルパラメータを丸ごと固定する場合は、そのパラメータ名に値を渡します。
+
+```{r}
+eap <- fit_mcmc$EAP(pars = "parameters", drop = FALSE)
+
+mdl_b_fixed <- fit_mcmc$model$fixed_model(
+  fixed = list(
+    b = eap$b
+  )
+)
+```
+
+一部の要素だけを固定する場合は、展開名を使います。
+
+```{r}
+mdl_one_fixed <- fit_mcmc$model$fixed_model(
+  fixed = list(
+    "b[talk]" = 0
+  )
+)
+```
+
+## 9.6 fixedとBayes factor
+
+`bayes_factor()` の `fixed` は、restricted modelを作るための便利なショートカットです。
+
+```{r}
+bf <- fit_mcmc$bayes_factor(
+  fixed = list("b[talk]" = 0),
+  chains = 4,
+  sampling = 4000
+)
+```
+
+この指定は、次の処理をまとめて行うのと同じ考え方です。
+
+```{r}
+mdl_null <- fit_mcmc$model$fixed_model(
+  fixed = list("b[talk]" = 0)
+)
+
+fit_null <- mdl_null$sample(
+  chains = 4,
+  sampling = 4000
+)
+
+bf <- fit_mcmc$bayes_factor(
+  comparison_fit = fit_null
+)
+```
+
+# 10. rtmb_codeのブロック {#rtmb-code-blocks}
+
+`rtmb_code()` は、モデルを複数のブロックに分けて書きます。
+
+| ブロック     | 用途                                                  | ADとの関係                             |
+|--------------|-------------------------------------------------------|----------------------------------------|
+| `data`       | 使用するデータ名の宣言                                | 通常は定数                             |
+| `setup`      | データ前処理、index作成、定数計算                     | AD対象外。自由なR処理を置きやすい      |
+| `parameters` | 推定パラメータの宣言                                  | AD対象                                 |
+| `transform`  | modelで使う線形予測子、派生パラメータ                 | AD対象。posterior drawごとに再計算可能 |
+| `model`      | likelihoodとprior                                     | AD対象。log posteriorを作る            |
+| `generate`   | posterior prediction、log_lik、推定後だけ必要な派生量 | 推定後にdrawごとに計算                 |
+
+`rtmb_model(data = df, code = code)` のようにdata frameを渡した場合、data frameの列名を `setup` 内で直接参照できます。`setup` は、外から渡されたデータとモデルコード内の変数名を結び付ける場所でもあります。
+
+基本形は次の通りです。
+
+```{r}
+df <- debate
+
+code <- rtmb_code(
+  setup = {
+    Y <- sat
+    X <- talk
+    N <- length(Y)
+  },
+  parameters = {
+    Intercept <- Dim()
+    b <- Dim()
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    mu <- Intercept + b * X
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    Intercept ~ normal(0, 10)
+    b ~ normal(0, 10)
+    sigma ~ exponential(1)
+  },
+  generate = {
+    log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  }
+)
+
+mdl <- rtmb_model(data = df, code = code)
+```
+
+## 10.1 setupに置くべき処理
+
+データだけから決まる処理は、できるだけ `setup` に置きます。典型的には、次のような処理です。
+
+-   data frameの列を、モデル内で使う変数名に結び付ける。
+-   欠測位置やindexを作る。
+-   デザイン行列、カテゴリ数、観測数などの定数を作る。
+-   AD対象外でよい補助関数を定義する。
+
+```{r}
+setup = {
+  Y <- response
+  X <- model.matrix(~ group + score)
+
+  obs <- which(!is.na(Y), arr.ind = TRUE)
+  person_idx <- as.integer(obs[, "row"])
+  item_idx <- as.integer(obs[, "col"])
+  Y_obs <- Y[obs]
+  N_obs <- length(Y_obs)
+
+  center <- function(x) x - mean(x)
+}
+```
+
+`setup` はADテープに記録されません。欠測位置、index、定数、デザイン行列の作成などに向いています。
+
+## 10.2 transformに置くべき処理
+
+パラメータに依存し、かつ `model` ブロックでも使う派生量は `transform` に置きます。典型例は、線形予測子、平均構造、確率、相関行列、標準化係数などです。
+
+```{r}
+transform = {
+  eta <- X %*% b + Intercept
+  mu <- inv_logit(eta)
+}
+```
+
+`transform` で作った量は、`model` ブロックの中でそのまま使えます。また、推定後にposterior drawごとに再計算できます。
+
+```{r}
+fit$transformed_draws()
+fit$estimate(pars = "transform")
+```
+
+`transform` 内で代入した変数は、デフォルトでは保存対象になります。途中計算を保存したくない場合は、`report()` で出力したい変数だけを明示します。
+
+```{r}
+transform = {
+  eta <- X %*% b + Intercept
+  mu <- inv_logit(eta)
+  report(mu)
+}
+```
+
+この例では、`eta` は計算途中で使うだけなので保存されず、`mu` だけが `transform` 成分に保存されます。複数の量を保存したい場合は、`report(mu, eta)` のように指定します。
+
+`report()` は「計算するかどうか」ではなく「fit objectに保存して、`estimate()`、`draws()`、`transformed_draws()` などから取り出せるようにするか」を制御するものです。`report()` しなかった途中変数も、そのブロック内や後続の `model` 計算には使えます。
+
+## 10.3 generateに置くべき処理
+
+推定後に必要だが、log posteriorの計算そのものには不要な量は `generate` に置きます。典型例は、posterior prediction、WAIC用のpointwise `log_lik`、予測確率、分類結果、回転後の量、解釈用の派生量などです。
+
+```{r}
+generate = {
+  log_lik <- normal_lpdf(Y, eta, sigma, sum = FALSE)
+  y_rep <- rnorm(length(Y), eta, sigma)
+  report(log_lik, y_rep)
+}
+```
+
+`generate` で作った量は、`model` ブロックの尤度や事前分布には影響しません。推定後に `generated_quantities()` でdrawごとに計算され、`estimate(pars = "generate")` や `draws(pars = ...)` から取り出せます。
+
+```{r}
+gq_code <- rtmb_code(
+  generate = {
+    log_lik <- normal_lpdf(Y, eta, sigma, sum = FALSE)
+  }
+)
+
+fit$generated_quantities(gq_code)
+fit$estimate(pars = "generate")
+fit$draws(pars = "log_lik")
+```
+
+`generate` でも `report()` を使えます。`report()` を書かない場合は、ブロック内で代入した量が保存対象になります。保存したい量を絞る場合は、`report(log_lik)` のように明示します。
+
+`log_lik` を保存しておくと `WAIC()` が使えます。WAIC用の `log_lik` は、全観測を足し合わせた1つの値ではなく、観測ごとのベクトルである必要があります。そのため `normal_lpdf(..., sum = FALSE)` のように書きます。
+
+## 10.4 transformとgenerateの使い分け
+
+| 判断                           | `transform`                            | `generate`               |
+|--------------------------------|----------------------------------------|--------------------------|
+| `model` ブロックで使う         | 向いている                             | 原則として向かない       |
+| log posteriorに影響する        | 影響しうる                             | 影響しない               |
+| 推定中に必要                   | はい                                   | いいえ                   |
+| 推定後だけ必要                 | 使えるが、必要以上に重くなることがある | 向いている               |
+| posterior drawごとの再計算     | `transformed_draws()`                  | `generated_quantities()` |
+| WAIC用 `log_lik`               | 通常は置かない                         | 置く                     |
+| 乱数を使うposterior prediction | 置かない                               | 置く                     |
+
+迷った場合は、「この量がlikelihoodやpriorを計算するために必要か」で判断します。必要なら `transform`、推定後に見たいだけなら `generate` が基本です。
+
+# 11. パラメータ宣言と型
+
+`parameters` ブロックでは、`Dim()` で推定パラメータを宣言します。
+
+```{r}
+parameters = {
+  # scalar
+  alpha <- Dim()
+
+  # vector
+  b <- Dim(P)
+
+  # matrix
+  L <- Dim(c(J, D))
+
+  # array
+  A <- Dim(c(I, J, K))
+
+  # positive scalar
+  sigma <- Dim(lower = 0)
+
+  # random effect
+  theta <- Dim(N, random = TRUE)
+}
+```
+
+## 11.1 次元
+
+| 宣言              | 意味              |
+|-------------------|-------------------|
+| `Dim()`           | scalar            |
+| `Dim(1)`          | 長さ1のパラメータ |
+| `Dim(N)`          | vector            |
+| `Dim(c(N, M))`    | matrix            |
+| `Dim(c(I, J, K))` | array             |
+
+3次元以上の配列も使えます。`Dim(c(I, J, K))` のように、次元を整数ベクトルで指定します。
+
+## 11.2 制約
+
+| 宣言                                        | 意味                     |
+|---------------------------------------------|--------------------------|
+| `Dim(lower = 0)`                            | 正の値                   |
+| `Dim(upper = 1)`                            | 上限あり                 |
+| `Dim(lower = 0, upper = 1)`                 | 区間制約                 |
+| `Dim(N, type = "ordered")`                  | 昇順ベクトル             |
+| `Dim(N, type = "positive_ordered")`         | 正の昇順ベクトル         |
+| `Dim(N, type = "simplex")`                  | 和が1の非負ベクトル      |
+| `Dim(c(K, K), type = "corr_matrix")`        | 相関行列                 |
+| `Dim(c(K, K), type = "CF_corr")`            | 相関行列のCholesky因子   |
+| `Dim(c(M, D), type = "lower_tri")`          | 下三角行列               |
+| `Dim(c(M, D), type = "positive_lower_tri")` | 正の対角を持つ下三角行列 |
+| `Dim(c(M, D), type = "lower_tri_stz")`      | 列和制約を持つ下三角構造 |
+
+制約付きパラメータは、内部では非制約尺度に変換されます。MCMCやLaplace近似では、必要なヤコビアン補正が推定経路に応じて使われます。
+
+## 11.3 random = TRUE
+
+`random = TRUE` は、そのパラメータをrandom effectとして扱う指定です。
+
+```{r}
+parameters = {
+  theta <- Dim(N_persons, random = TRUE)
+  b <- Dim(N_items)
+}
+```
+
+`optimize(laplace = TRUE)` では、`random = TRUE` のパラメータはLaplace近似で積分されます。`sample()` では、random effectも含めた事後サンプルを得られますが、metricの扱いではrandom側が特別に扱われることがあります。
+
+# 12. 分布一覧
+
+BayesRTMBでは、Stan風のサンプリング構文が使えます。
+
+```{r}
+Y ~ normal(mu, sigma)
+theta ~ normal(0, 1)
+```
+
+明示的にlog densityを足すこともできます。
+
+```{r}
+lp <- lp + normal_lpdf(Y, mu, sigma)
+```
+
+`~` を使った場合でも、BayesRTMBでは正規化定数を含むlog densityが計算されます。そのため、bridge samplingを目的とする場合でも `~` 記法を使えます。
+
+## 12.1 連続分布
+
+| 分布                          | 明示関数               | support      | 主な入力の形                                         | 用途                    |
+|-------------------------------|------------------------|--------------|------------------------------------------------------|-------------------------|
+| `normal(mean, sd)`            | `normal_lpdf()`        | 実数         | `x`, `mean`, `sd` はスカラーまたは同じ長さのベクトル | 正規分布                |
+| `lognormal(meanlog, sdlog)`   | `lognormal_lpdf()`     | 正の実数     | `x > 0`                                              | 正の歪んだ量            |
+| `exponential(rate)`           | `exponential_lpdf()`   | 非負         | `rate > 0`                                           | 正のscaleやrate         |
+| `half_normal(sd)`             | `half_normal_lpdf()`   | 非負         | `sd > 0`                                             | 正のscale prior         |
+| `beta(a, b)`                  | `beta_lpdf()`          | 0から1       | `a > 0`, `b > 0`                                     | 確率や割合              |
+| `gamma(shape, rate)`          | `gamma_lpdf()`         | 正の実数     | `shape > 0`, `rate > 0`                              | 正の量                  |
+| `inverse_gamma(shape, scale)` | `inverse_gamma_lpdf()` | 正の実数     | `shape > 0`, `scale > 0`                             | 分散などのprior         |
+| `cauchy(location, scale)`     | `cauchy_lpdf()`        | 実数         | `scale > 0`                                          | heavy-tailed prior      |
+| `student_t(df, mu, sigma)`    | `student_t_lpdf()`     | 実数         | `df > 0`, `sigma > 0`                                | robust likelihood/prior |
+| `laplace(location, scale)`    | `laplace_lpdf()`       | 実数         | `scale > 0`                                          | L1型の縮小              |
+| `logit_normal(mu, sd)`        | `logit_normal_lpdf()`  | 0から1       | `sd > 0`                                             | 0から1の値              |
+| `weibull(shape, scale)`       | `weibull_lpdf()`       | 非負         | `shape > 0`, `scale > 0`                             | 生存時間など            |
+| `uniform(a, b)`               | `uniform_lpdf()`       | `a` から `b` | `a < b`                                              | 有界一様分布            |
+
+多くの単変量分布はベクトル化されています。
+
+```{r}
+Y ~ normal(mu, sigma)
+```
+
+分布の引数は、名前の通りの尺度で指定します。たとえば `lognormal(meanlog, sdlog)` は、元の値ではなく、対数を取った値の平均と標準偏差を指定します。`bernoulli_logit(eta)` や `categorical_logit(eta)` は、確率ではなくlogit尺度の値を渡します。
+
+観測ごとのlog likelihoodが必要な場合は、`sum = FALSE` を使います。
+
+```{r}
+log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+```
+
+`sum = FALSE` は、各観測のlog densityをベクトルとして返します。`WAIC()` やpointwise log likelihoodが必要なモデル比較では、この形で `generate` ブロックに保存します。
+
+## 12.2 離散分布
+
+| 分布                                  | 明示関数                     | support / coding     | 主な入力の形                        | 用途                     |
+|---------------------------------------|------------------------------|----------------------|-------------------------------------|--------------------------|
+| `bernoulli(prob)`                     | `bernoulli_lpmf()`           | `0` または `1`       | `prob` は0から1                     | 0/1データ                |
+| `bernoulli_logit(eta)`                | `bernoulli_logit_lpmf()`     | `0` または `1`       | `eta` はlogit尺度                   | logit尺度の二値データ    |
+| `binomial(size, prob)`                | `binomial_lpmf()`            | `0:size`             | `size` は試行数、`prob` は0から1    | 二項データ               |
+| `binomial_logit(size, eta)`           | `binomial_logit_lpmf()`      | `0:size`             | `eta` はlogit尺度                   | logit尺度の二項データ    |
+| `poisson(mean)`                       | `poisson_lpmf()`             | 非負整数             | `mean > 0`                          | カウントデータ           |
+| `neg_binomial(size, prob)`            | `neg_binomial_lpmf()`        | 非負整数             | `size > 0`, `prob` は0から1         | 過分散カウント           |
+| `neg_binomial_2(mu, size)`            | `neg_binomial_2_lpmf()`      | 非負整数             | `mu > 0`, `size > 0`                | 平均/分散パラメータ化    |
+| `categorical(prob)`                   | `categorical_lpmf()`         | `1, ..., K`          | `prob` は長さKの確率ベクトル        | カテゴリデータ           |
+| `categorical_logit(eta)`              | `categorical_logit_lpmf()`   | `1, ..., K`          | `eta` は長さKのlogitベクトル        | logit尺度カテゴリデータ  |
+| `multinomial(size, prob)`             | `multinomial_lpmf()`         | 長さKの非負整数count | `sum(y) = size`, `prob` は長さK     | 多項カウント             |
+| `ordered_logistic(eta, cutpoints)`    | `ordered_logistic_lpmf()`    | `1, ..., K`          | `cutpoints` は長さK-1の昇順ベクトル | 順序カテゴリ             |
+| `sequential_logistic(eta, cutpoints)` | `sequential_logistic_lpmf()` | `1, ..., K`          | `cutpoints` は長さK-1の昇順ベクトル | sequential ordinal model |
+
+離散分布のカテゴリ番号は、基本的にStanと同じく1始まりです。`categorical()`、`ordered_logistic()` などで0始まりのカテゴリを渡すと、意図しないモデルになります。
+
+## 12.3 多変量・行列分布
+
+| 分布                                                           | 明示関数                            | support / 入力の形                                   | 用途                             |
+|----------------------------------------------------------------|-------------------------------------|------------------------------------------------------|----------------------------------|
+| `multi_normal(mean, Sigma)`                                    | `multi_normal_lpdf()`               | `x` と `mean` は同じ長さ、`Sigma` は正定値共分散行列 | 多変量正規                       |
+| `multi_normal_CF(mean, sd, CF_Omega)`                          | `multi_normal_CF_lpdf()`            | `sd` と相関Cholesky因子で指定                        | SDと相関Choleskyによる多変量正規 |
+| `multi_student_t(df, mean, Sigma)`                             | `multi_student_t_lpdf()`            | `df > 0`, `Sigma` は正定値                           | 多変量Student t                  |
+| `multi_cauchy(mean, Sigma)`                                    | `multi_cauchy_lpdf()`               | `Sigma` は正定値                                     | 多変量Cauchy                     |
+| `dirichlet(alpha)`                                             | `dirichlet_lpdf()`                  | simplex、`alpha > 0`                                 | simplex prior                    |
+| `lkj_corr(eta)`                                                | `lkj_corr_lpdf()`                   | 相関行列、`eta > 0`                                  | 相関行列prior                    |
+| `lkj_CF_corr(eta)`                                             | `lkj_CF_corr_lpdf()`                | 相関Cholesky因子、`eta > 0`                          | 相関Cholesky prior               |
+| `wishart(n, V)`                                                | `wishart_lpdf()`                    | 正定値行列                                           | 共分散行列                       |
+| `wishart_CF(n, sd, CF_Omega)`                                  | `wishart_CF_lpdf()`                 | Cholesky表現                                         | Cholesky表現                     |
+| `fa_multi_normal(mu, Lambda, psi)`                             | `fa_multi_normal_lpdf()`            | 因子負荷量と独自分散で指定                           | 因子分析                         |
+| `sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)` | `sufficient_multi_normal_fa_lpdf()` | 十分統計量で指定                                     | 十分統計量による因子分析         |
+| `gaussian_process(x, mean, magnitude, smoothing, noise)`       | `gaussian_process_lpdf()`           | 距離入力とカーネルパラメータ                         | ガウス過程                       |
+
+## 12.4 混合分布・特殊分布
+
+| 分布                                        | 明示関数                                    | 用途               |
+|---------------------------------------------|---------------------------------------------|--------------------|
+| `normal_mixture(pi_w, mean, sd)`            | `normal_mixture_lpdf()`                     | 正規混合           |
+| `mixture(pi_w, lpdf_list)`                  | `mixture_lpdf()`                            | 一般の混合         |
+| `centered_multi_normal(sigma)`              | `centered_multi_normal_lpdf()`              | sum-to-zero制約    |
+| `centered_tri_multi_normal(sigma)`          | `centered_tri_multi_normal_lpdf()`          | 因子分析識別制約   |
+| `positive_centered_tri_multi_normal(sigma)` | `positive_centered_tri_multi_normal_lpdf()` | 正方向制約つき識別 |
+| `bw_categorical_logit(U, lambda)`           | `bw_categorical_logit_lpmf()`               | best-worst型選択   |
+
+# 13. 数学・安定化関数
+
+`rtmb_code()` 内では、ADと相性のよい補助関数を使えます。
+
+| 関数                          | 用途                            |
+|-------------------------------|---------------------------------|
+| `inv_logit(x)`                | logistic変換                    |
+| `logit(x)`                    | logit変換                       |
+| `softmax(x)`                  | softmax                         |
+| `log_softmax(x)`              | log softmax                     |
+| `log_sum_exp(x)`              | log-sum-exp                     |
+| `log_sum_exp_matrix(M)`       | 行方向のlog-sum-exp             |
+| `log1m(x)`                    | `log(1 - x)`                    |
+| `log1p_exp(x)`                | `log(1 + exp(x))` の安定計算    |
+| `log1m_exp(x)`                | `log(1 - exp(x))` の安定計算    |
+| `log_mix(theta, lp1, lp2)`    | 2成分混合のlog probability      |
+| `fabs(x)`                     | 微分可能な絶対値近似            |
+| `distance(x, y)`              | 安定化つきユークリッド距離      |
+| `squared_distance(x, y)`      | 安定化つき二乗距離              |
+| `log_det_chol(L)`             | Cholesky因子からlog determinant |
+| `quad_form_chol(x, L)`        | Cholesky因子を使った二次形式    |
+| `quad_form_diag(m, v)`        | 対角分散の二次形式              |
+| `sum_to_zero(x)`              | sum-to-zeroベクトル             |
+| `to_lower_tri(x, M, D)`       | ベクトルから下三角行列          |
+| `to_centered_matrix(x, R, C)` | 列和0の行列                     |
+| `to_centered_tri(x, R, C)`    | 識別制約つき下三角構造          |
+| `rtmb_vector(value, length)`  | AD互換ベクトル                  |
+| `rtmb_array(value, dim)`      | AD互換配列                      |
+
+# 14. ADテープ化とパフォーマンス
+
+BayesRTMBは、RTMBのautomatic differentiationにモデル計算を渡します。そのため、モデルコードは「Rとして動く」だけでなく、「ADテープとして効率よく記録できる」必要があります。
+
+## 14.1 setupを活用する
+
+パラメータに依存しない処理は `setup` に置きます。
+
+```{r}
+setup = {
+  obs <- which(!is.na(Y), arr.ind = TRUE)
+  person_idx <- as.integer(obs[, "row"])
+  item_idx <- as.integer(obs[, "col"])
+  Y_obs <- Y[obs]
+}
+```
+
+このような処理を `model` 内に置くと、ADテープ化のたびに不要な処理が記録され、遅くなります。
+
+## 14.2 ベクトル化を優先する
+
+同じ計算を書けるなら、明示的なループよりもベクトル化した行列演算を優先します。
+
+```{r}
+transform = {
+  eta <- X %*% b + Intercept
+}
+
+model = {
+  Y ~ normal(eta, sigma)
+}
+```
+
+ただし、ループ自体が禁止ではありません。AD対象の演算が微分可能であれば、`for` ループは使えます。
+
+```{r}
+model = {
+  for (i in 1:N_obs) {
+    eta_i <- a[item_idx[i]] * (theta[person_idx[i]] - b[item_idx[i]])
+    Y_obs[i] ~ bernoulli_logit(eta_i)
+  }
+}
+```
+
+## 14.3 apply系関数を避ける
+
+`apply()`、`sapply()`、`lapply()` は、AD属性を落とすことがあります。`rtmb_code()` 内では、明示的なループかベクトル化を使うほうが安全です。
+
+## 14.4 ifとifelseの注意
+
+パラメータ値に依存する条件分岐は、微分可能性を壊すことがあります。
+
+避けたい例:
+
+```{r}
+model = {
+  if (theta > 0) {
+    y ~ normal(theta, 1)
+  } else {
+    y ~ normal(0, 1)
+  }
+}
+```
+
+必要な場合は、滑らかな近似、`log_mix()`、またはモデル構造の再定式化を検討します。
+
+## 14.5 rtmb_vector()とrtmb_array()
+
+代入でベクトルや配列を作る場合、`numeric()` や `array()` ではAD型がうまく保持されないことがあります。その場合は `rtmb_vector()` や `rtmb_array()` を使います。
+
+```{r}
+transform = {
+  eta <- rtmb_vector(0, length = N_obs)
+  for (i in 1:N_obs) {
+    eta[i] <- X[i, ] %*% b
+  }
+}
+```
+
+```{r}
+transform = {
+  logit_x <- rtmb_array(0, dim = c(T, C, D))
+  for (t in 1:T) {
+    for (c in 1:C) {
+      for (d in 1:D) {
+        logit_x[t, c, d] <- alpha[d] + beta[c, d] * time[t]
+      }
+    }
+  }
+}
+```
+
+ただし、`rtmb_vector()` や `rtmb_array()` は代入を多用するモデルの補助です。行列演算やベクトル化で自然に書ける場合は、そちらを優先します。
+
+## 14.6 テープ化時間とAD評価速度
+
+テープ化時間は、モデルをRTMBのADオブジェクトとして記録する時間です。AD評価速度は、記録されたテープを使ってlog posteriorやgradientを繰り返し評価する速度です。
+
+長いループや大量の代入は、テープ化を遅くすることがあります。行列演算にできる部分は行列演算にすると、テープ化時間とAD評価速度の両方が改善しやすくなります。
+
+## 14.7 ADテープ内で避けたい書き方
+
+モデルコードはRとして実行できても、ADテープとしては遅い、または不安定なことがあります。迷ったときは、次の表を確認します。
+
+| 非推奨な書き方                                     | 理由                                                | 代替                                                 |
+|----------------------------------------------------|-----------------------------------------------------|------------------------------------------------------|
+| パラメータ値に依存する `if` 文                     | log posteriorが非連続・非微分になりやすい           | `log_mix()`、滑らかな近似、モデル再定式化            |
+| パラメータ値に依存する `ifelse()`                  | 分岐の両側評価やAD属性の扱いが不安定になりやすい    | ベクトル化した滑らかな式                             |
+| `apply()` / `sapply()` / `lapply()`                | AD属性を落とすことがある                            | 明示的な `for` ループまたは行列演算                  |
+| `model` 内で欠測位置やindexを作る                  | テープ化が遅くなり、モデル構造が見えにくい          | `setup` で事前計算                                   |
+| パラメータに依存してベクトル長や行列サイズを変える | テープの構造が固定できない                          | サイズは `setup` で固定し、値だけをAD対象にする      |
+| `stats::pnorm()` など通常のR関数                   | AD型に対応していないことがある                      | AD対応の関数を使うか、`setup` で事前計算             |
+| パラメータに依存する `pmin()` / `pmax()`           | 比較演算がADで不安定になりやすい                    | 制約付きパラメータ、滑らかな近似、事前計算           |
+| `setup` 外で定義した補助関数に依存する             | 並列実行時にworkerで見つからないことがある          | 補助関数は `setup` に書くか、`package::fun()` で呼ぶ |
+| Rの通常の密度関数 `dnorm()` などをlikelihoodに使う | 正規化定数やAD対応がBayesRTMBの分布関数と一致しない | `normal_lpdf()` や `Y ~ normal(...)` を使う          |
+| `model` ブロックで乱数を発生させる                 | log posteriorが確定的でなくなる                     | 乱数生成は `generate` か推定後のRコードで行う        |
+
+`generate` ブロックは推定後にdrawごとに評価する場所なので、posterior predictionの乱数生成や `log_lik` の保存に向いています。一方、`model` ブロックはlog posteriorそのものを定義する場所なので、同じパラメータなら同じ値を返す決定的な計算にします。
+
+# 15. 典型的な用途別レシピ
+
+## 15.1 MCMCの結果から推定値だけ欲しい
+
+```{r}
+fit <- mdl$sample()
+
+fit$EAP(pars = "parameters")
+fit$MAP(pars = "parameters")
+fit$estimate(pars = "parameters", type = "EAP")
+```
+
+## 15.2 初期値をMAPから作ってMCMCを回したい
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 4)
+
+fit_mcmc <- mdl$sample(
+  init = fit_map$estimate(pars = "parameters")
+)
+```
+
+## 15.3 生成量だけを取り出したい
+
+```{r}
+fit$generated_quantities({
+  pred <- rnorm(length(Y), mu, sigma)
+})
+
+fit$estimate(pars = "generate")
+fit$draws(pars = "pred")
+```
+
+## 15.4 random effectsを含めてdrawを取り出したい
+
+```{r}
+draws_re <- fit$draws(
+  inc_random = TRUE,
+  inc_transform = FALSE,
+  inc_generate = FALSE
+)
+```
+
+## 15.5 VBの収束を見たい
+
+```{r}
+fit_vb <- mdl$variational(iter = 10000, num_estimate = 4)
+
+fit_vb$plot_elbo(tail_n = 1000)
+fit_vb$diagnose()
+```
+
+ELBOが後半で水平になっていれば、VBの最適化は安定している可能性が高いです。ただし、VBは近似なので、重要な結論はMCMCで確認します。
+
+## 15.6 classicで頻度主義的にモデル比較したい
+
+```{r}
+fit0 <- rtmb_lm(sat ~ 1, data = debate, prior = prior_flat())$classic()
+fit1 <- rtmb_lm(sat ~ talk + perf, data = debate, prior = prior_flat())$classic()
+
+anova(fit0, fit1)
+AIC(fit0, fit1)
+BIC(fit0, fit1)
+```
+
+## 15.7 Bayes factorで係数の有無を比較したい
+
+```{r}
+fit <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal()
+)$sample()
+
+bf <- fit$bayes_factor(
+  fixed = list("b[talk:perf]" = 0),
+  chains = 4,
+  sampling = 4000
+)
+```
+
+## 15.8 fixed modelを明示的に作りたい
+
+```{r}
+mdl_full <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal()
+)
+
+mdl_null <- mdl_full$fixed_model(
+  fixed = list("b[talk:perf]" = 0)
+)
+
+fit_full <- mdl_full$sample()
+fit_null <- mdl_null$sample()
+```
+
+## 15.9 古いfit objectを新しいクラスに更新したい {#upgrade-fit}
+
+```{r}
+fit_new <- upgrade_fit(fit_old)
+```
+
+保存済みfit objectを現在のクラス定義で使い直すための関数です。パッケージがバージョンアップした場合などに使います。
+
+## 15.10 並列でMCMCを回したい
+
+```{r}
+fit <- mdl$sample(
+  parallel = TRUE,
+  chains = 4,
+  progress = "message"
+)
+```
+
+`parallel = TRUE` にすると、chainを並列に実行します。`progress = "message"` は、Jobや一部の環境でも進捗を確認しやすい表示です。進捗表示が不要な場合は `progress = "none"` を使います。
+
+通常は、モデルに必要なデータや関数を `data` と `setup` に入れておけば十分です。外部のオブジェクトや関数をどうしてもworkerへ渡したい場合は、推定時に `globals = TRUE` を指定します。
+
+```{r}
+fit <- mdl$sample(
+  parallel = TRUE,
+  globals = TRUE
+)
+```
+
+# 16. 注意点
+
+-   `sample()` は最終的なベイズ推論の標準ルートです。
+-   `variational()` は速く試せますが近似です。ELBOが水平でも、posterior uncertaintyが十分とは限りません。
+-   `optimize(num_estimate = K)` と `variational(num_estimate = K)` は、複数runの中からbestなものを選びます。
+-   `fit$estimate(pars = "parameters")` は、推定されたprimary parametersだけを取り出す用途に使います。
+-   `fixed` はrestricted modelを作る機能です。Bayes factor、null model、感度分析で使います。
+-   Bayes factorにはproper priorが重要です。
+-   WAICにはpointwise `log_lik` が必要です。
+-   `generate` ブロックでWAIC用の `log_lik` を作るときは、`sum = FALSE` を指定します。
+-   ADテープ化を速くするには、データ前処理を `setup` に置き、パラメータに依存する計算はベクトル化を優先します。
+-   `rtmb_vector()` と `rtmb_array()` は、代入が必要なAD互換コンテナとして使います。ただし、ベクトル化できる場合はベクトル化を優先します。

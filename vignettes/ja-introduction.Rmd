@@ -38,34 +38,34 @@ fit_freq <- mdl$classic()
 
 以下の記事があります。
 
-- **[日本語版の概要](ja-introduction.html)**
-- **[クイックスタート](ja-quick_start.html)**
-- **[ラッパー関数の使い方](ja-wrapper_functions.html)**
-- **[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html)**
-- **[モデルコードの書き方](ja-writing_models.html)**
-- **[RTMB の仕組みと推定アルゴリズム](ja-rtmb_internals.html)**
+-   [**日本語版の概要**](ja-introduction.html)
+-   [**クイックスタート**](ja-quick_start.html)
+-   [**ラッパー関数の使い方**](ja-wrapper_functions.html)
+-   [**階層モデル・GLMM・分散分析**](ja-rtmb_glmer.html)
+-   [**モデルコードの書き方**](ja-writing_models.html)
+-   [**RTMB の仕組みと推定アルゴリズム**](ja-rtmb_internals.html)
 
 # BayesRTMB でできること
 
 BayesRTMB の主な特徴は次の通りです。
 
-- **R の中でモデルを書ける**  
-  `rtmb_code()` を使い、`parameters`, `transform`, `model`, `generate` などのブロックに分けてモデルを記述できます。
+-   **R の中でモデルを書ける**\
+    `rtmb_code()` を使い、`parameters`, `transform`, `model`, `generate` などのブロックに分けてモデルを記述できます。
 
-- **ラッパー関数からすぐに分析できる**  
-  回帰、一般化線形モデル、混合モデル、t 検定、相関、因子分析、IRT、潜在ランク理論、多次元展開法などを、専用のラッパー関数から実行できます。
+-   **ラッパー関数からすぐに分析できる**\
+    回帰、一般化線形モデル、混合モデル、t 検定、相関、因子分析、IRT、潜在ランク理論、多次元展開法などを、専用のラッパー関数から実行できます。
 
-- **同じモデルから複数の推定方法を使える**  
-  MCMC、MAP 推定、変分推論、頻度主義的分析を、同じ `RTMB_Model` オブジェクトから呼び出せます。
+-   **同じモデルから複数の推定方法を使える**\
+    MCMC、MAP 推定、変分推論、頻度主義的分析を、同じ `RTMB_Model` オブジェクトから呼び出せます。
 
-- **ランダム効果を効率的に扱える**  
-  `random = TRUE` と宣言したパラメータは、MAP 推定では Laplace 近似によって周辺化できます。
+-   **ランダム効果を効率的に扱える**\
+    `random = TRUE` と宣言したパラメータは、MAP 推定では Laplace 近似によって周辺化できます。
 
-- **wrapper で作られたモデルを確認できる**  
-  `print_code()` を使うと、ラッパー関数が内部で作っている `rtmb_code()` を確認できます。
+-   **wrapper で作られたモデルを確認できる**\
+    `print_code()` を使うと、ラッパー関数が内部で作っている `rtmb_code()` を確認できます。
 
-- **モデル比較にも対応している**  
-  MCMC の結果から bridge sampling による周辺尤度や Bayes factor を計算できます。
+-   **モデル比較にも対応している**\
+    MCMC の結果から bridge sampling による周辺尤度や Bayes factor を計算できます。
 
 # 2つの入口
 
@@ -145,7 +145,7 @@ fit_map <- mdl_lm$optimize()
 fit_map
 ```
 
-```text
+``` text
 ## Starting RTMB optimization...
 ## 
 ## 
@@ -170,7 +170,7 @@ fit_freq <- mdl_lm$classic()
 fit_freq
 ```
 
-```text
+``` text
 ## Starting RTMB optimization...
 ## 
 ## 
@@ -193,7 +193,7 @@ fit_freq
 mdl_lm$print_code()
 ```
 
-```text
+``` text
 ## === RTMB Model Code ===
 ## 
 ## rtmb_code(
@@ -228,11 +228,11 @@ mdl_lm$print_code()
 
 `rtmb_code()` の主なブロックは次の通りです。
 
-- `setup`: データから必要な量を前処理する
-- `parameters`: 推定するパラメータを宣言する
-- `transform`: パラメータから派生量や線形予測子を作る
-- `model`: 尤度と事前分布を書く
-- `generate`: 予測値や生成量を計算する
+-   `setup`: データから必要な量を前処理する
+-   `parameters`: 推定するパラメータを宣言する
+-   `transform`: パラメータから派生量や線形予測子を作る
+-   `model`: 尤度と事前分布を書く
+-   `generate`: 予測値や生成量を計算する
 
 たとえば、`prior_normal()` に近い素直な normal / exponential prior を持つ回帰モデルは次のように書けます。
 
@@ -275,12 +275,12 @@ mdl_reg <- rtmb_model(dat, code_reg)
 
 BayesRTMB は Bayes 推定を基本にしています。そのため、ここでは MCMC、MAP 推定、変分推論、そして頻度主義的分析の順に整理します。
 
-| メソッド | 主な目的 |
-|---|---|
-| `$sample()` | NUTS による MCMC サンプリングを行う |
-| `$optimize()` | MAP 推定または最尤推定を高速に行う |
-| `$variational()` | ADVI による近似事後分布を求める |
-| `$classic()` | flat prior のラッパーモデルを頻度主義的分析として扱う |
+| メソッド         | 主な目的                                              |
+|------------------|-------------------------------------------------------|
+| `$sample()`      | NUTS による MCMC サンプリングを行う                   |
+| `$optimize()`    | MAP 推定または最尤推定を高速に行う                    |
+| `$variational()` | ADVI による近似事後分布を求める                       |
+| `$classic()`     | flat prior のラッパーモデルを頻度主義的分析として扱う |
 
 ## MCMC
 
@@ -294,7 +294,7 @@ fit_mcmc <- mdl_lm$sample()
 fit_mcmc$summary()
 ```
 
-```text
+``` text
 ##  variable     mean    sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
 ## lp         -397.79  1.54  -396.75  -401.63  -395.94       859      1236  1.01
 ## Intercept     1.82  0.22     1.78     1.38     2.26       629      1023  1.01
@@ -312,7 +312,7 @@ fit_map <- mdl_lm$optimize()
 fit_map$summary()
 ```
 
-```text
+``` text
 ## Starting RTMB optimization...
 ## 
 ## 
@@ -357,7 +357,7 @@ fit_freq <- mdl_lm$classic()
 fit_freq$summary()
 ```
 
-```text
+``` text
 ## Starting RTMB optimization...
 ## 
 ## 
@@ -437,7 +437,7 @@ fit_mcmc$bridgesampling()
 
 表示は、たとえば次のように出力されます。
 
-```text
+``` text
 ## Bridge Sampling Converged: LogML = -404.591 (Error = 0.0032, ESS = 604.0)
 ```
 
@@ -450,7 +450,7 @@ bf <- fit_mcmc$bayes_factor(fixed = list("b[talk]" = 0))
 bf
 ```
 
-```text
+``` text
 ## --- Bayes Factor Analysis (Bridge Sampling) ---
 ## Bayes Factor (BF12) : 142963.4
 ## Log Bayes Factor    : 11.8703 (Approx. Error = 0.0040)
@@ -483,7 +483,7 @@ fit_mcmc$WAIC()
 
 計算結果は以下のように出力されます。
 
-```text
+``` text
 ## WAIC
 ##   WAIC (elpd scale): -400.07398
 ##   -2 WAIC: 800.14796
@@ -494,22 +494,21 @@ fit_mcmc$WAIC()
 
 `WAIC()` メソッドは、MCMC (`MCMC_Fit`) や変分推論 (`VB_Fit`)、および `se_method = "sampling"` を指定した MAP 推定 (`MAP_Fit`) の結果に対して利用できます。
 
-
 # 次のステップ
 
 BayesRTMB の全体像がつかめたら、次は目的に応じて以下の記事を読むのがおすすめです。
 
-1. **[クイックスタート](ja-quick_start.html)**  
-   基本的なモデルを実際に動かしながら、`rtmb_code()` と `rtmb_model()` の流れを確認できます。
+1.  [**クイックスタート**](ja-quick_start.html)\
+    基本的なモデルを実際に動かしながら、`rtmb_code()` と `rtmb_model()` の流れを確認できます。
 
-2. **[ラッパー関数の使い方](ja-wrapper_functions.html)**  
-   回帰、一般化線形モデル、混合モデル、t 検定など、標準的な分析をラッパー関数で実行する方法を確認できます。
+2.  [**ラッパー関数の使い方**](ja-wrapper_functions.html)\
+    回帰、一般化線形モデル、混合モデル、t 検定など、標準的な分析をラッパー関数で実行する方法を確認できます。
 
-3. **[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html)**  
-   `rtmb_glmer()` を使った階層モデル、GLMM、順序モデル、残差相関、可視化の流れを確認できます。
+3.  [**階層モデル・GLMM・分散分析**](ja-rtmb_glmer.html)\
+    `rtmb_glmer()` を使った階層モデル、GLMM、順序モデル、残差相関、可視化の流れを確認できます。
 
-4. **[モデルコードの書き方](ja-writing_models.html)**  
-   `setup`, `parameters`, `transform`, `model`, `generate` の各ブロックを使って、自分でモデルを書く方法を詳しく説明します。
+4.  [**モデルコードの書き方**](ja-writing_models.html)\
+    `setup`, `parameters`, `transform`, `model`, `generate` の各ブロックを使って、自分でモデルを書く方法を詳しく説明します。
 
-5. **[RTMB の仕組みと推定アルゴリズム](ja-rtmb_internals.html)**  
-   Laplace 近似、制約付きパラメータ、MCMC、変分推論などの内部処理を確認できます。
+5.  [**RTMB の仕組みと推定アルゴリズム**](ja-rtmb_internals.html)\
+    Laplace 近似、制約付きパラメータ、MCMC、変分推論などの内部処理を確認できます。

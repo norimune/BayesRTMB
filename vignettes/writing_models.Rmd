@@ -58,7 +58,10 @@ parameters = {
   mu = Dim(N)
   
   # Matrix parameter (N rows, M columns)
-  X = Dim(N, M)
+  X = Dim(c(N, M))
+
+  # Array parameter (I x J x K)
+  A = Dim(c(I, J, K))
 }
 ```
 Here we are defining generic continuous parameters, but by using the `type` argument you can define parameters (types) with more complex structures, such as "correlation matrices" or "sum-to-zero vectors" (see "3. About Parameter Types (Dim)" below for details).
@@ -111,7 +114,7 @@ This block is used for creating predictive distributions for Posterior Predictiv
 
 > [!IMPORTANT]
 > Computations written in the `generate` block are not included in the likelihood evaluation (Automatic Differentiation calculations) and can be executed post-hoc after the estimation is fully complete. Therefore, no matter how computationally heavy the operations written here are, they will not negatively affect the estimation speed (MAP or MCMC).
-> Also, if you forgot to write something during model definition or later decide you want to compute another quantity, you can calculate these retroactively by calling the `mdl$generated_quantities(new_generate_code)` method on the estimated model object.
+> Also, if you forgot to write something during model definition or later decide you want to compute another quantity, you can calculate these retroactively by calling the `fit$generated_quantities(new_generate_code)` method on the fitted object.
 
 ## 2. Available Probability Distributions
 
@@ -172,7 +175,8 @@ In the `parameters` block, you define the types and dimensions of parameters usi
 
 * **Scalar**: `Dim()` or `Dim(1)`
 * **Vector**: `Dim(N)`
-* **Matrix**: `Dim(N, M)`
+* **Matrix**: `Dim(c(N, M))`
+* **Array**: `Dim(c(I, J, K))`
 
 You can also enforce various constraints using arguments:
 * `lower = 0, upper = 1`: Specifies the range of values (e.g., for variances or probabilities).
@@ -228,6 +232,47 @@ These are useful when transforming an unconstrained vector into a matrix with a 
 | `log_det_chol(L)` | Computes the log-determinant of a covariance matrix from its Cholesky factor `L`. |
 | `quad_form_chol(x, L)` | Computes a quadratic form using the Cholesky factor `L`. |
 | `distance(x, y)` | Computes the Euclidean distance between two vectors, adding a small epsilon for numerical stability. |
+
+## 5. AD-Compatible Working Containers
+
+In most models, the fastest and simplest approach is to write vectorized code. For example, prefer a single vectorized likelihood such as `Y ~ normal(mu, sigma)` over manually filling a temporary vector inside a loop.
+
+When you do need a mutable working vector or array whose elements will later be assigned AD values, use `rtmb_vector()` or `rtmb_array()` instead of `numeric()`, `matrix()`, or `array()`.
+
+```{r eval=FALSE}
+model = {
+  eta <- rtmb_vector(0, N)
+  for (i in seq_len(N)) {
+    eta[i] <- alpha + X[i, ] %*% beta
+  }
+  Y ~ normal(eta, sigma)
+}
+```
+
+```{r eval=FALSE}
+model = {
+  logit_x <- rtmb_array(0, dim = c(N_time, C, D))
+  for (t in seq_len(N_time)) {
+    for (c in seq_len(C)) {
+      for (d in seq_len(D)) {
+        logit_x[t, c, d] <- alpha[d] + beta[d] * X[t, c]
+      }
+    }
+  }
+}
+```
+
+Inside `rtmb_code()`, BayesRTMB usually provides the AD seed automatically from the model parameters, so you normally do not need to set the `seed` argument. These helpers are mainly for assignment-heavy code. If the same calculation can be expressed directly with vectorized matrix or array operations, the vectorized form is usually preferable for both tape construction and repeated AD evaluation.
+
+## 6. Upgrading Saved Fit Objects
+
+Saved fit objects created by older BayesRTMB versions may not automatically have methods added in newer versions. Use `upgrade_fit()` to rebuild an existing MCMC, VB, MAP, or classic fit object with the currently loaded class definitions.
+
+```{r eval=FALSE}
+fit2 <- upgrade_fit(fit)
+```
+
+This does not refit the model. It copies the stored estimation results into a new fit object, and by default also rebuilds the embedded model object when possible.
 
 ## Conclusion
 Rather than writing a complex model from the beginning, it's better to start estimating with simple models first. 

@@ -225,6 +225,22 @@ mdl$print_code()
 
 このように、ラッパー関数は「簡単に使う」ための入り口であると同時に、「どのモデルを推定しているか」を確認しながら、必要に応じて独自の `rtmb_code()` へ進むための足場にもなります。
 
+# 事後分析
+
+回帰、GLM、GLMM のラッパーで交互作用を含むモデルを推定した場合は、`conditional_effects()` や `simple_effects()` を使って、予測値や単純効果を確認できます。
+
+```{r}
+mdl_int <- rtmb_lm(sat ~ talk * perf, data = debate)
+fit_int <- mdl_int$sample()
+
+ce <- conditional_effects(fit_int, effect = "talk:perf")
+plot(ce)
+
+simple_effects(fit_int, effect = "talk:perf")
+```
+
+MCMC fit では事後サンプルに基づいて区間を計算します。MAP fit や classic fit でも、標準誤差やシミュレーションに基づく不確実性が利用できる場合には、同じ関数で条件付き効果や単純効果を確認できます。
+
 # 欠損値の扱い (Missing Data Handling)
 
 BayesRTMB のラッパー関数は、欠損値（`NA`）を適切かつ統一的に扱うための `missing` 引数を備えています。分析手法やデータの形式に応じて、最適な手法を選択できます。

@@ -45,6 +45,8 @@ navbar:
         href: articles/ja-rtmb_glmer.html
       - text: RTMBの仕組みとアルゴリズム
         href: articles/ja-rtmb_internals.html
+      - text: 分析リファレンス
+        href: articles/ja-analysis_reference.html
       - text: "-------"
       - text: すべての記事
         href: articles/index.html
@@ -94,6 +96,7 @@ articles:
   - ja-writing_models
   - ja-rtmb_glmer
   - ja-rtmb_internals
+  - ja-analysis_reference
 
 reference:
 - title: "Core Modeling"

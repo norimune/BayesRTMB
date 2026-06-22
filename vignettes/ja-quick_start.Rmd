@@ -23,13 +23,13 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 ここで扱うのは、次の内容です。
 
-1. `rtmb_code()` で小さなモデルを書く
-2. `rtmb_model()` でモデルオブジェクトを作る
-3. `optimize()` と `sample()` で推定する
-4. MCMC の事後分布を可視化する
-5. ラッパー関数で重回帰と交互作用を扱う
-6. `classic()` による頻度主義的な t 検定を行う
-7. JZS prior と MCMC によって Bayes factor を計算する
+1.  `rtmb_code()` で小さなモデルを書く
+2.  `rtmb_model()` でモデルオブジェクトを作る
+3.  `optimize()` と `sample()` で推定する
+4.  MCMC の事後分布を可視化する
+5.  ラッパー関数で重回帰と交互作用を扱う
+6.  `classic()` による頻度主義的な t 検定を行う
+7.  JZS prior と MCMC によって Bayes factor を計算する
 
 詳しいモデルコードの書き方や、混合モデル、GLMM、モデル比較の詳細は、別の vignette で扱います。
 
@@ -41,8 +41,7 @@ BayesRTMB は CRAN からインストールできます。
 install.packages("BayesRTMB")
 ```
 
-開発版は GitHub からインストールできます。
-`pak` を使う場合は、次のようにします。
+開発版は GitHub からインストールできます。 `pak` を使う場合は、次のようにします。
 
 ```{r eval=FALSE}
 install.packages("pak")
@@ -58,9 +57,7 @@ remotes::install_github("norimune/BayesRTMB")
 
 ## Windows ユーザー向け
 
-BayesRTMB は内部で RTMB / TMB を利用します。
-通常利用では、Windows ユーザーも CRAN のバイナリ版をインストールすれば Rtools は不要です。
-Rtools が必要になるのは、ソースからインストールする場合、パッケージ開発を行う場合、または通常の TMB のように独自の C++ テンプレートをコンパイルする場合です。
+BayesRTMB は内部で RTMB / TMB を利用します。 通常利用では、Windows ユーザーも CRAN のバイナリ版をインストールすれば Rtools は不要です。 Rtools が必要になるのは、ソースからインストールする場合、パッケージ開発を行う場合、または通常の TMB のように独自の C++ テンプレートをコンパイルする場合です。
 
 BayesRTMB をソースからインストールする場合は、Rtools が利用できるかどうかを次のコードで確認できます。
 
@@ -68,13 +65,11 @@ BayesRTMB をソースからインストールする場合は、Rtools が利用
 pkgbuild::check_build_tools(debug = TRUE)
 ```
 
-`TRUE` が返る、またはビルドツールが利用可能であることが表示されれば、ソースインストールの準備はできています。
-Rtools が見つからない場合は、利用している R のバージョンに対応する Rtools をインストールし、R または RStudio を再起動してください。
+`TRUE` が返る、またはビルドツールが利用可能であることが表示されれば、ソースインストールの準備はできています。 Rtools が見つからない場合は、利用している R のバージョンに対応する Rtools をインストールし、R または RStudio を再起動してください。
 
 # 1. 最小モデルを書く
 
-まず、もっとも小さな例として二項モデルを書きます。
-ここでは、10 回の試行のうち成功が 6 回観測された状況を考えます。
+まず、もっとも小さな例として二項モデルを書きます。 ここでは、10 回の試行のうち成功が 6 回観測された状況を考えます。
 
 ```{r eval=FALSE}
 library(BayesRTMB)
@@ -95,11 +90,9 @@ code <- rtmb_code(
 )
 ```
 
-`parameters` ブロックでは推定するパラメータを宣言します。
-ここでは成功確率 `theta` を、0 から 1 の範囲を持つパラメータとして定義しています。
+`parameters` ブロックでは推定するパラメータを宣言します。 ここでは成功確率 `theta` を、0 から 1 の範囲を持つパラメータとして定義しています。
 
-`model` ブロックでは、観測データの分布と事前分布を書きます。
-`Y ~ binomial(Trial, theta)` は、成功数 `Y` が二項分布に従うことを表しています。
+`model` ブロックでは、観測データの分布と事前分布を書きます。 `Y ~ binomial(Trial, theta)` は、成功数 `Y` が二項分布に従うことを表しています。
 
 # 2. モデルオブジェクトを作る
 
@@ -109,25 +102,23 @@ code <- rtmb_code(
 mdl <- rtmb_model(dat, code)
 ```
 
-```text
+``` text
 ## Pre-checking model code...
 ## Checking RTMB setup...
 ```
 
-この段階では、まだ推定は行われていません。
-`mdl` は、モデル定義とデータを保持した `RTMB_Model` オブジェクトです。
+この段階では、まだ推定は行われていません。 `mdl` は、モデル定義とデータを保持した `RTMB_Model` オブジェクトです。
 
 # 3. MAP 推定を行う
 
-点推定をすばやく得たいときは、`optimize()` を使います。
-BayesRTMB では、事前分布がある場合は MAP 推定、flat prior の場合は最尤推定に近い推定として扱えます。
+点推定をすばやく得たいときは、`optimize()` を使います。 BayesRTMB では、事前分布がある場合は MAP 推定、flat prior の場合は最尤推定に近い推定として扱えます。
 
 ```{r eval=FALSE}
 fit_map <- mdl$optimize()
 fit_map
 ```
 
-```text
+``` text
 ## Starting RTMB optimization...
 ## 
 ## 
@@ -146,8 +137,7 @@ fit_map
 
 # 4. MCMC で事後分布を見る
 
-事後分布全体を見たいときは、`sample()` を使います。
-クイックスタートでは短い設定にしていますが、実際の分析ではより多くの反復数を使ってください。
+事後分布全体を見たいときは、`sample()` を使います。 クイックスタートでは短い設定にしていますが、実際の分析ではより多くの反復数を使ってください。
 
 ```{r eval=FALSE}
 set.seed(1)
@@ -161,7 +151,7 @@ fit_mcmc <- mdl$sample(
 fit_mcmc$summary()
 ```
 
-```text
+``` text
 ## Starting sequential sampling (chains = 2)...
 ## chain 1 started... 
 ## chain 1: iter 100 warmup 
@@ -178,20 +168,15 @@ fit_mcmc$summary()
 ## theta      0.58  0.13   0.60   0.32   0.83       165       177  1.01 
 ```
 
-MCMC の結果では、平均、標準偏差、事後分位点、ESS、R-hat などを確認できます。
-R-hat が 1 に近く、ESS が十分に大きいほど、MCMC の診断としては安心しやすくなります。
+MCMC の結果では、平均、標準偏差、事後分位点、ESS、R-hat などを確認できます。 R-hat が 1 に近く、ESS が十分に大きいほど、MCMC の診断としては安心しやすくなります。
 
 ## MCMC を並列化する場合
 
-通常の MCMC は追加設定なしで実行できます。
-ただし、`sample(parallel = TRUE)` のように MCMC を並列実行する場合は、追加で `future`, `future.apply`, `progressr` が必要です。
-`progressr` は、内部で `progressr::progressor()` による進捗表示にも使われます。
+通常の MCMC は追加設定なしで実行できます。 ただし、`sample(parallel = TRUE)` のように MCMC を並列実行する場合は、追加で `future` が必要です。
 
 ```{r eval=FALSE}
-install.packages(c("future", "future.apply", "progressr"))
+install.packages("future")
 ```
-
-これらは BayesRTMB の Suggests パッケージなので、並列化を使わない場合は必須ではありません。
 
 ```{r eval=FALSE}
 fit_mcmc <- mdl$sample(
@@ -204,8 +189,7 @@ fit_mcmc <- mdl$sample(
 
 # 5. MCMC の結果を可視化する
 
-MCMC の結果は、数値だけでなく図でも確認します。
-`draws()` で対象パラメータのサンプルを取り出し、密度、トレース、自己相関、区間推定を確認できます。
+MCMC の結果は、数値だけでなく図でも確認します。 `draws()` で対象パラメータのサンプルを取り出し、密度、トレース、自己相関、区間推定を確認できます。
 
 ```{r eval=FALSE}
 theta_draws <- fit_mcmc$draws("theta")
@@ -217,9 +201,9 @@ plot_acf(theta_draws)
 
 それぞれの図は、次の目的で使います。
 
-- `plot_dens()` は、事後分布の形を確認します。
-- `plot_trace()` は、チェインがよく混ざっているかを確認します。
-- `plot_acf()` は、自己相関が強すぎないかを確認します。
+-   `plot_dens()` は、事後分布の形を確認します。
+-   `plot_trace()` は、チェインがよく混ざっているかを確認します。
+-   `plot_acf()` は、自己相関が強すぎないかを確認します。
 
 実際には、たとえば次のような図として確認できます。
 
@@ -253,7 +237,7 @@ fit_lm <- mdl_lm$optimize(
 fit_lm
 ```
 
-```text
+``` text
 ## Starting RTMB optimization...
 ## 
 ## Using simulation-based error propagation (1000 samples)...
@@ -286,8 +270,7 @@ fit_lm$draws(c("b[talk]", "b[perf]", "b[talk:perf]")) |>
 
 # 7. 交互作用を図で確認する
 
-交互作用は、係数表だけでは解釈しにくいことがあります。
-その場合は、`conditional_effects()` を使って予測値を図示します。
+交互作用は、係数表だけでは解釈しにくいことがあります。 その場合は、`conditional_effects()` を使って予測値を図示します。
 
 ```{r eval=FALSE}
 ce <- conditional_effects(fit_lm, effect = "talk:perf")
@@ -306,8 +289,7 @@ simple_effects(fit_lm, effect = "talk:perf")
 
 # 8. t 検定を頻度主義的に行う
 
-BayesRTMB のラッパー関数は、頻度主義的な分析にも使えます。
-`prior_flat()` を使った t 検定に対して `classic()` を呼ぶと、通常の t 検定に近い形で結果を表示できます。
+BayesRTMB のラッパー関数は、頻度主義的な分析にも使えます。 `prior_flat()` を使った t 検定に対して `classic()` を呼ぶと、通常の t 検定に近い形で結果を表示できます。
 
 ```{r eval=FALSE}
 mdl_t <- rtmb_ttest(
@@ -320,7 +302,7 @@ fit_t_classic <- mdl_t$classic()
 fit_t_classic
 ```
 
-```text
+``` text
 ## Pre-checking model code...
 ## Checking RTMB setup...
 ## Starting RTMB optimization...
@@ -341,8 +323,7 @@ fit_t_classic
 ## mean1       3.62000    0.07988   3.46280   3.77720 298       NA
 ```
 
-ここでは、`diff` が2群の平均差、`delta` が標準化効果量を表します。
-`classic()` は、BayesRTMB のモデルを頻度主義的な推定として確認したいときに使えます。
+ここでは、`diff` が2群の平均差、`delta` が標準化効果量を表します。 `classic()` は、BayesRTMB のモデルを頻度主義的な推定として確認したいときに使えます。
 
 # 9. JZS prior で Bayes factor を計算する
 
@@ -363,7 +344,7 @@ bf <- fit_t_jzs$bayes_factor(fixed = list(delta = 0))
 bf
 ```
 
-```text
+``` text
 ## --- Bayes Factor Analysis (Bridge Sampling) ---
 ## Bayes Factor (BF12) : 21.4323
 ## Log Bayes Factor    : 3.0649 (Approx. Error = 0.0022)
@@ -371,24 +352,22 @@ bf
 ## Comparison model    : Parameters fixed at list(delta = 0) 
 ```
 
-`fixed = list(delta = 0)` は、効果量を 0 に固定した帰無モデルと比較する指定です。
-この例では、`Model 1`、つまり効果量を推定するモデルのほうが支持されています。
+`fixed = list(delta = 0)` は、効果量を 0 に固定した帰無モデルと比較する指定です。 この例では、`Model 1`、つまり効果量を推定するモデルのほうが支持されています。
 
 実際の分析では、Bayes factor の安定性を確認するために、ここで示した例よりも多い MCMC サンプル数を使うことをおすすめします。
 
 # 次に読むページ
 
-このページでは、BayesRTMB の入口だけを扱いました。
-目的に応じて、次のページに進んでください。
+このページでは、BayesRTMB の入口だけを扱いました。 目的に応じて、次のページに進んでください。
 
-1. **[ラッパー関数の使い方](ja-wrapper_functions.html)**  
-   回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT など、標準的な分析をラッパー関数で行う方法を確認できます。
+1.  [**ラッパー関数の使い方**](ja-wrapper_functions.html)\
+    回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT など、標準的な分析をラッパー関数で行う方法を確認できます。
 
-2. **[階層モデル・GLMM・分散分析](ja-rtmb_glmer.html)**  
-   `rtmb_glmer()` を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。
+2.  [**階層モデル・GLMM・分散分析**](ja-rtmb_glmer.html)\
+    `rtmb_glmer()` を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。
 
-3. **[モデルコードの書き方](ja-writing_models.html)**  
-   `rtmb_code()` の `setup`, `parameters`, `transform`, `model`, `generate` を使って、独自モデルを書く方法を学べます。
+3.  [**モデルコードの書き方**](ja-writing_models.html)\
+    `rtmb_code()` の `setup`, `parameters`, `transform`, `model`, `generate` を使って、独自モデルを書く方法を学べます。
 
-4. **[RTMB の仕組みと推定アルゴリズム](ja-rtmb_internals.html)**  
-   MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。
+4.  [**RTMB の仕組みと推定アルゴリズム**](ja-rtmb_internals.html)\
+    MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。
