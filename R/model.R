@@ -82,8 +82,8 @@ NULL
 #' \strong{Model Compilation and Pre-checking:}
 #' When this function is called, it evaluates the provided data and model blocks.
 #' It performs a "sandbox execution" (pre-check) using dummy initial values to dynamically
-#' detect common structural errors—such as undefined variables, out-of-bounds indices,
-#' or incompatible matrix operations—before proceeding to the computationally expensive
+#' detect common structural errors, such as undefined variables, out-of-bounds indices,
+#' or incompatible matrix operations, before proceeding to the computationally expensive
 #' Automatic Differentiation (MakeADFun) phase. Cryptic backend errors are caught and
 #' translated into user-friendly hints.
 #'
@@ -530,7 +530,7 @@ inject_transform_adreports <- function(code) {
   patterns <- c(
     "could not find function [\"']([^\"']+)[\"']",
     "[\"']([^\"']+)[\"'] .*could not find function",
-    "関数 [\"']([^\"']+)[\"'] .*見つ"
+    "\u95a2\u6570 [\"']([^\"']+)[\"'] .*\u898b\u3064"
   )
   for (pat in patterns) {
     hit <- regexec(pat, msg)
@@ -978,6 +978,7 @@ model_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
 #'
 #' @param expr A block of code containing calculations for transformed parameters.
 #' @param env Environment to assign to the generated function.
+#' @param ad_seed_name Optional parameter name used internally to seed RTMB's AD type.
 #' @return A function taking (dat, par) that returns a named list.
 transform_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
   raw_expr <- substitute(expr)

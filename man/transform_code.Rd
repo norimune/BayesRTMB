@@ -10,6 +10,8 @@ transform_code(expr, env = parent.frame(), ad_seed_name = NULL)
 \item{expr}{A block of code containing calculations for transformed parameters.}
 
 \item{env}{Environment to assign to the generated function.}
+
+\item{ad_seed_name}{Optional parameter name used internally to seed RTMB's AD type.}
 }
 \value{
 A function taking (dat, par) that returns a named list.

@@ -50,8 +50,8 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.
 \strong{Model Compilation and Pre-checking:}
 When this function is called, it evaluates the provided data and model blocks.
 It performs a "sandbox execution" (pre-check) using dummy initial values to dynamically
-detect common structural errors—such as undefined variables, out-of-bounds indices,
-or incompatible matrix operations—before proceeding to the computationally expensive
+detect common structural errors, such as undefined variables, out-of-bounds indices,
+or incompatible matrix operations, before proceeding to the computationally expensive
 Automatic Differentiation (MakeADFun) phase. Cryptic backend errors are caught and
 translated into user-friendly hints.
 
