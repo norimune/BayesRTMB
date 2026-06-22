@@ -41,3 +41,18 @@ test_that("rtmb containers can be assigned to inside rtmb_code", {
 
   expect_s3_class(rtmb_model(dat, code, silent = TRUE), "RTMB_Model")
 })
+
+test_that("report selects multiple transformed values", {
+  fn <- transform_code({
+    a <- 1
+    b <- 2
+    c <- 3
+    report(a, b)
+  })
+
+  out <- fn(list(), list())
+  expect_named(out, c("a", "b"))
+  expect_equal(out$a, 1)
+  expect_equal(out$b, 2)
+  expect_false("c" %in% names(out))
+})

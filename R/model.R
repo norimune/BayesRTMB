@@ -1066,8 +1066,12 @@ transform_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
         for (i in seq_along(e)[-1]) {
           sub_e <- e[[i]]
           if (is.call(sub_e) && identical(sub_e[[1]], as.name("report"))) {
-            if (length(sub_e) > 1 && is.name(sub_e[[2]])) {
-              reported_vars <<- c(reported_vars, as.character(sub_e[[2]]))
+            if (length(sub_e) > 1) {
+              for (j in seq_along(sub_e)[-1]) {
+                if (is.name(sub_e[[j]])) {
+                  reported_vars <<- c(reported_vars, as.character(sub_e[[j]]))
+                }
+              }
             }
             next
           }
