@@ -280,7 +280,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     if (regularization == "rhs") {
       model_exprs[[length(model_exprs) + 1]] <- quote(lambda_b <- 1 / sqrt(w_lambda_b))
       model_exprs[[length(model_exprs) + 1]] <- quote(tau_hs_b <- tau0 / sqrt(w_tau_b))
-      model_exprs[[length(model_exprs) + 1]] <- quote(b <- matrix(0, K_prob, K-1)) 
+      model_exprs[[length(model_exprs) + 1]] <- quote(b <- rtmb_array(0, dim = c(K_prob, K - 1)))
       model_exprs[[length(model_exprs) + 1]] <- quote(for (k in 1:(K-1)) {
         lambda_tilde_k <- sqrt(c2_b[k] * lambda_b[, k]^2 / (c2_b[k] + tau_hs_b[k]^2 * lambda_b[, k]^2))
         b[, k] <- z_b[, k] * tau_hs_b[k] * lambda_tilde_k
@@ -290,8 +290,8 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     }
   }
 
-  model_exprs[[length(model_exprs) + 1]] <- quote(lp <- mu[1] * 0)
-  model_exprs[[length(model_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
+  model_exprs[[length(model_exprs) + 1]] <- quote(lp <- rtmb_vector(0, 1))
+  model_exprs[[length(model_exprs) + 1]] <- quote(log_dens_mat <- rtmb_array(0, dim = c(N, K)))
 
   is_diag <- covariance %in% c("diagonal", "diagonal_equal")
   s_k_expr <- if (is_sigma_equal) quote(sigma) else quote(sigma[k, ])
@@ -300,7 +300,29 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   dist_body <- if (multivariate) {
     if (is_diag) {
       bquote({
-        ld <- Y[1] * 0
+        ld <- rtmb_vector(0, N)
+        s_vec <- .(s_k_expr)
+        m_vec <- mu[k, ]
+        for (p in 1:P) {
+          ld <- ld + normal_lpdf(Y[, p], m_vec[p], s_vec[p], sum = FALSE)
+        }
+        log_dens_mat[, k] <- ld
+      })
+    } else {
+      L_corr_k_expr <- if (covariance == "full") quote(matrix(L_corr[k, , ], P, P)) else quote(L_corr)
+      bquote({
+        log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = mu[k, ], sd = .(s_k_expr), CF_Omega = .(L_corr_k_expr), sum = FALSE)
+      })
+    }
+  } else {
+    bquote({
+      log_dens_mat[, k] <- normal_lpdf(Y, mu[k], .(s_k_expr), sum = FALSE)
+    })
+  }
+  dist_body_generate <- if (multivariate) {
+    if (is_diag) {
+      bquote({
+        ld <- numeric(N)
         s_vec <- .(s_k_expr)
         m_vec <- mu[k, ]
         for (p in 1:P) {
@@ -324,7 +346,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 
   if (has_cov_prob) {
     model_exprs[[length(model_exprs) + 1]] <- quote(eta_prob <- X_prob %*% b)
-    model_exprs[[length(model_exprs) + 1]] <- quote(log_pi_mat <- matrix(eta_prob[1] * 0, N, K))
+    model_exprs[[length(model_exprs) + 1]] <- quote(log_pi_mat <- rtmb_array(0, dim = c(N, K)))
     model_exprs[[length(model_exprs) + 1]] <- quote(for (i in 1:N) {
       log_pi_mat[i, ] <- log_softmax(c(0, eta_prob[i, ]))
     })
@@ -398,7 +420,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     if (regularization == "rhs") {
       generate_exprs[[length(generate_exprs) + 1]] <- quote(lambda_b <- 1 / sqrt(w_lambda_b))
       generate_exprs[[length(generate_exprs) + 1]] <- quote(tau_hs_b <- tau0 / sqrt(w_tau_b))
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(b <- matrix(0, P, K-1))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(b <- matrix(0, K_prob, K - 1))
       generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:(K-1)) {
         lambda_tilde_k <- sqrt(c2_b[k] * lambda_b[, k]^2 / (c2_b[k] + tau_hs_b[k]^2 * lambda_b[, k]^2))
         b[, k] <- z_b[, k] * tau_hs_b[k] * lambda_tilde_k
@@ -413,7 +435,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 
   if (multivariate && !is_diag) {
     if (covariance == "full") {
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- array(mu[1] * 0, dim = c(K, P, P)))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(corr <- array(0, dim = c(K, P, P)))
       generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:K) {
         corr[k, , ] <- matrix(L_corr[k, , ], P, P) %*% t(matrix(L_corr[k, , ], P, P))
       })
@@ -424,11 +446,11 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   generate_base_exprs <- generate_exprs
   if (isTRUE(WAIC)) {
     waic_exprs <- list(as.name("{"))
-    waic_exprs[[length(waic_exprs) + 1]] <- quote(log_dens_mat <- matrix(mu[1] * 0, N, K))
-    waic_exprs[[length(waic_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
+    waic_exprs[[length(waic_exprs) + 1]] <- quote(log_dens_mat <- matrix(0, N, K))
+    waic_exprs[[length(waic_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body_generate))
     if (has_cov_prob) {
       waic_exprs[[length(waic_exprs) + 1]] <- quote(eta_prob <- X_prob %*% b)
-      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_pi_mat <- matrix(eta_prob[1] * 0, N, K))
+      waic_exprs[[length(waic_exprs) + 1]] <- quote(log_pi_mat <- matrix(0, N, K))
       waic_exprs[[length(waic_exprs) + 1]] <- quote(for (i in 1:N) {
         log_pi_mat[i, ] <- log_softmax(c(0, eta_prob[i, ]))
       })
@@ -511,7 +533,9 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
         init_list$mu <- as.vector(km$centers)
       }
       props <- as.vector(table(factor(km$cluster, levels = 1:K_mix))) / nrow(Y_mat)
-      init_list$theta <- props
+      if (!has_cov_prob) {
+        init_list$theta <- props
+      }
 
       if (has_cov_prob) {
         b_init <- matrix(0, ncol(X_prob), K_mix - 1)

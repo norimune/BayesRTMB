@@ -178,7 +178,7 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
 
   if (isTRUE(WAIC)) {
     gq_body <- list(
-      quote(log_lik <- numeric(N_obs)),
+      quote(log_lik <- rtmb_vector(0, N_obs)),
       quote(for (i in 1:N_obs) {})
     )
     gq_loop_body <- list(

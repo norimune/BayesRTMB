@@ -454,12 +454,12 @@ Classic_Fit <- R6::R6Class(
       ok <- rep(FALSE, n_boot)
       fast_boot <- use_fast_mediation_bootstrap(family)
 
-      show_progress <- !getOption("BayesRTMB.silent", FALSE)
-      if (show_progress) {
-        cat(sprintf("Performing mediation bootstrap estimation (n = %d)...\n", n_boot))
-        pb <- utils::txtProgressBar(min = 0, max = n_boot, style = 3)
-        on.exit(close(pb), add = TRUE)
-      }
+      progress_mode <- .rtmb_resolve_progress("auto")
+      .rtmb_progress_line(
+        sprintf("Performing mediation bootstrap estimation (n = %d)...", n_boot),
+        progress_mode
+      )
+      meter <- .rtmb_progress_meter(n_boot, progress_mode, label = "bootstrap")
 
       old_silent <- options(BayesRTMB.silent = TRUE)
       on.exit(options(old_silent), add = TRUE)
@@ -497,8 +497,9 @@ Classic_Fit <- R6::R6Class(
           }
         }
 
-        if (show_progress) utils::setTxtProgressBar(pb, i)
+        meter$advance(1L)
       }
+      meter$finish()
 
       if (!any(ok)) {
         stop("All bootstrap fits failed.", call. = FALSE)

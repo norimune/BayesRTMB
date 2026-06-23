@@ -8,7 +8,10 @@
   cat("=== RTMB Model Code ===\n\n")
   cat("rtmb_code(\n")
 
-  blocks <- setdiff(names(self$code), "env")
+  blocks <- intersect(
+    c("setup", "parameters", "transform", "model", "generate"),
+    names(self$code)
+  )
   is_empty_block <- function(expr) {
     is.call(expr) &&
       identical(expr[[1]], as.name("{")) &&
@@ -103,5 +106,4 @@
 
   return(n_total)
 }
-
 

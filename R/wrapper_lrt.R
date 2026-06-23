@@ -484,7 +484,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     if (link == "ordered") {
       generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_mean <- X_means %*% b)
       generate_exprs[[length(generate_exprs) + 1]] <- quote(F_prev <- 0)
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- numeric(K))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- rtmb_vector(0, K))
       generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:(K - 1)) {
         F_k <- inv_logit(cutpoints[k] - eta_mean)
         prob_mean[k] <- F_k - F_prev
@@ -494,7 +494,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     } else {
       generate_exprs[[length(generate_exprs) + 1]] <- quote(eta_mean_mat <- X_means %*% b)
       generate_exprs[[length(generate_exprs) + 1]] <- quote(q_cum <- 1)
-      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- numeric(K))
+      generate_exprs[[length(generate_exprs) + 1]] <- quote(prob_mean <- rtmb_vector(0, K))
       generate_exprs[[length(generate_exprs) + 1]] <- quote(for (k in 1:(K - 1)) {
         q_k <- inv_logit(alpha[k] + eta_mean_mat[k])
         prob_mean[k] <- q_cum * (1 - q_k)
@@ -845,7 +845,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     generate_ast <- quote({
       eta_mean <- X_means %*% b
       F_prev <- 0
-      prob_mean <- numeric(K)
+      prob_mean <- rtmb_vector(0, K)
       for (k in 1:(K - 1)) {
         F_k <- inv_logit(cutpoints[k] - eta_mean)
         prob_mean[k] <- F_k - F_prev
@@ -877,7 +877,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     generate_ast <- quote({
       eta_mean_mat <- X_means %*% b
       q_cum <- 1
-      prob_mean <- numeric(K)
+      prob_mean <- rtmb_vector(0, K)
       for (k in 1:(K - 1)) {
         q_k <- inv_logit(alpha[k] + eta_mean_mat[k])
         prob_mean[k] <- q_cum * (1 - q_k)

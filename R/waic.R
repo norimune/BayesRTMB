@@ -100,6 +100,11 @@ print.waic_BayesRTMB <- function(x, digits = max(3L, getOption("digits") - 2L), 
   unique(unlist(lapply(exprs, find_assignments), use.names = FALSE))
 }
 
+.rtmb_report_call <- function(vars) {
+  vars <- unique(vars[nzchar(vars)])
+  as.call(c(list(as.name("report")), lapply(vars, as.name)))
+}
+
 .rtmb_list_call_add_log_lik <- function(ret_call, log_lik_name = "log_lik") {
   if (is.call(ret_call) && identical(ret_call[[1L]], as.name("list"))) {
     args <- as.list(ret_call)[-1L]
@@ -121,8 +126,7 @@ print.waic_BayesRTMB <- function(x, digits = max(3L, getOption("digits") - 2L), 
   if (length(waic_exprs) == 0L) return(existing)
 
   if (length(existing_exprs) == 0L) {
-    ret_call <- as.call(c(list(as.name("list")), stats::setNames(list(as.name(log_lik_name)), log_lik_name)))
-    return(as.call(c(list(as.name("{")), waic_exprs, list(as.call(list(as.name("return"), ret_call))))))
+    return(as.call(c(list(as.name("{")), waic_exprs, list(.rtmb_report_call(log_lik_name)))))
   }
 
   last_idx <- length(existing_exprs)
@@ -152,10 +156,6 @@ print.waic_BayesRTMB <- function(x, digits = max(3L, getOption("digits") - 2L), 
   }
 
   returned_names <- .rtmb_assignment_names(existing_exprs)
-  ret_args <- lapply(returned_names, as.name)
-  names(ret_args) <- returned_names
-  ret_args[[length(ret_args) + 1L]] <- as.name(log_lik_name)
-  names(ret_args)[length(ret_args)] <- log_lik_name
-  ret_call <- as.call(c(list(as.name("list")), ret_args))
-  as.call(c(list(as.name("{")), existing_exprs, waic_exprs, list(as.call(list(as.name("return"), ret_call)))))
+  report_vars <- unique(c(returned_names, log_lik_name))
+  as.call(c(list(as.name("{")), existing_exprs, waic_exprs, list(.rtmb_report_call(report_vars))))
 }

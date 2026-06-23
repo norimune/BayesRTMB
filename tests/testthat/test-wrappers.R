@@ -25,6 +25,106 @@ test_that("Wrappers optimize correctly", {
   expect_true(inherits(res_f, "map_fit"))
 })
 
+test_that("print_code hides wrapper setup environment", {
+  mdl <- rtmb_lm(mpg ~ wt, data = mtcars)
+  out <- capture.output(mdl$print_code())
+
+  expect_true(any(grepl("^  setup = \\{", out)))
+  expect_false(any(grepl("setup_env", out, fixed = TRUE)))
+  expect_false(any(grepl("^  list\\(", out)))
+})
+
+test_that("mixture WAIC generated quantities use report syntax", {
+  dat <- data.frame(
+    y1 = c(-1.0, -0.7, 0.2, 1.1, 1.4, 2.0),
+    y2 = c(0.1, -0.2, 0.4, 1.3, 1.7, 2.2)
+  )
+  mdl <- rtmb_mixture(
+    cbind(y1, y2) ~ 1,
+    k = 2,
+    data = dat,
+    covariance = "full_equal_corr",
+    WAIC = TRUE
+  )
+  out <- capture.output(mdl$print_code())
+
+  expect_true(any(grepl("lp <- rtmb_vector\\(0, 1\\)", out)))
+  expect_false(any(grepl("lp <- mu\\[1\\] \\* 0", out)))
+  expect_true(any(grepl("log_dens_mat <- rtmb_array\\(0, dim = c\\(N, K\\)\\)", out)))
+  expect_true(any(grepl("log_dens_mat <- matrix\\(0, N, K\\)", out)))
+  expect_true(any(grepl("report\\(prob_mean, corr, log_lik\\)", out)))
+  expect_false(any(grepl("log_dens_mat <- matrix\\(mu\\[1\\] \\* 0, N, K\\)", out)))
+  expect_false(any(grepl("return\\(list\\(prob_mean", out)))
+
+  diag_mdl <- rtmb_mixture(
+    cbind(y1, y2) ~ 1,
+    k = 2,
+    data = dat,
+    covariance = "diagonal"
+  )
+  diag_code <- capture.output(diag_mdl$print_code())
+  expect_true(any(grepl("ld <- rtmb_vector\\(0, N\\)", diag_code)))
+  expect_false(any(grepl("ld <- Y\\[1\\] \\* 0", diag_code)))
+})
+
+test_that("FA generated quantities use report syntax", {
+  mdl <- rtmb_fa(
+    scale(mtcars[1:12, c("mpg", "disp", "hp")]),
+    nfactors = 1,
+    score = TRUE,
+    WAIC = TRUE
+  )
+  out <- capture.output(mdl$print_code())
+
+  expect_true(any(grepl("report\\(communality, log_lik, score\\)", out)))
+  expect_false(any(grepl("out\\$|return\\(out\\)", out)))
+})
+
+test_that("wrapper WAIC loops use AD-compatible vectors", {
+  Y <- matrix(c(
+    0, 1, 1,
+    1, 0, 1,
+    0, 1, 0,
+    1, 1, 0
+  ), nrow = 4, byrow = TRUE)
+  mdl <- rtmb_irt(Y, model = "1PL", WAIC = TRUE)
+  out <- capture.output(mdl$print_code())
+
+  expect_true(any(grepl("log_lik <- rtmb_vector\\(0, N_obs\\)", out)))
+  expect_false(any(grepl("log_lik <- numeric\\(N_obs\\)", out)))
+})
+
+test_that("wrapper loop-filled matrices use AD-compatible arrays", {
+  mix_dat <- data.frame(
+    y = c(-1.2, -0.8, -0.2, 0.4, 1.1, 1.8),
+    x = c(-1, -0.5, 0, 0.5, 1, 1.5)
+  )
+  mix <- rtmb_mixture(y ~ x, k = 3, data = mix_dat, prior = prior_rhs())
+  mix_code <- capture.output(mix$print_code())
+  expect_true(any(grepl("b <- rtmb_array\\(0, dim = c\\(K_prob, K - 1\\)\\)", mix_code)))
+  expect_true(any(grepl("b <- matrix\\(0, K_prob, K - 1\\)", mix_code)))
+  expect_true(any(grepl("log_dens_mat <- rtmb_array\\(0, dim = c\\(N, K\\)\\)", mix_code)))
+  expect_true(any(grepl("log_pi_mat <- rtmb_array\\(0, dim = c\\(N, K\\)\\)", mix_code)))
+  expect_true(any(grepl("log_softmax(c(0, eta_prob[i, ]))", mix_code, fixed = TRUE)))
+  expect_true(any(grepl("prob_mean <- softmax(c(0, X_means %*% b))", mix_code, fixed = TRUE)))
+  expect_false(any(grepl("b <- matrix\\(0, K_prob, K-1\\)", mix_code)))
+  expect_false(any(grepl("b <- matrix\\(0, P, K - 1\\)", mix_code)))
+  expect_false(any(grepl("log_dens_mat <- matrix\\(mu\\[1\\] \\* 0, N, K\\)", mix_code)))
+  expect_false(any(grepl("log_pi_mat <- matrix\\(eta_prob\\[1\\] \\* 0, N, K\\)", mix_code)))
+
+  glmer_dat <- data.frame(
+    y = ordered(c(1, 2, 3, 1, 2, 3))
+  )
+  glmer <- rtmb_glmer(
+    y ~ 0,
+    data = glmer_dat,
+    family = "sequential"
+  )
+  glmer_code <- capture.output(glmer$print_code())
+  expect_true(any(grepl("eta <- rtmb_array\\(0, dim = c\\(N, num_categories - 1\\)\\)", glmer_code)))
+  expect_false(any(grepl("eta <- matrix\\(0, N, num_categories - 1\\)", glmer_code)))
+})
+
 test_that("Wrappers sample correctly (skip on CRAN)", {
   skip_on_cran()
   

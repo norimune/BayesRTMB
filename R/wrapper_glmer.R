@@ -1141,7 +1141,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   transform_exprs <- list()
   if (family == "sequential") {
     if (K > 0) transform_exprs[[1]] <- quote(eta <- X %*% b)
-    else transform_exprs[[1]] <- quote(eta <- matrix(0, N, num_categories - 1))
+    else transform_exprs[[1]] <- quote(eta <- rtmb_array(0, dim = c(N, num_categories - 1)))
   } else if (has_intercept) {
     if (use_centering) {
       if (K > 0) transform_exprs[[1]] <- quote(eta <- Intercept_c + X_c %*% b)
@@ -1152,7 +1152,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
     }
   } else {
     if (K > 0) transform_exprs[[1]] <- quote(eta <- X %*% b)
-    else transform_exprs[[1]] <- quote(eta <- rep(0, N))
+    else transform_exprs[[1]] <- quote(eta <- rtmb_vector(0, N))
   }
 
   if (has_random) {
@@ -1238,7 +1238,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
         ti <- time_resid[idx]
         mu_i <- eta[idx]
 
-        Vi <- matrix(0, ni, ni)
+        Vi <- rtmb_array(0, dim = c(ni, ni))
         for (r in 1:ni) {
           s_r <- if (has_sig_idx) sigma[sigma_idx[idx[r]]] else sigma
           for (c in 1:ni) {
@@ -1401,7 +1401,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
   if (isTRUE(WAIC)) {
     if (!is.null(resid_corr)) {
       waic_exprs <- c(transform_exprs, list(bquote({
-        log_lik <- numeric(num_groups_resid)
+        log_lik <- rtmb_vector(0, num_groups_resid)
         has_sig_idx <- !is.null(sigma_idx)
         .(if (resid_corr == "un") quote(R_mat_resid <- L_resid %*% t(L_resid)) else quote(NULL))
         for (i in 1:num_groups_resid) {
@@ -1409,7 +1409,7 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
           ni <- length(idx)
           ti <- time_resid[idx]
           mu_i <- eta[idx]
-          Vi <- matrix(0, ni, ni)
+          Vi <- rtmb_array(0, dim = c(ni, ni))
           for (r in 1:ni) {
             s_r <- if (has_sig_idx) sigma[sigma_idx[idx[r]]] else sigma
             for (c in 1:ni) {

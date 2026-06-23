@@ -444,11 +444,28 @@ report <- function(...) invisible(NULL)
 
 # --- Helper functions for AST exploration ---
 
+.rtmb_call_name <- function(expr) {
+  if (!is.call(expr)) return(NA_character_)
+  head <- expr[[1]]
+  if (is.name(head)) return(as.character(head))
+  if (is.call(head) &&
+      (identical(head[[1]], as.name("::")) || identical(head[[1]], as.name(":::"))) &&
+      length(head) >= 3L &&
+      is.name(head[[3]])) {
+    return(as.character(head[[3]]))
+  }
+  NA_character_
+}
+
+.rtmb_is_call_to <- function(expr, func_name) {
+  identical(.rtmb_call_name(expr), func_name)
+}
+
 # Check if a specific function call (e.g., "report") is included in the expression
 has_function_call <- function(expr, func_name) {
   if (is.atomic(expr) || is.name(expr)) return(FALSE)
   if (is.call(expr)) {
-    if (identical(expr[[1]], as.name(func_name))) return(TRUE)
+    if (.rtmb_is_call_to(expr, func_name)) return(TRUE)
     return(any(sapply(as.list(expr)[-1], has_function_call, func_name = func_name)))
   }
   return(FALSE)
@@ -458,7 +475,7 @@ extract_report_vars <- function(expr) {
   vars <- character()
   if (is.atomic(expr) || is.name(expr)) return(vars)
   if (is.call(expr)) {
-    if (identical(expr[[1]], as.name("report"))) {
+    if (.rtmb_is_call_to(expr, "report")) {
       for (i in seq_along(expr)[-1]) {
         if (is.name(expr[[i]])) vars <- c(vars, as.character(expr[[i]]))
       }
@@ -475,7 +492,7 @@ extract_report_vars <- function(expr) {
 remove_report_calls <- function(expr) {
   if (is.atomic(expr) || is.name(expr)) return(expr)
   if (is.call(expr)) {
-    if (identical(expr[[1]], as.name("report"))) return(NULL)
+    if (.rtmb_is_call_to(expr, "report")) return(NULL)
     new_args <- lapply(as.list(expr), remove_report_calls)
     new_args <- Filter(Negate(is.null), new_args)
     if (length(new_args) > 0) return(as.call(new_args)) else return(NULL)
@@ -708,7 +725,9 @@ inject_namespace <- function(expr, pkg = "BayesRTMB") {
     func_name <- as.character(expr[[1]])
 
     if (length(func_name) == 1) {
-      if (exists(func_name, envir = asNamespace(pkg), inherits = FALSE)) {
+      if (identical(func_name, "c")) {
+        expr[[1]] <- call(":::", as.name(pkg), as.name(".rtmb_c"))
+      } else if (exists(func_name, envir = asNamespace(pkg), inherits = FALSE)) {
         expr[[1]] <- call(":::", as.name(pkg), as.name(func_name))
       }
     }
@@ -1032,7 +1051,7 @@ transform_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
         new_args <- list()
         for (i in seq_along(e)[-1]) {
           sub_e <- e[[i]]
-          if (is.call(sub_e) && identical(sub_e[[1]], as.name("report"))) {
+          if (is.call(sub_e) && .rtmb_is_call_to(sub_e, "report")) {
             if (length(sub_e) > 1) {
               for (j in seq_along(sub_e)[-1]) {
                 if (is.name(sub_e[[j]])) {

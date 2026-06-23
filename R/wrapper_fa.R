@@ -216,10 +216,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       var_total <- diag(Sigma)
       var_common <- rowSums(Lambda * (Lambda %*% CF_Omega))
       communality <- var_common / var_total
-      out <- list(communality = communality)
     })
     waic_expr <- if (isTRUE(WAIC)) {
-      quote({ out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })
+      quote({ log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })
     } else {
       quote({})
     }
@@ -227,11 +226,11 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       quote({
         # Use explicit matrix creation to ensure AD type is preserved
         Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
-        out$score <- Y_c %*% solve(Sigma, Lambda %*% fa_cor)
+        score <- Y_c %*% solve(Sigma, Lambda %*% fa_cor)
       })
     } else quote({})
-    ret_expr <- quote({ return(out) })
-    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
+    report_vars <- c("communality", if (isTRUE(WAIC)) "log_lik", if (score) "score")
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(score_expr)[-1], list(.rtmb_report_call(report_vars))))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
     code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_fa))
@@ -309,10 +308,9 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     base_gq <- quote({
       Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
       var_total <- diag(Sigma); var_common <- rowSums(L_raw^2); communality <- var_common / var_total
-      out <- list(communality = communality)
     })
     waic_expr <- if (isTRUE(WAIC)) {
-      quote({ out$log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })
+      quote({ log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })
     } else {
       quote({})
     }
@@ -333,45 +331,51 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       if (is_matrix_rot) {
         rot_expr <- bquote({
           rot_obj <- .(fn_call)(L)
-          out[[.(rot_loadings_name)]] <- unclass(rot_obj)
-          dimnames(out[[.(rot_loadings_name)]]) <- list(.(var_names), .(factor_names))
-          class(out[[.(rot_loadings_name)]]) <- c("rtmb_estimate_matrix", "matrix", "array")
+          .(as.name(rot_loadings_name)) <- unclass(rot_obj)
+          dimnames(.(as.name(rot_loadings_name))) <- list(.(var_names), .(factor_names))
+          class(.(as.name(rot_loadings_name))) <- c("rtmb_estimate_matrix", "matrix", "array")
         })
         score_expr <- if (score) bquote({
           Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
           rot_raw <- unclass(.(fn_call)(L_raw)); if (!is.matrix(rot_raw)) rot_raw <- unclass(rot_raw$loadings)
-          out$score <- Y_c %*% solve(Sigma, rot_raw)
+          score <- Y_c %*% solve(Sigma, rot_raw)
         }) else quote({})
       } else {
         if (has_phi) {
           rot_expr <- bquote({
             rot_obj <- .(fn_call)(L)
-            out$fa_cor <- rot_obj$Phi
-            out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings)
-            dimnames(out[[.(rot_loadings_name)]]) <- list(.(var_names), .(factor_names))
-            class(out[[.(rot_loadings_name)]]) <- c("rtmb_estimate_matrix", "matrix", "array")
+            fa_cor <- rot_obj$Phi
+            .(as.name(rot_loadings_name)) <- unclass(rot_obj$loadings)
+            dimnames(.(as.name(rot_loadings_name))) <- list(.(var_names), .(factor_names))
+            class(.(as.name(rot_loadings_name))) <- c("rtmb_estimate_matrix", "matrix", "array")
           })
           score_expr <- if (score) bquote({
             Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
-            rot_raw_obj <- .(fn_call)(L_raw); out$score <- Y_c %*% solve(Sigma, unclass(rot_raw_obj$loadings) %*% rot_raw_obj$Phi)
+            rot_raw_obj <- .(fn_call)(L_raw); score <- Y_c %*% solve(Sigma, unclass(rot_raw_obj$loadings) %*% rot_raw_obj$Phi)
           }) else quote({})
         } else {
           rot_expr <- bquote({
             rot_obj <- .(fn_call)(L)
-            out[[.(rot_loadings_name)]] <- unclass(rot_obj$loadings)
-            dimnames(out[[.(rot_loadings_name)]]) <- list(.(var_names), .(factor_names))
-            class(out[[.(rot_loadings_name)]]) <- c("rtmb_estimate_matrix", "matrix", "array")
+            .(as.name(rot_loadings_name)) <- unclass(rot_obj$loadings)
+            dimnames(.(as.name(rot_loadings_name))) <- list(.(var_names), .(factor_names))
+            class(.(as.name(rot_loadings_name))) <- c("rtmb_estimate_matrix", "matrix", "array")
           })
           score_expr <- if (score) bquote({
             Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE)
-            out$score <- Y_c %*% solve(Sigma, unclass(.(fn_call)(L_raw)$loadings))
+            score <- Y_c %*% solve(Sigma, unclass(.(fn_call)(L_raw)$loadings))
           }) else quote({})
         }
       }
-    } else { has_phi <- FALSE; rot_expr <- quote({}); score_expr <- if (score) quote({ Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE); out$score <- Y_c %*% solve(Sigma, L_raw) }) else quote({}) }
+    } else { has_phi <- FALSE; rot_expr <- quote({}); score_expr <- if (score) quote({ Y_c <- Y - matrix(mean, nrow = N, ncol = J, byrow = TRUE); score <- Y_c %*% solve(Sigma, L_raw) }) else quote({}) }
 
-    ret_expr <- quote({ return(out) })
-    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], as.list(ret_expr)[-1]))
+    report_vars <- c(
+      "communality",
+      if (isTRUE(WAIC)) "log_lik",
+      if (!is.null(rotate)) rot_loadings_name,
+      if (isTRUE(has_phi)) "fa_cor",
+      if (score) "score"
+    )
+    gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], list(.rtmb_report_call(report_vars))))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
     code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_fa))

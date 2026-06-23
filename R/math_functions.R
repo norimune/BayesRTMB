@@ -177,17 +177,83 @@ squared_distance <- function(x, y, eps = 1e-8) {
 #' @return The log of the sum of the exponentials.
 #' @export
 log_sum_exp <- function(x, y = NULL) {
+  if (!is.null(y)) {
+    if (.rtmb_is_ad_value(x) || .rtmb_is_ad_value(y)) {
+      return(.rtmb_logaddexp_ad(x, y))
+    }
+    max_val <- max(x, y)
+    return(max_val + log(exp(x - max_val) + exp(y - max_val)))
+  }
+
   if (is.null(y)) {
-    # Check if x is a matrix
     if (is.matrix(x)) {
       return(log_sum_exp_matrix(x))
     }
+    if (length(x) == 0L) {
+      return(-Inf)
+    }
+    if (.rtmb_is_ad_value(x)) {
+      out <- x[1]
+      if (length(x) > 1L) {
+        for (i in 2:length(x)) {
+          out <- .rtmb_logaddexp_ad(out, x[i])
+        }
+      }
+      return(out)
+    }
     max_val <- max(x)
     return(max_val + log(sum(exp(x - max_val))))
-  } else {
-    max_val <- (x + y + abs(x - y)) / 2
-    return(max_val + log(exp(x - max_val) + exp(y - max_val)))
   }
+}
+
+.rtmb_is_ad_value <- function(x) {
+  inherits(x, "advector") ||
+    (typeof(x) == "complex" && any(is.nan(Re(unclass(x)))))
+}
+
+.rtmb_ad_seed <- function(args) {
+  for (arg in args) {
+    if (inherits(arg, "advector") && length(arg) > 0L) {
+      return(arg[1])
+    }
+  }
+  NULL
+}
+
+.rtmb_as_ad <- function(x, seed) {
+  if (inherits(x, "advector")) {
+    return(x)
+  }
+  if (is.null(seed)) {
+    stop("AD type was lost before evaluation. Avoid combining AD values with base c() before calling this function.", call. = FALSE)
+  }
+  seed[1] * 0 + x
+}
+
+.rtmb_logaddexp_ad <- function(x, y) {
+  seed <- .rtmb_ad_seed(list(x, y))
+  x <- .rtmb_as_ad(x, seed)
+  y <- .rtmb_as_ad(y, seed)
+  RTMB::logspace_add(x, y)
+}
+
+.rtmb_c <- function(..., recursive = FALSE, use.names = TRUE) {
+  args <- list(...)
+  seed <- .rtmb_ad_seed(args)
+  if (is.null(seed)) {
+    return(base::c(..., recursive = recursive, use.names = use.names))
+  }
+
+  args <- lapply(args, function(arg) {
+    if (inherits(arg, "advector")) {
+      return(arg)
+    }
+    if (is.atomic(arg) && (is.numeric(arg) || is.logical(arg))) {
+      return(.rtmb_as_ad(arg, seed))
+    }
+    arg
+  })
+  do.call(base::c, args)
 }
 
 #' Log-sum-exp function for matrices (row-wise)
@@ -196,7 +262,25 @@ log_sum_exp <- function(x, y = NULL) {
 #' @return A numeric vector of row-wise log-sum-exp.
 #' @export
 log_sum_exp_matrix <- function(M) {
-  # This function hides 'apply' from the BayesRTMB parser
+  if (.rtmb_is_ad_value(M)) {
+    nr <- nrow(M)
+    nc <- ncol(M)
+    out <- rtmb_vector(0, nr, seed = M[1])
+    if (nc == 0L) {
+      return(out - Inf)
+    }
+    for (i in seq_len(nr)) {
+      row_lse <- M[i, 1]
+      if (nc > 1L) {
+        for (j in 2:nc) {
+          row_lse <- .rtmb_logaddexp_ad(row_lse, M[i, j])
+        }
+      }
+      out[i] <- row_lse
+    }
+    return(out)
+  }
+
   max_val <- apply(M, 1, max)
   return(max_val + log(rowSums(exp(M - max_val))))
 }
@@ -249,6 +333,9 @@ log_mix <- function(theta, lp1, lp2) {
 #' @return A numeric vector of softmax probabilities.
 #' @export
 softmax <- function(x) {
+  if (.rtmb_is_ad_value(x)) {
+    return(exp(x - log_sum_exp(x)))
+  }
   max_x <- max(x)
   exp_x <- exp(x - max_x)
   return(exp_x / sum(exp_x))

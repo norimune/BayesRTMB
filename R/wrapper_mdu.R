@@ -845,7 +845,7 @@ rtmb_mdu <- function(data, ndim = 2,
     if (isTRUE(WAIC)) {
       pair_ll_ast <- if (distance == "squared") {
         quote({
-          log_lik <- numeric(N * (N - 1) / 2)
+          log_lik <- rtmb_vector(0, N * (N - 1) / 2)
           idx_ll <- 1
           for (i in 1:(N - 1)) {
             for (j in (i + 1):N) {
@@ -857,7 +857,7 @@ rtmb_mdu <- function(data, ndim = 2,
         })
       } else {
         quote({
-          log_lik <- numeric(N * (N - 1) / 2)
+          log_lik <- rtmb_vector(0, N * (N - 1) / 2)
           idx_ll <- 1
           for (i in 1:(N - 1)) {
             for (j in (i + 1):N) {
@@ -1012,7 +1012,7 @@ rtmb_mdu <- function(data, ndim = 2,
     if (isTRUE(WAIC)) {
       rating_ll_ast <- if (distance == "squared" && alpha_type == "random") {
         quote({
-          log_lik <- numeric(N * M)
+          log_lik <- rtmb_vector(0, N * M)
           idx_ll <- 1
           for (i in 1:N) for (j in 1:M) {
             d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
@@ -1023,7 +1023,7 @@ rtmb_mdu <- function(data, ndim = 2,
         })
       } else if (distance == "squared") {
         quote({
-          log_lik <- numeric(N * M)
+          log_lik <- rtmb_vector(0, N * M)
           idx_ll <- 1
           for (i in 1:N) for (j in 1:M) {
             d_ij <- squared_distance(theta[i, ], delta[j, ]) + distance_eps
@@ -1034,7 +1034,7 @@ rtmb_mdu <- function(data, ndim = 2,
         })
       } else if (alpha_type == "random") {
         quote({
-          log_lik <- numeric(N * M)
+          log_lik <- rtmb_vector(0, N * M)
           idx_ll <- 1
           for (i in 1:N) for (j in 1:M) {
             d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
@@ -1045,7 +1045,7 @@ rtmb_mdu <- function(data, ndim = 2,
         })
       } else {
         quote({
-          log_lik <- numeric(N * M)
+          log_lik <- rtmb_vector(0, N * M)
           idx_ll <- 1
           for (i in 1:N) for (j in 1:M) {
             d_ij <- distance(theta[i, ], delta[j, ]) + distance_eps
@@ -1240,7 +1240,7 @@ rtmb_mdu <- function(data, ndim = 2,
     if (isTRUE(WAIC)) {
       choice_ll_ast <- if (method == "Best") {
         bquote({
-          log_lik <- numeric(N * P)
+          log_lik <- rtmb_vector(0, N * P)
           idx_ll <- 1
           for (n in 1:N) {
             U <- rep(alpha[1] * 0, M)
@@ -1254,7 +1254,7 @@ rtmb_mdu <- function(data, ndim = 2,
         })
       } else {
         bquote({
-          log_lik <- numeric(N * P)
+          log_lik <- rtmb_vector(0, N * P)
           idx_ll <- 1
           for (n in 1:N) {
             U <- rep(alpha[1] * 0, M)
