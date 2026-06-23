@@ -191,7 +191,7 @@ reference:
   contents:
   - distributions
   - math_functions
-  - model_code
+  - rtmb_code
   - parameters_code
   - parameter_types
 
