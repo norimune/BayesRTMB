@@ -31,7 +31,7 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 6.  `classic()` による頻度主義的な t 検定を行う
 7.  JZS prior と MCMC によって Bayes factor を計算する
 
-詳しいモデルコードの書き方や、混合モデル、GLMM、モデル比較の詳細は、別の vignette で扱います。
+詳しいモデルコードの書き方や、混合モデル、GLMM、モデル比較、関数単位の参照情報は、別の vignette で扱います。分析中に確認したい情報は [分析リファレンス](ja-analysis_reference.html) も参照してください。
 
 # 0. インストールと環境確認
 
@@ -371,3 +371,6 @@ bf
 
 4.  [**RTMB の仕組みと推定アルゴリズム**](ja-rtmb_internals.html)\
     MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。
+
+5.  [**分析リファレンス**](ja-analysis_reference.html)\
+    fit object のメソッド、モデル比較、固定パラメータ、分布、AD テープ化の注意点を確認できます。

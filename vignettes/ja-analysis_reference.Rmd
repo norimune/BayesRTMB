@@ -19,6 +19,8 @@ knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
 
 このページは、BayesRTMBで分析するときに、関数やメソッドの使い方を確認するためのリファレンスです。
 
+英語版は [BayesRTMB Analysis Reference](analysis_reference.html) を参照してください。
+
 最初に全体像を知りたい場合は「Quick Start」、自作モデルの書き方を知りたい場合は「Writing Model Codes」、推定アルゴリズムの仕組みを知りたい場合は「RTMB Internals and Inference Algorithms」を見ます。このページでは、分析中に確認したくなる点を、一覧表と短い例でまとめます。
 
 特に次の用途を想定しています。

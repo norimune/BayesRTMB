@@ -31,6 +31,8 @@ navbar:
         href: articles/writing_models.html
       - text: RTMB Internals and Inference Algorithms
         href: articles/rtmb_internals.html
+      - text: Analysis Reference
+        href: articles/analysis_reference.html
       - text: "-------"
       - text: 日本語
       - text: パッケージ紹介
@@ -63,6 +65,8 @@ home:
     href: articles/writing_models.html
   - text: RTMB Internals and Inference Algorithms
     href: articles/rtmb_internals.html
+  - text: Analysis Reference
+    href: articles/analysis_reference.html
   - text: パッケージ紹介
     href: articles/ja-introduction.html
   - text: クイックスタート
@@ -73,6 +77,10 @@ home:
     href: articles/ja-writing_models.html
   - text: 階層モデル・GLMM・分散分析
     href: articles/ja-rtmb_glmer.html
+  - text: RTMBの仕組みとアルゴリズム
+    href: articles/ja-rtmb_internals.html
+  - text: 分析リファレンス
+    href: articles/ja-analysis_reference.html
   sidebar:
     structure: [links, license, citation, authors, dev]
 
@@ -86,6 +94,7 @@ articles:
   - rtmb_glmer
   - writing_models
   - rtmb_internals
+  - analysis_reference
 
 - title: 日本語
   desc: BayesRTMB の概要、クイックスタート、ラッパー関数、階層モデル、モデルコードの書き方をまとめた記事です。

@@ -5,6 +5,15 @@
   embedded model objects as well.
 * Improved `rtmb_vector()` and `rtmb_array()` tape construction time by
   automatically reusing an AD seed from model parameters when available.
+* Made `log_sum_exp()`, `softmax()`, and `log_softmax()` work more reliably
+  with RTMB automatic-differentiation values, including baseline-category
+  patterns such as `softmax(c(0, eta))` inside `rtmb_code()`.
+* Improved wrapper-generated model code to use AD-compatible `rtmb_vector()`
+  and `rtmb_array()` containers in loop-filled generated quantities and
+  generated likelihood contributions where needed.
+* Improved `report()` handling in transformed and generated quantities,
+  including namespaced `BayesRTMB::report()` calls and wrapper-generated
+  `print_code()` output.
 * Changed VB point estimates to use only the best variational estimate by
   default, aligning `EAP()`, `MAP()`, and rotation references with the selected
   best ELBO run while still allowing explicit `chains` or `best_chains`
@@ -18,6 +27,8 @@
   preserving wrapper setup environments needed by generated model code.
 * Improved MCMC runtime behavior by caching metric calculations, speeding up
   retained draw conversion, and refining progress checks.
+* Changed bootstrap progress reporting to use percentage-style progress output,
+  consistent with other long-running workflows.
 * Added diagnostic recommendations to help interpret common fitting warnings.
 * Improved matrix-valued Gaussian process log-density evaluation.
 * Updated MDU defaults and internals, including Euclidean distance as the

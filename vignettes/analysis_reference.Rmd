@@ -1,0 +1,1143 @@
+---
+title: "BayesRTMB Analysis Reference"
+description: "Reference for functions, fit objects, model comparison, fixed parameters, distributions, and AD taping when analyzing data with BayesRTMB."
+output:
+  rmarkdown::html_vignette:
+    toc: true
+    toc_depth: 3
+vignette: >
+  %\VignetteIndexEntry{BayesRTMB Analysis Reference}
+  %\VignetteEncoding{UTF-8}
+  %\VignetteEngine{knitr::rmarkdown}
+editor_options:
+  chunk_output_type: console
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE, eval = FALSE)
+```
+
+This page is a reference for checking functions and methods while analyzing data
+with BayesRTMB.
+
+If you want the overall workflow first, see [Quick Start](quick_start.html). If
+you want to write custom models, see [Writing Model Codes](writing_models.html).
+If you want the details of the inference algorithms, see
+[RTMB Internals and Inference Algorithms](rtmb_internals.html). This page
+collects the items that you often need to check during an analysis.
+
+The Japanese version of this page is available at
+[BayesRTMB 分析リファレンス](ja-analysis_reference.html).
+
+This page is especially intended for the following tasks.
+
+- Quickly check which function to use.
+- Check methods and return values for each fit object.
+- Compare the roles of MCMC, MAP, VB, and classic estimation.
+- Check model comparison tools such as Bayes factors, WAIC, AIC, and BIC.
+- Check how to fix parameters with `fixed` and how to build constrained models.
+- Check distributions, parameter types, and AD-taping notes inside
+  `rtmb_code()`.
+
+# 0. How To Read This Page
+
+Most code chunks on this page use `eval = FALSE`. Some examples are complete
+examples that can be run as-is, while others are partial code fragments intended
+to be placed inside `rtmb_code()`. When only `setup = { ... }`,
+`model = { ... }`, or `generate = { ... }` is shown, read it as the code for
+that block.
+
+The name `fit` is used as a placeholder for any fit object. In real analyses,
+replace it with objects such as `fit_mcmc`, `fit_map`, `fit_vb`, or
+`fit_classic`, depending on the estimation method.
+
+The following terms are used throughout this page.
+
+| Term               | Meaning                                                              |
+|--------------------|----------------------------------------------------------------------|
+| fit object         | Estimation result returned by `sample()`, `optimize()`, `variational()`, or `classic()` |
+| primary parameters | Estimated parameters declared in the `parameters` block              |
+| transform          | Derived quantities created in the `transform` block                  |
+| generate           | Post-estimation derived quantities created in the `generate` block   |
+| draw               | Sample from a posterior or approximate posterior distribution        |
+
+## Goal-Oriented Quick Navigation
+
+| Goal                                      | Start here                              | Functions and methods                                      |
+|-------------------------------------------|-----------------------------------------|------------------------------------------------------------|
+| Run ordinary Bayesian inference           | [Section 4 MCMC_Fit](#mcmc-fit)         | `mdl$sample()`, `fit$summary()`, `fit$diagnose()`          |
+| Create MAP estimates or MCMC initial values | [Section 5 MAP_Fit](#map-fit)         | `mdl$optimize(num_estimate = ...)`, `fit$estimate()`       |
+| Explore a model quickly with VB           | [Section 6 VB_Fit](#vb-fit)             | `mdl$variational()`, `fit$plot_elbo()`, `fit$diagnose()`   |
+| Use classic AIC/BIC/ANOVA                 | [Section 7 Classic_Fit](#classic-fit)   | `mdl$classic()`, `AIC()`, `BIC()`, `anova()`               |
+| Compare models                            | [Section 8 Model comparison](#model-comparison) | `fit$bayes_factor()`, `fit$WAIC()`, `AIC()`, `BIC()` |
+| Fix parameters                            | [Section 9 fixed](#fixed-parameters)    | `fixed = list(...)`, `mdl$fixed_model()`                   |
+| Write a custom model                      | [Sections 10-14](#rtmb-code-blocks)     | `rtmb_code()`, `Dim()`, distributions, AD-taping notes     |
+| Use an old fit object with current methods | [Section 15.9](#upgrade-fit)           | `upgrade_fit()`                                            |
+
+# 1. Analysis Workflow
+
+A BayesRTMB analysis usually follows this path.
+
+``` text
+wrapper function or rtmb_code()
+  -> RTMB_Model
+    -> sample()       -> MCMC_Fit
+    -> optimize()     -> MAP_Fit
+    -> variational()  -> VB_Fit
+    -> classic()      -> Classic_Fit
+```
+
+When you use a wrapper function, functions such as `rtmb_lm()` and
+`rtmb_glmer()` return an `RTMB_Model` directly.
+
+```{r}
+library(BayesRTMB)
+
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  prior = prior_normal()
+)
+
+fit_mcmc <- mdl$sample()
+fit_map  <- mdl$optimize()
+fit_vb   <- mdl$variational()
+```
+
+When writing a custom model, define the model with `rtmb_code()` and pass it to
+`rtmb_model()`. For new users, it is often clearest to pass a data frame as
+`data` and connect data-frame columns to model variables in `setup`.
+
+```{r}
+df <- debate
+
+code <- rtmb_code(
+  setup = {
+    Y <- sat
+    X <- talk
+
+    center <- function(x) x - mean(x)
+    X_c <- center(X)
+  },
+  parameters = {
+    Intercept <- Dim()
+    b <- Dim()
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    mu <- Intercept + b * X_c
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+    Intercept ~ normal(0, 10)
+    b ~ normal(0, 10)
+    sigma ~ exponential(1)
+  }
+)
+
+mdl <- rtmb_model(
+  data = df,
+  code = code
+)
+```
+
+In this example, `data = df` makes `df$sat` and `df$talk` available inside
+`setup`. The `setup` block is the place for preprocessing that should be decided
+once before model evaluation, such as handling missing data, creating indexes,
+building design matrices, and defining helper functions.
+
+After estimation, use methods such as `summary()`, `estimate()`, `diagnose()`,
+and `draws()` on the fit object.
+
+```{r}
+fit_mcmc$summary()
+fit_mcmc$diagnose()
+fit_mcmc$EAP(pars = "parameters")
+fit_mcmc$MAP(pars = "parameters")
+```
+
+## 1.1 Choosing An Estimation Method
+
+When in doubt, start with this table.
+
+| Goal                                 | Recommendation                              |
+|--------------------------------------|---------------------------------------------|
+| Final Bayesian inference             | `sample()`                                  |
+| Check ESS, R-hat, and divergences     | `MCMC_Fit$diagnose()`                       |
+| Compute a Bayes factor               | `MCMC_Fit$bayes_factor()`                   |
+| Compute WAIC                         | `WAIC = TRUE` and `fit$WAIC()`              |
+| Fast point estimation                | `optimize()`                                |
+| Initial values for MCMC              | `optimize(num_estimate = ...)`              |
+| Explore a large model                | `variational()`                             |
+| Check VB convergence                 | `VB_Fit$plot_elbo()`                        |
+| Use AIC/BIC/ANOVA                    | `classic()`                                 |
+| Use robust standard errors           | `Classic_Fit$robust_se()`                   |
+| Fix parameters                       | `fixed = list(...)` or `$fixed_model()`     |
+| Rotate MDU or factor-analysis axes   | `$rotate()` or `$fa_rotate()`               |
+
+# 2. Function Overview
+
+## 2.1 Model Definition
+
+| Function        | Purpose                                                               |
+|-----------------|-----------------------------------------------------------------------|
+| `rtmb_code()`   | Define a model with `setup`, `parameters`, `transform`, `model`, and `generate` blocks |
+| `rtmb_model()`  | Create an `RTMB_Model` from `rtmb_code()` and data                    |
+| `Dim()`         | Declare parameter dimensions, constraints, types, and `random` status |
+| `print_code()`  | Inspect model code generated by a wrapper                             |
+| `upgrade_fit()` | Rebuild old saved fit objects with the current class definitions      |
+
+## 2.2 Wrapper Functions
+
+| Function           | Main use                                             |
+|--------------------|------------------------------------------------------|
+| `rtmb_lm()`        | Normal linear regression                             |
+| `rtmb_glm()`       | Generalized linear models                            |
+| `rtmb_lmer()`      | Linear mixed models                                  |
+| `rtmb_glmer()`     | Generalized linear mixed models                      |
+| `rtmb_ttest()`     | Bayesian/classic t tests, effect sizes, Bayes factors |
+| `rtmb_corr()`      | Correlations, partial correlations, correlation matrices |
+| `rtmb_fa()`        | Factor analysis                                      |
+| `rtmb_irt()`       | Item response theory models                          |
+| `rtmb_lrt()`       | Latent rank theory                                   |
+| `rtmb_mdu()`       | Multidimensional unfolding                           |
+| `rtmb_mediation()` | Mediation analysis                                   |
+| `rtmb_mixture()`   | Mixture distribution models                          |
+| `rtmb_table()`     | Contingency-table models                             |
+| `rtmb_loglinear()` | Log-linear models                                    |
+
+## 2.3 Estimation Methods
+
+| Method           | Return value   | Main use                                           |
+|------------------|----------------|----------------------------------------------------|
+| `$sample()`      | `MCMC_Fit`     | Final Bayesian inference, intervals, Bayes factors, WAIC |
+| `$optimize()`    | `MAP_Fit`      | MAP/ML/marginal MAP, fast point estimates, initial-value search |
+| `$variational()` | `VB_Fit`       | Approximate posterior inference and model exploration |
+| `$classic()`     | `Classic_Fit`  | Frequentist estimation for flat-prior wrapper models, AIC/BIC, ANOVA |
+
+`sample()` is the standard route for Bayesian inference. `optimize()` and
+`variational()` are useful for quick checks and initial-value search, but MCMC
+is preferred for uncertainty evaluation and Bayes factors.
+
+# 3. Common Fit-Object Methods
+
+`MCMC_Fit`, `MAP_Fit`, `VB_Fit`, and `Classic_Fit` share several methods. The
+meaning and availability of each method still depends on the fit-object type.
+
+In this section, `fit` means any fit object. Read it as `fit_mcmc` for MCMC,
+`fit_map` for MAP, `fit_vb` for VB, and `fit_classic` for classic estimation.
+In particular, `EAP()` and `MAP()` are mainly for MCMC/VB, while classic point
+estimates are usually obtained with `estimate()`.
+
+| Method         | Purpose                                                  |
+|----------------|----------------------------------------------------------|
+| `$estimate()`  | Extract estimates as a list or as a single object        |
+| `$EAP()`       | Extract posterior means, mainly for MCMC/VB              |
+| `$MAP()`       | Extract marginal or joint MAP estimates, mainly for MCMC/VB |
+| `$summary()`   | Tabular estimation results                               |
+| `$print()`     | Print `summary()`                                        |
+| `$diagnose()`  | Diagnostics appropriate to the fit object                |
+| `$rotate()`    | Procrustes rotation for matrix parameters such as MDU coordinates |
+| `$fa_rotate()` | Factor-analysis rotation for loadings                    |
+
+## 3.1 `estimate()`, `EAP()`, and `MAP()`
+
+`estimate()` is the common API for extracting parameters, transformed
+quantities, and generated quantities.
+
+```{r}
+fit$estimate(pars = "parameters")
+fit$estimate(pars = "transform")
+fit$estimate(pars = "generate")
+fit$estimate(pars = "all")
+```
+
+`pars = "parameters"` returns only the primary parameters declared in the
+`parameters` block. This is usually what you want when reusing estimates as
+initial values or fixed values.
+
+```{r}
+est <- fit$estimate(pars = "parameters", drop = FALSE)
+```
+
+`drop = TRUE` is the default. When only one parameter is selected, the vector,
+matrix, or array itself is returned instead of a list. Use `drop = FALSE` if you
+always want a list.
+
+```{r}
+b_eap <- fit$EAP("b")
+b_eap_list <- fit$EAP("b", drop = FALSE)
+```
+
+`EAP()` is a shortcut for `estimate(type = "EAP")`. `MAP()` returns marginal MAP
+estimates by default.
+
+```{r}
+fit$EAP(pars = "parameters")
+fit$MAP(pars = "parameters")
+fit$MAP(pars = "parameters", type = "joint")
+```
+
+## 3.2 `pars` And `component`
+
+Use `pars` and `component` to narrow what is extracted.
+
+```{r}
+fit$estimate(pars = c("b", "sigma"))
+fit$estimate(component = "transform")
+fit$estimate(component = "generate")
+fit$estimate(pars = "-theta")
+```
+
+For MCMC/VB, `pars = NULL` returns primary parameters by default. For classic
+and MAP fits, results may also include estimated fixed effects, transformed
+quantities, and generated quantities.
+
+# 4. MCMC_Fit {#mcmc-fit}
+
+`MCMC_Fit` is returned by `sample()`. It is the central object for analyses that
+use the full posterior distribution, including Bayes factors, WAIC, posterior
+predictive checks, rotations, and generated quantities.
+
+```{r}
+fit_mcmc <- mdl$sample(
+  chains = 4,
+  warmup = 1000,
+  sampling = 1000,
+  metric = "auto",
+  nuts_variant = "multinomial"
+)
+```
+
+## 4.1 Main Methods
+
+| Method                    | Purpose                                              |
+|---------------------------|------------------------------------------------------|
+| `$draws()`                | Extract posterior draws as a 3D array `[iteration, chain, variable]` |
+| `$summary()`              | Display mean, sd, MAP, quantiles, ESS, and R-hat     |
+| `$rhat_summary()`         | Summarize R-hat values                               |
+| `$diagnose()`             | Diagnose acceptance, treedepth, divergence, ESS, R-hat, and metric behavior |
+| `$EAP()`, `$MAP()`        | Extract posterior mean or MAP estimates              |
+| `$transformed_draws()`    | Compute transformed quantities for posterior draws   |
+| `$generated_quantities()` | Compute generated quantities for posterior draws     |
+| `$WAIC()`                 | Compute WAIC from pointwise `log_lik`                |
+| `$bayes_factor()`         | Compute Bayes factors by bridge sampling             |
+| `$rotate()`               | Rotate matrix-valued parameters                      |
+| `$fa_rotate()`            | Rotate factor loadings and related factor-analysis quantities |
+
+## 4.2 `draws()`
+
+`draws()` extracts posterior draws. By default, it returns fixed parameters and
+available transformed/generated quantities.
+
+```{r}
+fit_mcmc$draws()
+fit_mcmc$draws(pars = "b")
+fit_mcmc$draws(include_random = TRUE)
+fit_mcmc$draws(include_transform = FALSE, include_generate = FALSE)
+```
+
+For large models, narrow `pars` before extracting draws to avoid unnecessary
+memory use.
+
+## 4.3 `summary()` And `diagnose()`
+
+`summary()` gives the estimation table. `diagnose()` summarizes sampling
+quality.
+
+```{r}
+fit_mcmc$summary()
+fit_mcmc$diagnose()
+fit_mcmc$rhat_summary()
+```
+
+Pay special attention to:
+
+- R-hat values close to 1.
+- Effective sample size.
+- Divergences.
+- Maximum treedepth hits.
+- Metric adaptation and positive-definite fallback messages.
+
+## 4.4 `transformed_draws()` And `generated_quantities()`
+
+Use these methods when you want derived quantities for each posterior draw.
+
+```{r}
+fit_mcmc$transformed_draws()
+fit_mcmc$generated_quantities()
+```
+
+If a `generate` block contains `log_lik`, `generated_quantities()` is the basis
+for WAIC and related pointwise predictive criteria.
+
+## 4.5 Bridge Sampling And Bayes Factors
+
+Bayes factors compare two fitted models. In BayesRTMB, Bayes factors are usually
+computed from MCMC fits.
+
+```{r}
+fit_full <- mdl_full$sample()
+fit_null <- mdl_null$sample()
+
+fit_full$bayes_factor(fit_null)
+```
+
+When comparing models, use the same data and compatible priors, and check MCMC
+diagnostics for both models. Bayes factors are sensitive to the prior on
+parameters that differ between models.
+
+## 4.6 WAIC
+
+To compute WAIC, the model must provide pointwise log-likelihood values. For
+wrappers, set `WAIC = TRUE` when creating the model.
+
+```{r}
+mdl <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  WAIC = TRUE
+)
+
+fit <- mdl$sample()
+fit$WAIC()
+```
+
+For custom models, return or report `log_lik` in the `generate` block.
+
+```{r}
+generate = {
+  log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  report(log_lik)
+}
+```
+
+# 5. MAP_Fit {#map-fit}
+
+`MAP_Fit` is returned by `optimize()`. It is useful for fast point estimation,
+initial-value search, profiling, and constrained/fixed-parameter workflows.
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 10)
+```
+
+## 5.1 Main Methods
+
+| Method          | Purpose                                    |
+|-----------------|--------------------------------------------|
+| `$estimate()`   | Extract MAP estimates                      |
+| `$summary()`    | Display estimates and standard errors when available |
+| `$diagnose()`   | Summarize optimization results             |
+| `$profile()`    | Profile selected parameters                |
+| `$WAIC()`       | Compute WAIC when generated `log_lik` is available |
+| `$rotate()`     | Rotate matrix-valued parameters            |
+| `$fa_rotate()`  | Rotate factor-analysis results             |
+
+## 5.2 `num_estimate` And The Best Run
+
+Optimization can be sensitive to initial values. Use multiple starts with
+`num_estimate`.
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 20)
+fit_map$diagnose()
+```
+
+BayesRTMB keeps optimization history and selects the best run according to the
+objective value and convergence status.
+
+## 5.3 Using Optimization Results As Initial Or Fixed Values
+
+MAP estimates can be reused as initial values for MCMC.
+
+```{r}
+init <- fit_map$estimate(pars = "parameters", drop = FALSE)
+fit_mcmc <- mdl$sample(init = init)
+```
+
+They can also be used to construct fixed models.
+
+```{r}
+est <- fit_map$estimate(pars = "parameters", drop = FALSE)
+mdl_fixed <- mdl$fixed_model(fixed = list(b = est$b))
+```
+
+## 5.4 `profile()`
+
+`profile()` evaluates the objective around selected parameters. It is useful for
+checking local curvature, asymmetric uncertainty, and non-quadratic likelihood
+shape.
+
+```{r}
+fit_map$profile(pars = "b")
+```
+
+## 5.5 WAIC For MAP Fits
+
+WAIC is usually interpreted as a posterior predictive criterion and is most
+natural for MCMC. For MAP fits, WAIC is available when generated `log_lik`
+values can be computed, but it should be interpreted as an approximation.
+
+# 6. VB_Fit {#vb-fit}
+
+`VB_Fit` is returned by `variational()`. It approximates the posterior
+distribution and is useful for exploring larger models or preparing MCMC.
+
+```{r}
+fit_vb <- mdl$variational(iter = 3000)
+```
+
+## 6.1 Main Methods
+
+| Method             | Purpose                                  |
+|--------------------|------------------------------------------|
+| `$EAP()`           | Extract variational posterior means      |
+| `$MAP()`           | Extract approximate MAP-like summaries   |
+| `$summary()`       | Display variational summaries            |
+| `$plot_elbo()`     | Plot ELBO trajectory                     |
+| `$diagnose()`      | Diagnose convergence and stability       |
+| `$draws()`         | Extract approximate posterior draws      |
+| `$WAIC()`          | Compute WAIC when `log_lik` is available |
+
+## 6.2 `num_estimate` And Best Estimate
+
+VB can run several independent estimates and select the best ELBO.
+
+```{r}
+fit_vb <- mdl$variational(num_estimate = 10)
+fit_vb$plot_elbo()
+```
+
+By default, `EAP()` and `MAP()` use the best estimate.
+
+```{r}
+fit_vb$EAP()
+fit_vb$EAP(chains = 1)
+fit_vb$EAP(best_chains = 2)
+```
+
+## 6.3 Checking Convergence With `plot_elbo()`
+
+Use `plot_elbo()` to check whether the ELBO has stabilized.
+
+```{r}
+fit_vb$plot_elbo()
+fit_vb$diagnose()
+```
+
+If the ELBO remains unstable, increase `iter`, try different initial values, or
+use VB only as an exploratory tool before MCMC.
+
+## 6.4 WAIC For VB Fits
+
+WAIC can be computed from VB draws when `log_lik` is available. Interpret it as
+an approximation, and prefer MCMC-based WAIC for final reporting when feasible.
+
+# 7. Classic_Fit {#classic-fit}
+
+`Classic_Fit` is returned by `classic()`. It provides frequentist-style output
+for supported wrapper models, especially flat-prior models.
+
+```{r}
+mdl <- rtmb_lm(sat ~ talk * perf, data = debate)
+fit_classic <- mdl$classic()
+fit_classic$summary()
+```
+
+## 7.1 Main Methods
+
+| Method          | Purpose                                      |
+|-----------------|----------------------------------------------|
+| `$estimate()`   | Extract point estimates                      |
+| `$summary()`    | Display estimates, standard errors, and tests |
+| `$diagnose()`   | Check fit diagnostics where available        |
+| `$robust_se()`  | Compute robust standard errors               |
+| `$lsmeans()`    | Compute least-squares means where supported  |
+| `AIC()`, `BIC()` | Information criteria                        |
+| `anova()`       | Model comparison or analysis-of-variance tables |
+
+## 7.2 ANOVA
+
+Use `anova()` for supported classic fits.
+
+```{r}
+fit1 <- rtmb_lm(sat ~ talk, data = debate)$classic()
+fit2 <- rtmb_lm(sat ~ talk * perf, data = debate)$classic()
+
+anova(fit1, fit2)
+```
+
+## 7.3 AIC, BIC, And `logLik`
+
+```{r}
+AIC(fit_classic)
+BIC(fit_classic)
+logLik(fit_classic)
+```
+
+These criteria are most natural for classic/MAP likelihood-based fits. For
+Bayesian predictive comparison, use WAIC or posterior predictive checks.
+
+## 7.4 `robust_se()`
+
+`robust_se()` returns a copy of the fit with robust standard errors by default.
+
+```{r}
+fit_robust <- fit_classic$robust_se(type = "HC3")
+fit_cluster <- fit_classic$robust_se(cluster = debate$group)
+```
+
+To update the fit object itself, use the update option if supported.
+
+```{r}
+fit_classic$robust_se(type = "HC3", update = TRUE)
+```
+
+## 7.5 `lsmeans()`
+
+`lsmeans()` computes adjusted marginal means for supported models.
+
+```{r}
+fit_classic$lsmeans(~ talk)
+fit_classic$lsmeans(~ talk | perf)
+```
+
+# 8. Model Comparison And Evaluation Criteria {#model-comparison}
+
+BayesRTMB supports several model comparison tools. Choose the criterion
+according to the estimation method and the question.
+
+| Criterion      | Main fit type       | Main interpretation                         |
+|----------------|---------------------|---------------------------------------------|
+| Bayes factor   | MCMC                | Evidence ratio between Bayesian models      |
+| WAIC           | MCMC/VB/MAP with `log_lik` | Approximate out-of-sample predictive fit |
+| AIC/BIC        | Classic/MAP         | Likelihood-based information criteria       |
+| ELBO           | VB                  | Variational objective, useful for VB runs   |
+
+## 8.1 Bayes Factor
+
+Bayes factors are usually computed by bridge sampling from MCMC fits.
+
+```{r}
+bf <- fit_full$bayes_factor(fit_null)
+bf
+```
+
+Use Bayes factors when the prior is part of the scientific question. Do not
+compare models with incompatible data, likelihoods, or unintended prior changes.
+
+## 8.2 WAIC
+
+WAIC requires pointwise log-likelihood values.
+
+```{r}
+mdl <- rtmb_glm(y ~ x, data = dat, family = "bernoulli", WAIC = TRUE)
+fit <- mdl$sample()
+fit$WAIC()
+```
+
+For custom models, create `log_lik` in `generate`.
+
+## 8.3 AIC/BIC
+
+Use AIC/BIC for likelihood-based classic or optimization fits.
+
+```{r}
+AIC(fit_classic)
+BIC(fit_classic)
+```
+
+## 8.4 ELBO
+
+For VB, the ELBO is mainly a diagnostic and selection criterion among VB runs.
+
+```{r}
+fit_vb$plot_elbo()
+fit_vb$diagnose()
+```
+
+# 9. Fixing Parameters With `fixed` {#fixed-parameters}
+
+`fixed` lets you fix one or more parameters to specified values. It can be used
+when creating a model or by calling `$fixed_model()`.
+
+```{r}
+mdl_fixed <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  fixed = list(b = c(0, 0))
+)
+
+mdl_fixed2 <- mdl$fixed_model(
+  fixed = list(sigma = 1)
+)
+```
+
+Fixed values should match the parameter names and dimensions used internally by
+the model.
+
+## 9.1 Checking Parameter Names
+
+Use summaries, estimates, draws, and printed model code to check the names.
+
+```{r}
+fit$summary()
+fit$estimate(pars = "parameters", drop = FALSE)
+fit_mcmc$draws(pars = "parameters")
+mdl$print_code()
+```
+
+## 9.2 Internal Handling Of `fixed`
+
+Internally, fixed parameters are removed from the active optimization or
+sampling vector and supplied at fixed values during model evaluation. This means
+the model code can usually be written in the same way regardless of whether a
+parameter is fixed.
+
+## 9.3 Limitations Of `fixed`
+
+Use `fixed` for fixing parameters to numeric values. Equality constraints such
+as "make `mean0` and `mean1` equal" are usually better expressed by changing the
+model parameterization so that both quantities are built from the same
+underlying parameter.
+
+For example:
+
+```{r}
+parameters = {
+  mean_common <- Dim()
+}
+transform = {
+  mean0 <- mean_common
+  mean1 <- mean_common
+}
+```
+
+## 9.4 Using Optimization Results As Fixed Values
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 10)
+est <- fit_map$estimate(pars = "parameters", drop = FALSE)
+
+mdl_fixed <- mdl$fixed_model(
+  fixed = list(b = est$b)
+)
+```
+
+## 9.5 Using MCMC Results As Fixed Values
+
+Use posterior summaries, not raw draws, as fixed values.
+
+```{r}
+eap <- fit_mcmc$EAP(pars = "parameters", drop = FALSE)
+mdl_fixed <- mdl$fixed_model(fixed = list(b = eap$b))
+```
+
+## 9.6 `fixed` And Bayes Factors
+
+Bayes factors compare models with different parameter spaces. A fixed-parameter
+model can be useful as a null model, but priors and constraints must be chosen
+deliberately.
+
+# 10. `rtmb_code()` Blocks {#rtmb-code-blocks}
+
+`rtmb_code()` separates model code into blocks.
+
+```{r}
+code <- rtmb_code(
+  setup = {
+    N <- length(Y)
+  },
+  parameters = {
+    mu <- Dim()
+    sigma <- Dim(lower = 0)
+  },
+  transform = {
+    z <- (Y - mu) / sigma
+  },
+  model = {
+    Y ~ normal(mu, sigma)
+  },
+  generate = {
+    log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+    report(log_lik)
+  }
+)
+```
+
+| Block        | Role                                                       |
+|--------------|------------------------------------------------------------|
+| `setup`      | Data preprocessing and helper definitions outside AD       |
+| `parameters` | Estimated parameter declarations                           |
+| `transform`  | Deterministic quantities used by the model and ADREPORT/SE |
+| `model`      | Likelihood and priors                                      |
+| `generate`   | Post-estimation quantities such as predictions and `log_lik` |
+
+## 10.1 What Belongs In `setup`
+
+Use `setup` for calculations that do not need AD:
+
+- Dimensions and indexes.
+- Missing-data preprocessing.
+- Design matrices.
+- Group indexes.
+- Helper functions that operate on data only.
+
+```{r}
+setup = {
+  N <- nrow(df)
+  X <- model.matrix(~ x1 + x2, df)
+  K <- ncol(X)
+}
+```
+
+## 10.2 What Belongs In `transform`
+
+Use `transform` for derived quantities that depend on parameters and may need
+standard errors or ADREPORT-style treatment.
+
+```{r}
+transform = {
+  eta <- Intercept + X %*% b
+  p <- inv_logit(eta)
+  report(p)
+}
+```
+
+## 10.3 What Belongs In `generate`
+
+Use `generate` for quantities computed after estimation, such as predictions,
+correlations, posterior predictive summaries, and pointwise log-likelihoods.
+
+```{r}
+generate = {
+  y_rep_mean <- mu
+  log_lik <- normal_lpdf(Y, mu, sigma, sum = FALSE)
+  report(y_rep_mean, log_lik)
+}
+```
+
+## 10.4 Choosing Between `transform` And `generate`
+
+Use `transform` when the quantity should participate in AD-based reporting,
+standard errors, or model evaluation. Use `generate` when the quantity is a
+post-estimation output. The printed code may look similar, but internally the
+two blocks serve different purposes.
+
+# 11. Parameter Declarations And Types
+
+Parameters are declared with `Dim()`.
+
+```{r}
+parameters = {
+  alpha <- Dim()
+  b <- Dim(K)
+  L <- Dim(c(P, P), type = "CF_corr")
+  sigma <- Dim(lower = 0)
+}
+```
+
+## 11.1 Dimensions
+
+| Declaration       | Shape                          |
+|-------------------|--------------------------------|
+| `Dim()`           | Scalar                         |
+| `Dim(K)`          | Vector of length `K`           |
+| `Dim(c(R, C))`    | Matrix-like object `R x C`     |
+| `Dim(c(A, B, C))` | Array-like object              |
+
+## 11.2 Constraints
+
+| Argument              | Meaning                                  |
+|-----------------------|------------------------------------------|
+| `lower = 0`           | Positive parameter                       |
+| `upper = 1`           | Upper-bounded parameter                  |
+| `lower = 0, upper = 1` | Unit-interval parameter                 |
+| `type = "simplex"`    | Simplex parameter                        |
+| `type = "ordered"`    | Ordered vector                           |
+| `type = "CF_corr"`    | Cholesky factor for correlation matrices |
+
+## 11.3 `random = TRUE`
+
+Use `random = TRUE` for latent variables or random effects to be marginalized by
+Laplace approximation in optimization.
+
+```{r}
+parameters = {
+  u <- Dim(J, random = TRUE)
+  tau <- Dim(lower = 0)
+}
+```
+
+# 12. Distribution Overview
+
+Distributions can be used with Stan-like sampling statements or with explicit
+log-density functions.
+
+```{r}
+Y ~ normal(mu, sigma)
+lp <- lp + normal_lpdf(Y, mu, sigma)
+```
+
+## 12.1 Continuous Distributions
+
+Common continuous distributions include:
+
+| Function family | Example                                      |
+|-----------------|----------------------------------------------|
+| Normal          | `normal_lpdf(y, mu, sigma)`                  |
+| Student t       | `student_t_lpdf(y, df, mu, sigma)`           |
+| Exponential     | `exponential_lpdf(x, rate)`                  |
+| Gamma           | `gamma_lpdf(x, shape, rate)`                 |
+| Beta            | `beta_lpdf(x, a, b)`                         |
+| Laplace         | `laplace_lpdf(x, mu, sigma)`                 |
+
+## 12.2 Discrete Distributions
+
+Common discrete distributions include Bernoulli, binomial, Poisson, categorical,
+ordered-logistic, and negative-binomial families.
+
+```{r}
+y ~ bernoulli_logit(eta)
+y ~ poisson(lambda)
+y ~ ordered_logistic(eta, cutpoints)
+```
+
+## 12.3 Multivariate And Matrix Distributions
+
+Use multivariate distributions for correlated outcomes and random effects.
+
+```{r}
+Y ~ multi_normal_CF(mean = mu, sd = sigma, CF_Omega = L_corr)
+L_corr ~ lkj_CF_corr(1)
+```
+
+## 12.4 Mixtures And Special Distributions
+
+Mixture models usually build a matrix of component log densities and combine
+them with `log_sum_exp()`.
+
+```{r}
+log_dens_mat <- matrix(mu[1] * 0, N, K)
+for (k in 1:K) {
+  log_dens_mat[, k] <- normal_lpdf(Y, mu[k], sigma[k], sum = FALSE)
+}
+lp <- lp + sum(log_sum_exp(t(t(log_dens_mat) + log(theta))))
+```
+
+# 13. Math And Stabilization Functions
+
+BayesRTMB provides helper functions for stable model code.
+
+| Function              | Purpose                                      |
+|-----------------------|----------------------------------------------|
+| `log_sum_exp()`       | Stable log-sum-exp, including AD values      |
+| `softmax()`           | Softmax probabilities                        |
+| `log_softmax()`       | Log-softmax                                  |
+| `inv_logit()`         | Logistic inverse                             |
+| `logit()`             | Logit transform                              |
+| `log1p_exp()`         | Stable `log(1 + exp(x))`                     |
+| `rtmb_vector()`       | Mutable AD-compatible vector                 |
+| `rtmb_array()`        | Mutable AD-compatible array                  |
+| `distance()`          | Euclidean distance                           |
+| `squared_distance()`  | Squared Euclidean distance                   |
+
+When writing categorical models with a baseline category, the natural pattern
+can be used inside `rtmb_code()`.
+
+```{r}
+log_pi <- log_softmax(c(0, eta))
+pi <- softmax(c(0, eta))
+```
+
+# 14. AD Taping And Performance
+
+RTMB records model evaluation on an automatic-differentiation tape. Code that is
+simple, vectorized, and AD-compatible tapes faster and evaluates more reliably.
+
+## 14.1 Use `setup`
+
+Move data-only calculations to `setup`.
+
+```{r}
+setup = {
+  X <- model.matrix(~ x1 + x2, df)
+}
+```
+
+## 14.2 Prefer Vectorization
+
+Prefer vectorized operations when they are clear and AD-compatible.
+
+```{r}
+mu <- Intercept + X %*% b
+Y ~ normal(mu, sigma)
+```
+
+## 14.3 Avoid `apply`-Style Functions In AD Code
+
+Many `apply`-style functions are convenient but can be difficult to tape inside
+AD code. Use explicit loops when necessary, especially for AD values.
+
+## 14.4 Notes On `if` And `ifelse`
+
+Avoid branching on parameter-dependent quantities. Branching on data or setup
+values is usually fine.
+
+```{r}
+# Good: branch decided by data/setup
+if (family == "gaussian") {
+  Y ~ normal(mu, sigma)
+}
+```
+
+## 14.5 `rtmb_vector()` And `rtmb_array()`
+
+Use `rtmb_vector()` and `rtmb_array()` when you need a mutable container that
+will receive AD values inside a loop.
+
+```{r}
+log_lik <- rtmb_vector(0, N)
+for (i in 1:N) {
+  log_lik[i] <- normal_lpdf(Y[i], mu[i], sigma)
+}
+```
+
+For matrices or arrays:
+
+```{r}
+A <- rtmb_array(0, dim = c(N, K))
+for (k in 1:K) {
+  A[, k] <- normal_lpdf(Y, mu[k], sigma[k], sum = FALSE)
+}
+```
+
+## 14.6 Taping Time And AD Evaluation Speed
+
+Long loops, large generated quantities, and repeated matrix decompositions can
+increase taping time. Keep generated quantities focused on values that you will
+use.
+
+## 14.7 Patterns To Avoid Inside AD Tapes
+
+Avoid these patterns inside parameter-dependent code when possible:
+
+- `numeric(N)` followed by assignment of AD values.
+- `matrix(0, ...)` followed by elementwise AD assignment.
+- `apply()` over AD arrays.
+- Branching on parameter-dependent conditions.
+- Recomputing data-only indexes in the `model` block.
+
+# 15. Common Recipes
+
+## 15.1 Get Only Estimates From MCMC
+
+```{r}
+fit <- mdl$sample()
+fit$EAP(pars = "parameters")
+fit$MAP(pars = "parameters")
+```
+
+## 15.2 Use MAP Initial Values For MCMC
+
+```{r}
+fit_map <- mdl$optimize(num_estimate = 20)
+init <- fit_map$estimate(pars = "parameters", drop = FALSE)
+fit_mcmc <- mdl$sample(init = init)
+```
+
+## 15.3 Extract Only Generated Quantities
+
+```{r}
+fit$estimate(pars = "generate")
+fit_mcmc$generated_quantities()
+```
+
+## 15.4 Extract Draws Including Random Effects
+
+```{r}
+fit_mcmc$draws(include_random = TRUE)
+```
+
+## 15.5 Check VB Convergence
+
+```{r}
+fit_vb <- mdl$variational(num_estimate = 5)
+fit_vb$plot_elbo()
+fit_vb$diagnose()
+```
+
+## 15.6 Compare Models With Classic Estimation
+
+```{r}
+fit1 <- rtmb_lm(y ~ x1, data = dat)$classic()
+fit2 <- rtmb_lm(y ~ x1 + x2, data = dat)$classic()
+
+anova(fit1, fit2)
+AIC(fit1, fit2)
+BIC(fit1, fit2)
+```
+
+## 15.7 Compare Coefficient Inclusion With A Bayes Factor
+
+```{r}
+mdl_full <- rtmb_lm(y ~ x1 + x2, data = dat, prior = prior_normal())
+mdl_null <- rtmb_lm(y ~ x1, data = dat, prior = prior_normal())
+
+fit_full <- mdl_full$sample()
+fit_null <- mdl_null$sample()
+
+fit_full$bayes_factor(fit_null)
+```
+
+## 15.8 Build A Fixed Model Explicitly
+
+```{r}
+mdl_fixed <- mdl$fixed_model(
+  fixed = list(b = c(0, 0))
+)
+```
+
+## 15.9 Upgrade An Old Fit Object {#upgrade-fit}
+
+Use `upgrade_fit()` when you want to reuse a saved fit object with the current
+class definitions after updating the package.
+
+```{r}
+fit <- readRDS("old-fit.rds")
+fit <- upgrade_fit(fit)
+```
+
+If the embedded model object also needs current methods, upgrade it as well.
+
+```{r}
+fit <- upgrade_fit(fit, model = TRUE)
+```
+
+## 15.10 Run MCMC In Parallel
+
+```{r}
+fit <- mdl$sample(
+  chains = 4,
+  parallel = TRUE,
+  sampling = 1000,
+  warmup = 1000
+)
+```
+
+Parallel workers need access to the functions and data used by the model. Wrapper
+models preserve the setup environment needed by generated code.
+
+# 16. Caveats
+
+- Check MCMC diagnostics before interpreting posterior summaries.
+- Use MCMC rather than VB for final uncertainty summaries when the model is
+  difficult or highly nonlinear.
+- Use `WAIC = TRUE` before fitting if you plan to call `WAIC()`.
+- Ensure fixed values match the internal parameter names and dimensions.
+- For equality constraints, prefer reparameterizing the model instead of trying
+  to express the constraint through `fixed`.
+- Keep data-only calculations in `setup` and parameter-dependent calculations in
+  `transform`, `model`, or `generate` as appropriate.
+- Use `rtmb_vector()` and `rtmb_array()` for mutable AD containers.
+- When a wrapper is unclear, inspect the generated code with `mdl$print_code()`.

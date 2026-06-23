@@ -132,6 +132,10 @@ fit_custom <- mdl_custom$sample()
   Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.html):
   internal model representation, Laplace approximation, and inference
   pipelines.
+- [Analysis
+  Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.html):
+  function, fit-object, model-comparison, distribution, and AD-taping
+  reference.
 - [日本語:
   パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
 - [日本語:
@@ -140,3 +144,5 @@ fit_custom <- mdl_custom$sample()
   ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.html)
 - [日本語:
   モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.html)
+- [日本語:
+  分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.html)

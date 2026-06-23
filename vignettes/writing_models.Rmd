@@ -278,4 +278,4 @@ This does not refit the model. It copies the stored estimation results into a ne
 Rather than writing a complex model from the beginning, it's better to start estimating with simple models first. 
 The error messages are still under development, and we plan to make them more user-friendly in the future.
 
-For standard wrapper models, see [Wrapper Functions](wrapper_functions.html). For mixed models and GLMMs in particular, see [Hierarchical Models and GLMMs](rtmb_glmer.html). For the internal inference pipeline, see [RTMB Internals and Inference Algorithms](rtmb_internals.html).
+For standard wrapper models, see [Wrapper Functions](wrapper_functions.html). For mixed models and GLMMs in particular, see [Hierarchical Models and GLMMs](rtmb_glmer.html). For the internal inference pipeline, see [RTMB Internals and Inference Algorithms](rtmb_internals.html). For function-level reference material, see [Analysis Reference](analysis_reference.html).

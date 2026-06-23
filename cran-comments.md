@@ -1,29 +1,22 @@
+## Test environments
+
+* local Windows 10 x86_64-w64-mingw32, R 4.5.3
+* win-builder R-devel x86_64-w64-mingw32, Windows Server 2022 x64,
+  R Under development (2026-06-21 r90185 ucrt): OK
+
 ## R CMD check results
 
-0 errors | 0 warnings | 1 note
+0 errors | 0 warnings | 0 notes
 
-There was 1 NOTE:
+## Reverse dependencies
 
-* checking CRAN incoming feasibility ... NOTE
-  New submission
-  Possibly misspelled words in DESCRIPTION:
-    Gelman
-    Kristensen
-    al
-    et
+There are no known CRAN reverse dependencies.
 
-This is a new submission. The possibly misspelled words are author names
-(Gelman, Kristensen) and the abbreviation "et al." used in references.
+## Submission notes
 
-## Resubmission
+This release updates BayesRTMB to 0.2.1.
 
-This is a resubmission. I have addressed the reviewer comments by:
-
-* writing 'RTMB' in single quotes in the DESCRIPTION title;
-* adding method references to the DESCRIPTION field in CRAN format;
-* replacing \dontrun{} examples with \donttest{}.
-
-Since the original submission on 2026-05-20, the package also includes
-small bug fixes and documentation updates, including an AD-compatible
-negative-binomial log-density implementation and a correction for the
-unequal-variance JZS t-test example/documentation.
+The update includes performance and robustness improvements for MCMC,
+variational inference, transformed parameters, generated quantities, and
+wrapper model code. It also improves AD-compatible helper containers and
+softmax/log-sum-exp handling used in model code.

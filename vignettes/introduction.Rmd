@@ -44,6 +44,7 @@ The following articles are available.
 - **[Hierarchical Models and GLMMs](rtmb_glmer.html)**
 - **[Writing Model Codes](writing_models.html)**
 - **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**
+- **[Analysis Reference](analysis_reference.html)**
 
 # What BayesRTMB Can Do
 
@@ -513,3 +514,6 @@ Once you have a general picture of BayesRTMB, the next step is to read the artic
 
 5. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
    Learn about internal processing such as Laplace approximation, constrained parameters, MCMC, and variational inference.
+
+6. **[Analysis Reference](analysis_reference.html)**\
+   Check fit-object methods, model-comparison tools, fixed parameters, distributions, and AD-taping notes.

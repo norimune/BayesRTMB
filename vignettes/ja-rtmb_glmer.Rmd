@@ -645,4 +645,4 @@ r_re ~ normal(0, 1)
 - `family = "sequential"` は、通常の ordered logistic とは異なり、カテゴリ遷移ごとに異なる係数を持ちます。
 - `sigma_by` と `resid_corr` は、連続量モデル、特に Gaussian 系のモデルで使う機能です。
 
-より低水準のモデルコードを書きたい場合は、[モデルコードの書き方](ja-writing_models.html) を参照してください。`rtmb_glmer()` が内部で何をしているかをさらに詳しく知りたい場合は、[BayesRTMB の内部構造](ja-rtmb_internals.html) も参考になります。
+より低水準のモデルコードを書きたい場合は、[モデルコードの書き方](ja-writing_models.html) を参照してください。`rtmb_glmer()` が内部で何をしているかをさらに詳しく知りたい場合は、[BayesRTMB の内部構造](ja-rtmb_internals.html) も参考になります。fit object のメソッド、モデル比較、固定パラメータ、分布、AD テープ化の注意点は、[分析リファレンス](ja-analysis_reference.html) で確認できます。

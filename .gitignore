@@ -12,6 +12,8 @@ BWMU_functions.R
 /BayesRTMB_mcmc/
 docs
 /..Rcheck/
+*.Rcheck/
+*.tar.gz
 scratch/
 /.agent_shared/
 debug.rmd

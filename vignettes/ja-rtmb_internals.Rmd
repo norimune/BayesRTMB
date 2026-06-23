@@ -459,4 +459,4 @@ BayesRTMB の内部構造は、次のように整理できます。
 - `optimize()` と `classic()` は低水準エンジンを共有しますが、責務と返り値は明確に分かれています。
 - Laplace 近似では、`random = TRUE` と `marginal` の扱い、特に `marginal_vars` と `laplace_random_vars` の区別が重要です。
 
-より実践的なモデルの書き方は、[モデルコードの書き方](ja-writing_models.html) を参照してください。ラッパー関数がどのような `rtmb_code()` を作るかは、[ラッパー関数の使い方](ja-wrapper_functions.html) と `print_code()` が参考になります。階層モデルや GLMM の具体的な使い方は、[階層モデル・GLMM](ja-rtmb_glmer.html) で確認できます。
+より実践的なモデルの書き方は、[モデルコードの書き方](ja-writing_models.html) を参照してください。ラッパー関数がどのような `rtmb_code()` を作るかは、[ラッパー関数の使い方](ja-wrapper_functions.html) と `print_code()` が参考になります。階層モデルや GLMM の具体的な使い方は、[階層モデル・GLMM](ja-rtmb_glmer.html) で確認できます。fit object のメソッド、モデル比較、固定パラメータ、分布、AD テープ化の注意点は、[分析リファレンス](ja-analysis_reference.html) で確認できます。

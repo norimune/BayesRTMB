@@ -430,4 +430,4 @@ BayesRTMB's internal structure can be summarized as follows.
 - `optimize()` and `classic()` share a low-level engine, but their responsibilities and return objects are distinct.
 - For Laplace approximation, the distinction between `random = TRUE`, `marginal_vars`, and `laplace_random_vars` is important.
 
-For practical model-writing examples, see [Writing Model Codes](writing_models.html). To understand wrapper-generated models, see [Wrapper Functions](wrapper_functions.html) and `print_code()`. For a detailed mixed-model and GLMM workflow, see [Hierarchical Models and GLMMs](rtmb_glmer.html).
+For practical model-writing examples, see [Writing Model Codes](writing_models.html). To understand wrapper-generated models, see [Wrapper Functions](wrapper_functions.html) and `print_code()`. For a detailed mixed-model and GLMM workflow, see [Hierarchical Models and GLMMs](rtmb_glmer.html). For a compact user-facing reference, see [Analysis Reference](analysis_reference.html).

@@ -496,3 +496,4 @@ Because Bayes factors depend strongly on priors, use carefully designed priors. 
 - [Wrapper Functions](wrapper_functions.html): overview of standard wrapper functions.
 - [Writing Model Codes](writing_models.html): writing custom `rtmb_code()` models.
 - [RTMB Internals and Inference Algorithms](rtmb_internals.html): internal model representation and inference pipeline.
+- [Analysis Reference](analysis_reference.html): fit-object methods, model comparison, fixed parameters, distributions, and AD-taping notes.

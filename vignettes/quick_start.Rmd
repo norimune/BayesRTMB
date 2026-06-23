@@ -31,7 +31,7 @@ It covers the following topics.
 6. Run a frequentist t test with `classic()`
 7. Compute a Bayes factor using a JZS prior and MCMC
 
-Detailed model writing, mixed models, GLMMs, and model comparison are covered in other vignettes.
+Detailed model writing, mixed models, GLMMs, model comparison, and function-level reference material are covered in other vignettes, especially the [Analysis Reference](analysis_reference.html).
 
 # 0. Installation and Environment Check
 
@@ -389,3 +389,6 @@ Continue with the page that matches your purpose.
 
 4. **[RTMB Internals and Inference Algorithms](rtmb_internals.html)**  
    Learn about internal processing such as MAP estimation, Laplace approximation, MCMC, and variational inference.
+
+5. **[Analysis Reference](analysis_reference.html)**\
+   Check fit-object methods, model-comparison tools, fixed parameters, distributions, and AD-taping notes.

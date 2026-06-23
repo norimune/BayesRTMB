@@ -709,4 +709,4 @@ By leveraging the wrapper functions in BayesRTMB, you gain the following benefit
 - Seamlessly switch between MAP, MCMC, and VB estimations using the same model object.
 - Calculate Bayes factors smoothly.
 
-For a more detailed guide to mixed models and GLMMs, see [Hierarchical Models and GLMMs](rtmb_glmer.html). If you require a more customized model, check out [Writing Model Codes](writing_models.html) and try building your own using `rtmb_code()`. For the model-building pipeline behind the wrappers, see [RTMB Internals and Inference Algorithms](rtmb_internals.html).
+For a more detailed guide to mixed models and GLMMs, see [Hierarchical Models and GLMMs](rtmb_glmer.html). If you require a more customized model, check out [Writing Model Codes](writing_models.html) and try building your own using `rtmb_code()`. For the model-building pipeline behind the wrappers, see [RTMB Internals and Inference Algorithms](rtmb_internals.html). For a compact reference to fit-object methods, model comparison, fixed parameters, and distributions, see [Analysis Reference](analysis_reference.html).
