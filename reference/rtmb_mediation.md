@@ -61,7 +61,7 @@ rtmb_mediation(
 
 - ...:
 
-  Additional arguments passed to the model construction.
+  Reserved; unused arguments are rejected.
 
 ## Value
 

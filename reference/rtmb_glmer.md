@@ -55,8 +55,9 @@ rtmb_glmer(
 - prior:
 
   An object of class "rtmb_prior" specifying the prior distribution. Use
-  prior_weak(), prior_rhs(), or prior_ssp(). Default is
-  \`prior_flat()\`.
+  \`prior_flat()\`, \`prior_normal()\`, \`prior_weak()\`,
+  \`prior_rhs()\`, or \`prior_ssp()\`. \`prior_jzs()\` is available for
+  continuous families. Default is \`prior_flat()\`.
 
 - y_range:
 
@@ -85,7 +86,9 @@ rtmb_glmer(
 - cwc:
 
   List for Centering Within Cluster (CWC). Should contain `cluster`
-  (group variable) and `pars` (variable names to center).
+  (group variable) and `pars` (variable names to center). You can also
+  use `cwc = list(ID, "x")` or `cwc = list(ID, "all")`; `"all"` centers
+  all numeric fixed-effect variables within the cluster.
 
 - view:
 
@@ -185,7 +188,7 @@ rtmb_glmer(
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> Intercept  -3.16409     0.57473   -4.29054   -2.03765 
+#> Intercept  -3.16409     0.57473   -4.29053   -2.03765 
 #> b[talk]     0.84795     0.15040    0.55317    1.14273 
 #> b[sat]      0.17405     0.13431   -0.08920    0.43730 
 #> 
@@ -222,30 +225,33 @@ rtmb_glmer(
   # \donttest{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
 #> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
+#> chain 1 started...
+#> chain 1: iter 200/1000 (20%) warmup
+#> chain 1: iter 400/1000 (40%) warmup
+#> chain 1: iter 600/1000 (60%) sampling
+#> chain 1: iter 800/1000 (80%) sampling
+#> chain 1: iter 1000/1000 (100%) sampling
+#> chain 1 done (100%)
+#> chain 2 started...
+#> chain 2: iter 200/1000 (20%) warmup
+#> chain 2: iter 400/1000 (40%) warmup
+#> chain 2: iter 600/1000 (60%) sampling
+#> chain 2: iter 800/1000 (80%) sampling
+#> chain 2: iter 1000/1000 (100%) sampling
+#> chain 2 done (100%)
+#> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -511.43  11.54  -508.35  -533.43  -489.00       108       443  1.02 
-#> Intercept         2.64   0.09     2.67     2.47     2.82       765       701  1.00 
-#> b[cond]           0.76   0.13     0.75     0.52     1.02       739       689  1.00 
-#> sigma             0.83   0.04     0.83     0.76     0.92       360       691  1.01 
-#> sd[group:Int]     0.41   0.08     0.41     0.24     0.57       152       489  1.01 
-#> r_re[1]          -0.75   0.76    -0.75    -2.22     0.80      1162       645  1.00 
-#> r_re[2]          -0.96   0.78    -1.13    -2.41     0.62      1360       713  1.01 
-#> r_re[3]           0.01   0.81    -0.09    -1.55     1.64      1318       609  1.00 
-#> r_re[4]           0.59   0.77     0.45    -0.91     2.11       978       698  1.01 
-#> r_re[5]          -0.42   0.74    -0.62    -1.82     0.97      1388       689  1.00 
+#> lp             -509.84  12.20  -507.68  -538.51  -488.64       170       243  1.00 
+#> Intercept         2.64   0.09     2.62     2.47     2.82       605       684  1.00 
+#> b[cond]           0.75   0.12     0.72     0.51     0.98       554       580  1.01 
+#> sigma             0.83   0.04     0.82     0.76     0.92       406       526  1.00 
+#> sd[group:Int]     0.41   0.08     0.43     0.22     0.56       237       267  1.01 
+#> r_re[1]          -0.75   0.76    -0.72    -2.22     0.78      1138       756  1.00 
+#> r_re[2]          -0.98   0.81    -1.33    -2.52     0.54      1401       610  1.00 
+#> r_re[3]          -0.01   0.71     0.02    -1.41     1.39      1175       895  1.00 
+#> r_re[4]           0.60   0.81     0.69    -0.99     2.13       992       724  1.00 
+#> r_re[5]          -0.39   0.74    -0.43    -1.92     1.12       887       624  1.00 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -292,7 +298,7 @@ rtmb_glmer(
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
 #> 
-#> Warning: Optimization did not converge ( convergence code = 1; message = singular convergence (7)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
+#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
@@ -324,15 +330,13 @@ rtmb_glmer(
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
 #> 
-#> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
-#> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")
 #> 
 #> Call:
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 390.80
-#> Approx. Log Marginal Likelihood (Laplace): NA
+#> Approx. Log Marginal Likelihood (Laplace): -436.84
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 

@@ -48,10 +48,10 @@ rtmb_lmer(
 - prior:
 
   An object of class \`"rtmb_prior"\`. Use \`prior_flat()\` for no
-  prior, \`prior_normal()\` for default normal/exponential priors, or
-  \`prior_weak()\`, \`prior_rhs()\`, \`prior_ssp()\` for weakly
-  informative or regularized Bayesian inference. Default is
-  \`prior_flat()\`.
+  prior, \`prior_normal()\` for default normal/exponential priors,
+  \`prior_jzs()\` for JZS regression priors, or \`prior_weak()\`,
+  \`prior_rhs()\`, \`prior_ssp()\` for weakly informative or regularized
+  Bayesian inference. Default is \`prior_flat()\`.
 
 - y_range:
 
@@ -129,7 +129,7 @@ rtmb_lmer(
 - ...:
 
   Additional arguments passed to
-  [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md).
+  [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md).
 
 ## Value
 
@@ -182,8 +182,8 @@ RTMB_Model object
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> Intercept  -3.16409     0.57473   -4.29053   -2.03765 
-#> b[talk]     0.84795     0.15040    0.55317    1.14273 
+#> Intercept  -3.16409     0.57473   -4.29053   -2.03764 
+#> b[talk]     0.84795     0.15040    0.55316    1.14273 
 #> b[sat]      0.17405     0.13431   -0.08920    0.43730 
 #> 
 
@@ -209,40 +209,43 @@ RTMB_Model object
 #> 
 #> Point Estimates and 95% Wald CI:
 #>      variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> Intercept       2.64001     0.08790    2.46773    2.81228 
-#> b[cond]         0.76000     0.12431    0.51636    1.00364 
+#> Intercept       2.64000     0.08790    2.46773    2.81228 
+#> b[cond]         0.76000     0.12431    0.51636    1.00363 
 #> sigma           0.82057     0.04103    0.74397    0.90505 
-#> sd[group:Int]   0.40233     0.07340    0.28137    0.57528 
+#> sd[group:Int]   0.40232     0.07340    0.28137    0.57527 
 #> 
 
   # MCMC sampling (chains and iterations reduced for faster execution)
   # \donttest{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
 #> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
+#> chain 1 started...
+#> chain 1: iter 200/1000 (20%) warmup
+#> chain 1: iter 400/1000 (40%) warmup
+#> chain 1: iter 600/1000 (60%) sampling
+#> chain 1: iter 800/1000 (80%) sampling
+#> chain 1: iter 1000/1000 (100%) sampling
+#> chain 1 done (100%)
+#> chain 2 started...
+#> chain 2: iter 200/1000 (20%) warmup
+#> chain 2: iter 400/1000 (40%) warmup
+#> chain 2: iter 600/1000 (60%) sampling
+#> chain 2: iter 800/1000 (80%) sampling
+#> chain 2: iter 1000/1000 (100%) sampling
+#> chain 2 done (100%)
+#> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -509.92  10.97  -511.64  -531.11  -490.10       209       366  1.02 
-#> Intercept         2.64   0.09     2.62     2.47     2.81      1207       903  1.00 
-#> b[cond]           0.77   0.13     0.79     0.53     1.00      1261       894  1.00 
-#> sigma             0.82   0.04     0.81     0.76     0.90       590       778  1.00 
-#> sd[group:Int]     0.41   0.08     0.41     0.25     0.56       290       590  1.01 
-#> r_re[1]          -0.73   0.73    -0.73    -2.14     0.67      2498       748  1.00 
-#> r_re[2]          -0.99   0.78    -1.20    -2.54     0.60      2040       707  1.01 
-#> r_re[3]           0.05   0.77    -0.10    -1.47     1.58      2542       715  1.01 
-#> r_re[4]           0.61   0.74     0.67    -0.82     2.09      2225       750  1.01 
-#> r_re[5]          -0.41   0.77    -0.11    -1.88     1.15      2125       589  1.00 
+#> lp             -511.20  10.84  -514.73  -533.03  -489.98       183       543  1.01 
+#> Intercept         2.64   0.09     2.66     2.47     2.81      1166       776  1.00 
+#> b[cond]           0.77   0.13     0.74     0.53     1.02      1175       808  1.00 
+#> sigma             0.83   0.04     0.82     0.75     0.92       746       809  1.00 
+#> sd[group:Int]     0.40   0.08     0.42     0.24     0.55       274       757  1.00 
+#> r_re[1]          -0.75   0.80    -0.72    -2.35     0.74      1924       499  1.00 
+#> r_re[2]          -0.98   0.74    -0.85    -2.45     0.51      2047       799  1.00 
+#> r_re[3]           0.05   0.71     0.27    -1.32     1.41      1613       635  1.00 
+#> r_re[4]           0.60   0.78     0.57    -0.86     2.12      1846       638  1.01 
+#> r_re[5]          -0.43   0.76    -0.60    -1.91     1.07      2436       650  1.01 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -289,6 +292,7 @@ RTMB_Model object
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
 #> 
+#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
@@ -320,6 +324,7 @@ RTMB_Model object
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
 #> 
+#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")

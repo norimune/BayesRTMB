@@ -24,6 +24,7 @@ to_wide(data, within = "Condition", value = "Value", id = NULL)
 - value:
 
   The name of the column containing measurement values (e.g., "Value").
+  Can be a character vector for multiple measurement columns.
 
 - id:
 

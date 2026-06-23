@@ -17,7 +17,8 @@ rtmb_model(
   init = NULL,
   view = NULL,
   fixed = NULL,
-  silent = FALSE
+  silent = FALSE,
+  gr_test = FALSE
 )
 ```
 
@@ -60,6 +61,12 @@ rtmb_model(
   Logical; if TRUE, suppresses diagnostic messages during model
   creation. Default is FALSE.
 
+- gr_test:
+
+  Logical; if TRUE, evaluate the gradient once after the AD tape is
+  built. By default, model creation checks that `MakeADFun()` can build
+  the AD tape but skips this extra gradient evaluation for speed.
+
 ## Value
 
 An `RTMB_Model` class instance with a compiled and pre-tested automatic
@@ -73,8 +80,8 @@ differentiation function.
 **Model Compilation and Pre-checking:** When this function is called, it
 evaluates the provided data and model blocks. It performs a "sandbox
 execution" (pre-check) using dummy initial values to dynamically detect
-common structural errors—such as undefined variables, out-of-bounds
-indices, or incompatible matrix operations—before proceeding to the
+common structural errors, such as undefined variables, out-of-bounds
+indices, or incompatible matrix operations, before proceeding to the
 computationally expensive Automatic Differentiation (MakeADFun) phase.
 Cryptic backend errors are caught and translated into user-friendly
 hints.

@@ -15,7 +15,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -35,6 +35,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling."></head><body>
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -43,6 +44,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling."></head><body>
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -79,7 +81,8 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.</p>
 <span>  init <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  silent <span class="op">=</span> <span class="cn">FALSE</span></span>
+<span>  silent <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  gr_test <span class="op">=</span> <span class="cn">FALSE</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
 
@@ -114,6 +117,12 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.</p>
 <dt id="arg-silent">silent<a class="anchor" aria-label="anchor" href="#arg-silent"></a></dt>
 <dd><p>Logical; if TRUE, suppresses diagnostic messages during model creation. Default is FALSE.</p></dd>
 
+
+<dt id="arg-gr-test">gr_test<a class="anchor" aria-label="anchor" href="#arg-gr-test"></a></dt>
+<dd><p>Logical; if TRUE, evaluate the gradient once after the AD tape is built.
+By default, model creation checks that <code>MakeADFun()</code> can build the AD tape but skips
+this extra gradient evaluation for speed.</p></dd>
+
 </dl></div>
     <div class="section level2">
     <h2 id="value">Value<a class="anchor" aria-label="anchor" href="#value"></a></h2>
@@ -125,8 +134,8 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.</p>
     <p><strong>Model Compilation and Pre-checking:</strong>
 When this function is called, it evaluates the provided data and model blocks.
 It performs a "sandbox execution" (pre-check) using dummy initial values to dynamically
-detect common structural errors—such as undefined variables, out-of-bounds indices,
-or incompatible matrix operations—before proceeding to the computationally expensive
+detect common structural errors, such as undefined variables, out-of-bounds indices,
+or incompatible matrix operations, before proceeding to the computationally expensive
 Automatic Differentiation (MakeADFun) phase. Cryptic backend errors are caught and
 translated into user-friendly hints.</p>
 <p><strong>Writing AD-Compatible Code (Important):</strong>

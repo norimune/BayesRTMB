@@ -21,15 +21,17 @@ gaussian_process_lpdf(
 
 - y:
 
-  Observation vector (N).
+  Observation vector (N), or matrix (M x N) whose rows are independent
+  GP realizations on the same coordinates.
 
 - x:
 
-  Coordinate vector or matrix (N x D).
+  Coordinate vector or matrix (N x D), where N matches `length(y)` for
+  vector `y` or `ncol(y)` for matrix `y`.
 
 - mean:
 
-  Mean vector (scalar or length N).
+  Mean vector (scalar, length N, or M x N matrix for matrix `y`).
 
 - magnitude:
 
@@ -45,7 +47,8 @@ gaussian_process_lpdf(
 
 - sum:
 
-  Logical; whether to return the sum of log-densities.
+  Logical; whether to return the sum of log-densities. If `FALSE` and
+  `y` is a matrix, returns one log-density per row.
 
 ## Value
 

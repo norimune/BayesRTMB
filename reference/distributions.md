@@ -60,6 +60,9 @@ two ways:
 - `multi_cauchy(mean, Sigma)`: Multivariate Cauchy distribution
   (Student-t with df=1).
 
+- `gaussian_process(x, mean, magnitude, smoothing, noise)`: Gaussian
+  process prior with a squared exponential kernel.
+
 - `lkj_corr(eta)`: LKJ prior for correlation matrices.
 
 - `dirichlet(alpha)`: Dirichlet distribution for simplexes.

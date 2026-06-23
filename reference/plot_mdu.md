@@ -17,13 +17,15 @@ plot_mdu(
   radius = NULL,
   signs = c(1, 1),
   item_labels = NULL,
-  show_phi = TRUE,
+  show_radius = TRUE,
   show_density = TRUE,
   circle_scale = 1,
   alpha = 0.2,
   contour_n = 60,
   distance = c("auto", "squared", "euclidean"),
   point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
+  prefer_rotated = TRUE,
+  show_phi = NULL,
   main = "MDU Configuration",
   xlab = NULL,
   ylab = NULL,
@@ -70,9 +72,9 @@ plot_mdu(
 
   Optional item labels. Defaults to row names or item numbers.
 
-- show_phi:
+- show_radius:
 
-  Logical; whether to draw circles based on item alpha.
+  Logical; whether to draw radius circles based on item alpha.
 
 - show_density:
 
@@ -100,6 +102,15 @@ plot_mdu(
 
   Character; point estimate used when \`delta\` is a fit object. Passed
   to \`estimate()\`.
+
+- prefer_rotated:
+
+  Logical; when \`delta\` is a fitted object, prefer rotated generated
+  quantities (\`delta_rot\` and \`theta_rot\`) if available.
+
+- show_phi:
+
+  Deprecated alias for \`show_radius\`.
 
 - main, xlab, ylab:
 

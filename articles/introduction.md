@@ -46,6 +46,8 @@ The following articles are available.
   Codes](https://norimune.github.io/BayesRTMB/articles/writing_models.md)**
 - **[RTMB Internals and Inference
   Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md)**
+- **[Analysis
+  Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md)**
 
 ## What BayesRTMB Can Do
 
@@ -613,3 +615,8 @@ the articles that match your purpose.
     Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md)**  
     Learn about internal processing such as Laplace approximation,
     constrained parameters, MCMC, and variational inference.
+
+6.  **[Analysis
+    Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md)**  
+    Check fit-object methods, model-comparison tools, fixed parameters,
+    distributions, and AD-taping notes.

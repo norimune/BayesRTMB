@@ -8,7 +8,14 @@ by identifying within-subjects factors.
 ## Usage
 
 ``` r
-to_long(data, within = NULL, label = NULL, value = "Value", id = NULL)
+to_long(
+  data,
+  within = NULL,
+  label = NULL,
+  value = "Value",
+  id = NULL,
+  sort = FALSE
+)
 ```
 
 ## Arguments
@@ -28,6 +35,12 @@ to_long(data, within = NULL, label = NULL, value = "Value", id = NULL)
   - A prefix string like `"time"` (matches all columns starting with
     "time").
 
+  - A list of column-name vectors or range/prefix specifications to
+    concatenate into one long value column.
+
+  - Multiple range/prefix/name specifications when `value` has the same
+    length.
+
 - label:
 
   The name for the new column that will contain the level names (e.g.,
@@ -37,12 +50,19 @@ to_long(data, within = NULL, label = NULL, value = "Value", id = NULL)
 - value:
 
   The name for the new column that will contain the measurement values.
-  Default is "Value".
+  Can be a character vector for multiple measurement groups. Default is
+  "Value".
 
 - id:
 
   The identifier columns that should be repeated for each row. If NULL
   (default), all columns NOT specified in `within` are treated as IDs.
+
+- sort:
+
+  Logical; if TRUE, sort the output by `id` and the within label. If
+  FALSE (default), preserve the original row order of `data` and the
+  within-column order inside each row.
 
 ## Value
 

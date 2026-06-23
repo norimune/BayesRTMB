@@ -93,56 +93,62 @@ rtmb_corr(
   # \donttest{
   mcmc_corr <- fit_corr$sample(sampling = 500, warmup = 500, chains = 2)
 #> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
+#> chain 1 started...
+#> chain 1: iter 200/1000 (20%) warmup
+#> chain 1: iter 400/1000 (40%) warmup
+#> chain 1: iter 600/1000 (60%) sampling
+#> chain 1: iter 800/1000 (80%) sampling
+#> chain 1: iter 1000/1000 (100%) sampling
+#> chain 1 done (100%)
+#> chain 2 started...
+#> chain 2: iter 200/1000 (20%) warmup
+#> chain 2: iter 400/1000 (40%) warmup
+#> chain 2: iter 600/1000 (60%) sampling
+#> chain 2: iter 800/1000 (80%) sampling
+#> chain 2: iter 1000/1000 (100%) sampling
+#> chain 2 done (100%)
+#> sampling: 100%
   mcmc_corr$summary()
 #>   variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat 
-#> lp          -1006.48  1.50  -1005.95  -1009.85  -1004.36       470       709  1.00 
-#> corr[rho]       0.30  0.05      0.31      0.19      0.39       740       676  1.00 
-#> mean[sat]       3.43  0.06      3.42      3.32      3.54       942       775  1.00 
-#> mean[perf]      4.69  0.10      4.73      4.50      4.89       909       841  1.00 
-#> sd[sat]         1.00  0.04      1.00      0.92      1.09      1212       754  1.01 
-#> sd[perf]        1.77  0.07      1.76      1.64      1.90      1107       674  1.00 
+#> lp          -1006.54  1.67  -1005.57  -1010.64  -1004.37       492       732  1.00 
+#> corr[rho]       0.29  0.06      0.28      0.19      0.40       926       643  1.00 
+#> mean[sat]       3.44  0.06      3.45      3.31      3.55       795       711  1.00 
+#> mean[perf]      4.69  0.10      4.69      4.50      4.89       741       600  1.00 
+#> sd[sat]         1.00  0.04      1.00      0.93      1.09      1126       830  1.01 
+#> sd[perf]        1.77  0.08      1.78      1.62      1.92       970       778  1.00 
 
   bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
 #> Calculating marginal likelihood for the full model...
-#> Bridge Sampling Converged: LogML = -1013.141 (Error = 0.0074, ESS = 401.4)
+#> Bridge Sampling Converged: LogML = -1013.161 (Error = 0.0104, ESS = 352.1)
 #> 
 #> --- Sampling from the comparison model ---
 #> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 warmup 
-#> chain 1: iter 800 warmup 
-#> chain 1: iter 1000 warmup 
-#> chain 1: iter 1200 sampling 
-#> chain 1: iter 1400 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 warmup 
-#> chain 2: iter 800 warmup 
-#> chain 2: iter 1000 warmup 
-#> chain 2: iter 1200 sampling 
-#> chain 2: iter 1400 sampling 
+#> chain 1 started...
+#> chain 1: iter 200/1500 (13%) warmup
+#> chain 1: iter 400/1500 (26%) warmup
+#> chain 1: iter 600/1500 (40%) warmup
+#> chain 1: iter 800/1500 (53%) warmup
+#> chain 1: iter 1000/1500 (66%) warmup
+#> chain 1: iter 1200/1500 (80%) sampling
+#> chain 1: iter 1400/1500 (93%) sampling
+#> chain 1 done (100%)
+#> chain 2 started...
+#> chain 2: iter 200/1500 (13%) warmup
+#> chain 2: iter 400/1500 (26%) warmup
+#> chain 2: iter 600/1500 (40%) warmup
+#> chain 2: iter 800/1500 (53%) warmup
+#> chain 2: iter 1000/1500 (66%) warmup
+#> chain 2: iter 1200/1500 (80%) sampling
+#> chain 2: iter 1400/1500 (93%) sampling
+#> chain 2 done (100%)
+#> sampling: 100%
 #> 
 #> --- Calculating marginal likelihood for the comparison model ---
-#> Bridge Sampling Converged: LogML = -1025.617 (Error = 0.0057, ESS = 348.9)
+#> Bridge Sampling Converged: LogML = -1025.622 (Error = 0.0061, ESS = 285.4)
   print(bf_corr)
 #> --- Bayes Factor Analysis (Bridge Sampling) ---
-#> Bayes Factor (BF12) : 262002 
-#> Log Bayes Factor    : 12.4761 (Approx. Error = 0.0093)
+#> Bayes Factor (BF12) : 257903.3 
+#> Log Bayes Factor    : 12.4603 (Approx. Error = 0.0121)
 #> Evidence            : Decisive evidence for Model 1 
 #> Comparison model    : Parameters fixed at list(corr = 0) 
 #> 

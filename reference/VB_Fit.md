@@ -82,6 +82,12 @@ Automatic Differentiation Variational Inference (ADVI).
 
 - [`VB_Fit$get_point_estimate()`](#method-advi_fit-get_point_estimate)
 
+- [`VB_Fit$estimate()`](#method-advi_fit-estimate)
+
+- [`VB_Fit$EAP()`](#method-advi_fit-EAP)
+
+- [`VB_Fit$MAP()`](#method-advi_fit-MAP)
+
 - [`VB_Fit$new()`](#method-advi_fit-new)
 
 - [`VB_Fit$print()`](#method-advi_fit-print)
@@ -106,9 +112,6 @@ Automatic Differentiation Variational Inference (ADVI).
 
 Inherited methods
 
-- [`BayesRTMB::RTMB_Fit_Base$EAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-EAP)
-- [`BayesRTMB::RTMB_Fit_Base$MAP()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-MAP)
-- [`BayesRTMB::RTMB_Fit_Base$estimate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-estimate)
 - [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
 - [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
@@ -130,7 +133,7 @@ Get point estimate for a target parameter.
 
 - `chains`:
 
-  Numeric vector of chains to include. If NULL, all chains are used.
+  Numeric vector of chains to include. If NULL, the best chain is used.
 
 - `best_chains`:
 
@@ -139,6 +142,152 @@ Get point estimate for a target parameter.
 #### Returns
 
 Matrix, array, vector, or scalar point estimate.
+
+------------------------------------------------------------------------
+
+### Method `estimate()`
+
+Get point estimates from variational draws.
+
+#### Usage
+
+    VB_Fit$estimate(
+      pars = NULL,
+      type = c("mean", "EAP", "marginal_map", "joint_map", "MAP"),
+      component = c("all", "parameters", "transform", "generate"),
+      chains = NULL,
+      best_chains = NULL,
+      drop = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Optional character or numeric vector of parameter names or indices to
+  extract. Supports special keywords: "parameters", "transform",
+  "generate", and "all".
+
+- `type`:
+
+  Character string specifying the estimation type.
+
+- `component`:
+
+  Character string specifying the component to filter by.
+
+- `chains`:
+
+  Numeric vector of chains to include. If NULL, the best chain is used.
+
+- `best_chains`:
+
+  Number of best chains to include.
+
+- `drop`:
+
+  Logical; if TRUE and only one parameter is selected, return the value
+  directly instead of a list.
+
+- `...`:
+
+  Additional arguments passed to draws().
+
+#### Returns
+
+A named list of point estimates, or a single value if \`drop = TRUE\`.
+
+------------------------------------------------------------------------
+
+### Method `EAP()`
+
+Calculate Expected A Posteriori (EAP) estimates from the best
+variational estimate by default.
+
+#### Usage
+
+    VB_Fit$EAP(
+      pars = "parameters",
+      chains = NULL,
+      best_chains = NULL,
+      drop = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Optional character vector of parameter names to extract.
+
+- `chains`:
+
+  Numeric vector of chains to include. If NULL, the best chain is used.
+
+- `best_chains`:
+
+  Number of best chains to include.
+
+- `drop`:
+
+  Logical; whether to drop the list if only one parameter is selected.
+
+- `...`:
+
+  Additional arguments passed to \`estimate()\`.
+
+#### Returns
+
+A named list of EAP estimates.
+
+------------------------------------------------------------------------
+
+### Method `MAP()`
+
+Calculate Maximum A Posteriori (MAP) estimates from the best variational
+estimate by default.
+
+#### Usage
+
+    VB_Fit$MAP(
+      pars = "parameters",
+      chains = NULL,
+      best_chains = NULL,
+      type = c("marginal", "joint"),
+      drop = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Optional character vector of parameter names to extract.
+
+- `chains`:
+
+  Numeric vector of chains to include. If NULL, the best chain is used.
+
+- `best_chains`:
+
+  Number of best chains to include.
+
+- `type`:
+
+  Character string; "marginal" or "joint" MAP.
+
+- `drop`:
+
+  Logical; whether to drop the list if only one parameter is selected.
+
+- `...`:
+
+  Additional arguments passed to \`estimate()\`.
+
+#### Returns
+
+A named list of MAP estimates.
 
 ------------------------------------------------------------------------
 
@@ -408,7 +557,11 @@ Compute transformed parameters from posterior draws.
 
 #### Usage
 
-    VB_Fit$transformed_draws(tran_fn = NULL)
+    VB_Fit$transformed_draws(
+      tran_fn = NULL,
+      progress = c("auto", "none", "bar", "message"),
+      tape = c("auto", "none", "force")
+    )
 
 #### Arguments
 
@@ -416,6 +569,18 @@ Compute transformed parameters from posterior draws.
 
   An optional user-supplied function that takes data and parameter lists
   to return transformed quantities.
+
+- `progress`:
+
+  Progress reporting style: \`"auto"\`, \`"none"\`, \`"bar"\`, or
+  \`"message"\`. \`"auto"\` and \`"bar"\` use line-based messages.
+
+- `tape`:
+
+  Derived-quantity evaluation mode. \`"auto"\` tries RTMB tape
+  evaluation and falls back to R evaluation on error; \`"none"\` always
+  uses R evaluation; \`"force"\` requires tape evaluation and errors if
+  it fails.
 
 #### Returns
 
@@ -429,7 +594,11 @@ Compute generated quantities from posterior draws.
 
 #### Usage
 
-    VB_Fit$generated_quantities(code)
+    VB_Fit$generated_quantities(
+      code,
+      progress = c("auto", "none", "bar", "message"),
+      tape = c("auto", "none", "force")
+    )
 
 #### Arguments
 
@@ -437,6 +606,18 @@ Compute generated quantities from posterior draws.
 
   An \`rtmb_code({ ... })\` or \`{ ... }\` block containing the logic to
   be calculated using posterior samples.
+
+- `progress`:
+
+  Progress reporting style: \`"auto"\`, \`"none"\`, \`"bar"\`, or
+  \`"message"\`. \`"auto"\` and \`"bar"\` use line-based messages.
+
+- `tape`:
+
+  Derived-quantity evaluation mode. \`"auto"\` tries RTMB tape
+  evaluation and falls back to R evaluation on error; \`"none"\` always
+  uses R evaluation; \`"force"\` requires tape evaluation and errors if
+  it fails.
 
 #### Returns
 

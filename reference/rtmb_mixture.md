@@ -64,7 +64,7 @@ rtmb_mixture(
 
 - ...:
 
-  Additional arguments passed to \`rtmb_model\`.
+  Reserved; unused arguments are rejected.
 
 ## Value
 

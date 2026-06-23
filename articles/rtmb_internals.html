@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -52,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -425,6 +427,28 @@ posterior medians, intervals, diagnostics, posterior predictive checks,
 and bridge sampling.</p>
 <p>MCMC samples are drawn on the unconstrained scale and returned on the
 natural constrained scale.</p>
+<p>BayesRTMB’s NUTS implementation has two proposal-selection variants.
+The default, <code>nuts_variant = "multinomial"</code>, uses Stan-style
+Hamiltonian-weighted proposal selection over the built trajectory. The
+alternative, <code>nuts_variant = "slice"</code>, uses slice-based
+proposal selection. For ordinary use, the default is intended to be the
+main path.</p>
+<p>The mass matrix can be controlled with <code>metric</code>. The
+available choices are <code>"diag"</code>, <code>"dense"</code>,
+<code>"hybrid"</code>, and <code>"auto"</code>. A diagonal metric is
+cheaper and often sufficient, while a dense metric can improve sampling
+when parameters are strongly correlated. The hybrid metric uses a dense
+block for non-random parameters and a diagonal block for random
+parameters. The default <code>"auto"</code> starts from the hybrid
+strategy and can fall back to a simpler metric during warmup when the
+dense block is not useful or is numerically unstable.</p>
+<p>Warmup learns both step size and metric information.
+<code>metric_adaptation = "stan_window"</code> uses a Stan-style
+windowed adaptation schedule and is the default. The
+<code>diagnose()</code> method reports the effective metric, warmup
+summaries, divergences, tree depth, leapfrog counts, and other
+information useful for checking whether the sampler is behaving
+well.</p>
 </div>
 <div class="section level3">
 <h3 id="optimize">optimize<a class="anchor" aria-label="anchor" href="#optimize"></a>
@@ -755,7 +779,7 @@ engine, but their responsibilities and return objects are distinct.</li>
 wrapper-generated models, see <a href="wrapper_functions.html">Wrapper
 Functions</a> and <code>print_code()</code>. For a detailed mixed-model
 and GLMM workflow, see <a href="rtmb_glmer.html">Hierarchical Models and
-GLMMs</a>.</p>
+GLMMs</a>. For a compact user-facing reference, see <a href="analysis_reference.html">Analysis Reference</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

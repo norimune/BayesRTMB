@@ -151,6 +151,10 @@ fit_custom <- mdl_custom$sample()
   Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.html):
   internal model representation, Laplace approximation, and inference
   pipelines.
+- [Analysis
+  Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.html):
+  function, fit-object, model-comparison, distribution, and AD-taping
+  reference.
 - [日本語:
   パッケージ紹介](https://norimune.github.io/BayesRTMB/articles/ja-introduction.html)
 - [日本語:
@@ -159,6 +163,8 @@ fit_custom <- mdl_custom$sample()
   ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.html)
 - [日本語:
   モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.html)
+- [日本語:
+  分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.html)
 
 # Package index
 
@@ -325,8 +331,8 @@ Functions used within rtmb_code for stability and transformations.
   : Probability Distributions for RTMB Models
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
   : Mathematical and Matrix Utility Functions for RTMB Models
-- [`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
-  : Model Code Wrapper for RTMB
+- [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+  : Define an RTMB Model with Stan-like Syntax
 - [`parameters_code()`](https://norimune.github.io/BayesRTMB/reference/parameters_code.md)
   : Code block for parameter definitions
 - [`parameter_types`](https://norimune.github.io/BayesRTMB/reference/parameter_types.md)
@@ -426,8 +432,6 @@ Functions used within rtmb_code for stability and transformations.
   : Maximum A Posteriori (MAP) Estimate
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
   : Mathematical and Matrix Utility Functions for RTMB Models
-- [`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
-  : Model Code Wrapper for RTMB
 - [`parameter_types`](https://norimune.github.io/BayesRTMB/reference/parameter_types.md)
   : Parameter Types and Constraints in RTMB Models
 - [`parameters_code()`](https://norimune.github.io/BayesRTMB/reference/parameters_code.md)
@@ -492,6 +496,10 @@ Functions used within rtmb_code for stability and transformations.
   Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
+- [`rhat_summary()`](https://norimune.github.io/BayesRTMB/reference/rhat_summary.md)
+  : Summarize MCMC R-hat Values
+- [`rtmb_array()`](https://norimune.github.io/BayesRTMB/reference/rtmb_array.md)
+  : Create an AD-compatible array
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
@@ -526,6 +534,8 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Contingency Table Analysis (Chi-squared Test)
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
+- [`rtmb_vector()`](https://norimune.github.io/BayesRTMB/reference/rtmb_vector.md)
+  : Create an AD-compatible vector
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
   : Common Features and Arguments of RTMB Wrapper Functions
 - [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
@@ -562,6 +572,9 @@ Functions used within rtmb_code for stability and transformations.
   : Social Skills Training Data
 - [`transform_code()`](https://norimune.github.io/BayesRTMB/reference/transform_code.md)
   : Transformed Code Wrapper for RTMB
+- [`upgrade_fit()`](https://norimune.github.io/BayesRTMB/reference/upgrade_fit.md)
+  : Upgrade a saved fit object to the current BayesRTMB class
+  definitions
 
 # Articles
 
@@ -607,6 +620,13 @@ writing custom model code.
   differentiation objects and routes models to MCMC, MAP, variational
   inference, and classical estimation.
 
+- [BayesRTMB Analysis
+  Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md):
+
+  Reference for functions, fit objects, model comparison, fixed
+  parameters, distributions, and AD taping when analyzing data with
+  BayesRTMB.
+
 ### 日本語
 
 BayesRTMB
@@ -644,3 +664,9 @@ BayesRTMB
 
   rtmb_code() が RTMB の自動微分オブジェクトに変換され、MCMC、MAP
   推定、変分推論、古典的推定へ渡される流れを解説します。
+
+- [BayesRTMB
+  分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md):
+
+  BayesRTMBで分析するときに使う関数、fit
+  object、モデル比較、固定パラメータ、分布、ADテープ化のリファレンス。

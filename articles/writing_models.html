@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -52,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -132,7 +134,10 @@ variables.</p>
 <span>  <span class="va">mu</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span></span>
 <span>  </span>
 <span>  <span class="co"># Matrix parameter (N rows, M columns)</span></span>
-<span>  <span class="va">X</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">M</span><span class="op">)</span></span>
+<span>  <span class="va">X</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">M</span><span class="op">)</span><span class="op">)</span></span>
+<span></span>
+<span>  <span class="co"># Array parameter (I x J x K)</span></span>
+<span>  <span class="va">A</span> <span class="op">=</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">I</span>, <span class="va">J</span>, <span class="va">K</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>Here we are defining generic continuous parameters, but by using the
 <code>type</code> argument you can define parameters (types) with more
@@ -216,8 +221,8 @@ written here are, they will not negatively affect the estimation speed
 (MAP or MCMC). Also, if you forgot to write something during model
 definition or later decide you want to compute another quantity, you can
 calculate these retroactively by calling the
-<code>mdl$generated_quantities(new_generate_code)</code> method on the
-estimated model object.</p>
+<code>fit$generated_quantities(new_generate_code)</code> method on the
+fitted object.</p>
 </blockquote>
 </div>
 </div>
@@ -411,7 +416,10 @@ dimensions of parameters using <code><a href="../reference/Dim.html">Dim()</a></
 <strong>Vector</strong>: <code>Dim(N)</code>
 </li>
 <li>
-<strong>Matrix</strong>: <code>Dim(N, M)</code>
+<strong>Matrix</strong>: <code>Dim(c(N, M))</code>
+</li>
+<li>
+<strong>Array</strong>: <code>Dim(c(I, J, K))</code>
 </li>
 </ul>
 <p>You can also enforce various constraints using arguments: *
@@ -597,6 +605,57 @@ adding a small epsilon for numerical stability.</td>
 </table>
 </div>
 <div class="section level2">
+<h2 id="ad-compatible-working-containers">5. AD-Compatible Working Containers<a class="anchor" aria-label="anchor" href="#ad-compatible-working-containers"></a>
+</h2>
+<p>In most models, the fastest and simplest approach is to write
+vectorized code. For example, prefer a single vectorized likelihood such
+as <code>Y ~ normal(mu, sigma)</code> over manually filling a temporary
+vector inside a loop.</p>
+<p>When you do need a mutable working vector or array whose elements
+will later be assigned AD values, use <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> or
+<code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> instead of <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric()</a></code>,
+<code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>, or <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">N</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">eta</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">X</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">eta</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">logit_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N_time</span>, <span class="va">C</span>, <span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N_time</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">c</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">C</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">for</span> <span class="op">(</span><span class="va">d</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">logit_x</span><span class="op">[</span><span class="va">t</span>, <span class="va">c</span>, <span class="va">d</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">alpha</span><span class="op">[</span><span class="va">d</span><span class="op">]</span> <span class="op">+</span> <span class="va">beta</span><span class="op">[</span><span class="va">d</span><span class="op">]</span> <span class="op">*</span> <span class="va">X</span><span class="op">[</span><span class="va">t</span>, <span class="va">c</span><span class="op">]</span></span>
+<span>      <span class="op">}</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>Inside <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>, BayesRTMB usually provides the AD
+seed automatically from the model parameters, so you normally do not
+need to set the <code>seed</code> argument. These helpers are mainly for
+assignment-heavy code. If the same calculation can be expressed directly
+with vectorized matrix or array operations, the vectorized form is
+usually preferable for both tape construction and repeated AD
+evaluation.</p>
+</div>
+<div class="section level2">
+<h2 id="upgrading-saved-fit-objects">6. Upgrading Saved Fit Objects<a class="anchor" aria-label="anchor" href="#upgrading-saved-fit-objects"></a>
+</h2>
+<p>Saved fit objects created by older BayesRTMB versions may not
+automatically have methods added in newer versions. Use
+<code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code> to rebuild an existing MCMC, VB, MAP, or
+classic fit object with the currently loaded class definitions.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<p>This does not refit the model. It copies the stored estimation
+results into a new fit object, and by default also rebuilds the embedded
+model object when possible.</p>
+</div>
+<div class="section level2">
 <h2 id="conclusion">Conclusion<a class="anchor" aria-label="anchor" href="#conclusion"></a>
 </h2>
 <p>Rather than writing a complex model from the beginning, it’s better
@@ -605,8 +664,8 @@ still under development, and we plan to make them more user-friendly in
 the future.</p>
 <p>For standard wrapper models, see <a href="wrapper_functions.html">Wrapper Functions</a>. For mixed models
 and GLMMs in particular, see <a href="rtmb_glmer.html">Hierarchical
-Models and GLMMs</a>. For the internal inference pipeline, see <a href="rtmb_internals.html">RTMB Internals and Inference
-Algorithms</a>.</p>
+Models and GLMMs</a>. For the internal inference pipeline, see <a href="rtmb_internals.html">RTMB Internals and Inference Algorithms</a>.
+For function-level reference material, see <a href="analysis_reference.html">Analysis Reference</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

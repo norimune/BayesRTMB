@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -52,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -104,8 +106,10 @@ BayesRTMB.</p>
 </li>
 <li>Compute a Bayes factor using a JZS prior and MCMC</li>
 </ol>
-<p>Detailed model writing, mixed models, GLMMs, and model comparison are
-covered in other vignettes.</p>
+<p>Detailed model writing, mixed models, GLMMs, model comparison, and
+function-level reference material are covered in other vignettes,
+especially the <a href="analysis_reference.html">Analysis
+Reference</a>.</p>
 </div>
 <div class="section level2">
 <h2 id="installation-and-environment-check">0. Installation and Environment Check<a class="anchor" aria-label="anchor" href="#installation-and-environment-check"></a>
@@ -245,14 +249,9 @@ to 1 and ESS should be sufficiently large.</p>
 </h3>
 <p>Ordinary MCMC can be run without additional setup. However, if you
 use parallel MCMC with <code>sample(parallel = TRUE)</code>, the
-suggested packages <code>future</code>, <code>future.apply</code>, and
-<code>progressr</code> are required. The <code>progressr</code> package
-is also used internally through <code><a href="https://progressr.futureverse.org/reference/progressor.html" class="external-link">progressr::progressor()</a></code> for
-progress reporting.</p>
+suggested package <code>future</code> is required.</p>
 <div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"future"</span>, <span class="st">"future.apply"</span>, <span class="st">"progressr"</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
-<p>These packages are listed in Suggests, so they are not required
-unless you use parallel execution.</p>
+<code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/install.packages.html" class="external-link">install.packages</a></span><span class="op">(</span><span class="st">"future"</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  sampling <span class="op">=</span> <span class="fl">1000</span>,</span>
@@ -463,6 +462,10 @@ Learn how to write custom models with the <code>setup</code>,
 Inference Algorithms</a></strong><br>
 Learn about internal processing such as MAP estimation, Laplace
 approximation, MCMC, and variational inference.</p></li>
+<li><p><strong><a href="analysis_reference.html">Analysis
+Reference</a></strong><br>
+Check fit-object methods, model-comparison tools, fixed parameters,
+distributions, and AD-taping notes.</p></li>
 </ol>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

@@ -62,6 +62,54 @@ only by marginal-likelihood model comparison.
 
   Tree depth used in HMC/NUTS sampling.
 
+- `n_leapfrog`:
+
+  Number of leapfrog steps for retained draws.
+
+- `divergent`:
+
+  Logical matrix indicating divergent transitions.
+
+- `energy`:
+
+  Hamiltonian energy for retained draws.
+
+- `metric`:
+
+  Per-chain inverse mass matrix used by NUTS.
+
+- `metric_type`:
+
+  Effective mass matrix adaptation type used by NUTS.
+
+- `metric_requested`:
+
+  Mass matrix adaptation type requested by the user.
+
+- `metric_effective`:
+
+  Effective mass matrix adaptation type by chain.
+
+- `metric_auto`:
+
+  Automatic metric selection details by chain, if used.
+
+- `metric_init`:
+
+  Initial metric source used by NUTS.
+
+- `metric_adaptation`:
+
+  Metric learning mode used during warmup.
+
+- `nuts_variant`:
+
+  NUTS proposal selection variant used for sampling.
+
+- `warmup_diagnostics`:
+
+  Per-chain warmup diagnostics.
+
 - `laplace`:
 
   Logical; whether Laplace approximation was used.
@@ -100,6 +148,8 @@ only by marginal-likelihood model comparison.
 - [`MCMC_Fit$draws()`](#method-mcmc_fit-draws)
 
 - [`MCMC_Fit$summary()`](#method-mcmc_fit-summary)
+
+- [`MCMC_Fit$rhat_summary()`](#method-mcmc_fit-rhat_summary)
 
 - [`MCMC_Fit$unconstrain_draws()`](#method-mcmc_fit-unconstrain_draws)
 
@@ -175,7 +225,19 @@ Create a new \`MCMC_Fit\` object.
       laplace,
       posterior_mean,
       max_treedepth = NULL,
-      pd_error_count = NULL
+      pd_error_count = NULL,
+      n_leapfrog = NULL,
+      divergent = NULL,
+      energy = NULL,
+      metric = NULL,
+      metric_type = NULL,
+      metric_init = NULL,
+      metric_requested = NULL,
+      metric_effective = NULL,
+      metric_auto = NULL,
+      metric_adaptation = NULL,
+      nuts_variant = NULL,
+      warmup_diagnostics = NULL
     )
 
 #### Arguments
@@ -220,6 +282,54 @@ Create a new \`MCMC_Fit\` object.
 
   Positive-definite/singularity errors treated as \`lp = -Inf\` by
   chain.
+
+- `n_leapfrog`:
+
+  Number of leapfrog steps for retained draws.
+
+- `divergent`:
+
+  Logical matrix indicating divergent transitions.
+
+- `energy`:
+
+  Hamiltonian energy for retained draws.
+
+- `metric`:
+
+  Per-chain inverse mass matrix used by NUTS.
+
+- `metric_type`:
+
+  Effective mass matrix adaptation type used by NUTS.
+
+- `metric_init`:
+
+  Initial metric source used by NUTS.
+
+- `metric_requested`:
+
+  Mass matrix adaptation type requested by the user.
+
+- `metric_effective`:
+
+  Effective mass matrix adaptation type by chain.
+
+- `metric_auto`:
+
+  Automatic metric selection details by chain, if used.
+
+- `metric_adaptation`:
+
+  Metric learning mode used during warmup.
+
+- `nuts_variant`:
+
+  NUTS proposal selection variant used for sampling.
+
+- `warmup_diagnostics`:
+
+  Per-chain warmup diagnostics.
 
 ------------------------------------------------------------------------
 
@@ -359,6 +469,64 @@ Summarize posterior draws.
 #### Returns
 
 A summary object.
+
+------------------------------------------------------------------------
+
+### Method [`rhat_summary()`](https://norimune.github.io/BayesRTMB/reference/rhat_summary.md)
+
+Summarize R-hat values.
+
+#### Usage
+
+    MCMC_Fit$rhat_summary(
+      pars = NULL,
+      chains = NULL,
+      best_chains = NULL,
+      inc_random = FALSE,
+      inc_transform = TRUE,
+      inc_generate = FALSE,
+      finite = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `pars`:
+
+  Character or numeric vector specifying parameters to include.
+
+- `chains`:
+
+  Numeric vector specifying chains to include.
+
+- `best_chains`:
+
+  Integer; number of best chains to retain based on mean log-posterior.
+
+- `inc_random`:
+
+  Logical; whether to include random effects. Default is FALSE.
+
+- `inc_transform`:
+
+  Logical; whether to include transformed parameters. Default is TRUE.
+
+- `inc_generate`:
+
+  Logical; whether to include generated quantities. Default is FALSE.
+
+- `finite`:
+
+  Logical; whether to drop non-finite or missing R-hat values. Default
+  is TRUE.
+
+- `...`:
+
+  Additional arguments.
+
+#### Returns
+
+A numeric vector of R-hat values with class `"rhat_summary"`.
 
 ------------------------------------------------------------------------
 
@@ -529,13 +697,29 @@ Compute transformed parameters from posterior draws.
 
 #### Usage
 
-    MCMC_Fit$transformed_draws(tran_fn = NULL)
+    MCMC_Fit$transformed_draws(
+      tran_fn = NULL,
+      progress = c("auto", "none", "bar", "message"),
+      tape = c("auto", "none", "force")
+    )
 
 #### Arguments
 
 - `tran_fn`:
 
   A function for transformed parameters.
+
+- `progress`:
+
+  Progress reporting style: \`"auto"\`, \`"none"\`, \`"bar"\`, or
+  \`"message"\`. \`"auto"\` and \`"bar"\` use line-based messages.
+
+- `tape`:
+
+  Derived-quantity evaluation mode. \`"auto"\` tries RTMB tape
+  evaluation and falls back to R evaluation on error; \`"none"\` always
+  uses R evaluation; \`"force"\` requires tape evaluation and errors if
+  it fails.
 
 #### Returns
 
@@ -549,7 +733,11 @@ Compute generated quantities from posterior draws.
 
 #### Usage
 
-    MCMC_Fit$generated_quantities(code)
+    MCMC_Fit$generated_quantities(
+      code,
+      progress = c("auto", "none", "bar", "message"),
+      tape = c("auto", "none", "force")
+    )
 
 #### Arguments
 
@@ -557,6 +745,18 @@ Compute generated quantities from posterior draws.
 
   An \`rtmb_code({ ... })\` or \`{ ... }\` block containing the logic to
   be calculated using posterior samples.
+
+- `progress`:
+
+  Progress reporting style: \`"auto"\`, \`"none"\`, \`"bar"\`, or
+  \`"message"\`. \`"auto"\` and \`"bar"\` use line-based messages.
+
+- `tape`:
+
+  Derived-quantity evaluation mode. \`"auto"\` tries RTMB tape
+  evaluation and falls back to R evaluation on error; \`"none"\` always
+  uses R evaluation; \`"force"\` requires tape evaluation and errors if
+  it fails.
 
 #### Returns
 

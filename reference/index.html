@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -35,6 +36,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -582,10 +584,10 @@
 
         <dt>
 
-          <code><a href="model_code.html">model_code()</a></code>
+          <code><a href="rtmb_code.html">rtmb_code()</a></code>
 
         </dt>
-        <dd>Model Code Wrapper for RTMB</dd>
+        <dd>Define an RTMB Model with Stan-like Syntax</dd>
 
         <dt>
 
@@ -927,13 +929,6 @@
 
         <dt>
 
-          <code><a href="model_code.html">model_code()</a></code>
-
-        </dt>
-        <dd>Model Code Wrapper for RTMB</dd>
-
-        <dt>
-
           <code><a href="parameter_types.html">parameter_types</a></code>
 
         </dt>
@@ -1158,6 +1153,20 @@
 
         <dt>
 
+          <code><a href="rhat_summary.html">rhat_summary()</a></code>
+
+        </dt>
+        <dd>Summarize MCMC R-hat Values</dd>
+
+        <dt>
+
+          <code><a href="rtmb_array.html">rtmb_array()</a></code>
+
+        </dt>
+        <dd>Create an AD-compatible array</dd>
+
+        <dt>
+
           <code><a href="rtmb_code.html">rtmb_code()</a></code>
 
         </dt>
@@ -1274,6 +1283,13 @@
 
         </dt>
         <dd>RTMB-based Bayesian two-sample t-test wrapper function</dd>
+
+        <dt>
+
+          <code><a href="rtmb_vector.html">rtmb_vector()</a></code>
+
+        </dt>
+        <dd>Create an AD-compatible vector</dd>
 
         <dt>
 
@@ -1400,6 +1416,13 @@
 
         </dt>
         <dd>Transformed Code Wrapper for RTMB</dd>
+
+        <dt>
+
+          <code><a href="upgrade_fit.html">upgrade_fit()</a></code>
+
+        </dt>
+        <dd>Upgrade a saved fit object to the current BayesRTMB class definitions</dd>
       </dl></div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside></div>

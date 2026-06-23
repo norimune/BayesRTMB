@@ -6,7 +6,14 @@ Simple effects for MCMC fit objects
 
 ``` r
 # S3 method for class 'mcmc_fit'
-simple_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
+simple_effects(
+  fit,
+  effect,
+  prob = 0.95,
+  sd_multiplier = 1,
+  sd_slice = NULL,
+  ...
+)
 ```
 
 ## Arguments
@@ -26,6 +33,11 @@ simple_effects(fit, effect, prob = 0.95, sd_multiplier = 1, ...)
 - sd_multiplier:
 
   Multiplier for SD for continuous moderators.
+
+- sd_slice:
+
+  Logical or NULL; controls whether continuous moderators are evaluated
+  at mean - SD, mean, and mean + SD.
 
 - ...:
 

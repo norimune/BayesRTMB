@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -52,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -256,14 +258,14 @@ Laplace 周辺化の対象にできるのは、<code>parameters</code>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>BayesRTMB では、Stan に近い <code>~</code> の sampling syntax
-を推奨しています。内部では <code><a href="../reference/model_code.html">model_code()</a></code>
+を推奨しています。内部では <code>model_code()</code>
 がこの表記を、対数確率 <code>lp</code> への加算に変換します。</p>
 <p>概念的には、次の2つは同じモデルを表します。</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
-<p>ただし、現在の BayesRTMB では、<code><a href="../reference/model_code.html">model_code()</a></code> が実行用の
+<p>ただし、現在の BayesRTMB では、<code>model_code()</code> が実行用の
 <code>log_prob</code> 関数を作るときに <code>lp &lt;- 0</code>
 を内部で用意します。そのため、通常の
 <code>rtmb_code(model = { ... })</code> には <code>lp &lt;- 0</code>
@@ -422,6 +424,29 @@ sampling による周辺尤度推定などを扱えます。</p>
 <p>MCMC
 では、非制約尺度でサンプリングを行い、結果を自然尺度に戻して表示します。<code>generate</code>
 ブロックがあれば、サンプルごとの生成量も計算できます。</p>
+<p>BayesRTMB の NUTS
+には、提案点の選び方として2つのルートがあります。デフォルトの
+<code>nuts_variant = "multinomial"</code> は、Stan
+と同じように、構築された軌道上の候補をハミルトニアン重みに基づいて選びます。もう一つの
+<code>nuts_variant = "slice"</code> は、slice
+型の提案選択を使います。通常は、デフォルトの multinomial
+を主な経路として使います。</p>
+<p>質量行列は <code>metric</code> で指定できます。選択肢は
+<code>"diag"</code>、<code>"dense"</code>、<code>"hybrid"</code>、<code>"auto"</code>
+です。<code>"diag"</code>
+は軽量で、多くのモデルで十分に動きます。<code>"dense"</code>
+はパラメータ間の相関が強い場合に効率が上がることがあります。<code>"hybrid"</code>
+は、非ランダムパラメータ側を dense、ランダムパラメータ側を diagonal
+として扱う方法です。デフォルトの <code>"auto"</code> は hybrid
+から始め、warmup 中に dense block
+が不安定、または有用でないと判断された場合には、より単純な metric
+に戻します。</p>
+<p>warmup ではステップサイズと metric
+の両方を学習します。<code>metric_adaptation = "stan_window"</code> は
+Stan 風の windowed adaptation schedule
+を使うデフォルト設定です。<code>diagnose()</code>
+を使うと、実際に使われた metric、warmup summary、divergence、tree
+depth、leapfrog 数などを確認できます。</p>
 </div>
 <div class="section level3">
 <h3 id="optimize">optimize<a class="anchor" aria-label="anchor" href="#optimize"></a>
@@ -761,6 +786,8 @@ RTMB が提供する AD 対応の条件分岐を検討します。</p>
 を作るかは、<a href="ja-wrapper_functions.html">ラッパー関数の使い方</a>
 と <code>print_code()</code> が参考になります。階層モデルや GLMM
 の具体的な使い方は、<a href="ja-rtmb_glmer.html">階層モデル・GLMM</a>
+で確認できます。fit object
+のメソッド、モデル比較、固定パラメータ、分布、AD テープ化の注意点は、<a href="ja-analysis_reference.html">分析リファレンス</a>
 で確認できます。</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>

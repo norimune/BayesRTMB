@@ -46,10 +46,11 @@ rtmb_fa(
 - prior:
 
   Prior configuration: \`prior_flat()\`, \`prior_normal()\`, or
-  \`prior_weak()\`. Hyperparameters can be specified within these
-  functions (e.g., \`prior_normal(mean_sd = 10, sd_rate = 10)\`).
-  Available parameters for FA: \`mean_sd\`, \`sd_rate\`,
-  \`loadings_sd\`, and \`ssp_ratio\` (if \`rotate = "ssp"\`).
+  \`prior_weak()\`. \`prior_ssp()\` is accepted when \`rotate = "ssp"\`.
+  Hyperparameters can be specified within these functions (e.g.,
+  \`prior_normal(mean_sd = 10, sd_rate = 10)\`). Available parameters
+  for FA: \`mean_sd\`, \`sd_rate\`, \`loadings_sd\`, and \`ssp_ratio\`
+  (if \`rotate = "ssp"\`).
 
 - y_range:
 
@@ -139,16 +140,16 @@ rtmb_fa(
 #> 
 #> Point Estimates and 95% Sampling-based CI:
 #>               variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_promax[BF1,Factor1]   -0.88412     0.19040   -0.99590   -0.29552 
-#> L_promax[BF2,Factor1]   -0.07323     0.04808   -0.16583    0.02137 
-#> L_promax[BF3,Factor1]   -0.11607     0.07986   -0.27315    0.04090 
-#> L_promax[BF4,Factor1]   -0.07882     0.08795   -0.24846    0.09597 
-#> L_promax[BF5,Factor1]    0.03564     0.08367   -0.12772    0.19089 
-#> L_promax[BF6,Factor1]    0.68867     0.12762    0.39206    0.88820 
-#> L_promax[BF7,Factor1]    0.01309     0.04747   -0.07218    0.09987 
-#> L_promax[BF8,Factor1]   -0.15549     0.09734   -0.35668    0.02904 
-#> L_promax[BF9,Factor1]    0.08481     0.09385   -0.10586    0.26402 
-#> L_promax[BF10,Factor1]  -0.10916     0.07976   -0.26512    0.04661 
+#> L_promax[BF1,Factor1]   -0.88412     0.19045   -0.99579   -0.29916 
+#> L_promax[BF2,Factor1]   -0.07323     0.05383   -0.16711    0.01892 
+#> L_promax[BF3,Factor1]   -0.11607     0.08270   -0.27486    0.04811 
+#> L_promax[BF4,Factor1]   -0.07882     0.08821   -0.24792    0.09878 
+#> L_promax[BF5,Factor1]    0.03564     0.08337   -0.12598    0.19492 
+#> L_promax[BF6,Factor1]    0.68867     0.12798    0.38591    0.88749 
+#> L_promax[BF7,Factor1]    0.01309     0.05165   -0.07151    0.10295 
+#> L_promax[BF8,Factor1]   -0.15549     0.09684   -0.34706    0.02727 
+#> L_promax[BF9,Factor1]    0.08481     0.09297   -0.09648    0.26530 
+#> L_promax[BF10,Factor1]  -0.10916     0.07964   -0.26156    0.05252 
 #> 
 
   # Post-hoc rotation using the fa_rotate() method
@@ -170,16 +171,16 @@ rtmb_fa(
 #> 
 #> Point Estimates and 95% Sampling-based CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_varimax[1,1]   -0.87739     0.18946   -0.98930   -0.27963 
-#> L_varimax[2,1]   -0.00088     0.13712   -0.34153    0.19608 
-#> L_varimax[3,1]   -0.12824     0.08587   -0.27944    0.04857 
-#> L_varimax[4,1]   -0.09712     0.09498   -0.27465    0.09389 
-#> L_varimax[5,1]    0.02261     0.08562   -0.13019    0.20885 
-#> L_varimax[6,1]    0.68707     0.12478    0.38952    0.87753 
-#> L_varimax[7,1]    0.08960     0.14207   -0.28461    0.28011 
-#> L_varimax[8,1]   -0.17801     0.10885   -0.38106    0.03885 
-#> L_varimax[9,1]    0.07460     0.09842   -0.11166    0.27545 
-#> L_varimax[10,1]  -0.08975     0.08971   -0.28869    0.05730 
+#> L_varimax[1,1]   -0.87739     0.18907   -0.98820   -0.29034 
+#> L_varimax[2,1]   -0.00088     0.13695   -0.34629    0.19880 
+#> L_varimax[3,1]   -0.12824     0.08883   -0.28335    0.04773 
+#> L_varimax[4,1]   -0.09712     0.09463   -0.26598    0.10075 
+#> L_varimax[5,1]    0.02261     0.08509   -0.13838    0.21208 
+#> L_varimax[6,1]    0.68707     0.12595    0.38894    0.87870 
+#> L_varimax[7,1]    0.08960     0.14184   -0.27815    0.29630 
+#> L_varimax[8,1]   -0.17801     0.10725   -0.37010    0.04470 
+#> L_varimax[9,1]    0.07460     0.09745   -0.09915    0.28085 
+#> L_varimax[10,1]  -0.08975     0.08811   -0.28202    0.05605 
 #> 
 
 
@@ -193,26 +194,26 @@ rtmb_fa(
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
 #> 
-#> Warning: Optimization did not converge ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
+#> Warning: No optimization run reached an acceptable optimizer status; BEST is selected by the lowest objective among not converged runs ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
   map_ssp$summary()
 #> 
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 2433.06
-#> Approx. Log Marginal Likelihood (Laplace): -2692.30
+#> Negative Log-Posterior: 2433.05
+#> Approx. Log Marginal Likelihood (Laplace): -2716.78
 #> 
 #> Point Estimates and 95% Wald CI:
 #>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 #> L[BF1,Factor1]    0.00000     0.00000   -0.00000    0.00000 
-#> L[BF2,Factor1]    0.78286     0.07926    0.62751    0.93821 
-#> L[BF3,Factor1]   -0.11537     0.09039   -0.29252    0.06179 
-#> L[BF4,Factor1]   -0.18356     0.08405   -0.34831   -0.01882 
-#> L[BF5,Factor1]   -0.11921     0.08829   -0.29226    0.05383 
+#> L[BF2,Factor1]    0.78201     0.08335    0.61865    0.94538 
+#> L[BF3,Factor1]   -0.11589     0.09062   -0.29350    0.06172 
+#> L[BF4,Factor1]   -0.18487     0.08384   -0.34920   -0.02054 
+#> L[BF5,Factor1]   -0.11914     0.08861   -0.29282    0.05454 
 #> L[BF6,Factor1]    0.00000     0.00000   -0.00000    0.00000 
-#> L[BF7,Factor1]    0.85423     0.08408    0.68944    1.01902 
-#> L[BF8,Factor1]   -0.23762     0.08149   -0.39735   -0.07790 
-#> L[BF9,Factor1]   -0.07829     0.09694   -0.26828    0.11170 
-#> L[BF10,Factor1]   0.18712     0.09227    0.00628    0.36797 
+#> L[BF7,Factor1]    0.85548     0.08895    0.68114    1.02982 
+#> L[BF8,Factor1]   -0.23703     0.08306   -0.39982   -0.07424 
+#> L[BF9,Factor1]   -0.07986     0.09650   -0.26900    0.10928 
+#> L[BF10,Factor1]   0.18645     0.09386    0.00248    0.37042 
 #> 
 ```

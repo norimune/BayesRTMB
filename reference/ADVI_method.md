@@ -78,11 +78,11 @@ ADVI_method(
 
 - update_progress:
 
-  Optional function to update a progress bar.
+  Optional function for progress reporting.
 
 - update_interval:
 
-  Integer; interval for updating the progress bar. Default is 100.
+  Integer; interval for progress updates. Default is 100.
 
 ## Value
 

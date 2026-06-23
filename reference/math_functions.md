@@ -46,6 +46,12 @@ identification constraints).
   sum-to-zero constraints on the lower elements (useful for
   identification in factor analysis).
 
+- `rtmb_vector(value, length)`: Creates an AD-compatible vector
+  initialized with `value`.
+
+- `rtmb_array(value, dim)`: Creates an AD-compatible array initialized
+  with `value`.
+
 **4. Linear Algebra for AD:**
 
 - `log_det_chol(L)`: Calculates the log-determinant of a covariance

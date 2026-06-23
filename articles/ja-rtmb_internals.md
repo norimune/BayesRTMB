@@ -176,9 +176,8 @@ model = {
 ```
 
 BayesRTMB では、Stan に近い `~` の sampling syntax
-を推奨しています。内部では
-[`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
-がこの表記を、対数確率 `lp` への加算に変換します。
+を推奨しています。内部では `model_code()` がこの表記を、対数確率 `lp`
+への加算に変換します。
 
 概念的には、次の2つは同じモデルを表します。
 
@@ -192,11 +191,9 @@ Y ~ normal(mu, sigma)
 lp <- lp + normal_lpdf(Y, mu, sigma)
 ```
 
-ただし、現在の BayesRTMB
-では、[`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
-が実行用の `log_prob` 関数を作るときに `lp <- 0`
-を内部で用意します。そのため、通常の `rtmb_code(model = { ... })` には
-`lp <- 0` を書きません。
+ただし、現在の BayesRTMB では、`model_code()` が実行用の `log_prob`
+関数を作るときに `lp <- 0` を内部で用意します。そのため、通常の
+`rtmb_code(model = { ... })` には `lp <- 0` を書きません。
 
 `lp` は内部で使う予約語です。`parameters` ブロックで `lp <- Dim()`
 のように宣言したり、一般の作業用変数として使ったりしないでください。
@@ -332,6 +329,30 @@ sampling による周辺尤度推定などを扱えます。
 MCMC
 では、非制約尺度でサンプリングを行い、結果を自然尺度に戻して表示します。`generate`
 ブロックがあれば、サンプルごとの生成量も計算できます。
+
+BayesRTMB の NUTS
+には、提案点の選び方として2つのルートがあります。デフォルトの
+`nuts_variant = "multinomial"` は、Stan
+と同じように、構築された軌道上の候補をハミルトニアン重みに基づいて選びます。もう一つの
+`nuts_variant = "slice"` は、slice
+型の提案選択を使います。通常は、デフォルトの multinomial
+を主な経路として使います。
+
+質量行列は `metric` で指定できます。選択肢は
+`"diag"`、`"dense"`、`"hybrid"`、`"auto"` です。`"diag"`
+は軽量で、多くのモデルで十分に動きます。`"dense"`
+はパラメータ間の相関が強い場合に効率が上がることがあります。`"hybrid"`
+は、非ランダムパラメータ側を dense、ランダムパラメータ側を diagonal
+として扱う方法です。デフォルトの `"auto"` は hybrid から始め、warmup
+中に dense block
+が不安定、または有用でないと判断された場合には、より単純な metric
+に戻します。
+
+warmup ではステップサイズと metric
+の両方を学習します。`metric_adaptation = "stan_window"` は Stan 風の
+windowed adaptation schedule を使うデフォルト設定です。`diagnose()`
+を使うと、実際に使われた metric、warmup summary、divergence、tree
+depth、leapfrog 数などを確認できます。
 
 ### optimize
 
@@ -609,4 +630,7 @@ BayesRTMB の内部構造は、次のように整理できます。
 を作るかは、[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)
 と `print_code()` が参考になります。階層モデルや GLMM
 の具体的な使い方は、[階層モデル・GLMM](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)
+で確認できます。fit object
+のメソッド、モデル比較、固定パラメータ、分布、AD
+テープ化の注意点は、[分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md)
 で確認できます。

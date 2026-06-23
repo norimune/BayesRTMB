@@ -1,0 +1,38 @@
+# Upgrade a saved fit object to the current BayesRTMB class definitions
+
+\`upgrade_fit()\` rebuilds an existing fit object with the currently
+loaded BayesRTMB R6 class definitions. This is useful for saved fit
+objects created by older package versions when newer methods have been
+added to the fit classes.
+
+## Usage
+
+``` r
+upgrade_fit(fit, upgrade_model = TRUE)
+```
+
+## Arguments
+
+- fit:
+
+  A BayesRTMB fit object. Supported classes are MCMC, VB, MAP, and
+  classic fit objects.
+
+- upgrade_model:
+
+  Logical; if \`TRUE\`, rebuild the embedded model object from its
+  stored data, parameter list, and model functions. If rebuilding fails,
+  the original model is kept and a warning is issued.
+
+## Value
+
+A fit object of the same type, using the currently loaded class
+definitions.
+
+## Details
+
+The function does not refit the model or recompute estimates. It only
+copies the stored estimation results into a new fit object. When
+\`upgrade_model\` is \`TRUE\`, the embedded \`RTMB_Model\` object is
+also rebuilt from the model components stored in the fit, so newer model
+methods are available as well.

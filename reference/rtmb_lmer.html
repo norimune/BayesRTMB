@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -35,6 +36,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -104,7 +106,8 @@
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
 <dd><p>An object of class `"rtmb_prior"`.
 Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
-or `prior_weak()`, `prior_rhs()`, `prior_ssp()` for weakly informative or regularized Bayesian inference.
+`prior_jzs()` for JZS regression priors, or `prior_weak()`, `prior_rhs()`,
+`prior_ssp()` for weakly informative or regularized Bayesian inference.
 Default is `prior_flat()`.</p></dd>
 
 
@@ -176,7 +179,7 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to <code><a href="rtmb_model.html">rtmb_model()</a></code>.</p></dd>
+<dd><p>Additional arguments passed to <code><a href="rtmb_glmer.html">rtmb_glmer()</a></code>.</p></dd>
 
 </dl></div>
     <div class="section level2">
@@ -230,8 +233,8 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>  variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept  -3.16409     0.57473   -4.29053   -2.03765 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[talk]     0.84795     0.15040    0.55317    1.14273 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept  -3.16409     0.57473   -4.29053   -2.03764 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[talk]     0.84795     0.15040    0.55316    1.14273 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> b[sat]      0.17405     0.13431   -0.08920    0.43730 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
@@ -257,40 +260,43 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept       2.64001     0.08790    2.46773    2.81228 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[cond]         0.76000     0.12431    0.51636    1.00364 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept       2.64000     0.08790    2.46773    2.81228 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[cond]         0.76000     0.12431    0.51636    1.00363 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> sigma           0.82057     0.04103    0.74397    0.90505 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[group:Int]   0.40233     0.07340    0.28137    0.57528 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[group:Int]   0.40232     0.07340    0.28137    0.57527 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># MCMC sampling (chains and iterations reduced for faster execution)</span></span></span>
 <span class="r-in"><span>  <span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span>  <span class="va">mcmc_glmer</span> <span class="op">&lt;-</span> <span class="va">fit_glmer</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200/1000 (20%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400/1000 (40%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600/1000 (60%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800/1000 (80%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000/1000 (100%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 done (100%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200/1000 (20%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400/1000 (40%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600/1000 (60%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800/1000 (80%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000/1000 (100%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 done (100%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sampling: 100%</span>
 <span class="r-in"><span>  <span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp             -509.92  10.97  -511.64  -531.11  -490.10       209       366  1.02 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept         2.64   0.09     2.62     2.47     2.81      1207       903  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[cond]           0.77   0.13     0.79     0.53     1.00      1261       894  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.82   0.04     0.81     0.76     0.90       590       778  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[group:Int]     0.41   0.08     0.41     0.25     0.56       290       590  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[1]          -0.73   0.73    -0.73    -2.14     0.67      2498       748  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[2]          -0.99   0.78    -1.20    -2.54     0.60      2040       707  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[3]           0.05   0.77    -0.10    -1.47     1.58      2542       715  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[4]           0.61   0.74     0.67    -0.82     2.09      2225       750  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[5]          -0.41   0.77    -0.11    -1.88     1.15      2125       589  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp             -511.20  10.84  -514.73  -533.03  -489.98       183       543  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept         2.64   0.09     2.66     2.47     2.81      1166       776  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[cond]           0.77   0.13     0.74     0.53     1.02      1175       808  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.83   0.04     0.82     0.75     0.92       746       809  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[group:Int]     0.40   0.08     0.42     0.24     0.55       274       757  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[1]          -0.75   0.80    -0.72    -2.35     0.74      1924       499  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[2]          -0.98   0.74    -0.85    -2.45     0.51      2047       799  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[3]           0.05   0.71     0.27    -1.32     1.41      1613       635  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[4]           0.60   0.78     0.57    -0.86     2.12      1846       638  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[5]          -0.43   0.76    -0.60    -1.91     1.07      2436       650  1.01 </span>
 <span class="r-in"><span>  <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># --- 4. Linear Mixed Model (rtmb_lmer) ---</span></span></span>
@@ -337,6 +343,7 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-in"><span>  <span class="va">map_rhs</span> <span class="op">&lt;-</span> <span class="va">fit_rhs</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.</span>
@@ -368,6 +375,7 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-in"><span>  <span class="va">map_ssp</span> <span class="op">&lt;-</span> <span class="va">fit_ssp</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.</span>
 <span class="r-in"><span>  <span class="va">map_ssp</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"b"</span><span class="op">)</span></span></span>

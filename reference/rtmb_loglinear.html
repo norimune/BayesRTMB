@@ -9,7 +9,7 @@ on a contingency table or raw data."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@ on a contingency table or raw data."></head><body>
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -37,6 +38,7 @@ on a contingency table or raw data."></head><body>
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -67,6 +69,7 @@ on a contingency table or raw data.</p>
 <span>  <span class="va">formula</span>,</span>
 <span>  <span class="va">data</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
+<span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  <span class="va">...</span></span>
@@ -87,6 +90,11 @@ on a contingency table or raw data.</p>
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
 <dd><p>An object of class "rtmb_prior" specifying the prior distribution.</p></dd>
+
+
+<dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
+<dd><p>Optional theoretical minimum and maximum values of the count
+response. If supplied with the default flat prior, `prior_weak()` is used.</p></dd>
 
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>
@@ -136,7 +144,7 @@ on a contingency table or raw data.</p>
 <span class="r-out co"><span class="r-pr">#&gt;</span> b[AA2]      0.40547     0.20412    0.00539    0.80554 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> b[BB2]      0.84730     0.21822    0.41960    1.27500 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> mu[1,1]    12.00000     2.63819    6.82923   17.17077 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    18.00000     3.60002   10.94409   25.05591 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mu[2,1]    18.00000     3.60002   10.94409   25.05590 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> mu[3,1]    28.00000     4.79168   18.60847   37.39153 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> mu[4,1]    42.00000     6.07950   30.08439   53.91561 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

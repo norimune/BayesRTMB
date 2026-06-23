@@ -603,3 +603,7 @@ implausibly diffuse priors.
 - [RTMB Internals and Inference
   Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md):
   internal model representation and inference pipeline.
+- [Analysis
+  Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md):
+  fit-object methods, model comparison, fixed parameters, distributions,
+  and AD-taping notes.

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -35,6 +36,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -60,7 +62,15 @@
 
     <div class="section level2">
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
-    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_conditional_effects</span><span class="op">(</span><span class="va">fit</span>, <span class="va">effect</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div>
+    <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">plot_conditional_effects</span><span class="op">(</span></span>
+<span>  <span class="va">fit</span>,</span>
+<span>  <span class="va">effect</span>,</span>
+<span>  prob <span class="op">=</span> <span class="fl">0.95</span>,</span>
+<span>  sd_multiplier <span class="op">=</span> <span class="fl">1</span>,</span>
+<span>  sd_slice <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  resolution <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div>
     </div>
 
     <div class="section level2">
@@ -75,8 +85,25 @@
 <dd><p>Name of the variable to visualize (e.g., "X1" or "X1:X2").</p></dd>
 
 
+<dt id="arg-prob">prob<a class="anchor" aria-label="anchor" href="#arg-prob"></a></dt>
+<dd><p>Probability for the credible/confidence interval.</p></dd>
+
+
+<dt id="arg-sd-multiplier">sd_multiplier<a class="anchor" aria-label="anchor" href="#arg-sd-multiplier"></a></dt>
+<dd><p>Numeric multiplier for standard deviation when splitting continuous moderators.</p></dd>
+
+
+<dt id="arg-sd-slice">sd_slice<a class="anchor" aria-label="anchor" href="#arg-sd-slice"></a></dt>
+<dd><p>Logical or NULL; controls whether continuous moderators are
+evaluated at mean - SD, mean, and mean + SD.</p></dd>
+
+
+<dt id="arg-resolution">resolution<a class="anchor" aria-label="anchor" href="#arg-resolution"></a></dt>
+<dd><p>Grid resolution to calculate for continuous variables.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
-<dd><p>Additional arguments passed to <code><a href="conditional_effects.html">conditional_effects</a></code> or the plot method.</p></dd>
+<dd><p>Additional arguments passed to the plot method.</p></dd>
 
 </dl></div>
     <div class="section level2">

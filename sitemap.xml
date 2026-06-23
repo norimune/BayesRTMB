@@ -2,8 +2,10 @@
 <url><loc>https://norimune.github.io/BayesRTMB/404.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/LICENSE-text.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/LICENSE.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/articles/analysis_reference.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/articles/index.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/articles/introduction.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/articles/ja-introduction.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/articles/ja-quick_start.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.html</loc></url>
@@ -92,7 +94,6 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/map_est.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/math_functions.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/mixture_lpdf.html</loc></url>
-<url><loc>https://norimune.github.io/BayesRTMB/reference/model_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_cauchy_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/multi_normal_lpdf.html</loc></url>
@@ -138,6 +139,8 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/quantile95.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/r_hat.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rhat_summary.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_array.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_corr.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_fa.html</loc></url>
@@ -155,6 +158,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_syntax.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_table.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_vector.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/select_parameters.html</loc></url>
@@ -180,10 +184,10 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/training.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/transform_code.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/uniform_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/upgrade_fit.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/validate_data.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/weibull_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/wishart_CF_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/wishart_lpdf.html</loc></url>
-<url><loc>https://norimune.github.io/BayesRTMB/reference/with_rtmb_error_handling.html</loc></url>
 </urlset>
 

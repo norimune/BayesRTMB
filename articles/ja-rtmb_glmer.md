@@ -819,4 +819,7 @@ r_re ~ normal(0, 1)
 を参照してください。[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
 が内部で何をしているかをさらに詳しく知りたい場合は、[BayesRTMB
 の内部構造](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)
-も参考になります。
+も参考になります。fit object
+のメソッド、モデル比較、固定パラメータ、分布、AD
+テープ化の注意点は、[分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md)
+で確認できます。

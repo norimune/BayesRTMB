@@ -54,7 +54,10 @@ parameters = {
   mu = Dim(N)
   
   # Matrix parameter (N rows, M columns)
-  X = Dim(N, M)
+  X = Dim(c(N, M))
+
+  # Array parameter (I x J x K)
+  A = Dim(c(I, J, K))
 }
 ```
 
@@ -145,8 +148,8 @@ calculated from estimated parameters.
 > estimation speed (MAP or MCMC). Also, if you forgot to write something
 > during model definition or later decide you want to compute another
 > quantity, you can calculate these retroactively by calling the
-> `mdl$generated_quantities(new_generate_code)` method on the estimated
-> model object.
+> `fit$generated_quantities(new_generate_code)` method on the fitted
+> object.
 
 ## 2. Available Probability Distributions
 
@@ -216,7 +219,8 @@ parameters using
   [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) or
   `Dim(1)`
 - **Vector**: `Dim(N)`
-- **Matrix**: `Dim(N, M)`
+- **Matrix**: `Dim(c(N, M))`
+- **Array**: `Dim(c(I, J, K))`
 
 You can also enforce various constraints using arguments: \*
 `lower = 0, upper = 1`: Specifies the range of values (e.g., for
@@ -279,6 +283,73 @@ with a specific structure.
 | `quad_form_chol(x, L)` | Computes a quadratic form using the Cholesky factor `L`. |
 | `distance(x, y)` | Computes the Euclidean distance between two vectors, adding a small epsilon for numerical stability. |
 
+## 5. AD-Compatible Working Containers
+
+In most models, the fastest and simplest approach is to write vectorized
+code. For example, prefer a single vectorized likelihood such as
+`Y ~ normal(mu, sigma)` over manually filling a temporary vector inside
+a loop.
+
+When you do need a mutable working vector or array whose elements will
+later be assigned AD values, use
+[`rtmb_vector()`](https://norimune.github.io/BayesRTMB/reference/rtmb_vector.md)
+or
+[`rtmb_array()`](https://norimune.github.io/BayesRTMB/reference/rtmb_array.md)
+instead of [`numeric()`](https://rdrr.io/r/base/numeric.html),
+[`matrix()`](https://rdrr.io/r/base/matrix.html), or
+[`array()`](https://rdrr.io/r/base/array.html).
+
+``` r
+
+model = {
+  eta <- rtmb_vector(0, N)
+  for (i in seq_len(N)) {
+    eta[i] <- alpha + X[i, ] %*% beta
+  }
+  Y ~ normal(eta, sigma)
+}
+```
+
+``` r
+
+model = {
+  logit_x <- rtmb_array(0, dim = c(N_time, C, D))
+  for (t in seq_len(N_time)) {
+    for (c in seq_len(C)) {
+      for (d in seq_len(D)) {
+        logit_x[t, c, d] <- alpha[d] + beta[d] * X[t, c]
+      }
+    }
+  }
+}
+```
+
+Inside
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md),
+BayesRTMB usually provides the AD seed automatically from the model
+parameters, so you normally do not need to set the `seed` argument.
+These helpers are mainly for assignment-heavy code. If the same
+calculation can be expressed directly with vectorized matrix or array
+operations, the vectorized form is usually preferable for both tape
+construction and repeated AD evaluation.
+
+## 6. Upgrading Saved Fit Objects
+
+Saved fit objects created by older BayesRTMB versions may not
+automatically have methods added in newer versions. Use
+[`upgrade_fit()`](https://norimune.github.io/BayesRTMB/reference/upgrade_fit.md)
+to rebuild an existing MCMC, VB, MAP, or classic fit object with the
+currently loaded class definitions.
+
+``` r
+
+fit2 <- upgrade_fit(fit)
+```
+
+This does not refit the model. It copies the stored estimation results
+into a new fit object, and by default also rebuilds the embedded model
+object when possible.
+
 ## Conclusion
 
 Rather than writing a complex model from the beginning, it’s better to
@@ -292,3 +363,5 @@ For mixed models and GLMMs in particular, see [Hierarchical Models and
 GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md). For
 the internal inference pipeline, see [RTMB Internals and Inference
 Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md).
+For function-level reference material, see [Analysis
+Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md).

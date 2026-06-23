@@ -9,7 +9,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -37,6 +38,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -140,28 +142,28 @@ Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c
 <span class="r-in"><span>  <span class="va">map_2pl</span> <span class="op">&lt;-</span> <span class="va">fit_2pl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Optimization did not converge ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No optimization run reached an acceptable optimizer status; BEST is selected by the lowest objective among not converged runs ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.</span>
 <span class="r-in"><span>  <span class="va">map_2pl</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 334.06</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -326.51</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -324.16</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> variable     Estimate   Std. Error     Lower 95%       Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item1]      0.00017      0.00222       0.00000  14803403.02410 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item2]      0.00024      0.00268       0.00000    524214.81653 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item3]      0.33853      0.63664       0.00849        13.50088 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item4]      0.52727      0.55116       0.06796         4.09068 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item5]      0.33846      0.63717       0.00845        13.55001 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item1]  -2340.60797  30040.17736  -61218.27250     56537.05656 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item2]  -2001.47440  21926.82445  -44977.26074     40974.31193 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item3]     -1.35900      2.49182      -6.24287         3.52488 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item4]     -0.90809      0.92095      -2.71311         0.89693 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item5]     -1.35941      2.49533      -6.25018         3.53135 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> variable     Estimate   Std. Error      Lower 95%                                Upper 95% </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item1]      0.00019      0.00668        0.00000         76035476184877509457739776.00000 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item2]      0.00027      0.01158        0.00000  584436671864052778030630657064960.00000 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item3]      0.33900      0.63533        0.00861                                 13.34998 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item4]      0.52734      0.55112        0.06800                                  4.08956 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> a[Item5]      0.33854      0.63574        0.00853                                 13.43000 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item1]  -2110.73476  73390.74097  -145953.94095                             141732.47142 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item2]  -1804.94657  77043.98503  -152808.38282                             149198.48969 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item3]     -1.35714      2.47991       -6.21767                                  3.50339 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item4]     -0.90803      0.92076       -2.71269                                  0.89663 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[Item5]     -1.35888      2.48812       -6.23550                                  3.51775 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># --- 2. Ordered Data (e.g., Likert scale) ---</span></span></span>

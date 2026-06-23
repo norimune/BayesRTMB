@@ -9,7 +9,7 @@ It supports simple correlation, multilevel correlation, and classical frequentis
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@ It supports simple correlation, multilevel correlation, and classical frequentis
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -37,6 +38,7 @@ It supports simple correlation, multilevel correlation, and classical frequentis
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -141,56 +143,62 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <span class="r-in"><span>  <span class="co"># \donttest{</span></span></span>
 <span class="r-in"><span>  <span class="va">mcmc_corr</span> <span class="op">&lt;-</span> <span class="va">fit_corr</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>sampling <span class="op">=</span> <span class="fl">500</span>, warmup <span class="op">=</span> <span class="fl">500</span>, chains <span class="op">=</span> <span class="fl">2</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200/1000 (20%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400/1000 (40%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600/1000 (60%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800/1000 (80%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000/1000 (100%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 done (100%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200/1000 (20%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400/1000 (40%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600/1000 (60%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800/1000 (80%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000/1000 (100%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 done (100%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sampling: 100%</span>
 <span class="r-in"><span>  <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp          -1006.48  1.50  -1005.95  -1009.85  -1004.36       470       709  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> corr[rho]       0.30  0.05      0.31      0.19      0.39       740       676  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mean[sat]       3.43  0.06      3.42      3.32      3.54       942       775  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mean[perf]      4.69  0.10      4.73      4.50      4.89       909       841  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[sat]         1.00  0.04      1.00      0.92      1.09      1212       754  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[perf]        1.77  0.07      1.76      1.64      1.90      1107       674  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp          -1006.54  1.67  -1005.57  -1010.64  -1004.37       492       732  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> corr[rho]       0.29  0.06      0.28      0.19      0.40       926       643  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mean[sat]       3.44  0.06      3.45      3.31      3.55       795       711  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mean[perf]      4.69  0.10      4.69      4.50      4.89       741       600  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[sat]         1.00  0.04      1.00      0.93      1.09      1126       830  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[perf]        1.77  0.08      1.78      1.62      1.92       970       778  1.00 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>corr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Calculating marginal likelihood for the full model...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1013.141 (Error = 0.0074, ESS = 401.4)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1013.161 (Error = 0.0104, ESS = 352.1)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Sampling from the comparison model ---</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1200 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1400 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started... </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000 warmup </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1200 sampling </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1400 sampling </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 started...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 200/1500 (13%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 400/1500 (26%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 600/1500 (40%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 800/1500 (53%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1000/1500 (66%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1200/1500 (80%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1: iter 1400/1500 (93%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 1 done (100%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 started...</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 200/1500 (13%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 400/1500 (26%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 600/1500 (40%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 800/1500 (53%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1000/1500 (66%) warmup</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1200/1500 (80%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2: iter 1400/1500 (93%) sampling</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> chain 2 done (100%)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sampling: 100%</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Calculating marginal likelihood for the comparison model ---</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1025.617 (Error = 0.0057, ESS = 348.9)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1025.622 (Error = 0.0061, ESS = 285.4)</span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_corr</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Bayes Factor Analysis (Bridge Sampling) ---</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bayes Factor (BF12) : 262002 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : 12.4761 (Approx. Error = 0.0093)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bayes Factor (BF12) : 257903.3 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : 12.4603 (Approx. Error = 0.0121)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Evidence            : Decisive evidence for Model 1 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Comparison model    : Parameters fixed at list(corr = 0) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

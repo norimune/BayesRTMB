@@ -163,8 +163,8 @@ Functions used within rtmb_code for stability and transformations.
   : Probability Distributions for RTMB Models
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
   : Mathematical and Matrix Utility Functions for RTMB Models
-- [`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
-  : Model Code Wrapper for RTMB
+- [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+  : Define an RTMB Model with Stan-like Syntax
 - [`parameters_code()`](https://norimune.github.io/BayesRTMB/reference/parameters_code.md)
   : Code block for parameter definitions
 - [`parameter_types`](https://norimune.github.io/BayesRTMB/reference/parameter_types.md)
@@ -264,8 +264,6 @@ Functions used within rtmb_code for stability and transformations.
   : Maximum A Posteriori (MAP) Estimate
 - [`math_functions`](https://norimune.github.io/BayesRTMB/reference/math_functions.md)
   : Mathematical and Matrix Utility Functions for RTMB Models
-- [`model_code()`](https://norimune.github.io/BayesRTMB/reference/model_code.md)
-  : Model Code Wrapper for RTMB
 - [`parameter_types`](https://norimune.github.io/BayesRTMB/reference/parameter_types.md)
   : Parameter Types and Constraints in RTMB Models
 - [`parameters_code()`](https://norimune.github.io/BayesRTMB/reference/parameters_code.md)
@@ -330,6 +328,10 @@ Functions used within rtmb_code for stability and transformations.
   Calculate Rank-normalized Split-R-hat
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
+- [`rhat_summary()`](https://norimune.github.io/BayesRTMB/reference/rhat_summary.md)
+  : Summarize MCMC R-hat Values
+- [`rtmb_array()`](https://norimune.github.io/BayesRTMB/reference/rtmb_array.md)
+  : Create an AD-compatible array
 - [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
   : Define an RTMB Model with Stan-like Syntax
 - [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
@@ -364,6 +366,8 @@ Functions used within rtmb_code for stability and transformations.
   : RTMB-based Contingency Table Analysis (Chi-squared Test)
 - [`rtmb_ttest()`](https://norimune.github.io/BayesRTMB/reference/rtmb_ttest.md)
   : RTMB-based Bayesian two-sample t-test wrapper function
+- [`rtmb_vector()`](https://norimune.github.io/BayesRTMB/reference/rtmb_vector.md)
+  : Create an AD-compatible vector
 - [`rtmb_wrappers`](https://norimune.github.io/BayesRTMB/reference/rtmb_wrappers.md)
   : Common Features and Arguments of RTMB Wrapper Functions
 - [`safe_rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/safe_rtmb_model.md)
@@ -400,3 +404,6 @@ Functions used within rtmb_code for stability and transformations.
   : Social Skills Training Data
 - [`transform_code()`](https://norimune.github.io/BayesRTMB/reference/transform_code.md)
   : Transformed Code Wrapper for RTMB
+- [`upgrade_fit()`](https://norimune.github.io/BayesRTMB/reference/upgrade_fit.md)
+  : Upgrade a saved fit object to the current BayesRTMB class
+  definitions

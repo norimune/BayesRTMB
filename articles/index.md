@@ -42,6 +42,13 @@ writing custom model code.
   differentiation objects and routes models to MCMC, MAP, variational
   inference, and classical estimation.
 
+- [BayesRTMB Analysis
+  Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md):
+
+  Reference for functions, fit objects, model comparison, fixed
+  parameters, distributions, and AD taping when analyzing data with
+  BayesRTMB.
+
 ### 日本語
 
 BayesRTMB
@@ -79,3 +86,9 @@ BayesRTMB
 
   rtmb_code() が RTMB の自動微分オブジェクトに変換され、MCMC、MAP
   推定、変分推論、古典的推定へ渡される流れを解説します。
+
+- [BayesRTMB
+  分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md):
+
+  BayesRTMBで分析するときに使う関数、fit
+  object、モデル比較、固定パラメータ、分布、ADテープ化のリファレンス。

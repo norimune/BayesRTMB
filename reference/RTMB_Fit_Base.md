@@ -125,7 +125,7 @@ Calculate Expected A Posteriori (EAP) estimates from posterior samples.
       pars = "parameters",
       chains = NULL,
       best_chains = NULL,
-      drop = FALSE,
+      drop = TRUE,
       ...
     )
 
@@ -168,7 +168,7 @@ Calculate Maximum A Posteriori (MAP) estimates.
       chains = NULL,
       best_chains = NULL,
       type = c("marginal", "joint"),
-      drop = FALSE,
+      drop = TRUE,
       ...
     )
 
@@ -210,7 +210,12 @@ Rotate sampled parameters.
 
 #### Usage
 
-    RTMB_Fit_Base$rotate(target, reference = NULL, linked = NULL)
+    RTMB_Fit_Base$rotate(
+      target,
+      reference = NULL,
+      linked = NULL,
+      principal = FALSE
+    )
 
 #### Arguments
 
@@ -229,19 +234,11 @@ Rotate sampled parameters.
   Character vector of variable names to be rotated in the same
   direction.
 
-- `overwrite`:
+- `principal`:
 
-  Logical; whether to overwrite the stored draws. If FALSE, adds to
-  generated quantities. Default is FALSE.
-
-- `suffix`:
-
-  Character string to append to the rotated variable names when
-  overwrite is FALSE. Default is "rot".
-
-- `...`:
-
-  Additional arguments passed to the rotation function.
+  Logical; if TRUE and \`reference\` is NULL, the point estimate is
+  first rotated to its principal axes and then used as the Procrustes
+  reference. This is useful for MDU configurations.
 
 #### Returns
 

@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -27,6 +27,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -35,6 +36,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -54,14 +56,47 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.1.1" id="bayesrtmb-011">BayesRTMB 0.1.1<a class="anchor" aria-label="anchor" href="#bayesrtmb-011"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.1" id="bayesrtmb-021">BayesRTMB 0.2.1<a class="anchor" aria-label="anchor" href="#bayesrtmb-021"></a></h2>
+<ul><li>Added <code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code> to rebuild saved MCMC, VB, MAP, and classic fit objects with the currently loaded class definitions, optionally upgrading their embedded model objects as well.</li>
+<li>Improved <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> and <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> tape construction time by automatically reusing an AD seed from model parameters when available.</li>
+<li>Made <code><a href="../reference/log_sum_exp.html">log_sum_exp()</a></code>, <code><a href="../reference/softmax.html">softmax()</a></code>, and <code><a href="../reference/log_softmax.html">log_softmax()</a></code> work more reliably with RTMB automatic-differentiation values, including baseline-category patterns such as <code>softmax(c(0, eta))</code> inside <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>.</li>
+<li>Improved wrapper-generated model code to use AD-compatible <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> and <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> containers in loop-filled generated quantities and generated likelihood contributions where needed.</li>
+<li>Improved <code>report()</code> handling in transformed and generated quantities, including namespaced <code>BayesRTMB::report()</code> calls and wrapper-generated <code>print_code()</code> output.</li>
+<li>Changed VB point estimates to use only the best variational estimate by default, aligning <code>EAP()</code>, <code>MAP()</code>, and rotation references with the selected best ELBO run while still allowing explicit <code>chains</code> or <code>best_chains</code> selection.</li>
+<li>Made <code>EAP()</code> and <code>MAP()</code> drop their list wrapper by default when a single parameter is requested, matching the behavior of <code>estimate()</code>.</li>
+<li>Added optional taped evaluation for transformed parameters and generated quantities, with automatic fallback to R evaluation when taping is not possible.</li>
+<li>Improved parallel worker robustness by reducing exported globals and preserving wrapper setup environments needed by generated model code.</li>
+<li>Improved MCMC runtime behavior by caching metric calculations, speeding up retained draw conversion, and refining progress checks.</li>
+<li>Changed bootstrap progress reporting to use percentage-style progress output, consistent with other long-running workflows.</li>
+<li>Added diagnostic recommendations to help interpret common fitting warnings.</li>
+<li>Improved matrix-valued Gaussian process log-density evaluation.</li>
+<li>Updated MDU defaults and internals, including Euclidean distance as the default MDU distance and more explicit use of namespace-qualified factor rotations.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.0" id="bayesrtmb-020">BayesRTMB 0.2.0<a class="anchor" aria-label="anchor" href="#bayesrtmb-020"></a></h2>
+<ul><li>Reworked NUTS sampling internals with Stan-style multinomial tree expansion, warmup diagnostics, Stan-window metric adaptation, and support for diagonal, dense, hybrid, and automatic metric selection.</li>
+<li>Improved MCMC diagnostics by reporting divergence counts and percentages, metric auto-selection details, warmup summaries, metric condition numbers, and positive-definite fallback counts.</li>
+<li>Added configurable progress output for MCMC and VB workflows, including streamed message-style progress for parallel workers and percentage reporting.</li>
+<li>Added delta-method standard errors and confidence intervals for <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> and <code><a href="../reference/simple_effects.html">simple_effects()</a></code> with optimized and classic fits; <code><a href="../reference/simple_effects.html">simple_effects()</a></code> for classic fits now also reports <code>df</code>, <code>t value</code>, and <code>Pr</code>.</li>
+<li>Added <code>sd_slice</code> and <code>sd_multiplier</code> controls for conditional and simple effects, including automatic SD slicing for moderators with many observed values.</li>
+<li>Added <code><a href="../reference/rhat_summary.html">rhat_summary()</a></code> for MCMC fits, returning a numeric R-hat vector with a compact printed summary.</li>
+<li>Expanded data-reshaping helpers: <code><a href="../reference/to_long.html">to_long()</a></code> now supports multiple value columns, list-based column groups, and preserves input row order by default while still allowing sorted output with <code>sort = TRUE</code>.</li>
+<li>Added AD-compatible helper constructors <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> and <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> for model code that needs mutable RTMB-compatible containers.</li>
+<li>Improved RTMB model setup error messages for common AD and NA/NaN failures.</li>
+<li>Improved wrapper behavior, including <code>rtmb_glmer(cwc = list(ID, "all"))</code>, hierarchical <code>lambda</code> in <code><a href="../reference/rtmb_mdu.html">rtmb_mdu()</a></code>, stronger prior validation, and more robust handling of non-finite VB optimization attempts.</li>
+<li>Improved MDU plotting and initialization, including principal-axis reference rotation and clearer radius display controls.</li>
+<li>Fixed several model-specific issues, including AD-compatible negative-binomial log densities and unequal-variance JZS t-test examples.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.1.1" id="bayesrtmb-011">BayesRTMB 0.1.1<a class="anchor" aria-label="anchor" href="#bayesrtmb-011"></a></h2><p class="text-muted">CRAN release: 2026-06-01</p>
 <ul><li>Addressed CRAN resubmission feedback by quoting ‘RTMB’ in the package title, adding method references to DESCRIPTION, and replacing <code>\dontrun{}</code> examples with <code>\donttest{}</code> where appropriate.</li>
 <li>Trimmed long-running examples for CRAN checks while retaining representative MCMC examples for correlation, t-test, and mixed-model workflows.</li>
 <li>Updated IRT post-estimation examples to use ordered response data explicitly.</li>
 <li>Fixed an AD-compatible negative-binomial log-density issue.</li>
 <li>Corrected the unequal-variance JZS t-test example and documentation.</li>
 </ul></div>
-  </main></div>
+  </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
+    </nav></aside></div>
 
 
     <footer><div class="pkgdown-footer-left">

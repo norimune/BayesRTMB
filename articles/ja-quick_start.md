@@ -17,8 +17,10 @@
 6.  `classic()` による頻度主義的な t 検定を行う
 7.  JZS prior と MCMC によって Bayes factor を計算する
 
-詳しいモデルコードの書き方や、混合モデル、GLMM、モデル比較の詳細は、別の
-vignette で扱います。
+詳しいモデルコードの書き方や、混合モデル、GLMM、モデル比較、関数単位の参照情報は、別の
+vignette で扱います。分析中に確認したい情報は
+[分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md)
+も参照してください。
 
 ## 0. インストールと環境確認
 
@@ -191,18 +193,12 @@ MCMC の結果では、平均、標準偏差、事後分位点、ESS、R-hat
 
 通常の MCMC は追加設定なしで実行できます。
 ただし、`sample(parallel = TRUE)` のように MCMC
-を並列実行する場合は、追加で `future`, `future.apply`, `progressr`
-が必要です。 `progressr` は、内部で
-[`progressr::progressor()`](https://progressr.futureverse.org/reference/progressor.html)
-による進捗表示にも使われます。
+を並列実行する場合は、追加で `future` が必要です。
 
 ``` r
 
-install.packages(c("future", "future.apply", "progressr"))
+install.packages("future")
 ```
-
-これらは BayesRTMB の Suggests
-パッケージなので、並列化を使わない場合は必須ではありません。
 
 ``` r
 
@@ -427,19 +423,23 @@ bf
 このページでは、BayesRTMB の入口だけを扱いました。
 目的に応じて、次のページに進んでください。
 
-1.  **[ラッパー関数の使い方](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)**  
+1.  [**ラッパー関数の使い方**](https://norimune.github.io/BayesRTMB/articles/ja-wrapper_functions.md)  
     回帰、GLM、混合モデル、t 検定、相関、因子分析、IRT
     など、標準的な分析をラッパー関数で行う方法を確認できます。
 
-2.  **[階層モデル・GLMM・分散分析](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)**  
+2.  [**階層モデル・GLMM・分散分析**](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_glmer.md)  
     [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
     を使った階層モデル、GLMM、残差相関、条件付き効果の可視化を詳しく確認できます。
 
-3.  **[モデルコードの書き方](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)**  
+3.  [**モデルコードの書き方**](https://norimune.github.io/BayesRTMB/articles/ja-writing_models.md)  
     [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
     の `setup`, `parameters`, `transform`, `model`, `generate`
     を使って、独自モデルを書く方法を学べます。
 
-4.  **[RTMB
-    の仕組みと推定アルゴリズム](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)**  
+4.  [**RTMB
+    の仕組みと推定アルゴリズム**](https://norimune.github.io/BayesRTMB/articles/ja-rtmb_internals.md)  
     MAP 推定、Laplace 近似、MCMC、変分推論などの内部処理を確認できます。
+
+5.  [**分析リファレンス**](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md)  
+    fit object のメソッド、モデル比較、固定パラメータ、分布、AD
+    テープ化の注意点を確認できます。

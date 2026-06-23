@@ -13,7 +13,7 @@ dimensional kernel density contour."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -33,6 +33,7 @@ dimensional kernel density contour."></head><body>
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -41,6 +42,7 @@ dimensional kernel density contour."></head><body>
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -78,13 +80,15 @@ dimensional kernel density contour.</p>
 <span>  radius <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  signs <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">1</span><span class="op">)</span>,</span>
 <span>  item_labels <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  show_phi <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  show_radius <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  show_density <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  circle_scale <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  contour_n <span class="op">=</span> <span class="fl">60</span>,</span>
 <span>  distance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"squared"</span>, <span class="st">"euclidean"</span><span class="op">)</span>,</span>
 <span>  point_estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"EAP"</span>, <span class="st">"MAP"</span>, <span class="st">"mean"</span>, <span class="st">"marginal_map"</span>, <span class="st">"joint_map"</span><span class="op">)</span>,</span>
+<span>  prefer_rotated <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  show_phi <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  main <span class="op">=</span> <span class="st">"MDU Configuration"</span>,</span>
 <span>  xlab <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  ylab <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -134,8 +138,8 @@ coordinates.</p></dd>
 numbers.</p></dd>
 
 
-<dt id="arg-show-phi">show_phi<a class="anchor" aria-label="anchor" href="#arg-show-phi"></a></dt>
-<dd><p>Logical; whether to draw circles based on item alpha.</p></dd>
+<dt id="arg-show-radius">show_radius<a class="anchor" aria-label="anchor" href="#arg-show-radius"></a></dt>
+<dd><p>Logical; whether to draw radius circles based on item alpha.</p></dd>
 
 
 <dt id="arg-show-density">show_density<a class="anchor" aria-label="anchor" href="#arg-show-density"></a></dt>
@@ -163,6 +167,15 @@ stored distance when available.</p></dd>
 <dt id="arg-point-estimate">point_estimate<a class="anchor" aria-label="anchor" href="#arg-point-estimate"></a></dt>
 <dd><p>Character; point estimate used when `delta` is a fit
 object. Passed to `estimate()`.</p></dd>
+
+
+<dt id="arg-prefer-rotated">prefer_rotated<a class="anchor" aria-label="anchor" href="#arg-prefer-rotated"></a></dt>
+<dd><p>Logical; when `delta` is a fitted object, prefer
+rotated generated quantities (`delta_rot` and `theta_rot`) if available.</p></dd>
+
+
+<dt id="arg-show-phi">show_phi<a class="anchor" aria-label="anchor" href="#arg-show-phi"></a></dt>
+<dd><p>Deprecated alias for `show_radius`.</p></dd>
 
 
 <dt id="arg-main-xlab-ylab">main, xlab, ylab<a class="anchor" aria-label="anchor" href="#arg-main-xlab-ylab"></a></dt>

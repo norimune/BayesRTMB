@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -52,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -218,14 +220,18 @@
 <code>N x P</code> 行列</td>
 </tr>
 <tr class="even">
+<td align="left"><code>Dim(c(I, J, K))</code></td>
+<td align="left">3次元以上の配列</td>
+</tr>
+<tr class="odd">
 <td align="left"><code>Dim(lower = 0)</code></td>
 <td align="left">正の値に制約</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><code>Dim(lower = 0, upper = 1)</code></td>
 <td align="left">0から1の範囲に制約</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><code>Dim(G, random = TRUE)</code></td>
 <td align="left">ランダム効果として扱う</td>
 </tr>
@@ -735,6 +741,52 @@
 <p>ただし、すべてのパラメータに付ければよいわけではありません。固定効果として推定したい回帰係数や切片には、通常
 <code>random = TRUE</code> は付けません。</p>
 </div>
+<div class="section level3">
+<h3 id="ad対応の作業用コンテナ">AD対応の作業用コンテナ<a class="anchor" aria-label="anchor" href="#ad%E5%AF%BE%E5%BF%9C%E3%81%AE%E4%BD%9C%E6%A5%AD%E7%94%A8%E3%82%B3%E3%83%B3%E3%83%86%E3%83%8A"></a>
+</h3>
+<p>多くの場合、もっとも速く安定しやすいのはベクトル化されたコードです。たとえば、<code>Y ~ normal(mu, sigma)</code>
+のように一度に尤度を書けるなら、その書き方を優先します。</p>
+<p>一方で、<code>for</code>
+ループの中で要素を順番に代入しながら、あとから AD
+型の値が入るベクトルや配列を作りたいことがあります。その場合は、<code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric()</a></code>、<code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>、<code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>
+の代わりに <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> や <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code>
+を使います。</p>
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">N</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="va">eta</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">X</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span></span>
+<span>  <span class="op">}</span></span>
+<span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">eta</span>, <span class="va">sigma</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">logit_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N_time</span>, <span class="va">C</span>, <span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
+<span>  <span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N_time</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>    <span class="kw">for</span> <span class="op">(</span><span class="va">c</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">C</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="kw">for</span> <span class="op">(</span><span class="va">d</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">D</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
+<span>        <span class="va">logit_x</span><span class="op">[</span><span class="va">t</span>, <span class="va">c</span>, <span class="va">d</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">alpha</span><span class="op">[</span><span class="va">d</span><span class="op">]</span> <span class="op">+</span> <span class="va">beta</span><span class="op">[</span><span class="va">d</span><span class="op">]</span> <span class="op">*</span> <span class="va">X</span><span class="op">[</span><span class="va">t</span>, <span class="va">c</span><span class="op">]</span></span>
+<span>      <span class="op">}</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p><code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> の中では、通常、BayesRTMB
+がモデルパラメータから AD seed を自動的に用意するため、<code>seed</code>
+引数を指定する必要はありません。ただし、これはあくまで代入を多用するコードのための補助です。同じ計算を行列演算やベクトル化で書ける場合は、テープ化の時間とAD評価の速度の両方の面で、ベクトル化した書き方を優先するのがおすすめです。</p>
+</div>
+<div class="section level3">
+<h3 id="保存済み-fit-object-の更新">保存済み fit object の更新<a class="anchor" aria-label="anchor" href="#%E4%BF%9D%E5%AD%98%E6%B8%88%E3%81%BF-fit-object-%E3%81%AE%E6%9B%B4%E6%96%B0"></a>
+</h3>
+<p>古いバージョンの BayesRTMB で保存した fit object
+は、新しいバージョンで追加されたメソッドをそのまま持っていないことがあります。その場合は、<code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code>
+を使うと、保存済みの MCMC、VB、MAP、classic の fit object
+を現在読み込まれているクラス定義で作り直せます。</p>
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
+<p>これはモデルを再推定する関数ではありません。保存されている推定結果を新しい
+fit object
+に移し替え、可能な場合は内部のモデルオブジェクトも更新します。</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="次に読む記事">次に読む記事<a class="anchor" aria-label="anchor" href="#%E6%AC%A1%E3%81%AB%E8%AA%AD%E3%82%80%E8%A8%98%E4%BA%8B"></a>
@@ -746,6 +798,9 @@
 <p>階層モデルや GLMM を wrapper で詳しく扱いたい場合は、<a href="ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a>
 を参照してください。</p>
 <p>まずパッケージ全体をざっと試したい場合は、<a href="ja-quick_start.html">クイックスタート</a> を参照してください。</p>
+<p>分析中に fit object のメソッド、モデル比較、固定パラメータ、分布、AD
+テープ化の注意点を確認したい場合は、<a href="ja-analysis_reference.html">分析リファレンス</a>
+を参照してください。</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

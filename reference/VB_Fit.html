@@ -9,7 +9,7 @@ VB fit object"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -29,6 +29,7 @@ VB fit object"></head><body>
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -37,6 +38,7 @@ VB fit object"></head><body>
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -138,6 +140,9 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 <h3 id="public-methods">Public methods<a class="anchor" aria-label="anchor" href="#public-methods"></a></h3>
 
 <ul><li><p><a href="#method-advi_fit-get_point_estimate"><code>VB_Fit$get_point_estimate()</code></a></p></li>
+<li><p><a href="#method-advi_fit-estimate"><code>VB_Fit$estimate()</code></a></p></li>
+<li><p><a href="#method-advi_fit-EAP"><code>VB_Fit$EAP()</code></a></p></li>
+<li><p><a href="#method-advi_fit-MAP"><code>VB_Fit$MAP()</code></a></p></li>
 <li><p><a href="#method-advi_fit-new"><code>VB_Fit$new()</code></a></p></li>
 <li><p><a href="#method-advi_fit-print"><code>VB_Fit$print()</code></a></p></li>
 <li><p><a href="#method-advi_fit-draws"><code>VB_Fit$draws()</code></a></p></li>
@@ -149,10 +154,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 <li><p><a href="#method-advi_fit-WAIC"><code>VB_Fit$WAIC()</code></a></p></li>
 <li><p><a href="#method-advi_fit-diagnose"><code>VB_Fit$diagnose()</code></a></p></li>
 <li><p><a href="#method-advi_fit-clone"><code>VB_Fit$clone()</code></a></p></li>
-</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="EAP"><a href="RTMB_Fit_Base.html#method-EAP"><code>BayesRTMB::RTMB_Fit_Base$EAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="MAP"><a href="RTMB_Fit_Base.html#method-MAP"><code>BayesRTMB::RTMB_Fit_Base$MAP()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="estimate"><a href="RTMB_Fit_Base.html#method-estimate"><code>BayesRTMB::RTMB_Fit_Base$estimate()</code></a></span></li>
-<li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
+</ul></div><p><details open><summary>Inherited methods</summary><ul><li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="fa_rotate"><a href="RTMB_Fit_Base.html#method-fa_rotate"><code>BayesRTMB::RTMB_Fit_Base$fa_rotate()</code></a></span></li>
 <li><span class="pkg-link" data-pkg="BayesRTMB" data-topic="RTMB_Fit_Base" data-id="rotate"><a href="RTMB_Fit_Base.html#method-rotate"><code>BayesRTMB::RTMB_Fit_Base$rotate()</code></a></span></li>
 </ul></details></p><hr><a id="method-advi_fit-get_point_estimate"></a><div class="section">
 <h3 id="method-get-point-estimate-">Method <code>get_point_estimate()</code><a class="anchor" aria-label="anchor" href="#method-get-point-estimate-"></a></h3>
@@ -168,7 +170,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 
 
 <dt><code>chains</code></dt>
-<dd><p>Numeric vector of chains to include. If NULL, all chains are used.</p></dd>
+<dd><p>Numeric vector of chains to include. If NULL, the best chain is used.</p></dd>
 
 
 <dt><code>best_chains</code></dt>
@@ -182,10 +184,152 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 <p>Matrix, array, vector, or scalar point estimate.</p>
 </div>
 
+</div><p></p><hr><a id="method-advi_fit-estimate"></a><div class="section">
+<h3 id="method-estimate-">Method <code>estimate()</code><a class="anchor" aria-label="anchor" href="#method-estimate-"></a></h3>
+<p>Get point estimates from variational draws.</p><div class="section">
+<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"mean"</span>, <span class="st">"EAP"</span>, <span class="st">"marginal_map"</span>, <span class="st">"joint_map"</span>, <span class="st">"MAP"</span><span class="op">)</span>,</span>
+<span>  component <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"all"</span>, <span class="st">"parameters"</span>, <span class="st">"transform"</span>, <span class="st">"generate"</span><span class="op">)</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Optional character or numeric vector of parameter names or indices to extract.
+Supports special keywords: "parameters", "transform", "generate", and "all".</p></dd>
+
+
+<dt><code>type</code></dt>
+<dd><p>Character string specifying the estimation type.</p></dd>
+
+
+<dt><code>component</code></dt>
+<dd><p>Character string specifying the component to filter by.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Numeric vector of chains to include. If NULL, the best chain is used.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Number of best chains to include.</p></dd>
+
+
+<dt><code>drop</code></dt>
+<dd><p>Logical; if TRUE and only one parameter is selected, return the value directly instead of a list.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments passed to draws().</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<p>A named list of point estimates, or a single value if `drop = TRUE`.</p>
+</div>
+
+</div><p></p><hr><a id="method-advi_fit-EAP"></a><div class="section">
+<h3 id="method-eap-">Method <code>EAP()</code><a class="anchor" aria-label="anchor" href="#method-eap-"></a></h3>
+<p>Calculate Expected A Posteriori (EAP) estimates from the best variational estimate by default.</p><div class="section">
+<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="st">"parameters"</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Optional character vector of parameter names to extract.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Numeric vector of chains to include. If NULL, the best chain is used.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Number of best chains to include.</p></dd>
+
+
+<dt><code>drop</code></dt>
+<dd><p>Logical; whether to drop the list if only one parameter is selected.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments passed to `estimate()`.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<p>A named list of EAP estimates.</p>
+</div>
+
+</div><p></p><hr><a id="method-advi_fit-MAP"></a><div class="section">
+<h3 id="method-map-">Method <code>MAP()</code><a class="anchor" aria-label="anchor" href="#method-map-"></a></h3>
+<p>Calculate Maximum A Posteriori (MAP) estimates from the best variational estimate by default.</p><div class="section">
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span></span>
+<span>  pars <span class="op">=</span> <span class="st">"parameters"</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"marginal"</span>, <span class="st">"joint"</span><span class="op">)</span>,</span>
+<span>  drop <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>pars</code></dt>
+<dd><p>Optional character vector of parameter names to extract.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Numeric vector of chains to include. If NULL, the best chain is used.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Number of best chains to include.</p></dd>
+
+
+<dt><code>type</code></dt>
+<dd><p>Character string; "marginal" or "joint" MAP.</p></dd>
+
+
+<dt><code>drop</code></dt>
+<dd><p>Logical; whether to drop the list if only one parameter is selected.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Additional arguments passed to `estimate()`.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<p>A named list of MAP estimates.</p>
+</div>
+
 </div><p></p><hr><a id="method-advi_fit-new"></a><div class="section">
 <h3 id="method-new-">Method <code>new()</code><a class="anchor" aria-label="anchor" href="#method-new-"></a></h3>
 <p>Create a new `VB_Fit` object.</p><div class="section">
-<h4 id="usage-1">Usage<a class="anchor" aria-label="anchor" href="#usage-1"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va"><a href="../reference/VB_Fit.html">VB_Fit</a></span><span class="op">$</span><span class="fu">new</span><span class="op">(</span></span>
 <span>  <span class="va">model</span>,</span>
 <span>  <span class="va">fit</span>,</span>
@@ -201,7 +345,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-1">Arguments<a class="anchor" aria-label="anchor" href="#arguments-1"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>model</code></dt>
 <dd><p>An `RTMB_Model` object.</p></dd>
 
@@ -248,12 +392,12 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </div><p></p><hr><a id="method-advi_fit-print"></a><div class="section">
 <h3 id="method-print-">Method <code><a href="https://rdrr.io/r/base/print.html" class="external-link">print()</a></code><a class="anchor" aria-label="anchor" href="#method-print-"></a></h3>
 <p>Print a brief summary of the fitted object.</p><div class="section">
-<h4 id="usage-2">Usage<a class="anchor" aria-label="anchor" href="#usage-2"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">print</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-2">Arguments<a class="anchor" aria-label="anchor" href="#arguments-2"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to the `summary` method.</p></dd>
 
@@ -261,14 +405,14 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-1">Returns<a class="anchor" aria-label="anchor" href="#returns-1"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-draws"></a><div class="section">
 <h3 id="method-draws-">Method <code>draws()</code><a class="anchor" aria-label="anchor" href="#method-draws-"></a></h3>
 <p>Extract posterior draws for selected parameters.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -281,7 +425,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.</p></dd>
 
@@ -313,14 +457,14 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A 3D array of posterior draws `[iterations, chains, parameters]`.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-summary"></a><div class="section">
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
 <p>Summarize posterior draws.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  max_rows <span class="op">=</span> <span class="fl">10</span>,</span>
@@ -332,7 +476,7 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.</p></dd>
 
@@ -360,19 +504,19 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>A data frame containing the summarized posterior statistics.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-plot_elbo"></a><div class="section">
 <h3 id="method-plot-elbo-">Method <code>plot_elbo()</code><a class="anchor" aria-label="anchor" href="#method-plot-elbo-"></a></h3>
 <p>Plot the ELBO history to diagnose convergence.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span>tail_n <span class="op">=</span> <span class="fl">1000</span>, ests <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"l"</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>tail_n</code></dt>
 <dd><p>Integer; the number of recent iterations to plot. If NULL, plots the entire history. Default is 2000.</p></dd>
 
@@ -392,19 +536,19 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-plot_trajectory"></a><div class="section">
 <h3 id="method-plot-trajectory-">Method <code>plot_trajectory()</code><a class="anchor" aria-label="anchor" href="#method-plot-trajectory-"></a></h3>
 <p>Plot the parameter trajectory from the final optimization window.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">plot_trajectory</span><span class="op">(</span>pars <span class="op">=</span> <span class="cn">NULL</span>, type <span class="op">=</span> <span class="st">"l"</span>, <span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character vector specifying the names of parameters to plot. If NULL, plots all available parameters.</p></dd>
 
@@ -420,48 +564,78 @@ from Automatic Differentiation Variational Inference (ADVI).</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>The object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-transformed_draws"></a><div class="section">
 <h3 id="method-transformed-draws-">Method <code>transformed_draws()</code><a class="anchor" aria-label="anchor" href="#method-transformed-draws-"></a></h3>
 <p>Compute transformed parameters from posterior draws.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">transformed_draws</span><span class="op">(</span>tran_fn <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">transformed_draws</span><span class="op">(</span></span>
+<span>  tran_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span>,</span>
+<span>  tape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"force"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>tran_fn</code></dt>
 <dd><p>An optional user-supplied function that takes data and parameter lists to return transformed quantities.</p></dd>
+
+
+<dt><code>progress</code></dt>
+<dd><p>Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`. `"auto"` and `"bar"` use line-based messages.</p></dd>
+
+
+<dt><code>tape</code></dt>
+<dd><p>Derived-quantity evaluation mode. `"auto"` tries RTMB tape
+evaluation and falls back to R evaluation on error; `"none"` always uses
+R evaluation; `"force"` requires tape evaluation and errors if it fails.</p></dd>
 
 
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
 <p>The `VB_Fit` object itself, invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-generated_quantities"></a><div class="section">
 <h3 id="method-generated-quantities-">Method <code>generated_quantities()</code><a class="anchor" aria-label="anchor" href="#method-generated-quantities-"></a></h3>
 <p>Compute generated quantities from posterior draws.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
-<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">code</span><span class="op">)</span></span></code></pre></div><p></p></div>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span></span>
+<span>  <span class="va">code</span>,</span>
+<span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span>,</span>
+<span>  tape <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"force"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
 <dd><p>An `rtmb_code({ ... })` or `{ ... }` block containing the logic
 to be calculated using posterior samples.</p></dd>
 
 
+<dt><code>progress</code></dt>
+<dd><p>Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`. `"auto"` and `"bar"` use line-based messages.</p></dd>
+
+
+<dt><code>tape</code></dt>
+<dd><p>Derived-quantity evaluation mode. `"auto"` tries RTMB tape
+evaluation and falls back to R evaluation on error; `"none"` always uses
+R evaluation; `"force"` requires tape evaluation and errors if it fails.</p></dd>
+
+
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
 <p>The `VB_Fit` object itself (invisibly).
 Results are appended to the `generate_fit` field.</p>
 </div>
@@ -469,12 +643,12 @@ Results are appended to the `generate_fit` field.</p>
 </div><p></p><hr><a id="method-advi_fit-WAIC"></a><div class="section">
 <h3 id="method-waic-">Method <code>WAIC()</code><a class="anchor" aria-label="anchor" href="#method-waic-"></a></h3>
 <p>Compute WAIC from pointwise generated log likelihood.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `draws()`, such as `chains` or `best_chains`.</p></dd>
 
@@ -482,19 +656,19 @@ Results are appended to the `generate_fit` field.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-11">Returns<a class="anchor" aria-label="anchor" href="#returns-11"></a></h4>
 <p>A `waic_BayesRTMB` object.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-diagnose"></a><div class="section">
 <h3 id="method-diagnose-">Method <code>diagnose()</code><a class="anchor" aria-label="anchor" href="#method-diagnose-"></a></h3>
 <p>Run basic diagnostics for the variational fit.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `diagnose_vb_fit()`.</p></dd>
 
@@ -502,19 +676,19 @@ Results are appended to the `generate_fit` field.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
+<h4 id="returns-12">Returns<a class="anchor" aria-label="anchor" href="#returns-12"></a></h4>
 <p>A `diagnose_BayesRTMB` object.</p>
 </div>
 
 </div><p></p><hr><a id="method-advi_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">VB_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

@@ -11,8 +11,9 @@ a shared D-dimensional space.
 rtmb_mdu(
   data,
   ndim = 2,
-  distance = c("squared", "euclidean"),
+  distance = c("euclidean", "squared"),
   alpha = c("random", "fix"),
+  lambda = c("fix", "random"),
   method = c("rating", "Best", "Best-Worst", "MDS"),
   sets = NULL,
   prior = prior_flat(),
@@ -42,14 +43,20 @@ rtmb_mdu(
 
 - distance:
 
-  Character; \`"squared"\` uses squared Euclidean distance (default,
-  often easier for optimization), while \`"euclidean"\` uses Euclidean
-  distance.
+  Character; \`"euclidean"\` uses Euclidean distance (default), while
+  \`"squared"\` uses squared Euclidean distance.
 
 - alpha:
 
   Character; \`"random"\` estimates item-specific alpha values as random
   effects (default), while \`"fix"\` estimates a single common alpha.
+
+- lambda:
+
+  Character; for choice methods, \`"fix"\` estimates a common
+  inverse-temperature parameter (default), while \`"random"\` estimates
+  person-specific inverse-temperature parameters with a log-normal
+  hierarchy.
 
 - method:
 
@@ -144,22 +151,22 @@ An \`RTMB_Model\` object.
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 980.68
-#> Approx. Log Marginal Likelihood (Laplace): -996.12
+#> Negative Log-Posterior: 977.95
+#> Approx. Log Marginal Likelihood (Laplace): -993.42
 #> Note: Random effects are stored in $random_effects (use ranef = TRUE to show them)
 #> 
 #> Point Estimates and 95% Wald CI:
 #>  variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> alpha[1]    3.27114     0.49418    2.30257    4.23970 
-#> alpha[2]    3.07622     0.49162    2.11266    4.03977 
-#> alpha[3]    4.63414     0.75250    3.15926    6.10902 
-#> alpha[4]    2.90268     0.47793    1.96595    3.83941 
-#> alpha[5]    3.97631     0.62346    2.75434    5.19828 
-#> alpha[6]    2.90966     0.48232    1.96433    3.85498 
-#> alpha[7]    3.33538     0.49973    2.35592    4.31483 
-#> alpha[8]    4.20276     0.65068    2.92746    5.47806 
-#> alpha[9]    3.36881     0.50718    2.37475    4.36287 
-#> alpha[10]   3.87143     0.59246    2.71023    5.03263 
+#> alpha[1]    3.24149     0.48954    2.28202    4.20097 
+#> alpha[2]    3.07680     0.48789    2.12055    4.03304 
+#> alpha[3]    4.58333     0.74269    3.12768    6.03898 
+#> alpha[4]    2.89562     0.47457    1.96548    3.82575 
+#> alpha[5]    3.94807     0.61796    2.73689    5.15926 
+#> alpha[6]    2.90950     0.47861    1.97145    3.84756 
+#> alpha[7]    3.31641     0.49573    2.34480    4.28801 
+#> alpha[8]    4.16539     0.64349    2.90418    5.42660 
+#> alpha[9]    3.34095     0.50248    2.35611    4.32579 
+#> alpha[10]   3.86744     0.59089    2.70931    5.02557 
 #> 
   
   # Note: MDU models have many parameters, so MCMC sampling might take time.

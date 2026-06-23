@@ -19,8 +19,10 @@ It covers the following topics.
 6.  Run a frequentist t test with `classic()`
 7.  Compute a Bayes factor using a JZS prior and MCMC
 
-Detailed model writing, mixed models, GLMMs, and model comparison are
-covered in other vignettes.
+Detailed model writing, mixed models, GLMMs, model comparison, and
+function-level reference material are covered in other vignettes,
+especially the [Analysis
+Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md).
 
 ## 0. Installation and Environment Check
 
@@ -192,19 +194,13 @@ to 1 and ESS should be sufficiently large.
 ### Parallel MCMC
 
 Ordinary MCMC can be run without additional setup. However, if you use
-parallel MCMC with `sample(parallel = TRUE)`, the suggested packages
-`future`, `future.apply`, and `progressr` are required. The `progressr`
-package is also used internally through
-[`progressr::progressor()`](https://progressr.futureverse.org/reference/progressor.html)
-for progress reporting.
+parallel MCMC with `sample(parallel = TRUE)`, the suggested package
+`future` is required.
 
 ``` r
 
-install.packages(c("future", "future.apply", "progressr"))
+install.packages("future")
 ```
-
-These packages are listed in Suggests, so they are not required unless
-you use parallel execution.
 
 ``` r
 
@@ -456,3 +452,8 @@ page that matches your purpose.
     Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md)**  
     Learn about internal processing such as MAP estimation, Laplace
     approximation, MCMC, and variational inference.
+
+5.  **[Analysis
+    Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md)**  
+    Check fit-object methods, model-comparison tools, fixed parameters,
+    distributions, and AD-taping notes.

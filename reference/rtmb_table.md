@@ -40,7 +40,9 @@ rtmb_table(
 
 - prior:
 
-  Prior specification (Bayesian mode). Default is \`prior_flat()\`.
+  Prior specification (Bayesian mode). Use \`prior_flat()\` for a
+  uniform Dirichlet prior or \`prior_normal(dirichlet_alpha = ...)\` to
+  set the Dirichlet concentration. Default is \`prior_flat()\`.
 
 - fixed:
 
@@ -53,7 +55,7 @@ rtmb_table(
 
 - ...:
 
-  Additional arguments.
+  Reserved; unused arguments are rejected.
 
 ## Value
 

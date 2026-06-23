@@ -320,6 +320,29 @@ and bridge sampling.
 MCMC samples are drawn on the unconstrained scale and returned on the
 natural constrained scale.
 
+BayesRTMB’s NUTS implementation has two proposal-selection variants. The
+default, `nuts_variant = "multinomial"`, uses Stan-style
+Hamiltonian-weighted proposal selection over the built trajectory. The
+alternative, `nuts_variant = "slice"`, uses slice-based proposal
+selection. For ordinary use, the default is intended to be the main
+path.
+
+The mass matrix can be controlled with `metric`. The available choices
+are `"diag"`, `"dense"`, `"hybrid"`, and `"auto"`. A diagonal metric is
+cheaper and often sufficient, while a dense metric can improve sampling
+when parameters are strongly correlated. The hybrid metric uses a dense
+block for non-random parameters and a diagonal block for random
+parameters. The default `"auto"` starts from the hybrid strategy and can
+fall back to a simpler metric during warmup when the dense block is not
+useful or is numerically unstable.
+
+Warmup learns both step size and metric information.
+`metric_adaptation = "stan_window"` uses a Stan-style windowed
+adaptation schedule and is the default. The `diagnose()` method reports
+the effective metric, warmup summaries, divergences, tree depth,
+leapfrog counts, and other information useful for checking whether the
+sampler is behaving well.
+
 ### optimize
 
 [`optimize()`](https://rdrr.io/r/stats/optimize.html) performs MAP, ML,
@@ -572,4 +595,6 @@ To understand wrapper-generated models, see [Wrapper
 Functions](https://norimune.github.io/BayesRTMB/articles/wrapper_functions.md)
 and `print_code()`. For a detailed mixed-model and GLMM workflow, see
 [Hierarchical Models and
-GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md).
+GLMMs](https://norimune.github.io/BayesRTMB/articles/rtmb_glmer.md). For
+a compact user-facing reference, see [Analysis
+Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md).

@@ -36,10 +36,10 @@ rtmb_lm(
 - prior:
 
   An object of class \`"rtmb_prior"\`. Use \`prior_flat()\` for no
-  prior, \`prior_normal()\` for default normal/exponential priors, or
-  \`prior_weak()\`, \`prior_rhs()\`, \`prior_ssp()\` for weakly
-  informative or regularized Bayesian inference. Default is
-  \`prior_flat()\`.
+  prior, \`prior_normal()\` for default normal/exponential priors,
+  \`prior_jzs()\` for JZS regression priors, or \`prior_weak()\`,
+  \`prior_rhs()\`, \`prior_ssp()\` for weakly informative or regularized
+  Bayesian inference. Default is \`prior_flat()\`.
 
 - y_range:
 
@@ -173,30 +173,33 @@ rtmb_lm(
   # \donttest{
   mcmc_glmer <- fit_glmer$sample(sampling = 500, warmup = 500, chains = 2)
 #> Starting sequential sampling (chains = 2)...
-#> chain 1 started... 
-#> chain 1: iter 200 warmup 
-#> chain 1: iter 400 warmup 
-#> chain 1: iter 600 sampling 
-#> chain 1: iter 800 sampling 
-#> chain 1: iter 1000 sampling 
-#> chain 2 started... 
-#> chain 2: iter 200 warmup 
-#> chain 2: iter 400 warmup 
-#> chain 2: iter 600 sampling 
-#> chain 2: iter 800 sampling 
-#> chain 2: iter 1000 sampling 
+#> chain 1 started...
+#> chain 1: iter 200/1000 (20%) warmup
+#> chain 1: iter 400/1000 (40%) warmup
+#> chain 1: iter 600/1000 (60%) sampling
+#> chain 1: iter 800/1000 (80%) sampling
+#> chain 1: iter 1000/1000 (100%) sampling
+#> chain 1 done (100%)
+#> chain 2 started...
+#> chain 2: iter 200/1000 (20%) warmup
+#> chain 2: iter 400/1000 (40%) warmup
+#> chain 2: iter 600/1000 (60%) sampling
+#> chain 2: iter 800/1000 (80%) sampling
+#> chain 2: iter 1000/1000 (100%) sampling
+#> chain 2 done (100%)
+#> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -511.28  11.91  -513.33  -535.86  -489.14       196       287  1.01 
-#> Intercept         2.64   0.08     2.66     2.47     2.81       698       780  1.00 
-#> b[cond]           0.76   0.12     0.78     0.51     0.99       687       756  1.00 
-#> sigma             0.83   0.04     0.83     0.75     0.91       485       591  1.00 
-#> sd[group:Int]     0.41   0.08     0.41     0.23     0.56       262       399  1.00 
-#> r_re[1]          -0.76   0.75    -0.54    -2.18     0.82      1470       712  1.00 
-#> r_re[2]          -0.98   0.79    -1.12    -2.50     0.65      1418       687  1.00 
-#> r_re[3]           0.02   0.77    -0.04    -1.47     1.54      1298       666  1.01 
-#> r_re[4]           0.61   0.75     0.56    -0.78     2.23      1503       676  1.00 
-#> r_re[5]          -0.45   0.83    -0.47    -2.08     1.16      1826       637  1.01 
+#> lp             -509.51  11.93  -505.71  -535.33  -488.04       223       272  1.00 
+#> Intercept         2.64   0.09     2.63     2.46     2.83      1196       895  1.00 
+#> b[cond]           0.76   0.13     0.75     0.52     1.01       843       900  1.00 
+#> sigma             0.83   0.04     0.83     0.75     0.92       565       635  1.00 
+#> sd[group:Int]     0.41   0.08     0.44     0.23     0.57       345       424  1.00 
+#> r_re[1]          -0.78   0.80    -0.74    -2.32     0.74      3000       542  1.00 
+#> r_re[2]          -0.99   0.72    -1.01    -2.35     0.43      2159       852  1.00 
+#> r_re[3]           0.01   0.81    -0.02    -1.56     1.60      2281       734  1.00 
+#> r_re[4]           0.58   0.76     0.55    -0.92     2.21      2120       667  1.00 
+#> r_re[5]          -0.41   0.75    -0.40    -1.89     1.13      1880       691  1.00 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -243,7 +246,7 @@ rtmb_lm(
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
 #> 
-#> Warning: Optimization did not converge ( convergence code = 1; message = singular convergence (7)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
+#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.

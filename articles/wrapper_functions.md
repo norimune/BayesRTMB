@@ -4,11 +4,10 @@ In BayesRTMB, you can freely define models using the `rtmb_code` block,
 but we also provide **wrapper functions** to quickly execute common
 statistical analyses (like t-tests, regressions, and factor analysis).
 
-These functions allow you to specify models with a syntax similar to
-standard R functions like [`lm()`](https://rdrr.io/r/stats/lm.html) and
-`lme4::glmer()` (though `lme4` itself is not required to run
-`BayesRTMB`), while fully utilizing the powerful estimation features of
-BayesRTMB (MCMC, MAP, ADVI).
+These functions allow you to specify models with syntax similar to
+standard R functions such as [`lm()`](https://rdrr.io/r/stats/lm.html)
+and mixed-model formula interfaces, while fully utilizing the powerful
+estimation features of BayesRTMB (MCMC, MAP, ADVI).
 
 This page introduces the usage of the main wrapper functions.
 
@@ -342,9 +341,10 @@ After fitting a regression model (LM, GLM, GLMER), you can use
 [`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
 and
 [`simple_effects()`](https://norimune.github.io/BayesRTMB/reference/simple_effects.md)
-to analyze and visualize the results. These methods are currently
-available for models fitted using MCMC
-([`sample()`](https://rdrr.io/r/base/sample.html)).
+to analyze and visualize the results. These methods are available for
+MCMC fits and can also be used with MAP or classic fits when the fitted
+object contains the standard errors or sampling-based uncertainty needed
+for the requested summary.
 
 #### Visualization with `conditional_effects()`
 
@@ -360,7 +360,7 @@ mdl_int <- rtmb_lm(sat ~ talk * perf, data = debate)
 fit_int <- mdl_int$sample()
 
 # Visualize the interaction effect
-# For continuous moderators, it automatically shows Mean ± 1SD
+# For continuous moderators, it automatically shows Mean +/- 1SD
 ce <- conditional_effects(fit_int, effect = "talk:perf")
 plot(ce)
 ```
@@ -393,7 +393,7 @@ print(se)
 ```
 
 By default, for continuous moderators, it evaluates the effect at the
-Mean and Mean ± 1SD. You can change this behavior by specifying the
+Mean and Mean +/- 1SD. You can change this behavior by specifying the
 `sd_multiplier` argument.
 
 ------------------------------------------------------------------------
@@ -821,3 +821,6 @@ and try building your own using
 For the model-building pipeline behind the wrappers, see [RTMB Internals
 and Inference
 Algorithms](https://norimune.github.io/BayesRTMB/articles/rtmb_internals.md).
+For a compact reference to fit-object methods, model comparison, fixed
+parameters, and distributions, see [Analysis
+Reference](https://norimune.github.io/BayesRTMB/articles/analysis_reference.md).

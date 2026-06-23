@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -44,6 +44,7 @@
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -52,6 +53,7 @@
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul>
@@ -88,11 +90,10 @@
 <code>rtmb_code</code> block, but we also provide <strong>wrapper
 functions</strong> to quickly execute common statistical analyses (like
 t-tests, regressions, and factor analysis).</p>
-<p>These functions allow you to specify models with a syntax similar to
-standard R functions like <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> and
-<code>lme4::glmer()</code> (though <code>lme4</code> itself is not
-required to run <code>BayesRTMB</code>), while fully utilizing the
-powerful estimation features of BayesRTMB (MCMC, MAP, ADVI).</p>
+<p>These functions allow you to specify models with syntax similar to
+standard R functions such as <code><a href="https://rdrr.io/r/stats/lm.html" class="external-link">lm()</a></code> and mixed-model formula
+interfaces, while fully utilizing the powerful estimation features of
+BayesRTMB (MCMC, MAP, ADVI).</p>
 <p>This page introduces the usage of the main wrapper functions.</p>
 <hr>
 <div class="section level2">
@@ -432,8 +433,10 @@ models, so it’s better to use MCMC.</p>
 </h2>
 <p>After fitting a regression model (LM, GLM, GLMER), you can use
 <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> and <code><a href="../reference/simple_effects.html">simple_effects()</a></code> to
-analyze and visualize the results. These methods are currently available
-for models fitted using MCMC (<code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code>).</p>
+analyze and visualize the results. These methods are available for MCMC
+fits and can also be used with MAP or classic fits when the fitted
+object contains the standard errors or sampling-based uncertainty needed
+for the requested summary.</p>
 <div class="section level4">
 <h4 id="visualization-with-conditional_effects">Visualization with <code>conditional_effects()</code><a class="anchor" aria-label="anchor" href="#visualization-with-conditional_effects"></a>
 </h4>
@@ -446,7 +449,7 @@ understanding interaction effects.</p>
 <span><span class="va">fit_int</span> <span class="op">&lt;-</span> <span class="va">mdl_int</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Visualize the interaction effect</span></span>
-<span><span class="co"># For continuous moderators, it automatically shows Mean ± 1SD</span></span>
+<span><span class="co"># For continuous moderators, it automatically shows Mean +/- 1SD</span></span>
 <span><span class="va">ce</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/conditional_effects.html">conditional_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ce</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -474,7 +477,7 @@ categorical.</li>
 <span><span class="co">##  perf       4.690 Slope of talk    0.266  0.161 0.369</span></span>
 <span><span class="co">##  perf       6.450 Slope of talk    0.494  0.354 0.631</span></span></code></pre>
 <p>By default, for continuous moderators, it evaluates the effect at the
-Mean and Mean ± 1SD. You can change this behavior by specifying the
+Mean and Mean +/- 1SD. You can change this behavior by specifying the
 <code>sd_multiplier</code> argument.</p>
 <hr>
 </div>
@@ -906,7 +909,8 @@ a more customized model, check out <a href="writing_models.html">Writing
 Model Codes</a> and try building your own using
 <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>. For the model-building pipeline behind the
 wrappers, see <a href="rtmb_internals.html">RTMB Internals and Inference
-Algorithms</a>.</p>
+Algorithms</a>. For a compact reference to fit-object methods, model
+comparison, fixed parameters, and distributions, see <a href="analysis_reference.html">Analysis Reference</a>.</p>
 </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
     </nav></aside>

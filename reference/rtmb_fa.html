@@ -11,7 +11,7 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices."></he
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.1.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -31,6 +31,7 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices."></he
     <li><a class="dropdown-item" href="../articles/rtmb_glmer.html">Hierarchical Models and GLMMs</a></li>
     <li><a class="dropdown-item" href="../articles/writing_models.html">Writing Model Codes</a></li>
     <li><a class="dropdown-item" href="../articles/rtmb_internals.html">RTMB Internals and Inference Algorithms</a></li>
+    <li><a class="dropdown-item" href="../articles/analysis_reference.html">Analysis Reference</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><h6 class="dropdown-header" data-toc-skip>日本語</h6></li>
     <li><a class="dropdown-item" href="../articles/ja-introduction.html">パッケージ紹介</a></li>
@@ -39,6 +40,7 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices."></he
     <li><a class="dropdown-item" href="../articles/ja-writing_models.html">モデルコードの書き方</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_glmer.html">階層モデル・GLMM・分散分析</a></li>
     <li><a class="dropdown-item" href="../articles/ja-rtmb_internals.html">RTMBの仕組みとアルゴリズム</a></li>
+    <li><a class="dropdown-item" href="../articles/ja-analysis_reference.html">分析リファレンス</a></li>
     <li><hr class="dropdown-divider"></li>
     <li><a class="dropdown-item" href="../articles/index.html">すべての記事</a></li>
   </ul></li>
@@ -101,7 +103,8 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.</p>
 
 
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
-<dd><p>Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
+<dd><p>Prior configuration: `prior_flat()`, `prior_normal()`, or
+`prior_weak()`. `prior_ssp()` is accepted when `rotate = "ssp"`.
 Hyperparameters can be specified within these functions (e.g., `prior_normal(mean_sd = 10, sd_rate = 10)`).
 Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).</p></dd>
 
@@ -191,16 +194,16 @@ Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Sampling-based CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>               variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF1,Factor1]   -0.88412     0.19040   -0.99590   -0.29552 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF2,Factor1]   -0.07323     0.04808   -0.16583    0.02137 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF3,Factor1]   -0.11607     0.07986   -0.27315    0.04090 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF4,Factor1]   -0.07882     0.08795   -0.24846    0.09597 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF5,Factor1]    0.03564     0.08367   -0.12772    0.19089 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF6,Factor1]    0.68867     0.12762    0.39206    0.88820 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF7,Factor1]    0.01309     0.04747   -0.07218    0.09987 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF8,Factor1]   -0.15549     0.09734   -0.35668    0.02904 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF9,Factor1]    0.08481     0.09385   -0.10586    0.26402 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF10,Factor1]  -0.10916     0.07976   -0.26512    0.04661 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF1,Factor1]   -0.88412     0.19045   -0.99579   -0.29916 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF2,Factor1]   -0.07323     0.05383   -0.16711    0.01892 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF3,Factor1]   -0.11607     0.08270   -0.27486    0.04811 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF4,Factor1]   -0.07882     0.08821   -0.24792    0.09878 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF5,Factor1]    0.03564     0.08337   -0.12598    0.19492 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF6,Factor1]    0.68867     0.12798    0.38591    0.88749 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF7,Factor1]    0.01309     0.05165   -0.07151    0.10295 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF8,Factor1]   -0.15549     0.09684   -0.34706    0.02727 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF9,Factor1]    0.08481     0.09297   -0.09648    0.26530 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[BF10,Factor1]  -0.10916     0.07964   -0.26156    0.05252 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># Post-hoc rotation using the fa_rotate() method</span></span></span>
@@ -222,16 +225,16 @@ Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Sampling-based CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[1,1]   -0.87739     0.18946   -0.98930   -0.27963 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[2,1]   -0.00088     0.13712   -0.34153    0.19608 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[3,1]   -0.12824     0.08587   -0.27944    0.04857 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[4,1]   -0.09712     0.09498   -0.27465    0.09389 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[5,1]    0.02261     0.08562   -0.13019    0.20885 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[6,1]    0.68707     0.12478    0.38952    0.87753 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[7,1]    0.08960     0.14207   -0.28461    0.28011 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[8,1]   -0.17801     0.10885   -0.38106    0.03885 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[9,1]    0.07460     0.09842   -0.11166    0.27545 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[10,1]  -0.08975     0.08971   -0.28869    0.05730 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[1,1]   -0.87739     0.18907   -0.98820   -0.29034 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[2,1]   -0.00088     0.13695   -0.34629    0.19880 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[3,1]   -0.12824     0.08883   -0.28335    0.04773 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[4,1]   -0.09712     0.09463   -0.26598    0.10075 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[5,1]    0.02261     0.08509   -0.13838    0.21208 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[6,1]    0.68707     0.12595    0.38894    0.87870 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[7,1]    0.08960     0.14184   -0.27815    0.29630 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[8,1]   -0.17801     0.10725   -0.37010    0.04470 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[9,1]    0.07460     0.09745   -0.09915    0.28085 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L_varimax[10,1]  -0.08975     0.08811   -0.28202    0.05605 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span></span></span>
@@ -245,27 +248,27 @@ Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd
 <span class="r-in"><span>  <span class="va">map_ssp</span> <span class="op">&lt;-</span> <span class="va">fit_ssp</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Optimization did not converge ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No optimization run reached an acceptable optimizer status; BEST is selected by the lowest objective among not converged runs ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.</span>
 <span class="r-in"><span>  <span class="va">map_ssp</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 2433.06</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -2692.30</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 2433.05</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -2716.78</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> L[BF1,Factor1]    0.00000     0.00000   -0.00000    0.00000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF2,Factor1]    0.78286     0.07926    0.62751    0.93821 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF3,Factor1]   -0.11537     0.09039   -0.29252    0.06179 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF4,Factor1]   -0.18356     0.08405   -0.34831   -0.01882 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF5,Factor1]   -0.11921     0.08829   -0.29226    0.05383 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF2,Factor1]    0.78201     0.08335    0.61865    0.94538 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF3,Factor1]   -0.11589     0.09062   -0.29350    0.06172 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF4,Factor1]   -0.18487     0.08384   -0.34920   -0.02054 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF5,Factor1]   -0.11914     0.08861   -0.29282    0.05454 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> L[BF6,Factor1]    0.00000     0.00000   -0.00000    0.00000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF7,Factor1]    0.85423     0.08408    0.68944    1.01902 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF8,Factor1]   -0.23762     0.08149   -0.39735   -0.07790 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF9,Factor1]   -0.07829     0.09694   -0.26828    0.11170 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF10,Factor1]   0.18712     0.09227    0.00628    0.36797 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF7,Factor1]    0.85548     0.08895    0.68114    1.02982 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF8,Factor1]   -0.23703     0.08306   -0.39982   -0.07424 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF9,Factor1]   -0.07986     0.09650   -0.26900    0.10928 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF10,Factor1]   0.18645     0.09386    0.00248    0.37042 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>

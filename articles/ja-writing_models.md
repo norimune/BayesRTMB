@@ -157,6 +157,7 @@ parameters = {
 | [`Dim()`](https://norimune.github.io/BayesRTMB/reference/Dim.md) | スカラー |
 | `Dim(P)` | 長さ `P` のベクトル |
 | `Dim(c(N, P))` | `N x P` 行列 |
+| `Dim(c(I, J, K))` | 3次元以上の配列 |
 | `Dim(lower = 0)` | 正の値に制約 |
 | `Dim(lower = 0, upper = 1)` | 0から1の範囲に制約 |
 | `Dim(G, random = TRUE)` | ランダム効果として扱う |
@@ -730,6 +731,65 @@ mdl <- rtmb_model(data_reg, code_reg, init = init)
 ただし、すべてのパラメータに付ければよいわけではありません。固定効果として推定したい回帰係数や切片には、通常
 `random = TRUE` は付けません。
 
+### AD対応の作業用コンテナ
+
+多くの場合、もっとも速く安定しやすいのはベクトル化されたコードです。たとえば、`Y ~ normal(mu, sigma)`
+のように一度に尤度を書けるなら、その書き方を優先します。
+
+一方で、`for` ループの中で要素を順番に代入しながら、あとから AD
+型の値が入るベクトルや配列を作りたいことがあります。その場合は、[`numeric()`](https://rdrr.io/r/base/numeric.html)、[`matrix()`](https://rdrr.io/r/base/matrix.html)、[`array()`](https://rdrr.io/r/base/array.html)
+の代わりに
+[`rtmb_vector()`](https://norimune.github.io/BayesRTMB/reference/rtmb_vector.md)
+や
+[`rtmb_array()`](https://norimune.github.io/BayesRTMB/reference/rtmb_array.md)
+を使います。
+
+``` r
+
+model = {
+  eta <- rtmb_vector(0, N)
+  for (i in seq_len(N)) {
+    eta[i] <- alpha + X[i, ] %*% beta
+  }
+  Y ~ normal(eta, sigma)
+}
+```
+
+``` r
+
+model = {
+  logit_x <- rtmb_array(0, dim = c(N_time, C, D))
+  for (t in seq_len(N_time)) {
+    for (c in seq_len(C)) {
+      for (d in seq_len(D)) {
+        logit_x[t, c, d] <- alpha[d] + beta[d] * X[t, c]
+      }
+    }
+  }
+}
+```
+
+[`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
+の中では、通常、BayesRTMB がモデルパラメータから AD seed
+を自動的に用意するため、`seed`
+引数を指定する必要はありません。ただし、これはあくまで代入を多用するコードのための補助です。同じ計算を行列演算やベクトル化で書ける場合は、テープ化の時間とAD評価の速度の両方の面で、ベクトル化した書き方を優先するのがおすすめです。
+
+### 保存済み fit object の更新
+
+古いバージョンの BayesRTMB で保存した fit object
+は、新しいバージョンで追加されたメソッドをそのまま持っていないことがあります。その場合は、[`upgrade_fit()`](https://norimune.github.io/BayesRTMB/reference/upgrade_fit.md)
+を使うと、保存済みの MCMC、VB、MAP、classic の fit object
+を現在読み込まれているクラス定義で作り直せます。
+
+``` r
+
+fit2 <- upgrade_fit(fit)
+```
+
+これはモデルを再推定する関数ではありません。保存されている推定結果を新しい
+fit object
+に移し替え、可能な場合は内部のモデルオブジェクトも更新します。
+
 ## 次に読む記事
 
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)
@@ -744,4 +804,8 @@ mdl <- rtmb_model(data_reg, code_reg, init = init)
 を参照してください。
 
 まずパッケージ全体をざっと試したい場合は、[クイックスタート](https://norimune.github.io/BayesRTMB/articles/ja-quick_start.md)
+を参照してください。
+
+分析中に fit object のメソッド、モデル比較、固定パラメータ、分布、AD
+テープ化の注意点を確認したい場合は、[分析リファレンス](https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.md)
 を参照してください。
