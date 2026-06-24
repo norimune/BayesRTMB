@@ -14,6 +14,18 @@ There are no known CRAN reverse dependencies.
 
 ## Submission notes
 
+This is a resubmission.
+
+In the previous submission, CRAN reported that the following README URLs
+returned 404:
+
+* https://norimune.github.io/BayesRTMB/articles/analysis_reference.html
+* https://norimune.github.io/BayesRTMB/articles/ja-analysis_reference.html
+
+These URLs were invalid because the pkgdown GitHub Pages deployment had failed.
+The pkgdown configuration has been fixed, the site has been redeployed, and both
+URLs now return HTTP 200 OK.
+
 This release updates BayesRTMB to 0.2.1.
 
 The update includes performance and robustness improvements for MCMC,
