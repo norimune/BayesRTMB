@@ -66,10 +66,23 @@
 
   data_names <- names(self$data)
 
+  get_count_target <- function(target) {
+    if (is.call(target) && .rtmb_is_call_to(target, "obs")) {
+      obs_args <- as.list(target[-1])
+      for (arg in obs_args) {
+        base_name <- get_base_name(arg)
+        if (!is.null(base_name) && base_name %in% data_names) return(arg)
+      }
+      return(NULL)
+    }
+    target
+  }
+
   rewrite_to_count <- function(x) {
     if (is.call(x)) {
       if (identical(x[[1]], as.name("~"))) {
-        target <- x[[2]]
+        target <- get_count_target(x[[2]])
+        if (is.null(target)) return(quote(NULL))
         base_name <- get_base_name(target)
         if (!is.null(base_name) && base_name %in% data_names) {
           return(call("<-", as.name("n_obs"),
@@ -106,4 +119,3 @@
 
   return(n_total)
 }
-

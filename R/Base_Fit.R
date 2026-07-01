@@ -9,6 +9,51 @@
 
 #' @keywords internal
 #' @noRd
+.rtmb_validate_rotation_suffix <- function(suffix) {
+  if (!is.character(suffix) || length(suffix) != 1L || is.na(suffix) || !nzchar(suffix)) {
+    stop("`suffix` must be a non-empty character string.", call. = FALSE)
+  }
+  if (!identical(make.names(suffix), suffix)) {
+    stop("`suffix` must be a syntactic name fragment, such as 'rot', 'rot2', or 'promax_alt'.", call. = FALSE)
+  }
+  suffix
+}
+
+#' @keywords internal
+#' @noRd
+.rtmb_generate_names <- function(fit) {
+  unique(c(.names0(fit$generate_dims), .names0(fit$generate)))
+}
+
+#' @keywords internal
+#' @noRd
+.rtmb_rotation_names <- function(fit, vars, suffix, overwrite = TRUE, extra = NULL) {
+  suffix <- .rtmb_validate_rotation_suffix(suffix)
+  overwrite <- isTRUE(overwrite)
+  vars <- unique(vars[!is.na(vars) & nzchar(vars)])
+  make_names <- function(suf) {
+    out <- setNames(paste0(vars, "_", suf), vars)
+    if (!is.null(extra)) out <- c(out, extra(suf))
+    out
+  }
+
+  existing <- .rtmb_generate_names(fit)
+  candidate_suffix <- suffix
+  candidate_names <- make_names(candidate_suffix)
+  if (!overwrite) {
+    i <- 2L
+    while (any(unname(candidate_names) %in% existing)) {
+      candidate_suffix <- paste0(suffix, "_", i)
+      candidate_names <- make_names(candidate_suffix)
+      i <- i + 1L
+    }
+  }
+
+  list(suffix = candidate_suffix, names = candidate_names)
+}
+
+#' @keywords internal
+#' @noRd
 .estimate_component_names <- function(fit, component) {
   if (component == "parameters") return(.names0(fit$model$par_list))
 
@@ -494,13 +539,21 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param principal Logical; if TRUE and `reference` is NULL, the point estimate
     #'   is first rotated to its principal axes and then used as the Procrustes
     #'   reference. This is useful for MDU configurations.
+    #' @param suffix Character suffix used for generated quantities. The default
+    #'   stores results as `<variable>_rot`.
+    #' @param overwrite Logical; if TRUE, existing generated quantities with the
+    #'   same names are overwritten. If FALSE, a numeric suffix is appended.
     #' @return The updated object invisibly.
-    rotate = function(target, reference = NULL, linked = NULL, principal = FALSE) {
+    rotate = function(target, reference = NULL, linked = NULL, principal = FALSE,
+                      suffix = "rot", overwrite = TRUE) {
       principal <- isTRUE(principal)
+      rot_info <- .rtmb_rotation_names(self, c(target, linked), suffix, overwrite)
+      suffix <- rot_info$suffix
+      rot_names <- rot_info$names
       if (principal && is.null(reference)) {
-        message("Applying orthogonal Procrustes rotation to principal-axis reference (Saving to generate as _rot)...")
+        message(sprintf("Applying orthogonal Procrustes rotation to principal-axis reference (Saving to generate as _%s)...", suffix))
       } else {
-        message("Applying orthogonal Procrustes rotation (Saving to generate as _rot)...")
+        message(sprintf("Applying orthogonal Procrustes rotation (Saving to generate as _%s)...", suffix))
       }
 
       target_map <- self$get_point_estimate(target)
@@ -545,12 +598,12 @@ RTMB_Fit_Base <- R6::R6Class(
       exprs[[length(exprs) + 1]] <- bquote(svd_res <- svd(t(.(as.name(target))) %*% .(as.name(ref_name))))
       exprs[[length(exprs) + 1]] <- quote(Q <- svd_res$u %*% t(svd_res$v))
 
-      target_rot <- paste0(target, "_rot")
+      target_rot <- unname(rot_names[[target]])
       exprs[[length(exprs) + 1]] <- bquote(.(as.name(target_rot)) <- .(as.name(target)) %*% Q)
 
       if (!is.null(linked)) {
         for (l_var in linked) {
-          l_rot <- paste0(l_var, "_rot")
+          l_rot <- unname(rot_names[[l_var]])
           exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% Q)
         }
       }
@@ -559,7 +612,7 @@ RTMB_Fit_Base <- R6::R6Class(
       ret_list[[target_rot]] <- as.name(target_rot)
       if (!is.null(linked)) {
         for (l_var in linked) {
-          l_rot <- paste0(l_var, "_rot")
+          l_rot <- unname(rot_names[[l_var]])
           ret_list[[l_rot]] <- as.name(l_rot)
         }
       }
@@ -599,7 +652,7 @@ RTMB_Fit_Base <- R6::R6Class(
 
         if (!is.null(linked)) {
           for (l_var in linked) {
-            l_rot <- paste0(l_var, "_rot")
+            l_rot <- unname(rot_names[[l_var]])
             new_linked_names <- get_renamed_dimnames(l_var, l_rot)
             if (!is.null(new_linked_names)) {
               l_gen_pattern <- paste0("^", l_rot, "(\\[.*\\])?$")
@@ -622,10 +675,13 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param scores Character vector of variable names to be rotated as factor scores (inverse direction).
     #' @param rotate Character string specifying the rotation method.
     #' @param ... Additional arguments passed to the rotation function.
+    #' @param suffix Character suffix used for generated quantities. If NULL,
+    #'   the rotation method name is used.
+    #' @param overwrite Logical; if TRUE, existing generated quantities with the
+    #'   same names are overwritten. If FALSE, a numeric suffix is appended.
     #' @return The updated object invisibly.
-    fa_rotate = function(target = "L", linked = NULL, scores = NULL, rotate = "promax", ...) {
-      message(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...", rotate, target, rotate))
-
+    fa_rotate = function(target = "L", linked = NULL, scores = NULL, rotate = "promax",
+                         ..., suffix = NULL, overwrite = TRUE) {
       if (exists(rotate, where = asNamespace("stats"), mode = "function")) {
         rot_fn <- get(rotate, envir = asNamespace("stats"), mode = "function")
         fn_call <- call("::", as.name("stats"), as.name(rotate))
@@ -648,8 +704,33 @@ RTMB_Fit_Base <- R6::R6Class(
       is_matrix_rot <- is.matrix(test_rot)
       has_phi <- !is_matrix_rot && !is.null(test_rot$Phi)
 
+      suffix_was_default <- is.null(suffix)
+      base_suffix <- if (suffix_was_default) rotate else suffix
+      extra_names <- if (has_phi) {
+        function(suf) {
+          cor_name <- if (suffix_was_default && identical(suf, rotate) && isTRUE(overwrite)) {
+            "fa_cor"
+          } else {
+            paste0("fa_cor_", suf)
+          }
+          setNames(cor_name, "fa_cor")
+        }
+      } else {
+        NULL
+      }
+      rot_info <- .rtmb_rotation_names(
+        self,
+        c(target, linked, scores),
+        base_suffix,
+        overwrite,
+        extra = extra_names
+      )
+      suffix <- rot_info$suffix
+      rot_names <- rot_info$names
+      message(sprintf("Applying %s rotation to %s (Saving to generate as _%s)...", rotate, target, suffix))
+
       exprs <- list()
-      rot_name <- paste0(target, "_", rotate)
+      rot_name <- unname(rot_names[[target]])
 
       exprs[[length(exprs) + 1]] <- bquote(rot_obj <- .(fn_call)(.(as.name(target))))
       ret_list <- list()
@@ -661,7 +742,8 @@ RTMB_Fit_Base <- R6::R6Class(
         exprs[[length(exprs) + 1]] <- quote(rot_mat <- unclass(rot_obj$loadings))
         ret_list[[rot_name]] <- as.name("rot_mat")
         if (has_phi) {
-          ret_list[["fa_cor"]] <- quote(rot_obj$Phi)
+          phi_name <- unname(rot_names[["fa_cor"]])
+          ret_list[[phi_name]] <- quote(rot_obj$Phi)
         }
       }
 
@@ -673,7 +755,7 @@ RTMB_Fit_Base <- R6::R6Class(
 
           if (!is.null(linked)) {
             for (l_var in linked) {
-              l_rot <- paste0(l_var, "_", rotate)
+              l_rot <- unname(rot_names[[l_var]])
               exprs[[length(exprs) + 1]] <- bquote(.(as.name(l_rot)) <- .(as.name(l_var)) %*% rot_Th)
               ret_list[[l_rot]] <- as.name(l_rot)
             }
@@ -682,7 +764,7 @@ RTMB_Fit_Base <- R6::R6Class(
           if (!is.null(scores)) {
             exprs[[length(exprs) + 1]] <- quote(rot_Th_inv <- solve(t(rot_Th)))
             for (s_var in scores) {
-              s_rot <- paste0(s_var, "_", rotate)
+              s_rot <- unname(rot_names[[s_var]])
               exprs[[length(exprs) + 1]] <- bquote(.(as.name(s_rot)) <- .(as.name(s_var)) %*% rot_Th_inv)
               ret_list[[s_rot]] <- as.name(s_rot)
             }
@@ -725,7 +807,7 @@ RTMB_Fit_Base <- R6::R6Class(
 
         if (!is.null(linked)) {
           for (l_var in linked) {
-            l_rot <- paste0(l_var, "_", rotate)
+            l_rot <- unname(rot_names[[l_var]])
             new_linked_names <- get_renamed_dimnames(l_var, l_rot)
             if (!is.null(new_linked_names)) {
               l_gen_pattern <- paste0("^", l_rot, "(\\[.*\\])?$")
@@ -739,7 +821,7 @@ RTMB_Fit_Base <- R6::R6Class(
 
         if (!is.null(scores)) {
           for (s_var in scores) {
-            s_rot <- paste0(s_var, "_", rotate)
+            s_rot <- unname(rot_names[[s_var]])
             new_score_names <- get_renamed_dimnames(s_var, s_rot)
             if (!is.null(new_score_names)) {
               s_gen_pattern <- paste0("^", s_rot, "(\\[.*\\])?$")

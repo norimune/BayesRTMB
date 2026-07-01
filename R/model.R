@@ -873,7 +873,11 @@ rtmb_code <- function(...) {
     stop("Invalid syntax in rtmb_code(). Separate blocks with commas, or enclose the entire definition in {}.", call. = FALSE)
   }
 
-  code_list$env <- parent.frame()
+  code_env <- parent.frame()
+  if ("setup" %in% names(code_list)) {
+    code_list$setup_env <- .rtmb_setup_env(code_env, code_list$setup)
+  }
+  code_list$env <- code_env
   return(code_list)
 }
 
@@ -917,6 +921,14 @@ model_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
           dist_name <- as.character(dist_name_raw)
         }
         dist_args <- as.list(dist_call[-1])
+        target_args <- if (is.call(target) && .rtmb_is_call_to(target, "obs")) {
+          if (length(target) < 2L) {
+            stop("obs() on the left side of '~' must contain at least one observed value.", call. = FALSE)
+          }
+          as.list(target[-1])
+        } else {
+          list(target)
+        }
 
         name_lpdf <- paste0(dist_name, "_lpdf")
         name_lpmf <- paste0(dist_name, "_lpmf")
@@ -955,7 +967,7 @@ model_code <- function(expr, env = parent.frame(), ad_seed_name = NULL) {
           as.call(c(
             as.name("+"),
             as.name("lp"),
-            as.call(c(func_call, target, dist_args))
+            as.call(c(list(func_call), target_args, dist_args))
           ))
         ))
         return(new_call)

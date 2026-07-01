@@ -184,7 +184,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       h2 <- rowSums(Lambda * (Lambda %*% CF_Omega))
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      L <- Lambda / sd_Y
+      L <- Lambda / matrix(sd_Y, nrow = J, ncol = K)
       fa_cor <- CF_Omega %*% t(CF_Omega)
     })
 
@@ -284,7 +284,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       h2 <- rowSums(L_raw^2)
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      L <- L_raw/sd_Y
+      L <- L_raw / matrix(sd_Y, nrow = J, ncol = K)
     })
 
     model_exprs <- list()
