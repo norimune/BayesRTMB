@@ -205,6 +205,8 @@ Functions used within rtmb_code for stability and transformations.
   : Calculate conditional effects for MCMC fit objects
 - [`debate`](https://norimune.github.io/BayesRTMB/reference/debate.md) :
   Debate Simulation Data
+- [`diffusion_lpdf()`](https://norimune.github.io/BayesRTMB/reference/diffusion_lpdf.md)
+  : Diffusion model log-probability density function
 - [`distance()`](https://norimune.github.io/BayesRTMB/reference/distance.md)
   : Euclidean distance
 - [`distributions`](https://norimune.github.io/BayesRTMB/reference/distributions.md)
@@ -215,6 +217,8 @@ Functions used within rtmb_code for stability and transformations.
   : Calculate Bulk Effective Sample Size
 - [`ess_tail95()`](https://norimune.github.io/BayesRTMB/reference/ess_tail95.md)
   : Calculate Tail Effective Sample Size (at 2.5% and 97.5% quantiles)
+- [`exp_mod_normal_lpdf()`](https://norimune.github.io/BayesRTMB/reference/exp_mod_normal_lpdf.md)
+  : Exponentially modified normal log-probability density function
 - [`fabs()`](https://norimune.github.io/BayesRTMB/reference/fabs.md) :
   Smooth absolute value function
 - [`gaussian_process_lpdf()`](https://norimune.github.io/BayesRTMB/reference/gaussian_process_lpdf.md)

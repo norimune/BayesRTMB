@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -351,13 +351,122 @@
 </div>
 </div>
 <div class="section level2">
+<h2 id="自作分布を使う">自作分布を使う<a class="anchor" aria-label="anchor" href="#%E8%87%AA%E4%BD%9C%E5%88%86%E5%B8%83%E3%82%92%E4%BD%BF%E3%81%86"></a>
+</h2>
+<p><code>setup</code>
+ブロックには、データの前処理だけでなく、モデル内で使う補助関数も定義できます。連続分布の場合は、関数名を
+<code>_lpdf</code> で終わる形にしておくと、<code>model</code>
+ブロックでサンプリング記法として使えます。</p>
+<p>たとえば、<code>exgaussian_lpdf()</code> を <code>setup</code>
+で定義すると、<code>model</code> ブロックでは次のように書けます。</p>
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">exgaussian</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span></span></code></pre></div>
+<p>これは内部的には、次のように対数密度を足すのと同じです。</p>
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu">exgaussian_lpdf</span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span></span></code></pre></div>
+<p>次の例では、秒単位の反応時間を ex-Gaussian
+分布から生成し、同じ分布で推定します。ここでは <code>lambda</code>
+を指数分布成分の rate として使います。</p>
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">simulate_exgaussian</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="va">N</span>, rate <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1234</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="fl">0.45</span>, sigma <span class="op">=</span> <span class="fl">0.06</span>, lambda <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">rt</span> <span class="op">&lt;-</span> <span class="fu">simulate_exgaussian</span><span class="op">(</span></span>
+<span>  N <span class="op">=</span> <span class="fl">500</span>,</span>
+<span>  mu <span class="op">=</span> <span class="va">true</span><span class="op">[</span><span class="st">"mu"</span><span class="op">]</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="va">true</span><span class="op">[</span><span class="st">"sigma"</span><span class="op">]</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="va">true</span><span class="op">[</span><span class="st">"lambda"</span><span class="op">]</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span></span></code></pre></div>
+<p>モデルコードは次のように書けます。</p>
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">code_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  setup <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">rt</span></span>
+<span></span>
+<span>    <span class="va">exgaussian_lpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span>, <span class="va">sum</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">z</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">mu</span><span class="op">)</span> <span class="op">/</span> <span class="va">sigma</span> <span class="op">-</span> <span class="va">lambda</span> <span class="op">*</span> <span class="va">sigma</span></span>
+<span></span>
+<span>      <span class="va">res</span> <span class="op">&lt;-</span></span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">lambda</span><span class="op">)</span> <span class="op">+</span></span>
+<span>        <span class="va">lambda</span> <span class="op">*</span> <span class="op">(</span><span class="va">mu</span> <span class="op">-</span> <span class="va">x</span><span class="op">)</span> <span class="op">+</span></span>
+<span>        <span class="fl">0.5</span> <span class="op">*</span> <span class="op">(</span><span class="va">lambda</span> <span class="op">*</span> <span class="va">sigma</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span></span>
+<span>        <span class="fu">RTMB</span><span class="fu">::</span><span class="fu">pnorm</span><span class="op">(</span><span class="va">z</span>, log.p <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="kw">if</span> <span class="op">(</span><span class="va">sum</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span> <span class="kw">else</span> <span class="va">res</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span>,</span>
+<span></span>
+<span>  parameters <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">mu</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span></span>
+<span>  model <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">exgaussian</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">mu</span>     <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span>  <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">lambda</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span></span>
+<span>  generate <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu">exgaussian_lpdf</span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>    <span class="fu">report</span><span class="op">(</span><span class="va">log_lik</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>このモデルでは、初期値を観測データのスケールに合わせて指定しておくと安定しやすくなります。</p>
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">init_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mdl_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span></span>
+<span>  data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rt <span class="op">=</span> <span class="va">rt</span><span class="op">)</span>,</span>
+<span>  code <span class="op">=</span> <span class="va">code_exgaussian</span>,</span>
+<span>  init <span class="op">=</span> <span class="va">init_exgaussian</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>まず MAP 推定で、既知の真値がどの程度回復されるかを確認できます。</p>
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">est_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_map</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">true</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  parameter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">true</span><span class="op">)</span>,</span>
+<span>  true <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">true</span><span class="op">)</span>,</span>
+<span>  estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">est_map</span><span class="op">)</span>,</span>
+<span>  error <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">est_map</span> <span class="op">-</span> <span class="va">true</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>同じモデルから MCMC や変分推論も実行できます。</p>
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_vb</span></span></code></pre></div>
+<p>WAIC を使いたい場合は、<code>generate</code> ブロックで観測ごとの
+<code>log_lik</code> を保存します。そのため、自作した <code>_lpdf</code>
+関数を <code>sum = FALSE</code> で呼び出します。</p>
+</div>
+<div class="section level2">
 <h2 id="回帰モデル">回帰モデル<a class="anchor" aria-label="anchor" href="#%E5%9B%9E%E5%B8%B0%E3%83%A2%E3%83%87%E3%83%AB"></a>
 </h2>
 <p>次に、回帰モデルを書きます。ここでは <code>debate</code>
 データを使い、満足度 <code>sat</code> を発言量
 <code>talk</code>、パフォーマンス <code>perf</code>、スキル
 <code>skill</code> で説明します。</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">debate</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
@@ -372,7 +481,7 @@
 で数値行列にしておくのが安全です。<code>data.frame</code> のまま
 <code>%*%</code>
 を使うと、列の型によってエラーになることがあります。</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
@@ -396,7 +505,7 @@
 <p>このモデルでは、<code>beta &lt;- Dim(P)</code>
 として、説明変数の数に応じた回帰係数ベクトルを宣言しています。</p>
 <p><code>par_names</code> を使うと、出力の名前を読みやすくできます。</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_reg</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span></span>
 <span>  data <span class="op">=</span> <span class="va">data_reg</span>,</span>
 <span>  code <span class="op">=</span> <span class="va">code_reg</span>,</span>
@@ -411,7 +520,7 @@
 <h3 id="中心化した回帰モデル">中心化した回帰モデル<a class="anchor" aria-label="anchor" href="#%E4%B8%AD%E5%BF%83%E5%8C%96%E3%81%97%E3%81%9F%E5%9B%9E%E5%B8%B0%E3%83%A2%E3%83%87%E3%83%AB"></a>
 </h3>
 <p>回帰モデルでは、説明変数を中心化しておくと、切片の推定が安定しやすくなります。切片が「説明変数がすべて0のときの平均」ではなく、「説明変数が平均的な値のときの平均」に近い意味を持つためです。</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">data_reg2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  Y <span class="op">=</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span>,</span>
 <span>  X <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">debate</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>, <span class="st">"perf"</span>, <span class="st">"skill"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
@@ -447,7 +556,7 @@
 を作っています。<code>alpha_c</code>
 は中心化後の切片です。<code>transform</code> では、元の尺度での切片
 <code>alpha</code> も計算しています。</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">alpha</span> <span class="op">&lt;-</span> <span class="va">alpha_c</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">X_mean</span> <span class="op">*</span> <span class="va">beta</span><span class="op">)</span></span></code></pre></div>
 <p>このようにしておくと、推定では安定しやすい中心化切片
 <code>alpha_c</code> を使いながら、必要に応じて元の尺度での切片
@@ -459,7 +568,7 @@
 </h2>
 <p>自分で <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> を書く場合、事前分布は
 <code>model</code> ブロックに明示的に書きます。</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span>  <span class="va">alpha</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">10</span><span class="op">)</span></span>
@@ -478,7 +587,7 @@
 <p>たとえば、<code>sigma</code> は正の値なので、宣言では
 <code>Dim(lower = 0)</code> とし、事前分布も <code>exponential()</code>
 のような正の分布を使います。</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">sigma</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">}</span></span>
@@ -520,12 +629,12 @@
 </tbody>
 </table>
 <p>たとえば、順序ロジスティックモデルでは、カットポイントが昇順である必要があります。</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">cutpoints</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">K</span> <span class="op">-</span> <span class="fl">1</span>, type <span class="op">=</span> <span class="st">"ordered"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>混合分布モデルの混合率には、和が1になる正のベクトルが必要です。</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">K</span>, type <span class="op">=</span> <span class="st">"simplex"</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -536,7 +645,7 @@
 <p>階層モデルでは、ランダム効果を <code>random = TRUE</code>
 として宣言します。</p>
 <p>ここでは、グループごとに切片が異なる線形モデルを書きます。</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">debate</span><span class="op">$</span><span class="va">sat</span></span>
 <span><span class="va">X_names</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>, <span class="st">"perf"</span>, <span class="st">"skill"</span><span class="op">)</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">debate</span><span class="op">[</span>, <span class="va">X_names</span><span class="op">]</span><span class="op">)</span></span>
@@ -549,7 +658,7 @@
 <span>  group <span class="op">=</span> <span class="va">group</span>,</span>
 <span>  G <span class="op">=</span> <span class="va">G</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_hlm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
@@ -577,13 +686,13 @@
 <p>ここでは、<code>r</code>
 が標準正規分布に従うランダム効果で、<code>tau</code>
 がその標準偏差です。</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">r</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">G</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">r</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span>
 <span><span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">alpha</span> <span class="op">+</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">beta</span> <span class="op">+</span> <span class="va">tau</span> <span class="op">*</span> <span class="va">r</span><span class="op">[</span><span class="va">group</span><span class="op">]</span></span></code></pre></div>
 <p><code>random = TRUE</code>
 にしたパラメータは、MAP推定ではラプラス近似の対象になります。</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_hlm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span></span>
 <span>  data <span class="op">=</span> <span class="va">data_hlm</span>,</span>
 <span>  code <span class="op">=</span> <span class="va">code_hlm</span>,</span>
@@ -600,7 +709,7 @@
 </h2>
 <p>順序カテゴリカルデータには、<code>ordered_logistic()</code>
 を使えます。</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">debate</span><span class="op">$</span><span class="va">sat</span><span class="op">)</span></span>
 <span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">debate</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>, <span class="st">"perf"</span>, <span class="st">"skill"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/sort.html" class="external-link">sort</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/unique.html" class="external-link">unique</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span><span class="op">)</span><span class="op">)</span></span>
@@ -610,7 +719,7 @@
 <span>  X <span class="op">=</span> <span class="va">X</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_ord</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
@@ -632,7 +741,7 @@
 は必ず順序を持つ必要があるので、<code>type = "ordered"</code>
 としています。</p>
 <p>二値データやカウントデータでは、確率そのものではなく、線形予測子を直接受け取る分布が便利です。</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">bernoulli_logit</span><span class="op">(</span><span class="va">eta</span><span class="op">)</span></span>
 <span><span class="va">Y</span> <span class="op">~</span> <span class="fu"><a href="https://rdrr.io/r/stats/family.html" class="external-link">poisson</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">exp</a></span><span class="op">(</span><span class="va">eta</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 <p>ロジットスケールや対数スケールで計算するため、数値的に安定しやすくなります。</p>
@@ -641,7 +750,7 @@
 <h2 id="混合分布モデル">混合分布モデル<a class="anchor" aria-label="anchor" href="#%E6%B7%B7%E5%90%88%E5%88%86%E5%B8%83%E3%83%A2%E3%83%87%E3%83%AB"></a>
 </h2>
 <p>混合分布モデルは、制約つきパラメータと複数初期値を使うモデリングのいい例です。</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">123</span><span class="op">)</span></span>
 <span><span class="va">N</span> <span class="op">&lt;-</span> <span class="fl">300</span></span>
 <span><span class="va">K</span> <span class="op">&lt;-</span> <span class="fl">3</span></span>
@@ -657,7 +766,7 @@
 <span>  Y <span class="op">=</span> <span class="va">Y</span>,</span>
 <span>  K <span class="op">=</span> <span class="va">K</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">K</span>, type <span class="op">=</span> <span class="st">"simplex"</span><span class="op">)</span></span>
@@ -677,12 +786,12 @@
 を多めにして、複数の初期値から最もよい解を選ぶのが有効です。通常は、自分で初期値を細かく指定するよりも、まずは
 <code>init</code> を指定せずに <code>num_estimate</code>
 を増やすほうが手軽です。</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_mix</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span><span class="va">data_mix</span>, <span class="va">code_mix</span><span class="op">)</span></span>
 <span><span class="va">fit_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span></code></pre></div>
 <p>MCMCを行う場合は、MAP推定で得られたパラメータ推定値を初期値として使うと安定しやすくなります。必要に応じて
 <code>init_jitter</code> で少しだけ揺らします。</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mix_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  init <span class="op">=</span> <span class="va">fit_mix</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span><span class="st">"parameters"</span><span class="op">)</span>,</span>
 <span>  init_jitter <span class="op">=</span> <span class="fl">0.2</span></span>
@@ -697,7 +806,7 @@
 </h3>
 <p>行列積 <code>%*%</code> を使う場合、<code>X</code> は
 <code>matrix</code> にしておくのが安全です。</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">debate</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"talk"</span>, <span class="st">"perf"</span>, <span class="st">"skill"</span><span class="op">)</span><span class="op">]</span><span class="op">)</span></span></code></pre></div>
 <p><code>data.frame</code> のまま渡すと、列型によっては
 <code>X %*% beta</code> でエラーになります。</p>
@@ -715,7 +824,7 @@
 <h3 id="ad型に対する-if-文">AD型に対する if 文<a class="anchor" aria-label="anchor" href="#ad%E5%9E%8B%E3%81%AB%E5%AF%BE%E3%81%99%E3%82%8B-if-%E6%96%87"></a>
 </h3>
 <p>推定中のパラメータを使った条件分岐は、<code>RTMB</code>のAD計算で問題になることがあります。</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw">if</span> <span class="op">(</span><span class="va">theta</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="va">...</span></span></code></pre></div>
 <p>のような書き方は避け、滑らかな関数や制約つきパラメータ化で表現するほうが安全です。</p>
 </div>
@@ -723,7 +832,7 @@
 <h3 id="初期値">初期値<a class="anchor" aria-label="anchor" href="#%E5%88%9D%E6%9C%9F%E5%80%A4"></a>
 </h3>
 <p>複雑なモデルでは、初期値が重要です。</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">init</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  alpha <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>,</span>
 <span>  beta <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/rep.html" class="external-link">rep</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span><span class="op">)</span>,</span>
@@ -751,7 +860,7 @@
 型の値が入るベクトルや配列を作りたいことがあります。その場合は、<code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric()</a></code>、<code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>、<code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>
 の代わりに <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> や <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code>
 を使います。</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">N</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -759,7 +868,7 @@
 <span>  <span class="op">}</span></span>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">eta</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">logit_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N_time</span>, <span class="va">C</span>, <span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N_time</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -781,7 +890,7 @@
 は、新しいバージョンで追加されたメソッドをそのまま持っていないことがあります。その場合は、<code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code>
 を使うと、保存済みの MCMC、VB、MAP、classic の fit object
 を現在読み込まれているクラス定義で作り直せます。</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <p>これはモデルを再推定する関数ではありません。保存されている推定結果を新しい
 fit object

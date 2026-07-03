@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -239,6 +239,10 @@ elements.</p>
 </h3>
 <p><strong>Continuous Probability Distributions (LPDF)</strong></p>
 <table class="table">
+<colgroup>
+<col width="50%">
+<col width="50%">
+</colgroup>
 <thead><tr class="header">
 <th align="left">Function</th>
 <th align="left">Description</th>
@@ -253,26 +257,30 @@ elements.</p>
 <td align="left">Log-normal distribution.</td>
 </tr>
 <tr class="odd">
+<td align="left"><code>exp_mod_normal(mu, sigma, lambda)</code></td>
+<td align="left">Exponentially modified normal distribution.</td>
+</tr>
+<tr class="even">
 <td align="left"><code>exponential(rate)</code></td>
 <td align="left">Exponential distribution.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><code>cauchy(location, scale)</code></td>
 <td align="left">Cauchy distribution.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><code>student_t(df, mu, sigma)</code></td>
 <td align="left">Student’s t-distribution.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><code>gamma(shape, rate)</code></td>
 <td align="left">Gamma distribution.</td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td align="left"><code>inverse_gamma(shape, scale)</code></td>
 <td align="left">Inverse-gamma distribution.</td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td align="left"><code>beta(a, b)</code></td>
 <td align="left">Beta distribution.</td>
 </tr>
@@ -395,11 +403,123 @@ statistics. Extremely computationally efficient for large samples.</td>
 distributions.</td>
 </tr>
 <tr class="even">
+<td align="left"><code>diffusion(alpha, tau, beta, delta)</code></td>
+<td align="left">Drift diffusion model for response times and binary
+choices. Use as <code>obs(RT, Choice) ~ diffusion(...)</code>.</td>
+</tr>
+<tr class="odd">
 <td align="left"><code>wishart(n, V)</code></td>
 <td align="left">Wishart distribution.</td>
 </tr>
 </tbody>
 </table>
+</div>
+<div class="section level3">
+<h3 id="user-defined-distributions">2-4. User-Defined Distributions<a class="anchor" aria-label="anchor" href="#user-defined-distributions"></a>
+</h3>
+<p>You can also define a custom log-density function in the
+<code>setup</code> block and use it with the sampling syntax. The
+function name should end in <code>_lpdf</code> for continuous
+distributions or <code>_lpmf</code> for discrete distributions. For
+example, <code>exgaussian_lpdf()</code> can be used in the model block
+as <code>Y ~ exgaussian(mu, sigma, lambda)</code>.</p>
+<p>The following example simulates response times in seconds from an
+ex-Gaussian distribution and fits the same model. Here,
+<code>lambda</code> is the rate of the exponential component.</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">simulate_exgaussian</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span> <span class="op">{</span></span>
+<span>  <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="va">N</span>, mean <span class="op">=</span> <span class="va">mu</span>, sd <span class="op">=</span> <span class="va">sigma</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="va">N</span>, rate <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span></span>
+<span><span class="op">}</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">1234</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">true</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>mu <span class="op">=</span> <span class="fl">0.45</span>, sigma <span class="op">=</span> <span class="fl">0.06</span>, lambda <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
+<span><span class="va">rt</span> <span class="op">&lt;-</span> <span class="fu">simulate_exgaussian</span><span class="op">(</span></span>
+<span>  N <span class="op">=</span> <span class="fl">500</span>,</span>
+<span>  mu <span class="op">=</span> <span class="va">true</span><span class="op">[</span><span class="st">"mu"</span><span class="op">]</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="va">true</span><span class="op">[</span><span class="st">"sigma"</span><span class="op">]</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="va">true</span><span class="op">[</span><span class="st">"lambda"</span><span class="op">]</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/graphics/hist.html" class="external-link">hist</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span></span></code></pre></div>
+<p>The user-defined distribution is placed in <code>setup</code>. The
+model block can then use the same sampling syntax as built-in
+distributions.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">code_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  setup <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">rt</span></span>
+<span></span>
+<span>    <span class="va">exgaussian_lpdf</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span>, <span class="va">sum</span> <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span> <span class="op">{</span></span>
+<span>      <span class="va">z</span> <span class="op">&lt;-</span> <span class="op">(</span><span class="va">x</span> <span class="op">-</span> <span class="va">mu</span><span class="op">)</span> <span class="op">/</span> <span class="va">sigma</span> <span class="op">-</span> <span class="va">lambda</span> <span class="op">*</span> <span class="va">sigma</span></span>
+<span></span>
+<span>      <span class="va">res</span> <span class="op">&lt;-</span></span>
+<span>        <span class="fu"><a href="https://rdrr.io/r/base/Log.html" class="external-link">log</a></span><span class="op">(</span><span class="va">lambda</span><span class="op">)</span> <span class="op">+</span></span>
+<span>        <span class="va">lambda</span> <span class="op">*</span> <span class="op">(</span><span class="va">mu</span> <span class="op">-</span> <span class="va">x</span><span class="op">)</span> <span class="op">+</span></span>
+<span>        <span class="fl">0.5</span> <span class="op">*</span> <span class="op">(</span><span class="va">lambda</span> <span class="op">*</span> <span class="va">sigma</span><span class="op">)</span><span class="op">^</span><span class="fl">2</span> <span class="op">+</span></span>
+<span>        <span class="fu">RTMB</span><span class="fu">::</span><span class="fu">pnorm</span><span class="op">(</span><span class="va">z</span>, log.p <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span></span>
+<span>      <span class="kw">if</span> <span class="op">(</span><span class="va">sum</span><span class="op">)</span> <span class="fu"><a href="https://rdrr.io/r/base/sum.html" class="external-link">sum</a></span><span class="op">(</span><span class="va">res</span><span class="op">)</span> <span class="kw">else</span> <span class="va">res</span></span>
+<span>    <span class="op">}</span></span>
+<span>  <span class="op">}</span>,</span>
+<span></span>
+<span>  parameters <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">mu</span>     <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span>  <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>    <span class="va">lambda</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span>lower <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span></span>
+<span>  model <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">Y</span> <span class="op">~</span> <span class="fu">exgaussian</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span></span>
+<span></span>
+<span>    <span class="va">mu</span>     <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">sigma</span>  <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span><span class="op">)</span></span>
+<span>    <span class="va">lambda</span> <span class="op">~</span> <span class="fu">exponential</span><span class="op">(</span><span class="fl">1</span> <span class="op">/</span> <span class="fl">10</span><span class="op">)</span></span>
+<span>  <span class="op">}</span>,</span>
+<span></span>
+<span>  generate <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu">exgaussian_lpdf</span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
+<span>    <span class="fu">report</span><span class="op">(</span><span class="va">log_lik</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>For this model, it is helpful to provide initial values on the scale
+of the observed response times.</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">init_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
+<span>  mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
+<span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
+<span>  lambda <span class="op">=</span> <span class="fl">1</span> <span class="op">/</span> <span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span><span class="op">)</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">mdl_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_model.html">rtmb_model</a></span><span class="op">(</span></span>
+<span>  data <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>rt <span class="op">=</span> <span class="va">rt</span><span class="op">)</span>,</span>
+<span>  code <span class="op">=</span> <span class="va">code_exgaussian</span>,</span>
+<span>  init <span class="op">=</span> <span class="va">init_exgaussian</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">est_map</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/unlist.html" class="external-link">unlist</a></span><span class="op">(</span><span class="va">fit_map</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span><span class="op">)</span><span class="op">[</span><span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">true</span><span class="op">)</span><span class="op">]</span></span>
+<span><span class="fu"><a href="https://rdrr.io/r/base/data.frame.html" class="external-link">data.frame</a></span><span class="op">(</span></span>
+<span>  parameter <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/names.html" class="external-link">names</a></span><span class="op">(</span><span class="va">true</span><span class="op">)</span>,</span>
+<span>  true <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">true</span><span class="op">)</span>,</span>
+<span>  estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">est_map</span><span class="op">)</span>,</span>
+<span>  error <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">est_map</span> <span class="op">-</span> <span class="va">true</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>The same model can be sampled with MCMC or fit with variational
+inference.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_vb</span></span></code></pre></div>
+<p>When WAIC is needed, the <code>generate</code> block should save an
+observation-wise <code>log_lik</code> by calling the custom
+<code>_lpdf</code> with <code>sum = FALSE</code>.</p>
 </div>
 </div>
 <div class="section level2">
@@ -615,7 +735,7 @@ vector inside a loop.</p>
 will later be assigned AD values, use <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> or
 <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> instead of <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric()</a></code>,
 <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>, or <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">N</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -623,7 +743,7 @@ will later be assigned AD values, use <code><a href="../reference/rtmb_vector.ht
 <span>  <span class="op">}</span></span>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">eta</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">logit_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N_time</span>, <span class="va">C</span>, <span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N_time</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -649,7 +769,7 @@ evaluation.</p>
 automatically have methods added in newer versions. Use
 <code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code> to rebuild an existing MCMC, VB, MAP, or
 classic fit object with the currently loaded class definitions.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <p>This does not refit the model. It copies the stored estimation
 results into a new fit object, and by default also rebuilds the embedded

@@ -948,14 +948,15 @@ lp <- lp + normal_lpdf(Y, mu, sigma)
 
 Common continuous distributions include:
 
-| Function family | Example                            |
-|-----------------|------------------------------------|
-| Normal          | `normal_lpdf(y, mu, sigma)`        |
-| Student t       | `student_t_lpdf(y, df, mu, sigma)` |
-| Exponential     | `exponential_lpdf(x, rate)`        |
-| Gamma           | `gamma_lpdf(x, shape, rate)`       |
-| Beta            | `beta_lpdf(x, a, b)`               |
-| Laplace         | `laplace_lpdf(x, mu, sigma)`       |
+| Function family | Example                                     |
+|-----------------|---------------------------------------------|
+| Normal          | `normal_lpdf(y, mu, sigma)`                 |
+| Student t       | `student_t_lpdf(y, df, mu, sigma)`          |
+| Exp-mod normal  | `exp_mod_normal_lpdf(x, mu, sigma, lambda)` |
+| Exponential     | `exponential_lpdf(x, rate)`                 |
+| Gamma           | `gamma_lpdf(x, shape, rate)`                |
+| Beta            | `beta_lpdf(x, a, b)`                        |
+| Laplace         | `laplace_lpdf(x, mu, sigma)`                |
 
 ### 12.2 Discrete Distributions
 
@@ -985,6 +986,14 @@ L_corr ~ lkj_CF_corr(1)
 Mixture models usually build a matrix of component log densities and
 combine them with
 [`log_sum_exp()`](https://norimune.github.io/BayesRTMB/reference/log_sum_exp.md).
+
+For response-time models with both a response time and a binary choice,
+use the multi-observation syntax:
+
+``` r
+
+obs(RT, Choice) ~ diffusion(alpha, tau, beta, delta)
+```
 
 ``` r
 

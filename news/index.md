@@ -1,5 +1,20 @@
 # Changelog
 
+## BayesRTMB 0.2.2
+
+- Added response-time distributions for model code:
+  [`exp_mod_normal_lpdf()`](https://norimune.github.io/BayesRTMB/reference/exp_mod_normal_lpdf.md)
+  and
+  [`diffusion_lpdf()`](https://norimune.github.io/BayesRTMB/reference/diffusion_lpdf.md),
+  with sampling syntax support via `exp_mod_normal(...)` and
+  `obs(RT, Choice) ~ diffusion(...)`.
+- Added `obs(...)` sampling syntax for multivariate observed values on
+  the left side of `~`.
+- Improved setup helper capture so functions referenced in `setup` are
+  more reliably available when building models and running parallel
+  workers.
+- Improved factor-analysis AD robustness and rotation output naming.
+
 ## BayesRTMB 0.2.1
 
 CRAN release: 2026-06-23

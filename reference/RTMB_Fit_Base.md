@@ -214,7 +214,9 @@ Rotate sampled parameters.
       target,
       reference = NULL,
       linked = NULL,
-      principal = FALSE
+      principal = FALSE,
+      suffix = "rot",
+      overwrite = TRUE
     )
 
 #### Arguments
@@ -240,6 +242,16 @@ Rotate sampled parameters.
   first rotated to its principal axes and then used as the Procrustes
   reference. This is useful for MDU configurations.
 
+- `suffix`:
+
+  Character suffix used for generated quantities. The default stores
+  results as \`\<variable\>\_rot\`.
+
+- `overwrite`:
+
+  Logical; if TRUE, existing generated quantities with the same names
+  are overwritten. If FALSE, a numeric suffix is appended.
+
 #### Returns
 
 The updated object invisibly.
@@ -257,7 +269,9 @@ Rotate factor loadings and optional factor scores.
       linked = NULL,
       scores = NULL,
       rotate = "promax",
-      ...
+      ...,
+      suffix = NULL,
+      overwrite = TRUE
     )
 
 #### Arguments
@@ -284,6 +298,16 @@ Rotate factor loadings and optional factor scores.
 - `...`:
 
   Additional arguments passed to the rotation function.
+
+- `suffix`:
+
+  Character suffix used for generated quantities. If NULL, the rotation
+  method name is used.
+
+- `overwrite`:
+
+  Logical; if TRUE, existing generated quantities with the same names
+  are overwritten. If FALSE, a numeric suffix is appended.
 
 #### Returns
 

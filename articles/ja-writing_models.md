@@ -297,6 +297,143 @@ fit_reg <- mdl_reg$optimize()
 fit_reg$generated_quantities(new_generate)
 ```
 
+## 自作分布を使う
+
+`setup`
+ブロックには、データの前処理だけでなく、モデル内で使う補助関数も定義できます。連続分布の場合は、関数名を
+`_lpdf` で終わる形にしておくと、`model`
+ブロックでサンプリング記法として使えます。
+
+たとえば、`exgaussian_lpdf()` を `setup` で定義すると、`model`
+ブロックでは次のように書けます。
+
+``` r
+
+Y ~ exgaussian(mu, sigma, lambda)
+```
+
+これは内部的には、次のように対数密度を足すのと同じです。
+
+``` r
+
+lp <- lp + exgaussian_lpdf(Y, mu, sigma, lambda)
+```
+
+次の例では、秒単位の反応時間を ex-Gaussian
+分布から生成し、同じ分布で推定します。ここでは `lambda` を指数分布成分の
+rate として使います。
+
+``` r
+
+library(BayesRTMB)
+
+simulate_exgaussian <- function(N, mu, sigma, lambda) {
+  rnorm(N, mean = mu, sd = sigma) + rexp(N, rate = lambda)
+}
+
+set.seed(1234)
+
+true <- c(mu = 0.45, sigma = 0.06, lambda = 8)
+rt <- simulate_exgaussian(
+  N = 500,
+  mu = true["mu"],
+  sigma = true["sigma"],
+  lambda = true["lambda"]
+)
+
+hist(rt)
+```
+
+モデルコードは次のように書けます。
+
+``` r
+
+code_exgaussian <- rtmb_code(
+  setup = {
+    Y <- rt
+
+    exgaussian_lpdf <- function(x, mu, sigma, lambda, sum = TRUE) {
+      z <- (x - mu) / sigma - lambda * sigma
+
+      res <-
+        log(lambda) +
+        lambda * (mu - x) +
+        0.5 * (lambda * sigma)^2 +
+        RTMB::pnorm(z, log.p = TRUE)
+
+      if (sum) sum(res) else res
+    }
+  },
+
+  parameters = {
+    mu     <- Dim(lower = 0)
+    sigma  <- Dim(lower = 0)
+    lambda <- Dim(lower = 0)
+  },
+
+  model = {
+    Y ~ exgaussian(mu, sigma, lambda)
+
+    mu     ~ exponential(1)
+    sigma  ~ exponential(1)
+    lambda ~ exponential(1 / 10)
+  },
+
+  generate = {
+    log_lik <- exgaussian_lpdf(Y, mu, sigma, lambda, sum = FALSE)
+    report(log_lik)
+  }
+)
+```
+
+このモデルでは、初期値を観測データのスケールに合わせて指定しておくと安定しやすくなります。
+
+``` r
+
+init_exgaussian <- list(
+  mu = median(rt) - sd(rt) / 2,
+  sigma = sd(rt) / 2,
+  lambda = 1 / (sd(rt) / 2)
+)
+
+mdl_exgaussian <- rtmb_model(
+  data = list(rt = rt),
+  code = code_exgaussian,
+  init = init_exgaussian
+)
+```
+
+まず MAP 推定で、既知の真値がどの程度回復されるかを確認できます。
+
+``` r
+
+fit_map <- mdl_exgaussian$optimize(num_estimate = 5)
+
+est_map <- unlist(fit_map$estimate(pars = "parameters"))[names(true)]
+data.frame(
+  parameter = names(true),
+  true = as.numeric(true),
+  estimate = as.numeric(est_map),
+  error = as.numeric(est_map - true)
+)
+```
+
+同じモデルから MCMC や変分推論も実行できます。
+
+``` r
+
+fit_mcmc <- mdl_exgaussian$sample(parallel = TRUE)
+fit_mcmc
+fit_mcmc$WAIC()
+
+fit_vb <- mdl_exgaussian$variational()
+fit_vb
+```
+
+WAIC を使いたい場合は、`generate` ブロックで観測ごとの `log_lik`
+を保存します。そのため、自作した `_lpdf` 関数を `sum = FALSE`
+で呼び出します。
+
 ## 回帰モデル
 
 次に、回帰モデルを書きます。ここでは `debate` データを使い、満足度 `sat`

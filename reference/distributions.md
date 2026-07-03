@@ -20,6 +20,9 @@ two ways:
 
 - `lognormal(meanlog, sdlog)`: Lognormal distribution.
 
+- `exp_mod_normal(mu, sigma, lambda)`: Exponentially modified normal
+  distribution.
+
 - `exponential(rate)`: Exponential distribution.
 
 - `cauchy(location, scale)`: Cauchy distribution.
@@ -76,6 +79,12 @@ two ways:
 - `sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)`: Factor
   analysis likelihood using sufficient statistics (highly efficient for
   large sample sizes).
+
+**Response-time Distributions:**
+
+- `diffusion(alpha, tau, beta, delta)`: Drift diffusion model likelihood
+  for response times and binary choices. Use with
+  `obs(RT, Choice) ~ diffusion(...)`.
 
 **Vectorization:** Most univariate distributions are vectorized. If `y`
 and `mu` are vectors, `y ~ normal(mu, sigma)` will calculate the sum of

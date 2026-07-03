@@ -11,7 +11,7 @@ which internally adds the log-density to the model's total log-posterior."></hea
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -74,6 +74,7 @@ In `rtmb_code`, you can specify distributions in two ways:</p><ul><li><p><strong
 <li><p><strong>Explicit Function Call:</strong> <code>lp &lt;- lp + normal_lpdf(y, mu, sigma)</code></p></li>
 </ul><p><strong>Continuous Distributions (LPDF):</strong></p><ul><li><p><code>normal(mean, sd)</code>: Normal distribution.</p></li>
 <li><p><code>lognormal(meanlog, sdlog)</code>: Lognormal distribution.</p></li>
+<li><p><code>exp_mod_normal(mu, sigma, lambda)</code>: Exponentially modified normal distribution.</p></li>
 <li><p><code>exponential(rate)</code>: Exponential distribution.</p></li>
 <li><p><code>cauchy(location, scale)</code>: Cauchy distribution.</p></li>
 <li><p><code>student_t(df, mu, sigma)</code>: Student's t-distribution.</p></li>
@@ -95,6 +96,7 @@ In `rtmb_code`, you can specify distributions in two ways:</p><ul><li><p><strong
 <li><p><code>lower_tri_normal(mean, sd)</code>: Normal distribution for elements of a lower-triangular matrix.</p></li>
 <li><p><code>centered_tri_multi_normal(sigma)</code>: Multivariate normal for centered triangular matrices (used in identification constraints).</p></li>
 <li><p><code>sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)</code>: Factor analysis likelihood using sufficient statistics (highly efficient for large sample sizes).</p></li>
+</ul><p><strong>Response-time Distributions:</strong></p><ul><li><p><code>diffusion(alpha, tau, beta, delta)</code>: Drift diffusion model likelihood for response times and binary choices. Use with <code>obs(RT, Choice) ~ diffusion(...)</code>.</p></li>
 </ul><p><strong>Vectorization:</strong>
 Most univariate distributions are vectorized. If <code>y</code> and <code>mu</code> are vectors,
 <code>y ~ normal(mu, sigma)</code> will calculate the sum of log-densities for all elements

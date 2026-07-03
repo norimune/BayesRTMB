@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.1</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -1471,18 +1471,22 @@ explicit log-density functions.</p>
 <td><code>student_t_lpdf(y, df, mu, sigma)</code></td>
 </tr>
 <tr class="odd">
+<td>Exp-mod normal</td>
+<td><code>exp_mod_normal_lpdf(x, mu, sigma, lambda)</code></td>
+</tr>
+<tr class="even">
 <td>Exponential</td>
 <td><code>exponential_lpdf(x, rate)</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Gamma</td>
 <td><code>gamma_lpdf(x, shape, rate)</code></td>
 </tr>
-<tr class="odd">
+<tr class="even">
 <td>Beta</td>
 <td><code>beta_lpdf(x, a, b)</code></td>
 </tr>
-<tr class="even">
+<tr class="odd">
 <td>Laplace</td>
 <td><code>laplace_lpdf(x, mu, sigma)</code></td>
 </tr>
@@ -1513,7 +1517,11 @@ effects.</p>
 </h3>
 <p>Mixture models usually build a matrix of component log densities and
 combine them with <code><a href="../reference/log_sum_exp.html">log_sum_exp()</a></code>.</p>
+<p>For response-time models with both a response time and a binary
+choice, use the multi-observation syntax:</p>
 <div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="fu">obs</span><span class="op">(</span><span class="va">RT</span>, <span class="va">Choice</span><span class="op">)</span> <span class="op">~</span> <span class="fu">diffusion</span><span class="op">(</span><span class="va">alpha</span>, <span class="va">tau</span>, <span class="va">beta</span>, <span class="va">delta</span><span class="op">)</span></span></code></pre></div>
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">log_dens_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix</a></span><span class="op">(</span><span class="va">mu</span><span class="op">[</span><span class="fl">1</span><span class="op">]</span> <span class="op">*</span> <span class="fl">0</span>, <span class="va">N</span>, <span class="va">K</span><span class="op">)</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">K</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">log_dens_mat</span><span class="op">[</span>, <span class="va">k</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span><span class="op">[</span><span class="va">k</span><span class="op">]</span>, <span class="va">sigma</span><span class="op">[</span><span class="va">k</span><span class="op">]</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -1576,7 +1584,7 @@ combine them with <code><a href="../reference/log_sum_exp.html">log_sum_exp()</a
 </table>
 <p>When writing categorical models with a baseline category, the natural
 pattern can be used inside <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>.</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">log_pi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/log_softmax.html">log_softmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">eta</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">pi</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/softmax.html">softmax</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">eta</span><span class="op">)</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -1590,7 +1598,7 @@ evaluates more reliably.</p>
 <h3 id="use-setup">14.1 Use <code>setup</code><a class="anchor" aria-label="anchor" href="#use-setup"></a>
 </h3>
 <p>Move data-only calculations to <code>setup</code>.</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">x1</span> <span class="op">+</span> <span class="va">x2</span>, <span class="va">df</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -1600,7 +1608,7 @@ evaluates more reliably.</p>
 </h3>
 <p>Prefer vectorized operations when they are clear and
 AD-compatible.</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mu</span> <span class="op">&lt;-</span> <span class="va">Intercept</span> <span class="op">+</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">b</span></span>
 <span><span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -1616,7 +1624,7 @@ especially for AD values.</p>
 </h3>
 <p>Avoid branching on parameter-dependent quantities. Branching on data
 or setup values is usually fine.</p>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Good: branch decided by data/setup</span></span>
 <span><span class="kw">if</span> <span class="op">(</span><span class="va">family</span> <span class="op">==</span> <span class="st">"gaussian"</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
@@ -1627,13 +1635,13 @@ or setup values is usually fine.</p>
 </h3>
 <p>Use <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> and <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> when you
 need a mutable container that will receive AD values inside a loop.</p>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">N</span><span class="op">)</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">log_lik</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">mu</span><span class="op">[</span><span class="va">i</span><span class="op">]</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 <p>For matrices or arrays:</p>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">A</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N</span>, <span class="va">K</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="kw">for</span> <span class="op">(</span><span class="va">k</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">K</span><span class="op">)</span> <span class="op">{</span></span>
 <span>  <span class="va">A</span><span class="op">[</span>, <span class="va">k</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span><span class="op">[</span><span class="va">k</span><span class="op">]</span>, <span class="va">sigma</span><span class="op">[</span><span class="va">k</span><span class="op">]</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -1670,7 +1678,7 @@ assignment.</li>
 <div class="section level3">
 <h3 id="get-only-estimates-from-mcmc">15.1 Get Only Estimates From MCMC<a class="anchor" aria-label="anchor" href="#get-only-estimates-from-mcmc"></a>
 </h3>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span></span></code></pre></div>
@@ -1678,7 +1686,7 @@ assignment.</li>
 <div class="section level3">
 <h3 id="use-map-initial-values-for-mcmc">15.2 Use MAP Initial Values For MCMC<a class="anchor" aria-label="anchor" href="#use-map-initial-values-for-mcmc"></a>
 </h3>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="va">init</span> <span class="op">&lt;-</span> <span class="va">fit_map</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>init <span class="op">=</span> <span class="va">init</span><span class="op">)</span></span></code></pre></div>
@@ -1686,20 +1694,20 @@ assignment.</li>
 <div class="section level3">
 <h3 id="extract-only-generated-quantities">15.3 Extract Only Generated Quantities<a class="anchor" aria-label="anchor" href="#extract-only-generated-quantities"></a>
 </h3>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"generate"</span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="extract-draws-including-random-effects">15.4 Extract Draws Including Random Effects<a class="anchor" aria-label="anchor" href="#extract-draws-including-random-effects"></a>
 </h3>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span>include_random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="check-vb-convergence">15.5 Check VB Convergence<a class="anchor" aria-label="anchor" href="#check-vb-convergence"></a>
 </h3>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -1707,7 +1715,7 @@ assignment.</li>
 <div class="section level3">
 <h3 id="compare-models-with-classic-estimation">15.6 Compare Models With Classic Estimation<a class="anchor" aria-label="anchor" href="#compare-models-with-classic-estimation"></a>
 </h3>
-<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x1</span>, data <span class="op">=</span> <span class="va">dat</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x1</span> <span class="op">+</span> <span class="va">x2</span>, data <span class="op">=</span> <span class="va">dat</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -1718,7 +1726,7 @@ assignment.</li>
 <div class="section level3">
 <h3 id="compare-coefficient-inclusion-with-a-bayes-factor">15.7 Compare Coefficient Inclusion With A Bayes Factor<a class="anchor" aria-label="anchor" href="#compare-coefficient-inclusion-with-a-bayes-factor"></a>
 </h3>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x1</span> <span class="op">+</span> <span class="va">x2</span>, data <span class="op">=</span> <span class="va">dat</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_normal.html">prior_normal</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">mdl_null</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x1</span>, data <span class="op">=</span> <span class="va">dat</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_normal.html">prior_normal</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
@@ -1730,7 +1738,7 @@ assignment.</li>
 <div class="section level3">
 <h3 id="build-a-fixed-model-explicitly">15.8 Build A Fixed Model Explicitly<a class="anchor" aria-label="anchor" href="#build-a-fixed-model-explicitly"></a>
 </h3>
-<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fixed</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>b <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">0</span>, <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
@@ -1741,18 +1749,18 @@ assignment.</li>
 <p>Use <code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code> when you want to reuse a saved fit
 object with the current class definitions after updating the
 package.</p>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/readRDS.html" class="external-link">readRDS</a></span><span class="op">(</span><span class="st">"old-fit.rds"</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <p>If the embedded model object also needs current methods, upgrade it
 as well.</p>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span>, model <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="run-mcmc-in-parallel">15.10 Run MCMC In Parallel<a class="anchor" aria-label="anchor" href="#run-mcmc-in-parallel"></a>
 </h3>
-<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  chains <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
