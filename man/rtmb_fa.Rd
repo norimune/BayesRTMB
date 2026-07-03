@@ -62,9 +62,9 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
 
 
 
-  # --- 2. Factor Analysis with Rotation and Factor Scores (2 Factors) ---
-  # Extract 2 factors, apply Promax rotation during model fitting, and calculate factor scores
-  fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
+  # --- 2. Factor Analysis with Factor Scores and Post-hoc Rotation (2 Factors) ---
+  # Extract 2 factors and calculate factor scores
+  fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, score = TRUE)
 
   # Setting se_method = "sampling" enables standard errors and 95\% CIs
   # for transformed and generated quantities, such as factor scores and post-hoc rotations.
@@ -73,13 +73,12 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.
   map_fa2$summary()
 
   # Post-hoc rotation using the fa_rotate() method
-  # You can also apply other rotation methods (e.g., "varimax" from the stats package)
-  # to the unrotated loading matrix ("L") after estimation.
-  map_fa2$fa_rotate(target = "L", rotate = "varimax")
+  # You can rotate the unrotated loading matrix ("L") and factor scores after estimation.
+  map_fa2$fa_rotate(target = "L", scores = "score", rotate = "promax")
 
   # The post-hoc rotated loadings are automatically stored with the method's
-  # suffix (e.g., "L_varimax")
-  map_fa2$summary("L_varimax")
+  # suffix (e.g., "L_promax")
+  map_fa2$summary("L_promax")
 
 
 

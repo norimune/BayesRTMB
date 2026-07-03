@@ -14,7 +14,16 @@ There are no known CRAN reverse dependencies.
 
 ## Submission notes
 
-This release updates BayesRTMB to 0.2.2.
+This is a resubmission of BayesRTMB 0.2.2.
+
+In this resubmission, the `rtmb_fa()` example failure reported by CRAN on
+the M1mac check platform has been addressed. The factor-analysis transform
+block now constructs standardized loading matrices with explicit
+AD-compatible `rtmb_array()` allocation and element-wise assignment, avoiding
+the AD container construction issue seen on that platform. The runnable
+`rtmb_fa()` example now demonstrates Promax rotation via post-hoc
+`fa_rotate()` after model fitting, rather than including the rotation in the
+model-construction step.
 
 This is a maintenance release submitted in response to the CRAN team's
 macOS arm64 check report for the previous 0.2.1 release. The factor-analysis
