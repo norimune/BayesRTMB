@@ -4,16 +4,7 @@
 \alias{diffusion_lpdf}
 \title{Diffusion model log-probability density function}
 \usage{
-diffusion_lpdf(
-  x,
-  response,
-  alpha,
-  tau,
-  beta,
-  delta,
-  K_diff = 20,
-  sum = TRUE
-)
+diffusion_lpdf(x, response, alpha, tau, beta, delta, K_diff = 20, sum = TRUE)
 }
 \arguments{
 \item{x}{Response times. A vector, or a matrix with units in rows and trials in columns.}
@@ -40,8 +31,7 @@ Log-likelihood for a two-boundary drift diffusion model. The first argument is
 the response time and the second argument is the binary response. Positive
 response values are treated as upper-boundary responses; zero or negative
 values are treated as lower-boundary responses.
-}
-\details{
+
 If \code{x} is a matrix, rows are treated as independent units and columns as
 repeated trials. In that case, \code{sum = FALSE} returns one log-likelihood
 contribution per row. If \code{x} is a vector, \code{sum = FALSE} returns one

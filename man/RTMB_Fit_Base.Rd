@@ -174,7 +174,9 @@ Rotate sampled parameters.
   target,
   reference = NULL,
   linked = NULL,
-  principal = FALSE
+  principal = FALSE,
+  suffix = "rot",
+  overwrite = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -190,6 +192,12 @@ Rotate sampled parameters.
 \item{\code{principal}}{Logical; if TRUE and `reference` is NULL, the point estimate
 is first rotated to its principal axes and then used as the Procrustes
 reference. This is useful for MDU configurations.}
+
+\item{\code{suffix}}{Character suffix used for generated quantities. The default
+stores results as `<variable>_rot`.}
+
+\item{\code{overwrite}}{Logical; if TRUE, existing generated quantities with the
+same names are overwritten. If FALSE, a numeric suffix is appended.}
 }
 \if{html}{\out{</div>}}
 }
@@ -208,7 +216,9 @@ Rotate factor loadings and optional factor scores.
   linked = NULL,
   scores = NULL,
   rotate = "promax",
-  ...
+  ...,
+  suffix = NULL,
+  overwrite = TRUE
 )}\if{html}{\out{</div>}}
 }
 
@@ -224,6 +234,12 @@ Rotate factor loadings and optional factor scores.
 \item{\code{rotate}}{Character string specifying the rotation method.}
 
 \item{\code{...}}{Additional arguments passed to the rotation function.}
+
+\item{\code{suffix}}{Character suffix used for generated quantities. If NULL,
+the rotation method name is used.}
+
+\item{\code{overwrite}}{Logical; if TRUE, existing generated quantities with the
+same names are overwritten. If FALSE, a numeric suffix is appended.}
 }
 \if{html}{\out{</div>}}
 }
