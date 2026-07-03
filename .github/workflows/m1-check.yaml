@@ -1,0 +1,90 @@
+name: M1 Mac R CMD check
+
+on:
+  workflow_dispatch:
+
+permissions: read-all
+
+jobs:
+  m1-check:
+    runs-on: macos-15
+
+    env:
+      GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
+      R_KEEP_PKG_SOURCE: yes
+      _R_CHECK_FORCE_SUGGESTS_: false
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Show runner info
+        run: |
+          uname -a
+          sysctl -n machdep.cpu.brand_string || true
+          arch
+          sw_vers
+
+      - uses: r-lib/actions/setup-pandoc@v2
+
+      - uses: r-lib/actions/setup-r@v2
+        with:
+          r-version: devel
+          use-public-rspm: true
+
+      - uses: r-lib/actions/setup-r-dependencies@v2
+        with:
+          extra-packages: |
+            any::pkgload
+            any::rcmdcheck
+            any::sessioninfo
+          needs: check
+
+      - name: Direct regression check for CRAN M1 error
+        run: |
+          cat > direct-m1-check.R <<'EOF'
+          cat("=== System info ===\n")
+          print(Sys.info())
+          cat("\n=== R info ===\n")
+          print(R.version.string)
+          print(R.version$platform)
+          print(R.version$arch)
+          cat("\n=== Session info ===\n")
+          print(sessioninfo::session_info())
+
+          pkgload::load_all(".")
+          load("data/BigFive.rda")
+          fa_data <- BigFive[, 1:10]
+
+          fit_fa2 <- rtmb_fa(
+            data = fa_data,
+            nfactors = 2,
+            rotate = "promax",
+            score = TRUE
+          )
+
+          map_fa2 <- fit_fa2$optimize(num_estimate = 1)
+          print(map_fa2)
+          print(map_fa2$summary(max_rows = 10))
+          EOF
+          Rscript direct-m1-check.R
+
+      - name: R CMD check
+        shell: Rscript {0}
+        run: |
+          res <- rcmdcheck::rcmdcheck(
+            ".",
+            args = c("--no-manual", "--as-cran"),
+            build_args = c("--compact-vignettes=gs+qpdf"),
+            error_on = "error"
+          )
+          print(res)
+
+      - name: Upload check results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: m1-check-results
+          path: |
+            direct-m1-check.R
+            *.Rcheck
+            *.Rcheck/**
