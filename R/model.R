@@ -56,16 +56,182 @@ NULL
   x
 }
 
+.rtmb_binding_key <- function(env, name) {
+  paste0(format(env), "::", name)
+}
+
+.rtmb_capture_binding_env <- function(name, env) {
+  while (is.environment(env) && !identical(env, emptyenv())) {
+    if (exists(name, envir = env, inherits = FALSE)) return(env)
+    env <- parent.env(env)
+  }
+  NULL
+}
+
+.rtmb_capture_user_binding <- function(env) {
+  if (is.null(env) || !is.environment(env)) return(FALSE)
+  if (identical(env, emptyenv()) || identical(env, baseenv())) return(FALSE)
+  env_name <- environmentName(env)
+  if (startsWith(env_name, "namespace:")) return(FALSE)
+  if (startsWith(env_name, "imports:")) return(FALSE)
+  if (startsWith(env_name, "package:")) return(FALSE)
+  TRUE
+}
+
+.rtmb_capture_parent_env <- function(fallback) {
+  if (!is.environment(fallback)) fallback <- baseenv()
+  closed_env <- .rtmb_closed_eval_env()
+  if (identical(fallback, closed_env)) return(closed_env)
+
+  out <- new.env(parent = fallback)
+  for (nm in ls(closed_env, all.names = TRUE)) {
+    assign(nm, get(nm, envir = closed_env, inherits = FALSE), envir = out)
+  }
+  lockEnvironment(out, bindings = FALSE)
+  out
+}
+
+.rtmb_all_names <- function(expr) {
+  if (is.null(expr)) return(character())
+  tryCatch(
+    suppressWarnings(all.names(expr, functions = TRUE, unique = TRUE)),
+    error = function(e) character()
+  )
+}
+
+.rtmb_function_dependency_names <- function(fn) {
+  exprs <- c(as.list(formals(fn)), list(body(fn)))
+  names_used <- unique(unlist(lapply(exprs, function(x) {
+    .rtmb_all_names(x)
+  }), use.names = FALSE))
+  names_used <- names_used[nzchar(names_used)]
+
+  local_names <- unique(c(
+    names(formals(fn)),
+    .rtmb_assigned_vars(body(fn)),
+    "...",
+    "function", "{", "(", "if", "else", "for", "while", "repeat",
+    "next", "break", "return", "<-", "<<-", "="
+  ))
+
+  setdiff(names_used, local_names)
+}
+
+.rtmb_function_literal_dependency_names <- function(expr) {
+  if (is.atomic(expr) || is.name(expr) || is.null(expr)) return(character())
+  if (!is.call(expr)) return(character())
+
+  if (identical(expr[[1]], as.name("function"))) {
+    formal_exprs <- if (length(expr) >= 2L) as.list(expr[[2]]) else list()
+    body_expr <- if (length(expr) >= 3L) expr[[3]] else NULL
+    names_used <- unique(c(
+      unlist(lapply(formal_exprs, .rtmb_all_names), use.names = FALSE),
+      .rtmb_all_names(body_expr)
+    ))
+    names_used <- names_used[nzchar(names_used)]
+
+    local_names <- unique(c(
+      names(formal_exprs),
+      .rtmb_assigned_vars(body_expr),
+      "...",
+      "function", "{", "(", "if", "else", "for", "while", "repeat",
+      "next", "break", "return", "<-", "<<-", "="
+    ))
+    return(setdiff(names_used, local_names))
+  }
+
+  unique(unlist(lapply(as.list(expr)[-1], .rtmb_function_literal_dependency_names),
+                use.names = FALSE))
+}
+
+.rtmb_setup_referenced_vars <- function(setup) {
+  unique(c(
+    all.vars(setup, functions = FALSE),
+    .rtmb_function_literal_dependency_names(setup)
+  ))
+}
+
+.rtmb_close_setup_binding <- function(name, env, memo, active) {
+  key <- .rtmb_binding_key(env, name)
+  if (exists(key, envir = memo, inherits = FALSE)) {
+    return(get(key, envir = memo, inherits = FALSE))
+  }
+  if (exists(key, envir = active, inherits = FALSE)) {
+    return(get(name, envir = env, inherits = FALSE))
+  }
+
+  assign(key, TRUE, envir = active)
+  on.exit(rm(list = key, envir = active), add = TRUE)
+
+  value <- get(name, envir = env, inherits = FALSE)
+  out <- .rtmb_close_setup_value(value, memo = memo, active = active,
+                                 binding_name = name, binding_env = env)
+  assign(key, out, envir = memo)
+  out
+}
+
+.rtmb_close_setup_value <- function(value, memo = new.env(parent = emptyenv()),
+                                    active = new.env(parent = emptyenv()),
+                                    binding_name = NULL, binding_env = NULL) {
+  if (is.function(value) && !is.primitive(value)) {
+    fn_env <- environment(value)
+    parent_env <- if (is.environment(fn_env)) parent.env(fn_env) else baseenv()
+    dep_env <- new.env(parent = .rtmb_capture_parent_env(parent_env))
+
+    out <- value
+    environment(out) <- dep_env
+
+    if (!is.null(binding_name) && !is.null(binding_env)) {
+      assign(.rtmb_binding_key(binding_env, binding_name), out, envir = memo)
+    }
+
+    dep_names <- .rtmb_function_dependency_names(value)
+    for (dep_name in dep_names) {
+      dep_binding_env <- .rtmb_capture_binding_env(dep_name, fn_env)
+      if (!.rtmb_capture_user_binding(dep_binding_env)) next
+      dep_value <- .rtmb_close_setup_binding(dep_name, dep_binding_env, memo, active)
+      assign(dep_name, dep_value, envir = dep_env)
+    }
+    return(out)
+  }
+
+  if (is.list(value) && length(value) > 0L) {
+    for (i in seq_along(value)) {
+      value[[i]] <- .rtmb_close_setup_value(value[[i]], memo = memo, active = active)
+    }
+  }
+
+  value
+}
+
+.rtmb_close_setup_env_bindings <- function(env, vars) {
+  vars <- vars[vapply(vars, exists, logical(1), envir = env, inherits = FALSE)]
+  if (length(vars) == 0L) return(invisible(NULL))
+  memo <- new.env(parent = emptyenv())
+  active <- new.env(parent = emptyenv())
+  for (nm in vars) {
+    val <- .rtmb_close_setup_binding(nm, env, memo, active)
+    assign(nm, val, envir = env)
+  }
+  invisible(NULL)
+}
+
 .rtmb_setup_env <- function(env = parent.frame(), setup = NULL, exclude = character()) {
   vars <- if (is.null(setup)) {
     ls(env, all.names = TRUE)
   } else {
-    all.vars(setup, functions = FALSE)
+    .rtmb_setup_referenced_vars(setup)
   }
   vars <- setdiff(unique(vars), exclude)
   vars <- vars[vapply(vars, exists, logical(1), envir = env, inherits = FALSE)]
   if (length(vars) == 0L) return(list())
-  mget(vars, envir = env, inherits = FALSE)
+  memo <- new.env(parent = emptyenv())
+  active <- new.env(parent = emptyenv())
+  out <- lapply(vars, function(nm) {
+    .rtmb_close_setup_binding(nm, env, memo, active)
+  })
+  names(out) <- vars
+  out
 }
 
 
@@ -241,6 +407,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
       stop(sprintf("[Error in 'setup' block] An error occurred during data preprocessing:\n  %s", msg), call. = FALSE)
     })
     assigned_setup_vars <- .rtmb_assigned_vars(code$setup)
+    .rtmb_close_setup_env_bindings(dat_env, assigned_setup_vars)
     drop_setup_env <- setdiff(setup_env_names, assigned_setup_vars)
     if (length(drop_setup_env) > 0L) {
       rm(list = drop_setup_env, envir = dat_env)

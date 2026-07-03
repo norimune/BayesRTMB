@@ -101,3 +101,66 @@ test_that("rtmb_code captures external setup helpers used by sampling syntax", {
   mdl <- rtmb_model(dat, code, init = list(theta = 0), silent = TRUE)
   expect_s3_class(mdl, "RTMB_Model")
 })
+
+test_that("rtmb_code captures recursive dependencies of external setup functions", {
+  helper_scale <- 0.5
+  helper_shift <- function(x, z) helper_scale * (x + z)
+  paired_external_lpdf <- function(x, z, theta, sum = TRUE) {
+    res <- -0.5 * (helper_shift(x, z) - theta)^2
+    if (sum) sum(res) else res
+  }
+
+  dat <- list(
+    y = c(0.2, -0.3, 0.5),
+    z = c(1.0, 0.5, -0.2)
+  )
+
+  code <- rtmb_code(
+    setup = {
+      paired_lpdf <- paired_external_lpdf
+    },
+    parameters = {
+      theta <- Dim()
+    },
+    model = {
+      obs(y, z) ~ paired(theta)
+      theta ~ normal(0, 1)
+    }
+  )
+
+  rm(helper_scale, helper_shift, paired_external_lpdf)
+
+  mdl <- rtmb_model(dat, code, init = list(theta = 0), silent = TRUE)
+  expect_s3_class(mdl, "RTMB_Model")
+})
+
+test_that("setup-defined functions retain external helpers after setup cleanup", {
+  setup_helper_scale <- 0.5
+  setup_helper <- function(x, z) setup_helper_scale * (x + z)
+
+  dat <- list(
+    y = c(0.2, -0.3, 0.5),
+    z = c(1.0, 0.5, -0.2)
+  )
+
+  code <- rtmb_code(
+    setup = {
+      paired_lpdf <- function(x, z, theta, sum = TRUE) {
+        res <- -0.5 * (setup_helper(x, z) - theta)^2
+        if (sum) sum(res) else res
+      }
+    },
+    parameters = {
+      theta <- Dim()
+    },
+    model = {
+      obs(y, z) ~ paired(theta)
+      theta ~ normal(0, 1)
+    }
+  )
+
+  rm(setup_helper_scale, setup_helper)
+
+  mdl <- rtmb_model(dat, code, init = list(theta = 0), silent = TRUE)
+  expect_s3_class(mdl, "RTMB_Model")
+})
