@@ -216,6 +216,18 @@ NULL
   invisible(NULL)
 }
 
+.rtmb_close_data_functions <- function(data) {
+  if (length(data) == 0L) return(data)
+  memo <- new.env(parent = emptyenv())
+  active <- new.env(parent = emptyenv())
+  for (nm in names(data)) {
+    if (is.function(data[[nm]]) && !is.primitive(data[[nm]])) {
+      data[[nm]] <- .rtmb_close_setup_value(data[[nm]], memo = memo, active = active)
+    }
+  }
+  data
+}
+
 .rtmb_setup_env <- function(env = parent.frame(), setup = NULL, exclude = character()) {
   vars <- if (is.null(setup)) {
     ls(env, all.names = TRUE)
@@ -371,6 +383,7 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
   if (!"model" %in% names(code)) stop("The 'model = { ... }' block is required in code.")
 
   data <- validate_data(data)
+  data <- .rtmb_close_data_functions(data)
 
   # --- 1. Static validation of Data block (optional) ---
   if ("data" %in% names(code)) {

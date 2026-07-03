@@ -164,3 +164,31 @@ test_that("setup-defined functions retain external helpers after setup cleanup",
   mdl <- rtmb_model(dat, code, init = list(theta = 0), silent = TRUE)
   expect_s3_class(mdl, "RTMB_Model")
 })
+
+test_that("data-supplied lpdf functions can use package lpmf helpers", {
+  ez_lpdf <- function(correct, n_acc, p, sum = TRUE) {
+    binomial_lpmf(correct, n_acc, p, sum = sum)
+  }
+
+  dat <- list(
+    correct = 3,
+    n_acc = 5,
+    ez_lpdf = ez_lpdf
+  )
+
+  code <- rtmb_code(
+    parameters = {
+      eta <- Dim()
+    },
+    transform = {
+      p <- inv_logit(eta)
+    },
+    model = {
+      obs(correct, n_acc) ~ ez(p)
+      eta ~ normal(0, 1)
+    }
+  )
+
+  mdl <- rtmb_model(dat, code, init = list(eta = 0), silent = TRUE)
+  expect_s3_class(mdl, "RTMB_Model")
+})
