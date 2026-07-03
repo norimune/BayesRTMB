@@ -17,6 +17,7 @@
 #' \itemize{
 #'   \item \code{normal(mean, sd)}: Normal distribution.
 #'   \item \code{lognormal(meanlog, sdlog)}: Lognormal distribution.
+#'   \item \code{exp_mod_normal(mu, sigma, lambda)}: Exponentially modified normal distribution.
 #'   \item \code{exponential(rate)}: Exponential distribution.
 #'   \item \code{cauchy(location, scale)}: Cauchy distribution.
 #'   \item \code{student_t(df, mu, sigma)}: Student's t-distribution.
@@ -46,6 +47,11 @@
 #'   \item \code{lower_tri_normal(mean, sd)}: Normal distribution for elements of a lower-triangular matrix.
 #'   \item \code{centered_tri_multi_normal(sigma)}: Multivariate normal for centered triangular matrices (used in identification constraints).
 #'   \item \code{sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)}: Factor analysis likelihood using sufficient statistics (highly efficient for large sample sizes).
+#' }
+#'
+#' \strong{Response-time Distributions:}
+#' \itemize{
+#'   \item \code{diffusion(alpha, tau, beta, delta)}: Drift diffusion model likelihood for response times and binary choices. Use with \code{obs(RT, Choice) ~ diffusion(...)}.
 #' }
 #'
 #' \strong{Vectorization:}
@@ -80,6 +86,29 @@ normal_lpdf <- function(x, mean, sd, sum = TRUE) {
 #' @keywords internal
 lognormal_lpdf <- function(x, meanlog, sdlog, sum = TRUE) {
   res <- suppressWarnings(dlnorm(x, meanlog = meanlog, sdlog = sdlog, log = TRUE))
+  if(sum) sum(res) else res
+}
+
+#' Exponentially modified normal log-probability density function
+#'
+#' @description
+#' Log-density for \eqn{X = Z + E}, where \eqn{Z} follows a normal distribution
+#' with mean \code{mu} and standard deviation \code{sigma}, and \eqn{E} follows
+#' an exponential distribution with rate \code{lambda}.
+#'
+#' @param x Vector of quantiles.
+#' @param mu Mean of the normal component.
+#' @param sigma Standard deviation of the normal component.
+#' @param lambda Rate of the exponential component.
+#' @param sum Logical; if \code{TRUE} (default), returns the sum of log-densities. If \code{FALSE}, returns element-wise log-densities.
+#' @return The sum of the log-density or a vector of log-densities.
+#' @export
+exp_mod_normal_lpdf <- function(x, mu, sigma, lambda, sum = TRUE) {
+  z <- (x - mu) / sigma - lambda * sigma
+  res <- log(lambda) +
+    lambda * (mu - x) +
+    0.5 * (lambda * sigma)^2 +
+    RTMB::pnorm(z, log.p = TRUE)
   if(sum) sum(res) else res
 }
 
@@ -214,6 +243,129 @@ weibull_lpdf <- function(x, shape, scale, sum = TRUE) {
 uniform_lpdf <- function(x, a, b, sum = TRUE) {
   res <- dunif(x, a, b, log = TRUE)
   if(sum) sum(res) else res
+}
+
+#' Diffusion model log-probability density function
+#'
+#' @description
+#' Log-likelihood for a two-boundary drift diffusion model. The first argument is
+#' the response time and the second argument is the binary response. Positive
+#' response values are treated as upper-boundary responses; zero or negative
+#' values are treated as lower-boundary responses.
+#'
+#' If \code{x} is a matrix, rows are treated as independent units and columns as
+#' repeated trials. In that case, \code{sum = FALSE} returns one log-likelihood
+#' contribution per row. If \code{x} is a vector, \code{sum = FALSE} returns one
+#' contribution per observation.
+#'
+#' @param x Response times. A vector, or a matrix with units in rows and trials in columns.
+#' @param response Binary responses with the same shape as \code{x}. Positive values indicate the upper boundary.
+#' @param alpha Boundary separation. A scalar, row-wise vector, trial-wise vector, or matrix compatible with \code{x}.
+#' @param tau Non-decision time. A scalar, row-wise vector, trial-wise vector, or matrix compatible with \code{x}.
+#' @param beta Initial bias as a proportion of the boundary separation. A scalar, row-wise vector, trial-wise vector, or matrix compatible with \code{x}.
+#' @param delta Drift rate. A scalar, row-wise vector, trial-wise vector, or matrix compatible with \code{x}.
+#' @param K_diff Number of terms in the truncated infinite-series approximation.
+#' @param sum Logical; if \code{TRUE} (default), returns the summed log-likelihood.
+#' @return The summed log-likelihood, row-wise log-likelihoods for matrix input, or observation-wise log-likelihoods for vector input.
+#' @export
+diffusion_lpdf <- function(x, response,
+                           alpha, tau, beta, delta,
+                           K_diff = 20,
+                           sum = TRUE) {
+  if (!is.numeric(K_diff) || length(K_diff) != 1L || is.na(K_diff) || K_diff < 1) {
+    stop("'K_diff' must be a positive scalar.", call. = FALSE)
+  }
+  K_diff <- as.integer(K_diff)
+
+  x_is_matrix <- is.matrix(x)
+  if (x_is_matrix) {
+    N_unit <- nrow(x)
+    N_trial <- ncol(x)
+    x_mat <- x
+    response_mat <- if (is.matrix(response)) response else matrix(response, nrow = N_unit, ncol = N_trial)
+    if (!identical(dim(response_mat), dim(x_mat))) {
+      stop("'response' must have the same dimensions as 'x'.", call. = FALSE)
+    }
+  } else {
+    N_unit <- length(x)
+    N_trial <- 1L
+    x_mat <- matrix(x, nrow = N_unit, ncol = 1L)
+    response_mat <- matrix(response, nrow = N_unit, ncol = 1L)
+    if (length(response) != N_unit) {
+      stop("'response' must have the same length as 'x'.", call. = FALSE)
+    }
+  }
+
+  get_par <- function(par, j, t) {
+    par_len <- length(par)
+    if (is.matrix(par)) {
+      if (!identical(dim(par), dim(x_mat))) {
+        stop("Matrix parameters must have the same dimensions as 'x'.", call. = FALSE)
+      }
+      return(par[j, t])
+    }
+    if (par_len == 1L) return(par[1])
+    if (par_len == N_unit) return(par[j])
+    if (par_len == N_trial) return(par[t])
+    if (par_len == N_unit * N_trial) return(par[j + (t - 1L) * N_unit])
+    stop("Distribution parameters must be scalar or compatible with 'x'.", call. = FALSE)
+  }
+
+  k_diff <- seq_len(K_diff)
+  k_pi <- k_diff * pi
+  k2_pi2_over_2 <- k_diff^2 * (pi^2 / 2)
+
+  diffusion_upper_density <- function(y, alpha_j, tau_j, beta_j, delta_j) {
+    alpha2 <- alpha_j^2
+    rt_scaled <- (y - tau_j) / alpha2
+    one_minus_beta <- 1 - beta_j
+
+    series <- sum(
+      k_diff *
+        exp(-k2_pi2_over_2 * rt_scaled) *
+        sin(k_pi * one_minus_beta)
+    )
+
+    delta_j * alpha_j * one_minus_beta -
+      delta_j^2 * rt_scaled * alpha2 / 2 -
+      log(alpha2) +
+      log(pi) +
+      log(series)
+  }
+
+  seed <- .rtmb_ad_seed(list(alpha, tau, beta, delta))
+  out <- if (is.null(seed)) rep(0, N_unit) else rtmb_vector(0, N_unit, seed = seed)
+
+  for (j in seq_len(N_unit)) {
+    for (t in seq_len(N_trial)) {
+      if (is.na(x_mat[j, t]) || is.na(response_mat[j, t])) next
+
+      alpha_j <- get_par(alpha, j, t)
+      tau_j <- get_par(tau, j, t)
+      beta_j <- get_par(beta, j, t)
+      delta_j <- get_par(delta, j, t)
+
+      if (response_mat[j, t] > 0) {
+        out[j] <- out[j] + diffusion_upper_density(
+          y = x_mat[j, t],
+          alpha_j = alpha_j,
+          tau_j = tau_j,
+          beta_j = beta_j,
+          delta_j = delta_j
+        )
+      } else {
+        out[j] <- out[j] + diffusion_upper_density(
+          y = x_mat[j, t],
+          alpha_j = alpha_j,
+          tau_j = tau_j,
+          beta_j = 1 - beta_j,
+          delta_j = -delta_j
+        )
+      }
+    }
+  }
+
+  if (sum) sum(out) else out
 }
 
 #' LKJ correlation log-probability density function

@@ -1,8 +1,8 @@
 ## Test environments
 
-* local Windows 10 x86_64-w64-mingw32, R 4.5.3
-* win-builder R-devel x86_64-w64-mingw32, Windows Server 2022 x64,
-  R Under development (2026-06-21 r90185 ucrt): OK
+* local Windows x86_64-w64-mingw32, R 4.5.3
+* win-builder R-devel x86_64-w64-mingw32, Windows Server 2022 x64: OK
+* GitHub Actions macOS 15 arm64, R-devel: OK
 
 ## R CMD check results
 
@@ -14,9 +14,20 @@ There are no known CRAN reverse dependencies.
 
 ## Submission notes
 
-This release updates BayesRTMB to 0.2.1.
+This release updates BayesRTMB to 0.2.2.
 
-The update includes performance and robustness improvements for MCMC,
-variational inference, transformed parameters, generated quantities, and
-wrapper model code. It also improves AD-compatible helper containers and
-softmax/log-sum-exp handling used in model code.
+This is a maintenance release submitted in response to the CRAN team's
+macOS arm64 check report for the previous 0.2.1 release. The factor-analysis
+wrapper code has been updated to avoid an automatic-differentiation container
+construction issue that could occur on the M1 macOS R-devel check platform.
+
+Additional changes in this release include:
+
+* response-time distributions, including exponentially modified normal and
+  diffusion model log-density functions;
+* improved `obs(...)` sampling syntax for distributions with multiple observed
+  variables;
+* recursive capture of helper functions and constants used by user-defined
+  functions supplied through the `setup` block;
+* improved generated-quantity/report handling and AD-compatible helper
+  containers.

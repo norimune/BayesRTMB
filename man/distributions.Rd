@@ -20,6 +20,7 @@ In `rtmb_code`, you can specify distributions in two ways:
 \itemize{
   \item \code{normal(mean, sd)}: Normal distribution.
   \item \code{lognormal(meanlog, sdlog)}: Lognormal distribution.
+  \item \code{exp_mod_normal(mu, sigma, lambda)}: Exponentially modified normal distribution.
   \item \code{exponential(rate)}: Exponential distribution.
   \item \code{cauchy(location, scale)}: Cauchy distribution.
   \item \code{student_t(df, mu, sigma)}: Student's t-distribution.
@@ -49,6 +50,11 @@ In `rtmb_code`, you can specify distributions in two ways:
   \item \code{lower_tri_normal(mean, sd)}: Normal distribution for elements of a lower-triangular matrix.
   \item \code{centered_tri_multi_normal(sigma)}: Multivariate normal for centered triangular matrices (used in identification constraints).
   \item \code{sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)}: Factor analysis likelihood using sufficient statistics (highly efficient for large sample sizes).
+}
+
+\strong{Response-time Distributions:}
+\itemize{
+  \item \code{diffusion(alpha, tau, beta, delta)}: Drift diffusion model likelihood for response times and binary choices. Use with \code{obs(RT, Choice) ~ diffusion(...)}.
 }
 
 \strong{Vectorization:}

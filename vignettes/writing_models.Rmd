@@ -128,6 +128,7 @@ In BayesRTMB, you can use many probability distributions within the `model` bloc
 | :--- | :--- |
 | `normal(mean, sd)` | Normal distribution. |
 | `lognormal(meanlog, sdlog)` | Log-normal distribution. |
+| `exp_mod_normal(mu, sigma, lambda)` | Exponentially modified normal distribution. |
 | `exponential(rate)` | Exponential distribution. |
 | `cauchy(location, scale)` | Cauchy distribution. |
 | `student_t(df, mu, sigma)` | Student's t-distribution. |
@@ -167,7 +168,123 @@ Distributions tailored for matrices, multivariate data, and specific model struc
 | `centered_tri_multi_normal(sigma)` | Multivariate normal distribution for a centered triangular matrix (used for identifiability constraints). |
 | `sufficient_multi_normal_fa(S_mat, N, y_bar, mu, psi, Lambda)` | Likelihood for factor analysis using sufficient statistics. Extremely computationally efficient for large samples. |
 | `normal_mixture(pi_w, mean, sd)` | Normal mixture distribution combining multiple normal distributions. |
+| `diffusion(alpha, tau, beta, delta)` | Drift diffusion model for response times and binary choices. Use as `obs(RT, Choice) ~ diffusion(...)`. |
 | `wishart(n, V)` | Wishart distribution. |
+
+### 2-4. User-Defined Distributions
+
+You can also define a custom log-density function in the `setup` block and use it
+with the sampling syntax. The function name should end in `_lpdf` for continuous
+distributions or `_lpmf` for discrete distributions. For example,
+`exgaussian_lpdf()` can be used in the model block as
+`Y ~ exgaussian(mu, sigma, lambda)`.
+
+The following example simulates response times in seconds from an ex-Gaussian
+distribution and fits the same model. Here, `lambda` is the rate of the
+exponential component.
+
+```{r}
+library(BayesRTMB)
+
+simulate_exgaussian <- function(N, mu, sigma, lambda) {
+  rnorm(N, mean = mu, sd = sigma) + rexp(N, rate = lambda)
+}
+
+set.seed(1234)
+
+true <- c(mu = 0.45, sigma = 0.06, lambda = 8)
+rt <- simulate_exgaussian(
+  N = 500,
+  mu = true["mu"],
+  sigma = true["sigma"],
+  lambda = true["lambda"]
+)
+
+hist(rt)
+```
+
+The user-defined distribution is placed in `setup`. The model block can then use
+the same sampling syntax as built-in distributions.
+
+```{r}
+code_exgaussian <- rtmb_code(
+  setup = {
+    Y <- rt
+
+    exgaussian_lpdf <- function(x, mu, sigma, lambda, sum = TRUE) {
+      z <- (x - mu) / sigma - lambda * sigma
+
+      res <-
+        log(lambda) +
+        lambda * (mu - x) +
+        0.5 * (lambda * sigma)^2 +
+        RTMB::pnorm(z, log.p = TRUE)
+
+      if (sum) sum(res) else res
+    }
+  },
+
+  parameters = {
+    mu     <- Dim(lower = 0)
+    sigma  <- Dim(lower = 0)
+    lambda <- Dim(lower = 0)
+  },
+
+  model = {
+    Y ~ exgaussian(mu, sigma, lambda)
+
+    mu     ~ exponential(1)
+    sigma  ~ exponential(1)
+    lambda ~ exponential(1 / 10)
+  },
+
+  generate = {
+    log_lik <- exgaussian_lpdf(Y, mu, sigma, lambda, sum = FALSE)
+    report(log_lik)
+  }
+)
+```
+
+For this model, it is helpful to provide initial values on the scale of the
+observed response times.
+
+```{r}
+init_exgaussian <- list(
+  mu = median(rt) - sd(rt) / 2,
+  sigma = sd(rt) / 2,
+  lambda = 1 / (sd(rt) / 2)
+)
+
+mdl_exgaussian <- rtmb_model(
+  data = list(rt = rt),
+  code = code_exgaussian,
+  init = init_exgaussian
+)
+
+fit_map <- mdl_exgaussian$optimize(num_estimate = 5)
+
+est_map <- unlist(fit_map$estimate(pars = "parameters"))[names(true)]
+data.frame(
+  parameter = names(true),
+  true = as.numeric(true),
+  estimate = as.numeric(est_map),
+  error = as.numeric(est_map - true)
+)
+```
+
+The same model can be sampled with MCMC or fit with variational inference.
+
+```{r}
+fit_mcmc <- mdl_exgaussian$sample(parallel = TRUE)
+fit_mcmc
+fit_mcmc$WAIC()
+
+fit_vb <- mdl_exgaussian$variational()
+fit_vb
+```
+
+When WAIC is needed, the `generate` block should save an observation-wise
+`log_lik` by calling the custom `_lpdf` with `sum = FALSE`.
 
 ## 3. About Parameter Types (Dim)
 

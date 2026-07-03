@@ -1,3 +1,14 @@
+# BayesRTMB 0.2.2
+
+* Added response-time distributions for model code: `exp_mod_normal_lpdf()` and
+  `diffusion_lpdf()`, with sampling syntax support via `exp_mod_normal(...)`
+  and `obs(RT, Choice) ~ diffusion(...)`.
+* Added `obs(...)` sampling syntax for multivariate observed values on the left
+  side of `~`.
+* Improved setup helper capture so functions referenced in `setup` are more
+  reliably available when building models and running parallel workers.
+* Improved factor-analysis AD robustness and rotation output naming.
+
 # BayesRTMB 0.2.1
 
 * Added `upgrade_fit()` to rebuild saved MCMC, VB, MAP, and classic fit objects

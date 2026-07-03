@@ -80,6 +80,17 @@ test_that("FA generated quantities use report syntax", {
   expect_false(any(grepl("out\\$|return\\(out\\)", out)))
 })
 
+test_that("FA with rotation and scores builds AD tape", {
+  mdl <- rtmb_fa(
+    scale(mtcars[1:16, c("mpg", "disp", "hp", "wt")]),
+    nfactors = 2,
+    rotate = "promax",
+    score = TRUE
+  )
+
+  expect_s3_class(mdl, "RTMB_Model")
+})
+
 test_that("wrapper WAIC loops use AD-compatible vectors", {
   Y <- matrix(c(
     0, 1, 1,
@@ -123,6 +134,17 @@ test_that("wrapper loop-filled matrices use AD-compatible arrays", {
   glmer_code <- capture.output(glmer$print_code())
   expect_true(any(grepl("eta <- rtmb_array\\(0, dim = c\\(N, num_categories - 1\\)\\)", glmer_code)))
   expect_false(any(grepl("eta <- matrix\\(0, N, num_categories - 1\\)", glmer_code)))
+})
+
+test_that("rtmb_glmer setup capture leaves formula-like objects intact", {
+  glmer_dat <- data.frame(
+    y = c(0.2, 0.5, -0.1, 0.7, 0.0, 0.4),
+    x = c(0, 1, 0, 1, 0, 1),
+    group = factor(c(1, 1, 2, 2, 3, 3))
+  )
+
+  mdl <- rtmb_glmer(y ~ x + (1 | group), data = glmer_dat, family = "gaussian")
+  expect_s3_class(mdl, "RTMB_Model")
 })
 
 test_that("Wrappers sample correctly (skip on CRAN)", {
@@ -291,4 +313,42 @@ test_that("rotate can use a principal-axis reference", {
 
   expect_lt(abs(ss[1, 2]), 1e-6)
   expect_true(ss[1, 1] >= ss[2, 2])
+})
+
+test_that("rotate can overwrite or save with a unique suffix", {
+  X <- matrix(
+    c(2, 1,
+      1, 2,
+     -1, -2,
+     -2, -1),
+    ncol = 2,
+    byrow = TRUE
+  )
+
+  code <- rtmb_code(
+    parameters = {
+      coords = Dim(c(4, 2))
+    },
+    model = {
+      coords ~ normal(X, 0.01)
+    }
+  )
+
+  fit <- rtmb_model(list(X = X), code, init = list(coords = X), silent = TRUE)$optimize(
+    num_estimate = 1,
+    se_method = "none"
+  )
+
+  fit$rotate("coords", principal = TRUE)
+  expect_true("coords_rot" %in% names(fit$generate))
+
+  fit$rotate("coords", principal = TRUE)
+  expect_true("coords_rot" %in% names(fit$generate))
+  expect_false("coords_rot_2" %in% names(fit$generate))
+
+  fit$rotate("coords", principal = TRUE, overwrite = FALSE)
+  expect_true("coords_rot_2" %in% names(fit$generate))
+
+  fit$rotate("coords", principal = TRUE, suffix = "principal")
+  expect_true("coords_principal" %in% names(fit$generate))
 })

@@ -887,6 +887,7 @@ Common continuous distributions include:
 |-----------------|----------------------------------------------|
 | Normal          | `normal_lpdf(y, mu, sigma)`                  |
 | Student t       | `student_t_lpdf(y, df, mu, sigma)`           |
+| Exp-mod normal  | `exp_mod_normal_lpdf(x, mu, sigma, lambda)`  |
 | Exponential     | `exponential_lpdf(x, rate)`                  |
 | Gamma           | `gamma_lpdf(x, shape, rate)`                 |
 | Beta            | `beta_lpdf(x, a, b)`                         |
@@ -916,6 +917,13 @@ L_corr ~ lkj_CF_corr(1)
 
 Mixture models usually build a matrix of component log densities and combine
 them with `log_sum_exp()`.
+
+For response-time models with both a response time and a binary choice, use the
+multi-observation syntax:
+
+```{r}
+obs(RT, Choice) ~ diffusion(alpha, tau, beta, delta)
+```
 
 ```{r}
 log_dens_mat <- matrix(mu[1] * 0, N, K)
