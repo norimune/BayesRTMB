@@ -2,6 +2,8 @@
 
 ## BayesRTMB 0.2.1
 
+CRAN release: 2026-06-23
+
 - Added
   [`upgrade_fit()`](https://norimune.github.io/BayesRTMB/reference/upgrade_fit.md)
   to rebuild saved MCMC, VB, MAP, and classic fit objects with the

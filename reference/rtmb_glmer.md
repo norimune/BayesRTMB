@@ -242,16 +242,16 @@ rtmb_glmer(
 #> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -509.84  12.20  -507.68  -538.51  -488.64       170       243  1.00 
-#> Intercept         2.64   0.09     2.62     2.47     2.82       605       684  1.00 
-#> b[cond]           0.75   0.12     0.72     0.51     0.98       554       580  1.01 
-#> sigma             0.83   0.04     0.82     0.76     0.92       406       526  1.00 
-#> sd[group:Int]     0.41   0.08     0.43     0.22     0.56       237       267  1.01 
-#> r_re[1]          -0.75   0.76    -0.72    -2.22     0.78      1138       756  1.00 
-#> r_re[2]          -0.98   0.81    -1.33    -2.52     0.54      1401       610  1.00 
-#> r_re[3]          -0.01   0.71     0.02    -1.41     1.39      1175       895  1.00 
-#> r_re[4]           0.60   0.81     0.69    -0.99     2.13       992       724  1.00 
-#> r_re[5]          -0.39   0.74    -0.43    -1.92     1.12       887       624  1.00 
+#> lp             -511.99  11.51  -511.85  -535.82  -490.65       216       461  1.00 
+#> Intercept         2.64   0.08     2.62     2.48     2.80      1168       773  1.00 
+#> b[cond]           0.76   0.12     0.77     0.53     0.98      1248       864  1.00 
+#> sigma             0.83   0.04     0.82     0.76     0.91       693       708  1.00 
+#> sd[group:Int]     0.40   0.08     0.40     0.22     0.55       334       603  1.01 
+#> r_re[1]          -0.75   0.82    -0.78    -2.35     0.85      1636       833  1.00 
+#> r_re[2]          -0.95   0.76    -0.81    -2.40     0.58      1764       613  1.00 
+#> r_re[3]           0.03   0.74     0.03    -1.39     1.47      2336       862  1.00 
+#> r_re[4]           0.61   0.80     0.60    -0.99     2.11      1665       755  1.00 
+#> r_re[5]          -0.42   0.76    -0.33    -1.87     1.08      2456       857  1.00 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -330,13 +330,15 @@ rtmb_glmer(
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
 #> 
+#> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
+#> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")
 #> 
 #> Call:
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 390.80
-#> Approx. Log Marginal Likelihood (Laplace): -436.84
+#> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 

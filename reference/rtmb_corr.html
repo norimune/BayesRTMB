@@ -160,16 +160,16 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <span class="r-out co"><span class="r-pr">#&gt;</span> sampling: 100%</span>
 <span class="r-in"><span>  <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp          -1006.54  1.67  -1005.57  -1010.64  -1004.37       492       732  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> corr[rho]       0.29  0.06      0.28      0.19      0.40       926       643  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mean[sat]       3.44  0.06      3.45      3.31      3.55       795       711  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> mean[perf]      4.69  0.10      4.69      4.50      4.89       741       600  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[sat]         1.00  0.04      1.00      0.93      1.09      1126       830  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[perf]        1.77  0.08      1.78      1.62      1.92       970       778  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp          -1006.41  1.59  -1005.29  -1010.46  -1004.44       570       864  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> corr[rho]       0.30  0.05      0.28      0.20      0.39      1092       977  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mean[sat]       3.43  0.06      3.43      3.32      3.54       990       757  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> mean[perf]      4.69  0.10      4.69      4.48      4.89      1161       739  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[sat]         1.00  0.04      0.99      0.92      1.08      1015       734  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[perf]        1.77  0.07      1.78      1.64      1.91      1240       895  1.00 </span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>corr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Calculating marginal likelihood for the full model...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1013.161 (Error = 0.0104, ESS = 352.1)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1013.156 (Error = 0.0088, ESS = 417.0)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Sampling from the comparison model ---</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting sequential sampling (chains = 2)...</span>
@@ -194,11 +194,11 @@ Required when using <code><a href="prior_weak.html">prior_weak()</a></code>. Can
 <span class="r-out co"><span class="r-pr">#&gt;</span> sampling: 100%</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Calculating marginal likelihood for the comparison model ---</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1025.622 (Error = 0.0061, ESS = 285.4)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bridge Sampling Converged: LogML = -1025.623 (Error = 0.0071, ESS = 394.8)</span>
 <span class="r-in"><span>  <span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">bf_corr</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> --- Bayes Factor Analysis (Bridge Sampling) ---</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Bayes Factor (BF12) : 257903.3 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : 12.4603 (Approx. Error = 0.0121)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Bayes Factor (BF12) : 259633.8 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Log Bayes Factor    : 12.4670 (Approx. Error = 0.0113)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Evidence            : Decisive evidence for Model 1 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Comparison model    : Parameters fixed at list(corr = 0) </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

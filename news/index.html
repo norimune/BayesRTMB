@@ -56,7 +56,7 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.1" id="bayesrtmb-021">BayesRTMB 0.2.1<a class="anchor" aria-label="anchor" href="#bayesrtmb-021"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.2.1" id="bayesrtmb-021">BayesRTMB 0.2.1<a class="anchor" aria-label="anchor" href="#bayesrtmb-021"></a></h2><p class="text-muted">CRAN release: 2026-06-23</p>
 <ul><li>Added <code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code> to rebuild saved MCMC, VB, MAP, and classic fit objects with the currently loaded class definitions, optionally upgrading their embedded model objects as well.</li>
 <li>Improved <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> and <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> tape construction time by automatically reusing an AD seed from model parameters when available.</li>
 <li>Made <code><a href="../reference/log_sum_exp.html">log_sum_exp()</a></code>, <code><a href="../reference/softmax.html">softmax()</a></code>, and <code><a href="../reference/log_softmax.html">log_softmax()</a></code> work more reliably with RTMB automatic-differentiation values, including baseline-category patterns such as <code>softmax(c(0, eta))</code> inside <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>.</li>
