@@ -136,6 +136,17 @@ test_that("wrapper loop-filled matrices use AD-compatible arrays", {
   expect_false(any(grepl("eta <- matrix\\(0, N, num_categories - 1\\)", glmer_code)))
 })
 
+test_that("rtmb_glmer setup capture leaves formula-like objects intact", {
+  glmer_dat <- data.frame(
+    y = c(0.2, 0.5, -0.1, 0.7, 0.0, 0.4),
+    x = c(0, 1, 0, 1, 0, 1),
+    group = factor(c(1, 1, 2, 2, 3, 3))
+  )
+
+  mdl <- rtmb_glmer(y ~ x + (1 | group), data = glmer_dat, family = "gaussian")
+  expect_s3_class(mdl, "RTMB_Model")
+})
+
 test_that("Wrappers sample correctly (skip on CRAN)", {
   skip_on_cran()
   

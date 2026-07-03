@@ -195,9 +195,9 @@ NULL
     return(out)
   }
 
-  if (is.list(value) && length(value) > 0L) {
+  if (is.list(value) && !is.object(value) && !is.language(value) && length(value) > 0L) {
     for (i in seq_along(value)) {
-      value[[i]] <- .rtmb_close_setup_value(value[[i]], memo = memo, active = active)
+      value[i] <- list(.rtmb_close_setup_value(value[[i]], memo = memo, active = active))
     }
   }
 
