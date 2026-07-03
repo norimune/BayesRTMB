@@ -16,10 +16,10 @@ There are no known CRAN reverse dependencies.
 
 This release updates BayesRTMB to 0.2.2.
 
-This is a maintenance release following the CRAN macOS arm64 check report.
-The factor-analysis wrapper code has been updated to avoid an
-automatic-differentiation container construction issue that could occur on the
-M1 macOS R-devel check platform.
+This is a maintenance release submitted in response to the CRAN team's
+macOS arm64 check report for the previous 0.2.1 release. The factor-analysis
+wrapper code has been updated to avoid an automatic-differentiation container
+construction issue that could occur on the M1 macOS R-devel check platform.
 
 Additional changes in this release include:
 
