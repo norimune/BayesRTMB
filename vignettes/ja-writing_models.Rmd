@@ -313,7 +313,7 @@ code_exgaussian <- rtmb_code(
         log(lambda) +
         lambda * (mu - x) +
         0.5 * (lambda * sigma)^2 +
-        pnorm(z, log.p = TRUE)
+        RTMB::pnorm(z, log.p = TRUE)
 
       if (sum) sum(res) else res
     }
