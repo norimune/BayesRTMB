@@ -117,9 +117,9 @@ rtmb_fa(
 
 
 
-  # --- 2. Factor Analysis with Rotation and Factor Scores (2 Factors) ---
-  # Extract 2 factors, apply Promax rotation during model fitting, and calculate factor scores
-  fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
+  # --- 2. Factor Analysis with Factor Scores and Post-hoc Rotation (2 Factors) ---
+  # Extract 2 factors and calculate factor scores
+  fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, score = TRUE)
 #> Pre-checking model code...
 #> Checking RTMB setup...
 
@@ -139,29 +139,28 @@ rtmb_fa(
 #> Approx. Log Marginal Likelihood (Laplace): -2503.48
 #> 
 #> Point Estimates and 95% Sampling-based CI:
-#>               variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_promax[BF1,Factor1]   -0.88412     0.19040   -0.99590   -0.29552 
-#> L_promax[BF2,Factor1]   -0.07323     0.04808   -0.16583    0.02137 
-#> L_promax[BF3,Factor1]   -0.11607     0.07986   -0.27315    0.04090 
-#> L_promax[BF4,Factor1]   -0.07882     0.08795   -0.24846    0.09597 
-#> L_promax[BF5,Factor1]    0.03564     0.08367   -0.12772    0.19089 
-#> L_promax[BF6,Factor1]    0.68867     0.12762    0.39206    0.88820 
-#> L_promax[BF7,Factor1]    0.01309     0.04747   -0.07218    0.09987 
-#> L_promax[BF8,Factor1]   -0.15549     0.09734   -0.35668    0.02904 
-#> L_promax[BF9,Factor1]    0.08481     0.09385   -0.10586    0.26402 
-#> L_promax[BF10,Factor1]  -0.10916     0.07976   -0.26512    0.04661 
+#>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> L[BF1,Factor1]   -0.88470     0.18969   -0.99419   -0.29384 
+#> L[BF2,Factor1]   -0.10358     0.08347   -0.26604    0.06702 
+#> L[BF3,Factor1]   -0.11063     0.08073   -0.26601    0.04442 
+#> L[BF4,Factor1]   -0.07090     0.09204   -0.24860    0.12006 
+#> L[BF5,Factor1]    0.04105     0.08525   -0.12575    0.20137 
+#> L[BF6,Factor1]    0.68758     0.12657    0.38931    0.88475 
+#> L[BF7,Factor1]   -0.01923     0.08295   -0.18019    0.14095 
+#> L[BF8,Factor1]   -0.14559     0.09766   -0.34376    0.04672 
+#> L[BF9,Factor1]    0.08890     0.09521   -0.10913    0.27118 
+#> L[BF10,Factor1]  -0.11707     0.08321   -0.27523    0.04973 
 #> 
 
   # Post-hoc rotation using the fa_rotate() method
-  # You can also apply other rotation methods (e.g., "varimax" from the stats package)
-  # to the unrotated loading matrix ("L") after estimation.
-  map_fa2$fa_rotate(target = "L", rotate = "varimax")
-#> Applying varimax rotation to L (Saving to generate as _varimax)...
+  # You can rotate the unrotated loading matrix ("L") and factor scores after estimation.
+  map_fa2$fa_rotate(target = "L", scores = "score", rotate = "promax")
+#> Applying promax rotation to L (Saving to generate as _promax)...
 #> Generated quantities updated.
 
   # The post-hoc rotated loadings are automatically stored with the method's
-  # suffix (e.g., "L_varimax")
-  map_fa2$summary("L_varimax")
+  # suffix (e.g., "L_promax")
+  map_fa2$summary("L_promax")
 #> 
 #> Call:
 #> MAP Estimation via RTMB
@@ -170,17 +169,17 @@ rtmb_fa(
 #> Approx. Log Marginal Likelihood (Laplace): -2503.48
 #> 
 #> Point Estimates and 95% Sampling-based CI:
-#>        variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> L_varimax[1,1]   -0.87739     0.18946   -0.98930   -0.27963 
-#> L_varimax[2,1]   -0.00088     0.13712   -0.34153    0.19608 
-#> L_varimax[3,1]   -0.12824     0.08587   -0.27944    0.04857 
-#> L_varimax[4,1]   -0.09712     0.09498   -0.27465    0.09389 
-#> L_varimax[5,1]    0.02261     0.08562   -0.13019    0.20885 
-#> L_varimax[6,1]    0.68707     0.12478    0.38952    0.87753 
-#> L_varimax[7,1]    0.08960     0.14207   -0.28461    0.28011 
-#> L_varimax[8,1]   -0.17801     0.10885   -0.38106    0.03885 
-#> L_varimax[9,1]    0.07460     0.09842   -0.11166    0.27545 
-#> L_varimax[10,1]  -0.08975     0.08971   -0.28869    0.05730 
+#>       variable  Estimate  Std. Error  Lower 95%  Upper 95% 
+#> L_promax[1,1]   -0.88412     0.19040   -0.99590   -0.29552 
+#> L_promax[2,1]   -0.07323     0.04808   -0.16583    0.02137 
+#> L_promax[3,1]   -0.11607     0.07986   -0.27315    0.04090 
+#> L_promax[4,1]   -0.07882     0.08795   -0.24846    0.09597 
+#> L_promax[5,1]    0.03564     0.08367   -0.12772    0.19089 
+#> L_promax[6,1]    0.68867     0.12762    0.39206    0.88820 
+#> L_promax[7,1]    0.01309     0.04747   -0.07218    0.09987 
+#> L_promax[8,1]   -0.15549     0.09734   -0.35668    0.02904 
+#> L_promax[9,1]    0.08481     0.09385   -0.10586    0.26402 
+#> L_promax[10,1]  -0.10916     0.07976   -0.26512    0.04661 
 #> 
 
 
