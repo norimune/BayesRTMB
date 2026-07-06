@@ -7,7 +7,15 @@ permissions: read-all
 
 jobs:
   m1-check:
-    runs-on: macos-15
+    name: m1-check (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      fail-fast: false
+      matrix:
+        os:
+          - macos-15
+          - macos-26
 
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
@@ -153,7 +161,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: m1-check-evidence
+          name: m1-check-evidence-${{ matrix.os }}
           path: |
             BayesRTMB_*.tar.gz
             tarball-files.txt
