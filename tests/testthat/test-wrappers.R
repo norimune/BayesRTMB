@@ -91,6 +91,19 @@ test_that("FA with rotation and scores builds AD tape", {
   expect_s3_class(mdl, "RTMB_Model")
 })
 
+test_that("FA lower-triangular summaries avoid structural-zero reads", {
+  mdl <- rtmb_fa(
+    scale(mtcars[1:16, c("mpg", "disp", "hp", "wt")]),
+    nfactors = 2,
+    score = TRUE
+  )
+  out <- capture.output(mdl$print_code())
+
+  expect_true(any(grepl("for \\(k in 1:min\\(j, K\\)\\)", out)))
+  expect_false(any(grepl("rowSums\\(L_raw", out)))
+  expect_false(any(grepl("L_raw\\^2", out)))
+})
+
 test_that("wrapper WAIC loops use AD-compatible vectors", {
   Y <- matrix(c(
     0, 1, 1,

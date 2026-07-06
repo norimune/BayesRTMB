@@ -585,7 +585,7 @@ to_constrained <- function(para_unc_list, par_list) {
 
     } else if (b_type == "centered_tri") {
       R <- p$dim[1]; C <- p$dim[2]
-      L <- matrix(ad_zero, nrow = R, ncol = C)
+      L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
       idx <- 1
       for (d in 1:min(C, R - 1)) {
         n_d <- R - d + 1
@@ -599,7 +599,7 @@ to_constrained <- function(para_unc_list, par_list) {
 
     } else if (b_type == "positive_centered_tri") {
       R <- p$dim[1]; C <- p$dim[2]
-      L <- matrix(ad_zero, nrow = R, ncol = C)
+      L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
       idx <- 1
       for (d in 1:min(C, R - 1)) {
         n_d <- R - d + 1
@@ -633,7 +633,7 @@ to_constrained <- function(para_unc_list, par_list) {
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
           z <- z_all[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
-          L <- matrix(ad_zero, nrow = R, ncol = C)
+          L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
           L[1, 1] <- 1
           idx <- 1
           if (R >= 2) {
@@ -669,7 +669,7 @@ to_constrained <- function(para_unc_list, par_list) {
         para[[name]] <- res_array
       } else {
         z <- z_all
-        L <- matrix(ad_zero, nrow = R, ncol = C)
+        L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
         L[1, 1] <- 1
         idx <- 1
         if (R >= 2) {
@@ -705,7 +705,7 @@ to_constrained <- function(para_unc_list, par_list) {
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
           v_u <- val_unc[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
-          L <- matrix(ad_zero, nrow = R, ncol = C)
+          L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
           idx <- 1
           for (i in 1:R) {
             max_j <- min(i, C)
@@ -729,7 +729,7 @@ to_constrained <- function(para_unc_list, par_list) {
         dim(res_array) <- p$dim
         para[[name]] <- res_array
       } else {
-        L <- matrix(ad_zero, nrow = R, ncol = C)
+        L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
         idx <- 1
         for (i in 1:R) {
           max_j <- min(i, C)
@@ -755,7 +755,7 @@ to_constrained <- function(para_unc_list, par_list) {
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
           v_u <- val_unc[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
-          L <- matrix(ad_zero, nrow = R, ncol = C)
+          L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
           idx <- 1
           for (i in 1:R) {
             max_j <- min(i, C)
@@ -774,7 +774,7 @@ to_constrained <- function(para_unc_list, par_list) {
         dim(res_array) <- p$dim
         para[[name]] <- res_array
       } else {
-        L <- matrix(ad_zero, nrow = R, ncol = C)
+        L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
         idx <- 1
         for (i in 1:R) {
           max_j <- min(i, C)
@@ -798,7 +798,7 @@ to_constrained <- function(para_unc_list, par_list) {
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
           v_u <- val_unc[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
-          L <- matrix(ad_zero, nrow = R, ncol = C)
+          L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
           idx <- 1
           sum_val <- 0
           last_i <- R
@@ -823,7 +823,7 @@ to_constrained <- function(para_unc_list, par_list) {
         dim(res_array) <- p$dim
         para[[name]] <- res_array
       } else {
-        L <- matrix(ad_zero, nrow = R, ncol = C)
+        L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
         idx <- 1
         sum_val <- 0
         last_i <- R

@@ -12,79 +12,150 @@ jobs:
     env:
       GITHUB_PAT: ${{ secrets.GITHUB_TOKEN }}
       R_KEEP_PKG_SOURCE: yes
-      _R_CHECK_FORCE_SUGGESTS_: false
+      _R_CHECK_FORCE_SUGGESTS_: "false"
+      _R_CHECK_INSTALL_DEPENDS_: "true"
+      _R_CHECK_DEPRECATED_DEFUNCT_: "true"
+      _R_CHECK_CODE_ASSIGN_TO_GLOBALENV_: "true"
+      _R_CHECK_CODE_DATA_INTO_GLOBALENV_: "true"
+      _R_CHECK_SCREEN_DEVICE_: "warn"
+      _R_CHECK_S3_METHODS_NOT_REGISTERED_: "true"
+      _R_CHECK_OVERWRITE_REGISTERED_S3_METHODS_: "true"
+      _R_CHECK_NATIVE_ROUTINE_REGISTRATION_: "true"
+      _R_CHECK_FF_CALLS_: "registration"
+      _R_CHECK_COMPILATION_FLAGS_: "true"
+      _R_CHECK_THINGS_IN_TEMP_DIR_: "true"
+      _R_CHECK_MATRIX_DATA_: "TRUE"
+      _R_CHECK_ORPHANED_: "true"
+      _R_CHECK_BROWSER_NONINTERACTIVE_: "true"
+      _R_CHECK_MBCS_CONVERSION_FAILURE_: "true"
+      _R_CHECK_LIMIT_CORES_: "true"
+      _R_CHECK_TIMINGS_: "10"
+      _R_CHECK_TESTS_NLINES_: "0"
+      _R_CHECK_VIGNETTES_NLINES_: "0"
+      R_BROWSER: "false"
+      R_PDFVIEWER: "false"
+      RGL_USE_NULL: "true"
+      NOAWT: "1"
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Show runner info
         run: |
+          set -euxo pipefail
           uname -a
           sysctl -n machdep.cpu.brand_string || true
           arch
           sw_vers
+          xcodebuild -version || true
 
       - uses: r-lib/actions/setup-pandoc@v2
 
       - uses: r-lib/actions/setup-r@v2
         with:
           r-version: devel
-          use-public-rspm: true
+          use-public-rspm: false
 
       - uses: r-lib/actions/setup-r-dependencies@v2
         with:
           extra-packages: |
+            any::pkgbuild
             any::pkgload
-            any::rcmdcheck
             any::sessioninfo
           needs: check
+          cache: false
 
-      - name: Direct regression check for CRAN M1 error
+      - name: Show R session and package versions
+        shell: Rscript {0}
         run: |
-          cat > direct-m1-check.R <<'EOF'
-          cat("=== System info ===\n")
+          cat("=== Sys.info ===\n")
           print(Sys.info())
-          cat("\n=== R info ===\n")
+          cat("\n=== R version ===\n")
           print(R.version.string)
           print(R.version$platform)
           print(R.version$arch)
-          cat("\n=== Session info ===\n")
+          cat("\n=== Toolchain ===\n")
+          print(Sys.getenv(c("CC", "CXX", "FC", "CFLAGS", "CXXFLAGS", "FFLAGS")))
+          cat("\n=== sessioninfo ===\n")
           print(sessioninfo::session_info())
+          cat("\n=== DESCRIPTION version ===\n")
+          desc <- read.dcf("DESCRIPTION")
+          print(desc[, c("Package", "Version")])
+          stopifnot(package_version(desc[, "Version"]) >= package_version("0.2.3"))
 
-          pkgload::load_all(".")
-          load("data/BigFive.rda")
-          fa_data <- BigFive[, 1:10]
-
-          fit_fa2 <- rtmb_fa(
-            data = fa_data,
-            nfactors = 2,
-            rotate = "promax",
-            score = TRUE
-          )
-
-          map_fa2 <- fit_fa2$optimize(num_estimate = 1)
-          print(map_fa2)
-          print(map_fa2$summary(max_rows = 10))
-          EOF
-          Rscript direct-m1-check.R
-
-      - name: R CMD check
+      - name: Direct source-tree regression for CRAN M1 FA failure
         shell: Rscript {0}
         run: |
-          res <- rcmdcheck::rcmdcheck(
-            ".",
-            args = c("--no-manual", "--as-cran"),
-            build_args = c("--compact-vignettes=gs+qpdf"),
-            error_on = "error"
-          )
-          print(res)
+          pkgload::load_all(".", quiet = TRUE)
+          data(BigFive, package = "BayesRTMB")
+          fa_data <- BigFive[, 1:10]
 
-      - name: Upload check results
+          cat("=== Build model that failed on CRAN M1mac ===\n")
+          fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, score = TRUE)
+          stopifnot(inherits(fit_fa2, "RTMB_Model"))
+
+          code <- capture.output(fit_fa2$print_code())
+          stopifnot(!any(grepl("rowSums\\(L_raw", code)))
+          stopifnot(!any(grepl("L_raw\\^2", code)))
+          stopifnot(any(grepl("for \\(k in 1:min\\(j, K\\)\\)", code)))
+
+          cat("=== Optimize model that failed during MakeADFun on CRAN ===\n")
+          map_fa2 <- fit_fa2$optimize(num_estimate = 1, se_method = "none")
+          print(map_fa2)
+          print(map_fa2$summary(max_rows = 10))
+
+          cat("=== Post-hoc Promax rotation path used in examples ===\n")
+          map_fa2$fa_rotate(target = "L", scores = "score", rotate = "promax")
+          print(map_fa2$summary("L_promax", max_rows = 10))
+
+          cat("=== Legacy in-model rotation still builds AD tape ===\n")
+          fit_rot <- rtmb_fa(data = fa_data, nfactors = 2, rotate = "promax", score = TRUE)
+          stopifnot(inherits(fit_rot, "RTMB_Model"))
+
+      - name: Build source tarball with vignettes
+        run: |
+          set -euxo pipefail
+          R CMD build .
+          TARBALL="$(ls -1t BayesRTMB_*.tar.gz | head -n 1)"
+          echo "TARBALL=${TARBALL}" >> "$GITHUB_ENV"
+          echo "Built ${TARBALL}"
+          tar tzf "${TARBALL}" | tee tarball-files.txt
+          grep '^BayesRTMB/inst/doc/' tarball-files.txt
+
+      - name: Install built tarball
+        run: |
+          set -euxo pipefail
+          R CMD INSTALL "${TARBALL}"
+
+      - name: Installed-package examples and regression
+        shell: Rscript {0}
+        run: |
+          library(BayesRTMB)
+          cat("Installed BayesRTMB version:", as.character(packageVersion("BayesRTMB")), "\n")
+          stopifnot(packageVersion("BayesRTMB") >= "0.2.3")
+
+          cat("=== Run installed rtmb_fa example ===\n")
+          example(rtmb_fa, package = "BayesRTMB", ask = FALSE)
+
+          cat("=== Re-run exact installed regression ===\n")
+          data(BigFive, package = "BayesRTMB")
+          fa_data <- BigFive[, 1:10]
+          fit_fa2 <- rtmb_fa(data = fa_data, nfactors = 2, score = TRUE)
+          map_fa2 <- fit_fa2$optimize(num_estimate = 1, se_method = "none")
+          print(map_fa2$summary(max_rows = 10))
+
+      - name: R CMD check built tarball
+        run: |
+          set -euxo pipefail
+          R CMD check --as-cran --no-manual "${TARBALL}"
+
+      - name: Upload check evidence
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: m1-check-results
+          name: m1-check-evidence
           path: |
-            direct-m1-check.R
-            *.Rcheck
-            *.Rcheck/**
+            BayesRTMB_*.tar.gz
+            tarball-files.txt
+            BayesRTMB.Rcheck
+            BayesRTMB.Rcheck/**
