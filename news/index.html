@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.2</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,6 +55,11 @@
       <small>Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.3" id="bayesrtmb-023">BayesRTMB 0.2.3<a class="anchor" aria-label="anchor" href="#bayesrtmb-023"></a></h2>
+<ul><li>Fixed factor-analysis model construction on platforms where RTMB is sensitive to AD matrix containers that include structural zeros from lower-triangular parameters. The <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> wrapper now avoids reading upper-triangular structural-zero entries of <code>lower_tri</code> loading matrices and constructs constrained AD matrices with <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code>.</li>
+<li>Updated the runnable <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> example to demonstrate Promax rotation with post-hoc <code>fa_rotate()</code> after model fitting.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.2" id="bayesrtmb-022">BayesRTMB 0.2.2<a class="anchor" aria-label="anchor" href="#bayesrtmb-022"></a></h2>
 <ul><li>Added response-time distributions for model code: <code><a href="../reference/exp_mod_normal_lpdf.html">exp_mod_normal_lpdf()</a></code> and <code><a href="../reference/diffusion_lpdf.html">diffusion_lpdf()</a></code>, with sampling syntax support via <code>exp_mod_normal(...)</code> and <code>obs(RT, Choice) ~ diffusion(...)</code>.</li>
