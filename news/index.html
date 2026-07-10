@@ -58,7 +58,7 @@
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.3" id="bayesrtmb-023">BayesRTMB 0.2.3<a class="anchor" aria-label="anchor" href="#bayesrtmb-023"></a></h2>
 <ul><li>Fixed factor-analysis model construction on platforms where RTMB is sensitive to AD matrix containers that include structural zeros from lower-triangular parameters. The <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> wrapper now avoids reading upper-triangular structural-zero entries of <code>lower_tri</code> loading matrices and constructs constrained AD matrices with <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code>.</li>
-<li>Updated the runnable <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> example to demonstrate Promax rotation with post-hoc <code>fa_rotate()</code> after model fitting.</li>
+<li>Simplified the runnable <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> example to a one-factor model. Advanced factor-analysis workflows remain covered by documentation and CI regression checks.</li>
 </ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.2" id="bayesrtmb-022">BayesRTMB 0.2.2<a class="anchor" aria-label="anchor" href="#bayesrtmb-022"></a></h2>
@@ -116,7 +116,7 @@
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>

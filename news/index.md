@@ -10,10 +10,10 @@
   `lower_tri` loading matrices and constructs constrained AD matrices
   with
   [`rtmb_array()`](https://norimune.github.io/BayesRTMB/reference/rtmb_array.md).
-- Updated the runnable
+- Simplified the runnable
   [`rtmb_fa()`](https://norimune.github.io/BayesRTMB/reference/rtmb_fa.md)
-  example to demonstrate Promax rotation with post-hoc `fa_rotate()`
-  after model fitting.
+  example to a one-factor model. Advanced factor-analysis workflows
+  remain covered by documentation and CI regression checks.
 
 ## BayesRTMB 0.2.2
 

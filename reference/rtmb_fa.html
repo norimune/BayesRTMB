@@ -168,107 +168,6 @@ Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd
 <span class="r-out co"><span class="r-pr">#&gt;</span> L[BF9,Factor1]   -0.11264     0.08648   -0.28214    0.05686 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> L[BF10,Factor1]   0.21358     0.08794    0.04122    0.38593 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># --- 2. Factor Analysis with Factor Scores and Post-hoc Rotation (2 Factors) ---</span></span></span>
-<span class="r-in"><span>  <span class="co"># Extract 2 factors and calculate factor scores</span></span></span>
-<span class="r-in"><span>  <span class="va">fit_fa2</span> <span class="op">&lt;-</span> <span class="fu">rtmb_fa</span><span class="op">(</span>data <span class="op">=</span> <span class="va">fa_data</span>, nfactors <span class="op">=</span> <span class="fl">2</span>, score <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Setting se_method = "sampling" enables standard errors and 95% CIs</span></span></span>
-<span class="r-in"><span>  <span class="co"># for transformed and generated quantities, such as factor scores and post-hoc rotations.</span></span></span>
-<span class="r-in"><span>  <span class="co"># (It uses multivariate normal sampling from the unconstrained parameter space)</span></span></span>
-<span class="r-in"><span>  <span class="va">map_fa2</span> <span class="op">&lt;-</span> <span class="va">fit_fa2</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>se_method <span class="op">=</span> <span class="st">"sampling"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Using simulation-based error propagation (1000 samples)...</span>
-<span class="r-in"><span>  <span class="va">map_fa2</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 2440.43</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -2503.48</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Sampling-based CI:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF1,Factor1]   -0.88470     0.18969   -0.99419   -0.29384 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF2,Factor1]   -0.10358     0.08347   -0.26604    0.06702 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF3,Factor1]   -0.11063     0.08073   -0.26601    0.04442 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF4,Factor1]   -0.07090     0.09204   -0.24860    0.12006 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF5,Factor1]    0.04105     0.08525   -0.12575    0.20137 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF6,Factor1]    0.68758     0.12657    0.38931    0.88475 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF7,Factor1]   -0.01923     0.08295   -0.18019    0.14095 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF8,Factor1]   -0.14559     0.09766   -0.34376    0.04672 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF9,Factor1]    0.08890     0.09521   -0.10913    0.27118 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF10,Factor1]  -0.11707     0.08321   -0.27523    0.04973 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># Post-hoc rotation using the fa_rotate() method</span></span></span>
-<span class="r-in"><span>  <span class="co"># You can rotate the unrotated loading matrix ("L") and factor scores after estimation.</span></span></span>
-<span class="r-in"><span>  <span class="va">map_fa2</span><span class="op">$</span><span class="fu">fa_rotate</span><span class="op">(</span>target <span class="op">=</span> <span class="st">"L"</span>, scores <span class="op">=</span> <span class="st">"score"</span>, rotate <span class="op">=</span> <span class="st">"promax"</span><span class="op">)</span></span></span>
-<span class="r-msg co"><span class="r-pr">#&gt;</span> Applying promax rotation to L (Saving to generate as _promax)...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Generated quantities updated.</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># The post-hoc rotated loadings are automatically stored with the method's</span></span></span>
-<span class="r-in"><span>  <span class="co"># suffix (e.g., "L_promax")</span></span></span>
-<span class="r-in"><span>  <span class="va">map_fa2</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"L_promax"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 2440.43</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -2503.48</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Sampling-based CI:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>       variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[1,1]   -0.88412     0.19040   -0.99590   -0.29552 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[2,1]   -0.07323     0.04808   -0.16583    0.02137 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[3,1]   -0.11607     0.07986   -0.27315    0.04090 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[4,1]   -0.07882     0.08795   -0.24846    0.09597 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[5,1]    0.03564     0.08367   -0.12772    0.19089 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[6,1]    0.68867     0.12762    0.39206    0.88820 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[7,1]    0.01309     0.04747   -0.07218    0.09987 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[8,1]   -0.15549     0.09734   -0.35668    0.02904 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[9,1]    0.08481     0.09385   -0.10586    0.26402 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L_promax[10,1]  -0.10916     0.07976   -0.26512    0.04661 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="co"># --- 3. Regularized Factor Analysis using Spike-and-Slab Prior (SSP) ---</span></span></span>
-<span class="r-in"><span>  <span class="co"># Specifying 'rotate = "ssp"' enables sparse loading matrix estimation</span></span></span>
-<span class="r-in"><span>  <span class="va">fit_ssp</span> <span class="op">&lt;-</span> <span class="fu">rtmb_fa</span><span class="op">(</span>data <span class="op">=</span> <span class="va">fa_data</span>, nfactors <span class="op">=</span> <span class="fl">2</span>, rotate <span class="op">=</span> <span class="st">"ssp"</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Pre-checking model code...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
-<span class="r-in"><span></span></span>
-<span class="r-in"><span>  <span class="va">map_ssp</span> <span class="op">&lt;-</span> <span class="va">fit_ssp</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>No optimization run reached an acceptable optimizer status; BEST is selected by the lowest objective among not converged runs ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.</span>
-<span class="r-in"><span>  <span class="va">map_ssp</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 2433.06</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): -2692.30</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span>        variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF1,Factor1]    0.00000     0.00000   -0.00000    0.00000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF2,Factor1]    0.78286     0.07926    0.62751    0.93821 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF3,Factor1]   -0.11537     0.09039   -0.29252    0.06179 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF4,Factor1]   -0.18356     0.08405   -0.34831   -0.01882 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF5,Factor1]   -0.11921     0.08829   -0.29226    0.05383 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF6,Factor1]    0.00000     0.00000   -0.00000    0.00000 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF7,Factor1]    0.85423     0.08408    0.68944    1.01902 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF8,Factor1]   -0.23762     0.08149   -0.39735   -0.07790 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF9,Factor1]   -0.07829     0.09694   -0.26828    0.11170 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> L[BF10,Factor1]   0.18712     0.09227    0.00628    0.36797 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>
   </main><aside class="col-md-3"><nav id="toc" aria-label="Table of contents"><h2>On this page</h2>
@@ -280,7 +179,7 @@ Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd
 </div>
 
 <div class="pkgdown-footer-right">
-  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.0.</p>
+  <p>Site built with <a href="https://pkgdown.r-lib.org/" class="external-link">pkgdown</a> 2.2.1.</p>
 </div>
 
     </footer></div>
