@@ -155,7 +155,7 @@ anova(fit_tab)
 
 複数のモデルを比較する場合は、`anova(fit1, fit2)` と書けます。たとえば、因子分析で因子数の異なるモデルを比較できます。
 
-```{r}
+```{r eval=FALSE}
 data(BigFive)
 
 items <- BigFive[, 1:10]
@@ -174,7 +174,7 @@ anova(fit_fa1, fit_fa2)
 
 `AIC()` や `BIC()` も同じように使えます。
 
-```{r}
+```{r eval=FALSE}
 c(AIC_1 = AIC(fit_fa1),
   AIC_2 = AIC(fit_fa2),
   BIC_1 = BIC(fit_fa1),

@@ -580,7 +580,14 @@ to_constrained <- function(para_unc_list, par_list) {
     } else if (b_type == "centered_matrix") {
       R <- p$dim[1]; C <- p$dim[2]
       Q <- stz_basis(R)
-      mat_unc <- matrix(val_unc, nrow = R - 1, ncol = C)
+      mat_unc <- rtmb_array(0, dim = c(R - 1, C), seed = ad_zero)
+      idx <- 1
+      for (j in 1:C) {
+        for (i in 1:(R - 1)) {
+          mat_unc[i, j] <- val_unc[idx]
+          idx <- idx + 1
+        }
+      }
       para[[name]] <- Q %*% mat_unc
 
     } else if (b_type == "centered_tri") {

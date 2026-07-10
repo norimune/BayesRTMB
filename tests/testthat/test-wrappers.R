@@ -81,6 +81,8 @@ test_that("FA generated quantities use report syntax", {
 })
 
 test_that("FA with rotation and scores builds AD tape", {
+  skip_on_cran()
+
   mdl <- rtmb_fa(
     scale(mtcars[1:16, c("mpg", "disp", "hp", "wt")]),
     nfactors = 2,
@@ -92,6 +94,8 @@ test_that("FA with rotation and scores builds AD tape", {
 })
 
 test_that("FA lower-triangular summaries avoid structural-zero reads", {
+  skip_on_cran()
+
   mdl <- rtmb_fa(
     scale(mtcars[1:16, c("mpg", "disp", "hp", "wt")]),
     nfactors = 2,
@@ -147,6 +151,48 @@ test_that("wrapper loop-filled matrices use AD-compatible arrays", {
   glmer_code <- capture.output(glmer$print_code())
   expect_true(any(grepl("eta <- rtmb_array\\(0, dim = c\\(N, num_categories - 1\\)\\)", glmer_code)))
   expect_false(any(grepl("eta <- matrix\\(0, N, num_categories - 1\\)", glmer_code)))
+})
+
+test_that("AD-sensitive correlation matrices avoid base matrix reconstruction", {
+  corr_mdl <- rtmb_corr(mtcars[, c("mpg", "wt")])
+  corr_model <- paste(deparse(corr_mdl$code$model), collapse = "\n")
+  expect_match(
+    corr_model,
+    "CF_corr <- rtmb_array(0, dim = c(2, 2), seed = corr)",
+    fixed = TRUE
+  )
+  expect_false(grepl("CF_corr <- matrix(corr * 0", corr_model, fixed = TRUE))
+
+  full_dat <- data.frame(
+    y1 = c(-1.8, -1.2, -0.7, -0.1, 0.4, 0.9, 1.3, 1.8),
+    y2 = c(-1.1, -0.9, -0.2, 0.2, 0.8, 1.0, 1.7, 2.1)
+  )
+
+  mix_mdl <- rtmb_mixture(
+    cbind(y1, y2) ~ 1,
+    k = 2,
+    data = full_dat,
+    covariance = "full",
+    prior = prior_normal(lkj_eta = 1)
+  )
+  mix_model <- paste(deparse(mix_mdl$code$model), collapse = "\n")
+  expect_match(mix_model, "L_corr_k <- rtmb_array", fixed = TRUE)
+  expect_match(mix_model, "seed = L_corr[k,", fixed = TRUE)
+  expect_false(grepl("matrix(L_corr[k, , ], P, P)", mix_model, fixed = TRUE))
+
+  lrt_mdl <- rtmb_lrt(
+    cbind(y1, y2) ~ 1,
+    k = 2,
+    data = full_dat,
+    covariance = "full",
+    magnitude = 1,
+    smoothing = 1,
+    prior = prior_normal(lkj_eta = 1)
+  )
+  lrt_model <- paste(deparse(lrt_mdl$code$model), collapse = "\n")
+  expect_match(lrt_model, "L_mat <- rtmb_array", fixed = TRUE)
+  expect_match(lrt_model, "seed = L_corr[k,", fixed = TRUE)
+  expect_false(grepl("matrix(L_corr[k, , ], P, P)", lrt_model, fixed = TRUE))
 })
 
 test_that("rtmb_glmer setup capture leaves formula-like objects intact", {

@@ -308,10 +308,19 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
         }
         log_dens_mat[, k] <- ld
       })
-    } else {
-      L_corr_k_expr <- if (covariance == "full") quote(matrix(L_corr[k, , ], P, P)) else quote(L_corr)
+    } else if (covariance == "full") {
       bquote({
-        log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = mu[k, ], sd = .(s_k_expr), CF_Omega = .(L_corr_k_expr), sum = FALSE)
+        L_corr_k <- rtmb_array(0, dim = c(P, P), seed = L_corr[k, 1, 1])
+        for (p1 in 1:P) {
+          for (p2 in 1:p1) {
+            L_corr_k[p1, p2] <- L_corr[k, p1, p2]
+          }
+        }
+        log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = mu[k, ], sd = .(s_k_expr), CF_Omega = L_corr_k, sum = FALSE)
+      })
+    } else {
+      bquote({
+        log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = mu[k, ], sd = .(s_k_expr), CF_Omega = L_corr, sum = FALSE)
       })
     }
   } else {
@@ -364,7 +373,15 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 
     if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
       if (covariance == "full") {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) {
+          L_corr_k <- rtmb_array(0, dim = c(P, P), seed = L_corr[k, 1, 1])
+          for (p1 in 1:P) {
+            for (p2 in 1:p1) {
+              L_corr_k[p1, p2] <- L_corr[k, p1, p2]
+            }
+          }
+          L_corr_k ~ lkj_CF_corr(.(prior$lkj_eta))
+        })
       } else {
         model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
       }
@@ -404,7 +421,15 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       if (!is.null(prior$lkj_eta) && multivariate && !is_diag) {
         if (covariance == "full") {
           model_exprs[[length(model_exprs) + 1]] <-
-            bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
+            bquote(for (k in 1:K) {
+              L_corr_k <- rtmb_array(0, dim = c(P, P), seed = L_corr[k, 1, 1])
+              for (p1 in 1:P) {
+                for (p2 in 1:p1) {
+                  L_corr_k[p1, p2] <- L_corr[k, p1, p2]
+                }
+              }
+              L_corr_k ~ lkj_CF_corr(.(prior$lkj_eta))
+            })
         } else {
           model_exprs[[length(model_exprs) + 1]] <-
             bquote(L_corr ~ lkj_CF_corr(.(prior$lkj_eta)))

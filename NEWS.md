@@ -5,8 +5,9 @@
   parameters. The `rtmb_fa()` wrapper now avoids reading upper-triangular
   structural-zero entries of `lower_tri` loading matrices and constructs
   constrained AD matrices with `rtmb_array()`.
-* Updated the runnable `rtmb_fa()` example to demonstrate Promax rotation with
-  post-hoc `fa_rotate()` after model fitting.
+* Simplified the runnable `rtmb_fa()` example to a one-factor model. Advanced
+  factor-analysis workflows remain covered by documentation and CI regression
+  checks.
 
 # BayesRTMB 0.2.2
 

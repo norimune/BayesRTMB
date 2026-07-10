@@ -42,6 +42,19 @@ test_that("rtmb containers can be assigned to inside rtmb_code", {
   expect_s3_class(rtmb_model(dat, code, silent = TRUE), "RTMB_Model")
 })
 
+test_that("centered_matrix parameters use an AD-compatible intermediate", {
+  code <- rtmb_code(
+    parameters = {
+      theta <- Dim(c(3, 2), type = "centered_matrix")
+    },
+    model = {
+      theta ~ normal(0, 1)
+    }
+  )
+
+  expect_s3_class(rtmb_model(list(), code, silent = TRUE), "RTMB_Model")
+})
+
 test_that("softmax helpers support AD containers", {
   x_num <- c(0.2, -0.1, 0.4)
   x <- RTMB::advector(x_num)

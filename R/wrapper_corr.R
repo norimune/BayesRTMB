@@ -569,7 +569,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
         if (!is.null(prior$lkj_eta)) {
           model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior$lkj_eta)))
         }
-        model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- matrix(corr * 0, nrow = 2, ncol = 2))
+        model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- rtmb_array(0, dim = c(2, 2), seed = corr))
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[1, 1] <- 1)
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 1] <- corr)
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 2] <- sqrt(1 - corr^2))

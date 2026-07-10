@@ -310,7 +310,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
         model_exprs[[length(model_exprs) + 1]] <- quote(lambda_tilde_b <- sqrt(c2_b * lambda_b^2 / (c2_b + tau_hs_b^2 * lambda_b^2)))
         model_exprs[[length(model_exprs) + 1]] <- quote(b <- z_b * tau_hs_b * lambda_tilde_b)
       } else {
-        model_exprs[[length(model_exprs) + 1]] <- quote(b <- matrix(0, K_prob, K-1))
+        model_exprs[[length(model_exprs) + 1]] <- quote(b <- rtmb_array(0, dim = c(K_prob, K - 1), seed = z_b[1, 1]))
         model_exprs[[length(model_exprs) + 1]] <- quote(for (k in 1:(K-1)) {
           lambda_tilde_k <- sqrt(c2_b[k] * lambda_b[, k]^2 / (c2_b[k] + tau_hs_b[k]^2 * lambda_b[, k]^2))
           b[, k] <- z_b[, k] * tau_hs_b[k] * lambda_tilde_k
@@ -368,13 +368,23 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       }
       log_dens_mat[, k] <- ld
     })
-  } else {
-    # Full covariance
+  } else if (covariance == "full") {
     dist_body <- bquote({
       m_vec <- mu[k, ]
       s_vec <- if (.(is_sigma_equal)) sigma else sigma[k, ]
-      L_mat <- if (.(covariance == "full")) matrix(L_corr[k, , ], P, P) else matrix(L_corr, P, P)
+      L_mat <- rtmb_array(0, dim = c(P, P), seed = L_corr[k, 1, 1])
+      for (p1 in 1:P) {
+        for (p2 in 1:p1) {
+          L_mat[p1, p2] <- L_corr[k, p1, p2]
+        }
+      }
       log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = as.vector(m_vec), sd = as.vector(s_vec), CF_Omega = L_mat, sum = FALSE)
+    })
+  } else {
+    dist_body <- bquote({
+      m_vec <- mu[k, ]
+      s_vec <- if (.(is_sigma_equal)) sigma else sigma[k, ]
+      log_dens_mat[, k] <- multi_normal_CF_lpdf(Y, mean = as.vector(m_vec), sd = as.vector(s_vec), CF_Omega = L_corr, sum = FALSE)
     })
   }
   model_exprs[[length(model_exprs) + 1]] <- as.call(list(as.name("for"), as.name("k"), quote(1:K), dist_body))
@@ -408,7 +418,15 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 
     if (multivariate && !is_diag) {
       if (covariance == "full") {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) {
+          L_mat <- rtmb_array(0, dim = c(P, P), seed = L_corr[k, 1, 1])
+          for (p1 in 1:P) {
+            for (p2 in 1:p1) {
+              L_mat[p1, p2] <- L_corr[k, p1, p2]
+            }
+          }
+          L_mat ~ lkj_CF_corr(.(prior$lkj_eta))
+        })
       } else {
         model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
       }
@@ -453,7 +471,15 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 
     if (!is.null(prior$lkj_eta) && multivariate && !is_diag) {
       if (covariance == "full") {
-        model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) matrix(L_corr[k, , ], P, P) ~ lkj_CF_corr(.(prior$lkj_eta)))
+        model_exprs[[length(model_exprs) + 1]] <- bquote(for (k in 1:K) {
+          L_mat <- rtmb_array(0, dim = c(P, P), seed = L_corr[k, 1, 1])
+          for (p1 in 1:P) {
+            for (p2 in 1:p1) {
+              L_mat[p1, p2] <- L_corr[k, p1, p2]
+            }
+          }
+          L_mat ~ lkj_CF_corr(.(prior$lkj_eta))
+        })
       } else {
         model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
       }
