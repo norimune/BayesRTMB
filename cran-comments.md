@@ -1,7 +1,9 @@
 ## Test environments
 
-* local Windows x86_64-w64-mingw32, R 4.5.3: targeted `rtmb_fa()`
-  examples OK
+* local Windows x86_64-w64-mingw32, R 4.5.3: `R CMD check` completed with
+  0 errors, 0 warnings, and 0 notes
+* win-builder R-devel x86_64-w64-mingw32, Windows Server 2022 x64,
+  R-devel 2026-07-12 (r90242): OK
 * external Apple M1 Mac mini, macOS 26.5.1, R 4.6.1 aarch64,
   Apple clang 21, RTMB 1.9, TMB 1.9.21: OK
   * source tarball build, tarball installation, `example(rtmb_fa)`, the
@@ -17,8 +19,6 @@
   and the relevant `_R_CHECK_*` environment variables): the source containing
   the factor-analysis AD fixes passed `R CMD check --as-cran --run-donttest`
   without package-caused ERRORs or WARNINGs
-* win-builder R-devel x86_64-w64-mingw32, Windows Server 2022 x64: to be
-  rerun before resubmission
 * GitHub Actions macOS arm64, R-devel, commit bafad68:
   * macos-15: OK
   * macos-26: OK
@@ -29,6 +29,8 @@
 
 ## R CMD check results
 
+win-builder R-devel (2026-07-12, r90242): OK.
+
 GitHub Actions macOS arm64 checks passed on macos-15 and macos-26. External
 Apple M1 checks also passed for the updated source tarball, and the originally
 reported failure was not reproducible on an independent Apple M1 Mac using
@@ -37,10 +39,10 @@ The failure was also not reproduced in an external Apple Silicon R-devel
 environment configured to closely match the BDR M1mac setup; the remaining
 known difference was the exact R-devel revision available on that machine.
 We also attempted to use the macOS builder service for the CRAN M1mac setup,
-but the service was unavailable at the time of resubmission ("The macOS package
-build services are currently not responding."). As an alternative, we checked
-the package on GitHub Actions macOS arm64 and on independent Apple M1 hardware.
-Full local/win-builder results will be updated before resubmission.
+but the service was unavailable during preparation for this resubmission
+("The macOS package build services are currently not responding."). As an
+alternative, we checked the package on GitHub Actions macOS arm64 and on
+independent Apple M1 hardware.
 
 ## Reverse dependencies
 
@@ -52,10 +54,11 @@ This is a resubmission as BayesRTMB 0.2.3 with an increased version number.
 
 In this resubmission, the `rtmb_fa()` example failure reported by CRAN on
 the M1mac check platform has been addressed. The reported failure occurred in
-the factor-analysis transform block. The relevant code path constructed
-ordinary R matrices from automatic-differentiation values before using them in
-subsequent AD expressions; on the CRAN M1mac platform this could result in an
-invalid `advector`.
+the factor-analysis transform block. The failing code path combined
+base-matrix construction and recycling involving automatic-differentiation
+values with accesses to structural-zero upper-triangular entries. On the CRAN
+M1mac platform this could result in an invalid `advector` during subsequent AD
+expressions.
 
 The correction has two parts:
 
@@ -73,7 +76,7 @@ rotations, and SSP regularization, remain documented outside the runnable Rd
 example and are checked in CI regression tests rather than during CRAN example
 execution.
 
-This is a maintenance release submitted in response to the CRAN team's
+This is a maintenance release prepared in response to the CRAN team's
 macOS arm64 check report for the previous 0.2.1 release. The factor-analysis
 wrapper code has been updated to avoid an automatic-differentiation container
 construction issue that could occur on the M1 macOS R-devel check platform.
