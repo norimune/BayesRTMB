@@ -2,6 +2,8 @@
 
 ## BayesRTMB 0.2.3
 
+CRAN release: 2026-07-13
+
 - Fixed factor-analysis model construction on platforms where RTMB is
   sensitive to AD matrix containers that include structural zeros from
   lower-triangular parameters. The

@@ -217,7 +217,7 @@ rtmb_glmer(
 #>      variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 #> Intercept       2.64000     0.08790    2.46772    2.81228 
 #> b[cond]         0.76000     0.12431    0.51636    1.00364 
-#> sigma           0.82057     0.04103    0.74397    0.90505 
+#> sigma           0.82057     0.04103    0.74397    0.90506 
 #> sd[group:Int]   0.40233     0.07340    0.28137    0.57528 
 #> 
 
@@ -242,16 +242,16 @@ rtmb_glmer(
 #> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -511.32  11.40  -512.70  -535.26  -489.43       173       358  1.00 
-#> Intercept         2.64   0.09     2.64     2.47     2.80       852       715  1.00 
-#> b[cond]           0.76   0.13     0.74     0.52     1.01       832       673  1.00 
-#> sigma             0.83   0.04     0.82     0.76     0.92       537       849  1.00 
-#> sd[group:Int]     0.40   0.08     0.40     0.24     0.55       274       238  1.00 
-#> r_re[1]          -0.75   0.75    -0.74    -2.32     0.70      1434       786  1.00 
-#> r_re[2]          -0.97   0.81    -0.82    -2.49     0.60      1321       692  1.00 
-#> r_re[3]          -0.01   0.78     0.11    -1.54     1.47      2390       750  1.00 
-#> r_re[4]           0.60   0.76     0.50    -0.89     2.07      1662       712  1.00 
-#> r_re[5]          -0.38   0.80    -0.30    -1.91     1.15      1508       766  1.01 
+#> lp             -511.60  10.82  -512.93  -534.55  -491.59       219       477  1.00 
+#> Intercept         2.65   0.09     2.67     2.46     2.82      1215       754  1.00 
+#> b[cond]           0.75   0.13     0.72     0.49     1.00      1146       750  1.00 
+#> sigma             0.83   0.04     0.81     0.75     0.92       661       521  1.01 
+#> sd[group:Int]     0.40   0.08     0.41     0.23     0.55       322       467  1.00 
+#> r_re[1]          -0.73   0.76    -0.77    -2.24     0.79      1544       670  1.00 
+#> r_re[2]          -0.96   0.77    -0.96    -2.46     0.51      1962       724  1.00 
+#> r_re[3]           0.02   0.79    -0.27    -1.62     1.58      1835       804  1.00 
+#> r_re[4]           0.60   0.76     0.46    -0.91     2.06      1811       608  1.00 
+#> r_re[5]          -0.41   0.82    -0.14    -2.00     1.15      1755       809  1.00 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -298,7 +298,6 @@ rtmb_glmer(
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
 #> 
-#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
@@ -330,6 +329,7 @@ rtmb_glmer(
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
 #> 
+#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")
