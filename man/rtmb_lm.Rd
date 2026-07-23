@@ -6,7 +6,7 @@
 \usage{
 rtmb_lm(
   formula,
-  data,
+  data = NULL,
   prior = prior_flat(),
   y_range = NULL,
   init = NULL,
@@ -24,7 +24,9 @@ rtmb_lm(
 \arguments{
 \item{formula}{Formula (e.g., Y ~ X1 + X2)}
 
-\item{data}{Data frame}
+\item{data}{Optional data frame. If omitted, variables are resolved from the
+formula environment. In this mode, use bare variable names; formulas using
+\code{$}, \code{[[}, or \code{.} require an explicit data argument.}
 
 \item{prior}{An object of class `"rtmb_prior"`.
 Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,

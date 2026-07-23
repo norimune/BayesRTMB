@@ -6,7 +6,7 @@
 \usage{
 rtmb_glm(
   formula,
-  data,
+  data = NULL,
   family = "gaussian",
   prior = prior_flat(),
   y_range = NULL,
@@ -25,7 +25,9 @@ rtmb_glm(
 \arguments{
 \item{formula}{Formula}
 
-\item{data}{Data frame}
+\item{data}{Optional data frame. If omitted, variables are resolved from the
+formula environment. In this mode, use bare variable names; formulas using
+\code{$}, \code{[[}, or \code{.} require an explicit data argument.}
 
 \item{family}{Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")}
 

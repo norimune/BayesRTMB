@@ -62,11 +62,21 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
   if (!is.null(resid_time)) mf_form <- update(mf_form, as.formula(paste("~ . +", resid_time)))
 
   vars <- unique(all.vars(mf_form))
+  data <- as.data.frame(data)
   missing_vars <- setdiff(vars, names(data))
-  if (length(missing_vars) > 0) {
-    stop("Variables not found in data: ", paste(missing_vars, collapse = ", "), call. = FALSE)
+  formula_env <- environment(mf_form)
+  if (!is.environment(formula_env)) formula_env <- environment(formula)
+  unresolved_vars <- missing_vars[!vapply(
+    missing_vars,
+    exists,
+    logical(1),
+    envir = formula_env,
+    inherits = TRUE
+  )]
+  if (length(unresolved_vars) > 0) {
+    stop("Variables not found in data: ", paste(unresolved_vars, collapse = ", "), call. = FALSE)
   }
-  as.data.frame(data)[, vars, drop = FALSE]
+  data[, intersect(vars, names(data)), drop = FALSE]
 }
 
 .resolve_glmer_cwc_value <- function(expr, env, data_names = character()) {
@@ -118,6 +128,66 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
   spec
 }
 
+.normalize_glmer_cwc_spec <- function(spec) {
+  if (is.null(spec)) return(NULL)
+
+  spec_names <- names(spec)
+  if (is.null(spec_names)) spec_names <- rep("", length(spec))
+
+  if ("pars" %in% spec_names) {
+    if (!("cluster" %in% spec_names)) {
+      stop("'cwc' must include a 'cluster' value when 'pars' is named.", call. = FALSE)
+    }
+    cluster <- spec[[which(spec_names == "cluster")[1]]]
+    target_pars <- spec[[which(spec_names == "pars")[1]]]
+  } else if ("cluster" %in% spec_names) {
+    cluster_pos <- which(spec_names == "cluster")[1]
+    cluster <- spec[[cluster_pos]]
+    target_pars <- unlist(spec[-cluster_pos], use.names = FALSE)
+  } else if (length(spec) >= 2L) {
+    cluster <- spec[[1]]
+    target_pars <- unlist(spec[-1], use.names = FALSE)
+  } else {
+    stop(
+      "Invalid 'cwc' format. Use list(cluster = ID, pars = c('var1', 'var2')) ",
+      "or list(ID, 'var1').",
+      call. = FALSE
+    )
+  }
+
+  target_pars <- unlist(target_pars, use.names = FALSE)
+  if (length(target_pars) == 0L || !is.character(target_pars)) {
+    stop("'cwc' target variables must be supplied as character names or 'all'.", call. = FALSE)
+  }
+
+  list(cluster = cluster, pars = target_pars)
+}
+
+.glmer_cwc_extra_vars <- function(cwc) {
+  if (is.null(cwc)) return(character())
+  cluster_name <- if (is.character(cwc$cluster) && length(cwc$cluster) == 1L) {
+    cwc$cluster
+  } else {
+    character()
+  }
+  unique(c(cluster_name, setdiff(cwc$pars, "all")))
+}
+
+.match_glmer_cwc_cluster_column <- function(cwc, data) {
+  if (is.null(cwc) ||
+      (is.character(cwc$cluster) && length(cwc$cluster) == 1L)) {
+    return(cwc)
+  }
+
+  matching <- names(data)[vapply(
+    data,
+    function(column) identical(column, cwc$cluster),
+    logical(1)
+  )]
+  if (length(matching) == 1L) cwc$cluster <- matching
+  cwc
+}
+
 .glmer_fixed_numeric_vars <- function(formula, data, exclude = character()) {
   vars_in_fixed <- all.vars(nobars(formula))
   if (length(vars_in_fixed) > 0L) {
@@ -127,6 +197,111 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
   vars_in_fixed <- setdiff(vars_in_fixed, exclude)
   vars_in_fixed <- vars_in_fixed[vars_in_fixed %in% names(data)]
   vars_in_fixed[vapply(data[vars_in_fixed], is.numeric, logical(1))]
+}
+
+.glmer_formula_has_data_accessor <- function(expr) {
+  if (!is.call(expr)) return(FALSE)
+  if (identical(expr[[1]], as.name("$")) || identical(expr[[1]], as.name("[["))) {
+    return(TRUE)
+  }
+  if (length(expr) <= 1L) return(FALSE)
+  any(vapply(as.list(expr)[-1], .glmer_formula_has_data_accessor, logical(1)))
+}
+
+.glmer_value_nobs <- function(value) {
+  value_dim <- dim(value)
+  if (!is.null(value_dim)) return(as.integer(value_dim[1]))
+  length(value)
+}
+
+.glmer_formula_nobs <- function(formula, formula_env) {
+  lhs <- formula[[2]]
+
+  # Wide cbind() formulas may use the package's column-range shorthand. In that
+  # case the first response variable is the reliable source of row count.
+  if (is.call(lhs) && identical(lhs[[1]], as.name("cbind"))) {
+    lhs_vars <- unique(all.vars(lhs, functions = FALSE))
+    for (nm in lhs_vars) {
+      if (!exists(nm, envir = formula_env, inherits = TRUE)) next
+      n_obs <- .glmer_value_nobs(get(nm, envir = formula_env, inherits = TRUE))
+      if (length(n_obs) == 1L && is.finite(n_obs) && n_obs > 0L) return(n_obs)
+    }
+  }
+
+  response <- tryCatch(eval(lhs, envir = formula_env), error = identity)
+  if (!inherits(response, "error")) {
+    n_obs <- .glmer_value_nobs(response)
+    if (length(n_obs) == 1L && is.finite(n_obs) && n_obs > 0L) return(n_obs)
+  }
+
+  lhs_vars <- unique(all.vars(lhs, functions = FALSE))
+  for (nm in lhs_vars) {
+    if (!exists(nm, envir = formula_env, inherits = TRUE)) next
+    n_obs <- .glmer_value_nobs(get(nm, envir = formula_env, inherits = TRUE))
+    if (length(n_obs) == 1L && is.finite(n_obs) && n_obs > 0L) return(n_obs)
+  }
+
+  msg <- if (inherits(response, "error")) conditionMessage(response) else "invalid response length"
+  stop("Could not determine the number of observations from the formula response: ", msg, call. = FALSE)
+}
+
+.resolve_glmer_formula_data <- function(formula, data = NULL,
+                                        extra_vars = character(),
+                                        allow_missing = character()) {
+  if (!is.null(data)) return(data)
+  if (!inherits(formula, "formula")) {
+    stop("'data' can be omitted only when 'formula' is a formula.", call. = FALSE)
+  }
+
+  formula_env <- environment(formula)
+  if (!is.environment(formula_env)) formula_env <- parent.frame()
+
+  if (.glmer_formula_has_data_accessor(formula)) {
+    stop(
+      "When 'data' is omitted, variables in 'formula' must use bare names. ",
+      "Use a formula such as Y ~ X together with data = dat instead of '$' or '[[' access.",
+      call. = FALSE
+    )
+  }
+
+  vars <- unique(c(
+    all.vars(formula, functions = FALSE),
+    extra_vars
+  ))
+  vars <- vars[!is.na(vars) & nzchar(vars) & vars != "all"]
+
+  if ("." %in% vars) {
+    stop("The '.' shorthand requires an explicit 'data' argument.", call. = FALSE)
+  }
+  if (length(vars) == 0L) {
+    stop("Could not find variables in 'formula'; supply an explicit 'data' argument.", call. = FALSE)
+  }
+
+  n_obs <- .glmer_formula_nobs(formula, formula_env)
+  resolved_data <- data.frame(row.names = seq_len(n_obs))
+  missing_vars <- character()
+  for (nm in vars) {
+    value <- tryCatch(
+      get(nm, envir = formula_env, inherits = TRUE),
+      error = function(e) NULL
+    )
+    if (is.null(value) && !(nm %in% allow_missing)) {
+      missing_vars <- c(missing_vars, nm)
+    } else if (!is.null(value) && identical(.glmer_value_nobs(value), n_obs)) {
+      resolved_data[[nm]] <- if (is.matrix(value)) I(value) else value
+    }
+  }
+
+  if (length(missing_vars) > 0L) {
+    stop(
+      "Variables not found in the formula environment: ",
+      paste(missing_vars, collapse = ", "),
+      ". Supply them through 'data'.",
+      call. = FALSE
+    )
+  }
+
+  resolved_data
 }
 
 #' Prepare GLMM Formula Components
@@ -323,7 +498,9 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' RTMB-based GLMM wrapper function
 #'
 #' @param formula lme4-style formula (e.g., Y ~ X + (1 | GID))
-#' @param data Data frame
+#' @param data Optional data frame. If omitted, variables are resolved from the
+#'   formula environment. In this mode, use bare variable names; formulas using
+#'   \code{$}, \code{[[}, or \code{.} require an explicit data argument.
 #' @param family Character string of the distribution family (e.g., "gaussian",
 #'   "binomial", "poisson", "ordered", "sequential")
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
@@ -354,7 +531,7 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' @param missing Missing value handling strategy: "listwise".
 #' @example inst/examples/ex_lm.R
 #' @export
-rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
+rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALSE,
                        prior = prior_flat(),
                        y_range = NULL,
                        init = NULL,
@@ -375,15 +552,6 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
                        WAIC = FALSE,
                        .force_sum = FALSE) {
 
-  cwc <- if (base::missing(cwc)) NULL else .resolve_glmer_cwc_spec(substitute(cwc), parent.frame(), names(data))
-
-  if (!is.null(centering)) {
-    if (!is.null(gmc) && !identical(gmc, centering)) {
-      stop("Specify only one of 'gmc' or 'centering', or use identical values.", call. = FALSE)
-    }
-    gmc <- centering
-  }
-
   valid_families <- c(
     "gaussian", "lognormal", "student_t", "bernoulli", "binomial",
     "poisson", "neg_binomial", "gamma", "ordered", "sequential"
@@ -403,6 +571,45 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
        !(contrasts %in% c("treatment", "sum")))) {
     stop("'contrasts' must be either 'treatment', 'sum', or NULL.", call. = FALSE)
   }
+
+  if (!is.null(centering)) {
+    if (!is.null(gmc) && !identical(gmc, centering)) {
+      stop("Specify only one of 'gmc' or 'centering', or use identical values.", call. = FALSE)
+    }
+    gmc <- centering
+  }
+
+  cwc_expr <- if (base::missing(cwc)) quote(NULL) else substitute(cwc)
+  cwc <- .normalize_glmer_cwc_spec(.resolve_glmer_cwc_spec(
+    cwc_expr,
+    parent.frame(),
+    if (is.null(data)) character() else names(data)
+  ))
+
+  data <- .resolve_glmer_formula_data(
+    formula,
+    data = data,
+    extra_vars = unique(c(
+      if (is.character(gmc)) gmc else character(),
+      if (is.character(factors)) factors else character(),
+      if (is.character(sigma_by)) sigma_by else character(),
+      .glmer_cwc_extra_vars(cwc),
+      resid_group,
+      resid_time
+    )),
+    allow_missing = if (family == "gaussian" &&
+                        is.call(formula[[2]]) &&
+                        identical(formula[[2]][[1]], as.name("cbind"))) {
+      if (is.null(within)) {
+        all.vars(formula[[3]], functions = FALSE)
+      } else {
+        names(within)
+      }
+    } else {
+      character()
+    }
+  )
+  cwc <- .match_glmer_cwc_cluster_column(cwc, data)
 
   # Expand dot (.) in formula if present
   if (!is.null(data) && inherits(formula, "formula")) {
@@ -464,46 +671,24 @@ rtmb_glmer <- function(formula, data, family = "gaussian", laplace = FALSE,
 
     # 2. Centering Within Cluster
     if (!is.null(cwc)) {
-      # Robustly extract cluster and pars
-      if ("pars" %in% names(cwc)) {
-        cluster_var <- cwc$cluster
-        target_pars <- cwc$pars
-      } else if ("cluster" %in% names(cwc)) {
-        cluster_var <- cwc$cluster
-        # Any elements not named "cluster" are considered target_pars
-        target_pars <- unlist(cwc[names(cwc) != "cluster" | names(cwc) == ""])
-      } else if (length(cwc) >= 2) {
-        # Assume first is cluster, rest are pars
-        cluster_var <- cwc[[1]]
-        target_pars <- unlist(cwc[-1])
-      } else {
-        stop("Invalid 'cwc' format. Use list(cluster = ID, pars = c('var1', 'var2')) or list(ID, 'var1').")
-      }
+      cluster_var <- cwc$cluster
+      target_pars <- cwc$pars
 
-      # Resolve group ID (character or symbol)
-      group_var_name <- if (is.character(cluster_var) && length(cluster_var) == 1L &&
-                            cluster_var %in% names(data_centered)) {
-        cluster_var
+      if (is.character(cluster_var) && length(cluster_var) == 1L) {
+        if (!(cluster_var %in% names(data_centered))) {
+          stop("Cluster variable '", cluster_var, "' for CWC was not found in data.", call. = FALSE)
+        }
+        group_var_name <- cluster_var
+        group_id <- data_centered[[cluster_var]]
       } else {
-        NULL
-      }
-
-      group_id <- if (!is.null(group_var_name)) {
-        data_centered[[cluster_var]]
-      } else {
-        # cluster_var might be a symbol (e.g., group)
-        # Try to evaluate it in the context of data_centered
-        tryCatch(eval(cluster_var, data_centered, parent.frame()),
-                 error = function(e) NULL)
-      }
-
-      if (is.null(group_id)) {
-        # If still NULL, try to deparse and check if it's a column name
-        group_var_name <- deparse(cluster_var)
-        if (group_var_name %in% names(data_centered)) {
-          group_id <- data_centered[[group_var_name]]
-        } else {
-           stop("Cluster variable for CWC not found.")
+        group_var_name <- NULL
+        group_id <- cluster_var
+        if (length(group_id) != nrow(data_centered)) {
+          stop(
+            "A CWC cluster vector must have the same length as the model data (",
+            nrow(data_centered), ").",
+            call. = FALSE
+          )
         }
       }
 

@@ -1,7 +1,9 @@
 #' RTMB-based Linear Mixed Model (LMM) wrapper function
 #'
 #' @param formula Formula
-#' @param data Data frame
+#' @param data Optional data frame. If omitted, variables are resolved from the
+#' formula environment. In this mode, use bare variable names; formulas using
+#' \code{$}, \code{[[}, or \code{.} require an explicit data argument.
 #' @param laplace Logical; whether to marginalize random effects using Laplace approximation
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
@@ -33,7 +35,7 @@
 #' @return RTMB_Model object
 #' @export
 #' @example inst/examples/ex_lm.R
-rtmb_lmer <- function(formula, data, laplace = TRUE,
+rtmb_lmer <- function(formula, data = NULL, laplace = TRUE,
                        prior = prior_flat(),
                        y_range = NULL,
                        init = NULL,
@@ -53,6 +55,15 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
                        WAIC = FALSE,
                        ...) {
   missing <- match.arg(missing)
+  cwc <- if (base::missing(cwc)) {
+    NULL
+  } else {
+    .resolve_glmer_cwc_spec(
+      substitute(cwc),
+      parent.frame(),
+      if (is.null(data)) character() else names(data)
+    )
+  }
   rtmb_glmer(formula = formula, data = data, family = "gaussian",
              laplace = laplace,
              prior = prior,
@@ -79,7 +90,9 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' RTMB-based GLM wrapper function (no random effects)
 #'
 #' @param formula Formula
-#' @param data Data frame
+#' @param data Optional data frame. If omitted, variables are resolved from the
+#' formula environment. In this mode, use bare variable names; formulas using
+#' \code{$}, \code{[[}, or \code{.} require an explicit data argument.
 #' @param family Character string of the distribution family (e.g., "gaussian", "binomial", "poisson")
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
@@ -100,7 +113,7 @@ rtmb_lmer <- function(formula, data, laplace = TRUE,
 #' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
-rtmb_glm <- function(formula, data, family = "gaussian",
+rtmb_glm <- function(formula, data = NULL, family = "gaussian",
                        prior = prior_flat(),
                        y_range = NULL,
                        init = NULL, fixed = NULL,
@@ -127,7 +140,9 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' RTMB-based Linear Regression wrapper function
 #'
 #' @param formula Formula (e.g., Y ~ X1 + X2)
-#' @param data Data frame
+#' @param data Optional data frame. If omitted, variables are resolved from the
+#' formula environment. In this mode, use bare variable names; formulas using
+#' \code{$}, \code{[[}, or \code{.} require an explicit data argument.
 #' @param prior An object of class `"rtmb_prior"`.
 #' Use `prior_flat()` for no prior, `prior_normal()` for default normal/exponential priors,
 #' `prior_jzs()` for JZS regression priors, or `prior_weak()`, `prior_rhs()`,
@@ -147,7 +162,7 @@ rtmb_glm <- function(formula, data, family = "gaussian",
 #' @param ... Additional arguments passed to \code{rtmb_glmer()}.
 #' @example inst/examples/ex_lm.R
 #' @export
-rtmb_lm <- function(formula, data,
+rtmb_lm <- function(formula, data = NULL,
                     prior = prior_flat(),
                     y_range = NULL,
                     init = NULL, fixed = NULL,

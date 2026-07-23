@@ -6,7 +6,7 @@
 \usage{
 rtmb_glmer(
   formula,
-  data,
+  data = NULL,
   family = "gaussian",
   laplace = FALSE,
   prior = prior_flat(),
@@ -33,7 +33,9 @@ rtmb_glmer(
 \arguments{
 \item{formula}{lme4-style formula (e.g., Y ~ X + (1 | GID))}
 
-\item{data}{Data frame}
+\item{data}{Optional data frame. If omitted, variables are resolved from the
+formula environment. In this mode, use bare variable names; formulas using
+\code{$}, \code{[[}, or \code{.} require an explicit data argument.}
 
 \item{family}{Character string of the distribution family (e.g., "gaussian",
 "binomial", "poisson", "ordered", "sequential")}
