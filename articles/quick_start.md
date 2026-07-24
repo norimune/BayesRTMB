@@ -136,7 +136,6 @@ fit_map
 ``` text
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -369,7 +368,6 @@ fit_t_classic
 ## Checking RTMB setup...
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## Classical estimation via ttest 
 ## 
@@ -392,7 +390,10 @@ inspect a BayesRTMB model as a frequentist analysis.
 ## 9. Compute a Bayes Factor with a JZS Prior
 
 The same t test can also be used to compute a Bayes factor by placing a
-Cauchy prior on the effect size `delta` through the JZS prior.
+Cauchy prior on the effect size `delta` through the JZS prior. BayesRTMB
+also applies the Jeffreys scale prior $`p(\sigma) \propto 1/\sigma`$ to
+the residual standard deviation; for an unequal-variance test, it is
+applied separately to both group standard deviations.
 
 ``` r
 

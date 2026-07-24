@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -197,7 +197,6 @@ are used.</p>
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_map</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
-<span><span class="co">## </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
@@ -387,7 +386,6 @@ ordinary t test.</p>
 <span><span class="co">## Checking RTMB setup...</span></span>
 <span><span class="co">## Starting RTMB optimization...</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">## </span></span>
 <span><span class="co">## Call:</span></span>
 <span><span class="co">## Classical estimation via ttest </span></span>
 <span><span class="co">## </span></span>
@@ -411,7 +409,10 @@ frequentist analysis.</p>
 </h2>
 <p>The same t test can also be used to compute a Bayes factor by placing
 a Cauchy prior on the effect size <code>delta</code> through the JZS
-prior.</p>
+prior. BayesRTMB also applies the Jeffreys scale prior
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mi>σ</mi><mo stretchy="false" form="postfix">)</mo><mo>∝</mo><mn>1</mn><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">p(\sigma) \propto 1/\sigma</annotation></semantics></math>
+to the residual standard deviation; for an unequal-variance test, it is
+applied separately to both group standard deviations.</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_t_jzs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">cond</span>,</span>

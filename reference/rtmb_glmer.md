@@ -7,7 +7,7 @@ RTMB-based GLMM wrapper function
 ``` r
 rtmb_glmer(
   formula,
-  data,
+  data = NULL,
   family = "gaussian",
   laplace = FALSE,
   prior = prior_flat(),
@@ -40,7 +40,9 @@ rtmb_glmer(
 
 - data:
 
-  Data frame
+  Optional data frame. If omitted, variables are resolved from the
+  formula environment. In this mode, use bare variable names; formulas
+  using `$`, `[[`, or `.` require an explicit data argument.
 
 - family:
 
@@ -152,7 +154,6 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_lm <- fit_lm$optimize()
 #> Starting RTMB optimization...
-#> 
   map_lm$summary()
 #> 
 #> Call:
@@ -177,7 +178,6 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_glm <- fit_glm$optimize()
 #> Starting RTMB optimization...
-#> 
   map_glm$summary()
 #> 
 #> Call:
@@ -203,7 +203,6 @@ rtmb_glmer(
   # MAP estimation using Laplace approximation for random effects
   map_glmer <- fit_glmer$optimize(laplace = TRUE)
 #> Starting RTMB optimization...
-#> 
   map_glmer$summary()
 #> 
 #> Call:
@@ -261,7 +260,6 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_lmer <- fit_lmer$optimize()
 #> Starting RTMB optimization...
-#> 
   map_lmer$summary()
 #> 
 #> Call:
@@ -297,7 +295,6 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
-#> 
 #> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
@@ -328,7 +325,6 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
-#> 
 #> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.

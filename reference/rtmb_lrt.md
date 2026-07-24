@@ -79,9 +79,11 @@ rtmb_lrt(
 
 - y_range:
 
-  Optional numeric vector or matrix defining the theoretical range (min,
-  max) of response variables. Specifying this automatically enables
-  weakly informative priors if \`prior\` is \`prior_flat()\`.
+  Optional theoretical range of the response variables. Use a numeric
+  vector \`c(min, max)\` for a common range, or a P x 2 matrix/list for
+  response-specific ranges. Specifying this automatically enables
+  \`prior_weak()\` when \`prior\` is \`prior_flat()\` and calibrates the
+  residual standard-deviation prior.
 
 - fixed:
 

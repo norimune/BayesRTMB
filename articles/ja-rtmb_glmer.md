@@ -137,6 +137,29 @@ MAP 推定は、モデルの挙動を素早く確認したい場合や、MCMC
 の前に初期値やスケール感を見たい場合に便利です。最終的な不確実性を報告する場合は、可能であれば
 MCMC の結果も確認してください。
 
+### data を省略する
+
+[`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)、[`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md)、[`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)、[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+では、`data` を省略できます。その場合、変数は formula
+が作られた環境から取得されます。
+
+``` r
+
+y <- dat$y
+x <- dat$x
+group <- dat$group
+
+mdl_env <- rtmb_glmer(
+  y ~ x + (1 | group),
+  family = "gaussian",
+  prior = prior_normal()
+)
+```
+
+`data` を省略するときは、formula
+内では変数名をそのまま書きます。`$`、`[[`、 `.` を含む formula
+では、明示的に `data` を指定してください。
+
 ## 3. formula の書き方と可視化
 
 [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
@@ -433,9 +456,10 @@ mdl <- rtmb_glmer(
 
 [`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
 は、固定効果に正規 prior、標準偏差やランダム効果のスケールに指数 prior
-を置く、分かりやすい手動 prior
-です。まず事前分布の意味を理解したい場合は、[`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
-から始めると見通しがよくなります。
+を置く、分かりやすい手動 prior です。`sigma_rate` と `tau_rate`
+は平均ではなく指数分布の rate です。既定値はいずれも `1 / 5`
+で、これは平均 5 の指数分布に対応します。上の例で指定した `1` は平均 1
+に対応します。
 
 ### prior_weak
 

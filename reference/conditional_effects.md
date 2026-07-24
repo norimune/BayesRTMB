@@ -62,7 +62,6 @@ credible intervals.
 #> Checking RTMB setup...
   map_fit <- fit$optimize()
 #> Starting RTMB optimization...
-#> 
   ce <- conditional_effects(map_fit, effect = "talk:perf")
   plot(ce)
 

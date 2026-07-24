@@ -102,10 +102,16 @@ RTMB Satterthwaite machinery as \`optimize(marginal = ..., df_method =
 printed model code. This corresponds to the Welch-type unequal-variance
 t-test, but the degrees of freedom are computed by the package's
 internal Satterthwaite procedure rather than by a separate closed-form
-formula. When \`prior_jzs()\` is combined with \`var.equal = FALSE\`,
-BayesRTMB uses a Welch-style JZS extension: the effect size \`delta\` is
-an explicit parameter with a Cauchy prior, and the group mean difference
-is scaled by the root-mean-square of the two group standard deviations.
+formula. For JZS t-tests, \`prior_jzs()\` places a Cauchy prior on the
+standardized effect size and the Jeffreys scale prior \\p(\sigma)
+\propto 1/\sigma\\ on the residual standard deviation. For paired tests,
+the latter is applied to the standard deviation of the pairwise
+differences. When \`prior_jzs()\` is combined with \`var.equal =
+FALSE\`, BayesRTMB uses a Welch-style JZS extension: the effect size
+\`delta\` is an explicit parameter with a Cauchy prior, and the group
+mean difference is scaled by the root-mean-square of the two group
+standard deviations. The Jeffreys scale prior is applied separately to
+both group standard deviations.
 
 ## Examples
 
@@ -149,12 +155,12 @@ is scaled by the root-mean-square of the two group standard deviations.
 #> transformed parameters: 100%
   mcmc_ttest$summary()
 #>   variable    mean    sd     map    q2.5   q97.5  ess_bulk  ess_tail  rhat 
-#> lp          -81.01  1.27  -80.20  -84.28  -79.67       521       586  1.00 
-#> diff          0.24  0.23    0.16   -0.21    0.71       759       463  1.00 
-#> delta         0.26  0.25    0.17   -0.22    0.78       723       445  1.00 
-#> total_mean    0.32  0.11    0.32    0.10    0.54       854       618  1.00 
-#> sd            0.93  0.08    0.89    0.78    1.10       952       779  1.00 
-#> mean0         0.44  0.16    0.47    0.12    0.79       802       602  1.00 
-#> mean1         0.20  0.16    0.22   -0.13    0.50       748       604  1.00 
+#> lp          -81.06  1.31  -80.11  -84.36  -79.57       447       732  1.01 
+#> diff          0.24  0.23    0.26   -0.20    0.70       811       550  1.00 
+#> delta         0.26  0.25    0.27   -0.22    0.76       819       670  1.00 
+#> total_mean    0.31  0.13    0.29    0.08    0.57       850       363  1.00 
+#> sd            0.92  0.08    0.91    0.77    1.09       907       653  1.00 
+#> mean0         0.44  0.18    0.34    0.11    0.81       859       571  1.01 
+#> mean1         0.19  0.17    0.18   -0.12    0.53       802       664  1.00 
   # }
 ```

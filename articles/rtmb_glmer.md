@@ -72,7 +72,6 @@ fit_map
 ``` text
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -90,6 +89,33 @@ fit_map
 ```
 
 Random effects are stored separately in `fit_map$random_effects`.
+
+### Omitting `data`
+
+For
+[`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md),
+[`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md),
+[`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md),
+and
+[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md),
+the `data` argument is optional. When it is omitted, variables are
+resolved from the formula environment.
+
+``` r
+
+y <- dat$y
+x <- dat$x
+group <- dat$group
+
+mdl_from_env <- rtmb_glmer(
+  y ~ x + (1 | group),
+  family = "gaussian",
+  prior = prior_normal()
+)
+```
+
+Use bare variable names in a formula without `data`. Formulas containing
+`$`, `[[`, or `.` require an explicit `data` argument.
 
 ## 2. Choosing an Inference Method
 
@@ -368,6 +394,10 @@ summary is desired.
 is the most beginner-friendly Bayesian default. It uses normal priors
 for location and regression parameters and positive priors such as
 exponential priors for scale parameters.
+
+The `sigma_rate` and `tau_rate` arguments are exponential **rates**, not
+means. Their defaults are both `1 / 5`, corresponding to exponential
+priors with mean 5.
 
 ``` r
 

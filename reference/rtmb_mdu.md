@@ -145,7 +145,6 @@ An \`RTMB_Model\` object.
   # MAP estimation
   map_mdu <- fit_mdu$optimize()
 #> Starting RTMB optimization...
-#> 
   map_mdu$summary()
 #> 
 #> Call:

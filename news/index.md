@@ -1,5 +1,34 @@
 # Changelog
 
+## BayesRTMB 0.2.4
+
+- Allowed
+  [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md),
+  [`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md),
+  [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md),
+  and
+  [`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)
+  to resolve bare variable names from the formula environment when
+  `data` is omitted. Formulas using `$`, `[[`, or `.` continue to
+  require explicit data.
+- Corrected JZS t-test priors to include the Jeffreys scale prior (p()
+  /), including paired and unequal-variance models.
+- Corrected exponential-prior scaling across wrappers. The default
+  `sigma_rate` and `tau_rate` in
+  [`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
+  are now `1 / 5`, giving exponential priors with mean 5, and
+  wrapper-specific aliases are applied consistently.
+- Added the default discrimination prior `a ~ exponential(1 / 2)` when
+  [`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
+  is used with IRT models.
+- Improved weak-prior calibration from `y_range` in mixture and
+  latent-rank models, including response-specific ranges for
+  multivariate outcomes.
+- Improved multivariate normal log-density performance and removed an
+  unintended blank line from optimization progress output.
+- Updated English and Japanese vignettes for the new defaults and
+  wrapper behavior.
+
 ## BayesRTMB 0.2.3
 
 CRAN release: 2026-07-13

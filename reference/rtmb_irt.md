@@ -39,8 +39,9 @@ rtmb_irt(
   Prior configuration: \`prior_flat()\`, \`prior_normal()\`, or
   \`prior_weak()\`. Hyperparameters can be specified within these
   functions (e.g., \`prior_normal(b_sd = 5)\`). Available parameters for
-  IRT: \`a_rate\` (discrimination), \`b_sd\` (difficulty),
-  \`c_alpha\`/\`c_beta\` (guessing).
+  IRT: \`a_rate\` (discrimination; defaults to 1/2 with
+  \`prior_normal()\`), \`b_sd\` (difficulty), and \`c_alpha\`/\`c_beta\`
+  (guessing).
 
 - init:
 
@@ -85,7 +86,6 @@ rtmb_irt(
   # Maximum A Posteriori (MAP) estimation
   map_2pl <- fit_2pl$optimize()
 #> Starting RTMB optimization...
-#> 
 #> Warning: No optimization run reached an acceptable optimizer status; BEST is selected by the lowest objective among not converged runs ( convergence code = 1; message = function evaluation limit reached without convergence (9)). Estimates may be unreliable; consider increasing num_estimate, changing initial values, or adjusting optimizer control settings.
   map_2pl$summary()
 #> 
@@ -187,7 +187,6 @@ rtmb_irt(
 
   map_ord <- fit_ord$optimize()
 #> Starting RTMB optimization...
-#> 
   map_ord$summary()
 #> 
 #> Call:

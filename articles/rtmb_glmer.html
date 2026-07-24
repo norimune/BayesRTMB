@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -147,7 +147,6 @@ summaries.</p>
 <span><span class="va">fit_map</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">## </span></span>
 <span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
 <span><span class="co">## </span></span>
@@ -164,6 +163,27 @@ summaries.</p>
 <span><span class="co">## sd[Int]       0.51020     0.06780    0.39310    0.66210 </span></span></code></pre>
 <p>Random effects are stored separately in
 <code>fit_map$random_effects</code>.</p>
+<div class="section level3">
+<h3 id="omitting-data">Omitting <code>data</code><a class="anchor" aria-label="anchor" href="#omitting-data"></a>
+</h3>
+<p>For <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>, <code><a href="../reference/rtmb_glm.html">rtmb_glm()</a></code>,
+<code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code>, and <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code>, the
+<code>data</code> argument is optional. When it is omitted, variables
+are resolved from the formula environment.</p>
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">y</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">$</span><span class="va">y</span></span>
+<span><span class="va">x</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">$</span><span class="va">x</span></span>
+<span><span class="va">group</span> <span class="op">&lt;-</span> <span class="va">dat</span><span class="op">$</span><span class="va">group</span></span>
+<span></span>
+<span><span class="va">mdl_from_env</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
+<span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
+<span>  family <span class="op">=</span> <span class="st">"gaussian"</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_normal.html">prior_normal</a></span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div>
+<p>Use bare variable names in a formula without <code>data</code>.
+Formulas containing <code>$</code>, <code>[[</code>, or <code>.</code>
+require an explicit <code>data</code> argument.</p>
+</div>
 </div>
 <div class="section level2">
 <h2 id="choosing-an-inference-method">2. Choosing an Inference Method<a class="anchor" aria-label="anchor" href="#choosing-an-inference-method"></a>
@@ -173,7 +193,7 @@ summaries.</p>
 </h3>
 <p>Use <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> when you want the full posterior
 distribution.</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  sampling <span class="op">=</span> <span class="fl">1000</span>,</span>
 <span>  warmup <span class="op">=</span> <span class="fl">1000</span>,</span>
@@ -195,7 +215,7 @@ especially when comparing models with bridge sampling.</p>
 </h3>
 <p>For hierarchical models, <code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> uses Laplace
 approximation by default.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p>Parameters declared internally as random effects are integrated by
 Laplace approximation. This is often much faster than sampling all
@@ -205,7 +225,7 @@ random effects directly.</p>
 <h3 id="variational-inference">Variational Inference<a class="anchor" aria-label="anchor" href="#variational-inference"></a>
 </h3>
 <p><code>variational()</code> gives an approximate posterior.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"meanfield"</span>,</span>
 <span>  iter <span class="op">=</span> <span class="fl">5000</span></span>
@@ -218,7 +238,7 @@ underestimate uncertainty.</p>
 </h3>
 <p>For supported flat-prior wrapper models, <code>classic()</code> gives
 frequentist-style summaries.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_flat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -235,14 +255,14 @@ frequentist-style summaries.</p>
 <div class="section level3">
 <h3 id="random-intercepts">Random Intercepts<a class="anchor" aria-label="anchor" href="#random-intercepts"></a>
 </h3>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">dat</span>, family <span class="op">=</span> <span class="st">"gaussian"</span><span class="op">)</span></span></code></pre></div>
 <p>This allows each <code>id</code> to have its own intercept.</p>
 </div>
 <div class="section level3">
 <h3 id="random-slopes">Random Slopes<a class="anchor" aria-label="anchor" href="#random-slopes"></a>
 </h3>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="va">x</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">dat</span>, family <span class="op">=</span> <span class="st">"gaussian"</span><span class="op">)</span></span></code></pre></div>
 <p>This allows both the intercept and the effect of <code>x</code> to
 vary by <code>id</code>.</p>
@@ -250,7 +270,7 @@ vary by <code>id</code>.</p>
 <div class="section level3">
 <h3 id="multiple-grouping-factors">Multiple Grouping Factors<a class="anchor" aria-label="anchor" href="#multiple-grouping-factors"></a>
 </h3>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">subject</span><span class="op">)</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">item</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
 <span>  family <span class="op">=</span> <span class="st">"bernoulli"</span></span>
@@ -262,7 +282,7 @@ vary by <code>id</code>.</p>
 </h3>
 <p>After fitting regression, GLM, or GLMM models, use
 <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> to inspect fitted relationships.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -280,7 +300,7 @@ vary by <code>id</code>.</p>
 <span><span class="co">## moderator values: mean - 1 SD, mean, mean + 1 SD</span></span></code></pre>
 <p>For a table of simple slopes or pairwise contrasts, use
 <code><a href="../reference/simple_effects.html">simple_effects()</a></code>.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## --- Simple Effects Analysis ---</span></span>
 <span><span class="co">## moderator perf          term estimate  lower upper</span></span>
@@ -356,7 +376,7 @@ vary by <code>id</code>.</p>
 </tbody>
 </table>
 <p>Example:</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_bin</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -371,7 +391,7 @@ vary by <code>id</code>.</p>
 <h3 id="wide-data-can-be-converted-internally">Wide Data Can Be Converted Internally<a class="anchor" aria-label="anchor" href="#wide-data-can-be-converted-internally"></a>
 </h3>
 <p>Some repeated-measures data are stored in wide format.</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_wide</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">y_t1</span>, <span class="va">y_t2</span>, <span class="va">y_t3</span><span class="op">)</span> <span class="op">~</span> <span class="va">cond</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat_wide</span>,</span>
@@ -390,7 +410,7 @@ internally.</p>
 <p>Use <code>factors =</code> when variables should be treated as
 categorical even if they are stored as numeric or character
 variables.</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fac</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">cond</span> <span class="op">*</span> <span class="va">time</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -406,7 +426,7 @@ constructing design matrices.</p>
 </h3>
 <p>Cluster-mean centering and centering within cluster can be specified
 through wrapper options.</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_cwc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="va">x_cwc</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -427,7 +447,7 @@ between-cluster effects.</p>
 </h3>
 <p><code><a href="../reference/prior_flat.html">prior_flat()</a></code> removes prior density contributions and is
 used when you want a maximum-likelihood or classical interpretation.</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_flat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -444,7 +464,10 @@ frequentist-style summary is desired.</p>
 <p><code><a href="../reference/prior_normal.html">prior_normal()</a></code> is the most beginner-friendly Bayesian
 default. It uses normal priors for location and regression parameters
 and positive priors such as exponential priors for scale parameters.</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<p>The <code>sigma_rate</code> and <code>tau_rate</code> arguments are
+exponential <strong>rates</strong>, not means. Their defaults are both
+<code>1 / 5</code>, corresponding to exponential priors with mean 5.</p>
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_norm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -460,7 +483,7 @@ GLMM.</p>
 </h3>
 <p><code><a href="../reference/prior_weak.html">prior_weak()</a></code> builds weakly informative priors using
 information such as the outcome range.</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -486,7 +509,7 @@ scale for the model.</p>
 </h3>
 <p>Regularized priors such as horseshoe-like priors or spike-and-slab
 priors are useful when many predictors are included.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_rhs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">x1</span> <span class="op">+</span> <span class="va">x2</span> <span class="op">+</span> <span class="va">x3</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -502,7 +525,7 @@ models.</p>
 <p>The JZS prior is mainly useful for Bayes-factor style testing,
 especially in t-test style models where the standardized effect size is
 a central parameter.</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_jzs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">group</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -519,7 +542,7 @@ analysis.</p>
 </h2>
 <p><code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code> can represent residual correlation
 structures such as AR(1).</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_ar1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">time</span> <span class="op">+</span> <span class="va">cond</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -552,7 +575,7 @@ settings.</p>
 <p>When you want an ordinary analysis-of-variance workflow, use
 <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code> or <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code> with
 <code><a href="../reference/prior_flat.html">prior_flat()</a></code> and then call <code>classic()</code>.</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_aov</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lmer.html">rtmb_lmer</a></span><span class="op">(</span></span>
 <span>  <span class="va">y</span> <span class="op">~</span> <span class="va">cond</span> <span class="op">*</span> <span class="va">time</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">id</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">dat</span>,</span>
@@ -568,7 +591,7 @@ settings.</p>
 <span><span class="co">## cond:time  2  6.134     0.0465</span></span></code></pre>
 <p>Estimated marginal means can be obtained with
 <code><a href="../reference/lsmeans.html">lsmeans()</a></code>.</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">emm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/lsmeans.html">lsmeans</a></span><span class="op">(</span><span class="va">fit_aov</span>, specs <span class="op">=</span> <span class="st">"cond"</span><span class="op">)</span></span>
 <span><span class="va">emm</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">emm</span><span class="op">)</span></span></code></pre></div>
@@ -584,7 +607,7 @@ system.</p>
 </h2>
 <p>Wrappers are convenient, but they still create
 <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code> internally.</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>Use <code>print_code()</code> when you want to understand the exact
 likelihood, priors, random-effect declarations, transformed quantities,
@@ -595,13 +618,13 @@ or generated quantities created by a wrapper.</p>
 </h2>
 <p>For Bayesian model comparison, fit with MCMC and use bridge
 sampling.</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_full</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_full</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Bridge Sampling Converged: LogML = -412.36 (Error = 0.0184, ESS = 91.2)</span></span></code></pre>
 <p>Bayes factors can be calculated by comparing against models with
 parameters fixed.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_full</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bf</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## --- Bayes Factor Analysis (Bridge Sampling) ---</span></span>

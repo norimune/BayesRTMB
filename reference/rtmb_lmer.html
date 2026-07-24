@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -64,7 +64,7 @@
     <h2 id="ref-usage">Usage<a class="anchor" aria-label="anchor" href="#ref-usage"></a></h2>
     <div class="sourceCode"><pre class="sourceCode r"><code><span><span class="fu">rtmb_lmer</span><span class="op">(</span></span>
 <span>  <span class="va">formula</span>,</span>
-<span>  <span class="va">data</span>,</span>
+<span>  data <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  laplace <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  prior <span class="op">=</span> <span class="fu"><a href="prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -96,7 +96,9 @@
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>Data frame</p></dd>
+<dd><p>Optional data frame. If omitted, variables are resolved from the
+formula environment. In this mode, use bare variable names; formulas using
+<code>$</code>, <code>[[</code>, or <code>.</code> require an explicit data argument.</p></dd>
 
 
 <dt id="arg-laplace">laplace<a class="anchor" aria-label="anchor" href="#arg-laplace"></a></dt>
@@ -197,7 +199,6 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_lm</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  <span class="va">map_lm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
@@ -222,7 +223,6 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_glm</span> <span class="op">&lt;-</span> <span class="va">fit_glm</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  <span class="va">map_glm</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
@@ -248,7 +248,6 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-in"><span>  <span class="co"># MAP estimation using Laplace approximation for random effects</span></span></span>
 <span class="r-in"><span>  <span class="va">map_glmer</span> <span class="op">&lt;-</span> <span class="va">fit_glmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>laplace <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  <span class="va">map_glmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
@@ -306,7 +305,6 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_lmer</span> <span class="op">&lt;-</span> <span class="va">fit_lmer</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  <span class="va">map_lmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
@@ -342,7 +340,6 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_rhs</span> <span class="op">&lt;-</span> <span class="va">fit_rhs</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.</span>
@@ -373,7 +370,6 @@ If omitted and the LHS is <code><a href="https://rdrr.io/r/base/cbind.html" clas
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_ssp</span> <span class="op">&lt;-</span> <span class="va">fit_ssp</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.</span>
 <span class="r-in"><span>  <span class="va">map_ssp</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"b"</span><span class="op">)</span></span></span>

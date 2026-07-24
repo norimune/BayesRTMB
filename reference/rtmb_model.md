@@ -164,7 +164,6 @@ mod_basic <- rtmb_model(
 # Perform Maximum A Posteriori (MAP) estimation
 map_basic <- mod_basic$optimize()
 #> Starting RTMB optimization...
-#> 
 # The summary displays default parameter names: mu[1], mu[2], mu[3]
 map_basic$summary()
 #> 
@@ -196,7 +195,6 @@ mod_named <- rtmb_model(
 
 map_named <- mod_named$optimize()
 #> Starting RTMB optimization...
-#> 
 # The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]
 map_named$summary()
 #> 

@@ -166,7 +166,6 @@ fit_map
 ``` text
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -193,7 +192,6 @@ fit_freq
 
 ``` text
 ## Starting RTMB optimization...
-## 
 ## 
 ## Call:
 ## Classical estimation via lm 
@@ -354,7 +352,6 @@ fit_map$summary()
 ``` text
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -404,7 +401,6 @@ fit_freq$summary()
 
 ``` text
 ## Starting RTMB optimization...
-## 
 ## 
 ## Call:
 ## Classical estimation via lm 

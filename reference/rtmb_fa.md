@@ -48,9 +48,12 @@ rtmb_fa(
   Prior configuration: \`prior_flat()\`, \`prior_normal()\`, or
   \`prior_weak()\`. \`prior_ssp()\` is accepted when \`rotate = "ssp"\`.
   Hyperparameters can be specified within these functions (e.g.,
-  \`prior_normal(mean_sd = 10, sd_rate = 10)\`). Available parameters
-  for FA: \`mean_sd\`, \`sd_rate\`, \`loadings_sd\`, and \`ssp_ratio\`
-  (if \`rotate = "ssp"\`).
+  \`prior_normal(mean_sd = 10, sd_rate = 1 / 5, loadings_sd = 10)\`).
+  Available FA aliases are \`mean_sd\`, \`sd_rate\`, and
+  \`loadings_sd\`; they override the corresponding common arguments
+  \`mu_sd\`, \`sigma_rate\`, and \`b_sd\`. \`sd_rate\` is an exponential
+  rate, so \`1 / 5\` gives a prior mean of 5. \`ssp_ratio\` is available
+  when \`rotate = "ssp"\`.
 
 - y_range:
 
@@ -92,7 +95,6 @@ rtmb_fa(
   # Maximum A Posteriori (MAP) estimation
   map_fa1 <- fit_fa1$optimize()
 #> Starting RTMB optimization...
-#> 
   map_fa1$summary()
 #> 
 #> Call:

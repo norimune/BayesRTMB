@@ -102,7 +102,6 @@ accurate than the standard Sobel test (Delta Method).
   # Maximum A Posteriori (MAP) estimation
   map_med <- fit_med$optimize()
 #> Starting RTMB optimization...
-#> 
   # The summary automatically calculates indirect, direct, and total effects
   map_med$summary()
 #> 

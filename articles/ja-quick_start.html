@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -195,7 +195,6 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_map</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Starting RTMB optimization...</span></span>
-<span><span class="co">## </span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## Call:</span></span>
 <span><span class="co">## MAP Estimation via RTMB</span></span>
@@ -381,7 +380,6 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <span><span class="co">## Checking RTMB setup...</span></span>
 <span><span class="co">## Starting RTMB optimization...</span></span>
 <span><span class="co">## </span></span>
-<span><span class="co">## </span></span>
 <span><span class="co">## Call:</span></span>
 <span><span class="co">## Classical estimation via ttest </span></span>
 <span><span class="co">## </span></span>
@@ -403,7 +401,10 @@ BayesRTMB では、事前分布がある場合は MAP 推定、flat prior
 <h2 id="jzs-prior-で-bayes-factor-を計算する">9. JZS prior で Bayes factor を計算する<a class="anchor" aria-label="anchor" href="#jzs-prior-%E3%81%A7-bayes-factor-%E3%82%92%E8%A8%88%E7%AE%97%E3%81%99%E3%82%8B"></a>
 </h2>
 <p>同じ t 検定でも、JZS prior を使うと、効果量 <code>delta</code> に
-Cauchy 事前分布を置いた Bayes factor を計算できます。</p>
+Cauchy 事前分布を置いた Bayes factor を計算できます。BayesRTMB
+では、残差標準偏差にも Jeffreys scale prior
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mi>σ</mi><mo stretchy="false" form="postfix">)</mo><mo>∝</mo><mn>1</mn><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">p(\sigma) \propto 1/\sigma</annotation></semantics></math>
+を適用します。等分散を仮定しない場合は、2群の標準偏差それぞれに適用されます。</p>
 <div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_t_jzs</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">cond</span>,</span>

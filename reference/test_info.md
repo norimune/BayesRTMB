@@ -27,7 +27,6 @@ test_info(x, ...)
 #> Checking RTMB setup...
   map_fit <- fit$optimize()
 #> Starting RTMB optimization...
-#> 
   ti <- test_info(map_fit)
   plot(ti)
 

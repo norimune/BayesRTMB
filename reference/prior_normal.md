@@ -11,8 +11,8 @@ prior_normal(
   Intercept_sd = 10,
   mu_sd = 10,
   b_sd = 10,
-  sigma_rate = 5,
-  tau_rate = 5,
+  sigma_rate = 1/5,
+  tau_rate = 1/5,
   ...
 )
 ```
@@ -36,13 +36,15 @@ prior_normal(
 
 - sigma_rate:
 
-  Rate for residual standard deviation priors. If \`NULL\`, no sigma
-  prior is added.
+  Rate for residual standard deviation priors. The default \`1 / 5\`
+  gives an exponential prior with mean 5. If \`NULL\`, no sigma prior is
+  added.
 
 - tau_rate:
 
-  Rate for random-effect standard deviation priors. If \`NULL\`, no tau
-  prior is added.
+  Rate for random-effect standard deviation priors. The default \`1 /
+  5\` gives an exponential prior with mean 5. If \`NULL\`, no tau prior
+  is added.
 
 - ...:
 

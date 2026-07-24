@@ -15,7 +15,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -204,7 +204,6 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-in"><span><span class="co"># Perform Maximum A Posteriori (MAP) estimation</span></span></span>
 <span class="r-in"><span><span class="va">map_basic</span> <span class="op">&lt;-</span> <span class="va">mod_basic</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># The summary displays default parameter names: mu[1], mu[2], mu[3]</span></span></span>
 <span class="r-in"><span><span class="va">map_basic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
@@ -236,7 +235,6 @@ The returned <code>RTMB_Model</code> instance provides the following core method
 <span class="r-in"><span></span></span>
 <span class="r-in"><span><span class="va">map_named</span> <span class="op">&lt;-</span> <span class="va">mod_named</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span><span class="co"># The summary now displays: mu[Control], mu[Treatment_A], mu[Treatment_B]</span></span></span>
 <span class="r-in"><span><span class="va">map_named</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>

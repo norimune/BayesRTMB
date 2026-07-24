@@ -11,7 +11,7 @@ inference, not for `classic()`."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -72,8 +72,8 @@ inference, not for `classic()`.</p>
 <span>  Intercept_sd <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  mu_sd <span class="op">=</span> <span class="fl">10</span>,</span>
 <span>  b_sd <span class="op">=</span> <span class="fl">10</span>,</span>
-<span>  sigma_rate <span class="op">=</span> <span class="fl">5</span>,</span>
-<span>  tau_rate <span class="op">=</span> <span class="fl">5</span>,</span>
+<span>  sigma_rate <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">5</span>,</span>
+<span>  tau_rate <span class="op">=</span> <span class="fl">1</span><span class="op">/</span><span class="fl">5</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -95,11 +95,15 @@ inference, not for `classic()`.</p>
 
 
 <dt id="arg-sigma-rate">sigma_rate<a class="anchor" aria-label="anchor" href="#arg-sigma-rate"></a></dt>
-<dd><p>Rate for residual standard deviation priors. If `NULL`, no sigma prior is added.</p></dd>
+<dd><p>Rate for residual standard deviation priors. The default
+`1 / 5` gives an exponential prior with mean 5. If `NULL`, no sigma prior
+is added.</p></dd>
 
 
 <dt id="arg-tau-rate">tau_rate<a class="anchor" aria-label="anchor" href="#arg-tau-rate"></a></dt>
-<dd><p>Rate for random-effect standard deviation priors. If `NULL`, no tau prior is added.</p></dd>
+<dd><p>Rate for random-effect standard deviation priors. The default
+`1 / 5` gives an exponential prior with mean 5. If `NULL`, no tau prior is
+added.</p></dd>
 
 
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>

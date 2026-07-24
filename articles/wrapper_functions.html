@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -113,11 +113,11 @@ calculation</strong>, in addition to standard t-tests.</p>
 <span><span class="va">y2</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fl">30</span>, mean <span class="op">=</span> <span class="fl">1</span>, sd <span class="op">=</span> <span class="fl">1</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Method passing vectors directly</span></span>
-<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span><span class="op">)</span></span>
+<span><span class="va">mdl_ttest</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">y1</span>, <span class="va">y2</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_jzs.html">prior_jzs</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Method using formula format (when you have a dataframe)</span></span>
 <span><span class="co"># df &lt;- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))</span></span>
-<span><span class="co"># mdl_ttest &lt;- rtmb_ttest(Y ~ group, data = df)</span></span>
+<span><span class="co"># mdl_ttest &lt;- rtmb_ttest(Y ~ group, data = df, prior = prior_jzs())</span></span>
 <span></span>
 <span><span class="co"># MCMC estimation</span></span>
 <span><span class="va">fit_ttest</span> <span class="op">&lt;-</span> <span class="va">mdl_ttest</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
@@ -144,24 +144,26 @@ the wrapper’s model into your own custom model.</p>
 <span><span class="co">## </span></span>
 <span><span class="co">## rtmb_code(</span></span>
 <span><span class="co">##   parameters = {</span></span>
-<span><span class="co">##     mean = Dim(1)</span></span>
+<span><span class="co">##     total_mean = Dim(1)</span></span>
 <span><span class="co">##     sd = Dim(1, lower = 0)</span></span>
 <span><span class="co">##     delta = Dim(1)</span></span>
 <span><span class="co">##   }, </span></span>
 <span><span class="co">##   transform = {</span></span>
 <span><span class="co">##     diff &lt;- delta * sd</span></span>
-<span><span class="co">##     mean0 &lt;- mean - diff/2</span></span>
-<span><span class="co">##     mean1 &lt;- mean + diff/2</span></span>
+<span><span class="co">##     mean0 &lt;- total_mean + diff/2</span></span>
+<span><span class="co">##     mean1 &lt;- total_mean - diff/2</span></span>
 <span><span class="co">##   }, </span></span>
 <span><span class="co">##   model = {</span></span>
 <span><span class="co">##     Y1 ~ normal(mean0, sd)</span></span>
 <span><span class="co">##     Y2 ~ normal(mean1, sd)</span></span>
 <span><span class="co">##     delta ~ cauchy(0, r)</span></span>
-<span><span class="co">##     mean ~ normal(0, 10)</span></span>
-<span><span class="co">##     sd ~ exponential(0.1)</span></span>
-<span><span class="co">##   }, </span></span>
-<span><span class="co">##   &lt;environment&gt;</span></span>
+<span><span class="co">##     lp &lt;- lp - log(sd)</span></span>
+<span><span class="co">##   }</span></span>
 <span><span class="co">## )</span></span></code></pre>
+<p>The <code>lp &lt;- lp - log(sd)</code> term applies the Jeffreys
+scale prior
+<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo stretchy="false" form="prefix">(</mo><mi>σ</mi><mo stretchy="false" form="postfix">)</mo><mo>∝</mo><mn>1</mn><mi>/</mi><mi>σ</mi></mrow><annotation encoding="application/x-tex">p(\sigma) \propto 1/\sigma</annotation></semantics></math>
+used by the JZS t-test.</p>
 </div>
 <div class="section level4">
 <h4 id="calculating-the-bayes-factor">Calculating the Bayes Factor<a class="anchor" aria-label="anchor" href="#calculating-the-bayes-factor"></a>
@@ -709,6 +711,10 @@ the following models are supported:</p>
 <strong>Graded Response Model (GRM)</strong>: Analysis of polytomous
 data (e.g., Likert scales).</li>
 </ul>
+<p>With <code><a href="../reference/prior_normal.html">prior_normal()</a></code>, the default prior for a freely
+estimated discrimination parameter is
+<code>a ~ exponential(1 / 2)</code>, which has prior mean 2. Use
+<code>prior_normal(a_rate = ...)</code> to change its rate.</p>
 <p>Because IRT models are computationally demanding, it is highly
 effective to utilize the fast approximation via
 <code>variational()</code> or marginalize the ability parameters using

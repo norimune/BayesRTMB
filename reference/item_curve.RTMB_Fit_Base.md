@@ -37,7 +37,6 @@ item_curve(x, theta_seq = seq(-4, 4, length.out = 100), items = NULL, ...)
 #> Checking RTMB setup...
   map_fit <- fit$optimize()
 #> Starting RTMB optimization...
-#> 
   ic <- item_curve(map_fit)
   plot(ic)
 

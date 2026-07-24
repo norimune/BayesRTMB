@@ -9,7 +9,7 @@ and Gaussian Process smoothing on the mean profiles."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -137,8 +137,11 @@ the wrapper automatically switches to `prior_weak()`.</p></dd>
 
 
 <dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
-<dd><p>Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.</p></dd>
+<dd><p>Optional theoretical range of the response variables. Use a
+numeric vector `c(min, max)` for a common range, or a P x 2 matrix/list
+for response-specific ranges. Specifying this automatically enables
+`prior_weak()` when `prior` is `prior_flat()` and calibrates the residual
+standard-deviation prior.</p></dd>
 
 
 <dt id="arg-fixed">fixed<a class="anchor" aria-label="anchor" href="#arg-fixed"></a></dt>

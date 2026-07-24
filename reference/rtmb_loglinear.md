@@ -69,7 +69,6 @@ An \`RTMB_Model\` object.
   # MAP estimation
   map_log <- fit_log$optimize()
 #> Starting RTMB optimization...
-#> 
   map_log$summary()
 #> 
 #> Call:

@@ -11,7 +11,7 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices."></he
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -105,8 +105,12 @@ using a Spike-and-Slab Prior (SSP) for estimating sparse loading matrices.</p>
 <dt id="arg-prior">prior<a class="anchor" aria-label="anchor" href="#arg-prior"></a></dt>
 <dd><p>Prior configuration: `prior_flat()`, `prior_normal()`, or
 `prior_weak()`. `prior_ssp()` is accepted when `rotate = "ssp"`.
-Hyperparameters can be specified within these functions (e.g., `prior_normal(mean_sd = 10, sd_rate = 10)`).
-Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).</p></dd>
+Hyperparameters can be specified within these functions (e.g.,
+`prior_normal(mean_sd = 10, sd_rate = 1 / 5, loadings_sd = 10)`).
+Available FA aliases are `mean_sd`, `sd_rate`, and `loadings_sd`; they
+override the corresponding common arguments `mu_sd`, `sigma_rate`, and
+`b_sd`. `sd_rate` is an exponential rate, so `1 / 5` gives a prior mean
+of 5. `ssp_ratio` is available when `rotate = "ssp"`.</p></dd>
 
 
 <dt id="arg-y-range">y_range<a class="anchor" aria-label="anchor" href="#arg-y-range"></a></dt>
@@ -146,7 +150,6 @@ Used to construct weakly informative priors when `prior = prior_weak()`.</p></dd
 <span class="r-in"><span>  <span class="co"># Maximum A Posteriori (MAP) estimation</span></span></span>
 <span class="r-in"><span>  <span class="va">map_fa1</span> <span class="op">&lt;-</span> <span class="va">fit_fa1</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-in"><span>  <span class="va">map_fa1</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>

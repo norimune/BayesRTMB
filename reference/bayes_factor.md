@@ -44,10 +44,8 @@ Bayes factor, approximate estimation error, and interpretation.
 #> Checking RTMB setup...
   map1 <- fit1$optimize()
 #> Starting RTMB optimization...
-#> 
   map2 <- fit2$optimize()
 #> Starting RTMB optimization...
-#> 
   bf <- bayes_factor(map1, map2)
   print(bf)
 #> Bayes Factor (BF12) : 0 

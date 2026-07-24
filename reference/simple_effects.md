@@ -65,7 +65,6 @@ are available.
 #> Checking RTMB setup...
   map_fit <- fit$optimize()
 #> Starting RTMB optimization...
-#> 
   # Effect of talk at different levels of performance
   se <- simple_effects(map_fit, effect = "talk:perf")
   print(se)

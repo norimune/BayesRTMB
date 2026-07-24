@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.3</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -55,6 +55,16 @@
       <small>Source: <a href="https://github.com/norimune/BayesRTMB/blob/master/NEWS.md" class="external-link"><code>NEWS.md</code></a></small>
     </div>
 
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.4" id="bayesrtmb-024">BayesRTMB 0.2.4<a class="anchor" aria-label="anchor" href="#bayesrtmb-024"></a></h2>
+<ul><li>Allowed <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>, <code><a href="../reference/rtmb_glm.html">rtmb_glm()</a></code>, <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code>, and <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code> to resolve bare variable names from the formula environment when <code>data</code> is omitted. Formulas using <code>$</code>, <code>[[</code>, or <code>.</code> continue to require explicit data.</li>
+<li>Corrected JZS t-test priors to include the Jeffreys scale prior (p() /), including paired and unequal-variance models.</li>
+<li>Corrected exponential-prior scaling across wrappers. The default <code>sigma_rate</code> and <code>tau_rate</code> in <code><a href="../reference/prior_normal.html">prior_normal()</a></code> are now <code>1 / 5</code>, giving exponential priors with mean 5, and wrapper-specific aliases are applied consistently.</li>
+<li>Added the default discrimination prior <code>a ~ exponential(1 / 2)</code> when <code><a href="../reference/prior_normal.html">prior_normal()</a></code> is used with IRT models.</li>
+<li>Improved weak-prior calibration from <code>y_range</code> in mixture and latent-rank models, including response-specific ranges for multivariate outcomes.</li>
+<li>Improved multivariate normal log-density performance and removed an unintended blank line from optimization progress output.</li>
+<li>Updated English and Japanese vignettes for the new defaults and wrapper behavior.</li>
+</ul></div>
     <div class="section level2">
 <h2 class="pkg-version" data-toc-text="0.2.3" id="bayesrtmb-023">BayesRTMB 0.2.3<a class="anchor" aria-label="anchor" href="#bayesrtmb-023"></a></h2><p class="text-muted">CRAN release: 2026-07-13</p>
 <ul><li>Fixed factor-analysis model construction on platforms where RTMB is sensitive to AD matrix containers that include structural zeros from lower-triangular parameters. The <code><a href="../reference/rtmb_fa.html">rtmb_fa()</a></code> wrapper now avoids reading upper-triangular structural-zero entries of <code>lower_tri</code> loading matrices and constructs constrained AD matrices with <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code>.</li>

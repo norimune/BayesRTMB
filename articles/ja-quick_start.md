@@ -135,7 +135,6 @@ fit_map
 ``` text
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -361,7 +360,6 @@ fit_t_classic
 ## Checking RTMB setup...
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## Classical estimation via ttest 
 ## 
@@ -384,7 +382,10 @@ fit_t_classic
 ## 9. JZS prior で Bayes factor を計算する
 
 同じ t 検定でも、JZS prior を使うと、効果量 `delta` に Cauchy
-事前分布を置いた Bayes factor を計算できます。
+事前分布を置いた Bayes factor を計算できます。BayesRTMB
+では、残差標準偏差にも Jeffreys scale prior
+$`p(\sigma) \propto 1/\sigma`$
+を適用します。等分散を仮定しない場合は、2群の標準偏差それぞれに適用されます。
 
 ``` r
 

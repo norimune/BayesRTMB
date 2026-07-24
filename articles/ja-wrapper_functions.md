@@ -59,6 +59,17 @@ fit_cl   <- mdl$classic()
 | [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md) | 媒介分析 | `rtmb_mediation(list(m ~ x, y ~ x + m), data = df)` |
 | [`rtmb_mixture()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mixture.md) | 混合分布モデル | `rtmb_mixture(y ~ x, k = 3, data = df)` |
 
+[`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md)、[`rtmb_glm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glm.md)、[`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)、[`rtmb_glmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_glmer.md)では、formula
+の環境に変数がある場合は `data`
+を省略できます。省略時はformula内で変数名を そのまま使い、`$`、`[[`、`.`
+を含む式では明示的に `data` を指定します。
+
+IRTで
+[`prior_normal()`](https://norimune.github.io/BayesRTMB/reference/prior_normal.md)
+を指定した場合、自由に推定される識別力パラメータには 既定で
+`a ~ exponential(1 / 2)`、すなわち平均2の指数事前分布が使われます。
+rateを変更する場合は `prior_normal(a_rate = ...)` と指定します。
+
 ## 推定のイメージ
 
 ラッパー関数でモデルを作ったあとは、メソッドを選んで推定します。
@@ -225,25 +236,25 @@ mdl$print_code()
 ##     Y2 <- as.numeric(na.omit(Y[G == 2]))
 ##   }, 
 ##   parameters = {
-##     mean0 = Dim(1)
-##     mean1 = Dim(1)
-##     sd = Dim(2, lower = 0)
+##     total_mean = Dim(1)
+##     sd = Dim(1, lower = 0)
+##     diff = Dim(1)
 ##   }, 
 ##   transform = {
-##     diff <- mean0 - mean1
-##     mean <- (mean0 + mean1)/2
-##     sd_pooled <- sqrt((sd[1]^2 + sd[2]^2)/2)
-##     delta <- diff/sd_pooled
+##     delta <- diff/sd
+##     mean0 <- total_mean + diff/2
+##     mean1 <- total_mean - diff/2
 ##   }, 
 ##   model = {
-##     Y1 ~ normal(mean0, sd[1])
-##     Y2 ~ normal(mean1, sd[2])
+##     Y1 ~ normal(mean0, sd)
+##     Y2 ~ normal(mean1, sd)
 ##   }
 ## )
 ```
 
-この例は Welch の
-t検定に対応するモデルです。通常の検定としては短く呼び出せますが、内部では2群それぞれの平均と標準偏差を推定するモデルとして表現されています。
+この既定例は等分散を仮定する2標本
+t検定に対応し、2群で共通の標準偏差を推定します。`var.equal = FALSE`
+を指定すると、2群の標準偏差を別々に推定する Welch 型のモデルになります。
 
 このように、ラッパー関数は「簡単に使う」ための入り口であると同時に、「どのモデルを推定しているか」を確認しながら、必要に応じて独自の
 [`rtmb_code()`](https://norimune.github.io/BayesRTMB/reference/rtmb_code.md)

@@ -113,7 +113,6 @@ mod <- rtmb_model(data = data_list, code = code)
 # Fit the model using MAP estimation
 map_res <- mod$optimize()
 #> Starting RTMB optimization...
-#> 
 map_res$summary(pars = c("alpha", "beta", "sigma"))
 #> 
 #> Call:
