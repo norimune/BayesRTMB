@@ -2,8 +2,10 @@
 
 * local Windows x86_64-w64-mingw32, R 4.5.3: `R CMD check` completed with
   0 errors, 0 warnings, and 0 notes
+* win-builder R-release x86_64-w64-mingw32, Windows Server 2022 x64,
+  R 4.6.1 (2026-06-24): OK
 * win-builder R-devel x86_64-w64-mingw32, Windows Server 2022 x64,
-  R-devel 2026-07-12 (r90242): OK
+  R-devel 2026-07-23 (r90295): OK
 * external Apple M1 Mac mini, macOS 26.5.1, R 4.6.1 aarch64,
   Apple clang 21, RTMB 1.9, TMB 1.9.21: OK
   * source tarball build, tarball installation, `example(rtmb_fa)`, the
@@ -29,7 +31,10 @@
 
 ## R CMD check results
 
-win-builder R-devel (2026-07-12, r90242): OK.
+0 errors | 0 warnings | 0 notes
+
+Both win-builder R-release 4.6.1 and R-devel (2026-07-23, r90295)
+completed with Status: OK.
 
 GitHub Actions macOS arm64 checks passed on macos-15 and macos-26. External
 Apple M1 checks also passed for the updated source tarball, and the originally
@@ -50,7 +55,7 @@ There are no known CRAN reverse dependencies.
 
 ## Submission notes
 
-This is a resubmission as BayesRTMB 0.2.3 with an increased version number.
+This is a resubmission as BayesRTMB 0.2.4 with an increased version number.
 
 In this resubmission, the `rtmb_fa()` example failure reported by CRAN on
 the M1mac check platform has been addressed. The reported failure occurred in
@@ -83,11 +88,9 @@ construction issue that could occur on the M1 macOS R-devel check platform.
 
 Additional changes in this release include:
 
-* response-time distributions, including exponentially modified normal and
-  diffusion model log-density functions;
-* improved `obs(...)` sampling syntax for distributions with multiple observed
-  variables;
-* recursive capture of helper functions and constants used by user-defined
-  functions supplied through the `setup` block;
-* improved generated-quantity/report handling and AD-compatible helper
-  containers.
+* optional formula-environment data lookup in the regression wrappers;
+* the Jeffreys scale prior for JZS t-tests;
+* corrected exponential-prior rates and IRT discrimination defaults;
+* improved weak-prior calibration for mixture and latent-rank models;
+* improved multivariate normal log-density performance; and
+* updated English and Japanese vignettes.

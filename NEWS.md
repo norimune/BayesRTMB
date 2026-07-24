@@ -1,3 +1,23 @@
+# BayesRTMB 0.2.4
+
+* Allowed `rtmb_lm()`, `rtmb_glm()`, `rtmb_lmer()`, and `rtmb_glmer()` to
+  resolve bare variable names from the formula environment when `data` is
+  omitted. Formulas using `$`, `[[`, or `.` continue to require explicit data.
+* Corrected JZS t-test priors to include the Jeffreys scale prior
+  \(p(\sigma) \propto 1/\sigma\), including paired and unequal-variance models.
+* Corrected exponential-prior scaling across wrappers. The default
+  `sigma_rate` and `tau_rate` in `prior_normal()` are now `1 / 5`, giving
+  exponential priors with mean 5, and wrapper-specific aliases are applied
+  consistently.
+* Added the default discrimination prior `a ~ exponential(1 / 2)` when
+  `prior_normal()` is used with IRT models.
+* Improved weak-prior calibration from `y_range` in mixture and latent-rank
+  models, including response-specific ranges for multivariate outcomes.
+* Improved multivariate normal log-density performance and removed an
+  unintended blank line from optimization progress output.
+* Updated English and Japanese vignettes for the new defaults and wrapper
+  behavior.
+
 # BayesRTMB 0.2.3
 
 * Fixed factor-analysis model construction on platforms where RTMB is sensitive
