@@ -137,6 +137,131 @@ test_that("IRT normal prior supplies the default discrimination prior", {
   expect_false(any(grepl("a ~ exponential", one_pl_code, fixed = TRUE)))
 })
 
+test_that("normal prior uses inverse-five rates for standard deviations", {
+  normal_prior <- prior_normal()
+  expect_equal(normal_prior$sigma_rate, 1 / 5)
+  expect_equal(normal_prior$tau_rate, 1 / 5)
+
+  dat <- data.frame(
+    y = c(-0.4, 0.2, 0.8, 1.1, 1.7, 2.0),
+    x = c(-1, 0, 1, -1, 0, 1),
+    id = factor(rep(1:3, each = 2))
+  )
+  default_code <- capture.output(
+    rtmb_glmer(
+      y ~ x + (1 | id),
+      data = dat,
+      prior = normal_prior
+    )$print_code()
+  )
+
+  expect_true(any(grepl("sigma ~ exponential\\(0.2\\)", default_code)))
+  expect_true(any(grepl("sd ~ exponential\\(0.2\\)", default_code)))
+
+  custom_code <- capture.output(
+    rtmb_glmer(
+      y ~ x + (1 | id),
+      data = dat,
+      prior = prior_normal(sigma_rate = 2, tau_rate = 3)
+    )$print_code()
+  )
+  expect_true(any(grepl("sigma ~ exponential\\(2\\)", custom_code)))
+  expect_true(any(grepl("sd ~ exponential\\(3\\)", custom_code)))
+})
+
+test_that("FA normal-prior aliases override common hyperparameters", {
+  Y <- matrix(rnorm(48), nrow = 12, ncol = 4)
+
+  alias_code <- capture.output(
+    rtmb_fa(
+      Y,
+      nfactors = 1,
+      prior = prior_normal(
+        mean_sd = 7,
+        sd_rate = 0.25,
+        loadings_sd = 3
+      )
+    )$print_code()
+  )
+  expect_true(any(grepl("mean ~ normal\\(0, 7\\)", alias_code)))
+  expect_true(any(grepl("sd ~ exponential\\(0.25\\)", alias_code)))
+  expect_true(any(grepl("L_raw ~ lower_tri_normal\\(0, 3\\)", alias_code)))
+
+  common_code <- capture.output(
+    rtmb_fa(
+      Y,
+      nfactors = 1,
+      prior = prior_normal(mu_sd = 6, sigma_rate = 0.4, b_sd = 2)
+    )$print_code()
+  )
+  expect_true(any(grepl("mean ~ normal\\(0, 6\\)", common_code)))
+  expect_true(any(grepl("sd ~ exponential\\(0.4\\)", common_code)))
+  expect_true(any(grepl("L_raw ~ lower_tri_normal\\(0, 2\\)", common_code)))
+})
+
+test_that("mixture and LRT weak priors scale to multivariate y_range", {
+  dat <- data.frame(
+    y1 = c(-2, -1, -0.5, 0.5, 1, 2),
+    y2 = c(0.2, 0.8, 1.4, 2.6, 3.2, 3.8)
+  )
+  ranges <- matrix(
+    c(-10, 10,
+      0, 4),
+    nrow = 2,
+    byrow = TRUE,
+    dimnames = list(c("y1", "y2"), c("min", "max"))
+  )
+  expected_rate <- matrix(
+    c(0.2, 1,
+      0.2, 1),
+    nrow = 2,
+    byrow = TRUE
+  )
+
+  mixture <- rtmb_mixture(
+    cbind(y1, y2) ~ 1,
+    k = 2,
+    data = dat,
+    y_range = ranges
+  )
+  expect_identical(mixture$extra$prior_type, "weak")
+  expect_equal(mixture$data$prior_mean_center, matrix(c(0, 2, 0, 2), 2, byrow = TRUE))
+  expect_equal(mixture$data$prior_mean_sd, matrix(c(10, 2, 10, 2), 2, byrow = TRUE))
+  expect_equal(mixture$data$prior_sigma_rate, expected_rate)
+  mixture_code <- capture.output(mixture$print_code())
+  expect_true(any(grepl(
+    "sigma ~ exponential\\(prior_sigma_rate\\)",
+    mixture_code
+  )))
+
+  lrt <- rtmb_lrt(
+    cbind(y1, y2) ~ 1,
+    k = 2,
+    data = dat,
+    prior = prior_weak(),
+    y_range = ranges
+  )
+  expect_equal(lrt$data$prior_sigma_rate, expected_rate)
+  lrt_code <- capture.output(lrt$print_code())
+  expect_true(any(grepl(
+    "sigma ~ exponential\\(prior_sigma_rate\\)",
+    lrt_code
+  )))
+})
+
+test_that("mixture and LRT reject invalid y_range scaling", {
+  dat <- data.frame(y = seq(-1, 1, length.out = 6))
+
+  expect_error(
+    rtmb_mixture(y ~ 1, k = 2, data = dat, y_range = c(1, 1)),
+    "finite increasing range"
+  )
+  expect_error(
+    rtmb_lrt(y ~ 1, k = 2, data = dat, y_range = matrix(1:6, nrow = 3)),
+    "finite increasing range"
+  )
+})
+
 test_that("wrapper loop-filled matrices use AD-compatible arrays", {
   mix_dat <- data.frame(
     y = c(-1.2, -0.8, -0.2, 0.4, 1.1, 1.8),

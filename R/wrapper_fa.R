@@ -11,8 +11,12 @@
 #' @param score Logical; if TRUE, factor scores are calculated in the generate block (default is FALSE).
 #' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or
 #'   `prior_weak()`. `prior_ssp()` is accepted when `rotate = "ssp"`.
-#'   Hyperparameters can be specified within these functions (e.g., `prior_normal(mean_sd = 10, sd_rate = 10)`).
-#'   Available parameters for FA: `mean_sd`, `sd_rate`, `loadings_sd`, and `ssp_ratio` (if `rotate = "ssp"`).
+#'   Hyperparameters can be specified within these functions (e.g.,
+#'   `prior_normal(mean_sd = 10, sd_rate = 1 / 5, loadings_sd = 10)`).
+#'   Available FA aliases are `mean_sd`, `sd_rate`, and `loadings_sd`; they
+#'   override the corresponding common arguments `mu_sd`, `sigma_rate`, and
+#'   `b_sd`. `sd_rate` is an exponential rate, so `1 / 5` gives a prior mean
+#'   of 5. `ssp_ratio` is available when `rotate = "ssp"`.
 #' @param y_range A numeric vector of length 2 specifying the theoretical min and max values of the items.
 #'   Used to construct weakly informative priors when `prior = prior_weak()`.
 #' @param init List of initial values.
@@ -96,9 +100,15 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   # Default/Initial settings
   prior_mean_center <- 0
-  prior_mean_sd <- if (prior_type == "normal") prior$mu_sd else prior$mean_sd
-  prior_sd_rate <- if (prior_type == "normal") prior$sigma_rate else prior$sd_rate
-  prior_loadings_sd <- if (prior_type == "normal") prior$b_sd else prior$loadings_sd
+  if (prior_type == "normal") {
+    prior_mean_sd <- if ("mean_sd" %in% names(prior)) prior$mean_sd else prior$mu_sd
+    prior_sd_rate <- if ("sd_rate" %in% names(prior)) prior$sd_rate else prior$sigma_rate
+    prior_loadings_sd <- if ("loadings_sd" %in% names(prior)) prior$loadings_sd else prior$b_sd
+  } else {
+    prior_mean_sd <- prior$mean_sd
+    prior_sd_rate <- prior$sd_rate
+    prior_loadings_sd <- prior$loadings_sd
+  }
   ssp_ratio <- if (!is.null(prior$ssp_ratio)) prior$ssp_ratio else 0.25
 
   # Weak Information Prior Logic (GLMER style)

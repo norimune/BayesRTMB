@@ -30,8 +30,11 @@ rtmb_mixture(
 `prior_flat()`. If `y_range` is supplied with the default flat prior,
 the wrapper automatically switches to `prior_weak()`.}
 
-\item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.}
+\item{y_range}{Optional theoretical range of the response variables. Use a
+numeric vector `c(min, max)` for a common range, or a P x 2 matrix/list
+for response-specific ranges. Specifying this automatically enables
+`prior_weak()` when `prior` is `prior_flat()` and calibrates the component
+mean and residual standard-deviation priors.}
 
 \item{fixed}{Optional named list of fixed values for specific parameters.}
 

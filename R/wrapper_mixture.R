@@ -13,8 +13,11 @@
 #'   `prior_weak()`, `prior_rhs()`, or `prior_ssp()`. Default is
 #'   `prior_flat()`. If `y_range` is supplied with the default flat prior,
 #'   the wrapper automatically switches to `prior_weak()`.
-#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-#'   Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.
+#' @param y_range Optional theoretical range of the response variables. Use a
+#'   numeric vector `c(min, max)` for a common range, or a P x 2 matrix/list
+#'   for response-specific ranges. Specifying this automatically enables
+#'   `prior_weak()` when `prior` is `prior_flat()` and calibrates the component
+#'   mean and residual standard-deviation priors.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
 #' @param ... Reserved; unused arguments are rejected.
@@ -186,6 +189,40 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   K_prob <- if (has_cov_prob) ncol(X_prob) else 0
   is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal", "full_equal_corr")
 
+  prior_mean_center <- 0
+  prior_mean_sd <- prior$Intercept_sd
+  prior_sigma_rate <- prior$sigma_rate
+  if (use_weak_info && !is.null(y_range)) {
+    range_scale <- .wrapper_y_range_scale(
+      y_range,
+      n_response = P_dim,
+      sd_ratio = if (!is.null(prior$sd_ratio)) prior$sd_ratio else 0.5,
+      response_names = colnames(Y_mat),
+      context = "rtmb_mixture()"
+    )
+    if (multivariate) {
+      prior_mean_center <- matrix(
+        rep(range_scale$center, K_mix),
+        nrow = K_mix,
+        byrow = TRUE
+      )
+      prior_mean_sd <- matrix(
+        rep(range_scale$half_range, K_mix),
+        nrow = K_mix,
+        byrow = TRUE
+      )
+      prior_sigma_rate <- if (is_sigma_equal) {
+        range_scale$rate
+      } else {
+        matrix(rep(range_scale$rate, K_mix), nrow = K_mix, byrow = TRUE)
+      }
+    } else {
+      prior_mean_center <- range_scale$center
+      prior_mean_sd <- range_scale$half_range
+      prior_sigma_rate <- range_scale$rate
+    }
+  }
+
   # --- 1. Dynamic AST Construction: setup ---
   if (setup_from_formula) {
     setup_exprs <- list(
@@ -230,6 +267,11 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
       # SSP setup
       setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(tau_scale <- .(prior$max_beta) / 1.96) else quote(tau_scale <- tau_scale)
     }
+  }
+  if (use_weak_info) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_mean_center <- prior_mean_center)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_mean_sd <- prior_mean_sd)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_sigma_rate <- prior_sigma_rate)
   }
   setup_ast <- as.call(setup_exprs)
 
@@ -359,8 +401,8 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   # Priors
   if (use_weak_info) {
     # Component priors
-    model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior$Intercept_sd)))
-    model_exprs[[length(model_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
+    model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(prior_mean_center, prior_mean_sd))
+    model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(prior_sigma_rate))
 
     if (multivariate && covariance %in% c("full", "full_equal", "full_equal_corr")) {
       if (covariance == "full") {
@@ -502,6 +544,11 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     list(df = setup_df, formula = formula, K = K_mix)
   } else {
     list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim)
+  }
+  if (use_weak_info) {
+    data_list$prior_mean_center <- prior_mean_center
+    data_list$prior_mean_sd <- prior_mean_sd
+    data_list$prior_sigma_rate <- prior_sigma_rate
   }
   if (has_cov_prob) {
     if (!setup_from_formula) {

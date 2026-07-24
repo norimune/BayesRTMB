@@ -46,6 +46,50 @@
   )
 }
 
+.wrapper_y_range_scale <- function(y_range, n_response, sd_ratio = 0.5,
+                                   response_names = NULL, context = "This wrapper") {
+  if (is.list(y_range) && !is.data.frame(y_range)) {
+    if (!is.null(response_names) &&
+        !is.null(names(y_range)) &&
+        all(response_names %in% names(y_range))) {
+      y_range <- y_range[response_names]
+    }
+    range_mat <- do.call(rbind, lapply(y_range, as.numeric))
+  } else if (is.atomic(y_range) && is.null(dim(y_range)) && length(y_range) == 2L) {
+    range_mat <- matrix(rep(as.numeric(y_range), n_response), nrow = n_response, byrow = TRUE)
+  } else {
+    range_mat <- as.matrix(y_range)
+    if (nrow(range_mat) == 2L && ncol(range_mat) == n_response && ncol(range_mat) != 2L) {
+      range_mat <- t(range_mat)
+    }
+  }
+
+  if (!is.numeric(range_mat) ||
+      !identical(dim(range_mat), c(as.integer(n_response), 2L)) ||
+      any(!is.finite(range_mat)) ||
+      any(range_mat[, 1L] >= range_mat[, 2L])) {
+    stop(
+      context,
+      " requires 'y_range' to be a finite increasing range. ",
+      "Use c(min, max) for all responses, or a P x 2 matrix/list for response-specific ranges.",
+      call. = FALSE
+    )
+  }
+  if (!is.numeric(sd_ratio) || length(sd_ratio) != 1L ||
+      !is.finite(sd_ratio) || sd_ratio <= 0) {
+    stop("'sd_ratio' must be a positive finite scalar.", call. = FALSE)
+  }
+
+  half_range <- (range_mat[, 2L] - range_mat[, 1L]) / 2
+  base_scale <- half_range * sd_ratio
+  list(
+    center = rowMeans(range_mat),
+    half_range = half_range,
+    base_scale = base_scale,
+    rate = 1 / base_scale
+  )
+}
+
 
 #' Specify a flat prior
 #'
@@ -72,8 +116,12 @@ prior_flat <- function() {
 #' @param Intercept_sd Standard deviation for the intercept prior. If `NULL`, no intercept prior is added.
 #' @param b_sd Standard deviation for coefficient priors. If `NULL`, no coefficient prior is added.
 #' @param mu_sd Standard deviation for mean/intercept priors. If `NULL`, no mean prior is added.
-#' @param sigma_rate Rate for residual standard deviation priors. If `NULL`, no sigma prior is added.
-#' @param tau_rate Rate for random-effect standard deviation priors. If `NULL`, no tau prior is added.
+#' @param sigma_rate Rate for residual standard deviation priors. The default
+#'   `1 / 5` gives an exponential prior with mean 5. If `NULL`, no sigma prior
+#'   is added.
+#' @param tau_rate Rate for random-effect standard deviation priors. The default
+#'   `1 / 5` gives an exponential prior with mean 5. If `NULL`, no tau prior is
+#'   added.
 #' @param ... Optional wrapper-specific hyperparameters.
 #'
 #' @return A list with class `"rtmb_prior"` and `type = "normal"`.
@@ -82,8 +130,8 @@ prior_normal <- function(
   Intercept_sd = 10,
   mu_sd = 10,
   b_sd = 10,
-  sigma_rate = 5,
-  tau_rate = 5,
+  sigma_rate = 1 / 5,
+  tau_rate = 1 / 5,
   ...
 ) {
   res <- list(

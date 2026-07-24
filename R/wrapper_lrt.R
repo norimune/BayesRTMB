@@ -18,8 +18,11 @@
 #'   `prior_weak()`, `prior_rhs()`, or `prior_ssp()`. Default is
 #'   `prior_flat()`. If `y_range` is supplied with the default flat prior,
 #'   the wrapper automatically switches to `prior_weak()`.
-#' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
-#'   Specifying this automatically enables weakly informative priors if `prior` is `prior_flat()`.
+#' @param y_range Optional theoretical range of the response variables. Use a
+#'   numeric vector `c(min, max)` for a common range, or a P x 2 matrix/list
+#'   for response-specific ranges. Specifying this automatically enables
+#'   `prior_weak()` when `prior` is `prior_flat()` and calibrates the residual
+#'   standard-deviation prior.
 #' @param fixed Optional named list of fixed values for specific parameters.
 #' @param two_stage Logical; if TRUE, estimate the latent-rank measurement model
 #'   first and then estimate the rank regression with delta-method uncertainty
@@ -185,6 +188,22 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
   is_diag <- covariance %in% c("diagonal", "diagonal_equal")
   is_sigma_equal <- covariance %in% c("diagonal_equal", "full_equal", "full_equal_corr")
 
+  prior_sigma_rate <- prior$sigma_rate
+  if (use_weak_info && !is.null(y_range)) {
+    range_scale <- .wrapper_y_range_scale(
+      y_range,
+      n_response = P_dim,
+      sd_ratio = if (!is.null(prior$sd_ratio)) prior$sd_ratio else 0.5,
+      response_names = colnames(Y_mat),
+      context = "rtmb_lrt()"
+    )
+    prior_sigma_rate <- if (is_sigma_equal) {
+      range_scale$rate
+    } else {
+      matrix(rep(range_scale$rate, K_mix), nrow = K_mix, byrow = TRUE)
+    }
+  }
+
   # --- 1. Setup ---
   if (setup_from_formula) {
     setup_exprs <- list(
@@ -232,6 +251,9 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
       # SSP setup
       setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(tau_scale <- .(prior$max_beta) / 1.96) else quote(tau_scale <- tau_scale)
     }
+  }
+  if (use_weak_info) {
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_sigma_rate <- prior_sigma_rate)
   }
   setup_ast <- as.call(setup_exprs)
 
@@ -399,7 +421,7 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
 
   # Priors
   if (use_weak_info) {
-    model_exprs[[length(model_exprs) + 1]] <- bquote(sigma ~ exponential(.(prior$sigma_rate)))
+    model_exprs[[length(model_exprs) + 1]] <- quote(sigma ~ exponential(prior_sigma_rate))
     if (is.null(magnitude)) model_exprs[[length(model_exprs) + 1]] <- bquote(magnitude ~ exponential(.(prior$mag_rate)))
     if (is.null(smoothing)) model_exprs[[length(model_exprs) + 1]] <- bquote(smoothing ~ exponential(.(prior$smooth_rate)))
     if (prob_smoothing && !has_cov_prob) {
@@ -594,6 +616,9 @@ rtmb_lrt <- function(formula, k = 3, data = NULL,
     list(df = setup_df, formula = formula, K = K_mix, rank_coords = rank_coords)
   } else {
     list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim, rank_coords = rank_coords)
+  }
+  if (use_weak_info) {
+    data_list$prior_sigma_rate <- prior_sigma_rate
   }
   if (has_cov_prob) {
     if (!setup_from_formula) {
