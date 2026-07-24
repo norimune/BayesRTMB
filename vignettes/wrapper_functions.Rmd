@@ -41,11 +41,11 @@ y1 <- rnorm(30, mean = 0, sd = 1)
 y2 <- rnorm(30, mean = 1, sd = 1)
 
 # Method passing vectors directly
-mdl_ttest <- rtmb_ttest(y1, y2)
+mdl_ttest <- rtmb_ttest(y1, y2, prior = prior_jzs())
 
 # Method using formula format (when you have a dataframe)
 # df <- data.frame(Y = c(y1, y2), group = rep(c("A", "B"), each = 30))
-# mdl_ttest <- rtmb_ttest(Y ~ group, data = df)
+# mdl_ttest <- rtmb_ttest(Y ~ group, data = df, prior = prior_jzs())
 
 # MCMC estimation
 fit_ttest <- mdl_ttest$sample()
@@ -77,25 +77,26 @@ mdl_ttest$print_code()
 ## 
 ## rtmb_code(
 ##   parameters = {
-##     mean = Dim(1)
+##     total_mean = Dim(1)
 ##     sd = Dim(1, lower = 0)
 ##     delta = Dim(1)
 ##   }, 
 ##   transform = {
 ##     diff <- delta * sd
-##     mean0 <- mean - diff/2
-##     mean1 <- mean + diff/2
+##     mean0 <- total_mean + diff/2
+##     mean1 <- total_mean - diff/2
 ##   }, 
 ##   model = {
 ##     Y1 ~ normal(mean0, sd)
 ##     Y2 ~ normal(mean1, sd)
 ##     delta ~ cauchy(0, r)
-##     mean ~ normal(0, 10)
-##     sd ~ exponential(0.1)
-##   }, 
-##   <environment>
+##     lp <- lp - log(sd)
+##   }
 ## )
 ```
+
+The `lp <- lp - log(sd)` term applies the Jeffreys scale prior
+\(p(\sigma) \propto 1/\sigma\) used by the JZS t-test.
 
 ### Calculating the Bayes Factor
 
@@ -587,6 +588,10 @@ Currently, the following models are supported:
 
 - **1PL / 2PL / 3PL Models**: Analysis of binary data (correct/incorrect).
 - **Graded Response Model (GRM)**: Analysis of polytomous data (e.g., Likert scales).
+
+With `prior_normal()`, the default prior for a freely estimated discrimination
+parameter is `a ~ exponential(1 / 2)`, which has prior mean 2. Use
+`prior_normal(a_rate = ...)` to change its rate.
 
 Because IRT models are computationally demanding, it is highly effective to utilize the fast approximation via `variational()` or marginalize the ability parameters using `optimize(laplace = TRUE)` when handling large datasets.
 

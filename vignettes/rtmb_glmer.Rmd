@@ -72,7 +72,6 @@ fit_map
 ```text
 ## Starting RTMB optimization...
 ## 
-## 
 ## Call:
 ## MAP Estimation via RTMB
 ## 
@@ -90,6 +89,27 @@ fit_map
 ```
 
 Random effects are stored separately in `fit_map$random_effects`.
+
+## Omitting `data`
+
+For `rtmb_lm()`, `rtmb_glm()`, `rtmb_lmer()`, and `rtmb_glmer()`, the
+`data` argument is optional. When it is omitted, variables are resolved from
+the formula environment.
+
+```{r eval=FALSE}
+y <- dat$y
+x <- dat$x
+group <- dat$group
+
+mdl_from_env <- rtmb_glmer(
+  y ~ x + (1 | group),
+  family = "gaussian",
+  prior = prior_normal()
+)
+```
+
+Use bare variable names in a formula without `data`. Formulas containing `$`,
+`[[`, or `.` require an explicit `data` argument.
 
 # 2. Choosing an Inference Method
 
@@ -324,6 +344,10 @@ Use `classic()` with flat-prior wrapper models when a frequentist-style summary 
 ## `prior_normal()`
 
 `prior_normal()` is the most beginner-friendly Bayesian default. It uses normal priors for location and regression parameters and positive priors such as exponential priors for scale parameters.
+
+The `sigma_rate` and `tau_rate` arguments are exponential **rates**, not
+means. Their defaults are both `1 / 5`, corresponding to exponential priors
+with mean 5.
 
 ```{r}
 mdl_norm <- rtmb_glmer(

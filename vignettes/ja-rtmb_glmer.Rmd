@@ -3,7 +3,7 @@ title: "rtmb_glmer() で階層モデル・GLMM・分散分析を書く"
 description: "lme4 風の式から階層モデル、一般化線形混合モデル、順序モデル、残差構造つきモデルを作り、MCMC、MAP、VB、classic を使い分ける方法を説明します。"
 output: rmarkdown::html_vignette
 vignette: >
-  %\VignetteIndexEntry{rtmb_glmer() で階層モデル・GLMMを書く}
+  %\VignetteIndexEntry{rtmb_glmer() で階層モデル・GLMM・分散分析を書く}
   %\VignetteEngine{knitr::rmarkdown}
   %\VignetteEncoding{UTF-8}
 ---
@@ -124,6 +124,26 @@ MAP 推定では、点推定と Wald 型または sampling-based の区間が表
 ```
 
 MAP 推定は、モデルの挙動を素早く確認したい場合や、MCMC の前に初期値やスケール感を見たい場合に便利です。最終的な不確実性を報告する場合は、可能であれば MCMC の結果も確認してください。
+
+## data を省略する
+
+`rtmb_lm()`、`rtmb_glm()`、`rtmb_lmer()`、`rtmb_glmer()` では、`data`
+を省略できます。その場合、変数は formula が作られた環境から取得されます。
+
+```{r eval=FALSE}
+y <- dat$y
+x <- dat$x
+group <- dat$group
+
+mdl_env <- rtmb_glmer(
+  y ~ x + (1 | group),
+  family = "gaussian",
+  prior = prior_normal()
+)
+```
+
+`data` を省略するときは、formula 内では変数名をそのまま書きます。`$`、`[[`、
+`.` を含む formula では、明示的に `data` を指定してください。
 
 # 3. formula の書き方と可視化
 
@@ -369,7 +389,7 @@ mdl <- rtmb_glmer(
 )
 ```
 
-`prior_normal()` は、固定効果に正規 prior、標準偏差やランダム効果のスケールに指数 prior を置く、分かりやすい手動 prior です。まず事前分布の意味を理解したい場合は、`prior_normal()` から始めると見通しがよくなります。
+`prior_normal()` は、固定効果に正規 prior、標準偏差やランダム効果のスケールに指数 prior を置く、分かりやすい手動 prior です。`sigma_rate` と `tau_rate` は平均ではなく指数分布の rate です。既定値はいずれも `1 / 5` で、これは平均 5 の指数分布に対応します。上の例で指定した `1` は平均 1 に対応します。
 
 ## prior_weak
 
