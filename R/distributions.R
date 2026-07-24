@@ -820,15 +820,6 @@ fiml_multi_normal_CF_lpdf <- function(x, mean, sd, CF_Omega) {
 #' @return The sum of the log-density.
 #' @keywords internal
 multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
-
-  log_det_chol <- function(L) {
-    return(2 * sum(log(diag(L))))
-  }
-  quad_form_chol <- function(x, L) {
-    z <- solve(L, x)
-    return(sum(z^2))
-  }
-
   K <- nrow(Sigma)
   if (is.null(K) || length(Sigma) == 1) {
     res <- dnorm(x, mean = mean, sd = sqrt(Sigma + 1e-11), log = TRUE)
@@ -839,29 +830,24 @@ multi_normal_lpdf <- function(x, mean, Sigma, sum = TRUE) {
   diag_Sigma <- diag(Sigma)
   safe_Sigma <- Sigma + diag(diag_Sigma * 1e-6 + 1e-8)
 
-  # Calculate log-determinant and quadratic form more robustly
-  # For RTMB, using determinant() and solve() can sometimes be more stable than chol()
-  # if the matrix is very near-singular.
-  
-  log_det_obj <- determinant(safe_Sigma, logarithm = TRUE)
-  log_det <- log_det_obj$modulus
-  
-  const <- -0.5 * (K * log(2 * pi) + log_det)
-
-  if (is.matrix(x) && ncol(x) > 1) {
-    n <- nrow(x)
-    resid_t <- if (is.matrix(mean)) t(x - mean) else t(x) - mean
-    quad_form <- colSums(resid_t * solve(safe_Sigma, resid_t))
-    res <- const - 0.5 * quad_form
-    return(if (sum) sum(res) else res)
+  # RTMB's atomic multivariate-normal density performs the covariance
+  # factorization once and reuses it for both the log-determinant and the
+  # quadratic form.  Besides avoiding duplicate work, keeping the complete
+  # operation atomic substantially reduces the automatic-differentiation tape.
+  centered_x <- if (is.matrix(x)) {
+    if (is.matrix(mean)) x - mean else t(t(x) - mean)
   } else {
-    # Single observation
-    x_vec <- if(is.matrix(x)) drop(x) else x
-    mean_vec <- if(is.matrix(mean)) drop(mean) else mean
-    resid <- x_vec - mean_vec
-    quad_form <- sum(resid * solve(safe_Sigma, resid))
-    return(const - 0.5 * quad_form)
+    x - mean
   }
+
+  res <- RTMB::dmvnorm(
+    centered_x,
+    mu = 0,
+    Sigma = safe_Sigma,
+    log = TRUE
+  )
+
+  if (sum) sum(res) else res
 }
 
 #' Multivariate Student-t log-probability density function
@@ -1153,6 +1139,36 @@ fa_multi_normal_lpdf <- function(x, mu, Lambda, psi, sum = TRUE) {
   P <- nrow(Lambda)
   K <- ncol(Lambda)
   inv_psi <- 1 / psi
+
+  # For a single factor, the Woodbury correction and matrix-determinant
+  # lemma reduce to scalar operations.  Avoiding a 1 x 1 Cholesky
+  # decomposition and solve is especially important when this density is
+  # evaluated separately for many observations with varying loadings.
+  if (K == 1L) {
+    lambda <- as.vector(Lambda[, 1])
+    weighted_lambda <- lambda * inv_psi
+    denominator <- 1 + sum(lambda * weighted_lambda)
+    log_det_Sigma <- sum(log(psi)) + log(denominator)
+    const <- -0.5 * (P * 1.83787706640935 + log_det_Sigma)
+
+    if (is.matrix(x)) {
+      y_c <- t(t(x) - mu)
+      z_scaled <- t(t(y_c) * inv_psi)
+      term1_per_obs <- rowSums(y_c * z_scaled)
+      z_lambda <- as.vector(y_c %*% weighted_lambda)
+      term2_per_obs <- z_lambda^2 / denominator
+      res <- const - 0.5 * (term1_per_obs - term2_per_obs)
+
+      return(if (sum) sum(res) else res)
+    }
+
+    y_c <- x - mu
+    term1 <- sum((y_c^2) * inv_psi)
+    z_lambda <- sum(y_c * weighted_lambda)
+    term2 <- z_lambda^2 / denominator
+
+    return(const - 0.5 * (term1 - term2))
+  }
 
   Lambda_scaled <- Lambda * inv_psi
   M <- diag(1, K) + (t(Lambda) %*% Lambda_scaled)

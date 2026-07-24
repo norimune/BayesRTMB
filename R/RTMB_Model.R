@@ -1051,7 +1051,7 @@ RTMB_Model <- R6::R6Class(
           opt_status[i] <- classify_optimizer_status(conv_codes[i], messages[i], obj_vals[i])
         }
       }
-      if (verbose) cat("\n")
+      if (num_estimate > 1L && verbose) cat("\n")
       valid_idx <- which(!is.na(obj_vals))
       if (length(valid_idx) == 0L) {
         na_vars <- data_na_summary(self$data)
@@ -1116,7 +1116,7 @@ RTMB_Model <- R6::R6Class(
       )
 
       if (num_estimate > 1L && isTRUE(verbose)) {
-        cat("\nConvergence Diagnostics per estimate:\n")
+        cat("Convergence Diagnostics per estimate:\n")
         for (i in seq_len(num_estimate)) {
           status <- opt_status[i]
           best_marker <- if (i == best_idx) "  <-- BEST" else ""
