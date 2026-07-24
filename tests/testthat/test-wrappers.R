@@ -222,6 +222,29 @@ test_that("Wrappers reject unsupported priors and unused dots", {
   expect_error(rtmb_table(matrix(c(1, 2, 3, 4), 2), typo_arg = 1), "unused argument")
 })
 
+test_that("JZS t-tests include the Jeffreys prior for scale", {
+  y1 <- c(-1.2, -0.3, 0.4, 1.1, 1.7)
+  y2 <- c(0.1, 0.8, 1.2, 2.0, 2.4)
+
+  equal_code <- capture.output(
+    rtmb_ttest(y1, y2, prior = prior_jzs())$print_code()
+  )
+  expect_true(any(grepl("lp <- lp - log\\(sd\\)", equal_code)))
+
+  paired_code <- capture.output(
+    rtmb_ttest(y1, y2, paired = TRUE, prior = prior_jzs())$print_code()
+  )
+  expect_true(any(grepl("lp <- lp - log\\(sd_diff\\)", paired_code)))
+
+  unequal_code <- capture.output(
+    rtmb_ttest(y1, y2, var.equal = FALSE, prior = prior_jzs())$print_code()
+  )
+  expect_true(any(grepl("lp <- lp - sum\\(log\\(sd\\)\\)", unequal_code)))
+
+  flat_code <- capture.output(rtmb_ttest(y1, y2)$print_code())
+  expect_false(any(grepl("lp <- lp - .*log\\(sd", flat_code)))
+})
+
 test_that("rtmb_glmer cwc accepts unquoted cluster with all numeric fixed effects", {
   dat <- data.frame(
     y = c(1, 2, 3, 4, 5, 6),

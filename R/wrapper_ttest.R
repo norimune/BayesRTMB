@@ -30,10 +30,15 @@
 #' This corresponds to the Welch-type unequal-variance t-test, but the
 #' degrees of freedom are computed by the package's internal Satterthwaite
 #' procedure rather than by a separate closed-form formula.
+#' For JZS t-tests, `prior_jzs()` places a Cauchy prior on the standardized
+#' effect size and the Jeffreys scale prior \eqn{p(\sigma) \propto 1/\sigma}
+#' on the residual standard deviation. For paired tests, the latter is
+#' applied to the standard deviation of the pairwise differences.
 #' When `prior_jzs()` is combined with `var.equal = FALSE`, BayesRTMB uses
 #' a Welch-style JZS extension: the effect size `delta` is an explicit
 #' parameter with a Cauchy prior, and the group mean difference is scaled by
-#' the root-mean-square of the two group standard deviations.
+#' the root-mean-square of the two group standard deviations. The Jeffreys
+#' scale prior is applied separately to both group standard deviations.
 #'
 #' @example inst/examples/ex_ttest.R
 #' @export
@@ -222,7 +227,10 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       quote({ delta <- diff / sd_diff })
     }
     model_body <- list(quote(diffs ~ normal(diff, sd_diff)))
-    if (is_jzs) model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
+    if (is_jzs) {
+      model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
+      model_body[[length(model_body)+1]] <- quote(lp <- lp - log(sd_diff))
+    }
     if (is_weak) {
       model_body[[length(model_body)+1]] <- quote(diff ~ normal(0, diff_prior_sd))
       model_body[[length(model_body)+1]] <- quote(sd_diff ~ exponential(sigma_rate_weak))
@@ -299,6 +307,11 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     
     if (is_jzs) {
        model_body[[length(model_body)+1]] <- quote(delta ~ cauchy(0, r))
+       if (var.equal) {
+         model_body[[length(model_body)+1]] <- quote(lp <- lp - log(sd))
+       } else {
+         model_body[[length(model_body)+1]] <- quote(lp <- lp - sum(log(sd)))
+       }
     }
     if (is_weak) {
       if (!var.equal) {

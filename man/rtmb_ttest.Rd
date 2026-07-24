@@ -67,10 +67,15 @@ The result is model-based and reproducible from the printed model code.
 This corresponds to the Welch-type unequal-variance t-test, but the
 degrees of freedom are computed by the package's internal Satterthwaite
 procedure rather than by a separate closed-form formula.
+For JZS t-tests, `prior_jzs()` places a Cauchy prior on the standardized
+effect size and the Jeffreys scale prior \eqn{p(\sigma) \propto 1/\sigma}
+on the residual standard deviation. For paired tests, the latter is
+applied to the standard deviation of the pairwise differences.
 When `prior_jzs()` is combined with `var.equal = FALSE`, BayesRTMB uses
 a Welch-style JZS extension: the effect size `delta` is an explicit
 parameter with a Cauchy prior, and the group mean difference is scaled by
-the root-mean-square of the two group standard deviations.
+the root-mean-square of the two group standard deviations. The Jeffreys
+scale prior is applied separately to both group standard deviations.
 }
 \examples{
 
