@@ -9,7 +9,9 @@
 #' @param type Character string for the data type: "binary" or "ordered".
 #' @param prior Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
 #'   Hyperparameters can be specified within these functions (e.g., `prior_normal(b_sd = 5)`).
-#'   Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c_alpha`/`c_beta` (guessing).
+#'   Available parameters for IRT: `a_rate` (discrimination; defaults to 1/2
+#'   with `prior_normal()`), `b_sd` (difficulty), and `c_alpha`/`c_beta`
+#'   (guessing).
 #' @param init List of initial values.
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
@@ -72,6 +74,10 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   b_sd    <- if (!is.null(prior$b_sd)) prior$b_sd else prior$mu_sd
   c_alpha <- prior$c_alpha
   c_beta  <- prior$c_beta
+
+  if (prior_type == "normal" && is.null(a_rate)) {
+    a_rate <- 1 / 2
+  }
 
   # Default weak values
   if (prior_type == "weak") {

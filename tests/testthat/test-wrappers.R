@@ -105,6 +105,38 @@ test_that("wrapper WAIC loops use AD-compatible vectors", {
   expect_false(any(grepl("log_lik <- numeric\\(N_obs\\)", out)))
 })
 
+test_that("IRT normal prior supplies the default discrimination prior", {
+  Y <- matrix(
+    c(
+      0, 1, 1,
+      1, 0, 1,
+      0, 1, 0,
+      1, 1, 0
+    ),
+    nrow = 4,
+    byrow = TRUE
+  )
+
+  default_code <- capture.output(
+    rtmb_irt(Y, model = "2PL", prior = prior_normal())$print_code()
+  )
+  expect_true(any(grepl("a ~ exponential\\(0.5\\)", default_code)))
+
+  custom_code <- capture.output(
+    rtmb_irt(
+      Y,
+      model = "2PL",
+      prior = prior_normal(a_rate = 0.5)
+    )$print_code()
+  )
+  expect_true(any(grepl("a ~ exponential\\(0.5\\)", custom_code)))
+
+  one_pl_code <- capture.output(
+    rtmb_irt(Y, model = "1PL", prior = prior_normal())$print_code()
+  )
+  expect_false(any(grepl("a ~ exponential", one_pl_code, fixed = TRUE)))
+})
+
 test_that("wrapper loop-filled matrices use AD-compatible arrays", {
   mix_dat <- data.frame(
     y = c(-1.2, -0.8, -0.2, 0.4, 1.1, 1.8),

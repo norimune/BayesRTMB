@@ -25,7 +25,9 @@ rtmb_irt(
 
 \item{prior}{Prior configuration: `prior_flat()`, `prior_normal()`, or `prior_weak()`.
 Hyperparameters can be specified within these functions (e.g., `prior_normal(b_sd = 5)`).
-Available parameters for IRT: `a_rate` (discrimination), `b_sd` (difficulty), `c_alpha`/`c_beta` (guessing).}
+Available parameters for IRT: `a_rate` (discrimination; defaults to 1/2
+with `prior_normal()`), `b_sd` (difficulty), and `c_alpha`/`c_beta`
+(guessing).}
 
 \item{init}{List of initial values.}
 
