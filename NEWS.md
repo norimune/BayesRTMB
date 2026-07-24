@@ -1,3 +1,14 @@
+# BayesRTMB 0.2.3
+
+* Fixed factor-analysis model construction on platforms where RTMB is sensitive
+  to AD matrix containers that include structural zeros from lower-triangular
+  parameters. The `rtmb_fa()` wrapper now avoids reading upper-triangular
+  structural-zero entries of `lower_tri` loading matrices and constructs
+  constrained AD matrices with `rtmb_array()`.
+* Simplified the runnable `rtmb_fa()` example to a one-factor model. Advanced
+  factor-analysis workflows remain covered by documentation and CI regression
+  checks.
+
 # BayesRTMB 0.2.2
 
 * Added response-time distributions for model code: `exp_mod_normal_lpdf()` and

@@ -191,10 +191,21 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
     tran_ast <- quote({
       Lambda <- Lambda_star * r * tau
-      h2 <- rowSums(Lambda * (Lambda %*% CF_Omega))
+      Lambda_CF <- Lambda %*% CF_Omega
+      h2 <- rtmb_vector(0, J, seed = sd[1])
+      for (j in 1:J) {
+        for (k in 1:K) {
+          h2[j] <- h2[j] + Lambda[j, k] * Lambda_CF[j, k]
+        }
+      }
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      L <- Lambda / matrix(sd_Y, nrow = J, ncol = K)
+      L <- rtmb_array(0, dim = c(J, K), seed = sd[1])
+      for (j in 1:J) {
+        for (k in 1:K) {
+          L[j, k] <- Lambda[j, k] / sd_Y[j]
+        }
+      }
       fa_cor <- CF_Omega %*% t(CF_Omega)
     })
 
@@ -222,9 +233,16 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
     base_gq <- quote({
+      Lambda_CF <- Lambda %*% CF_Omega
       Sigma <- Lambda %*% fa_cor %*% t(Lambda) + diag(sd^2)
-      var_total <- diag(Sigma)
-      var_common <- rowSums(Lambda * (Lambda %*% CF_Omega))
+      var_total <- rtmb_vector(0, J, seed = sd[1])
+      var_common <- rtmb_vector(0, J, seed = sd[1])
+      for (j in 1:J) {
+        var_total[j] <- Sigma[j, j]
+        for (k in 1:K) {
+          var_common[j] <- var_common[j] + Lambda[j, k] * Lambda_CF[j, k]
+        }
+      }
       communality <- var_common / var_total
     })
     waic_expr <- if (isTRUE(WAIC)) {
@@ -291,10 +309,20 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     })
 
     tran_ast <- quote({
-      h2 <- rowSums(L_raw^2)
+      h2 <- rtmb_vector(0, J, seed = sd[1])
+      for (j in 1:J) {
+        for (k in 1:min(j, K)) {
+          h2[j] <- h2[j] + L_raw[j, k]^2
+        }
+      }
       var_Y <- h2 + sd^2
       sd_Y <- sqrt(var_Y)
-      L <- L_raw / matrix(sd_Y, nrow = J, ncol = K)
+      L <- rtmb_array(0, dim = c(J, K), seed = sd[1])
+      for (j in 1:J) {
+        for (k in 1:min(j, K)) {
+          L[j, k] <- L_raw[j, k] / sd_Y[j]
+        }
+      }
     })
 
     model_exprs <- list()
@@ -316,8 +344,26 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     model_ast <- as.call(c(list(as.name("{")), model_exprs))
 
     base_gq <- quote({
-      Sigma <- L_raw %*% t(L_raw) + diag(sd^2)
-      var_total <- diag(Sigma); var_common <- rowSums(L_raw^2); communality <- var_common / var_total
+      Sigma <- rtmb_array(0, dim = c(J, J), seed = sd[1])
+      var_common <- rtmb_vector(0, J, seed = sd[1])
+      for (j1 in 1:J) {
+        for (j2 in 1:J) {
+          for (k in 1:min(j1, j2, K)) {
+            Sigma[j1, j2] <- Sigma[j1, j2] + L_raw[j1, k] * L_raw[j2, k]
+          }
+        }
+      }
+      for (j in 1:J) {
+        Sigma[j, j] <- Sigma[j, j] + sd[j]^2
+        for (k in 1:min(j, K)) {
+          var_common[j] <- var_common[j] + L_raw[j, k]^2
+        }
+      }
+      var_total <- rtmb_vector(0, J, seed = sd[1])
+      for (j in 1:J) {
+        var_total[j] <- Sigma[j, j]
+      }
+      communality <- var_common / var_total
     })
     waic_expr <- if (isTRUE(WAIC)) {
       quote({ log_lik <- multi_normal_lpdf(Y, mean, Sigma, sum = FALSE) })

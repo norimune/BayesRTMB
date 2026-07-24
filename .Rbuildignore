@@ -31,3 +31,4 @@
 ^.*\.bak$
 ^CRAN-SUBMISSION$
 ^.*\.Rcheck$
+^tools/check-m1-local[.]R$
