@@ -1,5 +1,7 @@
 # BayesRTMB 0.2.4
 
+* Updated `rtmb_corr()` normal priors to use the model-specific `mean_sd` and
+  `sd_rate` aliases and to add an LKJ prior with `lkj_eta = 1` by default.
 * Allowed `rtmb_lm()`, `rtmb_glm()`, `rtmb_lmer()`, and `rtmb_glmer()` to
   resolve bare variable names from the formula environment when `data` is
   omitted. Formulas using `$`, `[[`, or `.` continue to require explicit data.

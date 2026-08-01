@@ -29,7 +29,11 @@ rtmb_corr(
 
 \item{method}{Correlation method for \code{classic()}: \code{"pearson"}, \code{"spearman"}, or \code{"reml"}.}
 
-\item{prior}{Prior configuration object: `prior_flat()`, `prior_normal()`, or `prior_weak()`. Default is `prior_flat()`.}
+\item{prior}{Prior configuration object: `prior_flat()`, `prior_normal()`, or
+`prior_weak()`. Default is `prior_flat()`. For `prior_normal()`, correlation
+models use the aliases `mean_sd` and `sd_rate`, which override the common
+arguments `mu_sd` and `sigma_rate`. An LKJ prior with `lkj_eta = 1` is added
+automatically unless `lkj_eta` is supplied explicitly.}
 
 \item{y_range}{Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.}

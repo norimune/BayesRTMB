@@ -216,6 +216,72 @@ test_that("FA normal-prior aliases override common hyperparameters", {
   expect_true(any(grepl("L_raw ~ lower_tri_normal\\(0, 2\\)", common_code)))
 })
 
+test_that("correlation normal priors use model aliases and default LKJ priors", {
+  dat <- data.frame(
+    y1 = c(-1.2, -0.7, -0.1, 0.3, 0.8, 1.4),
+    y2 = c(-0.8, -0.4, 0.2, 0.5, 1.1, 1.6),
+    y3 = c(0.4, -0.2, 0.7, 1.0, 0.1, 1.5),
+    id = factor(rep(1:3, each = 2))
+  )
+
+  default_code <- paste(
+    deparse(rtmb_corr(dat[c("y1", "y2")], prior = prior_normal())$code$model),
+    collapse = "\n"
+  )
+  expect_match(default_code, "mean ~ normal(0, 10)", fixed = TRUE)
+  expect_match(default_code, "sd ~ exponential(0.2)", fixed = TRUE)
+  expect_match(default_code, "corr ~ lkj_corr(1)", fixed = TRUE)
+
+  alias_code <- paste(
+    deparse(rtmb_corr(
+      dat[c("y1", "y2")],
+      prior = prior_normal(mean_sd = 7, sd_rate = 0.25)
+    )$code$model),
+    collapse = "\n"
+  )
+  expect_match(alias_code, "mean ~ normal(0, 7)", fixed = TRUE)
+  expect_match(alias_code, "sd ~ exponential(0.25)", fixed = TRUE)
+  expect_match(alias_code, "corr ~ lkj_corr(1)", fixed = TRUE)
+
+  common_code <- paste(
+    deparse(rtmb_corr(
+      dat[c("y1", "y2")],
+      prior = prior_normal(mu_sd = 6, sigma_rate = 0.4, lkj_eta = 2)
+    )$code$model),
+    collapse = "\n"
+  )
+  expect_match(common_code, "mean ~ normal(0, 6)", fixed = TRUE)
+  expect_match(common_code, "sd ~ exponential(0.4)", fixed = TRUE)
+  expect_match(common_code, "corr ~ lkj_corr(2)", fixed = TRUE)
+
+  matrix_code <- paste(
+    deparse(rtmb_corr(dat[c("y1", "y2", "y3")], prior = prior_normal())$code$model),
+    collapse = "\n"
+  )
+  expect_match(matrix_code, "CF_corr ~ lkj_CF_corr(1)", fixed = TRUE)
+
+  multilevel_code <- paste(
+    deparse(rtmb_corr(
+      cbind(y1, y2),
+      data = dat,
+      ID = id,
+      prior = prior_normal(mean_sd = 7, sd_rate = 0.25)
+    )$code$model),
+    collapse = "\n"
+  )
+  expect_match(multilevel_code, "L_corr_between ~ lkj_CF_corr(1)", fixed = TRUE)
+  expect_match(multilevel_code, "L_corr_within ~ lkj_CF_corr(1)", fixed = TRUE)
+  expect_match(multilevel_code, "sigma_between ~ exponential(0.25)", fixed = TRUE)
+  expect_match(multilevel_code, "sigma_within ~ exponential(0.25)", fixed = TRUE)
+  expect_match(multilevel_code, "mu ~ normal(0, 7)", fixed = TRUE)
+
+  flat_code <- paste(
+    deparse(rtmb_corr(dat[c("y1", "y2")], prior = prior_flat())$code$model),
+    collapse = "\n"
+  )
+  expect_false(grepl("corr ~ lkj_corr", flat_code, fixed = TRUE))
+})
+
 test_that("mixture and LRT weak priors scale to multivariate y_range", {
   dat <- data.frame(
     y1 = c(-2, -1, -0.5, 0.5, 1, 2),

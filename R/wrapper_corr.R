@@ -9,7 +9,11 @@
 #' @param ID A character string or expression specifying the group ID variable for multilevel models.
 #' @param covariates Optional numeric matrix or data frame of covariates to be included in the joint MVN model.
 #' @param method Correlation method for \code{classic()}: \code{"pearson"}, \code{"spearman"}, or \code{"reml"}.
-#' @param prior Prior configuration object: `prior_flat()`, `prior_normal()`, or `prior_weak()`. Default is `prior_flat()`.
+#' @param prior Prior configuration object: `prior_flat()`, `prior_normal()`, or
+#'   `prior_weak()`. Default is `prior_flat()`. For `prior_normal()`, correlation
+#'   models use the aliases `mean_sd` and `sd_rate`, which override the common
+#'   arguments `mu_sd` and `sigma_rate`. An LKJ prior with `lkj_eta = 1` is added
+#'   automatically unless `lkj_eta` is supplied explicitly.
 #' @param y_range Optional numeric vector or matrix defining the theoretical range (min, max) of response variables.
 #' Required when using \code{prior_weak()}. Can be a vector of length 2 (applies to all variables) or a matrix/list of length P.
 #' @param init Optional list of initial values.
@@ -296,9 +300,16 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      is_weak <- identical(prior_type, "weak")
 
      if (is_normal) {
-       if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
-         prior$mu_sd <- prior$Intercept_sd
+       prior_mean_sd <- if ("mean_sd" %in% names(prior)) prior$mean_sd else prior$mu_sd
+       if (is.null(prior_mean_sd) && !is.null(prior$Intercept_sd)) {
+         prior_mean_sd <- prior$Intercept_sd
        }
+       prior_sd_rate <- if ("sd_rate" %in% names(prior)) prior$sd_rate else prior$sigma_rate
+       prior_lkj_eta <- if ("lkj_eta" %in% names(prior)) prior$lkj_eta else 1
+     } else {
+       prior_mean_sd <- NULL
+       prior_sd_rate <- NULL
+       prior_lkj_eta <- prior$lkj_eta
      }
 
      use_weak_info <- prior_type %in% c("weak")
@@ -342,9 +353,9 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
      model_exprs <- list(as.name("{"))
       if (multivariate) {
-        if (!is.null(prior$lkj_eta)) {
-          model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior$lkj_eta)))
-          model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_within ~ lkj_CF_corr(.(prior$lkj_eta)))
+        if (!is.null(prior_lkj_eta)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_between ~ lkj_CF_corr(.(prior_lkj_eta)))
+          model_exprs[[length(model_exprs) + 1]] <- bquote(L_corr_within ~ lkj_CF_corr(.(prior_lkj_eta)))
         }
         model_exprs[[length(model_exprs) + 1]] <- quote(u ~ multi_normal_CF(mean = rep(0, P), sd = sigma_between, CF_Omega = L_corr_between))
       } else {
@@ -363,13 +374,12 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        model_exprs[[length(model_exprs) + 1]] <- quote(sigma_within ~ exponential(sigma_rate_vec))
        model_exprs[[length(model_exprs) + 1]] <- quote(mu ~ normal(mid_y, alpha_prior_sd))
       } else if (prior_type == "normal") {
-        if (!is.null(prior$sigma_rate)) {
-          model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_between ~ exponential(.(prior$sigma_rate)))
-          model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_within ~ exponential(.(prior$sigma_rate)))
+        if (!is.null(prior_sd_rate)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_between ~ exponential(.(prior_sd_rate)))
+          model_exprs[[length(model_exprs) + 1]] <- bquote(sigma_within ~ exponential(.(prior_sd_rate)))
         }
-        if (!is.null(prior$mu_sd) || !is.null(prior$Intercept_sd)) {
-          mu_sd_val <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
-          model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(mu_sd_val)))
+        if (!is.null(prior_mean_sd)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(mu ~ normal(0, .(prior_mean_sd)))
         }
       }
      model_ast <- as.call(model_exprs)
@@ -502,9 +512,16 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      is_weak <- identical(prior_type, "weak")
 
      if (is_normal) {
-       if (is.null(prior$mu_sd) && !is.null(prior$Intercept_sd)) {
-         prior$mu_sd <- prior$Intercept_sd
+       prior_mean_sd <- if ("mean_sd" %in% names(prior)) prior$mean_sd else prior$mu_sd
+       if (is.null(prior_mean_sd) && !is.null(prior$Intercept_sd)) {
+         prior_mean_sd <- prior$Intercept_sd
        }
+       prior_sd_rate <- if ("sd_rate" %in% names(prior)) prior$sd_rate else prior$sigma_rate
+       prior_lkj_eta <- if ("lkj_eta" %in% names(prior)) prior$lkj_eta else 1
+     } else {
+       prior_mean_sd <- NULL
+       prior_sd_rate <- NULL
+       prior_lkj_eta <- prior$lkj_eta
      }
 
      setup_exprs <- list(as.name("{"))
@@ -556,26 +573,25 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        model_exprs[[length(model_exprs) + 1]] <- quote(mean ~ normal(mid_y, alpha_prior_sd))
        model_exprs[[length(model_exprs) + 1]] <- quote(sd ~ exponential(sigma_rate_vec))
       } else if (prior_type == "normal") {
-        if (!is.null(prior$mu_sd) || !is.null(prior$Intercept_sd)) {
-          mu_sd_val <- if (!is.null(prior$mu_sd)) prior$mu_sd else prior$Intercept_sd
-          model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(mu_sd_val)))
+        if (!is.null(prior_mean_sd)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(mean ~ normal(0, .(prior_mean_sd)))
         }
-        if (!is.null(prior$sigma_rate)) {
-          model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior$sigma_rate)))
+        if (!is.null(prior_sd_rate)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(sd ~ exponential(.(prior_sd_rate)))
         }
       }
 
       if (P == 2) {
-        if (!is.null(prior$lkj_eta)) {
-          model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior$lkj_eta)))
+        if (!is.null(prior_lkj_eta)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(corr ~ lkj_corr(.(prior_lkj_eta)))
         }
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr <- rtmb_array(0, dim = c(2, 2), seed = corr))
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[1, 1] <- 1)
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 1] <- corr)
         model_exprs[[length(model_exprs) + 1]] <- quote(CF_corr[2, 2] <- sqrt(1 - corr^2))
       } else {
-        if (!is.null(prior$lkj_eta)) {
-          model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior$lkj_eta)))
+        if (!is.null(prior_lkj_eta)) {
+          model_exprs[[length(model_exprs) + 1]] <- bquote(CF_corr ~ lkj_CF_corr(.(prior_lkj_eta)))
         }
       }
 

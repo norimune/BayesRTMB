@@ -71,3 +71,29 @@ test_that("sampling and rebuilt bridge targets agree with a fixed bound", {
 
   expect_equal(lp_rebuilt, lp_saved, tolerance = 1e-10)
 })
+
+test_that("rtmb_corr removes its default LKJ prior when corr is fixed", {
+  dat <- data.frame(
+    y1 = c(-1.2, -0.7, -0.1, 0.3, 0.8, 1.4),
+    y2 = c(-0.8, -0.4, 0.2, 0.5, 1.1, 1.6)
+  )
+
+  fixed_default <- rtmb_corr(
+    dat,
+    prior = prior_normal(mean_sd = 1, sd_rate = 1)
+  )$fixed_model(list(corr = 0), silent = TRUE)
+  fixed_without_lkj <- rtmb_corr(
+    dat,
+    prior = prior_normal(mean_sd = 1, sd_rate = 1, lkj_eta = NULL)
+  )$fixed_model(list(corr = 0), silent = TRUE)
+
+  default_ad <- fixed_default$build_ad_obj(jacobian_target = "all")$ad_obj
+  without_lkj_ad <- fixed_without_lkj$build_ad_obj(jacobian_target = "all")$ad_obj
+
+  expect_equal(default_ad$par, without_lkj_ad$par, tolerance = 1e-12)
+  expect_equal(
+    default_ad$fn(default_ad$par),
+    without_lkj_ad$fn(without_lkj_ad$par),
+    tolerance = 1e-12
+  )
+})
