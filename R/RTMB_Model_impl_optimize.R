@@ -379,7 +379,12 @@
   if (!is.null(sd_rep) && !is.null(sd_rep$cov.fixed) && !fallback_needed) {
     eig <- tryCatch(eigen(sd_rep$cov.fixed, symmetric = TRUE), error = function(e) NULL)
     if (!is.null(eig) && all(eig$values > 1e-8)) {
-      lj_missing <- if (laplace) calc_log_jacobian(unc_est_list, self$par_list, FALSE) - calc_log_jacobian(unc_est_list, self$par_list, TRUE) else calc_log_jacobian(unc_est_list, self$par_list, FALSE)
+      lj_missing <- if (laplace) {
+        calc_log_jacobian(unc_est_list, self$par_list, FALSE, map = target_map) -
+          calc_log_jacobian(unc_est_list, self$par_list, TRUE, map = target_map)
+      } else {
+        calc_log_jacobian(unc_est_list, self$par_list, FALSE, map = target_map)
+      }
       log_ml <- -opt$objective + lj_missing + (length(opt$par) / 2) * log(2 * pi) + 0.5 * sum(log(eig$values)) - self$prior_correction
     }
   }

@@ -857,7 +857,7 @@ to_constrained <- function(para_unc_list, par_list) {
 }
 
 # calc_log_jacobian
-calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
+calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map = NULL) {
   lj <- 0
   for (name in names(par_list)) {
     p <- par_list[[name]]
@@ -866,29 +866,44 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
 
     if (only_random && !isTRUE(p$random)) next
 
+    active <- rep(TRUE, length(val_unc))
+    map_i <- if (!is.null(map)) map[[name]] else NULL
+    if (!is.null(map_i)) {
+      if (length(map_i) != length(val_unc)) {
+        stop(
+          sprintf(
+            "Map length for parameter '%s' (%d) does not match its unconstrained length (%d).",
+            name, length(map_i), length(val_unc)
+          ),
+          call. = FALSE
+        )
+      }
+      active <- !is.na(map_i)
+    }
+
+    # Parameters removed from MakeADFun's free vector by map = NA are constants,
+    # so their constrained/unconstrained Jacobian must not enter the target.
+    if (!any(active)) next
+
     if (b_type == "lower" || b_type == "upper") {
-      lj <- lj + sum(val_unc)
+      lj <- lj + sum(val_unc[active])
     } else if (b_type == "interval") {
-      lj <- lj + sum(log(p$upper - p$lower) - val_unc - 2 * log(1 + exp(-val_unc)))
+      terms <- log(p$upper - p$lower) - val_unc - 2 * log(1 + exp(-val_unc))
+      lj <- lj + sum(terms[active])
     } else if (b_type == "ordered") {
       if (p$length > 1) {
-        if (is.matrix(val_unc)) {
-          lj <- lj + sum(val_unc[, -1])
-        } else {
-          lj <- lj + sum(val_unc[2:p$length])
-        }
+        term_active <- active
+        if (is.matrix(val_unc)) term_active[seq_len(nrow(val_unc))] <- FALSE
+        else term_active[1] <- FALSE
+        if (any(term_active)) lj <- lj + sum(val_unc[term_active])
       }
     } else if (b_type == "positive_ordered") {
-      lj <- lj + sum(val_unc)
+      lj <- lj + sum(val_unc[active])
     } else if (b_type == "simplex") {
       K <- p$length
       z <- 1 / (1 + exp(-(val_unc - log(1 / (K - seq_len(K - 1))))))
-      lj <- lj + sum(log(z) + log(1 - z))
-      if (K > 2) {
-        for (k in 1:(K - 2)) {
-          lj <- lj + (K - k - 1) * log(1 - z[k])
-        }
-      }
+      terms <- log(z) + (K - seq_len(K - 1)) * log(1 - z)
+      lj <- lj + sum(terms[active])
     } else if (b_type %in% c("centered", "centered_matrix", "centered_tri")) {
       diff_dim <- p$length - p$unc_length
       lj <- lj + (diff_dim / 2) * log(2 * pi)
@@ -916,10 +931,13 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
         for (i in 2:P_mat) {
           for (j in 1:(i - 1)) {
             # Fix: use the correct Jacobian for CF_corr and corr_matrix
-            if (b_type == "corr_matrix") {
-              lj_term <- lj_term - 2 * (P_mat - i + 1) * log(cosh(v_u[idx_u]))
-            } else { # CF_corr
-              lj_term <- lj_term - (i - j + 1) * log(cosh(v_u[idx_u]))
+            pos_u <- (k - 1) * unc_per_slice + idx_u
+            if (active[pos_u]) {
+              if (b_type == "corr_matrix") {
+                lj_term <- lj_term - 2 * (P_mat - i + 1) * log(cosh(v_u[idx_u]))
+              } else { # CF_corr
+                lj_term <- lj_term - (i - j + 1) * log(cosh(v_u[idx_u]))
+              }
             }
             idx_u <- idx_u + 1
           }
@@ -936,7 +954,8 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
         idx_u <- 1
         for (i in 1:P_mat) {
           for (j in 1:i) {
-            if (i == j) {
+            pos_u <- (k - 1) * unc_per_slice + idx_u
+            if (i == j && active[pos_u]) {
               if (b_type == "cov_matrix") lj <- lj + (P_mat - i + 2) * v_u[idx_u]
               else lj <- lj + v_u[idx_u]
             }
@@ -956,7 +975,8 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE) {
         for (i in 1:R_mat) {
           max_j <- min(i, C_mat)
           for (j in 1:max_j) {
-            if (i == j && b_type == "positive_lower_tri") {
+            pos_u <- (k - 1) * unc_per_slice + idx_u
+            if (i == j && b_type == "positive_lower_tri" && active[pos_u]) {
               lj <- lj + v_u[idx_u]
             }
             idx_u <- idx_u + 1

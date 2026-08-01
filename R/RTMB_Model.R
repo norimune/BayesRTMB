@@ -342,6 +342,7 @@ RTMB_Model <- R6::R6Class(
         log_prob_local = log_prob_local,
         transform_local = self$transform,
         jacobian_target = jacobian_target,
+        map_local = target_map,
         adreport = TRUE,
         fixed_prior_specs_local = self$fixed_prior_specs,
         code_model_local = self$code$model,
@@ -1308,7 +1309,7 @@ RTMB_Model <- R6::R6Class(
 
     # --- Internal helper for AD function setup ---
     .build_f_ad = function(data_local, par_list_local, log_prob_local, transform_local = NULL, 
-                           jacobian_target = "all", adreport = FALSE,
+                           jacobian_target = "all", map_local = NULL, adreport = FALSE,
                            fixed_prior_specs_local = NULL, code_model_local = NULL, 
                            shadow_list_local = NULL) {
       function(y_unc_list) {
@@ -1342,10 +1343,10 @@ RTMB_Model <- R6::R6Class(
         }
 
         if (jacobian_target == "all") {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE)
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = FALSE, map = map_local)
           return(-(lp + lj))
         } else if (jacobian_target == "random") {
-          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE)
+          lj <- calc_log_jacobian(y_unc_list, par_list_local, only_random = TRUE, map = map_local)
           return(-(lp + lj))
         } else {
           return(-lp)
