@@ -15,6 +15,7 @@ rtmb_lmer(
   gmc = NULL,
   centering = NULL,
   cwc = NULL,
+  std = FALSE,
   view = NULL,
   sigma_by = NULL,
   factors = NULL,
@@ -54,6 +55,9 @@ Default is `prior_flat()`.}
 \item{centering}{Alias for `gmc`.}
 
 \item{cwc}{List for CWC}
+
+\item{std}{Logical; if \code{TRUE}, also report post-hoc standardized fixed-effect
+coefficients. All fixed-effect design-matrix columns are standardized.}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 

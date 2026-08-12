@@ -16,6 +16,8 @@
 #' @param gmc Character vector of variable names for GMC
 #' @param centering Alias for `gmc`.
 #' @param cwc List for CWC
+#' @param std Logical; if `TRUE`, also report post-hoc standardized fixed-effect
+#' coefficients. All fixed-effect design-matrix columns are standardized.
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
@@ -43,6 +45,7 @@ rtmb_lmer <- function(formula, data = NULL, laplace = TRUE,
                        gmc = NULL,
                        centering = NULL,
                        cwc = NULL,
+                       std = FALSE,
                        view = NULL,
                        sigma_by = NULL,
                        factors = NULL,
@@ -73,6 +76,7 @@ rtmb_lmer <- function(formula, data = NULL, laplace = TRUE,
              gmc = gmc,
              centering = centering,
              cwc = cwc,
+             std = std,
              view = view,
              sigma_by = sigma_by,
              factors = factors,
@@ -104,6 +108,8 @@ rtmb_lmer <- function(formula, data = NULL, laplace = TRUE,
 
 #' @param gmc Character vector of variable names for GMC
 #' @param centering Alias for `gmc`.
+#' @param std Logical; if `TRUE`, also report post-hoc standardized fixed-effect
+#' coefficients. All fixed-effect design-matrix columns are standardized.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param fixed Optional named list of fixed values for specific parameters.
@@ -119,6 +125,7 @@ rtmb_glm <- function(formula, data = NULL, family = "gaussian",
                        init = NULL, fixed = NULL,
                        gmc = NULL,
                        centering = NULL,
+                       std = FALSE,
                        view = NULL,
                        factors = NULL,
                        contrasts = "treatment",
@@ -132,6 +139,7 @@ rtmb_glm <- function(formula, data = NULL, family = "gaussian",
              fixed = fixed,
              gmc = gmc,
              centering = centering,
+             std = std,
              view = view,
              factors = factors,
              contrasts = contrasts, missing = missing, WAIC = WAIC, ...)
@@ -153,6 +161,8 @@ rtmb_glm <- function(formula, data = NULL, family = "gaussian",
 
 #' @param gmc Character vector of variable names for GMC
 #' @param centering Alias for `gmc`.
+#' @param std Logical; if `TRUE`, also report post-hoc standardized fixed-effect
+#' coefficients. All fixed-effect design-matrix columns are standardized.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
 #' @param fixed Optional named list of fixed values for specific parameters.
@@ -168,6 +178,7 @@ rtmb_lm <- function(formula, data = NULL,
                     init = NULL, fixed = NULL,
                     gmc = NULL,
                     centering = NULL,
+                    std = FALSE,
                     view = NULL,
                     factors = NULL,
                     contrasts = "treatment",
@@ -181,6 +192,7 @@ rtmb_lm <- function(formula, data = NULL,
              fixed = fixed,
              gmc = gmc,
              centering = centering,
+             std = std,
              view = view,
              factors = factors,
              contrasts = contrasts, missing = missing, WAIC = WAIC, ...)

@@ -79,6 +79,58 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
   data[, intersect(vars, names(data)), drop = FALSE]
 }
 
+.glmer_setup_formula_info <- function(formula, data_names = character()) {
+  formula_env <- environment(formula)
+  if (!is.environment(formula_env)) formula_env <- parent.frame()
+
+  setup_env <- list()
+  replace_external_values <- function(expr, call_head = FALSE) {
+    if (is.symbol(expr)) {
+      name <- as.character(expr)
+      if (call_head || name %in% data_names || !nzchar(name) || name == ".") {
+        return(expr)
+      }
+      if (!exists(name, envir = formula_env, inherits = TRUE)) return(expr)
+
+      value <- get(name, envir = formula_env, inherits = TRUE)
+      if (is.atomic(value) || is.matrix(value) || is.array(value)) {
+        return(value)
+      }
+      setup_env[[name]] <<- value
+      return(expr)
+    }
+
+    if (!is.call(expr)) return(expr)
+
+    out <- expr
+    head <- expr[[1]]
+    if (is.symbol(head)) {
+      head_name <- as.character(head)
+      if (!(head_name %in% c("~", "+", "-", "*", "/", "^", ":", "|", "||", "$", "[[", "(", "{")) &&
+          exists(head_name, envir = formula_env, mode = "function", inherits = TRUE)) {
+        setup_env[[head_name]] <<- get(
+          head_name,
+          envir = formula_env,
+          mode = "function",
+          inherits = TRUE
+        )
+      }
+    }
+
+    if (length(expr) > 1L) {
+      for (i in seq_along(expr)[-1L]) {
+        out[[i]] <- replace_external_values(expr[[i]], call_head = FALSE)
+      }
+    }
+    out
+  }
+
+  formula_expr <- formula
+  attributes(formula_expr) <- NULL
+  formula_expr <- replace_external_values(formula_expr)
+  list(expr = formula_expr, env = setup_env)
+}
+
 .resolve_glmer_cwc_value <- function(expr, env, data_names = character()) {
   if (is.character(expr)) {
     return(expr)
@@ -312,7 +364,9 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
 #' reproduces what the wrapper places in the generated `setup` block.
 #'
 #' @param formula lme4-style formula.
-#' @param data Data frame.
+#' @param data Optional data frame. If omitted, variables are resolved from the
+#'   formula environment. This is useful inside an `rtmb_code()` `setup` block,
+#'   where data-frame columns are available as individual variables.
 #' @param family Character string of the distribution family.
 #' @param resid_group Optional residual-correlation grouping variable.
 #' @param resid_time Optional residual-correlation time variable.
@@ -320,14 +374,34 @@ make_glmer_Z_matrix <- function(Zt, group_idx, N = length(group_idx)) {
 #'   written as `cbind(...)`.
 #' @param factors Optional character vector of variables to treat as factors.
 #' @param missing Missing value handling strategy: "listwise".
+#' @param contrasts Optional contrast type, either `"treatment"` or `"sum"`.
 #'
 #' @return A list containing `Y`, `X`, `trials`, `offset`, `N`, fixed-effect
 #' metadata, and random-effect terms.
 #' @export
-make_glmer_re_terms <- function(formula, data, family = "gaussian",
+make_glmer_re_terms <- function(formula, data = NULL, family = "gaussian",
                                 resid_group = NULL, resid_time = NULL,
                                 within = NULL, factors = NULL,
-                                missing = "listwise") {
+                                missing = "listwise", contrasts = NULL) {
+  data <- .resolve_glmer_formula_data(
+    formula,
+    data = data,
+    extra_vars = unique(c(resid_group, resid_time, factors))
+  )
+
+  if (!is.null(contrasts) && !(contrasts %in% c("treatment", "sum"))) {
+    stop("'contrasts' must be either 'treatment', 'sum', or NULL.", call. = FALSE)
+  }
+  if (!is.null(contrasts)) {
+    contrast_options <- if (identical(contrasts, "sum")) {
+      c("contr.sum", "contr.poly")
+    } else {
+      c("contr.treatment", "contr.poly")
+    }
+    old_options <- options(contrasts = contrast_options)
+    on.exit(options(old_options), add = TRUE)
+  }
+
   # Expand dot (.) in formula if present
   if (!is.null(data) && inherits(formula, "formula")) {
     terms_expanded <- try(terms(formula, data = data), silent = TRUE)
@@ -478,6 +552,7 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
     mf = mf,
     X_assign = X_assign,
     X_terms = X_terms,
+    X_contrasts = attr(X_full, "contrasts"),
     fixed_colnames = fixed_colnames,
     fixed_names = colnames(X),
     has_intercept = has_intercept,
@@ -516,6 +591,12 @@ make_glmer_re_terms <- function(formula, data, family = "gaussian",
 #' @param cwc List for Centering Within Cluster (CWC). Should contain \code{cluster} (group variable) and \code{pars} (variable names to center).
 #'   You can also use \code{cwc = list(ID, "x")} or \code{cwc = list(ID, "all")};
 #'   \code{"all"} centers all numeric fixed-effect variables within the cluster.
+#' @param std Logical; if `TRUE`, add post-hoc standardized fixed-effect
+#'   coefficients as `b_std`. Every column of the fixed-effect design matrix is
+#'   standardized, including columns generated from factors and interactions.
+#'   For Gaussian models, coefficients are scaled by both the predictor and
+#'   response standard deviations. For other families, only the predictor
+#'   standard deviations are used, so coefficients remain on the link scale.
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
@@ -539,6 +620,7 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
                        gmc = NULL,
                        centering = NULL,
                        cwc = NULL,
+                       std = FALSE,
                        view = NULL,
                        within = NULL,
                        factors = NULL,
@@ -556,6 +638,9 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     "gaussian", "lognormal", "student_t", "bernoulli", "binomial",
     "poisson", "neg_binomial", "gamma", "ordered", "sequential"
   )
+  if (!is.logical(std) || length(std) != 1L || is.na(std)) {
+    stop("'std' must be TRUE or FALSE.", call. = FALSE)
+  }
   if (!is.character(family) || length(family) != 1L || is.na(family) ||
       !(family %in% valid_families)) {
     stop(
@@ -628,6 +713,11 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     factors <- processed$factors
   }
 
+  # Keep the columns supplied to generated setup code unmodified. Wrapper-side
+  # preprocessing below is repeated in setup so print_code() remains executable
+  # when the user passes the same data frame to rtmb_model().
+  setup_input_data <- as.data.frame(data)
+
   # --- 0. Contrast Management (Automatic sum-to-zero) ---
 
 
@@ -650,6 +740,9 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
   }
 
   # --- 0. Data Centering (GMC / CWC) ---
+  target_gmc <- character()
+  target_cwc <- character()
+  cwc_cluster_setup_name <- NULL
   if (!is.null(gmc) || !is.null(cwc)) {
     data_centered <- as.data.frame(data)
 
@@ -662,7 +755,7 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
       }
       for (v in target_gmc) {
         if (v %in% names(data_centered)) {
-          data_centered[[v]] <- data_centered[[v]] - mean(data_centered[[v]], na.rm = TRUE)
+          data_centered[[v]] <- center_grand_mean(data_centered[[v]])
         } else {
           warning(sprintf("Variable '%s' for GMC not found in data.", v))
         }
@@ -680,6 +773,7 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
         }
         group_var_name <- cluster_var
         group_id <- data_centered[[cluster_var]]
+        cwc_cluster_setup_name <- cluster_var
       } else {
         group_var_name <- NULL
         group_id <- cluster_var
@@ -690,6 +784,8 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
             call. = FALSE
           )
         }
+        cwc_cluster_setup_name <- ".cwc_cluster"
+        setup_input_data[[cwc_cluster_setup_name]] <- group_id
       }
 
       if (is.character(target_pars) && length(target_pars) == 1L && identical(target_pars, "all")) {
@@ -699,11 +795,11 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
           exclude = group_var_name %||% character()
         )
       }
+      target_cwc <- target_pars
 
       for (v in target_pars) {
         if (v %in% names(data_centered)) {
-          group_means <- tapply(data_centered[[v]], group_id, mean, na.rm = TRUE)
-          data_centered[[v]] <- data_centered[[v]] - group_means[as.character(group_id)]
+          data_centered[[v]] <- center_within_cluster(data_centered[[v]], group_id)
         } else {
           warning(sprintf("Variable '%s' for CWC not found in data.", v))
         }
@@ -839,7 +935,9 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     resid_group = resid_group,
     resid_time = resid_time,
     within = within,
-    factors = factors
+    factors = factors,
+    missing = missing,
+    contrasts = actual_contrasts
   )
   Y <- glmer_terms$Y
   X <- glmer_terms$X
@@ -969,15 +1067,12 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     }, error = function(e) init <<- NULL)
   }
 
-  setup_df <- .select_glmer_setup_data(formula, data, resid_group = resid_group, resid_time = resid_time)
-  class(setup_df) <- c("rtmb_setup_df", class(setup_df))
-  dat <- list(df = setup_df, formula = formula,
-              sigma_idx = sigma_idx, num_sigma_groups = num_sigma_groups)
-  if (has_random && !identical(family, "gaussian")) dat$family_name <- family
-  if (has_random && !is.null(resid_group)) dat$resid_group_name <- resid_group
-  if (has_random && !is.null(resid_time)) dat$resid_time_name <- resid_time
-  if (has_random && !is.null(within)) dat$within_info <- within
-  if (has_random && !is.null(factors)) dat$factors_info <- factors
+  setup_df <- setup_input_data
+  dat <- as.list(setup_df)
+  if (!is.null(sigma_idx)) dat$sigma_idx <- sigma_idx
+
+  formula_info <- .glmer_setup_formula_info(formula, names(dat))
+  setup_formula <- formula_info$expr
 
   if (!is.null(resid_corr)) {
     if (family != "gaussian") stop("Residual correlation structures are currently only supported for Gaussian models.")
@@ -1009,11 +1104,6 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     dat$max_T_resid <- max(table(group_resid))
   }
 
-  if (!is.null(sigma_idx)) {
-    dat$sigma_idx <- sigma_idx
-    dat$num_sigma_groups <- num_sigma_groups
-  }
-
   # --- Setup AST ---
   setup_exprs <- list()
   Y_setup_raw <- model.response(mf)
@@ -1025,27 +1115,66 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
   if (is.factor(Y_setup_raw) && !(family %in% c("binomial", "bernoulli", "ordered", "sequential"))) {
     stop(sprintf("The response variable for family '%s' must be numeric. Factor variables are not supported.", family), call. = FALSE)
   }
+
+  factor_vars <- intersect(factors %||% character(), names(setup_df))
+  if (length(factor_vars) > 0L) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- "# Factors"
+    for (name in factor_vars) {
+      variable <- as.name(name)
+      setup_exprs[[length(setup_exprs) + 1L]] <- bquote(.(variable) <- factor(.(variable)))
+    }
+  }
+
+  if (length(target_gmc) > 0L) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- "# Grand-mean centering"
+    center_gmc <- as.name("center_grand_mean")
+    for (name in intersect(target_gmc, names(setup_df))) {
+      variable <- as.name(name)
+      center_call <- as.call(list(center_gmc, variable))
+      setup_exprs[[length(setup_exprs) + 1L]] <- as.call(list(
+        as.name("<-"), variable, center_call
+      ))
+    }
+  }
+
+  if (length(target_cwc) > 0L) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- "# Centering within cluster"
+    center_cwc <- as.name("center_within_cluster")
+    cluster_variable <- as.name(cwc_cluster_setup_name)
+    for (name in intersect(target_cwc, names(setup_df))) {
+      variable <- as.name(name)
+      center_call <- as.call(list(center_cwc, variable, cluster_variable))
+      setup_exprs[[length(setup_exprs) + 1L]] <- as.call(list(
+        as.name("<-"), variable, center_call
+      ))
+    }
+  }
+
   if (has_random) {
-    glmer_re_call_args <- list(formula = as.name("formula"), data = as.name("df"))
-    if (!identical(family, "gaussian")) glmer_re_call_args$family <- as.name("family_name")
-    if (!is.null(resid_group)) glmer_re_call_args$resid_group <- as.name("resid_group_name")
-    if (!is.null(resid_time)) glmer_re_call_args$resid_time <- as.name("resid_time_name")
-    if (!is.null(within)) glmer_re_call_args$within <- as.name("within_info")
-    if (!is.null(factors)) glmer_re_call_args$factors <- as.name("factors_info")
+    glmer_re_call_args <- list(formula = setup_formula)
+    if (!identical(family, "gaussian")) glmer_re_call_args$family <- family
+    if (!is.null(resid_group)) glmer_re_call_args$resid_group <- resid_group
+    if (!is.null(resid_time)) glmer_re_call_args$resid_time <- resid_time
     glmer_re_call_args$missing <- missing
-    setup_exprs[[length(setup_exprs) + 1]] <- as.call(list(as.name("<-"), as.name("res"), as.call(c(list(as.name("make_glmer_re_terms")), glmer_re_call_args))))
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- res$Y)
+    if (!is.null(actual_contrasts)) glmer_re_call_args$contrasts <- actual_contrasts
+    make_terms <- as.name("make_glmer_re_terms")
+    setup_exprs[[length(setup_exprs) + 1]] <- as.call(list(
+      as.name("<-"),
+      as.name("glmer_terms"),
+      as.call(c(list(make_terms), glmer_re_call_args))
+    ))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- glmer_terms$Y)
     if (family == "binomial") {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- res$trials)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(trials <- glmer_terms$trials)
     }
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- res$X)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- glmer_terms$X)
     if (!is.null(offset)) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(offset <- res$offset)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(offset <- glmer_terms$offset)
     }
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- res$N)
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- glmer_terms$N)
     setup_exprs[[length(setup_exprs) + 1]] <- quote(K <- ncol(X))
     if (family %in% c("ordered", "sequential")) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- res$num_categories)
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- glmer_terms$num_categories)
     }
     setup_exprs[[length(setup_exprs) + 1]] <- "# Random-effect design"
     for (b in 1:num_bars) {
@@ -1054,15 +1183,18 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
       num_groups_name <- as.name(paste0("num_groups", suffix(b)))
       num_ranef_name <- as.name(paste0("num_ranef", suffix(b)))
 
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(group_idx_name) <- res$random$terms[[.(b)]]$group_idx)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Z_mat_name) <- res$random$terms[[.(b)]]$Z)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_groups_name) <- res$random$terms[[.(b)]]$num_groups)
-      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- res$random$terms[[.(b)]]$num_ranef)
+      random_label <- .deparse_glmer_term(bars[[b]])
+      setup_exprs[[length(setup_exprs) + 1]] <- paste0("# (", random_label, ")")
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(group_idx_name) <- glmer_terms$random$terms[[.(b)]]$group_idx)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Z_mat_name) <- glmer_terms$random$terms[[.(b)]]$Z)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_groups_name) <- glmer_terms$random$terms[[.(b)]]$num_groups)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(num_ranef_name) <- glmer_terms$random$terms[[.(b)]]$num_ranef)
     }
   } else {
     na_action_expr <- if (missing == "listwise") quote(na.omit) else quote(na.pass)
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(na_act <- .(na_action_expr))
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(mf <- model.frame(formula, df, na.action = na_act))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(
+      mf <- model.frame(.(setup_formula), na.action = .(na_action_expr))
+    )
     setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- model.response(mf))
     if (is.matrix(Y_setup_raw)) {
       if (ncol(Y_setup_raw) == 2 && family == "binomial") {
@@ -1092,17 +1224,43 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
       setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.integer(round(Y)))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(num_categories <- max(Y))
     }
-    if ("(Intercept)" %in% fixed_colnames) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_full <- model.matrix(formula, mf))
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- X_full[, colnames(X_full) != "(Intercept)", drop = FALSE])
-    } else {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X <- model.matrix(formula, mf))
+    model_matrix_args <- list(setup_formula, as.name("mf"))
+    if (length(glmer_terms$X_contrasts) > 0L) {
+      contrast_args <- as.list(glmer_terms$X_contrasts)
+      model_matrix_args$contrasts.arg <- as.call(c(
+        list(as.name("list")),
+        contrast_args
+      ))
     }
+    model_matrix_call <- as.call(c(list(as.name("model.matrix")), model_matrix_args))
+    X_expr <- if ("(Intercept)" %in% fixed_colnames) {
+      as.call(c(
+        list(as.name("["), model_matrix_call, quote(expr = ), -1),
+        list(drop = FALSE)
+      ))
+    } else {
+      model_matrix_call
+    }
+    setup_exprs[[length(setup_exprs) + 1]] <- as.call(list(
+      as.name("<-"), as.name("X"), X_expr
+    ))
     if (!is.null(offset)) {
       setup_exprs[[length(setup_exprs) + 1]] <- quote(offset <- model.offset(mf))
     }
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- length(Y))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- nrow(mf))
     setup_exprs[[length(setup_exprs) + 1]] <- quote(K <- ncol(X))
+  }
+
+  if (std && K_tmp > 0) {
+    setup_exprs[[length(setup_exprs) + 1]] <- "# Standardized coefficients"
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(
+      X_sd <- apply(X, 2, sd, na.rm = TRUE)
+    )
+    if (family == "gaussian") {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(
+        Y_sd <- sd(Y, na.rm = TRUE)
+      )
+    }
   }
 
   if (use_weak_info) {
@@ -1145,7 +1303,11 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     setup_exprs[[length(setup_exprs) + 1]] <- quote(tau_rate <- 1.0 / base_scale)
 
     if (K_tmp > 0) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_sd <- apply(X, 2, sd))
+      if (!std) {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(
+          X_sd <- apply(X, 2, sd, na.rm = TRUE)
+        )
+      }
       if (family == "sequential") {
         setup_exprs[[length(setup_exprs) + 1]] <- bquote(beta_prior_sd <- matrix(.(prior$max_beta) * base_scale / X_sd, K, num_categories - 1))
       } else {
@@ -1205,11 +1367,11 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
   }
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
-  tmp_env <- list2env(dat)
+  setup_eval_parent <- list2env(formula_info$env, parent = environment())
+  tmp_env <- list2env(dat, parent = setup_eval_parent)
   eval(setup_ast, tmp_env)
   N <- tmp_env$N; K <- tmp_env$K
   num_categories <- tmp_env$num_categories
-  num_sigma_groups <- if (!is.null(tmp_env$num_sigma_groups)) tmp_env$num_sigma_groups else 1
 
   # --- Parameters AST ---
   param_exprs <- list()
@@ -1272,7 +1434,11 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     }
   }
 
-  if (family %in% c("gaussian", "lognormal", "student_t")) param_exprs[[length(param_exprs) + 1]] <- quote(sigma <- Dim(num_sigma_groups, lower = 0))
+  if (family %in% c("gaussian", "lognormal", "student_t")) {
+    param_exprs[[length(param_exprs) + 1]] <- bquote(
+      sigma <- Dim(.(num_sigma_groups), lower = 0)
+    )
+  }
   if (!is.null(resid_corr)) {
     if (resid_corr %in% c("ar1", "cs")) {
       param_exprs[[length(param_exprs) + 1]] <- quote(rho_resid <- Dim(type = "interval", lower = -0.99, upper = 0.99))
@@ -1303,6 +1469,13 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
       tran_exprs[[length(tran_exprs) + 1]] <- quote(b <- z * lambda_tilde * tau_hs)
     } else if (regularization == "ssp") {
       tran_exprs[[length(tran_exprs) + 1]] <- quote(b <- beta_raw * r * tau)
+    }
+  }
+  if (std && K > 0) {
+    if (family == "gaussian") {
+      tran_exprs[[length(tran_exprs) + 1]] <- quote(b_std <- b * X_sd / Y_sd)
+    } else {
+      tran_exprs[[length(tran_exprs) + 1]] <- quote(b_std <- b * X_sd)
     }
   }
   if (has_intercept) {
@@ -1626,6 +1799,7 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
 
   code_obj <- list(setup = setup_ast, parameters = param_ast)
   code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat))
+  code_obj$setup_env[names(formula_info$env)] <- formula_info$env
   if (!is.null(tran_ast)) code_obj$transform <- tran_ast
   code_obj$model <- model_ast
   generate <- .rtmb_waic_generate_ast(generate, waic_ast)
@@ -1659,6 +1833,13 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
         par_names_list$beta_raw <- fixed_names; par_names_list$r <- fixed_names; par_names_list$tau <- fixed_names
       }
     }
+    if (std) {
+      if (family == "sequential") {
+        par_names_list$b_std <- list(fixed_names, transition_names)
+      } else {
+        par_names_list$b_std <- fixed_names
+      }
+    }
   }
   if (family %in% c("ordered", "sequential")) {
     par_names_list$cutpoints <- paste0("C", seq_len(num_categories - 1))
@@ -1678,7 +1859,10 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
   if (has_intercept) {
     view_vars <- c("Intercept")
   }
-  if (K > 0) view_vars <- c(view_vars, "b")
+  if (K > 0) {
+    view_vars <- c(view_vars, "b")
+    if (std) view_vars <- c(view_vars, "b_std")
+  }
   if (family %in% c("ordered", "sequential")) view_vars <- c(view_vars, "cutpoints")
   view_vars <- c(view_vars, "sigma")
   if (has_random) {
@@ -1718,7 +1902,8 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     X_terms = X_terms, 
     X_colnames = fixed_colnames,
     factors = factors,
-    within = within
+    within = within,
+    std = std
   )
 
   fixed_effects <- if (K > 0) "b" else character(0)

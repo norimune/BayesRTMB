@@ -6,19 +6,22 @@
 \usage{
 make_glmer_re_terms(
   formula,
-  data,
+  data = NULL,
   family = "gaussian",
   resid_group = NULL,
   resid_time = NULL,
   within = NULL,
   factors = NULL,
-  missing = "listwise"
+  missing = "listwise",
+  contrasts = NULL
 )
 }
 \arguments{
 \item{formula}{lme4-style formula.}
 
-\item{data}{Data frame.}
+\item{data}{Optional data frame. If omitted, variables are resolved from the
+formula environment. This is useful inside an \code{rtmb_code()} \code{setup} block,
+where data-frame columns are available as individual variables.}
 
 \item{family}{Character string of the distribution family.}
 
@@ -32,6 +35,8 @@ written as `cbind(...)`.}
 \item{factors}{Optional character vector of variables to treat as factors.}
 
 \item{missing}{Missing value handling strategy: "listwise".}
+
+\item{contrasts}{Optional contrast type, either \code{"treatment"} or \code{"sum"}.}
 }
 \value{
 A list containing `Y`, `X`, `trials`, `offset`, `N`, fixed-effect

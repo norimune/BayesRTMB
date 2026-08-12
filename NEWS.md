@@ -1,5 +1,11 @@
 # BayesRTMB 0.2.4
 
+* Added `std = TRUE` to the regression wrappers. It reports post-hoc
+  standardized fixed-effect coefficients as `b_std`, using every column of the
+  fixed-effect design matrix, including factor and interaction columns.
+* Made regression-wrapper `print_code()` expose data-frame columns instead of a
+  nested data/formula payload, with explicit formula preprocessing and readable
+  grand-mean and within-cluster centering helpers.
 * Updated `rtmb_corr()` normal priors to use the model-specific `mean_sd` and
   `sd_rate` aliases and to add an LKJ prior with `lkj_eta = 1` by default.
 * Allowed `rtmb_lm()`, `rtmb_glm()`, `rtmb_lmer()`, and `rtmb_glmer()` to

@@ -53,6 +53,12 @@ test_that("formula auxiliary values remain in the formula environment", {
   expect_identical(mdl_spline$extra$X_colnames, expected_spline)
   expect_false("degree" %in% names(mdl_poly$raw_data))
   expect_false("knots" %in% names(mdl_spline$raw_data))
+
+  poly_code <- capture.output(mdl_poly$print_code())
+  spline_code <- capture.output(mdl_spline$print_code())
+  expect_true(any(grepl("poly\\(X, 2\\)", poly_code)))
+  expect_false(any(grepl("poly\\(X, degree\\)", poly_code)))
+  expect_true(any(grepl("knots = c\\(3, 7\\)", spline_code)))
 })
 
 test_that("matrix responses remain matrix columns when data is omitted", {

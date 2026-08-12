@@ -13,6 +13,7 @@ rtmb_lm(
   fixed = NULL,
   gmc = NULL,
   centering = NULL,
+  std = FALSE,
   view = NULL,
   factors = NULL,
   contrasts = "treatment",
@@ -43,6 +44,9 @@ Default is `prior_flat()`.}
 \item{gmc}{Character vector of variable names for GMC}
 
 \item{centering}{Alias for `gmc`.}
+
+\item{std}{Logical; if \code{TRUE}, also report post-hoc standardized fixed-effect
+coefficients. All fixed-effect design-matrix columns are standardized.}
 
 \item{view}{Optional character vector of parameter names to show first in summary.}
 

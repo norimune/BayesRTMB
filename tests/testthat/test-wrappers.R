@@ -30,8 +30,99 @@ test_that("print_code hides wrapper setup environment", {
   out <- capture.output(mdl$print_code())
 
   expect_true(any(grepl("^  setup = \\{", out)))
+  expect_true(any(grepl("mf <- model.frame\\(mpg ~ wt, na.action = na.omit\\)", out)))
+  expect_true(any(grepl("Y <- model.response\\(mf\\)", out)))
+  expect_true(any(grepl("model.matrix\\(mpg ~ wt, mf\\)\\[, -1, drop = FALSE\\]", out)))
+  expect_true(any(grepl("N <- nrow\\(mf\\)", out)))
+  expect_true(any(grepl("sigma <- Dim\\(1, lower = 0\\)", out)))
   expect_false(any(grepl("setup_env", out, fixed = TRUE)))
   expect_false(any(grepl("^  list\\(", out)))
+  expect_false(any(grepl("model.frame(formula, df", out, fixed = TRUE)))
+  expect_false(any(grepl("X_full", out, fixed = TRUE)))
+})
+
+test_that("regression wrapper code can be rebuilt from the original data frame", {
+  dat <- data.frame(
+    y = c(1.1, 1.4, NA, 2.2, 2.7, 3.0),
+    x = c(0, 1, 0, 1, 2, 3),
+    condition = factor(c("a", "a", "b", "b", "a", "b")),
+    group = factor(c("g1", "g1", "g2", "g2", "g3", "g3"))
+  )
+
+  lm_model <- rtmb_lm(y ~ x * condition, data = dat)
+  lm_rebuilt <- rtmb_model(data = dat, code = lm_model$code, init = lm_model$init)
+  expect_equal(lm_rebuilt$data$Y, lm_model$data$Y)
+  expect_equal(lm_rebuilt$data$X, lm_model$data$X)
+
+  glmer_model <- rtmb_glmer(y ~ x + (1 | group), data = dat)
+  glmer_rebuilt <- rtmb_model(
+    data = dat,
+    code = glmer_model$code,
+    init = glmer_model$init
+  )
+  expect_equal(glmer_rebuilt$data$Y, glmer_model$data$Y)
+  expect_equal(glmer_rebuilt$data$X, glmer_model$data$X)
+  expect_equal(glmer_rebuilt$data$Z_mat, glmer_model$data$Z_mat)
+
+  glmer_code <- capture.output(glmer_model$print_code())
+  expect_true(any(grepl(
+    "make_glmer_re_terms\\(formula = y ~ x \\+ \\(1 \\| group\\)",
+    glmer_code
+  )))
+  expect_false(any(grepl("data = df", glmer_code, fixed = TRUE)))
+  expect_false(any(grepl("formula = formula", glmer_code, fixed = TRUE)))
+})
+
+test_that("regression wrappers add design-matrix standardized coefficients", {
+  dat <- data.frame(
+    y = c(1.1, 1.4, 1.8, 2.2, 2.7, 3.0),
+    y_bin = c(0, 0, 1, 1, 1, 0),
+    x = c(0, 1, 0, 1, 2, 3),
+    condition = factor(c("a", "a", "b", "b", "a", "b")),
+    group = factor(c("g1", "g1", "g2", "g2", "g3", "g3"))
+  )
+
+  mdl <- rtmb_glmer(
+    y ~ x * condition + (1 | group),
+    data = dat,
+    std = TRUE
+  )
+  out <- capture.output(mdl$print_code())
+
+  expect_true(any(grepl("# Standardized coefficients", out, fixed = TRUE)))
+  expect_true(any(grepl(
+    "X_sd <- apply(X, 2, sd, na.rm = TRUE)",
+    out,
+    fixed = TRUE
+  )))
+  expect_true(any(grepl("Y_sd <- sd(Y, na.rm = TRUE)", out, fixed = TRUE)))
+  expect_true(any(grepl("b_std <- b * X_sd/Y_sd", out, fixed = TRUE)))
+  expect_equal(mdl$data$X_sd, apply(mdl$data$X, 2, sd, na.rm = TRUE))
+  expect_equal(length(mdl$data$X_sd), ncol(mdl$data$X))
+  expect_equal(mdl$par_names$b_std, colnames(mdl$data$X))
+  expect_true(mdl$extra$std)
+
+  glm_mdl <- rtmb_glm(
+    y_bin ~ x * condition,
+    data = dat,
+    family = "bernoulli",
+    std = TRUE
+  )
+  glm_out <- capture.output(glm_mdl$print_code())
+  expect_true(any(grepl("b_std <- b * X_sd", glm_out, fixed = TRUE)))
+  expect_false(any(grepl("Y_sd <-", glm_out, fixed = TRUE)))
+
+  weak_mdl <- rtmb_lm(
+    y ~ x,
+    data = dat,
+    prior = prior_weak(),
+    y_range = c(0, 4),
+    std = TRUE
+  )
+  weak_out <- capture.output(weak_mdl$print_code())
+  expect_equal(sum(grepl("X_sd <- apply", weak_out, fixed = TRUE)), 1L)
+
+  expect_error(rtmb_lm(y ~ x, data = dat, std = 1), "TRUE or FALSE")
 })
 
 test_that("mixture WAIC generated quantities use report syntax", {
