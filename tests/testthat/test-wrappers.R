@@ -73,6 +73,289 @@ test_that("regression wrapper code can be rebuilt from the original data frame",
   expect_false(any(grepl("formula = formula", glmer_code, fixed = TRUE)))
 })
 
+test_that("formula wrapper code can be rebuilt from the original data frame", {
+  dat <- data.frame(
+    y = c(-1.4, -1.0, -0.5, -0.1, 0.4, 0.9, 1.3, 1.8),
+    y2 = c(-0.8, -0.4, -0.2, 0.3, 0.7, 1.0, 1.5, 2.0),
+    m = c(-0.9, -0.6, -0.2, 0.1, 0.5, 0.8, 1.1, 1.5),
+    x = seq(-1.5, 2, length.out = 8)
+  )
+
+  mixture_model <- rtmb_mixture(y ~ x, k = 2, data = dat)
+  mixture_code <- mixture_model$code
+  mixture_code$setup_env <- NULL
+  mixture_rebuilt <- rtmb_model(
+    data = dat,
+    code = mixture_code,
+    init = mixture_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(mixture_rebuilt$data$Y, mixture_model$data$Y)
+  expect_equal(mixture_rebuilt$data$X_prob, mixture_model$data$X_prob)
+  expect_equal(mixture_rebuilt$data$K, 2)
+  mixture_print <- capture.output(mixture_model$print_code())
+  expect_true(any(grepl("model.frame(y ~ x, data = .data)", mixture_print, fixed = TRUE)))
+  expect_true(any(grepl("K <- 2", mixture_print, fixed = TRUE)))
+
+  lrt_model <- rtmb_lrt(y ~ x, k = 2, data = dat)
+  lrt_code <- lrt_model$code
+  lrt_code$setup_env <- NULL
+  lrt_rebuilt <- rtmb_model(
+    data = dat,
+    code = lrt_code,
+    init = lrt_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(lrt_rebuilt$data$Y, lrt_model$data$Y)
+  expect_equal(lrt_rebuilt$data$X_prob, lrt_model$data$X_prob)
+  expect_equal(lrt_rebuilt$data$rank_coords, 1:2)
+  lrt_print <- capture.output(lrt_model$print_code())
+  expect_true(any(grepl("model.frame(y ~ x, data = .data)", lrt_print, fixed = TRUE)))
+  expect_true(any(grepl("rank_coords <- 1:2", lrt_print, fixed = TRUE)))
+
+  mediation_model <- rtmb_mediation(
+    list(m ~ x, y ~ x + m),
+    data = dat
+  )
+  mediation_code <- mediation_model$code
+  mediation_code$setup_env <- NULL
+  mediation_rebuilt <- rtmb_model(
+    data = dat,
+    code = mediation_code,
+    init = mediation_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(mediation_rebuilt$data$Y_1, mediation_model$data$Y_1)
+  expect_equal(mediation_rebuilt$data$X_2, mediation_model$data$X_2)
+  mediation_print <- capture.output(mediation_model$print_code())
+  expect_true(any(grepl("model.frame(m ~ x, df)", mediation_print, fixed = TRUE)))
+  expect_true(any(grepl("model.frame(y ~ x + m, df)", mediation_print, fixed = TRUE)))
+})
+
+test_that("FA and IRT wrapper code can be rebuilt from the original data", {
+  set.seed(12)
+  fa_dat <- data.frame(
+    item1 = rnorm(12),
+    item2 = rnorm(12),
+    item3 = rnorm(12)
+  )
+  fa_dat$item2[4] <- NA_real_
+
+  fa_model <- rtmb_fa(fa_dat, nfactors = 1)
+  fa_code <- fa_model$code
+  fa_code$setup_env <- NULL
+  fa_rebuilt <- rtmb_model(
+    data = fa_dat,
+    code = fa_code,
+    init = fa_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(fa_rebuilt$data$Y, fa_model$data$Y)
+  expect_equal(fa_rebuilt$data$K, 1)
+  fa_print <- capture.output(fa_model$print_code())
+  expect_true(any(grepl("Y <- as.matrix\\(\\.data\\)", fa_print)))
+  expect_true(any(grepl("nfactors <- 1", fa_print, fixed = TRUE)))
+
+  irt_dat <- matrix(
+    c(
+      0, 1, 0,
+      1, 1, 0,
+      0, 0, 1,
+      1, 0, 1
+    ),
+    nrow = 4,
+    byrow = TRUE,
+    dimnames = list(NULL, paste0("item", 1:3))
+  )
+  irt_model <- rtmb_irt(irt_dat, model = "1PL")
+  irt_code <- irt_model$code
+  irt_code$setup_env <- NULL
+  irt_rebuilt <- rtmb_model(
+    data = irt_dat,
+    code = irt_code,
+    init = irt_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(irt_rebuilt$data$Y, irt_model$data$Y)
+  expect_equal(irt_rebuilt$data$Y_obs, irt_model$data$Y_obs)
+  irt_print <- capture.output(irt_model$print_code())
+  expect_true(any(grepl("Y <- as.matrix\\(\\.data\\)", irt_print)))
+})
+
+test_that("wrapper inputs supplied separately can be rebuilt from one data object", {
+  sets <- matrix(
+    c(
+      1, 2, 3,
+      2, 3, 4
+    ),
+    nrow = 2,
+    byrow = TRUE
+  )
+  best <- matrix(
+    c(
+      1, 2,
+      2, 3,
+      3, 1
+    ),
+    nrow = 3,
+    byrow = TRUE
+  )
+  mdu_model <- rtmb_mdu(
+    data = list(Best = best),
+    sets = sets,
+    ndim = 1,
+    method = "Best",
+    prior = prior_normal()
+  )
+  mdu_code <- mdu_model$code
+  mdu_code$setup_env <- NULL
+  mdu_rebuilt <- rtmb_model(
+    data = list(Best = best, sets = sets),
+    code = mdu_code,
+    init = mdu_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(mdu_rebuilt$data$S, mdu_model$data$S)
+  expect_equal(mdu_rebuilt$data$Y_best, mdu_model$data$Y_best)
+  mdu_print <- capture.output(mdu_model$print_code())
+  expect_true(any(grepl("Y_best <- as.matrix(.data$Best)", mdu_print, fixed = TRUE)))
+  expect_true(any(grepl("S <- as.matrix(.data$sets)", mdu_print, fixed = TRUE)))
+
+  worst <- matrix(
+    c(
+      2, 3,
+      3, 1,
+      1, 2
+    ),
+    nrow = 3,
+    byrow = TRUE
+  )
+  bw_model <- rtmb_mdu(
+    data = list(Best = best, Worst = worst),
+    sets = sets,
+    ndim = 1,
+    method = "Best-Worst"
+  )
+  bw_code <- bw_model$code
+  bw_code$setup_env <- NULL
+  bw_rebuilt <- rtmb_model(
+    data = list(Best = best, Worst = worst, sets = sets),
+    code = bw_code,
+    init = bw_model$init,
+    silent = TRUE
+  )
+  expect_equal(bw_rebuilt$data$Y_dif, bw_model$data$Y_dif)
+
+  corr_dat <- data.frame(
+    y1 = c(1.0, 1.3, 2.1, 2.4, 3.2, 3.6),
+    y2 = c(0.8, 1.0, 1.9, 2.2, 3.0, 3.5),
+    x = c(-1, NA, 0, 0.5, 1, 1.5),
+    id = factor(rep(letters[1:3], each = 2))
+  )
+  corr_model <- rtmb_corr(
+    cbind(y1, y2),
+    data = corr_dat,
+    covariates = "x",
+    ID = id
+  )
+  corr_code <- corr_model$code
+  corr_code$setup_env <- NULL
+  corr_rebuilt <- rtmb_model(
+    data = list(
+      Y = as.matrix(corr_dat[c("y1", "y2")]),
+      covariates = as.matrix(corr_dat["x"]),
+      ID = corr_dat$id
+    ),
+    code = corr_code,
+    init = corr_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(corr_rebuilt$data$Y, corr_model$data$Y)
+  expect_equal(corr_rebuilt$data$group_id, corr_model$data$group_id)
+  corr_print <- capture.output(corr_model$print_code())
+  expect_true(any(grepl("Y <- as.matrix(.data$Y)", corr_print, fixed = TRUE)))
+  expect_true(any(grepl("covariates <- as.matrix(.data$covariates)", corr_print, fixed = TRUE)))
+  expect_true(any(grepl("ID <- .data$ID", corr_print, fixed = TRUE)))
+
+  x <- c(1.1, NA, 1.8, 2.2, 2.5)
+  y <- c(0.4, 0.8, 1.0, NA, 1.6)
+  ttest_model <- rtmb_ttest(x, y)
+  ttest_code <- ttest_model$code
+  ttest_code$setup_env <- NULL
+  ttest_rebuilt <- rtmb_model(
+    data = list(x = x, y = y),
+    code = ttest_code,
+    init = ttest_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(ttest_rebuilt$data$Y1, ttest_model$data$Y1)
+  expect_equal(ttest_rebuilt$data$Y2, ttest_model$data$Y2)
+  ttest_print <- capture.output(ttest_model$print_code())
+  expect_true(any(grepl("Y1 <- as.numeric(.data$x)", ttest_print, fixed = TRUE)))
+  expect_true(any(grepl("Y2 <- as.numeric(.data$y)", ttest_print, fixed = TRUE)))
+
+  paired_dat <- data.frame(
+    value = c(1.0, 1.4, 1.8, 1.3, 1.9, 2.2),
+    condition = factor(rep(c("pre", "post"), each = 3)),
+    id = rep(1:3, 2)
+  )
+  paired_model <- rtmb_ttest(
+    value ~ condition,
+    data = paired_dat,
+    paired = TRUE,
+    ID = "id"
+  )
+  paired_code <- paired_model$code
+  paired_code$setup_env <- NULL
+  paired_rebuilt <- rtmb_model(
+    data = list(
+      response = paired_dat$value,
+      group = as.integer(paired_dat$condition),
+      ID = paired_dat$id
+    ),
+    code = paired_code,
+    init = paired_model$init,
+    silent = TRUE
+  )
+  expect_equal(paired_rebuilt$data$diffs, paired_model$data$diffs)
+
+  table_x <- factor(c("a", "a", "b", "b", "b", "a"))
+  table_y <- factor(c("c", "d", "c", "d", "d", "c"))
+  table_model <- rtmb_table(table_x, table_y)
+  table_code <- table_model$code
+  table_code$setup_env <- NULL
+  table_rebuilt <- rtmb_model(
+    data = list(x = table_x, y = table_y),
+    code = table_code,
+    init = table_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(table_rebuilt$data$Y, table_model$data$Y)
+  table_print <- capture.output(table_model$print_code())
+  expect_true(any(grepl("tab <- table(.data$x, .data$y)", table_print, fixed = TRUE)))
+
+  table_matrix <- matrix(c(4, 2, 1, 5), nrow = 2)
+  matrix_table_model <- rtmb_table(table_matrix)
+  matrix_table_code <- matrix_table_model$code
+  matrix_table_code$setup_env <- NULL
+  matrix_table_rebuilt <- rtmb_model(
+    data = table_matrix,
+    code = matrix_table_code,
+    init = matrix_table_model$init,
+    silent = TRUE
+  )
+  expect_equal(matrix_table_rebuilt$data$Y, matrix_table_model$data$Y)
+})
+
 test_that("regression wrappers add design-matrix standardized coefficients", {
   dat <- data.frame(
     y = c(1.1, 1.4, 1.8, 2.2, 2.7, 3.0),
@@ -676,6 +959,56 @@ test_that("rtmb_mdu defaults to euclidean distance for rating models", {
   mdl <- rtmb_mdu(matrix(rnorm(20), nrow = 5), ndim = 1)
 
   expect_equal(mdl$extra$distance, "euclidean")
+})
+
+test_that("rating and MDS wrapper code can be rebuilt from the original data", {
+  set.seed(21)
+  rating_dat <- data.frame(
+    item1 = rnorm(6),
+    item2 = rnorm(6),
+    item3 = rnorm(6),
+    item4 = rnorm(6)
+  )
+  rating_model <- rtmb_mdu(
+    rating_dat,
+    ndim = 1,
+    method = "rating",
+    prior = prior_normal()
+  )
+  rating_code <- rating_model$code
+  rating_code$setup_env <- NULL
+  rating_rebuilt <- rtmb_model(
+    data = rating_dat,
+    code = rating_code,
+    init = rating_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(rating_rebuilt$data$Y, rating_model$data$Y)
+  expect_equal(rating_rebuilt$data$D, 1)
+  rating_print <- capture.output(rating_model$print_code())
+  expect_true(any(grepl("Y <- as.matrix\\(\\.data\\)", rating_print)))
+  expect_true(any(grepl("ndim <- 1", rating_print, fixed = TRUE)))
+
+  coords <- matrix(rnorm(10), nrow = 5, ncol = 2)
+  distance_dat <- as.matrix(dist(coords))
+  mds_model <- rtmb_mdu(
+    distance_dat,
+    ndim = 1,
+    method = "MDS",
+    prior = prior_normal()
+  )
+  mds_code <- mds_model$code
+  mds_code$setup_env <- NULL
+  mds_rebuilt <- rtmb_model(
+    data = distance_dat,
+    code = mds_code,
+    init = mds_model$init,
+    silent = TRUE
+  )
+
+  expect_equal(mds_rebuilt$data$Y, mds_model$data$Y)
+  expect_equal(mds_rebuilt$data$D, 1)
 })
 
 test_that("rotate can use a principal-axis reference", {

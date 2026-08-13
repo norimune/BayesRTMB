@@ -204,6 +204,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
     stop("The response data matrix must be numeric.", call. = FALSE)
   }
 
+  Y_input <- as.matrix(Y_mat)
+  X_input <- if (is.null(X_mat)) NULL else as.matrix(X_mat)
+  ID_input <- id_val
+
   if (missing == "listwise") {
     if (!is.null(X_mat)) {
       valid_idx <- stats::complete.cases(Y_mat, X_mat)
@@ -235,6 +239,64 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
   } else {
      P_x <- 0
      control_names <- NULL
+  }
+
+  model_data <- list(Y = Y_input)
+  setup_exprs_data <- list(
+    "# Response data",
+    quote(Y <- as.matrix(.data$Y))
+  )
+  if (P_x > 0) {
+    model_data$covariates <- X_input
+    setup_exprs_data <- c(setup_exprs_data, list(
+      "# Covariates",
+      quote(covariates <- as.matrix(.data$covariates))
+    ))
+  }
+  if (!is.null(ID_input)) {
+    model_data$ID <- ID_input
+    setup_exprs_data <- c(setup_exprs_data, list(
+      "# Group identifier",
+      quote(ID <- .data$ID)
+    ))
+  }
+  if (missing == "listwise") {
+    complete_expr <- if (P_x > 0) {
+      quote(valid_idx <- stats::complete.cases(Y, covariates))
+    } else {
+      quote(valid_idx <- stats::complete.cases(Y))
+    }
+    setup_exprs_data <- c(setup_exprs_data, list(
+      complete_expr,
+      quote(Y <- Y[valid_idx, , drop = FALSE])
+    ))
+    if (P_x > 0) {
+      setup_exprs_data[[length(setup_exprs_data) + 1L]] <-
+        quote(covariates <- covariates[valid_idx, , drop = FALSE])
+    }
+    if (!is.null(ID_input)) {
+      setup_exprs_data[[length(setup_exprs_data) + 1L]] <- quote(ID <- ID[valid_idx])
+    }
+  }
+  setup_exprs_data[[length(setup_exprs_data) + 1L]] <- quote(P_y <- ncol(Y))
+  if (P_x > 0) {
+    setup_exprs_data <- c(setup_exprs_data, list(
+      quote(P_x <- ncol(covariates)),
+      quote(Y <- cbind(Y, covariates))
+    ))
+  } else {
+    setup_exprs_data[[length(setup_exprs_data) + 1L]] <- quote(P_x <- 0L)
+  }
+  setup_exprs_data <- c(setup_exprs_data, list(
+    quote(N <- nrow(Y)),
+    quote(P <- ncol(Y))
+  ))
+  if (!is.null(ID_input)) {
+    setup_exprs_data <- c(setup_exprs_data, list(
+      quote(group_factor <- as.factor(ID)),
+      quote(group_id <- as.integer(group_factor)),
+      quote(J <- nlevels(group_factor))
+    ))
   }
 
   N <- nrow(Y_mat)
@@ -315,7 +377,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      use_weak_info <- prior_type %in% c("weak")
      multivariate <- P > 1
 
-     setup_exprs <- list()
+     setup_exprs <- setup_exprs_data
      if (use_weak_info) {
        if (is.null(y_range)) {
          stop("Specifying 'y_range' is required when using prior_weak().")
@@ -332,9 +394,9 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        mid_y_val <- (Y_range_mat[, 2] + Y_range_mat[, 1]) / 2
        base_scale <- half_d_y * prior$sd_ratio
 
-       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
-       setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
-       setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(mid_y <- .(mid_y_val))
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- .(half_d_y))
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(sigma_rate_vec <- .(1.0 / base_scale))
      }
      setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
@@ -428,15 +490,8 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        }
      }
 
-     data_list <- list(Y = Y_mat, group_id = group_id, N = N, P = P, J = J, P_y = P_y, P_x = P_x)
-     if (use_weak_info) {
-       data_list$mid_y <- mid_y_val
-       data_list$alpha_prior_sd <- half_d_y
-       data_list$sigma_rate_vec <- 1.0 / base_scale
-     }
-
      mdl_code <- list(setup = setup_ast, parameters = param_ast, transform = transform_ast, model = model_ast, env = parent.frame())
-     mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
+     mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(model_data))
      if (!is.null(generate_ast)) mdl_code$generate <- .rtmb_waic_generate_ast(NULL, generate_ast)
      class(mdl_code) <- "rtmb_code"
 
@@ -460,7 +515,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
      view_order <- c("pcorr", "B_corr", "W_corr", "corr", "ICC", "mu", "sigma_between", "sigma_within", "sigma")
 
-     obj <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
+     obj <- rtmb_model(model_data, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
      obj$raw_data <- data
 
      obj$type <- "corr"
@@ -524,9 +579,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        prior_lkj_eta <- prior$lkj_eta
      }
 
-     setup_exprs <- list(as.name("{"))
-     setup_exprs[[length(setup_exprs) + 1]] <- quote(N <- nrow(Y))
-     setup_exprs[[length(setup_exprs) + 1]] <- quote(P <- ncol(Y))
+     setup_exprs <- c(list(as.name("{")), setup_exprs_data)
      if (missing == "listwise") {
        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y_bar <- colMeans(Y))
        setup_exprs[[length(setup_exprs) + 1]] <- quote(S_Y <- cov(Y) * (N - 1))
@@ -551,9 +604,9 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        alpha_prior_sd_val <- (y_range_mat[, 2] - y_range_mat[, 1]) / 2
        sigma_rate_val <- 1 / (alpha_prior_sd_val * 0.5)
 
-       setup_exprs[[length(setup_exprs) + 1]] <- quote(mid_y <- mid_y)
-       setup_exprs[[length(setup_exprs) + 1]] <- quote(alpha_prior_sd <- alpha_prior_sd)
-       setup_exprs[[length(setup_exprs) + 1]] <- quote(sigma_rate_vec <- sigma_rate_vec)
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(mid_y <- .(mid_y_val))
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(alpha_prior_sd <- .(alpha_prior_sd_val))
+       setup_exprs[[length(setup_exprs) + 1]] <- bquote(sigma_rate_vec <- .(sigma_rate_val))
      }
      setup_ast <- as.call(setup_exprs)
 
@@ -637,13 +690,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      if (!is.null(generate_ast)) mdl_code$generate <- .rtmb_waic_generate_ast(NULL, generate_ast)
      class(mdl_code) <- "rtmb_code"
 
-     dat_list <- list(Y = Y_mat, P_y = P_y, P_x = P_x)
-     if (prior_type == "weak") {
-       dat_list$mid_y <- mid_y_val
-       dat_list$alpha_prior_sd <- alpha_prior_sd_val
-       dat_list$sigma_rate_vec <- sigma_rate_val
-     }
-     mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_list))
+     mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(model_data))
 
      v_names <- list(mean = var_names, sd = var_names)
      if (P == 2) {
@@ -658,7 +705,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      } else init
 
      view_vars <- if (P_x > 0) c("pcorr", "B_corr", "W_corr", "corr", "mean", "sd") else c("B_corr", "W_corr", "corr", "mean", "sd")
-     obj <- rtmb_model(data = dat_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
+     obj <- rtmb_model(data = model_data, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
 
     obj$raw_data <- data
     obj$type <- "corr"

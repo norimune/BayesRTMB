@@ -1,5 +1,10 @@
 # BayesRTMB 0.2.4
 
+* Added the setup-only `.data` binding for accessing the original object passed
+  to `rtmb_model()`. Wrapper-generated setup code now reads matrices and data
+  frames directly, or reads related inputs such as responses, IDs, covariates,
+  and choice sets from one named data list. Structural options remain visible as
+  fixed assignments in the generated code.
 * Added `std = TRUE` to the regression wrappers. It reports post-hoc
   standardized fixed-effect coefficients as `b_std`, using every column of the
   fixed-effect design matrix, including factor and interaction columns.

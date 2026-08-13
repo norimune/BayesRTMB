@@ -43,7 +43,8 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
     x_val <- eval(x_expr, parent.frame())
   }
 
-  if (inherits(x_val, "table") || (is.matrix(x_val) && is.numeric(x_val))) {
+  table_input <- inherits(x_val, "table") || (is.matrix(x_val) && is.numeric(x_val))
+  if (table_input) {
     tab <- as.table(x_val)
     if (length(dim(tab)) != 2L) {
       stop("`x` must be a two-way table or matrix when supplied as a table-like object.", call. = FALSE)
@@ -106,13 +107,6 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
     stop("Table counts must sum to a positive total.", call. = FALSE)
   }
 
-  setup <- list(
-    Y = Y_vec,
-    R = R,
-    C = C,
-    N = N_total
-  )
-
   # Pre-resolve prior settings (avoid runtime NSE dependency on prior object)
   dirichlet_alpha_val <- if (inherits(prior, "rtmb_prior") && prior$type == "normal" &&
                               !is.null(prior$dirichlet_alpha)) {
@@ -120,7 +114,29 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
   } else {
     1
   }
-  setup$dirichlet_alpha <- dirichlet_alpha_val
+  if (table_input) {
+    model_data <- x_val
+    setup_ast <- as.call(c(list(as.name("{")), list(
+      "# Observed contingency table",
+      quote(tab <- as.table(.data)),
+      quote(Y <- as.vector(tab)),
+      quote(R <- nrow(tab)),
+      quote(C <- ncol(tab)),
+      quote(N <- sum(Y)),
+      bquote(dirichlet_alpha <- .(dirichlet_alpha_val))
+    )))
+  } else {
+    model_data <- list(x = v1, y = v2)
+    setup_ast <- as.call(c(list(as.name("{")), list(
+      "# Categorical variables",
+      quote(tab <- table(.data$x, .data$y)),
+      quote(Y <- as.vector(tab)),
+      quote(R <- nrow(tab)),
+      quote(C <- ncol(tab)),
+      quote(N <- sum(Y)),
+      bquote(dirichlet_alpha <- .(dirichlet_alpha_val))
+    )))
+  }
 
   gen_ast <- if (isTRUE(WAIC)) {
     .rtmb_waic_generate_ast(NULL, quote({
@@ -134,9 +150,7 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
 
   rtmb_model_code <- eval(substitute(
     rtmb_code(
-      setup = {
-        # No special setup needed for now, Y and N are provided
-      },
+      setup = S,
       parameters = {
         # Simplex for probabilities (automatically constrained to sum to 1)
         # We give it meaningful names during rtmb_model() call
@@ -158,13 +172,13 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
       },
       generate = G
     ),
-    list(G = gen_ast)
+    list(S = setup_ast, G = gen_ast)
   ))
 
   # Create the model object with explicit parameter names for 'p' and 'mu'
   res <- rtmb_model(
     code = rtmb_model_code,
-    data = setup,
+    data = model_data,
     par_names = list(p = cell_labels, mu = cell_labels),
     fixed = fixed
   )

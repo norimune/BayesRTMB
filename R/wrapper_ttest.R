@@ -61,6 +61,8 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   raw_response <- NULL
   raw_group_idx <- NULL
   raw_id <- NULL
+  raw_x_input <- NULL
+  raw_y_input <- NULL
   if (is_formula) {
     x <- eval(x_expr, parent.frame())
     mf <- if (is.null(data)) model.frame(x, parent.frame()) else model.frame(x, data)
@@ -120,6 +122,8 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     } else {
       Y1 <- eval(x_expr, parent.frame()); Y2 <- eval(y_expr, parent.frame())
     }
+    raw_x_input <- Y1
+    raw_y_input <- Y2
     
     if ((!is.numeric(Y1) && !is.logical(Y1)) || (!is.numeric(Y2) && !is.logical(Y2))) {
       stop("Both variables (x and y) must be numeric. Character or factor variables are not supported.", call. = FALSE)
@@ -176,7 +180,15 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   # --- 3. AST Construction ---
   setup_exprs <- list(as.name("{"))
   if (formula_input) {
+    model_data <- list(
+      response = raw_response,
+      group = raw_group_idx
+    )
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y <- as.numeric(.data$response))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(G <- as.integer(.data$group))
     if (paired) {
+      model_data$ID <- raw_id
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(ID <- .data$ID)
       setup_exprs[[length(setup_exprs) + 1]] <- quote(d1 <- data.frame(Y = Y[G == 1], ID = ID[G == 1]))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(d2 <- data.frame(Y = Y[G == 2], ID = ID[G == 2]))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(common_ids <- intersect(d1$ID, d2$ID))
@@ -187,6 +199,29 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       setup_exprs[[length(setup_exprs) + 1]] <- quote(Y1 <- as.numeric(na.omit(Y[G == 1])))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(Y2 <- as.numeric(na.omit(Y[G == 2])))
     }
+  } else {
+    model_data <- list(
+      x = raw_x_input,
+      y = raw_y_input
+    )
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y1 <- as.numeric(.data$x))
+    setup_exprs[[length(setup_exprs) + 1]] <- quote(Y2 <- as.numeric(.data$y))
+    if (missing == "listwise") {
+      if (paired) {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(valid_idx <- !is.na(Y1) & !is.na(Y2))
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y1 <- Y1[valid_idx])
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y2 <- Y2[valid_idx])
+      } else {
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y1 <- as.numeric(na.omit(Y1)))
+        setup_exprs[[length(setup_exprs) + 1]] <- quote(Y2 <- as.numeric(na.omit(Y2)))
+      }
+    }
+    if (paired) {
+      setup_exprs[[length(setup_exprs) + 1]] <- quote(diffs <- Y1 - Y2)
+    }
+  }
+  if (is_jzs) {
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(r <- .(r))
   }
   if (is_weak) {
     if (is.null(y_range)) {
@@ -215,7 +250,6 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
   setup_ast <- as.call(setup_exprs)
 
   if (paired) {
-    dat <- if (formula_input) list(Y = raw_response, G = raw_group_idx, ID = raw_id, r = r) else list(diffs = Y1 - Y2, r = r)
     param_ast <- if (use_delta_param) {
       quote({ sd_diff = Dim(1, lower = 0); delta = Dim(1) })
     } else {
@@ -249,8 +283,6 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
       log_lik <- normal_lpdf(diffs, diff, sd_diff, sum = FALSE)
     })
   } else {
-    dat <- if (formula_input) list(Y = raw_response, G = raw_group_idx, r = r) else list(Y1 = Y1, Y2 = Y2, r = r)
-    
     # Structure for independent t-tests
     if (!var.equal) {
       if (use_delta_param) {
@@ -353,9 +385,7 @@ rtmb_ttest <- function(x, y = NULL, data = NULL, r = 0.707,
     ))
   }
 
-  tmp_env <- list2env(dat)
-  ordered_data <- env_to_ordered_list(tmp_env, dat, setup_ast)
-  obj <- rtmb_model(data = ordered_data, code = code_obj, fixed = fixed, view = view_vars)
+  obj <- rtmb_model(data = model_data, code = code_obj, fixed = fixed, view = view_vars)
 
   obj$type <- "ttest"
   obj$extra <- list(

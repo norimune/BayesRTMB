@@ -791,18 +791,19 @@ rtmb_mdu <- function(data, ndim = 2,
   if (method == "MDS") {
     sigma_rate_mds <- prior$sigma_rate %||% 1
     tau_rate_mds <- prior$tau_rate %||% prior$lambda_rate %||% 1
-    dat_mdu <- list(
-      Y = Y,
-      N = N,
-      ndim = D,
-      sigma_rate = sigma_rate_mds,
-      tau_rate = tau_rate_mds
-    )
-
-    setup_ast <- quote({
-      N <- nrow(Y)
-      D <- ndim
-    })
+    model_data <- data
+    setup_ast <- as.call(c(list(as.name("{")), list(
+      "# Observed distance matrix",
+      quote(Y <- as.matrix(.data)),
+      quote(storage.mode(Y) <- "double"),
+      "# Number of dimensions",
+      bquote(ndim <- .(D)),
+      quote(N <- nrow(Y)),
+      quote(D <- ndim),
+      "# Prior rates",
+      bquote(sigma_rate <- .(sigma_rate_mds)),
+      bquote(tau_rate <- .(tau_rate_mds))
+    )))
 
     param_ast <- if (prior_type == "flat") {
       quote({
@@ -882,42 +883,47 @@ rtmb_mdu <- function(data, ndim = 2,
     )
     if (is.null(view)) view <- if (prior_type == "flat") c("delta", "sigma") else c("delta", "tau", "sigma")
   } else if (method == "rating") {
-    dat_mdu <- list(
-      Y = Y,
-      ndim = D,
-      distance_eps = distance_eps,
-      mu_alpha_init = mu_alpha_init,
-      alpha_sd = alpha_sd,
-      beta_rate = beta_rate,
-      sigma_rate = sigma_rate,
-      delta_sd = delta_sd,
-      theta_sd = theta_sd,
-      sigma_alpha_rate = sigma_alpha_rate
+    model_data <- data
+    setup_exprs <- list(
+      "# Observed ratings",
+      quote(Y <- as.matrix(.data)),
+      quote(storage.mode(Y) <- "double")
     )
+    if (missing_arg == "listwise") {
+      setup_exprs[[length(setup_exprs) + 1L]] <- quote(Y <- na.omit(Y))
+    }
+    setup_exprs <- c(setup_exprs, list(
+      "# Number of dimensions",
+      bquote(ndim <- .(D)),
+      bquote(distance_eps <- .(distance_eps)),
+      quote(N <- nrow(Y)),
+      quote(M <- ncol(Y)),
+      quote(D <- ndim),
+      "# Prior scales",
+      bquote(delta_sd <- .(delta_sd)),
+      bquote(theta_sd <- .(theta_sd)),
+      bquote(sigma_alpha_rate <- .(sigma_alpha_rate))
+    ))
     if (prior_type == "weak") {
-      dat_mdu$y_range <- y_range
-      dat_mdu$sd_ratio <- sd_ratio
-      dat_mdu$max_beta <- max_beta
-    }
-
-    setup_ast <- if (prior_type == "weak") {
-      quote({
-        N <- nrow(Y)
-        M <- ncol(Y)
-        D <- ndim
-        half_range <- diff(y_range) / 2
-        mu_alpha_init <- mean(y_range)
-        alpha_sd <- half_range
-        sigma_rate <- 1 / (half_range * sd_ratio)
-        beta_rate <- 1 / max_beta
-      })
+      setup_exprs <- c(setup_exprs, list(
+        bquote(y_range <- .(y_range)),
+        bquote(sd_ratio <- .(sd_ratio)),
+        bquote(max_beta <- .(max_beta)),
+        quote(half_range <- diff(y_range) / 2),
+        quote(mu_alpha_init <- mean(y_range)),
+        quote(alpha_sd <- half_range),
+        quote(sigma_rate <- 1 / (half_range * sd_ratio)),
+        quote(beta_rate <- 1 / max_beta)
+      ))
     } else {
-      quote({
-        N <- nrow(Y)
-        M <- ncol(Y)
-        D <- ndim
-      })
+      setup_exprs <- c(setup_exprs, list(
+        quote(mu_alpha_init <- mean(Y, na.rm = TRUE)),
+        bquote(alpha_sd <- .(alpha_sd)),
+        bquote(beta_rate <- .(beta_rate)),
+        bquote(sigma_rate <- .(sigma_rate))
+      ))
     }
+    setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
     param_ast <- if (alpha_type == "random") {
       bquote({
@@ -1081,58 +1087,66 @@ rtmb_mdu <- function(data, ndim = 2,
 
     if (is.null(view)) view <- c("alpha", "beta", "sigma", "delta")
   } else {
-    dat_mdu <- list(
-      sets = choice_data$S,
-      ndim = D,
-      distance_eps = distance_eps,
-      mu_alpha_init = mu_alpha_init,
-      alpha_sd = alpha_sd,
-      delta_sd = delta_sd,
-      theta_sd = theta_sd,
-      sigma_alpha_rate = sigma_alpha_rate,
-      lambda_rate = lambda_rate,
-      lambda_mu_mean = lambda_mu_mean,
-      lambda_mu_sd = lambda_mu_sd,
-      sigma_lambda_rate = sigma_lambda_rate
-    )
     if (method == "Best") {
-      dat_mdu$Y_best <- choice_data$Y_best
+      model_data <- list(
+        Best = choice_data$Y_best,
+        sets = choice_data$S
+      )
     } else if (identical(choice_data$input, "Y_dif")) {
-      dat_mdu$Y_dif <- choice_data$Y_dif
+      model_data <- list(
+        Y_dif = choice_data$Y_dif,
+        sets = choice_data$S
+      )
     } else {
-      dat_mdu$Best <- choice_data$Best
-      dat_mdu$Worst <- choice_data$Worst
+      model_data <- list(
+        Best = choice_data$Best,
+        Worst = choice_data$Worst,
+        sets = choice_data$S
+      )
     }
 
-    setup_ast <- if (method == "Best") {
-      quote({
-        S <- sets
-        N <- nrow(Y_best)
-        P <- nrow(S)
-        C <- ncol(S)
-        M <- max(S)
-        D <- ndim
-      })
+    setup_exprs <- list(
+      "# Choice data",
+      quote(S <- as.matrix(.data$sets))
+    )
+    if (method == "Best") {
+      setup_exprs <- c(setup_exprs, list(
+        quote(Y_best <- as.matrix(.data$Best)),
+        quote(N <- nrow(Y_best))
+      ))
     } else if (identical(choice_data$input, "Y_dif")) {
-      quote({
-        S <- sets
-        N <- nrow(Y_dif)
-        P <- nrow(S)
-        C <- ncol(S)
-        M <- max(S)
-        D <- ndim
-      })
+      setup_exprs <- c(setup_exprs, list(
+        quote(Y_dif <- as.matrix(.data$Y_dif)),
+        quote(N <- nrow(Y_dif))
+      ))
     } else {
-      quote({
-        S <- sets
-        N <- nrow(Best)
-        P <- nrow(S)
-        C <- ncol(S)
-        M <- max(S)
-        D <- ndim
-        Y_dif <- make_ydif_from_bw(Best, Worst, S)
-      })
+      setup_exprs <- c(setup_exprs, list(
+        quote(Best <- as.matrix(.data$Best)),
+        quote(Worst <- as.matrix(.data$Worst)),
+        quote(Y_dif <- make_ydif_from_bw(Best, Worst, S)),
+        quote(N <- nrow(Y_dif))
+      ))
     }
+    setup_exprs <- c(setup_exprs, list(
+      quote(P <- nrow(S)),
+      quote(C <- ncol(S)),
+      quote(M <- max(S)),
+      "# Model settings",
+      bquote(ndim <- .(D)),
+      quote(D <- ndim),
+      bquote(distance_eps <- .(distance_eps)),
+      "# Prior settings",
+      bquote(mu_alpha_init <- .(mu_alpha_init)),
+      bquote(alpha_sd <- .(alpha_sd)),
+      bquote(delta_sd <- .(delta_sd)),
+      bquote(theta_sd <- .(theta_sd)),
+      bquote(sigma_alpha_rate <- .(sigma_alpha_rate)),
+      bquote(lambda_rate <- .(lambda_rate)),
+      bquote(lambda_mu_mean <- .(lambda_mu_mean)),
+      bquote(lambda_mu_sd <- .(lambda_mu_sd)),
+      bquote(sigma_lambda_rate <- .(sigma_lambda_rate))
+    ))
+    setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
     param_exprs <- list(
       quote(delta <- Dim(c(M, D), type = "centered_tri", random = TRUE)),
@@ -1331,9 +1345,9 @@ rtmb_mdu <- function(data, ndim = 2,
     }
   }
 
-  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_mdu))
+  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(model_data))
   obj <- rtmb_model(
-    data = dat_mdu,
+    data = model_data,
     code = code_obj,
     par_names = par_names_list,
     init = init,

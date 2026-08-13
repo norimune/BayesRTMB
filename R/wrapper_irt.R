@@ -89,22 +89,30 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
   theta_sd <- 1 # Fixed to 1 for identification by default
 
   # --- Construction of Setup Block ---
-  setup_exprs <- list()
-  setup_exprs[[1]] <- quote(obs_data <- which(!is.na(Y), arr.ind = TRUE))
-  setup_exprs[[2]] <- quote(person_idx <- as.integer(obs_data[, "row"]))
-  setup_exprs[[3]] <- quote(item_idx <- as.integer(obs_data[, "col"]))
-  setup_exprs[[4]] <- quote(Y_obs <- Y[obs_data])
-  setup_exprs[[5]] <- quote(N_persons <- nrow(Y))
-  setup_exprs[[6]] <- quote(N_items <- ncol(Y))
-  setup_exprs[[7]] <- quote(N_obs <- length(Y_obs))
+  setup_exprs <- list(
+    "# Observed item responses",
+    quote(Y <- as.matrix(.data))
+  )
+  if (missing == "listwise") {
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(Y <- na.omit(Y))
+  }
+  setup_exprs <- c(setup_exprs, list(
+    quote(obs_data <- which(!is.na(Y), arr.ind = TRUE)),
+    quote(person_idx <- as.integer(obs_data[, "row"])),
+    quote(item_idx <- as.integer(obs_data[, "col"])),
+    quote(Y_obs <- Y[obs_data]),
+    quote(N_persons <- nrow(Y)),
+    quote(N_items <- ncol(Y)),
+    quote(N_obs <- length(Y_obs))
+  ))
 
   if (type == "ordered") {
-    setup_exprs[[8]] <- quote(if (min(Y_obs) == 0) Y_obs <- Y_obs + 1)
-    setup_exprs[[9]] <- quote(K_cat <- max(Y_obs))
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(if (min(Y_obs) == 0) Y_obs <- Y_obs + 1)
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(K_cat <- max(Y_obs))
   }
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
-  tmp_env <- list2env(list(Y = Y))
+  tmp_env <- list2env(list(.data = data))
   eval(setup_ast, tmp_env)
 
   # --- Construction of Parameters Block ---
@@ -243,8 +251,8 @@ rtmb_irt <- function(data, model = c("2PL", "1PL", "3PL"), type = c("binary", "o
     if (model == "3PL") init$c <- rep(0.1, length(item_names))
   }
 
-  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = "Y")
-  obj <- rtmb_model(data = list(Y = Y), code = code_obj, par_names = par_names_list,
+  code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data))
+  obj <- rtmb_model(data = data, code = code_obj, par_names = par_names_list,
                     init = init, fixed = fixed, view = view_vars)
   obj$type <- "irt"
   obj$extra <- list(

@@ -106,10 +106,12 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   class(setup_df) <- c("rtmb_setup_df", class(setup_df))
 
   N <- nrow(setup_df)
-  data_list <- list(df = setup_df)
+  model_data <- data
   resp_names <- character(n_eq)
   X_list <- list()
   X_colnames <- list()
+  half_d_y_values <- vector("list", n_eq)
+  mid_y_values <- vector("list", n_eq)
 
   # 1. Parse Formulas and Prepare Data
   for (i in 1:n_eq) {
@@ -119,7 +121,6 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     resp_names[i] <- y_name
 
     X_mat <- model.matrix(f, data = data)
-    data_list[[paste0("formula_", i)]] <- f
     cols <- colnames(X_mat)
     cols[cols == "(Intercept)"] <- "Intercept"
     X_colnames[[i]] <- cols
@@ -134,8 +135,8 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
            stop(paste0("y_range is required for response variable '", y_name, "' when using weakly informative priors. ",
                        "Please provide y_range as a vector or a named list (e.g., y_range = list(", y_name, " = c(1, 5)))."))
          }
-         data_list[[paste0("half_d_y_", i)]] <- diff(range_i) / 2
-         data_list[[paste0("mid_y_", i)]] <- mean(range_i)
+         half_d_y_values[[i]] <- diff(range_i) / 2
+         mid_y_values[[i]] <- mean(range_i)
        }
     }
   }
@@ -152,24 +153,35 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   }
 
   # 2. Setup AST Block
-  setup_exprs <- list()
-  setup_exprs[[1]] <- quote(N <- nrow(df))
+  setup_exprs <- list(
+    bquote(df <- stats::na.omit(as.data.frame(.data)[, .(setup_vars), drop = FALSE])),
+    quote(N <- nrow(df))
+  )
 
   for (i in 1:n_eq) {
     mf_name <- as.name(paste0("mf_", i))
-    formula_name <- as.name(paste0("formula_", i))
     Y_name <- as.name(paste0("Y_", i))
     X_name <- as.name(paste0("X_", i))
+    formula_i <- formula[[i]]
 
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mf_name) <- model.frame(.(formula_name), df))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mf_name) <- model.frame(.(formula_i), df))
     setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Y_name) <- as.numeric(model.response(.(mf_name))))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_name) <- model.matrix(.(formula_name), .(mf_name)))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_name) <- model.matrix(.(formula_i), .(mf_name)))
   }
 
   for (i in 1:n_eq) {
     f_type <- family_list[[i]]
     p_name <- paste0("b", i)
     X_name <- as.name(paste0("X_", i))
+
+    if (prior_type == "weak" && !(f_type %in% c("bernoulli", "binomial", "poisson"))) {
+      half_d_y_name <- as.name(paste0("half_d_y_", i))
+      mid_y_name <- as.name(paste0("mid_y_", i))
+      setup_exprs[[length(setup_exprs) + 1]] <-
+        bquote(.(half_d_y_name) <- .(half_d_y_values[[i]]))
+      setup_exprs[[length(setup_exprs) + 1]] <-
+        bquote(.(mid_y_name) <- .(mid_y_values[[i]]))
+    }
 
     has_b_prior <- prior_type %in% c("weak", "normal") || !is.null(prior$b_sd) || !is.null(prior$Intercept_sd)
     has_sigma_prior <- f_type == "gaussian" && (prior_type %in% c("weak", "normal") || !is.null(prior$sigma_rate))
@@ -260,9 +272,6 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   }
 
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
-
-  tmp_env <- list2env(data_list)
-  eval(setup_ast, tmp_env)
 
   # 3. Parameters, Transform and Model Block AST
   param_exprs <- list()
@@ -447,15 +456,15 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     gen_ast <- as.call(c(list(as.name("{")), generate_exprs))
     mdl_code$generate <- if (isTRUE(WAIC)) .rtmb_waic_generate_ast(NULL, gen_ast) else gen_ast
   }
-  mdl_code$env <- tmp_env
-  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
+  mdl_code$env <- parent.frame()
+  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(model_data))
 
   view_order <- c(b_vars, effect_names, s_vars)
   if (!is.null(view)) {
     view_order <- unique(c(view, view_order))
   }
 
-  mdl <- rtmb_model(data = data_list, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order, silent = FALSE)
+  mdl <- rtmb_model(data = model_data, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order, silent = FALSE)
   mdl$formula <- formula
   mdl$raw_data <- setup_df
   mdl$family <- family_list

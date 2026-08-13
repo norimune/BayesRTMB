@@ -123,36 +123,40 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     prior_loadings_sd <- base_scale
   }
 
-  dat_fa <- list(
-    Y = Y,
-    nfactors = K,
-    prior_mean_center = prior_mean_center,
-    prior_mean_sd = prior_mean_sd,
-    prior_sd_rate = prior_sd_rate,
-    prior_loadings_sd = prior_loadings_sd
-  )
-
   # --- 3. Simplified Setup AST ---
+  setup_exprs <- list(
+    "# Observed data",
+    quote(Y <- as.matrix(.data))
+  )
   if (missing == "listwise") {
-    setup_ast <- quote({
-      N <- nrow(Y)
-      J <- ncol(Y)
-      K <- nfactors
-      Y_bar <- colMeans(Y)
-      S_Y <- cov(Y) * (N - 1)
-    })
-  } else {
-    setup_ast <- quote({
-      N <- nrow(Y)
-      J <- ncol(Y)
-      K <- nfactors
-    })
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(Y <- na.omit(Y))
   }
+  setup_exprs <- c(setup_exprs, list(
+    "# Number of factors",
+    bquote(nfactors <- .(K)),
+    quote(N <- nrow(Y)),
+    quote(J <- ncol(Y)),
+    quote(K <- nfactors)
+  ))
+  if (missing == "listwise") {
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(Y_bar <- colMeans(Y))
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(S_Y <- cov(Y) * (N - 1))
+  }
+  if (prior_type == "weak") {
+    setup_exprs <- c(setup_exprs, list(
+      "# Prior scales",
+      bquote(prior_mean_center <- .(prior_mean_center)),
+      bquote(prior_mean_sd <- .(prior_mean_sd)),
+      bquote(prior_sd_rate <- .(prior_sd_rate)),
+      bquote(prior_loadings_sd <- .(prior_loadings_sd))
+    ))
+  }
+  if (is_ssp) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- bquote(ssp_ratio <- .(ssp_ratio))
+  }
+  setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
   if (is_ssp) {
-    dat_fa$ssp_ratio <- ssp_ratio
-    if (score || isTRUE(WAIC)) dat_fa$Y <- Y
-
     # Automatic generation of initial values for SSP
     if (is.null(init)) {
       tryCatch({
@@ -261,7 +265,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(score_expr)[-1], list(.rtmb_report_call(report_vars))))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
-    code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_fa))
+    code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data))
     p_names <- list(
       mean = var_names,
       Lambda_star = list(var_names, factor_names),
@@ -275,10 +279,10 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       communality = var_names
     )
     if (score) {
-      ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
+      ind_names <- rownames(Y); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N)
       p_names[["score"]] <- list(ind_names, factor_names)
     }
-    obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = c("L", "sd", "fa_cor"), fixed = fixed)
+    obj <- rtmb_model(data = data, code = code_obj, par_names = p_names, init = init, view = c("L", "sd", "fa_cor"), fixed = fixed)
     obj$type <- "fa"
     obj$extra <- list(
       source = "wrapper",
@@ -289,7 +293,6 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
 
   } else {
     # --- Standard rotation logic ---
-    if (score || isTRUE(WAIC)) dat_fa$Y <- Y
     if (is.null(init)) {
       tryCatch({
         eig <- eigen(S_Y / (N - 1))
@@ -434,7 +437,7 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     gq_ast <- as.call(c(list(as.name("{")), as.list(base_gq)[-1], as.list(waic_expr)[-1], as.list(rot_expr)[-1], as.list(score_expr)[-1], list(.rtmb_report_call(report_vars))))
     
     code_obj <- list(setup = setup_ast, parameters = param_ast, transform = tran_ast, model = model_ast, generate = gq_ast, env = parent.frame())
-    code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(dat_fa))
+    code_obj$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data))
     p_names <- list(
       mean = var_names,
       L_raw = list(var_names, factor_names),
@@ -446,10 +449,10 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
       p_names[[paste0("L_", rotate)]] <- list(var_names, factor_names)
       if (has_phi) p_names[["fa_cor"]] <- factor_names
     }
-    if (score) { ind_names <- rownames(data); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N); p_names[["score"]] <- list(ind_names, factor_names) }
+    if (score) { ind_names <- rownames(Y); if (is.null(ind_names)) ind_names <- paste0("Id", 1:N); p_names[["score"]] <- list(ind_names, factor_names) }
 
     target_view <- if (!is.null(rotate)) c(paste0("L_", rotate), "sd", "fa_cor") else c("L", "sd", "fa_cor")
-    obj <- rtmb_model(data = dat_fa, code = code_obj, par_names = p_names, init = init, view = target_view, fixed = fixed)
+    obj <- rtmb_model(data = data, code = code_obj, par_names = p_names, init = init, view = target_view, fixed = fixed)
     obj$type <- "fa"
     obj$extra <- list(
       source = "wrapper",

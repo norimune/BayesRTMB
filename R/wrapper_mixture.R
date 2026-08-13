@@ -159,8 +159,6 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
         call. = FALSE
       )
     }
-    setup_df <- as.data.frame(data)[, setup_vars, drop = FALSE]
-    class(setup_df) <- c("rtmb_setup_df", class(setup_df))
   }
 
   Y_mat <- as.matrix(Y_mat)
@@ -225,53 +223,49 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
 
   # --- 1. Dynamic AST Construction: setup ---
   if (setup_from_formula) {
+    model_data <- data
     setup_exprs <- list(
       as.name("{"),
-      quote(mf <- model.frame(formula, df)),
+      bquote(mf <- model.frame(.(formula), data = .data)),
       quote(Y <- model.response(mf)),
       quote(if (is.null(Y)) Y <- as.matrix(mf)),
       quote(Y <- as.matrix(Y)),
       quote(N <- nrow(Y)),
       quote(P <- ncol(Y)),
-      quote(K <- K)
+      bquote(K <- .(K_mix))
     )
   } else {
+    model_data <- Y_mat
     setup_exprs <- list(
       as.name("{"),
-      quote(N <- N),
-      quote(K <- K),
-      quote(P <- P)
+      quote(Y <- as.matrix(.data)),
+      quote(N <- nrow(Y)),
+      quote(P <- ncol(Y)),
+      bquote(K <- .(K_mix))
     )
   }
   if (has_cov_prob) {
     if (setup_from_formula) {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_prob <- model.matrix(formula, mf))
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(X_prob <- model.matrix(.(formula), mf))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- ncol(X_prob))
       setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(colMeans(X_prob), 1, K_prob))
-    } else {
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(K_prob <- K_prob)
-      setup_exprs[[length(setup_exprs) + 1]] <- quote(X_means <- matrix(X_means, 1, K_prob))
     }
     if (regularization == "rhs") {
       # RHS setup (cap expected_vars to prevent zero-division)
       p0_rhs <- min(prior$expected_vars, K_prob - 1)
       if (p0_rhs < 1) p0_rhs <- 1
-      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) {
-        bquote(tau0 <- .(p0_rhs) / (K_prob - .(p0_rhs)) / sqrt(N))
-      } else {
-        quote(tau0 <- tau0)
-      }
-      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(half_slab_df <- .(prior$slab_df) / 2) else quote(half_slab_df <- half_slab_df)
-      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(half_slab_scale2 <- .(prior$slab_scale)^2 / 2) else quote(half_slab_scale2 <- half_slab_scale2)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(tau0 <- .(p0_rhs) / (K_prob - .(p0_rhs)) / sqrt(N))
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_df <- .(prior$slab_df) / 2)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(half_slab_scale2 <- .(prior$slab_scale)^2 / 2)
     } else if (regularization == "ssp") {
       # SSP setup
-      setup_exprs[[length(setup_exprs) + 1]] <- if (setup_from_formula) bquote(tau_scale <- .(prior$max_beta) / 1.96) else quote(tau_scale <- tau_scale)
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(tau_scale <- .(prior$max_beta) / 1.96)
     }
   }
   if (use_weak_info) {
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_mean_center <- prior_mean_center)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_mean_sd <- prior_mean_sd)
-    setup_exprs[[length(setup_exprs) + 1]] <- quote(prior_sigma_rate <- prior_sigma_rate)
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(prior_mean_center <- .(prior_mean_center))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(prior_mean_sd <- .(prior_mean_sd))
+    setup_exprs[[length(setup_exprs) + 1]] <- bquote(prior_sigma_rate <- .(prior_sigma_rate))
   }
   setup_ast <- as.call(setup_exprs)
 
@@ -565,35 +559,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
     }
   }
 
-  data_list <- if (setup_from_formula) {
-    list(df = setup_df, formula = formula, K = K_mix)
-  } else {
-    list(Y = Y_mat, N = N_obs, K = K_mix, P = P_dim)
-  }
-  if (use_weak_info) {
-    data_list$prior_mean_center <- prior_mean_center
-    data_list$prior_mean_sd <- prior_mean_sd
-    data_list$prior_sigma_rate <- prior_sigma_rate
-  }
-  if (has_cov_prob) {
-    if (!setup_from_formula) {
-      data_list$X_prob <- X_prob
-      data_list$K_prob <- K_prob
-      data_list$X_means <- as.vector(colMeans(X_prob))
-    }
-    if (regularization == "rhs") {
-      p0 <- min(prior$expected_vars, K_prob - 1)
-      if (p0 < 1) p0 <- 1
-      if (!setup_from_formula) {
-        data_list$tau0 <- p0 / (K_prob - p0) / sqrt(N_obs)
-        data_list$half_slab_df <- prior$slab_df / 2
-        data_list$half_slab_scale2 <- prior$slab_scale^2 / 2
-      }
-    } else if (regularization == "ssp") {
-      if (!setup_from_formula) data_list$tau_scale <- prior$max_beta / 1.96
-    }
-  }
-  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(data_list))
+  mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(model_data))
 
   init_list <- list()
   if (nrow(Y_mat) >= K_mix) {
@@ -655,7 +621,7 @@ rtmb_mixture <- function(formula, k = 2, data = NULL,
   view_order <- if (has_cov_prob) c("b", "prob_mean", "mu", "sigma") else c("prob_mean", "mu", "sigma")
   if (multivariate && !is_diag) view_order <- c(view_order, "corr")
 
-  mdl <- rtmb_model(data_list, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
+  mdl <- rtmb_model(model_data, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
   mdl$type <- "mixture"
   mdl$extra <- list(
     source = "wrapper",
