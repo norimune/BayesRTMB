@@ -62,12 +62,12 @@ continuous families. Default is `prior_flat()`.}
 You can also use \code{cwc = list(ID, "x")} or \code{cwc = list(ID, "all")};
 \code{"all"} centers all numeric fixed-effect variables within the cluster.}
 
-\item{std}{Logical; if \code{TRUE}, add post-hoc standardized fixed-effect
-coefficients as \code{b_std}. Every column of the fixed-effect design matrix is
+\item{std}{Logical; if `TRUE`, add post-hoc standardized fixed-effect
+coefficients as `b_std`. Every column of the fixed-effect design matrix is
 standardized, including columns generated from factors and interactions.
 For Gaussian models, coefficients are scaled by both the predictor and
-response standard deviations. For other families, only predictor standard
-deviations are used, so coefficients remain on the link scale.}
+response standard deviations. For other families, only the predictor
+standard deviations are used, so coefficients remain on the link scale.}
 
 \item{view}{Character vector of parameter names to prioritize in summary.}
 

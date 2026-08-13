@@ -20,7 +20,7 @@ make_glmer_re_terms(
 \item{formula}{lme4-style formula.}
 
 \item{data}{Optional data frame. If omitted, variables are resolved from the
-formula environment. This is useful inside an \code{rtmb_code()} \code{setup} block,
+formula environment. This is useful inside an `rtmb_code()` `setup` block,
 where data-frame columns are available as individual variables.}
 
 \item{family}{Character string of the distribution family.}
@@ -36,7 +36,7 @@ written as `cbind(...)`.}
 
 \item{missing}{Missing value handling strategy: "listwise".}
 
-\item{contrasts}{Optional contrast type, either \code{"treatment"} or \code{"sum"}.}
+\item{contrasts}{Optional contrast type, either `"treatment"` or `"sum"`.}
 }
 \value{
 A list containing `Y`, `X`, `trials`, `offset`, `N`, fixed-effect

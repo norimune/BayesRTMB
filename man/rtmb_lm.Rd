@@ -45,7 +45,7 @@ Default is `prior_flat()`.}
 
 \item{centering}{Alias for `gmc`.}
 
-\item{std}{Logical; if \code{TRUE}, also report post-hoc standardized fixed-effect
+\item{std}{Logical; if `TRUE`, also report post-hoc standardized fixed-effect
 coefficients. All fixed-effect design-matrix columns are standardized.}
 
 \item{view}{Optional character vector of parameter names to show first in summary.}

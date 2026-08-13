@@ -13,12 +13,12 @@ center_grand_mean(x, na.rm = TRUE)
 mean.}
 }
 \value{
-A numeric vector with the same length as \code{x}.
+A numeric vector with the same length as `x`.
 }
 \description{
 Subtracts the overall mean from a numeric vector. This helper is used by the
-regression wrappers in their generated \code{setup} code and can also be used in
-hand-written \code{rtmb_code()} models.
+regression wrappers in their generated `setup` code and can also be used in
+hand-written `rtmb_code()` models.
 }
 \examples{
 center_grand_mean(c(1, 2, 3))

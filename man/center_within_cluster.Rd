@@ -9,19 +9,19 @@ center_within_cluster(x, cluster, na.rm = TRUE)
 \arguments{
 \item{x}{Numeric vector to center.}
 
-\item{cluster}{Vector identifying the cluster for each element of \code{x}.}
+\item{cluster}{Vector identifying the cluster for each element of `x`.}
 
 \item{na.rm}{Logical; whether missing values are removed when calculating
 cluster means.}
 }
 \value{
-A numeric vector with the same length as \code{x}.
+A numeric vector with the same length as `x`.
 }
 \description{
 Subtracts each cluster mean from a numeric vector. Missing cluster values
 produce missing centered values. This helper is used by the regression
-wrappers in their generated \code{setup} code and can also be used in hand-written
-\code{rtmb_code()} models.
+wrappers in their generated `setup` code and can also be used in hand-written
+`rtmb_code()` models.
 }
 \examples{
 center_within_cluster(c(1, 3, 2, 6), c("a", "a", "b", "b"))
