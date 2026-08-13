@@ -44,6 +44,7 @@ It provides both classic (frequentist) Pearson chi-squared tests and Bayesian mu
 \examples{
 \donttest{
 # Classic chi-squared test
+data(debate, package = "BayesRTMB")
 rtmb_table(skill, cond, data = debate)$classic()
 rtmb_table(table(debate$skill, debate$cond))$classic()
 }

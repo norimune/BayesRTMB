@@ -416,9 +416,20 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     setup_env_names <- setdiff(names(setup_env), c(names(data), ".data"))
     setup_input <- setup_env
     setup_input[names(data)] <- data
-    setup_input[[".data"]] <- input_data
     dat_env <- list2env(setup_input, parent = .rtmb_closed_eval_env())
-    lockBinding(".data", dat_env)
+    makeActiveBinding(
+      ".data",
+      local({
+        original_data <- input_data
+        function(value) {
+          if (!missing(value)) {
+            stop("'.data' is read-only inside the setup block.", call. = FALSE)
+          }
+          original_data
+        }
+      }),
+      dat_env
+    )
     tryCatch({
       eval(code$setup, envir = dat_env)
     }, error = function(e) {
@@ -437,7 +448,6 @@ rtmb_model <- function(data, code, par_names = list(), init = NULL, view = NULL,
     })
     assigned_setup_vars <- .rtmb_assigned_vars(code$setup)
     .rtmb_close_setup_env_bindings(dat_env, assigned_setup_vars)
-    unlockBinding(".data", dat_env)
     rm(list = ".data", envir = dat_env)
     drop_setup_env <- setdiff(setup_env_names, assigned_setup_vars)
     if (length(drop_setup_env) > 0L) {

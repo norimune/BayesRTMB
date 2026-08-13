@@ -20,6 +20,7 @@
 #' @examples
 #' \donttest{
 #' # Classic chi-squared test
+#' data(debate, package = "BayesRTMB")
 #' rtmb_table(skill, cond, data = debate)$classic()
 #' rtmb_table(table(debate$skill, debate$cond))$classic()
 #' }
@@ -148,32 +149,31 @@ rtmb_table <- function(x, y = NULL, data = NULL, correct = TRUE, prior = prior_f
     })
   }
 
-  rtmb_model_code <- eval(substitute(
-    rtmb_code(
-      setup = S,
-      parameters = {
-        # Simplex for probabilities (automatically constrained to sum to 1)
-        # We give it meaningful names during rtmb_model() call
-        p <- Dim(R * C, type = "simplex")
-      },
-      transform = {
-        # Derived quantities for reporting
-        mu <- p * N
-        # Pearson Chi-squared statistic for the estimated probabilities
-        # Sum (O - E)^2 / E
-        chisq_val <- sum((Y - mu)^2 / mu)
-      },
-      model = {
-        # Likelihood
-        Y ~ multinomial(N, p)
+  rtmb_model_code <- list(
+    setup = setup_ast,
+    parameters = quote({
+      # Simplex for probabilities (automatically constrained to sum to 1)
+      # We give it meaningful names during rtmb_model() call
+      p <- Dim(R * C, type = "simplex")
+    }),
+    transform = quote({
+      # Derived quantities for reporting
+      mu <- p * N
+      # Pearson Chi-squared statistic for the estimated probabilities
+      # Sum (O - E)^2 / E
+      chisq_val <- sum((Y - mu)^2 / mu)
+    }),
+    model = quote({
+      # Likelihood
+      Y ~ multinomial(N, p)
 
-        # Prior (alpha value is embedded as data at construction time)
-        p ~ dirichlet(rep(dirichlet_alpha, R * C))
-      },
-      generate = G
-    ),
-    list(S = setup_ast, G = gen_ast)
-  ))
+      # Prior (alpha value is embedded as data at construction time)
+      p ~ dirichlet(rep(dirichlet_alpha, R * C))
+    }),
+    generate = gen_ast,
+    env = parent.frame()
+  )
+  class(rtmb_model_code) <- "rtmb_code"
 
   # Create the model object with explicit parameter names for 'p' and 'mu'
   res <- rtmb_model(

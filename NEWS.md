@@ -1,4 +1,4 @@
-# BayesRTMB 0.2.4
+# BayesRTMB 0.3.0
 
 * Added the setup-only `.data` binding for accessing the original object passed
   to `rtmb_model()`. Wrapper-generated setup code now reads matrices and data
@@ -8,11 +8,27 @@
 * Added `std = TRUE` to the regression wrappers. It reports post-hoc
   standardized fixed-effect coefficients as `b_std`, using every column of the
   fixed-effect design matrix, including factor and interaction columns.
+* Added `summary_mcmc()` for summarizing numeric MCMC arrays arranged as
+  iterations by chains by variables. It provides the same summary columns and
+  print format as `MCMC_Fit$summary()`, with parameter and chain selection.
+* Added exported `center_grand_mean()` and `center_within_cluster()` helpers for
+  generated wrapper code and hand-written models.
 * Made regression-wrapper `print_code()` expose data-frame columns instead of a
   nested data/formula payload, with explicit formula preprocessing and readable
   grand-mean and within-cluster centering helpers.
+* Fixed `rtmb_table(x, y, data = ...)` so unquoted column names are resolved
+  from the supplied data frame while preserving reproducible generated code.
 * Updated `rtmb_corr()` normal priors to use the model-specific `mean_sd` and
   `sd_rate` aliases and to add an LKJ prior with `lkj_eta = 1` by default.
+* Corrected Jacobian adjustments for constrained parameters supplied through
+  `fixed`, so elements removed from the free-parameter map no longer contribute
+  to optimization or sampling target densities.
+* Updated the English and Japanese vignettes to document `.data`, unified
+  named data inputs, structural constants in `setup`, and reproducible
+  wrapper-generated code.
+
+# BayesRTMB 0.2.4
+
 * Allowed `rtmb_lm()`, `rtmb_glm()`, `rtmb_lmer()`, and `rtmb_glmer()` to
   resolve bare variable names from the formula environment when `data` is
   omitted. Formulas using `$`, `[[`, or `.` continue to require explicit data.

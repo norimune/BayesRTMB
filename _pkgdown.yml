@@ -149,6 +149,7 @@ reference:
   - test_info
   - sort_loadings
   - read_mcmc_csv
+  - summary_mcmc
 
 - title: "Math and Transformation Functions"
   desc: "Functions used within rtmb_code for stability and transformations."
@@ -172,6 +173,8 @@ reference:
   - to_centered_tri
   - sum_to_zero
   - stz_basis
+  - center_grand_mean
+  - center_within_cluster
 
 - title: "Classes"
   contents:

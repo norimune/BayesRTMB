@@ -129,7 +129,7 @@ summary_mcmc <- function(draws, pars = NULL, chains = NULL,
   }
 
   if (!is.null(max_rows)) {
-    target_idx <- head(target_idx, max_rows)
+    target_idx <- utils::head(target_idx, max_rows)
   }
 
   result <- vector("list", length(target_idx))

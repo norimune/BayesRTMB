@@ -343,6 +343,10 @@ test_that("wrapper inputs supplied separately can be rebuilt from one data objec
   table_print <- capture.output(table_model$print_code())
   expect_true(any(grepl("tab <- table(.data$x, .data$y)", table_print, fixed = TRUE)))
 
+  table_dat <- data.frame(first = table_x, second = table_y)
+  table_data_model <- rtmb_table(first, second, data = table_dat)
+  expect_equal(table_data_model$data$Y, as.vector(table(table_x, table_y)))
+
   table_matrix <- matrix(c(4, 2, 1, 5), nrow = 2)
   matrix_table_model <- rtmb_table(table_matrix)
   matrix_table_code <- matrix_table_model$code
