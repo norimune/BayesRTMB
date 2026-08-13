@@ -93,13 +93,41 @@ model = {
 In other words, `Y ~ normal(mu, sigma)` and `lp <- lp + normal_lpdf(Y, mu, sigma)` are two ways to write the same model. The `~` syntax is usually easier to read, while `lp <- lp + ..._lpdf(...)` is useful when you need to build a custom likelihood. `lp` is reserved for accumulating log probability, so do not declare it in the `parameters` block or use it as an ordinary working variable.
 
 ### 1-3. setup block
-This block is executed exactly once before the model computations begin. It is primarily used to extract data sizes (number of rows/columns) as variables from the `data` list passed from R, and to create constants required for computations.
+This block is executed exactly once before the model computations begin. It is primarily used to extract data sizes (number of rows/columns), prepare model variables, and create constants required for computations.
+
+The reserved name `.data` refers to the original object supplied to the `data` argument of `rtmb_model()`. It can therefore be used with a matrix or data frame directly, or with elements of a named list. The `.data` binding is read-only, is available only while `setup` is evaluated, and is not retained in the model data afterward.
 
 **Example Code:**
 ```{r eval=FALSE}
 setup = {
-  N <- length(Y)  # Get the sample size of the observed data
-  P <- ncol(X)    # Get the number of columns in the design matrix (number of predictors)
+  # For data = list(Y = y, X = x)
+  Y <- as.numeric(.data$Y)
+  X <- as.matrix(.data$X)
+  N <- length(Y)
+  P <- ncol(X)
+}
+```
+
+When the object passed to `data` is itself a matrix or data frame, use `as.matrix(.data)`:
+
+```{r eval=FALSE}
+setup = {
+  Y <- as.matrix(.data)
+  N <- nrow(Y)
+  P <- ncol(Y)
+}
+```
+
+Columns of a data frame and elements of a named list also remain available directly by name inside `setup`. Using `.data` is useful when the generated code should show explicitly which values came from the original input object.
+
+For common data-only centering operations, BayesRTMB provides
+`center_grand_mean()` and `center_within_cluster()`. These helpers can be used
+inside `setup` as well as in ordinary R code.
+
+```{r eval=FALSE}
+setup = {
+  x_gmc <- center_grand_mean(.data$x)
+  x_cwc <- center_within_cluster(.data$x, .data$group)
 }
 ```
 

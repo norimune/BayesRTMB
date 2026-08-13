@@ -88,13 +88,15 @@ Not every block is required. The minimal model usually needs only `parameters` a
 
 ## data
 
-The `data` block declares data names used by the model. `rtmb_model()` checks whether these names exist in the supplied data list.
+The optional `data` block declares named values used by the model. When it is present, `rtmb_model()` checks that these names exist in the supplied named input.
 
 ## setup
 
 The `setup` block is evaluated once before model evaluation. It is the right place to compute data dimensions, design matrices, centered predictors, group indices, and constants used later in the model.
 
-Wrapper functions often place preprocessing in `setup` so that `print_code()` shows enough information to reproduce the model.
+Named list elements and data-frame columns are available directly by name during `setup`. In addition, the read-only reserved name `.data` refers to the original object supplied to `rtmb_model(data = ...)`, including a matrix, data frame, or named list. Variables created or updated by `setup` are retained as internal model data; `.data` itself is removed when setup finishes.
+
+Wrapper functions place preprocessing in `setup` so that `print_code()` shows enough information to reproduce the model. A wrapper with several data-like arguments combines them into one named list, producing code such as `.data$x` or `.data$sets`. Structural options such as the number of factors are written directly into `setup` as constants rather than being hidden among the observations.
 
 ## parameters
 

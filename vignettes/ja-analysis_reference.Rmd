@@ -97,9 +97,9 @@ df <- debate
 
 code <- rtmb_code(
   setup = {
-    # data frameの列を、モデル内で使う変数名に結び付ける
-    Y <- sat
-    X <- talk
+    # 元のdata frameから、モデル内で使う変数を明示的に取り出す
+    Y <- .data$sat
+    X <- .data$talk
 
     # setupでは、AD対象外の前処理や補助関数の定義もできる
     center <- function(x) x - mean(x)
@@ -127,7 +127,7 @@ mdl <- rtmb_model(
 )
 ```
 
-この例では、`data = df` により `df$sat` や `df$talk` が `setup` 内で参照可能になります。`setup` は、欠測処理、index作成、デザイン行列の作成、補助関数の定義など、モデル計算の前に一度だけ決めたい処理を書く場所です。
+この例では、`data = df` により元のdata frameが `.data` として参照可能になり、`.data$sat` や `.data$talk` をモデル内の変数へ明示的に結び付けられます。data frameの列は、これまでどおり列名だけで直接参照することもできます。`setup` は、欠測処理、index作成、デザイン行列の作成、補助関数の定義など、モデル計算の前に一度だけ決めたい処理を書く場所です。
 
 推定後は、fit objectに対して `summary()`、`estimate()`、`diagnose()`、`draws()` などを使います。
 
@@ -381,6 +381,19 @@ print(d)
 | treedepthに達する       | 1回の遷移が長くなっています。`max_treedepth` を上げる前に、パラメータ化やスケーリングを確認します。           |
 | acceptanceが低い        | ステップサイズが大きすぎる可能性があります。`delta` を上げるか、モデルのスケールを確認します。                |
 | bridge samplingが不安定 | MCMCの混合、proper prior、bridge samplingのESSとerrorを確認します。                                           |
+
+### 一般的なMCMC配列を要約する
+
+`summary_mcmc()`を使うと、iteration、chain、variableの順に並んだ一般的な数値3次元配列に、`MCMC_Fit$summary()`と同じ要約列と表示形式を適用できます。`MCMC_Fit`オブジェクトや、ほかのMCMCパッケージのclassは必要ありません。
+
+```{r}
+draw_array <- fit_mcmc$draws(pars = "b")
+
+summary_mcmc(draw_array)
+summary_mcmc(draw_array, chains = 1:2, max_rows = NULL)
+```
+
+`pars`には、`"b[1]"`のような完全な変数名または`"b"`のような基本名を指定できます。先頭に`"-"`を付けると、その変数を除外できます。
 
 ## 4.4 transformed_draws()とgenerated_quantities()
 
@@ -1105,7 +1118,7 @@ bf <- fit_mcmc$bayes_factor(
 | `model`      | likelihoodとprior                                     | AD対象。log posteriorを作る            |
 | `generate`   | posterior prediction、log_lik、推定後だけ必要な派生量 | 推定後にdrawごとに計算                 |
 
-`rtmb_model(data = df, code = code)` のようにdata frameを渡した場合、data frameの列名を `setup` 内で直接参照できます。`setup` は、外から渡されたデータとモデルコード内の変数名を結び付ける場所でもあります。
+`rtmb_model(data = df, code = code)` のようにdata frameを渡した場合、元のdata frameは `.data` で参照でき、列名を `setup` 内で直接参照することもできます。`setup` は、外から渡されたデータとモデルコード内の変数名を結び付ける場所でもあります。
 
 基本形は次の通りです。
 
@@ -1114,8 +1127,8 @@ df <- debate
 
 code <- rtmb_code(
   setup = {
-    Y <- sat
-    X <- talk
+    Y <- .data$sat
+    X <- .data$talk
     N <- length(Y)
   },
   parameters = {
@@ -1165,6 +1178,10 @@ setup = {
 ```
 
 `setup` はADテープに記録されません。欠測位置、index、定数、デザイン行列の作成などに向いています。
+
+読み取り専用の予約名 `.data` は、`rtmb_model(data = ...)` に渡した元のオブジェクトを参照し、`setup` の評価中だけ存在します。行列やdata frameなら `Y <- as.matrix(.data)`、名前付きlistなら `S <- as.matrix(.data$sets)` のように書けます。
+
+ラッパー関数が生成するコードも同じ規則に従います。データに相当する引数が複数ある場合は、内部で1つの名前付きlistにまとめられます。たとえば、生成コードに `.data$x` と `.data$y` があれば、`data = list(x = x, y = y)` として再現できます。一方、因子数などの構造設定は観測データに混ぜず、`nfactors <- 5` のような定数として生成コードの `setup` に表示されます。
 
 ## 10.2 transformに置くべき処理
 
