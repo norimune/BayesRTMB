@@ -16,6 +16,12 @@
 #' @param fixed A named list of parameter values to fix (optional).
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param WAIC Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.
+#' @param gmc Character vector naming predictors to grand-mean center, or
+#'   `"all"` to center all numeric predictors used by the mediation equations.
+#' @param centering Alias for `gmc`.
+#' @param cwc Centering-within-cluster specification. Use, for example,
+#'   `list(cluster = ID, pars = c("X", "M"))` or `list(ID, "X")`.
+#'   Cluster means are not added automatically.
 #' @param ... Reserved; unused arguments are rejected.
 #'
 #' @details
@@ -29,8 +35,16 @@
 #' are estimated jointly. Random slopes, multiple random-effect terms within an
 #' equation, and different grouping variables across equations are not yet
 #' supported.
-#' The mediation-specific classical bootstrap is currently available only for
-#' models without random effects.
+#' The mediation-specific classical bootstrap is currently unavailable for
+#' random-intercept and CWC models.
+#'
+#' `gmc` (or its alias `centering`) and `cwc` are applied to predictor uses of
+#' the selected variables before each equation's model matrix is constructed.
+#' Their response uses remain on the original scale. Thus, if `M` is the
+#' response in one equation and a predictor in another, `cwc = list(ID, "M")`
+#' centers `M` only in the latter role. When both GMC and CWC target the same
+#' variable, GMC is applied first. Between-cluster means must be created by the
+#' user and included explicitly in the formulas.
 #'
 #' \strong{Uncertainty Estimation}:
 #' When using `$optimize(ci_method = "sampling")`, the function provides asymmetric
@@ -42,9 +56,11 @@
 #' @export
 rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_flat(),
                            y_range = NULL, fixed = NULL, view = NULL,
-                           WAIC = FALSE, ...) {
+                           WAIC = FALSE, gmc = NULL, centering = NULL,
+                           cwc = NULL, ...) {
 
   .check_unused_dots(..., .fn = "rtmb_mediation()")
+  cwc_expr <- if (base::missing(cwc)) quote(NULL) else substitute(cwc)
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
   n_eq <- length(formula)
@@ -167,8 +183,117 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     )
   }
 
-  setup_vars <- unique(unlist(lapply(formula, all.vars), use.names = FALSE))
-  missing_vars <- setdiff(setup_vars, names(data))
+  if (!is.null(centering)) {
+    if (!is.null(gmc) && !identical(gmc, centering)) {
+      stop(
+        "Specify only one of 'gmc' or 'centering', or use identical values.",
+        call. = FALSE
+      )
+    }
+    gmc <- centering
+  }
+  if (!is.null(gmc) &&
+      (!is.character(gmc) || anyNA(gmc) || any(!nzchar(gmc)))) {
+    stop("'gmc'/'centering' must be a character vector, 'all', or NULL.", call. = FALSE)
+  }
+
+  setup_input_data <- as.data.frame(data)
+  cwc <- .normalize_glmer_cwc_spec(.resolve_glmer_cwc_spec(
+    cwc_expr,
+    parent.frame(),
+    names(setup_input_data)
+  ))
+  cwc <- .match_glmer_cwc_cluster_column(cwc, setup_input_data)
+
+  predictor_vars <- unique(unlist(lapply(fixed_formulas, function(f) {
+    all.vars(f[[3L]], functions = FALSE)
+  }), use.names = FALSE))
+  available_predictors <- intersect(predictor_vars, names(setup_input_data))
+  numeric_predictors <- available_predictors[
+    vapply(setup_input_data[available_predictors], is.numeric, logical(1))
+  ]
+
+  validate_center_targets <- function(targets, option) {
+    targets <- unique(as.character(targets))
+    missing_targets <- setdiff(targets, names(setup_input_data))
+    if (length(missing_targets) > 0L) {
+      stop(
+        "Variable(s) specified in '", option, "' were not found in data: ",
+        paste(missing_targets, collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+    non_predictors <- setdiff(targets, predictor_vars)
+    if (length(non_predictors) > 0L) {
+      stop(
+        "Variable(s) specified in '", option,
+        "' are not predictors in any mediation equation: ",
+        paste(non_predictors, collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+    non_numeric <- targets[!vapply(setup_input_data[targets], is.numeric, logical(1))]
+    if (length(non_numeric) > 0L) {
+      stop(
+        "Only numeric predictors can be centered. Non-numeric variable(s) in '",
+        option, "': ", paste(non_numeric, collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+    targets
+  }
+
+  target_gmc <- character(0)
+  if (!is.null(gmc)) {
+    target_gmc <- if (identical(gmc, "all")) {
+      numeric_predictors
+    } else {
+      validate_center_targets(gmc, "gmc/centering")
+    }
+  }
+
+  target_cwc <- character(0)
+  cwc_cluster_setup_name <- NULL
+  if (!is.null(cwc)) {
+    cluster_var <- cwc$cluster
+    if (is.character(cluster_var) && length(cluster_var) == 1L) {
+      if (!(cluster_var %in% names(setup_input_data))) {
+        stop(
+          "Cluster variable '", cluster_var, "' for CWC was not found in data.",
+          call. = FALSE
+        )
+      }
+      cwc_cluster_setup_name <- cluster_var
+    } else {
+      if (length(cluster_var) != nrow(setup_input_data)) {
+        stop(
+          "A CWC cluster vector must have the same length as the model data (",
+          nrow(setup_input_data), ").",
+          call. = FALSE
+        )
+      }
+      cwc_cluster_setup_name <- ".mediation_cwc_cluster"
+      while (cwc_cluster_setup_name %in% names(setup_input_data)) {
+        cwc_cluster_setup_name <- paste0(cwc_cluster_setup_name, "_")
+      }
+      setup_input_data[[cwc_cluster_setup_name]] <- cluster_var
+    }
+
+    target_cwc <- if (identical(cwc$pars, "all")) {
+      setdiff(numeric_predictors, cwc_cluster_setup_name)
+    } else {
+      validate_center_targets(cwc$pars, "cwc")
+    }
+    cwc <- list(cluster = cwc_cluster_setup_name, pars = target_cwc)
+  }
+
+  setup_vars <- unique(c(
+    unlist(lapply(formula, all.vars), use.names = FALSE),
+    target_gmc,
+    target_cwc,
+    cwc_cluster_setup_name
+  ))
+  missing_vars <- setdiff(setup_vars, names(setup_input_data))
   if (length(missing_vars) > 0) {
     stop(
       "The following variables in formula are not found in data: ",
@@ -176,8 +301,19 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
       call. = FALSE
     )
   }
-  setup_df <- stats::na.omit(as.data.frame(data)[, setup_vars, drop = FALSE])
+  setup_df <- stats::na.omit(setup_input_data[, setup_vars, drop = FALSE])
   class(setup_df) <- c("rtmb_setup_df", class(setup_df))
+
+  predictor_df <- setup_df
+  for (name in target_gmc) {
+    predictor_df[[name]] <- center_grand_mean(predictor_df[[name]])
+  }
+  if (length(target_cwc) > 0L) {
+    cluster_id <- setup_df[[cwc_cluster_setup_name]]
+    for (name in target_cwc) {
+      predictor_df[[name]] <- center_within_cluster(predictor_df[[name]], cluster_id)
+    }
+  }
 
   N <- nrow(setup_df)
   num_groups <- 0L
@@ -195,12 +331,13 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     }
   }
 
-  model_data <- data
+  model_data <- setup_input_data
   resp_names <- character(n_eq)
   X_list <- list()
   X_colnames <- list()
   half_d_y_values <- vector("list", n_eq)
   mid_y_values <- vector("list", n_eq)
+  has_predictor_centering <- length(target_gmc) > 0L || length(target_cwc) > 0L
 
   # 1. Parse Formulas and Prepare Data
   for (i in 1:n_eq) {
@@ -209,7 +346,11 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     y_name <- as.character(formula[[i]][[2]])
     resp_names[i] <- y_name
 
-    X_mat <- model.matrix(f, data = mf)
+    X_mat <- if (has_predictor_centering) {
+      model.matrix(stats::delete.response(stats::terms(f)), data = predictor_df)
+    } else {
+      model.matrix(f, data = mf)
+    }
     cols <- colnames(X_mat)
     cols[cols == "(Intercept)"] <- "Intercept"
     X_colnames[[i]] <- cols
@@ -247,6 +388,33 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     quote(N <- nrow(df))
   )
 
+  if (has_predictor_centering) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- quote(predictor_df <- df)
+  }
+  if (length(target_gmc) > 0L) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- "# Grand-mean centering of predictors"
+    for (name in target_gmc) {
+      target <- bquote(predictor_df[[.(name)]])
+      center_call <- as.call(list(as.name("center_grand_mean"), target))
+      setup_exprs[[length(setup_exprs) + 1L]] <- as.call(list(
+        as.name("<-"), target, center_call
+      ))
+    }
+  }
+  if (length(target_cwc) > 0L) {
+    setup_exprs[[length(setup_exprs) + 1L]] <- "# Centering predictors within cluster"
+    cluster_expr <- bquote(df[[.(cwc_cluster_setup_name)]])
+    for (name in target_cwc) {
+      target <- bquote(predictor_df[[.(name)]])
+      center_call <- as.call(list(
+        as.name("center_within_cluster"), target, cluster_expr
+      ))
+      setup_exprs[[length(setup_exprs) + 1L]] <- as.call(list(
+        as.name("<-"), target, center_call
+      ))
+    }
+  }
+
   if (has_random) {
     setup_exprs[[length(setup_exprs) + 1L]] <-
       bquote(mediation_group <- droplevels(as.factor(df[[.(group_var)]])))
@@ -264,7 +432,17 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
 
     setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mf_name) <- model.frame(.(formula_i), df))
     setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Y_name) <- as.numeric(model.response(.(mf_name))))
-    setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(X_name) <- model.matrix(.(formula_i), .(mf_name)))
+    if (has_predictor_centering) {
+      setup_exprs[[length(setup_exprs) + 1]] <- bquote(
+        .(X_name) <- model.matrix(
+          stats::delete.response(stats::terms(.(formula_i))),
+          predictor_df
+        )
+      )
+    } else {
+      setup_exprs[[length(setup_exprs) + 1]] <-
+        bquote(.(X_name) <- model.matrix(.(formula_i), .(mf_name)))
+    }
   }
 
   for (i in 1:n_eq) {
@@ -674,7 +852,10 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
       has_random = has_random,
       random_equations = random_eq,
       group = group_var,
-      random_structure = if (has_random) "intercept" else NULL
+      random_structure = if (has_random) "intercept" else NULL,
+      gmc = target_gmc,
+      centering = target_gmc,
+      cwc = cwc
     )
   )
 

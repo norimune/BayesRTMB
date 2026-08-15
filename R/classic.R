@@ -439,9 +439,17 @@ Classic_Fit <- R6::R6Class(
           call. = FALSE
         )
       }
+      if (!is.null(med_info$cwc)) {
+        stop(
+          "The mediation bootstrap does not yet support CWC models because ",
+          "cluster-level resampling is required.",
+          call. = FALSE
+        )
+      }
       formula <- med_info$formula %||% self$model$formula
       family <- med_info$family %||% self$model$family %||% "gaussian"
       view <- med_info$view %||% self$model$view
+      centering <- med_info$centering %||% med_info$gmc
       dat <- self$model$raw_data
 
       if (is.null(formula) || is.null(dat)) {
@@ -459,7 +467,7 @@ Classic_Fit <- R6::R6Class(
       boot_mat <- matrix(NA_real_, nrow = n_boot, ncol = length(target_names))
       colnames(boot_mat) <- target_names
       ok <- rep(FALSE, n_boot)
-      fast_boot <- use_fast_mediation_bootstrap(family)
+      fast_boot <- use_fast_mediation_bootstrap(family) && length(centering) == 0L
 
       progress_mode <- .rtmb_resolve_progress("auto")
       .rtmb_progress_line(
@@ -489,7 +497,8 @@ Classic_Fit <- R6::R6Class(
               data = dat_b,
               family = family,
               prior = prior_flat(),
-              view = view
+              view = view,
+              centering = centering
             )
             boot_fit <- boot_mdl$classic()
             extract_estimates(boot_fit)

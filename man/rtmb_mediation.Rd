@@ -13,6 +13,9 @@ rtmb_mediation(
   fixed = NULL,
   view = NULL,
   WAIC = FALSE,
+  gmc = NULL,
+  centering = NULL,
+  cwc = NULL,
   ...
 )
 }
@@ -36,6 +39,15 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 
 \item{WAIC}{Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.}
 
+\item{gmc}{Character vector naming predictors to grand-mean center, or
+`"all"` to center all numeric predictors used by the mediation equations.}
+
+\item{centering}{Alias for `gmc`.}
+
+\item{cwc}{Centering-within-cluster specification. Use, for example,
+`list(cluster = ID, pars = c("X", "M"))` or `list(ID, "X")`.
+Cluster means are not added automatically.}
+
 \item{...}{Reserved; unused arguments are rejected.}
 }
 \value{
@@ -57,8 +69,16 @@ random intercepts must use the same grouping variable and their correlations
 are estimated jointly. Random slopes, multiple random-effect terms within an
 equation, and different grouping variables across equations are not yet
 supported.
-The mediation-specific classical bootstrap is currently available only for
-models without random effects.
+The mediation-specific classical bootstrap is currently unavailable for
+random-intercept and CWC models.
+
+`gmc` (or its alias `centering`) and `cwc` are applied to predictor uses of
+the selected variables before each equation's model matrix is constructed.
+Their response uses remain on the original scale. Thus, if `M` is the
+response in one equation and a predictor in another, `cwc = list(ID, "M")`
+centers `M` only in the latter role. When both GMC and CWC target the same
+variable, GMC is applied first. Between-cluster means must be created by the
+user and included explicitly in the formulas.
 
 \strong{Uncertainty Estimation}:
 When using `$optimize(ci_method = "sampling")`, the function provides asymmetric

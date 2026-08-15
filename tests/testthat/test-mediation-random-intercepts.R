@@ -78,3 +78,75 @@ test_that("mediation rejects unsupported random-effect structures", {
     "at most one random-effect term"
   )
 })
+
+test_that("mediation centers predictor uses without changing responses", {
+  dat <- make_mediation_group_data()
+  model <- rtmb_mediation(
+    list(m ~ x, y ~ x + m),
+    data = dat,
+    centering = "x",
+    cwc = list(id, "m")
+  )
+
+  expect_equal(as.numeric(model$data$Y_1), dat$m)
+  expect_equal(
+    as.numeric(model$data$X_1[, "x"]),
+    center_grand_mean(dat$x)
+  )
+  expect_equal(
+    as.numeric(model$data$X_2[, "m"]),
+    center_within_cluster(dat$m, dat$id)
+  )
+  transform_text <- paste(deparse(model$code$transform), collapse = "\n")
+  expect_match(transform_text, "IE_x_m_y")
+  expect_identical(model$extra$mediation$centering, "x")
+  expect_identical(
+    model$extra$mediation$cwc,
+    list(cluster = "id", pars = "m")
+  )
+
+  printed <- capture.output(model$print_code())
+  expect_true(any(grepl("center_grand_mean", printed, fixed = TRUE)))
+  expect_true(any(grepl("center_within_cluster", printed, fixed = TRUE)))
+
+  rebuilt_code <- model$code
+  rebuilt_code$setup_env <- NULL
+  rebuilt <- rtmb_model(
+    data = dat,
+    code = rebuilt_code,
+    init = model$init,
+    silent = TRUE
+  )
+  expect_equal(rebuilt$data$X_1, model$data$X_1)
+  expect_equal(rebuilt$data$X_2, model$data$X_2)
+})
+
+test_that("mediation validates centering specifications", {
+  dat <- make_mediation_group_data()
+
+  expect_error(
+    rtmb_mediation(
+      list(m ~ x, y ~ x + m),
+      data = dat,
+      gmc = "x",
+      centering = "m"
+    ),
+    "Specify only one"
+  )
+  expect_error(
+    rtmb_mediation(
+      list(m ~ x, y ~ x + m),
+      data = dat,
+      cwc = list(id, "missing_variable")
+    ),
+    "were not found in data"
+  )
+  expect_error(
+    rtmb_mediation(
+      list(m ~ x, y ~ x + m),
+      data = dat,
+      cwc = list(id, "id")
+    ),
+    "not predictors"
+  )
+})

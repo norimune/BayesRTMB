@@ -4,6 +4,10 @@
   intercept can be included in one equation or in multiple equations; random
   intercepts sharing a grouping variable are modeled jointly with an estimated
   correlation matrix.
+* Added grand-mean centering (`gmc`/`centering`) and centering within cluster
+  (`cwc`) to `rtmb_mediation()`. Centering is applied to predictor uses while
+  preserving response variables on their original scale; cluster means remain
+  user-specified model terms.
 * Added the setup-only `.data` binding for accessing the original object passed
   to `rtmb_model()`. Wrapper-generated setup code now reads matrices and data
   frames directly, or reads related inputs such as responses, IDs, covariates,
