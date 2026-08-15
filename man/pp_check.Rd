@@ -49,5 +49,7 @@ the likelihood's \code{_lpdf} or \code{_lpmf} implementation.
 
 Supplying \code{x} to the fit object's \code{pp_check()} method switches to a
 scatter-based check. Observed outcomes are compared with posterior predictive
-means and 90% predictive intervals along the selected predictor.
+means and 90% predictive intervals along the selected predictor. The reserved
+value \code{x = ".fitted"} uses the posterior predictive mean on the horizontal
+axis for a model-wide calibration check.
 }

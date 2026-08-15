@@ -176,7 +176,12 @@ still use every term in the fitted model; `x` only selects the horizontal axis.
 
 ```{r eval=FALSE}
 fit_lm$pp_check(x = "talk", draws = 100, seed = 123)
+fit_lm$pp_check(x = ".fitted", draws = 100, seed = 123)
 ```
+
+The reserved value `x = ".fitted"` places each observation's posterior
+predictive mean on the horizontal axis. This provides a model-wide calibration
+check and adds an identity line to the plot.
 
 For mixed models, `random` controls the prediction level. `"conditional"`
 uses the fitted group effects, `"population"` omits group effects, and

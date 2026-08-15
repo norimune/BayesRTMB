@@ -32,7 +32,9 @@ posterior_predict.RTMB_Fit_Base <- function(object, ...) {
 #'
 #' Supplying `x` to the fit object's `pp_check()` method switches to a
 #' scatter-based check. Observed outcomes are compared with posterior predictive
-#' means and 90% predictive intervals along the selected predictor.
+#' means and 90% predictive intervals along the selected predictor. The reserved
+#' value `x = ".fitted"` uses the posterior predictive mean on the horizontal
+#' axis for a model-wide calibration check.
 #'
 #' @param object A BayesRTMB fit object.
 #' @param ... Arguments passed to the fit object's `pp_check()` method or to
@@ -648,6 +650,15 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
 .rtmb_resolve_pp_x <- function(fit, x, x_label, observed) {
   if (is.null(x)) return(NULL)
 
+  if (is.character(x) && length(x) == 1L && identical(x, ".fitted")) {
+    return(list(
+      value = NULL,
+      label = "Posterior predictive mean",
+      name = ".fitted",
+      fitted = TRUE
+    ))
+  }
+
   if (is.character(x) && length(x) == 1L && x %in% names(fit$model$data)) {
     x_name <- x
     x <- fit$model$data[[x_name]]
@@ -679,7 +690,7 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
     x_label <- if (is.null(x_name)) "Predictor" else x_name
   }
 
-  list(value = x, label = x_label, name = x_name)
+  list(value = x, label = x_label, name = x_name, fitted = FALSE)
 }
 
 .rtmb_scatter_positions <- function(x) {
@@ -770,6 +781,9 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
       call. = FALSE
     )
   }
+  if (!is.null(x_info) && isTRUE(x_info$fitted)) {
+    x_info$value <- colMeans(yrep, na.rm = TRUE)
+  }
 
   density_type <- attr(yrep, "density")
   if (!is.null(x_info)) {
@@ -800,7 +814,8 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
     stat = stat_info,
     predictor = if (is.null(x_info)) NULL else x_info$value,
     predictor_label = if (is.null(x_info)) NULL else x_info$label,
-    predictor_name = if (is.null(x_info)) NULL else x_info$name
+    predictor_name = if (is.null(x_info)) NULL else x_info$name,
+    predictor_is_fitted = !is.null(x_info) && isTRUE(x_info$fitted)
   )
 
   if (!is.null(stat_info)) {
@@ -897,6 +912,10 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
       graphics::axis(1L, at = positions$ticks, labels = positions$labels)
     }
     interval_col <- grDevices::adjustcolor(predictive_col, alpha.f = 0.28)
+    identity_col <- grDevices::adjustcolor(observed_col, alpha.f = 0.5)
+    if (isTRUE(x$predictor_is_fitted)) {
+      graphics::abline(a = 0, b = 1, col = identity_col, lty = 2L, lwd = 1.2)
+    }
     graphics::segments(plot_x, lower, plot_x, upper, col = interval_col, lwd = 1.2)
     graphics::points(plot_x, center, pch = 4L, col = predictive_col, lwd = 1.2)
     graphics::points(
@@ -906,13 +925,23 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
       col = grDevices::adjustcolor(observed_col, alpha.f = 0.65),
       cex = 0.75
     )
+    legend_text <- c("Observed", "Predictive mean", "90% predictive interval")
+    legend_pch <- c(16L, 4L, NA_integer_)
+    legend_lty <- c(NA_integer_, NA_integer_, 1L)
+    legend_col <- c(observed_col, predictive_col, interval_col)
+    if (isTRUE(x$predictor_is_fitted)) {
+      legend_text <- c(legend_text, "Identity")
+      legend_pch <- c(legend_pch, NA_integer_)
+      legend_lty <- c(legend_lty, 2L)
+      legend_col <- c(legend_col, identity_col)
+    }
     graphics::legend(
       "topright",
-      legend = c("Observed", "Predictive mean", "90% predictive interval"),
-      pch = c(16L, 4L, NA_integer_),
-      lty = c(NA_integer_, NA_integer_, 1L),
-      col = c(observed_col, predictive_col, interval_col),
-      lwd = c(NA, 1.2, 1.2),
+      legend = legend_text,
+      pch = legend_pch,
+      lty = legend_lty,
+      col = legend_col,
+      lwd = rep(1.2, length(legend_text)),
       bty = "n"
     )
     return(invisible(x))

@@ -26,6 +26,13 @@ test_that("regression wrappers provide automatic posterior predictions", {
   scatter_s3 <- pp_check(fit, x = "x", draws = 2, seed = 12, plot = FALSE)
   expect_equal(scatter_s3$type, "scatter")
 
+  fitted_check <- fit$pp_check(
+    x = ".fitted", draws = 20, seed = 12, plot = FALSE
+  )
+  expect_equal(fitted_check$predictor_name, ".fitted")
+  expect_true(fitted_check$predictor_is_fitted)
+  expect_equal(fitted_check$predictor, colMeans(fitted_check$yrep))
+
   predictor <- factor(rep(c("low", "high"), each = 4))
   vector_check <- fit$pp_check(x = predictor, draws = 4, seed = 12, plot = FALSE)
   expect_identical(vector_check$predictor, predictor)

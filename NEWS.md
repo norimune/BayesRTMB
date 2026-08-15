@@ -3,7 +3,7 @@
 * Added posterior predictive simulation and checks through
   `posterior_predict()` and `pp_check()`. Regression wrappers automatically
   support continuous density checks, discrete binned-bar checks, scalar test
-  statistics, predictor-based scatter checks, and conditional,
+  statistics, predictor-based and fitted-value calibration scatter checks, and conditional,
   population-level, or newly simulated random effects. Custom models can
   provide replicated outcomes in a `generate` block.
 * Added random-intercept mediation models to `rtmb_mediation()`. A random

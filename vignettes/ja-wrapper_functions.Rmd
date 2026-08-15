@@ -132,7 +132,11 @@ fit$pp_check(stat = mean, draws = 100, seed = 123)
 
 ```{r}
 fit$pp_check(x = "talk", draws = 100, seed = 123)
+fit$pp_check(x = ".fitted", draws = 100, seed = 123)
 ```
+
+予約値 `x = ".fitted"` を指定すると、各観測の事後予測平均を横軸に置きます。
+モデル全体のキャリブレーションを確認するための表示になり、45度線も追加されます。
 
 階層モデルでは `random` で予測水準を選びます。`"conditional"` は推定された
 集団効果を使い、`"population"` は集団効果を除き、`"simulate"` は各事後標本から
