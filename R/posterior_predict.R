@@ -30,6 +30,10 @@ posterior_predict.RTMB_Fit_Base <- function(object, ...) {
 #' for discrete outcomes. When `type = "auto"`, the display is selected from the
 #' likelihood's `_lpdf` or `_lpmf` implementation.
 #'
+#' Supplying `x` to the fit object's `pp_check()` method switches to a
+#' scatter-based check. Observed outcomes are compared with posterior predictive
+#' means and 90% predictive intervals along the selected predictor.
+#'
 #' @param object A BayesRTMB fit object.
 #' @param ... Arguments passed to the fit object's `pp_check()` method or to
 #'   the plotting method.
@@ -641,7 +645,96 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
   as.numeric(value)
 }
 
+.rtmb_resolve_pp_x <- function(fit, x, x_label, observed) {
+  if (is.null(x)) return(NULL)
+
+  if (is.character(x) && length(x) == 1L && x %in% names(fit$model$data)) {
+    x_name <- x
+    x <- fit$model$data[[x_name]]
+    x_label <- x_name
+  } else {
+    x_name <- NULL
+  }
+
+  if (is.data.frame(x) || is.matrix(x) || is.list(x) ||
+      !(is.numeric(x) || is.integer(x) || is.factor(x) ||
+        is.character(x) || is.logical(x))) {
+    stop(
+      "'x' must be a model-data column name or an atomic vector.",
+      call. = FALSE
+    )
+  }
+  if (length(x) != length(observed)) {
+    if (is.character(x) && length(x) == 1L && is.null(x_name)) {
+      stop("Predictor '", x, "' was not found in the model data.", call. = FALSE)
+    }
+    stop(
+      "'x' has ", length(x), " values, but the observed outcome has ",
+      length(observed), ".",
+      call. = FALSE
+    )
+  }
+
+  if (is.null(x_label) || !nzchar(x_label) || identical(x_label, "x")) {
+    x_label <- if (is.null(x_name)) "Predictor" else x_name
+  }
+
+  list(value = x, label = x_label, name = x_name)
+}
+
+.rtmb_scatter_positions <- function(x) {
+  categorical <- is.factor(x) || is.character(x) || is.logical(x)
+  if (categorical) {
+    factor_x <- if (is.factor(x)) droplevels(x) else factor(x)
+    base <- as.numeric(factor_x)
+    ticks <- seq_along(levels(factor_x))
+    labels <- levels(factor_x)
+  } else {
+    base <- as.numeric(x)
+    ticks <- labels <- NULL
+  }
+
+  position <- base
+  finite <- is.finite(base)
+  unique_values <- sort(unique(base[finite]))
+  spacing <- if (length(unique_values) > 1L) {
+    min(diff(unique_values))
+  } else {
+    1
+  }
+  jitter_width <- spacing * if (categorical) 0.18 else 0.04
+  duplicate_groups <- split(which(finite), base[finite], drop = TRUE)
+  for (indices in duplicate_groups) {
+    if (length(indices) > 1L) {
+      position[indices] <- position[indices] +
+        seq(-jitter_width, jitter_width, length.out = length(indices))
+    }
+  }
+
+  list(
+    position = position,
+    categorical = categorical,
+    ticks = ticks,
+    labels = labels
+  )
+}
+
+.rtmb_scatter_summary <- function(yrep) {
+  center <- colMeans(yrep, na.rm = TRUE)
+  interval <- apply(
+    yrep,
+    2L,
+    stats::quantile,
+    probs = c(0.05, 0.95),
+    na.rm = TRUE,
+    names = FALSE
+  )
+  if (is.null(dim(interval))) interval <- matrix(interval, nrow = 2L)
+  list(center = center, lower = interval[1L, ], upper = interval[2L, ])
+}
+
 .rtmb_pp_check <- function(fit, type = c("auto", "dens", "bars"), stat = NULL,
+                           x = NULL, x_label = NULL,
                            code_expr = NULL, code_env = parent.frame(),
                            observed = NULL, variable = NULL, draws = 100L,
                            seed = NULL,
@@ -651,6 +744,11 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
   random <- match.arg(random)
   spec <- fit$model$extra$posterior_predict
   observed_value <- .rtmb_observed(fit, observed, if (is.null(spec)) list() else spec)
+  stat_info <- .rtmb_resolve_stat(stat, code_env)
+  x_info <- .rtmb_resolve_pp_x(fit, x, x_label, observed_value)
+  if (!is.null(x_info) && !is.null(stat_info)) {
+    stop("'x' and 'stat' cannot be used together.", call. = FALSE)
+  }
 
   yrep <- .rtmb_posterior_predict(
     fit = fit,
@@ -674,8 +772,9 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
   }
 
   density_type <- attr(yrep, "density")
-  stat_info <- .rtmb_resolve_stat(stat, code_env)
-  if (identical(type, "auto")) {
+  if (!is.null(x_info)) {
+    type <- "scatter"
+  } else if (identical(type, "auto")) {
     if (identical(density_type, "lpdf")) {
       type <- "dens"
     } else if (identical(density_type, "lpmf")) {
@@ -698,7 +797,10 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
     density = density_type,
     family = attr(yrep, "family"),
     random = random,
-    stat = stat_info
+    stat = stat_info,
+    predictor = if (is.null(x_info)) NULL else x_info$value,
+    predictor_label = if (is.null(x_info)) NULL else x_info$label,
+    predictor_name = if (is.null(x_info)) NULL else x_info$name
   )
 
   if (!is.null(stat_info)) {
@@ -748,24 +850,87 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
 #' @param x An `rtmb_pp_check` object.
 #' @param main Optional plot title.
 #' @param xlab Optional x-axis label.
+#' @param ylab Optional y-axis label.
 #' @param observed_col Color for observed data.
 #' @param predictive_col Color for predictive data and intervals.
 #' @rdname pp_check
 #' @export
-plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL,
+plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
                                observed_col = "#1B1B1B", predictive_col = "#2C7FB8",
                                ...) {
+  if (!is.null(x$predictor)) {
+    positions <- .rtmb_scatter_positions(x$predictor)
+    prediction <- .rtmb_scatter_summary(x$yrep)
+    valid <- is.finite(positions$position) & is.finite(x$observed) &
+      is.finite(prediction$center) & is.finite(prediction$lower) &
+      is.finite(prediction$upper)
+    if (!any(valid)) {
+      stop("No complete predictor and outcome values are available for plotting.", call. = FALSE)
+    }
+
+    plot_x <- positions$position[valid]
+    observed <- x$observed[valid]
+    center <- prediction$center[valid]
+    lower <- prediction$lower[valid]
+    upper <- prediction$upper[valid]
+    if (is.null(main)) main <- "Posterior predictive scatter"
+    if (is.null(xlab)) xlab <- x$predictor_label
+    if (is.null(ylab)) ylab <- "Outcome"
+    y_range <- range(c(observed, lower, upper), finite = TRUE)
+    if (diff(y_range) == 0) y_range <- y_range + c(-0.5, 0.5)
+    x_range <- range(plot_x, finite = TRUE)
+    if (diff(x_range) == 0) x_range <- x_range + c(-0.5, 0.5)
+
+    graphics::plot(
+      plot_x,
+      observed,
+      type = "n",
+      xlim = x_range,
+      ylim = y_range,
+      xaxt = if (positions$categorical) "n" else "s",
+      main = main,
+      xlab = xlab,
+      ylab = ylab,
+      ...
+    )
+    if (positions$categorical) {
+      graphics::axis(1L, at = positions$ticks, labels = positions$labels)
+    }
+    interval_col <- grDevices::adjustcolor(predictive_col, alpha.f = 0.28)
+    graphics::segments(plot_x, lower, plot_x, upper, col = interval_col, lwd = 1.2)
+    graphics::points(plot_x, center, pch = 4L, col = predictive_col, lwd = 1.2)
+    graphics::points(
+      plot_x,
+      observed,
+      pch = 16L,
+      col = grDevices::adjustcolor(observed_col, alpha.f = 0.65),
+      cex = 0.75
+    )
+    graphics::legend(
+      "topright",
+      legend = c("Observed", "Predictive mean", "90% predictive interval"),
+      pch = c(16L, 4L, NA_integer_),
+      lty = c(NA_integer_, NA_integer_, 1L),
+      col = c(observed_col, predictive_col, interval_col),
+      lwd = c(NA, 1.2, 1.2),
+      bty = "n"
+    )
+    return(invisible(x))
+  }
+
   if (!is.null(x$stat)) {
     values <- x$replicated_stat[is.finite(x$replicated_stat)]
     if (length(values) == 0L) stop("The replicated statistic has no finite values.", call. = FALSE)
     if (is.null(main)) main <- "Posterior predictive statistic"
     if (is.null(xlab)) xlab <- x$stat$label
+    if (is.null(ylab)) ylab <- "Frequency"
     graphics::hist(
       values,
       col = grDevices::adjustcolor(predictive_col, alpha.f = 0.55),
       border = "white",
       main = main,
       xlab = xlab,
+      ylab = ylab,
       ...
     )
     graphics::abline(v = x$observed_stat, col = observed_col, lwd = 2L)
@@ -796,6 +961,7 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL,
     y_max <- max(c(observed_density$y, unlist(lapply(replicated_density, `[[`, "y"))))
     if (is.null(main)) main <- "Posterior predictive density"
     if (is.null(xlab)) xlab <- "Outcome"
+    if (is.null(ylab)) ylab <- "Density"
     graphics::plot(
       observed_density,
       type = "n",
@@ -803,7 +969,7 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL,
       ylim = c(0, y_max * 1.05),
       main = main,
       xlab = xlab,
-      ylab = "Density",
+      ylab = ylab,
       ...
     )
     line_col <- grDevices::adjustcolor(predictive_col, alpha.f = 0.18)
@@ -826,6 +992,7 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL,
   }
   if (is.null(main)) main <- "Posterior predictive distribution"
   if (is.null(xlab)) xlab <- "Outcome"
+  if (is.null(ylab)) ylab <- "Proportion"
   y_max <- max(c(summary$observed, summary$upper), na.rm = TRUE)
   mids <- graphics::barplot(
     summary$observed,
@@ -835,7 +1002,7 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL,
     ylim = c(0, y_max * 1.12),
     main = main,
     xlab = xlab,
-    ylab = "Proportion",
+    ylab = ylab,
     ...
   )
   graphics::segments(mids, summary$lower, mids, summary$upper, col = predictive_col, lwd = 2L)

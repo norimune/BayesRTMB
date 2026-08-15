@@ -14,6 +14,7 @@ pp_check(object, ...)
   x,
   main = NULL,
   xlab = NULL,
+  ylab = NULL,
   observed_col = "#1B1B1B",
   predictive_col = "#2C7FB8",
   ...
@@ -31,6 +32,8 @@ the plotting method.}
 
 \item{xlab}{Optional x-axis label.}
 
+\item{ylab}{Optional y-axis label.}
+
 \item{observed_col}{Color for the observed data.}
 
 \item{predictive_col}{Color for posterior predictive summaries.}
@@ -43,4 +46,8 @@ Compare observed data with replicated outcomes from an estimated BayesRTMB
 model. Density overlays are used for continuous outcomes and binned bar plots
 for discrete outcomes. When \code{type = "auto"}, the display is selected from
 the likelihood's \code{_lpdf} or \code{_lpmf} implementation.
+
+Supplying \code{x} to the fit object's \code{pp_check()} method switches to a
+scatter-based check. Observed outcomes are compared with posterior predictive
+means and 90% predictive intervals along the selected predictor.
 }

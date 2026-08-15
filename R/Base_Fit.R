@@ -710,6 +710,8 @@ RTMB_Fit_Base <- R6::R6Class(
     #'   uses the observation likelihood's `_lpdf` or `_lpmf` implementation.
     #' @param stat Optional scalar statistic function, or its name. When supplied,
     #'   the replicated statistic distribution is compared with its observed value.
+    #' @param x Optional predictor used for a scatter-based check. Supply a column
+    #'   name from the model data or a vector with one value per observation.
     #' @param code Optional custom generate block; see `posterior_predict()`.
     #' @param observed Optional observed outcome or its name in model data.
     #' @param variable Name of the replicated quantity returned by `code`.
@@ -721,16 +723,19 @@ RTMB_Fit_Base <- R6::R6Class(
     #' @param plot Logical; draw the check immediately.
     #' @param ... Graphical arguments passed to the plotting method.
     #' @return An `rtmb_pp_check` object, invisibly.
-    pp_check = function(type = c("auto", "dens", "bars"), stat = NULL,
+    pp_check = function(type = c("auto", "dens", "bars"), stat = NULL, x = NULL,
                         code = NULL, observed = NULL, variable = NULL,
                         draws = 100L, seed = NULL,
                         random = c("conditional", "population", "simulate"),
                         chains = NULL, best_chains = NULL, plot = TRUE, ...) {
       code_expr <- if (missing(code)) NULL else substitute(code)
+      x_label <- if (missing(x)) NULL else paste(deparse(substitute(x)), collapse = "")
       .rtmb_pp_check(
         fit = self,
         type = type,
         stat = stat,
+        x = x,
+        x_label = x_label,
         code_expr = code_expr,
         code_env = parent.frame(),
         observed = observed,

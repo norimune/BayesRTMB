@@ -169,6 +169,15 @@ fit_lm$pp_check(type = "auto", draws = 100, seed = 123)
 fit_lm$pp_check(stat = mean, draws = 100, seed = 123)
 ```
 
+Supply `x` as a model-data column name, or as a vector with one value per
+observation, for a scatter-based check. Observed outcomes are shown together
+with posterior predictive means and 90% predictive intervals. The predictions
+still use every term in the fitted model; `x` only selects the horizontal axis.
+
+```{r eval=FALSE}
+fit_lm$pp_check(x = "talk", draws = 100, seed = 123)
+```
+
 For mixed models, `random` controls the prediction level. `"conditional"`
 uses the fitted group effects, `"population"` omits group effects, and
 `"simulate"` draws new group effects from each posterior draw.

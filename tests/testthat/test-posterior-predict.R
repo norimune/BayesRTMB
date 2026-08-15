@@ -18,6 +18,31 @@ test_that("regression wrappers provide automatic posterior predictions", {
   expect_s3_class(check, "rtmb_pp_check")
   expect_equal(check$type, "dens")
 
+  scatter_check <- fit$pp_check(x = "x", draws = 20, seed = 12, plot = FALSE)
+  expect_equal(scatter_check$type, "scatter")
+  expect_equal(scatter_check$predictor, dat$x)
+  expect_equal(scatter_check$predictor_label, "x")
+
+  scatter_s3 <- pp_check(fit, x = "x", draws = 2, seed = 12, plot = FALSE)
+  expect_equal(scatter_s3$type, "scatter")
+
+  predictor <- factor(rep(c("low", "high"), each = 4))
+  vector_check <- fit$pp_check(x = predictor, draws = 4, seed = 12, plot = FALSE)
+  expect_identical(vector_check$predictor, predictor)
+
+  expect_error(
+    fit$pp_check(x = "missing_predictor", draws = 2, plot = FALSE),
+    "was not found"
+  )
+  expect_error(
+    fit$pp_check(x = 1:3, draws = 2, plot = FALSE),
+    "observed outcome has"
+  )
+  expect_error(
+    fit$pp_check(x = "x", stat = mean, draws = 2, plot = FALSE),
+    "cannot be used together"
+  )
+
   stat_check <- fit$pp_check(stat = mean, draws = 4, seed = 12, plot = FALSE)
   expect_length(stat_check$replicated_stat, 4)
   expect_length(stat_check$observed_stat, 1)
