@@ -18,6 +18,9 @@
   grand-mean and within-cluster centering helpers.
 * Fixed `rtmb_table(x, y, data = ...)` so unquoted column names are resolved
   from the supplied data frame while preserving reproducible generated code.
+* Simplified factor-analysis and multidimensional-unfolding `print_code()`
+  output by assigning `nfactors` and `ndim` values directly to the internal
+  constants `K` and `D`.
 * Updated `rtmb_corr()` normal priors to use the model-specific `mean_sd` and
   `sd_rate` aliases and to add an LKJ prior with `lkj_eta = 1` by default.
 * Corrected Jacobian adjustments for constrained parameters supplied through

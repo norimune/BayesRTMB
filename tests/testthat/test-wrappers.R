@@ -158,7 +158,8 @@ test_that("FA and IRT wrapper code can be rebuilt from the original data", {
   expect_equal(fa_rebuilt$data$K, 1)
   fa_print <- capture.output(fa_model$print_code())
   expect_true(any(grepl("Y <- as.matrix\\(\\.data\\)", fa_print)))
-  expect_true(any(grepl("nfactors <- 1", fa_print, fixed = TRUE)))
+  expect_true(any(grepl("K <- 1", fa_print, fixed = TRUE)))
+  expect_false(any(grepl("nfactors <-", fa_print, fixed = TRUE)))
 
   irt_dat <- matrix(
     c(
@@ -956,6 +957,9 @@ test_that("rtmb_mdu supports hierarchical lambda for choice models", {
   expect_equal(mdl$extra$distance, "euclidean")
   expect_true(all(c("lambda_mu", "sigma_lambda", "lambda_raw") %in% names(mdl$par_list)))
   expect_true("lambda_raw" %in% names(mdl$par_names))
+  choice_print <- capture.output(mdl$print_code())
+  expect_true(any(grepl("D <- 1", choice_print, fixed = TRUE)))
+  expect_false(any(grepl("ndim <-", choice_print, fixed = TRUE)))
   expect_error(rtmb_mdu(matrix(rnorm(20), nrow = 5), lambda = "random"), "only available")
 })
 
@@ -992,7 +996,8 @@ test_that("rating and MDS wrapper code can be rebuilt from the original data", {
   expect_equal(rating_rebuilt$data$D, 1)
   rating_print <- capture.output(rating_model$print_code())
   expect_true(any(grepl("Y <- as.matrix\\(\\.data\\)", rating_print)))
-  expect_true(any(grepl("ndim <- 1", rating_print, fixed = TRUE)))
+  expect_true(any(grepl("D <- 1", rating_print, fixed = TRUE)))
+  expect_false(any(grepl("ndim <-", rating_print, fixed = TRUE)))
 
   coords <- matrix(rnorm(10), nrow = 5, ncol = 2)
   distance_dat <- as.matrix(dist(coords))
@@ -1013,6 +1018,9 @@ test_that("rating and MDS wrapper code can be rebuilt from the original data", {
 
   expect_equal(mds_rebuilt$data$Y, mds_model$data$Y)
   expect_equal(mds_rebuilt$data$D, 1)
+  mds_print <- capture.output(mds_model$print_code())
+  expect_true(any(grepl("D <- 1", mds_print, fixed = TRUE)))
+  expect_false(any(grepl("ndim <-", mds_print, fixed = TRUE)))
 })
 
 test_that("rotate can use a principal-axis reference", {

@@ -1,3 +1,12 @@
+## Test environments
+
+* local Windows 11 x86_64-w64-mingw32, R 4.5.3:
+  0 errors, 0 warnings, 0 notes
+* win-builder, R-release 4.6.1 x86_64-w64-mingw32:
+  Status: OK
+* win-builder, R-devel 2026-08-12 (r90394) x86_64-w64-mingw32:
+  Status: OK
+
 ## Reverse dependencies
 
 There are no known CRAN reverse dependencies.

@@ -132,11 +132,10 @@ rtmb_fa <- function(data, nfactors = 1, rotate = NULL, score = FALSE,
     setup_exprs[[length(setup_exprs) + 1L]] <- quote(Y <- na.omit(Y))
   }
   setup_exprs <- c(setup_exprs, list(
-    "# Number of factors",
-    bquote(nfactors <- .(K)),
+    "# Number of factors (nfactors)",
+    bquote(K <- .(K)),
     quote(N <- nrow(Y)),
-    quote(J <- ncol(Y)),
-    quote(K <- nfactors)
+    quote(J <- ncol(Y))
   ))
   if (missing == "listwise") {
     setup_exprs[[length(setup_exprs) + 1L]] <- quote(Y_bar <- colMeans(Y))

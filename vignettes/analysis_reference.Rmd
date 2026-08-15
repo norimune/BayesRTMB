@@ -818,7 +818,7 @@ Wrapper-generated code follows the same rule. If a wrapper accepts several
 data-like arguments, it combines them into one named list; code containing
 `.data$x` and `.data$y`, for example, is reproduced with
 `data = list(x = x, y = y)`. Structural options are kept in the generated code
-as explicit constants, such as `nfactors <- 5`, rather than mixed into the
+as explicit internal constants, such as `K <- 5` for `nfactors = 5`, rather than mixed into the
 observations.
 
 ## 10.2 What Belongs In `transform`
