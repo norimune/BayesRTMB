@@ -772,27 +772,24 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     }
   }
 
-  # Calculate specific degrees of freedom for each equation
-  df_map <- list()
-  for (i in 1:n_eq) {
-    df_val <- N - ncol(X_list[[i]])
-    df_map[[paste0("b", i)]] <- df_val
-    df_map[[paste0("sigma", i)]] <- df_val
-  }
-  # For IE/DE/TE, use the DF of the outcome equation
-  for (iv in indeps) {
-    for (m in mediators) {
-      idx_m_resp <- which(resp_names == m)
-      idx_m_pred <- which(sapply(X_colnames, function(x) m %in% x))
-      if (length(idx_m_resp) > 0 && length(idx_m_pred) > 0) {
-        for (dv_idx in idx_m_pred) {
-          if (dv_idx == idx_m_resp) next
-          dv_name <- resp_names[dv_idx]
-          df_dv <- N - ncol(X_list[[dv_idx]])
-          df_map[[paste0("IE_", iv, "_", m, "_", dv_name)]] <- df_dv
-          df_map[[paste0("DE_", iv, "_", dv_name)]] <- df_dv
-          df_map[[paste0("TE_", iv, "_", m, "_", dv_name)]] <- df_dv
-        }
+  equation_df <- vapply(seq_len(n_eq), function(i) {
+    if (family_list[[i]] == "gaussian") {
+      as.numeric(N - qr(X_list[[i]])$rank)
+    } else {
+      Inf
+    }
+  }, numeric(1))
+  names(equation_df) <- paste0("eq", seq_len(n_eq))
+
+  # Fixed Gaussian equations use their own residual df. Derived effects inherit
+  # df from the coefficients that contribute to their delta-method gradient.
+  df_map <- NULL
+  if (!has_random) {
+    df_map <- list()
+    for (i in seq_len(n_eq)) {
+      df_map[[paste0("b", i)]] <- equation_df[[i]]
+      if (family_list[[i]] == "gaussian") {
+        df_map[[paste0("sigma", i)]] <- equation_df[[i]]
       }
     }
   }
@@ -867,10 +864,7 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
 
   mdl$extra$df_map <- df_map
   mdl$extra$effect_names <- effect_names
-  mdl$extra$equation_df <- setNames(
-    vapply(seq_len(n_eq), function(i) N - ncol(X_list[[i]]), numeric(1)),
-    paste0("eq", seq_len(n_eq))
-  )
+  mdl$extra$equation_df <- equation_df
 
   return(mdl)
 }

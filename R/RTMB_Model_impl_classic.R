@@ -20,9 +20,24 @@
 .resolve_classic_settings <- function(self, private, df_method = "auto") {
   type <- self$type %||% "generic"
   has_random_parameters <- any(vapply(self$par_list, function(p) isTRUE(p$random), logical(1)))
+  mediation_families <- if (identical(type, "mediation")) {
+    unlist(
+      self$extra$mediation$family %||% self$family %||% "gaussian",
+      use.names = FALSE
+    )
+  } else {
+    character(0)
+  }
+  mediation_all_gaussian <-
+    length(mediation_families) == 0L || all(mediation_families == "gaussian")
+  mediation_any_gaussian <-
+    length(mediation_families) == 0L || any(mediation_families == "gaussian")
+  use_reml_for_type <-
+    type %in% c("lm", "lmer", "ttest", "corr") ||
+    (identical(type, "mediation") && mediation_all_gaussian)
 
   if (is.numeric(df_method)) {
-    use_reml <- type %in% c("lm", "lmer", "ttest", "corr", "mediation")
+    use_reml <- use_reml_for_type
     return(list(
       use_reml = use_reml,
       use_laplace = use_reml || has_random_parameters,
@@ -49,11 +64,15 @@
     )
   }
 
-  use_reml <- type %in% c("lm", "lmer", "ttest", "corr", "mediation")
+  use_reml <- use_reml_for_type
 
   if (identical(df_method, "auto")) {
-    df_method <- if (type %in% c("lmer")) {
+    df_method <- if (type %in% c("lmer") ||
+                     (identical(type, "mediation") &&
+                      has_random_parameters && mediation_all_gaussian)) {
       "satterthwaite"
+    } else if (identical(type, "mediation") && has_random_parameters) {
+      "inf"
     } else if (type == "ttest") {
       # Satterthwaite for independent unequal-variance t-tests
       if (isFALSE(self$extra$paired) && isFALSE(self$extra$var_equal)) {
@@ -61,7 +80,8 @@
       } else {
         "residual"
       }
-    } else if (type %in% c("lm", "corr", "mediation")) {
+    } else if (type %in% c("lm", "corr") ||
+               (identical(type, "mediation") && mediation_any_gaussian)) {
       "residual"
     } else {
       "inf"
@@ -942,7 +962,8 @@
   )
 
   apply_df_map_to_summary <- function(df) {
-    if (is.null(df) || is.null(self$extra$df_map) || !("df" %in% names(df))) {
+    if (!identical(settings$df_method, "residual") ||
+        is.null(df) || is.null(self$extra$df_map) || !("df" %in% names(df))) {
       return(df)
     }
     rn <- rownames(df)

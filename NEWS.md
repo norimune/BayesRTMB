@@ -8,6 +8,11 @@
   (`cwc`) to `rtmb_mediation()`. Centering is applied to predictor uses while
   preserving response variables on their original scale; cluster means remain
   user-specified model terms.
+* Corrected degrees of freedom for classical mediation models. Fixed Gaussian
+  equations now use the rank of their own design matrix, derived effects inherit
+  degrees of freedom from their contributing coefficients, and Gaussian
+  random-intercept mediation models use Satterthwaite degrees of freedom by
+  default.
 * Added the setup-only `.data` binding for accessing the original object passed
   to `rtmb_model()`. Wrapper-generated setup code now reads matrices and data
   frames directly, or reads related inputs such as responses, IDs, covariates,

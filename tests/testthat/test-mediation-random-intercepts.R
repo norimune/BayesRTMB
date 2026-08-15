@@ -150,3 +150,42 @@ test_that("mediation validates centering specifications", {
     "not predictors"
   )
 })
+
+test_that("mediation residual df use equation-specific design ranks", {
+  dat <- make_mediation_group_data()
+  dat$x_copy <- dat$x
+
+  model <- rtmb_mediation(
+    list(m ~ x + x_copy, y ~ x + m),
+    data = dat,
+    prior = prior_flat()
+  )
+
+  expected_df <- c(
+    eq1 = nrow(dat) - qr(model$data$X_1)$rank,
+    eq2 = nrow(dat) - qr(model$data$X_2)$rank
+  )
+
+  expect_equal(model$extra$equation_df, expected_df)
+  expect_equal(model$extra$df_map$b1, expected_df[["eq1"]])
+  expect_equal(model$extra$df_map$b2, expected_df[["eq2"]])
+  expect_equal(model$extra$df_map$sigma1, expected_df[["eq1"]])
+  expect_equal(model$extra$df_map$sigma2, expected_df[["eq2"]])
+  expect_false(any(grepl("^(IE|DE|TE)_", names(model$extra$df_map))))
+})
+
+test_that("random-intercept Gaussian mediation selects Satterthwaite df", {
+  dat <- make_mediation_group_data()
+  model <- rtmb_mediation(
+    list(m ~ x + (1 | id), y ~ x + m + (1 | id)),
+    data = dat,
+    prior = prior_flat()
+  )
+
+  settings <- model$.__enclos_env__$private$.resolve_classic_settings("auto")
+
+  expect_identical(settings$df_method, "satterthwaite")
+  expect_true(settings$use_reml)
+  expect_true(settings$use_laplace)
+  expect_null(model$extra$df_map)
+})
