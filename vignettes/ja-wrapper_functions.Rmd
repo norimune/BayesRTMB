@@ -113,6 +113,29 @@ fit$summary()
 
 このように、モデルの書き方は同じで、推定方法だけを切り替えられます。
 
+# 事後予測チェック
+
+回帰系ラッパーのMAP、MCMC、変分推論の結果では、事後予測データを直接生成できます。
+`type = "auto"` は、観測モデルが `_lpdf` なら密度、`_lpmf` なら棒グラフを使います。
+MCMCと変分推論では事後標本を使います。サンプリング型の標準誤差を保存していない
+MAPでは、MAP点に条件づけて複製データを生成します。
+
+```{r}
+yrep <- fit$posterior_predict(draws = 100, seed = 123)
+fit$pp_check(type = "auto", draws = 100, seed = 123)
+fit$pp_check(stat = mean, draws = 100, seed = 123)
+```
+
+階層モデルでは `random` で予測水準を選びます。`"conditional"` は推定された
+集団効果を使い、`"population"` は集団効果を除き、`"simulate"` は各事後標本から
+新しい集団効果を生成します。
+
+```{r}
+fit_lmer$pp_check(random = "conditional")
+fit_lmer$pp_check(random = "population")
+fit_lmer$pp_check(random = "simulate")
+```
+
 # 頻度主義的分析
 
 `classic()` は、BayesRTMB のラッパー関数を頻度主義的な分析として使うためのメソッドです。

@@ -407,6 +407,32 @@ fit_vb <- mdl_exgaussian$variational()
 fit_vb
 ```
 
+自作モデルでは、推定後に `generate` ブロックを渡して事後予測データを生成できます。
+ブロックは事後標本ごとに1組の複製データを返します。`exgaussian_lpdf()` は
+`_lpdf` で終わるため、`type = "auto"` は連続分布用の密度表示を選びます。
+
+```{r eval=FALSE}
+predict_exgaussian <- rtmb_code(
+  generate = {
+    y_rep <- rnorm(length(Y), mu, sigma) + rexp(length(Y), rate = lambda)
+    report(y_rep)
+  }
+)
+
+yrep <- fit_mcmc$posterior_predict(
+  code = predict_exgaussian,
+  draws = 100,
+  seed = 123
+)
+fit_mcmc$pp_check(
+  code = predict_exgaussian,
+  observed = "Y",
+  type = "auto",
+  draws = 100,
+  seed = 123
+)
+```
+
 WAIC を使いたい場合は、`generate` ブロックで観測ごとの `log_lik` を保存します。そのため、自作した `_lpdf` 関数を `sum = FALSE` で呼び出します。
 
 # 回帰モデル

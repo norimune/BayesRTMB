@@ -311,6 +311,33 @@ fit_vb <- mdl_exgaussian$variational()
 fit_vb
 ```
 
+For a custom model, posterior predictions can be supplied after fitting by
+passing a `generate` block. The block must return one replicated outcome for
+each posterior draw. Because `exgaussian_lpdf()` ends in `_lpdf`, `type =
+"auto"` selects the continuous density check.
+
+```{r eval=FALSE}
+predict_exgaussian <- rtmb_code(
+  generate = {
+    y_rep <- rnorm(length(Y), mu, sigma) + rexp(length(Y), rate = lambda)
+    report(y_rep)
+  }
+)
+
+yrep <- fit_mcmc$posterior_predict(
+  code = predict_exgaussian,
+  draws = 100,
+  seed = 123
+)
+fit_mcmc$pp_check(
+  code = predict_exgaussian,
+  observed = "Y",
+  type = "auto",
+  draws = 100,
+  seed = 123
+)
+```
+
 When WAIC is needed, the `generate` block should save an observation-wise
 `log_lik` by calling the custom `_lpdf` with `sum = FALSE`.
 

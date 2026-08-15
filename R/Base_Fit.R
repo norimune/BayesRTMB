@@ -669,6 +669,82 @@ RTMB_Fit_Base <- R6::R6Class(
       invisible(self)
     },
 
+    #' @description Generate posterior predictive replications.
+    #' @param code Optional `rtmb_code(generate = { ... })` block for custom
+    #'   models. The block should create and report one replicated outcome.
+    #' @param variable Name of the replicated quantity returned by `code`. If
+    #'   omitted, `y_rep` or the only returned quantity is used.
+    #' @param draws Number of predictive draws, or `NULL` to use every available
+    #'   posterior draw.
+    #' @param seed Optional random seed.
+    #' @param random Hierarchical prediction mode: `"conditional"` uses fitted
+    #'   random effects, `"population"` omits them, and `"simulate"` draws new
+    #'   random effects for the observed groups.
+    #' @param chains Optional chains to use.
+    #' @param best_chains Optional number of best chains to use.
+    #' @param observed Optional observed outcome or its name in model data. This
+    #'   is stored as metadata when its length matches a prediction.
+    #' @return A matrix with predictive draws in rows and observations in columns.
+    posterior_predict = function(code = NULL, variable = NULL, draws = 100L,
+                                 seed = NULL,
+                                 random = c("conditional", "population", "simulate"),
+                                 chains = NULL, best_chains = NULL,
+                                 observed = NULL) {
+      code_expr <- if (missing(code)) NULL else substitute(code)
+      .rtmb_posterior_predict(
+        fit = self,
+        code_expr = code_expr,
+        code_env = parent.frame(),
+        variable = variable,
+        draws = draws,
+        seed = seed,
+        random = random,
+        chains = chains,
+        best_chains = best_chains,
+        observed = observed
+      )
+    },
+
+    #' @description Plot a posterior predictive check.
+    #' @param type Plot type: `"dens"`, `"bars"`, or `"auto"`. Automatic mode
+    #'   uses the observation likelihood's `_lpdf` or `_lpmf` implementation.
+    #' @param stat Optional scalar statistic function, or its name. When supplied,
+    #'   the replicated statistic distribution is compared with its observed value.
+    #' @param code Optional custom generate block; see `posterior_predict()`.
+    #' @param observed Optional observed outcome or its name in model data.
+    #' @param variable Name of the replicated quantity returned by `code`.
+    #' @param draws Number of posterior predictive replications.
+    #' @param seed Optional random seed.
+    #' @param random Hierarchical prediction mode; see `posterior_predict()`.
+    #' @param chains Optional chains to use.
+    #' @param best_chains Optional number of best chains to use.
+    #' @param plot Logical; draw the check immediately.
+    #' @param ... Graphical arguments passed to the plotting method.
+    #' @return An `rtmb_pp_check` object, invisibly.
+    pp_check = function(type = c("auto", "dens", "bars"), stat = NULL,
+                        code = NULL, observed = NULL, variable = NULL,
+                        draws = 100L, seed = NULL,
+                        random = c("conditional", "population", "simulate"),
+                        chains = NULL, best_chains = NULL, plot = TRUE, ...) {
+      code_expr <- if (missing(code)) NULL else substitute(code)
+      .rtmb_pp_check(
+        fit = self,
+        type = type,
+        stat = stat,
+        code_expr = code_expr,
+        code_env = parent.frame(),
+        observed = observed,
+        variable = variable,
+        draws = draws,
+        seed = seed,
+        random = random,
+        chains = chains,
+        best_chains = best_chains,
+        plot = plot,
+        ...
+      )
+    },
+
     #' @description Rotate factor loadings and optional factor scores.
     #' @param target Character string specifying the target variable to base the rotation on.
     #' @param linked Character vector of variable names to be rotated in the same direction.

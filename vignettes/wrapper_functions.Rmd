@@ -155,6 +155,30 @@ fit_lm$summary()
 ## Intercept_c   3.43324     0.05333    3.32871    3.53777 
 ```
 
+### Posterior Predictive Checks
+
+Regression wrappers provide posterior predictive simulation directly from a
+MAP, MCMC, or variational fit. `type = "auto"` uses a density overlay for an
+`_lpdf` likelihood and binned bars for an `_lpmf` likelihood.
+MCMC and variational fits use their posterior draws. A MAP fit without
+sampling-based standard errors conditions on the MAP point estimate.
+
+```{r eval=FALSE}
+yrep <- fit_lm$posterior_predict(draws = 100, seed = 123)
+fit_lm$pp_check(type = "auto", draws = 100, seed = 123)
+fit_lm$pp_check(stat = mean, draws = 100, seed = 123)
+```
+
+For mixed models, `random` controls the prediction level. `"conditional"`
+uses the fitted group effects, `"population"` omits group effects, and
+`"simulate"` draws new group effects from each posterior draw.
+
+```{r eval=FALSE}
+fit_lmer$pp_check(random = "conditional")
+fit_lmer$pp_check(random = "population")
+fit_lmer$pp_check(random = "simulate")
+```
+
 ### Standardized Coefficients
 
 Set `std = TRUE` to add post-hoc standardized fixed-effect coefficients as

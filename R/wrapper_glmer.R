@@ -1906,6 +1906,38 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     std = std
   )
 
+  predictive_density <- if (family %in% c(
+    "bernoulli", "binomial", "poisson", "neg_binomial",
+    "ordered", "sequential"
+  )) "lpmf" else "lpdf"
+  predictive_random_terms <- lapply(seq_len(num_bars), function(b) {
+    list(
+      z_name = paste0("Z_mat", suffix(b)),
+      group_name = paste0("group_idx", suffix(b)),
+      effect_name = paste0("r_re", suffix(b)),
+      sd_name = paste0("sd", suffix(b)),
+      corr_name = if (num_ranef_list[[b]] > 1L) paste0("CF_corr", suffix(b)) else NULL,
+      num_groups = num_groups_list[[b]],
+      num_ranef = num_ranef_list[[b]]
+    )
+  })
+  obj$extra$posterior_predict <- list(
+    kind = "glmer",
+    response = "Y",
+    family = family,
+    density = predictive_density,
+    K = K,
+    num_categories = num_categories,
+    has_intercept = has_intercept,
+    use_centering = use_centering,
+    has_offset = !is.null(offset),
+    has_sigma_idx = !is.null(sigma_idx),
+    random_terms = predictive_random_terms,
+    resid_corr = resid_corr,
+    resid_group_name = if (!is.null(resid_corr)) "group_resid" else NULL,
+    resid_time_name = if (!is.null(resid_corr)) "time_resid" else NULL
+  )
+
   fixed_effects <- if (K > 0) "b" else character(0)
   if (has_intercept) {
     fixed_effects <- c(if (use_centering) "Intercept_c" else "Intercept", fixed_effects)
