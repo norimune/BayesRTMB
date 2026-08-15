@@ -17,7 +17,9 @@ rtmb_mediation(
 )
 }
 \arguments{
-\item{formula}{A list of formulas defining the regression paths (e.g., `list(M ~ X, Y ~ X + M)`).}
+\item{formula}{A list of formulas defining the regression paths (e.g.,
+`list(M ~ X, Y ~ X + M)`). Each equation may optionally include one
+random intercept, such as `(1 | ID)`.}
 
 \item{data}{A data frame containing the variables.}
 
@@ -48,6 +50,15 @@ indirect, direct, and total effects.
 The function identifies mediation paths by looking for variables that are
 responses in one equation and predictors in another. Indirect effects are
 calculated as the product of coefficients along these paths (\eqn{a * b}).
+
+Random intercepts may be included in all equations or in only a subset of
+equations. When more than one equation contains a random intercept, all
+random intercepts must use the same grouping variable and their correlations
+are estimated jointly. Random slopes, multiple random-effect terms within an
+equation, and different grouping variables across equations are not yet
+supported.
+The mediation-specific classical bootstrap is currently available only for
+models without random effects.
 
 \strong{Uncertainty Estimation}:
 When using `$optimize(ci_method = "sampling")`, the function provides asymmetric

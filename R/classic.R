@@ -432,6 +432,13 @@ Classic_Fit <- R6::R6Class(
       }
 
       med_info <- self$model$extra$mediation %||% list()
+      if (isTRUE(med_info$has_random)) {
+        stop(
+          "The mediation bootstrap does not yet support random-intercept models. ",
+          "Use MAP or posterior inference for this model.",
+          call. = FALSE
+        )
+      }
       formula <- med_info$formula %||% self$model$formula
       family <- med_info$family %||% self$model$family %||% "gaussian"
       view <- med_info$view %||% self$model$view

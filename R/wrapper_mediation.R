@@ -5,7 +5,9 @@
 #' GLM regression equations. It automatically identifies mediation paths and calculates
 #' indirect, direct, and total effects.
 #'
-#' @param formula A list of formulas defining the regression paths (e.g., `list(M ~ X, Y ~ X + M)`).
+#' @param formula A list of formulas defining the regression paths (e.g.,
+#'   `list(M ~ X, Y ~ X + M)`). Each equation may optionally include one
+#'   random intercept, such as `(1 | ID)`.
 #' @param data A data frame containing the variables.
 #' @param family A single character string or a list of character strings specifying the error distribution
 #'   for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "gaussian".
@@ -20,6 +22,15 @@
 #' The function identifies mediation paths by looking for variables that are
 #' responses in one equation and predictors in another. Indirect effects are
 #' calculated as the product of coefficients along these paths (\eqn{a * b}).
+#'
+#' Random intercepts may be included in all equations or in only a subset of
+#' equations. When more than one equation contains a random intercept, all
+#' random intercepts must use the same grouping variable and their correlations
+#' are estimated jointly. Random slopes, multiple random-effect terms within an
+#' equation, and different grouping variables across equations are not yet
+#' supported.
+#' The mediation-specific classical bootstrap is currently available only for
+#' models without random effects.
 #'
 #' \strong{Uncertainty Estimation}:
 #' When using `$optimize(ci_method = "sampling")`, the function provides asymmetric
@@ -37,13 +48,76 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
 
   if (!is.list(formula)) stop("formula must be a list of formulas (e.g., list(M ~ X, Y ~ X + M)).")
   n_eq <- length(formula)
-
-  # Validate: No random effects allowed in this version
-  for (i in 1:n_eq) {
-    if (any(grepl("\\|", as.character(formula[[i]])))) {
-      stop("Multilevel mediation (random effects) is not yet supported in 'rtmb_mediation'. Please use fixed-effects formulas.")
-    }
+  if (n_eq < 1L || !all(vapply(formula, inherits, logical(1), what = "formula"))) {
+    stop("'formula' must be a non-empty list of formula objects.", call. = FALSE)
   }
+
+  random_bars <- lapply(formula, findbars)
+  n_random_terms <- lengths(random_bars)
+  if (any(n_random_terms > 1L)) {
+    bad <- which(n_random_terms > 1L)
+    stop(
+      "Each mediation equation may contain at most one random-effect term. ",
+      "Equation(s) ", paste(bad, collapse = ", "), " contain more than one.",
+      call. = FALSE
+    )
+  }
+
+  random_eq <- unname(which(n_random_terms == 1L))
+  has_random <- length(random_eq) > 0L
+  group_var <- NULL
+
+  if (has_random) {
+    group_vars <- character(length(random_eq))
+
+    for (j in seq_along(random_eq)) {
+      i <- random_eq[[j]]
+      bar <- random_bars[[i]][[1L]]
+      re_formula <- stats::as.formula(
+        as.call(list(as.name("~"), bar[[2L]])),
+        env = environment(formula[[i]])
+      )
+      re_terms <- stats::terms(re_formula)
+      is_intercept_only <-
+        identical(attr(re_terms, "intercept"), 1L) &&
+        length(attr(re_terms, "term.labels")) == 0L
+
+      if (!is_intercept_only) {
+        stop(
+          "Only random intercepts are currently supported in 'rtmb_mediation'. ",
+          "Use '(1 | group)' in equation ", i, ".",
+          call. = FALSE
+        )
+      }
+
+      group_expr <- bar[[3L]]
+      if (!is.symbol(group_expr)) {
+        stop(
+          "The grouping variable in equation ", i,
+          " must be a single column name, such as '(1 | ID)'.",
+          call. = FALSE
+        )
+      }
+      group_vars[[j]] <- as.character(group_expr)
+    }
+
+    if (length(unique(group_vars)) > 1L) {
+      stop(
+        "Random intercepts across mediation equations must use the same grouping variable. ",
+        "Found: ", paste(unique(group_vars), collapse = ", "), ".",
+        call. = FALSE
+      )
+    }
+    group_var <- group_vars[[1L]]
+  }
+
+  fixed_formulas <- lapply(formula, function(f) {
+    fixed_f <- if (is.null(findbars(f))) f else nobars(f)
+    if (!inherits(fixed_f, "formula")) {
+      fixed_f <- stats::as.formula(fixed_f, env = environment(f))
+    }
+    fixed_f
+  })
 
   # Validate: No duplicate response variables
   resp_check <- vapply(formula, function(f) as.character(f[[2]]), character(1))
@@ -106,6 +180,21 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   class(setup_df) <- c("rtmb_setup_df", class(setup_df))
 
   N <- nrow(setup_df)
+  num_groups <- 0L
+  group_levels <- character(0)
+  if (has_random) {
+    group_factor <- droplevels(as.factor(setup_df[[group_var]]))
+    num_groups <- nlevels(group_factor)
+    group_levels <- levels(group_factor)
+    if (num_groups < 2L) {
+      stop(
+        "Random-intercept mediation requires at least two levels in grouping variable '",
+        group_var, "'.",
+        call. = FALSE
+      )
+    }
+  }
+
   model_data <- data
   resp_names <- character(n_eq)
   X_list <- list()
@@ -115,12 +204,12 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
 
   # 1. Parse Formulas and Prepare Data
   for (i in 1:n_eq) {
-    f <- formula[[i]]
-    mf <- model.frame(f, data = data)
-    y_name <- as.character(f[[2]])
+    f <- fixed_formulas[[i]]
+    mf <- model.frame(f, data = setup_df)
+    y_name <- as.character(formula[[i]][[2]])
     resp_names[i] <- y_name
 
-    X_mat <- model.matrix(f, data = data)
+    X_mat <- model.matrix(f, data = mf)
     cols <- colnames(X_mat)
     cols[cols == "(Intercept)"] <- "Intercept"
     X_colnames[[i]] <- cols
@@ -158,11 +247,20 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     quote(N <- nrow(df))
   )
 
+  if (has_random) {
+    setup_exprs[[length(setup_exprs) + 1L]] <-
+      bquote(mediation_group <- droplevels(as.factor(df[[.(group_var)]])))
+    setup_exprs[[length(setup_exprs) + 1L]] <-
+      quote(mediation_group_idx <- as.integer(mediation_group))
+    setup_exprs[[length(setup_exprs) + 1L]] <-
+      quote(mediation_num_groups <- nlevels(mediation_group))
+  }
+
   for (i in 1:n_eq) {
     mf_name <- as.name(paste0("mf_", i))
     Y_name <- as.name(paste0("Y_", i))
     X_name <- as.name(paste0("X_", i))
-    formula_i <- formula[[i]]
+    formula_i <- fixed_formulas[[i]]
 
     setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(mf_name) <- model.frame(.(formula_i), df))
     setup_exprs[[length(setup_exprs) + 1]] <- bquote(.(Y_name) <- as.numeric(model.response(.(mf_name))))
@@ -271,6 +369,24 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
     }
   }
 
+  has_sd_re_prior <- FALSE
+  if (has_random && prior_type != "flat") {
+    if (!is.null(prior$tau_rate)) {
+      setup_exprs[[length(setup_exprs) + 1L]] <-
+        bquote(sd_re_rate <- .(prior$tau_rate))
+      has_sd_re_prior <- TRUE
+    } else if (prior_type == "weak") {
+      rate_exprs <- lapply(random_eq, function(i) {
+        bquote(1 / .(as.name(paste0("base_scale_", i))))
+      })
+      rate_vector <- as.call(c(list(as.name("c")), rate_exprs))
+      setup_exprs[[length(setup_exprs) + 1L]] <- as.call(list(
+        as.name("<-"), as.name("sd_re_rate"), rate_vector
+      ))
+      has_sd_re_prior <- TRUE
+    }
+  }
+
   setup_ast <- as.call(c(list(as.name("{")), setup_exprs))
 
   # 3. Parameters, Transform and Model Block AST
@@ -285,6 +401,32 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   init_list <- list()
   b_vars <- c()
   s_vars <- c()
+
+  n_random_eq <- as.numeric(length(random_eq))
+  random_labels <- character(0)
+  if (has_random) {
+    random_labels <- paste0(resp_names[random_eq], ":Intercept|", group_var)
+    param_exprs[[length(param_exprs) + 1L]] <-
+      bquote(sd_re <- Dim(.(n_random_eq), lower = 0))
+
+    if (n_random_eq == 1L) {
+      param_exprs[[length(param_exprs) + 1L]] <-
+        quote(r_re <- Dim(mediation_num_groups, random = TRUE))
+      init_list$r_re <- rep(0, num_groups)
+      v_names$r_re <- group_levels
+    } else {
+      param_exprs[[length(param_exprs) + 1L]] <-
+        bquote(CF_corr_re <- Dim(c(.(n_random_eq), .(n_random_eq)), type = "CF_corr"))
+      param_exprs[[length(param_exprs) + 1L]] <-
+        bquote(r_re <- Dim(c(mediation_num_groups, .(n_random_eq)), random = TRUE))
+      init_list$r_re <- matrix(0, nrow = num_groups, ncol = n_random_eq)
+      v_names$r_re <- list(group_levels, random_labels)
+      v_names$corr_re <- random_labels
+    }
+
+    init_list$sd_re <- rep(1, n_random_eq)
+    v_names$sd_re <- random_labels
+  }
 
   for (i in 1:n_eq) {
     y_name <- resp_names[i]
@@ -316,6 +458,21 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
        v_names[[p_name]] <- X_colnames[[i]]
        init_list[[p_name]] <- rep(0, P_dim)
        lin_pred_expr <- bquote(.(as.name(paste0("X_", i))) %*% .(as.name(p_name)))
+    }
+
+    random_pos <- match(i, random_eq)
+    if (!is.na(random_pos)) {
+      if (n_random_eq == 1L) {
+        lin_pred_expr <- bquote(
+          .(lin_pred_expr) + sd_re[1] * r_re[mediation_group_idx]
+        )
+      } else {
+        random_pos <- as.numeric(random_pos)
+        lin_pred_expr <- bquote(
+          .(lin_pred_expr) +
+            sd_re[.(random_pos)] * r_re[mediation_group_idx, .(random_pos)]
+        )
+      }
     }
 
     if (f_type == "gaussian") {
@@ -366,6 +523,35 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
 
     b_vars <- c(b_vars, p_name)
     if (f_type == "gaussian") s_vars <- c(s_vars, s_name)
+  }
+
+  if (has_random) {
+    if (n_random_eq == 1L) {
+      model_exprs[[length(model_exprs) + 1L]] <- quote(r_re ~ normal(0, 1))
+    } else {
+      tran_exprs[[length(tran_exprs) + 1L]] <-
+        quote(corr_re <- CF_corr_re %*% t(CF_corr_re))
+
+      lkj_eta <- if (prior_type == "flat") NULL else prior$lkj_eta %||% 1
+      if (!is.null(lkj_eta)) {
+        model_exprs[[length(model_exprs) + 1L]] <-
+          bquote(CF_corr_re ~ lkj_CF_corr(.(lkj_eta)))
+      }
+      model_exprs[[length(model_exprs) + 1L]] <- bquote(
+        for (g in 1:mediation_num_groups) {
+          r_re[g, ] ~ multi_normal_CF(
+            rep(0, .(n_random_eq)),
+            rep(1, .(n_random_eq)),
+            CF_corr_re
+          )
+        }
+      )
+    }
+
+    if (has_sd_re_prior) {
+      model_exprs[[length(model_exprs) + 1L]] <-
+        quote(sd_re ~ exponential(sd_re_rate))
+    }
   }
 
   # 4. Path Identification and Indirect Effects
@@ -459,7 +645,12 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
   mdl_code$env <- parent.frame()
   mdl_code$setup_env <- .rtmb_setup_env(environment(), setup_ast, exclude = names(model_data))
 
-  view_order <- c(b_vars, effect_names, s_vars)
+  random_view <- if (has_random) {
+    c("sd_re", if (n_random_eq > 1L) "corr_re" else character(0))
+  } else {
+    character(0)
+  }
+  view_order <- c(b_vars, effect_names, s_vars, random_view)
   if (!is.null(view)) {
     view_order <- unique(c(view, view_order))
   }
@@ -479,9 +670,19 @@ rtmb_mediation <- function(formula, data, family = "gaussian", prior = prior_fla
       family = family_list,
       view = view,
       n_eq = n_eq,
-      responses = resp_names
+      responses = resp_names,
+      has_random = has_random,
+      random_equations = random_eq,
+      group = group_var,
+      random_structure = if (has_random) "intercept" else NULL
     )
   )
+
+  if (has_random) {
+    mdl$extra$mediation$num_groups <- num_groups
+    mdl$extra$mediation$group_levels <- group_levels
+    mdl$extra$mediation$random_labels <- random_labels
+  }
 
   mdl$extra$df_map <- df_map
   mdl$extra$effect_names <- effect_names

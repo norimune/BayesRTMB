@@ -1,5 +1,9 @@
 # BayesRTMB 0.3.0
 
+* Added random-intercept mediation models to `rtmb_mediation()`. A random
+  intercept can be included in one equation or in multiple equations; random
+  intercepts sharing a grouping variable are modeled jointly with an estimated
+  correlation matrix.
 * Added the setup-only `.data` binding for accessing the original object passed
   to `rtmb_model()`. Wrapper-generated setup code now reads matrices and data
   frames directly, or reads related inputs such as responses, IDs, covariates,
