@@ -2,8 +2,8 @@
 #'
 #' Generate replicated outcomes from an estimated BayesRTMB model. Regression
 #' wrappers provide an automatic simulator. For a custom model, supply an
-#' `rtmb_code(generate = { ... })` block that creates and reports one replicated
-#' outcome vector. MCMC and variational fits use posterior draws. A MAP fit uses
+#' `rtmb_code()` object containing a `generate` block that creates and reports
+#' one replicated outcome vector. MCMC and variational fits use posterior draws. A MAP fit uses
 #' sampling-based uncertainty when available and otherwise conditions on its
 #' point estimate.
 #'
@@ -838,12 +838,12 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
   is_integer <- all(abs(values - round(values)) < 1e-8)
   if (is_integer && diff(value_range) <= max_bins - 1L) {
     centers <- seq.int(floor(value_range[1L]), ceiling(value_range[2L]))
-    breaks <- c(centers - 0.5, tail(centers, 1L) + 0.5)
+    breaks <- c(centers - 0.5, centers[length(centers)] + 0.5)
     labels <- as.character(centers)
   } else {
     breaks <- pretty(value_range, n = max_bins)
     breaks <- sort(unique(c(min(values) - 1e-8, breaks, max(values) + 1e-8)))
-    centers <- head(breaks, -1L) + diff(breaks) / 2
+    centers <- breaks[-length(breaks)] + diff(breaks) / 2
     labels <- format(centers, trim = TRUE, digits = 4L)
   }
 

@@ -21,8 +21,8 @@ A numeric matrix with posterior predictive draws in rows and
 \description{
 Generate replicated outcomes from an estimated BayesRTMB model. Regression
 wrappers provide an automatic simulator. For a custom model, supply an
-`rtmb_code(generate = { ... })` block that creates and reports one replicated
-outcome vector. MCMC and variational fits use posterior draws. A MAP fit uses
+`rtmb_code()` object containing a `generate` block that creates and reports
+one replicated outcome vector. MCMC and variational fits use posterior draws. A MAP fit uses
 sampling-based uncertainty when available and otherwise conditions on its
 point estimate.
 }

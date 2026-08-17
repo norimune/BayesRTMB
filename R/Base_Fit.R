@@ -670,8 +670,8 @@ RTMB_Fit_Base <- R6::R6Class(
     },
 
     #' @description Generate posterior predictive replications.
-    #' @param code Optional `rtmb_code(generate = { ... })` block for custom
-    #'   models. The block should create and report one replicated outcome.
+    #' @param code Optional `rtmb_code()` object containing a `generate` block
+    #'   for custom models. The block should create and report one replicated outcome.
     #' @param variable Name of the replicated quantity returned by `code`. If
     #'   omitted, `y_rep` or the only returned quantity is used.
     #' @param draws Number of predictive draws, or `NULL` to use every available

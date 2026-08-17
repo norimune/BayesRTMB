@@ -228,8 +228,8 @@ Generate posterior predictive replications.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{code}}{Optional `rtmb_code(generate = { ... })` block for custom
-models. The block should create and report one replicated outcome.}
+\item{\code{code}}{Optional `rtmb_code()` object containing a `generate` block
+for custom models. The block should create and report one replicated outcome.}
 
 \item{\code{variable}}{Name of the replicated quantity returned by `code`. If
 omitted, `y_rep` or the only returned quantity is used.}
