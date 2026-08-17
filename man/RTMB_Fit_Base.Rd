@@ -26,6 +26,8 @@ An R6 base class providing common methods for Bayesian and MAP inference results
 \item \href{#method-RTMB_Fit_Base-EAP}{\code{RTMB_Fit_Base$EAP()}}
 \item \href{#method-RTMB_Fit_Base-MAP}{\code{RTMB_Fit_Base$MAP()}}
 \item \href{#method-RTMB_Fit_Base-rotate}{\code{RTMB_Fit_Base$rotate()}}
+\item \href{#method-RTMB_Fit_Base-posterior_predict}{\code{RTMB_Fit_Base$posterior_predict()}}
+\item \href{#method-RTMB_Fit_Base-pp_check}{\code{RTMB_Fit_Base$pp_check()}}
 \item \href{#method-RTMB_Fit_Base-fa_rotate}{\code{RTMB_Fit_Base$fa_rotate()}}
 \item \href{#method-RTMB_Fit_Base-clone}{\code{RTMB_Fit_Base$clone()}}
 }
@@ -203,6 +205,116 @@ same names are overwritten. If FALSE, a numeric suffix is appended.}
 }
 \subsection{Returns}{
 The updated object invisibly.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RTMB_Fit_Base-posterior_predict"></a>}}
+\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-posterior_predict}{}}}
+\subsection{Method \code{posterior_predict()}}{
+Generate posterior predictive replications.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$posterior_predict(
+  code = NULL,
+  variable = NULL,
+  draws = 100L,
+  seed = NULL,
+  random = c("conditional", "population", "simulate"),
+  chains = NULL,
+  best_chains = NULL,
+  observed = NULL
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{code}}{Optional `rtmb_code(generate = { ... })` block for custom
+models. The block should create and report one replicated outcome.}
+
+\item{\code{variable}}{Name of the replicated quantity returned by `code`. If
+omitted, `y_rep` or the only returned quantity is used.}
+
+\item{\code{draws}}{Number of predictive draws, or `NULL` to use every available
+posterior draw.}
+
+\item{\code{seed}}{Optional random seed.}
+
+\item{\code{random}}{Hierarchical prediction mode: `"conditional"` uses fitted
+random effects, `"population"` omits them, and `"simulate"` draws new
+random effects for the observed groups.}
+
+\item{\code{chains}}{Optional chains to use.}
+
+\item{\code{best_chains}}{Optional number of best chains to use.}
+
+\item{\code{observed}}{Optional observed outcome or its name in model data. This
+is stored as metadata when its length matches a prediction.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+A matrix with predictive draws in rows and observations in columns.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-RTMB_Fit_Base-pp_check"></a>}}
+\if{latex}{\out{\hypertarget{method-RTMB_Fit_Base-pp_check}{}}}
+\subsection{Method \code{pp_check()}}{
+Plot a posterior predictive check.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{RTMB_Fit_Base$pp_check(
+  type = c("auto", "dens", "bars"),
+  stat = NULL,
+  x = NULL,
+  code = NULL,
+  observed = NULL,
+  variable = NULL,
+  draws = 100L,
+  seed = NULL,
+  random = c("conditional", "population", "simulate"),
+  chains = NULL,
+  best_chains = NULL,
+  plot = TRUE,
+  ...
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{type}}{Plot type: `"dens"`, `"bars"`, or `"auto"`. Automatic mode
+uses the observation likelihood's `_lpdf` or `_lpmf` implementation.}
+
+\item{\code{stat}}{Optional scalar statistic function, or its name. When supplied,
+the replicated statistic distribution is compared with its observed value.}
+
+\item{\code{x}}{Optional predictor used for a scatter-based check. Supply a column
+name from the model data or a vector with one value per observation.}
+
+\item{\code{code}}{Optional custom generate block; see `posterior_predict()`.}
+
+\item{\code{observed}}{Optional observed outcome or its name in model data.}
+
+\item{\code{variable}}{Name of the replicated quantity returned by `code`.}
+
+\item{\code{draws}}{Number of posterior predictive replications.}
+
+\item{\code{seed}}{Optional random seed.}
+
+\item{\code{random}}{Hierarchical prediction mode; see `posterior_predict()`.}
+
+\item{\code{chains}}{Optional chains to use.}
+
+\item{\code{best_chains}}{Optional number of best chains to use.}
+
+\item{\code{plot}}{Logical; draw the check immediately.}
+
+\item{\code{...}}{Graphical arguments passed to the plotting method.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+An `rtmb_pp_check` object, invisibly.
 }
 }
 \if{html}{\out{<hr>}}

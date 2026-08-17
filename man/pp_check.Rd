@@ -27,10 +27,10 @@ pp_check(object, ...)
 \arguments{
 \item{object}{A BayesRTMB fit object.}
 
-\item{...}{Arguments passed to the fit object's \code{pp_check()} method or to
+\item{...}{Arguments passed to the fit object's `pp_check()` method or to
 the plotting method.}
 
-\item{x}{An \code{rtmb_pp_check} object.}
+\item{x}{An `rtmb_pp_check` object.}
 
 \item{main}{Optional plot title.}
 
@@ -38,31 +38,32 @@ the plotting method.}
 
 \item{ylab}{Optional y-axis label.}
 
-\item{observed_col}{Color for the observed data.}
+\item{observed_col}{Color for observed data.}
 
-\item{predictive_col}{Color for posterior predictive summaries.}
+\item{predictive_col}{Color for predictive data and intervals.}
 
 \item{show_legend}{Logical; display the plot legend.}
 
-\item{legend_position}{Legend position. \code{"auto"} moves scatter-plot legends
-away from the fitted trend; the other values are passed to \code{legend()}.}
+\item{legend_position}{Legend position. `"auto"` moves scatter-plot legends
+away from the fitted trend; the other values are passed to `legend()`.}
 
 \item{legend_cex}{Relative text and symbol size for the legend.}
 
 \item{interval}{Probability covered by posterior predictive intervals.}
 }
 \value{
-An object of class \code{rtmb_pp_check}, returned invisibly after plotting.
+An object of class `rtmb_pp_check`, returned invisibly after plotting.
 }
 \description{
 Compare observed data with replicated outcomes from an estimated BayesRTMB
 model. Density overlays are used for continuous outcomes and binned bar plots
-for discrete outcomes. When \code{type = "auto"}, the display is selected from
-the likelihood's \code{_lpdf} or \code{_lpmf} implementation.
-
-Supplying \code{x} to the fit object's \code{pp_check()} method switches to a
+for discrete outcomes. When `type = "auto"`, the display is selected from the
+likelihood's `_lpdf` or `_lpmf` implementation.
+}
+\details{
+Supplying `x` to the fit object's `pp_check()` method switches to a
 scatter-based check. Observed outcomes are compared with posterior predictive
 means and 95% predictive intervals along the selected predictor. The reserved
-value \code{x = ".fitted"} uses the posterior predictive mean on the horizontal
+value `x = ".fitted"` uses the posterior predictive mean on the horizontal
 axis for a model-wide calibration check.
 }
