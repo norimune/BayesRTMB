@@ -17,6 +17,10 @@ pp_check(object, ...)
   ylab = NULL,
   observed_col = "#1B1B1B",
   predictive_col = "#2C7FB8",
+  show_legend = TRUE,
+  legend_position = c("auto", "topleft", "topright", "bottomleft", "bottomright"),
+  legend_cex = 0.78,
+  interval = 0.95,
   ...
 )
 }
@@ -37,6 +41,15 @@ the plotting method.}
 \item{observed_col}{Color for the observed data.}
 
 \item{predictive_col}{Color for posterior predictive summaries.}
+
+\item{show_legend}{Logical; display the plot legend.}
+
+\item{legend_position}{Legend position. \code{"auto"} moves scatter-plot legends
+away from the fitted trend; the other values are passed to \code{legend()}.}
+
+\item{legend_cex}{Relative text and symbol size for the legend.}
+
+\item{interval}{Probability covered by posterior predictive intervals.}
 }
 \value{
 An object of class \code{rtmb_pp_check}, returned invisibly after plotting.
@@ -49,7 +62,7 @@ the likelihood's \code{_lpdf} or \code{_lpmf} implementation.
 
 Supplying \code{x} to the fit object's \code{pp_check()} method switches to a
 scatter-based check. Observed outcomes are compared with posterior predictive
-means and 90% predictive intervals along the selected predictor. The reserved
+means and 95% predictive intervals along the selected predictor. The reserved
 value \code{x = ".fitted"} uses the posterior predictive mean on the horizontal
 axis for a model-wide calibration check.
 }

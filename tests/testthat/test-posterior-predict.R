@@ -119,3 +119,11 @@ test_that("auto checks distinguish probability densities and masses", {
   )
   expect_equal(.rtmb_infer_density(custom_model), "lpdf")
 })
+
+test_that("posterior predictive plot exposes compact legend controls", {
+  plot_arguments <- names(formals(plot.rtmb_pp_check))
+  expect_true(all(c(
+    "show_legend", "legend_position", "legend_cex", "interval"
+  ) %in% plot_arguments))
+  expect_equal(eval(formals(plot.rtmb_pp_check)$interval), 0.95)
+})

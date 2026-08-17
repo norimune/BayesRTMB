@@ -171,7 +171,7 @@ fit_lm$pp_check(stat = mean, draws = 100, seed = 123)
 
 Supply `x` as a model-data column name, or as a vector with one value per
 observation, for a scatter-based check. Observed outcomes are shown together
-with posterior predictive means and 90% predictive intervals. The predictions
+with posterior predictive means and 95% predictive intervals. The predictions
 still use every term in the fitted model; `x` only selects the horizontal axis.
 
 ```{r eval=FALSE}
@@ -181,7 +181,10 @@ fit_lm$pp_check(x = ".fitted", draws = 100, seed = 123)
 
 The reserved value `x = ".fitted"` places each observation's posterior
 predictive mean on the horizontal axis. This provides a model-wide calibration
-check and adds an identity line to the plot.
+check and adds an identity line to the plot. Scatter-plot legends are positioned
+automatically; use `legend_position`, `legend_cex`, or `show_legend = FALSE` to
+adjust them. Predictive intervals cover 95% by default and can be changed with
+`interval`.
 
 For mixed models, `random` controls the prediction level. `"conditional"`
 uses the fitted group effects, `"population"` omits group effects, and

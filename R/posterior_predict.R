@@ -32,7 +32,7 @@ posterior_predict.RTMB_Fit_Base <- function(object, ...) {
 #'
 #' Supplying `x` to the fit object's `pp_check()` method switches to a
 #' scatter-based check. Observed outcomes are compared with posterior predictive
-#' means and 90% predictive intervals along the selected predictor. The reserved
+#' means and 95% predictive intervals along the selected predictor. The reserved
 #' value `x = ".fitted"` uses the posterior predictive mean on the horizontal
 #' axis for a model-wide calibration check.
 #'
@@ -730,13 +730,14 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
   )
 }
 
-.rtmb_scatter_summary <- function(yrep) {
+.rtmb_scatter_summary <- function(yrep, interval = 0.95) {
+  alpha <- (1 - interval) / 2
   center <- colMeans(yrep, na.rm = TRUE)
   interval <- apply(
     yrep,
     2L,
     stats::quantile,
-    probs = c(0.05, 0.95),
+    probs = c(alpha, 1 - alpha),
     na.rm = TRUE,
     names = FALSE
   )
@@ -828,7 +829,7 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
   invisible(out)
 }
 
-.rtmb_bar_summary <- function(observed, yrep, max_bins = 30L) {
+.rtmb_bar_summary <- function(observed, yrep, max_bins = 30L, interval = 0.95) {
   values <- c(observed, as.numeric(yrep))
   values <- values[is.finite(values)]
   if (length(values) == 0L) stop("No finite values are available for plotting.", call. = FALSE)
@@ -853,11 +854,12 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
 
   obs_prob <- probabilities(observed)
   rep_prob <- t(apply(yrep, 1L, probabilities))
+  alpha <- (1 - interval) / 2
   list(
     observed = obs_prob,
     median = apply(rep_prob, 2L, stats::median, na.rm = TRUE),
-    lower = apply(rep_prob, 2L, stats::quantile, probs = 0.05, na.rm = TRUE),
-    upper = apply(rep_prob, 2L, stats::quantile, probs = 0.95, na.rm = TRUE),
+    lower = apply(rep_prob, 2L, stats::quantile, probs = alpha, na.rm = TRUE),
+    upper = apply(rep_prob, 2L, stats::quantile, probs = 1 - alpha, na.rm = TRUE),
     labels = labels
   )
 }
@@ -868,14 +870,38 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
 #' @param ylab Optional y-axis label.
 #' @param observed_col Color for observed data.
 #' @param predictive_col Color for predictive data and intervals.
+#' @param show_legend Logical; display the plot legend.
+#' @param legend_position Legend position. `"auto"` moves scatter-plot legends
+#'   away from the fitted trend; the other values are passed to `legend()`.
+#' @param legend_cex Relative text and symbol size for the legend.
+#' @param interval Probability covered by posterior predictive intervals.
 #' @rdname pp_check
 #' @export
 plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
                                observed_col = "#1B1B1B", predictive_col = "#2C7FB8",
+                               show_legend = TRUE,
+                               legend_position = c("auto", "topleft", "topright",
+                                                   "bottomleft", "bottomright"),
+                               legend_cex = 0.78,
+                               interval = 0.95,
                                ...) {
+  legend_position <- match.arg(legend_position)
+  if (!is.numeric(legend_cex) || length(legend_cex) != 1L ||
+      !is.finite(legend_cex) || legend_cex <= 0) {
+    stop("'legend_cex' must be one positive number.", call. = FALSE)
+  }
+  if (!is.numeric(interval) || length(interval) != 1L ||
+      !is.finite(interval) || interval <= 0 || interval >= 1) {
+    stop("'interval' must be one number between 0 and 1.", call. = FALSE)
+  }
+  interval_label <- paste0(
+    format(100 * interval, trim = TRUE, scientific = FALSE, digits = 4L),
+    "%"
+  )
+
   if (!is.null(x$predictor)) {
     positions <- .rtmb_scatter_positions(x$predictor)
-    prediction <- .rtmb_scatter_summary(x$yrep)
+    prediction <- .rtmb_scatter_summary(x$yrep, interval = interval)
     valid <- is.finite(positions$position) & is.finite(x$observed) &
       is.finite(prediction$center) & is.finite(prediction$lower) &
       is.finite(prediction$upper)
@@ -925,7 +951,7 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
       col = grDevices::adjustcolor(observed_col, alpha.f = 0.65),
       cex = 0.75
     )
-    legend_text <- c("Observed", "Predictive mean", "90% predictive interval")
+    legend_text <- c("Observed", "Predictive mean", paste(interval_label, "PI"))
     legend_pch <- c(16L, 4L, NA_integer_)
     legend_lty <- c(NA_integer_, NA_integer_, 1L)
     legend_col <- c(observed_col, predictive_col, interval_col)
@@ -935,15 +961,25 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
       legend_lty <- c(legend_lty, 2L)
       legend_col <- c(legend_col, identity_col)
     }
-    graphics::legend(
-      "topright",
-      legend = legend_text,
-      pch = legend_pch,
-      lty = legend_lty,
-      col = legend_col,
-      lwd = rep(1.2, length(legend_text)),
-      bty = "n"
-    )
+    if (isTRUE(show_legend)) {
+      legend_at <- legend_position
+      if (identical(legend_at, "auto")) {
+        trend <- suppressWarnings(stats::cor(plot_x, center, use = "complete.obs"))
+        legend_at <- if (is.finite(trend) && trend < 0) "topright" else "topleft"
+      }
+      graphics::legend(
+        legend_at,
+        legend = legend_text,
+        pch = legend_pch,
+        lty = legend_lty,
+        col = legend_col,
+        lwd = rep(1.2, length(legend_text)),
+        cex = legend_cex,
+        x.intersp = 0.7,
+        y.intersp = 0.85,
+        bty = "n"
+      )
+    }
     return(invisible(x))
   }
 
@@ -963,10 +999,13 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
       ...
     )
     graphics::abline(v = x$observed_stat, col = observed_col, lwd = 2L)
-    graphics::legend(
-      "topright", legend = "Observed", col = observed_col, lwd = 2L,
-      bty = "n"
-    )
+    if (isTRUE(show_legend)) {
+      legend_at <- if (identical(legend_position, "auto")) "topright" else legend_position
+      graphics::legend(
+        legend_at, legend = "Observed", col = observed_col, lwd = 2L,
+        cex = legend_cex, bty = "n"
+      )
+    }
     return(invisible(x))
   }
 
@@ -1006,14 +1045,18 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
       graphics::lines(density_i, col = line_col, lwd = 1L)
     }
     graphics::lines(observed_density, col = observed_col, lwd = 2.5)
-    graphics::legend(
-      "topright", legend = c("Observed", "Replicated"),
-      col = c(observed_col, predictive_col), lwd = c(2.5, 1.5), bty = "n"
-    )
+    if (isTRUE(show_legend)) {
+      legend_at <- if (identical(legend_position, "auto")) "topright" else legend_position
+      graphics::legend(
+        legend_at, legend = c("Observed", "Replicated"),
+        col = c(observed_col, predictive_col), lwd = c(2.5, 1.5),
+        cex = legend_cex, bty = "n"
+      )
+    }
     return(invisible(x))
   }
 
-  summary <- .rtmb_bar_summary(x$observed, x$yrep)
+  summary <- .rtmb_bar_summary(x$observed, x$yrep, interval = interval)
   labels <- summary$labels
   if (length(labels) > 15L) {
     keep <- unique(round(seq(1L, length(labels), length.out = 10L)))
@@ -1036,11 +1079,15 @@ plot.rtmb_pp_check <- function(x, main = NULL, xlab = NULL, ylab = NULL,
   )
   graphics::segments(mids, summary$lower, mids, summary$upper, col = predictive_col, lwd = 2L)
   graphics::points(mids, summary$median, pch = 19L, col = predictive_col)
-  graphics::legend(
-    "topright", legend = c("Observed", "Replicated median (90% interval)"),
-    fill = c(grDevices::adjustcolor(observed_col, alpha.f = 0.65), NA),
-    border = c(NA, NA), pch = c(NA, 19L), col = c(NA, predictive_col),
-    bty = "n"
-  )
+  if (isTRUE(show_legend)) {
+    legend_at <- if (identical(legend_position, "auto")) "topright" else legend_position
+    graphics::legend(
+      legend_at,
+      legend = c("Observed", paste0("Replicated median (", interval_label, " interval)")),
+      fill = c(grDevices::adjustcolor(observed_col, alpha.f = 0.65), NA),
+      border = c(NA, NA), pch = c(NA, 19L), col = c(NA, predictive_col),
+      cex = legend_cex, bty = "n"
+    )
+  }
   invisible(x)
 }
