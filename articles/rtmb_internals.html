@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -198,9 +198,9 @@ blocks.</p>
 <div class="section level3">
 <h3 id="data">data<a class="anchor" aria-label="anchor" href="#data"></a>
 </h3>
-<p>The <code>data</code> block declares data names used by the model.
-<code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> checks whether these names exist in the
-supplied data list.</p>
+<p>The optional <code>data</code> block declares named values used by
+the model. When it is present, <code><a href="../reference/rtmb_model.html">rtmb_model()</a></code> checks that
+these names exist in the supplied named input.</p>
 </div>
 <div class="section level3">
 <h3 id="setup">setup<a class="anchor" aria-label="anchor" href="#setup"></a>
@@ -209,9 +209,20 @@ supplied data list.</p>
 evaluation. It is the right place to compute data dimensions, design
 matrices, centered predictors, group indices, and constants used later
 in the model.</p>
-<p>Wrapper functions often place preprocessing in <code>setup</code> so
-that <code>print_code()</code> shows enough information to reproduce the
-model.</p>
+<p>Named list elements and data-frame columns are available directly by
+name during <code>setup</code>. In addition, the read-only reserved name
+<code>.data</code> refers to the original object supplied to
+<code>rtmb_model(data = ...)</code>, including a matrix, data frame, or
+named list. Variables created or updated by <code>setup</code> are
+retained as internal model data; <code>.data</code> itself is removed
+when setup finishes.</p>
+<p>Wrapper functions place preprocessing in <code>setup</code> so that
+<code>print_code()</code> shows enough information to reproduce the
+model. A wrapper with several data-like arguments combines them into one
+named list, producing code such as <code>.data$x</code> or
+<code>.data$sets</code>. Structural options such as the number of
+factors are written directly into <code>setup</code> as constants rather
+than being hidden among the observations.</p>
 </div>
 <div class="section level3">
 <h3 id="parameters">parameters<a class="anchor" aria-label="anchor" href="#parameters"></a>

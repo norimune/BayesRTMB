@@ -11,7 +11,7 @@ indirect, direct, and total effects."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -77,6 +77,9 @@ indirect, direct, and total effects.</p>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  WAIC <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  centering <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  cwc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  <span class="va">...</span></span>
 <span><span class="op">)</span></span></code></pre></div>
     </div>
@@ -86,7 +89,9 @@ indirect, direct, and total effects.</p>
 
 
 <dl><dt id="arg-formula">formula<a class="anchor" aria-label="anchor" href="#arg-formula"></a></dt>
-<dd><p>A list of formulas defining the regression paths (e.g., `list(M ~ X, Y ~ X + M)`).</p></dd>
+<dd><p>A list of formulas defining the regression paths (e.g.,
+`list(M ~ X, Y ~ X + M)`). Each equation may optionally include one
+random intercept, such as `(1 | ID)`.</p></dd>
 
 
 <dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
@@ -118,6 +123,21 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
 <dd><p>Logical; if TRUE, add pointwise `log_lik` to the generate block for WAIC.</p></dd>
 
 
+<dt id="arg-gmc">gmc<a class="anchor" aria-label="anchor" href="#arg-gmc"></a></dt>
+<dd><p>Character vector naming predictors to grand-mean center, or
+`"all"` to center all numeric predictors used by the mediation equations.</p></dd>
+
+
+<dt id="arg-centering">centering<a class="anchor" aria-label="anchor" href="#arg-centering"></a></dt>
+<dd><p>Alias for `gmc`.</p></dd>
+
+
+<dt id="arg-cwc">cwc<a class="anchor" aria-label="anchor" href="#arg-cwc"></a></dt>
+<dd><p>Centering-within-cluster specification. Use, for example,
+`list(cluster = ID, pars = c("X", "M"))` or `list(ID, "X")`.
+Cluster means are not added automatically.</p></dd>
+
+
 <dt id="arg--">...<a class="anchor" aria-label="anchor" href="#arg--"></a></dt>
 <dd><p>Reserved; unused arguments are rejected.</p></dd>
 
@@ -131,6 +151,21 @@ for each equation (e.g., `family = list("gaussian", "binomial")`). Default is "g
     <p>The function identifies mediation paths by looking for variables that are
 responses in one equation and predictors in another. Indirect effects are
 calculated as the product of coefficients along these paths (\(a * b\)).</p>
+<p>Random intercepts may be included in all equations or in only a subset of
+equations. When more than one equation contains a random intercept, all
+random intercepts must use the same grouping variable and their correlations
+are estimated jointly. Random slopes, multiple random-effect terms within an
+equation, and different grouping variables across equations are not yet
+supported.
+The mediation-specific classical bootstrap is currently unavailable for
+random-intercept and CWC models.</p>
+<p>`gmc` (or its alias `centering`) and `cwc` are applied to predictor uses of
+the selected variables before each equation's model matrix is constructed.
+Their response uses remain on the original scale. Thus, if `M` is the
+response in one equation and a predictor in another, `cwc = list(ID, "M")`
+centers `M` only in the latter role. When both GMC and CWC target the same
+variable, GMC is applied first. Between-cluster means must be created by the
+user and included explicitly in the formulas.</p>
 <p><strong>Uncertainty Estimation</strong>:
 When using `$optimize(ci_method = "sampling")`, the function provides asymmetric
 confidence intervals for indirect effects based on the distribution of products,

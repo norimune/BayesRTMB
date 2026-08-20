@@ -71,6 +71,13 @@ mdl_ttest$print_code()
 ## === RTMB Model Code ===
 ## 
 ## rtmb_code(
+##   setup = {
+##     Y1 <- as.numeric(.data$x)
+##     Y2 <- as.numeric(.data$y)
+##     Y1 <- as.numeric(na.omit(Y1))
+##     Y2 <- as.numeric(na.omit(Y2))
+##     r <- 0.707
+##   },
 ##   parameters = {
 ##     total_mean = Dim(1)
 ##     sd = Dim(1, lower = 0)
@@ -149,21 +156,86 @@ fit_lm$summary()
 ## Intercept_c   3.43324     0.05333    3.32871    3.53777 
 ```
 
+#### Posterior Predictive Checks
+
+Regression wrappers provide posterior predictive simulation directly
+from a MAP, MCMC, or variational fit. `type = "auto"` uses a density
+overlay for an `_lpdf` likelihood and binned bars for an `_lpmf`
+likelihood. MCMC and variational fits use their posterior draws. A MAP
+fit without sampling-based standard errors conditions on the MAP point
+estimate.
+
+``` r
+
+yrep <- fit_lm$posterior_predict(draws = 100, seed = 123)
+fit_lm$pp_check(type = "auto", draws = 100, seed = 123)
+fit_lm$pp_check(stat = mean, draws = 100, seed = 123)
+```
+
+Supply `x` as a model-data column name, or as a vector with one value
+per observation, for a scatter-based check. Observed outcomes are shown
+together with posterior predictive means and 95% predictive intervals.
+The predictions still use every term in the fitted model; `x` only
+selects the horizontal axis.
+
+``` r
+
+fit_lm$pp_check(x = "talk", draws = 100, seed = 123)
+fit_lm$pp_check(x = ".fitted", draws = 100, seed = 123)
+```
+
+The reserved value `x = ".fitted"` places each observation’s posterior
+predictive mean on the horizontal axis. This provides a model-wide
+calibration check and adds an identity line to the plot. Scatter-plot
+legends are positioned automatically; use `legend_position`,
+`legend_cex`, or `show_legend = FALSE` to adjust them. Predictive
+intervals cover 95% by default and can be changed with `interval`.
+
+For mixed models, `random` controls the prediction level.
+`"conditional"` uses the fitted group effects, `"population"` omits
+group effects, and `"simulate"` draws new group effects from each
+posterior draw.
+
+``` r
+
+fit_lmer$pp_check(random = "conditional")
+fit_lmer$pp_check(random = "population")
+fit_lmer$pp_check(random = "simulate")
+```
+
+#### Standardized Coefficients
+
+Set `std = TRUE` to add post-hoc standardized fixed-effect coefficients
+as `b_std`. Gaussian models scale coefficients by the standard
+deviations of both the design-matrix column and response. Other families
+scale by the design-matrix column only, so coefficients remain on the
+link scale. Factor and interaction columns are included.
+
+``` r
+
+mdl_lm_std <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  std = TRUE
+)
+fit_lm_std <- mdl_lm_std$sample()
+fit_lm_std$summary()
+```
+
 #### Recommended Settings for Weakly Informative Priors
 
 When calculating Bayes factors (using `Bridge Sampling` or the
 `bayes_factor` method), the choice of priors strongly influences the
-results. BayesRTMB recommends automatically configuring appropriate
-**Weakly Informative Priors** by setting `use_weak_info = TRUE` and
-specifying the theoretical minimum and maximum values of the objective
-variable in `y_range`.
+results. Use `prior = prior_weak()` and specify the theoretical minimum
+and maximum values of the response in `y_range` to configure **Weakly
+Informative Priors**.
 
 ``` r
 
 # Create a model using weakly informative priors (assuming sat ranges from 1 to 5)
 mdl_lm_weak <- rtmb_lm(sat ~ talk + skill,
   data = debate,
-  use_weak_info = TRUE,
+  prior = prior_weak(),
   y_range = c(1, 5)
 )
 mdl_lm_weak$print_code()
@@ -174,17 +246,22 @@ mdl_lm_weak$print_code()
 ## 
 ## rtmb_code(
 ##   setup = {
-##     N <- length(Y)
+##     mf <- model.frame(sat ~ talk + skill, na.action = na.omit)
+##     Y <- model.response(mf)
+##     X <- model.matrix(sat ~ talk + skill, mf)[, -1, drop = FALSE]
+##     N <- nrow(mf)
 ##     K <- ncol(X)
+##     # Prior setting
 ##     half_d_y <- diff(y_range)/2
-##     base_scale <- half_d_y * weak_info_prior$sd_ratio
+##     base_scale <- half_d_y * 0.5
 ##     alpha_prior_sd <- half_d_y
 ##     mid_y <- mean(y_range)
 ##     sigma_rate <- 1/base_scale
 ##     tau_rate <- 1/base_scale
+##     X_sd <- apply(X, 2, sd, na.rm = TRUE)
+##     beta_prior_sd <- 1 * base_scale/X_sd
+##     # Centering
 ##     X_mean <- apply(X, 2, mean)
-##     X_sd <- apply(X, 2, sd)
-##     beta_prior_sd <- weak_info_prior$max_beta * base_scale/X_sd
 ##     X_c <- X - rep(1, N) %*% t(X_mean)
 ##   }, 
 ##   parameters = {
@@ -197,7 +274,7 @@ mdl_lm_weak$print_code()
 ##   }, 
 ##   model = {
 ##     # Transform
-##     eta <- as.vector(Intercept_c + X_c %*% b)
+##     eta <- Intercept_c + X_c %*% b
 ##     # Likelihood (Data)
 ##     Y ~ normal(eta, sigma)
 ##     # Priors

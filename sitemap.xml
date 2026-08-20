@@ -41,6 +41,8 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/categorical_logit_lpmf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/categorical_lpmf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/cauchy_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/center_grand_mean.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/center_within_cluster.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/centered_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/centered_tri_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/conditional_effects.html</loc></url>
@@ -124,6 +126,8 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/poisson_lpmf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/positive_centered_tri_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/positive_lower_tri_normal_lpdf.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/posterior_predict.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/pp_check.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.bayes_factor.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.bayes_factor_rtmb.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/print.ce_rtmb.html</loc></url>
@@ -177,6 +181,7 @@
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sufficient_multi_normal_lpdf.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/sum_to_zero.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/summary.ce_rtmb.html</loc></url>
+<url><loc>https://norimune.github.io/BayesRTMB/reference/summary_mcmc.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/test_info.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/to_centered_matrix.html</loc></url>
 <url><loc>https://norimune.github.io/BayesRTMB/reference/to_centered_tri.html</loc></url>

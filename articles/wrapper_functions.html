@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -143,6 +143,13 @@ the wrapper’s model into your own custom model.</p>
 <pre class="text"><code><span><span class="co">## === RTMB Model Code ===</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## rtmb_code(</span></span>
+<span><span class="co">##   setup = {</span></span>
+<span><span class="co">##     Y1 &lt;- as.numeric(.data$x)</span></span>
+<span><span class="co">##     Y2 &lt;- as.numeric(.data$y)</span></span>
+<span><span class="co">##     Y1 &lt;- as.numeric(na.omit(Y1))</span></span>
+<span><span class="co">##     Y2 &lt;- as.numeric(na.omit(Y2))</span></span>
+<span><span class="co">##     r &lt;- 0.707</span></span>
+<span><span class="co">##   },</span></span>
 <span><span class="co">##   parameters = {</span></span>
 <span><span class="co">##     total_mean = Dim(1)</span></span>
 <span><span class="co">##     sd = Dim(1, lower = 0)</span></span>
@@ -210,20 +217,75 @@ the package (simulated data regarding debate sat).</p>
 <span><span class="co">## sigma         0.92284     0.03725    0.85265    0.99880 </span></span>
 <span><span class="co">## Intercept_c   3.43324     0.05333    3.32871    3.53777 </span></span></code></pre>
 <div class="section level4">
+<h4 id="posterior-predictive-checks">Posterior Predictive Checks<a class="anchor" aria-label="anchor" href="#posterior-predictive-checks"></a>
+</h4>
+<p>Regression wrappers provide posterior predictive simulation directly
+from a MAP, MCMC, or variational fit. <code>type = "auto"</code> uses a
+density overlay for an <code>_lpdf</code> likelihood and binned bars for
+an <code>_lpmf</code> likelihood. MCMC and variational fits use their
+posterior draws. A MAP fit without sampling-based standard errors
+conditions on the MAP point estimate.</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">yrep</span> <span class="op">&lt;-</span> <span class="va">fit_lm</span><span class="op">$</span><span class="fu">posterior_predict</span><span class="op">(</span>draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"auto"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>stat <span class="op">=</span> <span class="va">mean</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
+<p>Supply <code>x</code> as a model-data column name, or as a vector
+with one value per observation, for a scatter-based check. Observed
+outcomes are shown together with posterior predictive means and 95%
+predictive intervals. The predictions still use every term in the fitted
+model; <code>x</code> only selects the horizontal axis.</p>
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">"talk"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit_lm</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">".fitted"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
+<p>The reserved value <code>x = ".fitted"</code> places each
+observation’s posterior predictive mean on the horizontal axis. This
+provides a model-wide calibration check and adds an identity line to the
+plot. Scatter-plot legends are positioned automatically; use
+<code>legend_position</code>, <code>legend_cex</code>, or
+<code>show_legend = FALSE</code> to adjust them. Predictive intervals
+cover 95% by default and can be changed with <code>interval</code>.</p>
+<p>For mixed models, <code>random</code> controls the prediction level.
+<code>"conditional"</code> uses the fitted group effects,
+<code>"population"</code> omits group effects, and
+<code>"simulate"</code> draws new group effects from each posterior
+draw.</p>
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_lmer</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>random <span class="op">=</span> <span class="st">"conditional"</span><span class="op">)</span></span>
+<span><span class="va">fit_lmer</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>random <span class="op">=</span> <span class="st">"population"</span><span class="op">)</span></span>
+<span><span class="va">fit_lmer</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>random <span class="op">=</span> <span class="st">"simulate"</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
+<h4 id="standardized-coefficients">Standardized Coefficients<a class="anchor" aria-label="anchor" href="#standardized-coefficients"></a>
+</h4>
+<p>Set <code>std = TRUE</code> to add post-hoc standardized fixed-effect
+coefficients as <code>b_std</code>. Gaussian models scale coefficients
+by the standard deviations of both the design-matrix column and
+response. Other families scale by the design-matrix column only, so
+coefficients remain on the link scale. Factor and interaction columns
+are included.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_lm_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
+<span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
+<span>  std <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">fit_lm_std</span> <span class="op">&lt;-</span> <span class="va">mdl_lm_std</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_lm_std</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+</div>
+<div class="section level4">
 <h4 id="recommended-settings-for-weakly-informative-priors">Recommended Settings for Weakly Informative Priors<a class="anchor" aria-label="anchor" href="#recommended-settings-for-weakly-informative-priors"></a>
 </h4>
 <p>When calculating Bayes factors (using <code>Bridge Sampling</code> or
 the <code>bayes_factor</code> method), the choice of priors strongly
-influences the results. BayesRTMB recommends automatically configuring
-appropriate <strong>Weakly Informative Priors</strong> by setting
-<code>use_weak_info = TRUE</code> and specifying the theoretical minimum
-and maximum values of the objective variable in
-<code>y_range</code>.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+influences the results. Use <code>prior = prior_weak()</code> and
+specify the theoretical minimum and maximum values of the response in
+<code>y_range</code> to configure <strong>Weakly Informative
+Priors</strong>.</p>
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Create a model using weakly informative priors (assuming sat ranges from 1 to 5)</span></span>
 <span><span class="va">mdl_lm_weak</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">skill</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
-<span>  use_weak_info <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_weak.html">prior_weak</a></span><span class="op">(</span><span class="op">)</span>,</span>
 <span>  y_range <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="fl">1</span>, <span class="fl">5</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span><span class="va">mdl_lm_weak</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -231,17 +293,22 @@ and maximum values of the objective variable in
 <span><span class="co">## </span></span>
 <span><span class="co">## rtmb_code(</span></span>
 <span><span class="co">##   setup = {</span></span>
-<span><span class="co">##     N &lt;- length(Y)</span></span>
+<span><span class="co">##     mf &lt;- model.frame(sat ~ talk + skill, na.action = na.omit)</span></span>
+<span><span class="co">##     Y &lt;- model.response(mf)</span></span>
+<span><span class="co">##     X &lt;- model.matrix(sat ~ talk + skill, mf)[, -1, drop = FALSE]</span></span>
+<span><span class="co">##     N &lt;- nrow(mf)</span></span>
 <span><span class="co">##     K &lt;- ncol(X)</span></span>
+<span><span class="co">##     # Prior setting</span></span>
 <span><span class="co">##     half_d_y &lt;- diff(y_range)/2</span></span>
-<span><span class="co">##     base_scale &lt;- half_d_y * weak_info_prior$sd_ratio</span></span>
+<span><span class="co">##     base_scale &lt;- half_d_y * 0.5</span></span>
 <span><span class="co">##     alpha_prior_sd &lt;- half_d_y</span></span>
 <span><span class="co">##     mid_y &lt;- mean(y_range)</span></span>
 <span><span class="co">##     sigma_rate &lt;- 1/base_scale</span></span>
 <span><span class="co">##     tau_rate &lt;- 1/base_scale</span></span>
+<span><span class="co">##     X_sd &lt;- apply(X, 2, sd, na.rm = TRUE)</span></span>
+<span><span class="co">##     beta_prior_sd &lt;- 1 * base_scale/X_sd</span></span>
+<span><span class="co">##     # Centering</span></span>
 <span><span class="co">##     X_mean &lt;- apply(X, 2, mean)</span></span>
-<span><span class="co">##     X_sd &lt;- apply(X, 2, sd)</span></span>
-<span><span class="co">##     beta_prior_sd &lt;- weak_info_prior$max_beta * base_scale/X_sd</span></span>
 <span><span class="co">##     X_c &lt;- X - rep(1, N) %*% t(X_mean)</span></span>
 <span><span class="co">##   }, </span></span>
 <span><span class="co">##   parameters = {</span></span>
@@ -254,7 +321,7 @@ and maximum values of the objective variable in
 <span><span class="co">##   }, </span></span>
 <span><span class="co">##   model = {</span></span>
 <span><span class="co">##     # Transform</span></span>
-<span><span class="co">##     eta &lt;- as.vector(Intercept_c + X_c %*% b)</span></span>
+<span><span class="co">##     eta &lt;- Intercept_c + X_c %*% b</span></span>
 <span><span class="co">##     # Likelihood (Data)</span></span>
 <span><span class="co">##     Y ~ normal(eta, sigma)</span></span>
 <span><span class="co">##     # Priors</span></span>
@@ -273,7 +340,7 @@ and maximum values of the objective variable in
 logistic regression, Poisson regression, etc. As an example, we will
 execute a logistic regression predicting the experimental cond (cond: 0
 or 1).</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Logistic regression (family = "bernoulli")</span></span>
 <span><span class="va">mdl_glm</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glm.html">rtmb_glm</a></span><span class="op">(</span><span class="va">cond</span> <span class="op">~</span> <span class="va">sat</span> <span class="op">+</span> <span class="va">skill</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -369,7 +436,7 @@ data.</td>
 using the <code>(1 | group)</code> notation, similar to the
 <code>lme4</code> package. Let’s build a model taking into account that
 individual sat varies depending on the group they belong to.</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Random intercept model</span></span>
 <span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span></span>
@@ -411,7 +478,7 @@ priors, which means you need to input the range of the objective
 variable. Since our data uses a 5-point scale, we input
 <code>c(1, 5)</code>. MAP estimation often struggles with regularized
 models, so it’s better to use MCMC.</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_glmer</span> <span class="op">&lt;-</span></span>
 <span>  <span class="fu"><a href="../reference/rtmb_glmer.html">rtmb_glmer</a></span><span class="op">(</span></span>
 <span>    <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span> <span class="op">+</span> <span class="va">skill</span> <span class="op">+</span> <span class="va">cond</span> <span class="op">+</span> <span class="op">(</span><span class="fl">1</span> <span class="op">|</span> <span class="va">group</span><span class="op">)</span>,</span>
@@ -422,7 +489,7 @@ models, so it’s better to use MCMC.</p>
 <span></span>
 <span><span class="va">mcmc_glmer</span> <span class="op">&lt;-</span> <span class="va">mdl_glmer</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">mcmc_glmer</span></span></code></pre></div>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span><span class="st">"b[cond]"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/plot_dens.html">plot_dens</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="float">
 <img src="ssp_posterior_dist.png" alt="Shrunk Posterior Distribution"><div class="figcaption">Shrunk Posterior Distribution</div>
@@ -445,7 +512,7 @@ for the requested summary.</p>
 <p>The <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code> function is used to visualize
 the predicted values of a model. It is particularly powerful for
 understanding interaction effects.</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Linear regression with interaction between talk and cond</span></span>
 <span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span><span class="va">fit_int</span> <span class="op">&lt;-</span> <span class="va">mdl_int</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
@@ -469,7 +536,7 @@ continuous.</li>
 <strong>Pairwise Contrasts</strong>: When the focal variable is
 categorical.</li>
 </ul>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate simple slopes of 'talk' for each level of 'cond'</span></span>
 <span><span class="va">se</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">fit_int</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/print.html" class="external-link">print</a></span><span class="op">(</span><span class="va">se</span><span class="op">)</span></span></code></pre></div>
@@ -498,7 +565,7 @@ data.</p>
 items BF1 and BF6), and calculate a Bayes factor testing the null
 hypothesis of zero correlation
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>r</mi><mo>=</mo><mn>0</mn></mrow><annotation encoding="application/x-tex">r = 0</annotation></semantics></math>).</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span></span>
 <span><span class="co"># Correlation between BF1 and BF6</span></span>
@@ -512,7 +579,7 @@ hypothesis of zero correlation
 <span><span class="co">## mean[BF6]     2.71  0.09     2.73     2.54     2.89      2978      2872  1.00 </span></span>
 <span><span class="co">## sd[BF1]       1.10  0.06     1.07     0.99     1.22      3151      3313  1.00 </span></span>
 <span><span class="co">## sd[BF6]       1.15  0.06     1.16     1.04     1.28      3072      2477  1.00 </span></span></code></pre>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Compare against the zero-correlation model (fixed = list(corr = 0))</span></span>
 <span><span class="va">bf_corr</span> <span class="op">&lt;-</span> <span class="va">mcmc_corr2</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span>fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span>corr <span class="op">=</span> <span class="fl">0</span><span class="op">)</span><span class="op">)</span></span>
 <span><span class="va">bf_corr</span></span></code></pre></div>
@@ -525,7 +592,7 @@ Interpretation      : Decisive evidence for Model 1 </code></pre>
 </h4>
 <p>If you specify multiple variables at once, the entire correlation
 matrix is estimated.</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Estimate the correlation matrix of 5 variables</span></span>
 <span><span class="va">mdl_corr_mat</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span><span class="op">)</span></span>
 <span><span class="va">opt_corr_mat</span> <span class="op">&lt;-</span> <span class="va">mdl_corr_mat</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -566,7 +633,7 @@ rotated factor loadings are placed in the <code>generate</code> block,
 MAP does not calculate standard errors for them by default. By
 specifying <code>se_sampling = TRUE</code>, you can compute their
 standard errors as well.</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 3-factor model, specifying Promax rotation</span></span>
 <span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span><span class="op">)</span></span>
 <span></span>
@@ -594,7 +661,7 @@ standard errors as well.</p>
 <span><span class="co">## L_promax[BF10,1]   0.03086     0.05210   -0.07256    0.13540 </span></span></code></pre>
 <p>The <code><a href="../reference/sort_loadings.html">sort_loadings()</a></code> function is useful to sort and
 display the rotated factor loadings nicely.</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">opt_fa</span><span class="op">$</span><span class="va">generate</span><span class="op">$</span><span class="va">L_promax</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V1   .867 -.117 -.179  .089  .057</span></span>
@@ -624,7 +691,7 @@ display the rotated factor loadings nicely.</p>
 <p>Factor scores can also be output by using the
 <code>score = TRUE</code> option. These scores are additionally pushed
 to the <code>generate</code> output.</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"promax"</span>, score <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">opt_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
@@ -651,7 +718,7 @@ indeterminacy, yielding a unique solution.</p>
 estimate via MAP, it is usually better to use MCMC or ADVI. Here, we
 present the results from ADVI (Automatic Differentiation Variational
 Inference).</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fa</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_fa.html">rtmb_fa</a></span><span class="op">(</span><span class="va">BigFive</span>, nfactors <span class="op">=</span> <span class="fl">5</span>, rotate <span class="op">=</span> <span class="st">"ssp"</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">vb_fa</span> <span class="op">&lt;-</span> <span class="va">mdl_fa</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span>iter <span class="op">=</span> <span class="fl">5000</span>, parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
@@ -671,7 +738,7 @@ Inference).</p>
 or <code>MAP</code>. With regularization, the <code>MAP</code> summary
 makes the output easier to read as the shrunk parameters will rigorously
 collapse to 0.</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">vb_fa</span><span class="op">$</span><span class="fu">MAP</span><span class="op">(</span><span class="st">"L"</span><span class="op">)</span> <span class="op">|&gt;</span> <span class="fu"><a href="../reference/sort_loadings.html">sort_loadings</a></span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">##        V1    V2    V3    V4    V5</span></span>
 <span><span class="co">## V7  -.823  .000 -.001  .001  .010</span></span>
@@ -725,7 +792,7 @@ effective to utilize the fast approximation via
 <p>Using the <code>BigFive</code> personality data (polytomous), we will
 fit a Graded Response Model (GRM). Here, we analyze four items related
 to “Agreeableness”.</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span><span class="co"># Select items 2, 7, 12, 17 (Agreeableness)</span></span>
 <span><span class="va">dat_irt</span> <span class="op">&lt;-</span> <span class="va">BigFive</span><span class="op">[</span>, <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"BF2"</span>, <span class="st">"BF7"</span>, <span class="st">"BF12"</span>, <span class="st">"BF17"</span><span class="op">)</span><span class="op">]</span></span>
@@ -764,7 +831,7 @@ using the <code><a href="../reference/item_curve.html">item_curve()</a></code> f
 understanding how the probability of choosing each category changes with
 the latent trait
 (<math display="inline" xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mi>θ</mi><annotation encoding="application/x-tex">\theta</annotation></semantics></math>).</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Calculate item curves</span></span>
 <span><span class="va">ic</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/item_curve.html">item_curve</a></span><span class="op">(</span><span class="va">opt_irt</span><span class="op">)</span></span>
 <span></span>
@@ -776,7 +843,7 @@ the latent trait
 </h4>
 <p>Information functions help evaluate the precision of measurement
 across different levels of the latent trait.</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Item Information Function: shows which items provide the most information</span></span>
 <span><span class="va">ii</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/item_info.html">item_info</a></span><span class="op">(</span><span class="va">opt_irt</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/graphics/plot.default.html" class="external-link">plot</a></span><span class="op">(</span><span class="va">ii</span><span class="op">)</span></span>
@@ -875,7 +942,7 @@ items.</td>
 <p>When your data contains missing responses, you can easily enable FIML
 to keep all respondents in the model and estimate factor loadings using
 all available data:</p>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span><span class="co"># Introduce some random missingness</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
@@ -894,7 +961,7 @@ all available data:</p>
 </h4>
 <p>If you want to match R’s default correlation tests using pairwise
 deletion, you can specify <code>missing = "pairwise"</code>:</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># Classic Pearson correlation with pairwise deletion</span></span>
 <span><span class="va">mdl_corr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive_miss</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"pearson"</span>, missing <span class="op">=</span> <span class="st">"pairwise"</span><span class="op">)</span></span>
 <span><span class="va">fit_corr</span> <span class="op">&lt;-</span> <span class="va">mdl_corr</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>

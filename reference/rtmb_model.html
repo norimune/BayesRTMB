@@ -15,7 +15,7 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -91,7 +91,9 @@ Inference (ADVI), and Markov Chain Monte Carlo (MCMC) sampling.</p>
 
 
 <dl><dt id="arg-data">data<a class="anchor" aria-label="anchor" href="#arg-data"></a></dt>
-<dd><p>A named list containing observation data and constants (e.g., sample size, matrices) used in the model.</p></dd>
+<dd><p>A named list, data frame, matrix, or other object containing the
+observations used in the model. The original object is available as
+<code>.data</code> while the <code>setup</code> block is evaluated.</p></dd>
 
 
 <dt id="arg-code">code<a class="anchor" aria-label="anchor" href="#arg-code"></a></dt>
@@ -138,6 +140,11 @@ detect common structural errors, such as undefined variables, out-of-bounds indi
 or incompatible matrix operations, before proceeding to the computationally expensive
 Automatic Differentiation (MakeADFun) phase. Cryptic backend errors are caught and
 translated into user-friendly hints.</p>
+<p>Inside the <code>setup</code> block, the read-only reserved name <code>.data</code>
+refers to the original object supplied to <code>data</code>. This allows setup code
+such as <code>Y &lt;- as.matrix(.data)</code> for a matrix or data frame, and
+<code>S &lt;- as.matrix(.data$sets)</code> for a named list.
+The temporary <code>.data</code> binding is removed after setup has finished.</p>
 <p><strong>Writing AD-Compatible Code (Important):</strong>
 To ensure the model is differentiable, you must follow specific syntax rules
 when writing code within <code>rtmb_code</code>. Avoid discrete branching (<code>if</code>, <code>ifelse</code>)

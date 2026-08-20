@@ -17,6 +17,7 @@ rtmb_glmer(
   gmc = NULL,
   centering = NULL,
   cwc = NULL,
+  std = FALSE,
   view = NULL,
   within = NULL,
   factors = NULL,
@@ -91,6 +92,16 @@ rtmb_glmer(
   (group variable) and `pars` (variable names to center). You can also
   use `cwc = list(ID, "x")` or `cwc = list(ID, "all")`; `"all"` centers
   all numeric fixed-effect variables within the cluster.
+
+- std:
+
+  Logical; if \`TRUE\`, add post-hoc standardized fixed-effect
+  coefficients as \`b_std\`. Every column of the fixed-effect design
+  matrix is standardized, including columns generated from factors and
+  interactions. For Gaussian models, coefficients are scaled by both the
+  predictor and response standard deviations. For other families, only
+  the predictor standard deviations are used, so coefficients remain on
+  the link scale.
 
 - view:
 
@@ -241,16 +252,16 @@ rtmb_glmer(
 #> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -511.60  10.82  -512.93  -534.55  -491.59       219       477  1.00 
-#> Intercept         2.65   0.09     2.67     2.46     2.82      1215       754  1.00 
-#> b[cond]           0.75   0.13     0.72     0.49     1.00      1146       750  1.00 
-#> sigma             0.83   0.04     0.81     0.75     0.92       661       521  1.01 
-#> sd[group:Int]     0.40   0.08     0.41     0.23     0.55       322       467  1.00 
-#> r_re[1]          -0.73   0.76    -0.77    -2.24     0.79      1544       670  1.00 
-#> r_re[2]          -0.96   0.77    -0.96    -2.46     0.51      1962       724  1.00 
-#> r_re[3]           0.02   0.79    -0.27    -1.62     1.58      1835       804  1.00 
-#> r_re[4]           0.60   0.76     0.46    -0.91     2.06      1811       608  1.00 
-#> r_re[5]          -0.41   0.82    -0.14    -2.00     1.15      1755       809  1.00 
+#> lp             -513.26  12.98  -512.75  -543.41  -490.50       137        94  1.01 
+#> Intercept         2.64   0.09     2.65     2.46     2.81      1147       730  1.00 
+#> b[cond]           0.76   0.13     0.77     0.51     0.99      1095       790  1.01 
+#> sigma             0.83   0.05     0.81     0.75     0.93       328       368  1.01 
+#> sd[group:Int]     0.39   0.10     0.41     0.06     0.55       173        66  1.01 
+#> r_re[1]          -0.67   0.78    -0.61    -2.29     0.84      1421       617  1.00 
+#> r_re[2]          -0.94   0.79    -1.02    -2.48     0.60       977       714  1.00 
+#> r_re[3]           0.03   0.83     0.09    -1.48     1.64      1491       601  1.00 
+#> r_re[4]           0.59   0.85     0.67    -1.07     2.32      1181       634  1.01 
+#> r_re[5]          -0.36   0.78    -0.42    -1.86     1.21      1726       779  1.00 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -295,6 +306,7 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
+#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
@@ -325,7 +337,6 @@ rtmb_glmer(
 #> Checking RTMB setup...
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
-#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")
@@ -333,13 +344,13 @@ rtmb_glmer(
 #> Call:
 #> MAP Estimation via RTMB
 #> 
-#> Negative Log-Posterior: 390.80
+#> Negative Log-Posterior: 400.19
 #> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
-#> b[talk]    0.26100     0.05297    0.15717    0.36483 
-#> b[perf]    0.15004     0.02966    0.09192    0.20817 
-#> b[skill]   0.18076     0.06487    0.05362    0.30790 
+#> b[talk]    0.00000     0.00000    0.00000    0.00000 
+#> b[perf]    0.16011     0.03082    0.09970    0.22052 
+#> b[skill]   0.22134     0.06679    0.09043    0.35225 
 #> 
 ```

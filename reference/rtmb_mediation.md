@@ -17,6 +17,9 @@ rtmb_mediation(
   fixed = NULL,
   view = NULL,
   WAIC = FALSE,
+  gmc = NULL,
+  centering = NULL,
+  cwc = NULL,
   ...
 )
 ```
@@ -26,7 +29,8 @@ rtmb_mediation(
 - formula:
 
   A list of formulas defining the regression paths (e.g., \`list(M ~ X,
-  Y ~ X + M)\`).
+  Y ~ X + M)\`). Each equation may optionally include one random
+  intercept, such as \`(1 \| ID)\`.
 
 - data:
 
@@ -59,6 +63,21 @@ rtmb_mediation(
   Logical; if TRUE, add pointwise \`log_lik\` to the generate block for
   WAIC.
 
+- gmc:
+
+  Character vector naming predictors to grand-mean center, or \`"all"\`
+  to center all numeric predictors used by the mediation equations.
+
+- centering:
+
+  Alias for \`gmc\`.
+
+- cwc:
+
+  Centering-within-cluster specification. Use, for example,
+  \`list(cluster = ID, pars = c("X", "M"))\` or \`list(ID, "X")\`.
+  Cluster means are not added automatically.
+
 - ...:
 
   Reserved; unused arguments are rejected.
@@ -73,6 +92,23 @@ The function identifies mediation paths by looking for variables that
 are responses in one equation and predictors in another. Indirect
 effects are calculated as the product of coefficients along these paths
 (\\a \* b\\).
+
+Random intercepts may be included in all equations or in only a subset
+of equations. When more than one equation contains a random intercept,
+all random intercepts must use the same grouping variable and their
+correlations are estimated jointly. Random slopes, multiple
+random-effect terms within an equation, and different grouping variables
+across equations are not yet supported. The mediation-specific classical
+bootstrap is currently unavailable for random-intercept and CWC models.
+
+\`gmc\` (or its alias \`centering\`) and \`cwc\` are applied to
+predictor uses of the selected variables before each equation's model
+matrix is constructed. Their response uses remain on the original scale.
+Thus, if \`M\` is the response in one equation and a predictor in
+another, \`cwc = list(ID, "M")\` centers \`M\` only in the latter role.
+When both GMC and CWC target the same variable, GMC is applied first.
+Between-cluster means must be created by the user and included
+explicitly in the formulas.
 
 **Uncertainty Estimation**: When using \`\$optimize(ci_method =
 "sampling")\`, the function provides asymmetric confidence intervals for

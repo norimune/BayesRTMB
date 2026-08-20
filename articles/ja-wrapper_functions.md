@@ -70,6 +70,21 @@ IRTで
 `a ~ exponential(1 / 2)`、すなわち平均2の指数事前分布が使われます。
 rateを変更する場合は `prior_normal(a_rate = ...)` と指定します。
 
+回帰系ラッパーでは、`std = TRUE` を指定すると、固定効果の標準化係数が
+`b_std`
+として追加されます。Gaussianモデルではデザイン行列の各列と応答変数の標準偏差を使い、それ以外のfamilyでは各列の標準偏差だけを使うため、係数はlink尺度に残ります。factorや交互作用から作られた列も対象です。
+
+``` r
+
+mdl_std <- rtmb_lm(
+  sat ~ talk * perf,
+  data = debate,
+  std = TRUE
+)
+fit_std <- mdl_std$sample()
+fit_std$summary()
+```
+
 ## 推定のイメージ
 
 ラッパー関数でモデルを作ったあとは、メソッドを選んで推定します。
@@ -102,6 +117,51 @@ fit$summary()
 ```
 
 このように、モデルの書き方は同じで、推定方法だけを切り替えられます。
+
+## 事後予測チェック
+
+回帰系ラッパーのMAP、MCMC、変分推論の結果では、事後予測データを直接生成できます。
+`type = "auto"` は、観測モデルが `_lpdf` なら密度、`_lpmf`
+なら棒グラフを使います。
+MCMCと変分推論では事後標本を使います。サンプリング型の標準誤差を保存していない
+MAPでは、MAP点に条件づけて複製データを生成します。
+
+``` r
+
+yrep <- fit$posterior_predict(draws = 100, seed = 123)
+fit$pp_check(type = "auto", draws = 100, seed = 123)
+fit$pp_check(stat = mean, draws = 100, seed = 123)
+```
+
+`x` にモデルデータの列名、または観測数と同じ長さのベクトルを指定すると、
+散布図形式のチェックになります。観測値と、事後予測平均および95%事後予測区間を
+同じ図に表示します。予測にはモデル内のすべての項が使われ、`x`
+は横軸だけを選びます。
+
+``` r
+
+fit$pp_check(x = "talk", draws = 100, seed = 123)
+fit$pp_check(x = ".fitted", draws = 100, seed = 123)
+```
+
+予約値 `x = ".fitted"`
+を指定すると、各観測の事後予測平均を横軸に置きます。
+モデル全体のキャリブレーションを確認するための表示になり、45度線も追加されます。
+散布図の凡例は自動配置され、`legend_position`、`legend_cex`、または
+`show_legend = FALSE` で調整できます。
+予測区間はデフォルトで95%であり、`interval` で変更できます。
+
+階層モデルでは `random` で予測水準を選びます。`"conditional"`
+は推定された 集団効果を使い、`"population"`
+は集団効果を除き、`"simulate"` は各事後標本から
+新しい集団効果を生成します。
+
+``` r
+
+fit_lmer$pp_check(random = "conditional")
+fit_lmer$pp_check(random = "population")
+fit_lmer$pp_check(random = "simulate")
+```
 
 ## 頻度主義的分析
 
@@ -232,6 +292,8 @@ mdl$print_code()
 ## 
 ## rtmb_code(
 ##   setup = {
+##     Y <- as.numeric(.data$response)
+##     G <- as.integer(.data$group)
 ##     Y1 <- as.numeric(na.omit(Y[G == 1]))
 ##     Y2 <- as.numeric(na.omit(Y[G == 2]))
 ##   }, 

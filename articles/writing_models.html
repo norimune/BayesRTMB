@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -181,13 +181,43 @@ variable.</p>
 </h3>
 <p>This block is executed exactly once before the model computations
 begin. It is primarily used to extract data sizes (number of
-rows/columns) as variables from the <code>data</code> list passed from
-R, and to create constants required for computations.</p>
+rows/columns), prepare model variables, and create constants required
+for computations.</p>
+<p>The reserved name <code>.data</code> refers to the original object
+supplied to the <code>data</code> argument of <code><a href="../reference/rtmb_model.html">rtmb_model()</a></code>.
+It can therefore be used with a matrix or data frame directly, or with
+elements of a named list. The <code>.data</code> binding is read-only,
+is available only while <code>setup</code> is evaluated, and is not
+retained in the model data afterward.</p>
 <p><strong>Example Code:</strong></p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
-<span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>  <span class="co"># Get the sample size of the observed data</span></span>
-<span>  <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span>    <span class="co"># Get the number of columns in the design matrix (number of predictors)</span></span>
+<span>  <span class="co"># For data = list(Y = y, X = x)</span></span>
+<span>  <span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/numeric.html" class="external-link">as.numeric</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">Y</span><span class="op">)</span></span>
+<span>  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">X</span><span class="op">)</span></span>
+<span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
+<span>  <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">X</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>When the object passed to <code>data</code> is itself a matrix or
+data frame, use <code>as.matrix(.data)</code>:</p>
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">Y</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/matrix.html" class="external-link">as.matrix</a></span><span class="op">(</span><span class="va">.data</span><span class="op">)</span></span>
+<span>  <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">nrow</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
+<span>  <span class="va">P</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/nrow.html" class="external-link">ncol</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
+<span><span class="op">}</span></span></code></pre></div>
+<p>Columns of a data frame and elements of a named list also remain
+available directly by name inside <code>setup</code>. Using
+<code>.data</code> is useful when the generated code should show
+explicitly which values came from the original input object.</p>
+<p>For common data-only centering operations, BayesRTMB provides
+<code><a href="../reference/center_grand_mean.html">center_grand_mean()</a></code> and
+<code><a href="../reference/center_within_cluster.html">center_within_cluster()</a></code>. These helpers can be used inside
+<code>setup</code> as well as in ordinary R code.</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
+<span>  <span class="va">x_gmc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/center_grand_mean.html">center_grand_mean</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">x</span><span class="op">)</span></span>
+<span>  <span class="va">x_cwc</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/center_within_cluster.html">center_within_cluster</a></span><span class="op">(</span><span class="va">.data</span><span class="op">$</span><span class="va">x</span>, <span class="va">.data</span><span class="op">$</span><span class="va">group</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
 </div>
 <div class="section level3">
@@ -426,7 +456,7 @@ as <code>Y ~ exgaussian(mu, sigma, lambda)</code>.</p>
 <p>The following example simulates response times in seconds from an
 ex-Gaussian distribution and fits the same model. Here,
 <code>lambda</code> is the rate of the exponential component.</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="kw"><a href="https://rdrr.io/r/base/library.html" class="external-link">library</a></span><span class="op">(</span><span class="va"><a href="https://github.com/norimune/BayesRTMB" class="external-link">BayesRTMB</a></span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">simulate_exgaussian</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">N</span>, <span class="va">mu</span>, <span class="va">sigma</span>, <span class="va">lambda</span><span class="op">)</span> <span class="op">{</span></span>
@@ -447,7 +477,7 @@ ex-Gaussian distribution and fits the same model. Here,
 <p>The user-defined distribution is placed in <code>setup</code>. The
 model block can then use the same sampling syntax as built-in
 distributions.</p>
-<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">code_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">rt</span></span>
@@ -486,7 +516,7 @@ distributions.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>For this model, it is helpful to provide initial values on the scale
 of the observed response times.</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">init_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>  mu <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/median.html" class="external-link">median</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
 <span>  sigma <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/sd.html" class="external-link">sd</a></span><span class="op">(</span><span class="va">rt</span><span class="op">)</span> <span class="op">/</span> <span class="fl">2</span>,</span>
@@ -510,13 +540,38 @@ of the observed response times.</p>
 <span><span class="op">)</span></span></code></pre></div>
 <p>The same model can be sampled with MCMC or fit with variational
 inference.</p>
-<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>parallel <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">fit_mcmc</span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl_exgaussian</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_vb</span></span></code></pre></div>
+<p>For a custom model, posterior predictions can be supplied after
+fitting by passing a <code>generate</code> block. The block must return
+one replicated outcome for each posterior draw. Because
+<code>exgaussian_lpdf()</code> ends in <code>_lpdf</code>,
+<code>type = "auto"</code> selects the continuous density check.</p>
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">predict_exgaussian</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
+<span>  generate <span class="op">=</span> <span class="op">{</span></span>
+<span>    <span class="va">y_rep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span> <span class="op">+</span> <span class="fu"><a href="https://rdrr.io/r/stats/Exponential.html" class="external-link">rexp</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, rate <span class="op">=</span> <span class="va">lambda</span><span class="op">)</span></span>
+<span>    <span class="fu">report</span><span class="op">(</span><span class="va">y_rep</span><span class="op">)</span></span>
+<span>  <span class="op">}</span></span>
+<span><span class="op">)</span></span>
+<span></span>
+<span><span class="va">yrep</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">posterior_predict</span><span class="op">(</span></span>
+<span>  code <span class="op">=</span> <span class="va">predict_exgaussian</span>,</span>
+<span>  draws <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span></span>
+<span>  code <span class="op">=</span> <span class="va">predict_exgaussian</span>,</span>
+<span>  observed <span class="op">=</span> <span class="st">"Y"</span>,</span>
+<span>  type <span class="op">=</span> <span class="st">"auto"</span>,</span>
+<span>  draws <span class="op">=</span> <span class="fl">100</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fl">123</span></span>
+<span><span class="op">)</span></span></code></pre></div>
 <p>When WAIC is needed, the <code>generate</code> block should save an
 observation-wise <code>log_lik</code> by calling the custom
 <code>_lpdf</code> with <code>sum = FALSE</code>.</p>
@@ -735,7 +790,7 @@ vector inside a loop.</p>
 will later be assigned AD values, use <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> or
 <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> instead of <code><a href="https://rdrr.io/r/base/numeric.html" class="external-link">numeric()</a></code>,
 <code><a href="https://rdrr.io/r/base/matrix.html" class="external-link">matrix()</a></code>, or <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>.</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, <span class="va">N</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -743,7 +798,7 @@ will later be assigned AD values, use <code><a href="../reference/rtmb_vector.ht
 <span>  <span class="op">}</span></span>
 <span>  <span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">eta</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">logit_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="va">N_time</span>, <span class="va">C</span>, <span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fu"><a href="https://rdrr.io/r/base/seq.html" class="external-link">seq_len</a></span><span class="op">(</span><span class="va">N_time</span><span class="op">)</span><span class="op">)</span> <span class="op">{</span></span>
@@ -769,7 +824,7 @@ evaluation.</p>
 automatically have methods added in newer versions. Use
 <code><a href="../reference/upgrade_fit.html">upgrade_fit()</a></code> to rebuild an existing MCMC, VB, MAP, or
 classic fit object with the currently loaded class definitions.</p>
-<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit2</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit</span><span class="op">)</span></span></code></pre></div>
 <p>This does not refit the model. It copies the stored estimation
 results into a new fit object, and by default also rebuilds the embedded

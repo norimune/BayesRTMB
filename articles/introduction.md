@@ -230,17 +230,16 @@ mdl_lm$print_code()
 ## 
 ## rtmb_code(
 ##   setup = {
-##     mf <- model.frame(formula, df)
+##     mf <- model.frame(sat ~ talk + perf, na.action = na.omit)
 ##     Y <- model.response(mf)
-##     X_full <- model.matrix(formula, mf)
-##     X <- X_full[, colnames(X_full) != "(Intercept)", drop = FALSE]
-##     N <- length(Y)
+##     X <- model.matrix(sat ~ talk + perf, mf)[, -1, drop = FALSE]
+##     N <- nrow(mf)
 ##     K <- ncol(X)
 ##   }, 
 ##   parameters = {
 ##     Intercept <- Dim(1)
 ##     b <- Dim(K)
-##     sigma <- Dim(num_sigma_groups, lower = 0)
+##     sigma <- Dim(1, lower = 0)
 ##   }, 
 ##   model = {
 ##     # Transform

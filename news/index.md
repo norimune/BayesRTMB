@@ -1,6 +1,77 @@
 # Changelog
 
+## BayesRTMB 0.3.0
+
+- Added posterior predictive simulation and checks through
+  [`posterior_predict()`](https://norimune.github.io/BayesRTMB/reference/posterior_predict.md)
+  and
+  [`pp_check()`](https://norimune.github.io/BayesRTMB/reference/pp_check.md).
+  Regression wrappers automatically support continuous density checks,
+  discrete binned-bar checks, scalar test statistics, predictor-based
+  and fitted-value calibration scatter checks, and conditional,
+  population-level, or newly simulated random effects. Custom models can
+  provide replicated outcomes in a `generate` block.
+- Added random-intercept mediation models to
+  [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md).
+  A random intercept can be included in one equation or in multiple
+  equations; random intercepts sharing a grouping variable are modeled
+  jointly with an estimated correlation matrix.
+- Added grand-mean centering (`gmc`/`centering`) and centering within
+  cluster (`cwc`) to
+  [`rtmb_mediation()`](https://norimune.github.io/BayesRTMB/reference/rtmb_mediation.md).
+  Centering is applied to predictor uses while preserving response
+  variables on their original scale; cluster means remain user-specified
+  model terms.
+- Corrected degrees of freedom for classical mediation models. Fixed
+  Gaussian equations now use the rank of their own design matrix,
+  derived effects inherit degrees of freedom from their contributing
+  coefficients, and Gaussian random-intercept mediation models use
+  Satterthwaite degrees of freedom by default.
+- Added the setup-only `.data` binding for accessing the original object
+  passed to
+  [`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md).
+  Wrapper-generated setup code now reads matrices and data frames
+  directly, or reads related inputs such as responses, IDs, covariates,
+  and choice sets from one named data list. Structural options remain
+  visible as fixed assignments in the generated code.
+- Added `std = TRUE` to the regression wrappers. It reports post-hoc
+  standardized fixed-effect coefficients as `b_std`, using every column
+  of the fixed-effect design matrix, including factor and interaction
+  columns.
+- Added
+  [`summary_mcmc()`](https://norimune.github.io/BayesRTMB/reference/summary_mcmc.md)
+  for summarizing numeric MCMC arrays arranged as iterations by chains
+  by variables. It provides the same summary columns and print format as
+  `MCMC_Fit$summary()`, with parameter and chain selection.
+- Added exported
+  [`center_grand_mean()`](https://norimune.github.io/BayesRTMB/reference/center_grand_mean.md)
+  and
+  [`center_within_cluster()`](https://norimune.github.io/BayesRTMB/reference/center_within_cluster.md)
+  helpers for generated wrapper code and hand-written models.
+- Made regression-wrapper `print_code()` expose data-frame columns
+  instead of a nested data/formula payload, with explicit formula
+  preprocessing and readable grand-mean and within-cluster centering
+  helpers.
+- Fixed `rtmb_table(x, y, data = ...)` so unquoted column names are
+  resolved from the supplied data frame while preserving reproducible
+  generated code.
+- Simplified factor-analysis and multidimensional-unfolding
+  `print_code()` output by assigning `nfactors` and `ndim` values
+  directly to the internal constants `K` and `D`.
+- Updated
+  [`rtmb_corr()`](https://norimune.github.io/BayesRTMB/reference/rtmb_corr.md)
+  normal priors to use the model-specific `mean_sd` and `sd_rate`
+  aliases and to add an LKJ prior with `lkj_eta = 1` by default.
+- Corrected Jacobian adjustments for constrained parameters supplied
+  through `fixed`, so elements removed from the free-parameter map no
+  longer contribute to optimization or sampling target densities.
+- Updated the English and Japanese vignettes to document `.data`,
+  unified named data inputs, structural constants in `setup`, and
+  reproducible wrapper-generated code.
+
 ## BayesRTMB 0.2.4
+
+CRAN release: 2026-07-24
 
 - Allowed
   [`rtmb_lm()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lm.md),

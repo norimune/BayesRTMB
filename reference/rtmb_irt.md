@@ -155,6 +155,9 @@ rtmb_irt(
 #> 
 #> rtmb_code(
 #>   setup = {
+#>     # Observed item responses
+#>     Y <- as.matrix(.data)
+#>     Y <- na.omit(Y)
 #>     obs_data <- which(!is.na(Y), arr.ind = TRUE)
 #>     person_idx <- as.integer(obs_data[, "row"])
 #>     item_idx <- as.integer(obs_data[, "col"])

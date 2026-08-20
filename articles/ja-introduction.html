@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -259,17 +259,16 @@ MCMC の結果から bridge sampling による周辺尤度や Bayes factor
 <span><span class="co">## </span></span>
 <span><span class="co">## rtmb_code(</span></span>
 <span><span class="co">##   setup = {</span></span>
-<span><span class="co">##     mf &lt;- model.frame(formula, df)</span></span>
+<span><span class="co">##     mf &lt;- model.frame(sat ~ talk + perf, na.action = na.omit)</span></span>
 <span><span class="co">##     Y &lt;- model.response(mf)</span></span>
-<span><span class="co">##     X_full &lt;- model.matrix(formula, mf)</span></span>
-<span><span class="co">##     X &lt;- X_full[, colnames(X_full) != "(Intercept)", drop = FALSE]</span></span>
-<span><span class="co">##     N &lt;- length(Y)</span></span>
+<span><span class="co">##     X &lt;- model.matrix(sat ~ talk + perf, mf)[, -1, drop = FALSE]</span></span>
+<span><span class="co">##     N &lt;- nrow(mf)</span></span>
 <span><span class="co">##     K &lt;- ncol(X)</span></span>
 <span><span class="co">##   }, </span></span>
 <span><span class="co">##   parameters = {</span></span>
 <span><span class="co">##     Intercept &lt;- Dim(1)</span></span>
 <span><span class="co">##     b &lt;- Dim(K)</span></span>
-<span><span class="co">##     sigma &lt;- Dim(num_sigma_groups, lower = 0)</span></span>
+<span><span class="co">##     sigma &lt;- Dim(1, lower = 0)</span></span>
 <span><span class="co">##   }, </span></span>
 <span><span class="co">##   model = {</span></span>
 <span><span class="co">##     # Transform</span></span>

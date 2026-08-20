@@ -259,6 +259,8 @@ Tools for model evaluation and post-processing.
   : Sort and display factor loadings neatly
 - [`read_mcmc_csv()`](https://norimune.github.io/BayesRTMB/reference/read_mcmc_csv.md)
   : Restore MCMC Fit from CSV
+- [`summary_mcmc()`](https://norimune.github.io/BayesRTMB/reference/summary_mcmc.md)
+  : Summarize MCMC Draws Stored in an Array
 
 ## Math and Transformation Functions
 
@@ -302,6 +304,10 @@ Functions used within rtmb_code for stability and transformations.
   : Sum-to-zero transformation
 - [`stz_basis()`](https://norimune.github.io/BayesRTMB/reference/stz_basis.md)
   : stz basis function
+- [`center_grand_mean()`](https://norimune.github.io/BayesRTMB/reference/center_grand_mean.md)
+  : Center a Numeric Variable Around Its Grand Mean
+- [`center_within_cluster()`](https://norimune.github.io/BayesRTMB/reference/center_within_cluster.md)
+  : Center a Numeric Variable Within Clusters
 
 ## Classes
 
@@ -367,6 +373,10 @@ Functions used within rtmb_code for stability and transformations.
   : Calculate Bayes Factor
 - [`beverage`](https://norimune.github.io/BayesRTMB/reference/beverage.md)
   : Beverage Preference Data
+- [`center_grand_mean()`](https://norimune.github.io/BayesRTMB/reference/center_grand_mean.md)
+  : Center a Numeric Variable Around Its Grand Mean
+- [`center_within_cluster()`](https://norimune.github.io/BayesRTMB/reference/center_within_cluster.md)
+  : Center a Numeric Variable Within Clusters
 - [`conditional_effects()`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.md)
   : Calculate Conditional Effects
 - [`conditional_effects(`*`<mcmc_fit>`*`)`](https://norimune.github.io/BayesRTMB/reference/conditional_effects.mcmc_fit.md)
@@ -466,6 +476,11 @@ Functions used within rtmb_code for stability and transformations.
   : Plot test information function
 - [`plot_trace()`](https://norimune.github.io/BayesRTMB/reference/plot_trace.md)
   : Plot MCMC trace plots
+- [`posterior_predict()`](https://norimune.github.io/BayesRTMB/reference/posterior_predict.md)
+  : Posterior predictive simulation
+- [`pp_check()`](https://norimune.github.io/BayesRTMB/reference/pp_check.md)
+  [`plot(`*`<rtmb_pp_check>`*`)`](https://norimune.github.io/BayesRTMB/reference/pp_check.md)
+  : Posterior predictive checks
 - [`print(`*`<bayes_factor>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.bayes_factor.md)
   : Print method for bayes_factor objects
 - [`print(`*`<bayes_factor_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/print.bayes_factor_rtmb.md)
@@ -560,6 +575,8 @@ Functions used within rtmb_code for stability and transformations.
   : Sum-to-zero transformation
 - [`summary(`*`<ce_rtmb>`*`)`](https://norimune.github.io/BayesRTMB/reference/summary.ce_rtmb.md)
   : Summary method for ce_rtmb class
+- [`summary_mcmc()`](https://norimune.github.io/BayesRTMB/reference/summary_mcmc.md)
+  : Summarize MCMC Draws Stored in an Array
 - [`test_info()`](https://norimune.github.io/BayesRTMB/reference/test_info.md)
   : Calculate Test Information Function
 - [`to_centered_matrix()`](https://norimune.github.io/BayesRTMB/reference/to_centered_matrix.md)

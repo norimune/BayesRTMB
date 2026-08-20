@@ -9,7 +9,7 @@ Missing values (NA) in the data are automatically removed internally for efficie
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -212,6 +212,9 @@ with `prior_normal()`), `b_sd` (difficulty), and `c_alpha`/`c_beta`
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> rtmb_code(</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>   setup = {</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     # Observed item responses</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Y &lt;- as.matrix(.data)</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span>     Y &lt;- na.omit(Y)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     obs_data &lt;- which(!is.na(Y), arr.ind = TRUE)</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     person_idx &lt;- as.integer(obs_data[, "row"])</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>     item_idx &lt;- as.integer(obs_data[, "col"])</span>

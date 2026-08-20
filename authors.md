@@ -10,12 +10,12 @@ Source:
 [`DESCRIPTION`](https://github.com/norimune/BayesRTMB/blob/master/DESCRIPTION)
 
 Shimizu H (2026). *BayesRTMB: Bayesian Inference Using 'RTMB'*. R
-package version 0.2.4, <https://github.com/norimune/BayesRTMB>.
+package version 0.3.0, <https://github.com/norimune/BayesRTMB>.
 
     @Manual{,
       title = {BayesRTMB: Bayesian Inference Using 'RTMB'},
       author = {Hiroshi Shimizu},
       year = {2026},
-      note = {R package version 0.2.4},
+      note = {R package version 0.3.0},
       url = {https://github.com/norimune/BayesRTMB},
     }

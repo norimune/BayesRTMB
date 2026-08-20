@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -270,9 +270,9 @@ frame内の列とモデル内の変数を結び付ける書き方がわかりや
 <span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="co"># data frameの列を、モデル内で使う変数名に結び付ける</span></span>
-<span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">sat</span></span>
-<span>    <span class="va">X</span> <span class="op">&lt;-</span> <span class="va">talk</span></span>
+<span>    <span class="co"># 元のdata frameから、モデル内で使う変数を明示的に取り出す</span></span>
+<span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">.data</span><span class="op">$</span><span class="va">sat</span></span>
+<span>    <span class="va">X</span> <span class="op">&lt;-</span> <span class="va">.data</span><span class="op">$</span><span class="va">talk</span></span>
 <span></span>
 <span>    <span class="co"># setupでは、AD対象外の前処理や補助関数の定義もできる</span></span>
 <span>    <span class="va">center</span> <span class="op">&lt;-</span> <span class="kw">function</span><span class="op">(</span><span class="va">x</span><span class="op">)</span> <span class="va">x</span> <span class="op">-</span> <span class="fu"><a href="https://rdrr.io/r/base/mean.html" class="external-link">mean</a></span><span class="op">(</span><span class="va">x</span><span class="op">)</span></span>
@@ -298,9 +298,10 @@ frame内の列とモデル内の変数を結び付ける書き方がわかりや
 <span>  data <span class="op">=</span> <span class="va">df</span>,</span>
 <span>  code <span class="op">=</span> <span class="va">code</span></span>
 <span><span class="op">)</span></span></code></pre></div>
-<p>この例では、<code>data = df</code> により <code>df$sat</code> や
-<code>df$talk</code> が <code>setup</code>
-内で参照可能になります。<code>setup</code>
+<p>この例では、<code>data = df</code> により元のdata frameが
+<code>.data</code> として参照可能になり、<code>.data$sat</code> や
+<code>.data$talk</code> をモデル内の変数へ明示的に結び付けられます。data
+frameの列は、これまでどおり列名だけで直接参照することもできます。<code>setup</code>
 は、欠測処理、index作成、デザイン行列の作成、補助関数の定義など、モデル計算の前に一度だけ決めたい処理を書く場所です。</p>
 <p>推定後は、fit objectに対して
 <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code>、<code>estimate()</code>、<code>diagnose()</code>、<code>draws()</code>
@@ -842,13 +843,24 @@ samplingのESSとerrorを確認します。</td>
 </tr>
 </tbody>
 </table>
+<div class="section level4">
+<h4 id="一般的なmcmc配列を要約する">一般的なMCMC配列を要約する<a class="anchor" aria-label="anchor" href="#%E4%B8%80%E8%88%AC%E7%9A%84%E3%81%AAmcmc%E9%85%8D%E5%88%97%E3%82%92%E8%A6%81%E7%B4%84%E3%81%99%E3%82%8B"></a>
+</h4>
+<p><code><a href="../reference/summary_mcmc.html">summary_mcmc()</a></code>を使うと、iteration、chain、variableの順に並んだ一般的な数値3次元配列に、<code>MCMC_Fit$summary()</code>と同じ要約列と表示形式を適用できます。<code>MCMC_Fit</code>オブジェクトや、ほかのMCMCパッケージのclassは必要ありません。</p>
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">draw_array</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"b"</span><span class="op">)</span></span>
+<span></span>
+<span><span class="fu"><a href="../reference/summary_mcmc.html">summary_mcmc</a></span><span class="op">(</span><span class="va">draw_array</span><span class="op">)</span></span>
+<span><span class="fu"><a href="../reference/summary_mcmc.html">summary_mcmc</a></span><span class="op">(</span><span class="va">draw_array</span>, chains <span class="op">=</span> <span class="fl">1</span><span class="op">:</span><span class="fl">2</span>, max_rows <span class="op">=</span> <span class="cn">NULL</span><span class="op">)</span></span></code></pre></div>
+<p><code>pars</code>には、<code>"b[1]"</code>のような完全な変数名または<code>"b"</code>のような基本名を指定できます。先頭に<code>"-"</code>を付けると、その変数を除外できます。</p>
+</div>
 </div>
 <div class="section level3">
 <h3 id="transformed_drawsとgenerated_quantities">4.4 transformed_draws()とgenerated_quantities()<a class="anchor" aria-label="anchor" href="#transformed_draws%E3%81%A8generated_quantities"></a>
 </h3>
 <p><code>transform</code> や <code>generate</code>
 の計算を、推定後にposterior drawごとに追加できます。</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">transformed_draws</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="op">{</span></span>
@@ -857,7 +869,7 @@ samplingのESSとerrorを確認します。</td>
 <p><code>generated_quantities()</code>
 には、<code>rtmb_code(generate = { ... })</code> または
 <code>{ ... }</code> を渡せます。</p>
-<div class="sourceCode" id="cb16"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gq_code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  generate <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -868,14 +880,14 @@ samplingのESSとerrorを確認します。</td>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><code>progress = "message"</code>
 を指定すると、Jobや並列実行でも進捗メッセージとして表示されます。</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="va">gq_code</span>, progress <span class="op">=</span> <span class="st">"message"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level3">
 <h3 id="bridge-samplingとbayes-factor">4.5 bridge samplingとBayes factor<a class="anchor" aria-label="anchor" href="#bridge-sampling%E3%81%A8bayes-factor"></a>
 </h3>
 <p>MCMC fitでは、bridge samplingで周辺尤度を推定できます。</p>
-<div class="sourceCode" id="cb18"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">logml</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"normal"</span>,</span>
 <span>  use_neff <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -890,7 +902,7 @@ weightに基づく有効サンプルサイズの目安です。誤差が大き�
 や <code>chains</code> を増やす、<code>method</code> を見直す、posterior
 drawの混合を確認する、という順に疑います。</p>
 <p>Bayes factorは、周辺尤度の比として計算されます。</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  sampling <span class="op">=</span> <span class="fl">4000</span>,</span>
@@ -904,7 +916,7 @@ factorを計算します。Bayes
 factorの解釈と診断は8.1節にもまとめています。</p>
 <p>すでに比較モデルを推定している場合は、<code>comparison_fit</code>
 を渡せます。</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_null</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="va">model</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -923,7 +935,7 @@ factorはpriorに敏感です。モデル比較を目的にする場合は、<co
 <p>WAICには、観測ごとのlog likelihoodが必要です。自作モデルでは
 <code>generate</code> ブロックに <code>log_lik</code>
 を保存します。モデル比較としてのWAICの使い方は8.2節にまとめています。</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="va">debate</span></span>
 <span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
@@ -946,7 +958,7 @@ factorはpriorに敏感です。モデル比較を目的にする場合は、<co
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>ラッパー関数では、対応している場合に <code>WAIC = TRUE</code>
 を指定します。</p>
-<div class="sourceCode" id="cb22"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -964,7 +976,7 @@ factorはpriorに敏感です。モデル比較を目的にする場合は、<co
 <p><code>MAP_Fit</code> は、<code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> が返すfit
 objectです。MAP推定、最尤推定、marginal
 MAP、Laplace近似、初期値探索、プロファイル尤度などに使います。</p>
-<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span></span>
 <span>  num_estimate <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  laplace <span class="op">=</span> <span class="cn">TRUE</span></span>
@@ -1028,13 +1040,13 @@ convergedではないrunの中から最良の目的関数値を持つrunを選�
 <code>fit_map$estimate()</code> や <code>fit_map$summary()</code>
 は、選ばれたbest runに基づきます。</p>
 <p>各runの状態は <code>opt_history</code> で確認します。</p>
-<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">8</span><span class="op">)</span></span>
 <span><span class="va">fit_map</span><span class="op">$</span><span class="va">opt_history</span></span>
 <span><span class="va">fit_map</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>局所解があり得るモデルでは、<code>num_estimate</code>
 を増やすことが有効です。</p>
-<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mix</span> <span class="op">&lt;-</span> <span class="va">mdl_mix</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">20</span><span class="op">)</span></span>
 <span><span class="va">fit_mix</span><span class="op">$</span><span class="va">opt_history</span></span></code></pre></div>
 </div>
@@ -1042,14 +1054,14 @@ convergedではないrunの中から最良の目的関数値を持つrunを選�
 <h3 id="optimize結果を初期値や固定値に使う">5.3 optimize結果を初期値や固定値に使う<a class="anchor" aria-label="anchor" href="#optimize%E7%B5%90%E6%9E%9C%E3%82%92%E5%88%9D%E6%9C%9F%E5%80%A4%E3%82%84%E5%9B%BA%E5%AE%9A%E5%80%A4%E3%81%AB%E4%BD%BF%E3%81%86"></a>
 </h3>
 <p>MAP推定結果は、MCMCの初期値としてよく使います。</p>
-<div class="sourceCode" id="cb26"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  init <span class="op">=</span> <span class="va">fit_map</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>一部のパラメータをMAP推定値で固定した制約付きモデルを作ることもできます。</p>
-<div class="sourceCode" id="cb27"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">est</span> <span class="op">&lt;-</span> <span class="va">fit_map</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mdl_fixed</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
@@ -1060,7 +1072,7 @@ convergedではないrunの中から最良の目的関数値を持つrunを選�
 <span></span>
 <span><span class="va">fit_fixed</span> <span class="op">&lt;-</span> <span class="va">mdl_fixed</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>ベクトルや行列パラメータの一部だけを固定する場合は、展開名を使います。</p>
-<div class="sourceCode" id="cb28"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_null</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -1072,7 +1084,7 @@ convergedではないrunの中から最良の目的関数値を持つrunを選�
 </h3>
 <p><code><a href="https://rdrr.io/r/stats/profile.html" class="external-link">profile()</a></code> は、特定のパラメータについてprofile
 likelihood区間を計算します。</p>
-<div class="sourceCode" id="cb29"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">prof</span> <span class="op">&lt;-</span> <span class="va">fit_map</span><span class="op">$</span><span class="fu">profile</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"b[talk]"</span>, <span class="st">"sigma"</span><span class="op">)</span>,</span>
 <span>  level <span class="op">=</span> <span class="fl">0.95</span></span>
@@ -1085,7 +1097,7 @@ likelihood区間を計算します。</p>
 <p><code>MAP_Fit$WAIC()</code> は、<code>se_method = "sampling"</code>
 による不確実性伝播があり、かつ <code>log_lik</code>
 が保存されている場合に使えます。</p>
-<div class="sourceCode" id="cb30"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -1103,7 +1115,7 @@ likelihood区間を計算します。</p>
 </h2>
 <p><code>VB_Fit</code> は、<code>variational()</code> が返すfit
 objectです。ADVIによる近似事後分布を保存します。高速ですが近似であり、分散が過小評価されることがあります。</p>
-<div class="sourceCode" id="cb31"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span></span>
 <span>  iter <span class="op">=</span> <span class="fl">5000</span>,</span>
 <span>  num_estimate <span class="op">=</span> <span class="fl">4</span></span>
@@ -1179,7 +1191,7 @@ estimateとして選びます。</p>
 は、デフォルトでbest
 estimateだけを使います。全estimateのdrawを確認したい場合は
 <code>draws()</code> を使います。</p>
-<div class="sourceCode" id="cb32"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span><span class="op">$</span><span class="va">best_chain</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="va">ELBO</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="va">rel_obj_vals</span></span>
@@ -1197,14 +1209,14 @@ estimateだけを使います。全estimateのdrawを確認したい場合は
 <h3 id="plot_elboによる収束確認">6.3 plot_elbo()による収束確認<a class="anchor" aria-label="anchor" href="#plot_elbo%E3%81%AB%E3%82%88%E3%82%8B%E5%8F%8E%E6%9D%9F%E7%A2%BA%E8%AA%8D"></a>
 </h3>
 <p>VBでは、ELBOが上昇し、その後ほぼ水平になることが収束の目安です。</p>
-<div class="sourceCode" id="cb33"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span>tail_n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span>ests <span class="op">=</span> <span class="st">"best"</span>, tail_n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
 <p>後半のELBOが明らかに上昇し続けている場合は、<code>iter</code>
 を増やします。複数のestimateでELBOが大きくばらつく場合は、<code>num_estimate</code>
 を増やすか、MCMCで確認します。</p>
-<div class="sourceCode" id="cb34"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>VBの収束確認では、次の順に見ます。</p>
 <ol style="list-style-type: decimal">
@@ -1226,7 +1238,7 @@ uncertaintyが重要な結論ではMCMCで確認します。</p>
 <h3 id="vbのwaic">6.4 VBのWAIC<a class="anchor" aria-label="anchor" href="#vb%E3%81%AEwaic"></a>
 </h3>
 <p>VBでも <code>log_lik</code> があればWAICを計算できます。</p>
-<div class="sourceCode" id="cb35"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -1245,7 +1257,7 @@ uncertaintyが重要な結論ではMCMCで確認します。</p>
 <p><code>Classic_Fit</code> は、<code>classic()</code> が返すfit
 objectです。wrapper関数で作られたflat
 priorモデルを、頻度主義的な結果として扱うためのAPIです。</p>
-<div class="sourceCode" id="cb36"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -1312,7 +1324,7 @@ priorモデルを、頻度主義的な結果として扱うためのAPIです。
 <p><code>Classic_Fit</code> では <code>EAP()</code> と
 <code>MAP()</code> は使いません。点推定は <code>estimate()</code>
 を使います。</p>
-<div class="sourceCode" id="cb37"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -1329,11 +1341,11 @@ modelや分割表など、モデルごとに定義された範囲で使えます
 </h3>
 <p><code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code> は、モデルに応じてWald F test、Wald chi-square
 test、分割表検定、モデル比較を行います。</p>
-<div class="sourceCode" id="cb38"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">anova</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova</a></span><span class="op">(</span><span class="va">fit_classic</span><span class="op">)</span></span></code></pre></div>
 <p>複数の <code>Classic_Fit</code> を渡すと、モデル比較になります。</p>
-<div class="sourceCode" id="cb39"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="fl">1</span>, data <span class="op">=</span> <span class="va">debate</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -1342,7 +1354,7 @@ test、分割表検定、モデル比較を行います。</p>
 <div class="section level3">
 <h3 id="aic-bic-loglik">7.3 AIC, BIC, logLik<a class="anchor" aria-label="anchor" href="#aic-bic-loglik"></a>
 </h3>
-<div class="sourceCode" id="cb40"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">logLik</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">AIC</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">BIC</span><span class="op">(</span><span class="op">)</span></span>
@@ -1357,7 +1369,7 @@ test、分割表検定、モデル比較を行います。</p>
 </h3>
 <p><code>robust_se()</code> は、lm/glm/mixed modelでrobust
 SEを計算します。</p>
-<div class="sourceCode" id="cb41"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># 元のfitを変更せず、robust SE版のコピーを返す</span></span>
 <span><span class="va">fit_robust</span> <span class="op">&lt;-</span> <span class="va">fit_classic</span><span class="op">$</span><span class="fu">robust_se</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"HC3"</span><span class="op">)</span></span>
 <span></span>
@@ -1375,13 +1387,13 @@ SEを計算します。</p>
 </h3>
 <p><code><a href="../reference/lsmeans.html">lsmeans()</a></code> は、カテゴリカル因子のmarginal meansやpairwise
 comparisonを計算します。</p>
-<div class="sourceCode" id="cb42"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span><span class="st">"group"</span><span class="op">)</span></span>
 <span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span><span class="st">"group"</span>, pairwise <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">lsmeans</span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"group"</span>, <span class="st">"condition"</span><span class="op">)</span>, pairwise <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/simple_effects.html">simple_effects()</a></code> や <code><a href="../reference/conditional_effects.html">conditional_effects()</a></code>
 も、対応するfitで標準誤差や不確実性が利用できる場合に使えます。</p>
-<div class="sourceCode" id="cb43"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/conditional_effects.html">conditional_effects</a></span><span class="op">(</span><span class="va">fit_classic</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/simple_effects.html">simple_effects</a></span><span class="op">(</span><span class="va">fit_classic</span>, effect <span class="op">=</span> <span class="st">"talk:perf"</span><span class="op">)</span></span></code></pre></div>
 </div>
@@ -1432,7 +1444,7 @@ factor、予測性能を比べるならWAIC、頻度主義的な情報量基準�
 </h3>
 <p>Bayes factorは、2つのモデルの周辺尤度の比です。BayesRTMBでは、MCMC
 fitのbridge samplingに基づいて計算します。</p>
-<div class="sourceCode" id="cb44"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_full</span> <span class="op">&lt;-</span> <span class="va">mdl_full</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span>chains <span class="op">=</span> <span class="fl">4</span>, sampling <span class="op">=</span> <span class="fl">4000</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_full</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span></span>
@@ -1445,7 +1457,7 @@ modelを作るための指定です。<code>fixed = list("b[talk]" = 0)</code>
 は、<code>b[talk]</code> を0に固定したモデルと比較します。</p>
 <p>Bayes factorを見るときは、値そのものだけでなく、bridge
 samplingの診断も確認します。</p>
-<div class="sourceCode" id="cb45"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">logml</span> <span class="op">&lt;-</span> <span class="va">fit_full</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/attr.html" class="external-link">attr</a></span><span class="op">(</span><span class="va">logml</span>, <span class="st">"error"</span><span class="op">)</span></span>
@@ -1457,7 +1469,7 @@ factorの判断に影響する可能性があります。<code>attr(logml, "ess"
 weightの一部に依存した不安定な推定になっている可能性があります。<code><a href="../reference/bayes_factor.html">bayes_factor()</a></code>
 で <code>error_threshold</code>
 を指定すると、誤差が大きい場合に警告・停止しやすくできます。</p>
-<div class="sourceCode" id="cb46"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_full</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  chains <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -1474,7 +1486,7 @@ factorの比較には向きません。</p>
 </h3>
 <p>WAICは、事後分布に基づく予測評価です。観測ごとの <code>log_lik</code>
 が必要です。</p>
-<div class="sourceCode" id="cb47"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -1486,7 +1498,7 @@ factorの比較には向きません。</p>
 <span><span class="va">fit1</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>自作モデルでは <code>generate</code> ブロックに <code>log_lik</code>
 を置きます。</p>
-<div class="sourceCode" id="cb48"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generate</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span><span class="op">}</span></span></code></pre></div>
@@ -1497,7 +1509,7 @@ likelihoodを返します。</p>
 <h3 id="aicbic">8.3 AIC/BIC<a class="anchor" aria-label="anchor" href="#aicbic"></a>
 </h3>
 <p>AIC/BICは <code>Classic_Fit</code> に対して使います。</p>
-<div class="sourceCode" id="cb49"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit0</span> <span class="op">&lt;-</span> <span class="va">mdl0</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="va">mdl1</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -1509,7 +1521,7 @@ likelihoodを返します。</p>
 <h3 id="elbo">8.4 ELBO<a class="anchor" aria-label="anchor" href="#elbo"></a>
 </h3>
 <p>VBではELBOが最適化対象です。ELBOが大きいほど、近似事後分布の目的関数上はよい解です。</p>
-<div class="sourceCode" id="cb50"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span><span class="op">$</span><span class="va">ELBO</span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span>tail_n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span></code></pre></div>
 <p>ELBOは異なる推定法間の一般的なモデル比較指標ではありません。VBの収束確認や、同じモデル・同じ設定内のrun選択に使います。</p>
@@ -1520,14 +1532,14 @@ likelihoodを返します。</p>
 </h2>
 <p><code>fixed</code>
 は、パラメータを指定値に固定したモデルを作るための仕組みです。これは単なる後処理ではなく、モデル自体を制約付きモデルに変換します。</p>
-<div class="sourceCode" id="cb51"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_null</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_null</span> <span class="op">&lt;-</span> <span class="va">mdl_null</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>ラッパー関数や推定メソッドにも <code>fixed</code> を渡せます。</p>
-<div class="sourceCode" id="cb52"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_null</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -1537,7 +1549,7 @@ likelihoodを返します。</p>
 <span></span>
 <span><span class="va">fit_null</span> <span class="op">&lt;-</span> <span class="va">mdl_null</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>または、推定時に指定できます。</p>
-<div class="sourceCode" id="cb53"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_null</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -1552,7 +1564,7 @@ likelihoodを返します。</p>
 には、モデル内部で使われるパラメータ名を渡します。ベクトルや行列の一部を固定する場合は、<code>"b[talk]"</code>
 のような展開名を使います。</p>
 <p>名前を確認するには、次の方法が便利です。</p>
-<div class="sourceCode" id="cb54"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># summaryに表示される名前を見る</span></span>
 <span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -1633,7 +1645,7 @@ factorを目的にする場合は、固定対象が明確なスカラーか、�
 <div class="section level3">
 <h3 id="optimize結果を固定値として使う">9.4 optimize結果を固定値として使う<a class="anchor" aria-label="anchor" href="#optimize%E7%B5%90%E6%9E%9C%E3%82%92%E5%9B%BA%E5%AE%9A%E5%80%A4%E3%81%A8%E3%81%97%E3%81%A6%E4%BD%BF%E3%81%86"></a>
 </h3>
-<div class="sourceCode" id="cb55"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">est</span> <span class="op">&lt;-</span> <span class="va">fit_map</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span></span>
@@ -1649,7 +1661,7 @@ factorを目的にする場合は、固定対象が明確なスカラーか、�
 <span></span>
 <span><span class="va">fit_fixed</span> <span class="op">&lt;-</span> <span class="va">mdl_fixed</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>特定の係数だけを固定する場合は、展開名を使います。</p>
-<div class="sourceCode" id="cb56"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_fixed</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span>,</span>
@@ -1661,7 +1673,7 @@ factorを目的にする場合は、固定対象が明確なスカラーか、�
 <h3 id="mcmc結果を固定値として使う">9.5 MCMC結果を固定値として使う<a class="anchor" aria-label="anchor" href="#mcmc%E7%B5%90%E6%9E%9C%E3%82%92%E5%9B%BA%E5%AE%9A%E5%80%A4%E3%81%A8%E3%81%97%E3%81%A6%E4%BD%BF%E3%81%86"></a>
 </h3>
 <p>MCMCのEAPやMAPを固定値として使うこともできます。</p>
-<div class="sourceCode" id="cb57"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">eap</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span></span>
@@ -1677,7 +1689,7 @@ factorを目的にする場合は、固定対象が明確なスカラーか、�
 <span></span>
 <span><span class="va">fit_fixed</span> <span class="op">&lt;-</span> <span class="va">mdl_fixed</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>ベクトルパラメータを丸ごと固定する場合は、そのパラメータ名に値を渡します。</p>
-<div class="sourceCode" id="cb58"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">eap</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span>, drop <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">mdl_b_fixed</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="va">model</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
@@ -1686,7 +1698,7 @@ factorを目的にする場合は、固定対象が明確なスカラーか、�
 <span>  <span class="op">)</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>一部の要素だけを固定する場合は、展開名を使います。</p>
-<div class="sourceCode" id="cb59"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_one_fixed</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="va">model</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span></span>
 <span>    <span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span></span>
@@ -1698,14 +1710,14 @@ factorを目的にする場合は、固定対象が明確なスカラーか、�
 </h3>
 <p><code><a href="../reference/bayes_factor.html">bayes_factor()</a></code> の <code>fixed</code> は、restricted
 modelを作るための便利なショートカットです。</p>
-<div class="sourceCode" id="cb60"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">bf</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span>,</span>
 <span>  chains <span class="op">=</span> <span class="fl">4</span>,</span>
 <span>  sampling <span class="op">=</span> <span class="fl">4000</span></span>
 <span><span class="op">)</span></span></code></pre></div>
 <p>この指定は、次の処理をまとめて行うのと同じ考え方です。</p>
-<div class="sourceCode" id="cb61"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_null</span> <span class="op">&lt;-</span> <span class="va">fit_mcmc</span><span class="op">$</span><span class="va">model</span><span class="op">$</span><span class="fu">fixed_model</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/list.html" class="external-link">list</a></span><span class="op">(</span><span class="st">"b[talk]"</span> <span class="op">=</span> <span class="fl">0</span><span class="op">)</span></span>
 <span><span class="op">)</span></span>
@@ -1770,17 +1782,18 @@ modelを作るための便利なショートカットです。</p>
 </tbody>
 </table>
 <p><code>rtmb_model(data = df, code = code)</code> のようにdata
-frameを渡した場合、data frameの列名を <code>setup</code>
-内で直接参照できます。<code>setup</code>
+frameを渡した場合、元のdata frameは <code>.data</code>
+で参照でき、列名を <code>setup</code>
+内で直接参照することもできます。<code>setup</code>
 は、外から渡されたデータとモデルコード内の変数名を結び付ける場所でもあります。</p>
 <p>基本形は次の通りです。</p>
-<div class="sourceCode" id="cb62"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">df</span> <span class="op">&lt;-</span> <span class="va">debate</span></span>
 <span></span>
 <span><span class="va">code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  setup <span class="op">=</span> <span class="op">{</span></span>
-<span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">sat</span></span>
-<span>    <span class="va">X</span> <span class="op">&lt;-</span> <span class="va">talk</span></span>
+<span>    <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">.data</span><span class="op">$</span><span class="va">sat</span></span>
+<span>    <span class="va">X</span> <span class="op">&lt;-</span> <span class="va">.data</span><span class="op">$</span><span class="va">talk</span></span>
 <span>    <span class="va">N</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span></span>
 <span>  <span class="op">}</span>,</span>
 <span>  parameters <span class="op">=</span> <span class="op">{</span></span>
@@ -1814,7 +1827,7 @@ frameを渡した場合、data frameの列名を <code>setup</code>
 <li>デザイン行列、カテゴリ数、観測数などの定数を作る。</li>
 <li>AD対象外でよい補助関数を定義する。</li>
 </ul>
-<div class="sourceCode" id="cb63"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">Y</span> <span class="op">&lt;-</span> <span class="va">response</span></span>
 <span>  <span class="va">X</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/model.matrix.html" class="external-link">model.matrix</a></span><span class="op">(</span><span class="op">~</span> <span class="va">group</span> <span class="op">+</span> <span class="va">score</span><span class="op">)</span></span>
@@ -1829,6 +1842,18 @@ frameを渡した場合、data frameの列名を <code>setup</code>
 <span><span class="op">}</span></span></code></pre></div>
 <p><code>setup</code>
 はADテープに記録されません。欠測位置、index、定数、デザイン行列の作成などに向いています。</p>
+<p>読み取り専用の予約名 <code>.data</code>
+は、<code>rtmb_model(data = ...)</code>
+に渡した元のオブジェクトを参照し、<code>setup</code>
+の評価中だけ存在します。行列やdata frameなら
+<code>Y &lt;- as.matrix(.data)</code>、名前付きlistなら
+<code>S &lt;- as.matrix(.data$sets)</code> のように書けます。</p>
+<p>ラッパー関数が生成するコードも同じ規則に従います。データに相当する引数が複数ある場合は、内部で1つの名前付きlistにまとめられます。たとえば、生成コードに
+<code>.data$x</code> と <code>.data$y</code>
+があれば、<code>data = list(x = x, y = y)</code>
+として再現できます。一方、因子数などの構造設定は観測データに混ぜず、<code>nfactors = 5</code>
+に対応する <code>K &lt;- 5</code> のような内部定数として、生成コードの
+<code>setup</code> に表示されます。</p>
 </div>
 <div class="section level3">
 <h3 id="transformに置くべき処理">10.2 transformに置くべき処理<a class="anchor" aria-label="anchor" href="#transform%E3%81%AB%E7%BD%AE%E3%81%8F%E3%81%B9%E3%81%8D%E5%87%A6%E7%90%86"></a>
@@ -1836,7 +1861,7 @@ frameを渡した場合、data frameの列名を <code>setup</code>
 <p>パラメータに依存し、かつ <code>model</code> ブロックでも使う派生量は
 <code>transform</code>
 に置きます。典型例は、線形予測子、平均構造、確率、相関行列、標準化係数などです。</p>
-<div class="sourceCode" id="cb64"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">b</span> <span class="op">+</span> <span class="va">Intercept</span></span>
 <span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/inv_logit.html">inv_logit</a></span><span class="op">(</span><span class="va">eta</span><span class="op">)</span></span>
@@ -1844,13 +1869,13 @@ frameを渡した場合、data frameの列名を <code>setup</code>
 <p><code>transform</code> で作った量は、<code>model</code>
 ブロックの中でそのまま使えます。また、推定後にposterior
 drawごとに再計算できます。</p>
-<div class="sourceCode" id="cb65"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">transformed_draws</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">estimate</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"transform"</span><span class="op">)</span></span></code></pre></div>
 <p><code>transform</code>
 内で代入した変数は、デフォルトでは保存対象になります。途中計算を保存したくない場合は、<code>report()</code>
 で出力したい変数だけを明示します。</p>
-<div class="sourceCode" id="cb66"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">b</span> <span class="op">+</span> <span class="va">Intercept</span></span>
 <span>  <span class="va">mu</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/inv_logit.html">inv_logit</a></span><span class="op">(</span><span class="va">eta</span><span class="op">)</span></span>
@@ -1874,7 +1899,7 @@ objectに保存して、<code>estimate()</code>、<code>draws()</code>、<code>t
 <code>generate</code> に置きます。典型例は、posterior
 prediction、WAIC用のpointwise
 <code>log_lik</code>、予測確率、分類結果、回転後の量、解釈用の派生量などです。</p>
-<div class="sourceCode" id="cb67"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">generate</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">eta</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
 <span>  <span class="va">y_rep</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="va">eta</span>, <span class="va">sigma</span><span class="op">)</span></span>
@@ -1885,7 +1910,7 @@ prediction、WAIC用のpointwise
 <code>generated_quantities()</code>
 でdrawごとに計算され、<code>estimate(pars = "generate")</code> や
 <code>draws(pars = ...)</code> から取り出せます。</p>
-<div class="sourceCode" id="cb68"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">gq_code</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_code.html">rtmb_code</a></span><span class="op">(</span></span>
 <span>  generate <span class="op">=</span> <span class="op">{</span></span>
 <span>    <span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">eta</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span>
@@ -1968,7 +1993,7 @@ prediction、WAIC用のpointwise
 </h2>
 <p><code>parameters</code> ブロックでは、<code><a href="../reference/Dim.html">Dim()</a></code>
 で推定パラメータを宣言します。</p>
-<div class="sourceCode" id="cb69"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="co"># scalar</span></span>
 <span>  <span class="va">alpha</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="op">)</span></span>
@@ -2088,7 +2113,7 @@ prediction、WAIC用のpointwise
 </h3>
 <p><code>random = TRUE</code> は、そのパラメータをrandom
 effectとして扱う指定です。</p>
-<div class="sourceCode" id="cb70"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">parameters</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">theta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">N_persons</span>, random <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="va">b</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/Dim.html">Dim</a></span><span class="op">(</span><span class="va">N_items</span><span class="op">)</span></span>
@@ -2104,11 +2129,11 @@ effectも含めた事後サンプルを得られますが、metricの扱いで�
 <h2 id="分布一覧">12. 分布一覧<a class="anchor" aria-label="anchor" href="#%E5%88%86%E5%B8%83%E4%B8%80%E8%A6%A7"></a>
 </h2>
 <p>BayesRTMBでは、Stan風のサンプリング構文が使えます。</p>
-<div class="sourceCode" id="cb71"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb72"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="va">theta</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="fl">0</span>, <span class="fl">1</span><span class="op">)</span></span></code></pre></div>
 <p>明示的にlog densityを足すこともできます。</p>
-<div class="sourceCode" id="cb72"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">lp</span> <span class="op">&lt;-</span> <span class="va">lp</span> <span class="op">+</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
 <p><code>~</code> を使った場合でも、BayesRTMBでは正規化定数を含むlog
 densityが計算されます。そのため、bridge samplingを目的とする場合でも
@@ -2240,7 +2265,7 @@ densityが計算されます。そのため、bridge samplingを目的とする�
 </tbody>
 </table>
 <p>多くの単変量分布はベクトル化されています。</p>
-<div class="sourceCode" id="cb73"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">Y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span></code></pre></div>
 <p>分布の引数は、名前の通りの尺度で指定します。たとえば
 <code>lognormal(meanlog, sdlog)</code>
@@ -2249,7 +2274,7 @@ densityが計算されます。そのため、bridge samplingを目的とする�
 は、確率ではなくlogit尺度の値を渡します。</p>
 <p>観測ごとのlog likelihoodが必要な場合は、<code>sum = FALSE</code>
 を使います。</p>
-<div class="sourceCode" id="cb74"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">log_lik</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/normal_lpdf.html">normal_lpdf</a></span><span class="op">(</span><span class="va">Y</span>, <span class="va">mu</span>, <span class="va">sigma</span>, sum <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div>
 <p><code>sum = FALSE</code> は、各観測のlog
 densityをベクトルとして返します。<code>WAIC()</code> やpointwise log
@@ -2642,7 +2667,7 @@ differentiationにモデル計算を渡します。そのため、モデルコ�
 <h3 id="setupを活用する">14.1 setupを活用する<a class="anchor" aria-label="anchor" href="#setup%E3%82%92%E6%B4%BB%E7%94%A8%E3%81%99%E3%82%8B"></a>
 </h3>
 <p>パラメータに依存しない処理は <code>setup</code> に置きます。</p>
-<div class="sourceCode" id="cb75"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">setup</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">obs</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/which.html" class="external-link">which</a></span><span class="op">(</span><span class="op">!</span><span class="fu"><a href="https://rdrr.io/r/base/NA.html" class="external-link">is.na</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, arr.ind <span class="op">=</span> <span class="cn">TRUE</span><span class="op">)</span></span>
 <span>  <span class="va">person_idx</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/base/integer.html" class="external-link">as.integer</a></span><span class="op">(</span><span class="va">obs</span><span class="op">[</span>, <span class="st">"row"</span><span class="op">]</span><span class="op">)</span></span>
@@ -2656,7 +2681,7 @@ differentiationにモデル計算を渡します。そのため、モデルコ�
 <h3 id="ベクトル化を優先する">14.2 ベクトル化を優先する<a class="anchor" aria-label="anchor" href="#%E3%83%99%E3%82%AF%E3%83%88%E3%83%AB%E5%8C%96%E3%82%92%E5%84%AA%E5%85%88%E3%81%99%E3%82%8B"></a>
 </h3>
 <p>同じ計算を書けるなら、明示的なループよりもベクトル化した行列演算を優先します。</p>
-<div class="sourceCode" id="cb76"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="va">X</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">b</span> <span class="op">+</span> <span class="va">Intercept</span></span>
 <span><span class="op">}</span></span>
@@ -2666,7 +2691,7 @@ differentiationにモデル計算を渡します。そのため、モデルコ�
 <span><span class="op">}</span></span></code></pre></div>
 <p>ただし、ループ自体が禁止ではありません。AD対象の演算が微分可能であれば、<code>for</code>
 ループは使えます。</p>
-<div class="sourceCode" id="cb77"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N_obs</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">eta_i</span> <span class="op">&lt;-</span> <span class="va">a</span><span class="op">[</span><span class="va">item_idx</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span> <span class="op">*</span> <span class="op">(</span><span class="va">theta</span><span class="op">[</span><span class="va">person_idx</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span> <span class="op">-</span> <span class="va">b</span><span class="op">[</span><span class="va">item_idx</span><span class="op">[</span><span class="va">i</span><span class="op">]</span><span class="op">]</span><span class="op">)</span></span>
@@ -2686,7 +2711,7 @@ differentiationにモデル計算を渡します。そのため、モデルコ�
 </h3>
 <p>パラメータ値に依存する条件分岐は、微分可能性を壊すことがあります。</p>
 <p>避けたい例:</p>
-<div class="sourceCode" id="cb78"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">model</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="kw">if</span> <span class="op">(</span><span class="va">theta</span> <span class="op">&gt;</span> <span class="fl">0</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">y</span> <span class="op">~</span> <span class="fu">normal</span><span class="op">(</span><span class="va">theta</span>, <span class="fl">1</span><span class="op">)</span></span>
@@ -2703,14 +2728,14 @@ differentiationにモデル計算を渡します。そのため、モデルコ�
 <code><a href="https://rdrr.io/r/base/array.html" class="external-link">array()</a></code>
 ではAD型がうまく保持されないことがあります。その場合は
 <code><a href="../reference/rtmb_vector.html">rtmb_vector()</a></code> や <code><a href="../reference/rtmb_array.html">rtmb_array()</a></code> を使います。</p>
-<div class="sourceCode" id="cb79"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">eta</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_vector.html">rtmb_vector</a></span><span class="op">(</span><span class="fl">0</span>, length <span class="op">=</span> <span class="va">N_obs</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">i</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="va">N_obs</span><span class="op">)</span> <span class="op">{</span></span>
 <span>    <span class="va">eta</span><span class="op">[</span><span class="va">i</span><span class="op">]</span> <span class="op">&lt;-</span> <span class="va">X</span><span class="op">[</span><span class="va">i</span>, <span class="op">]</span> <span class="op"><a href="https://rdrr.io/r/base/matmult.html" class="external-link">%*%</a></span> <span class="va">b</span></span>
 <span>  <span class="op">}</span></span>
 <span><span class="op">}</span></span></code></pre></div>
-<div class="sourceCode" id="cb80"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">transform</span> <span class="op">=</span> <span class="op">{</span></span>
 <span>  <span class="va">logit_x</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_array.html">rtmb_array</a></span><span class="op">(</span><span class="fl">0</span>, dim <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="cn">T</span>, <span class="va">C</span>, <span class="va">D</span><span class="op">)</span><span class="op">)</span></span>
 <span>  <span class="kw">for</span> <span class="op">(</span><span class="va">t</span> <span class="kw">in</span> <span class="fl">1</span><span class="op">:</span><span class="cn">T</span><span class="op">)</span> <span class="op">{</span></span>
@@ -2826,7 +2851,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="mcmcの結果から推定値だけ欲しい">15.1 MCMCの結果から推定値だけ欲しい<a class="anchor" aria-label="anchor" href="#mcmc%E3%81%AE%E7%B5%90%E6%9E%9C%E3%81%8B%E3%82%89%E6%8E%A8%E5%AE%9A%E5%80%A4%E3%81%A0%E3%81%91%E6%AC%B2%E3%81%97%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb81"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">EAP</span><span class="op">(</span>pars <span class="op">=</span> <span class="st">"parameters"</span><span class="op">)</span></span>
@@ -2836,7 +2861,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="初期値をmapから作ってmcmcを回したい">15.2 初期値をMAPから作ってMCMCを回したい<a class="anchor" aria-label="anchor" href="#%E5%88%9D%E6%9C%9F%E5%80%A4%E3%82%92map%E3%81%8B%E3%82%89%E4%BD%9C%E3%81%A3%E3%81%A6mcmc%E3%82%92%E5%9B%9E%E3%81%97%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb82"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span>num_estimate <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
@@ -2846,7 +2871,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="生成量だけを取り出したい">15.3 生成量だけを取り出したい<a class="anchor" aria-label="anchor" href="#%E7%94%9F%E6%88%90%E9%87%8F%E3%81%A0%E3%81%91%E3%82%92%E5%8F%96%E3%82%8A%E5%87%BA%E3%81%97%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb83"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span><span class="op">{</span></span>
 <span>  <span class="va">pred</span> <span class="op">&lt;-</span> <span class="fu"><a href="https://rdrr.io/r/stats/Normal.html" class="external-link">rnorm</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/length.html" class="external-link">length</a></span><span class="op">(</span><span class="va">Y</span><span class="op">)</span>, <span class="va">mu</span>, <span class="va">sigma</span><span class="op">)</span></span>
 <span><span class="op">}</span><span class="op">)</span></span>
@@ -2857,7 +2882,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="random-effectsを含めてdrawを取り出したい">15.4 random effectsを含めてdrawを取り出したい<a class="anchor" aria-label="anchor" href="#random-effects%E3%82%92%E5%90%AB%E3%82%81%E3%81%A6draw%E3%82%92%E5%8F%96%E3%82%8A%E5%87%BA%E3%81%97%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb84"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">draws_re</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
 <span>  inc_random <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  inc_transform <span class="op">=</span> <span class="cn">FALSE</span>,</span>
@@ -2867,7 +2892,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="vbの収束を見たい">15.5 VBの収束を見たい<a class="anchor" aria-label="anchor" href="#vb%E3%81%AE%E5%8F%8E%E6%9D%9F%E3%82%92%E8%A6%8B%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb85"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb86"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_vb</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">variational</span><span class="op">(</span>iter <span class="op">=</span> <span class="fl">10000</span>, num_estimate <span class="op">=</span> <span class="fl">4</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">fit_vb</span><span class="op">$</span><span class="fu">plot_elbo</span><span class="op">(</span>tail_n <span class="op">=</span> <span class="fl">1000</span><span class="op">)</span></span>
@@ -2877,7 +2902,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="classicで頻度主義的にモデル比較したい">15.6 classicで頻度主義的にモデル比較したい<a class="anchor" aria-label="anchor" href="#classic%E3%81%A7%E9%A0%BB%E5%BA%A6%E4%B8%BB%E7%BE%A9%E7%9A%84%E3%81%AB%E3%83%A2%E3%83%87%E3%83%AB%E6%AF%94%E8%BC%83%E3%81%97%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb86"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit0</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="fl">1</span>, data <span class="op">=</span> <span class="va">debate</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit1</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">+</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span>, prior <span class="op">=</span> <span class="fu"><a href="../reference/prior_flat.html">prior_flat</a></span><span class="op">(</span><span class="op">)</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -2888,7 +2913,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="bayes-factorで係数の有無を比較したい">15.7 Bayes factorで係数の有無を比較したい<a class="anchor" aria-label="anchor" href="#bayes-factor%E3%81%A7%E4%BF%82%E6%95%B0%E3%81%AE%E6%9C%89%E7%84%A1%E3%82%92%E6%AF%94%E8%BC%83%E3%81%97%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb87"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -2904,7 +2929,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="fixed-modelを明示的に作りたい">15.8 fixed modelを明示的に作りたい<a class="anchor" aria-label="anchor" href="#fixed-model%E3%82%92%E6%98%8E%E7%A4%BA%E7%9A%84%E3%81%AB%E4%BD%9C%E3%82%8A%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb88"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_full</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
 <span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
 <span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
@@ -2921,7 +2946,7 @@ posteriorそのものを定義する場所なので、同じパラメータな�
 <div class="section level3">
 <h3 id="upgrade-fit">15.9 古いfit objectを新しいクラスに更新したい<a class="anchor" aria-label="anchor" href="#upgrade-fit"></a>
 </h3>
-<div class="sourceCode" id="cb89"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_new</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/upgrade_fit.html">upgrade_fit</a></span><span class="op">(</span><span class="va">fit_old</span><span class="op">)</span></span></code></pre></div>
 <p>保存済みfit
 objectを現在のクラス定義で使い直すための関数です。パッケージがバージョンアップした場合などに使います。</p>
@@ -2929,7 +2954,7 @@ objectを現在のクラス定義で使い直すための関数です。パッ�
 <div class="section level3">
 <h3 id="並列でmcmcを回したい">15.10 並列でMCMCを回したい<a class="anchor" aria-label="anchor" href="#%E4%B8%A6%E5%88%97%E3%81%A7mcmc%E3%82%92%E5%9B%9E%E3%81%97%E3%81%9F%E3%81%84"></a>
 </h3>
-<div class="sourceCode" id="cb90"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  chains <span class="op">=</span> <span class="fl">4</span>,</span>
@@ -2943,7 +2968,7 @@ objectを現在のクラス定義で使い直すための関数です。パッ�
 <code>setup</code>
 に入れておけば十分です。外部のオブジェクトや関数をどうしてもworkerへ渡したい場合は、推定時に
 <code>globals = TRUE</code> を指定します。</p>
-<div class="sourceCode" id="cb91"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb92"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span></span>
 <span>  parallel <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  globals <span class="op">=</span> <span class="cn">TRUE</span></span>

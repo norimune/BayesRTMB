@@ -66,6 +66,7 @@ An \`RTMB_Model\` object.
 ``` r
 # \donttest{
 # Classic chi-squared test
+data(debate, package = "BayesRTMB")
 rtmb_table(skill, cond, data = debate)$classic()
 #> Pre-checking model code...
 #> Checking RTMB setup...

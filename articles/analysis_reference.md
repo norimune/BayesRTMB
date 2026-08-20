@@ -111,8 +111,8 @@ df <- debate
 
 code <- rtmb_code(
   setup = {
-    Y <- sat
-    X <- talk
+    Y <- .data$sat
+    X <- .data$talk
 
     center <- function(x) x - mean(x)
     X_c <- center(X)
@@ -139,10 +139,12 @@ mdl <- rtmb_model(
 )
 ```
 
-In this example, `data = df` makes `df$sat` and `df$talk` available
-inside `setup`. The `setup` block is the place for preprocessing that
-should be decided once before model evaluation, such as handling missing
-data, creating indexes, building design matrices, and defining helper
+In this example, `data = df` makes the original data frame available as
+`.data`, so `.data$sat` and `.data$talk` can be connected explicitly to
+model variables. Data-frame columns also remain available directly by
+name. The `setup` block is the place for preprocessing that should be
+decided once before model evaluation, such as handling missing data,
+creating indexes, building design matrices, and defining helper
 functions.
 
 After estimation, use methods such as
@@ -372,6 +374,24 @@ Pay special attention to:
 - Divergences.
 - Maximum treedepth hits.
 - Metric adaptation and positive-definite fallback messages.
+
+#### Summarizing A Standalone MCMC Array
+
+[`summary_mcmc()`](https://norimune.github.io/BayesRTMB/reference/summary_mcmc.md)
+applies the same summary columns and print format to an ordinary numeric
+array arranged as iterations by chains by variables. It does not require
+a `MCMC_Fit` object or a class from another MCMC package.
+
+``` r
+
+draw_array <- fit_mcmc$draws(pars = "b")
+
+summary_mcmc(draw_array)
+summary_mcmc(draw_array, chains = 1:2, max_rows = NULL)
+```
+
+Use `pars` to select full variable names such as `"b[1]"`, or a base
+name such as `"b"`. Prefix a name with `"-"` to exclude it.
 
 ### 4.4 `transformed_draws()` And `generated_quantities()`
 
@@ -848,6 +868,18 @@ setup = {
   K <- ncol(X)
 }
 ```
+
+The read-only name `.data` refers to the original object passed to
+`rtmb_model(data = ...)` and exists only while `setup` is evaluated. For
+example, use `Y <- as.matrix(.data)` for a matrix or data frame, and
+`S <- as.matrix(.data$sets)` for a named list.
+
+Wrapper-generated code follows the same rule. If a wrapper accepts
+several data-like arguments, it combines them into one named list; code
+containing `.data$x` and `.data$y`, for example, is reproduced with
+`data = list(x = x, y = y)`. Structural options are kept in the
+generated code as explicit internal constants, such as `K <- 5` for
+`nfactors = 5`, rather than mixed into the observations.
 
 ### 10.2 What Belongs In `transform`
 

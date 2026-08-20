@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -209,32 +209,80 @@ MCMC、MAP推定、変分推論、そして頻度主義的分析を切り替え�
 <code>a ~ exponential(1 / 2)</code>、すなわち平均2の指数事前分布が使われます。
 rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 と指定します。</p>
+<p>回帰系ラッパーでは、<code>std = TRUE</code>
+を指定すると、固定効果の標準化係数が <code>b_std</code>
+として追加されます。Gaussianモデルではデザイン行列の各列と応答変数の標準偏差を使い、それ以外のfamilyでは各列の標準偏差だけを使うため、係数はlink尺度に残ります。factorや交互作用から作られた列も対象です。</p>
+<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">mdl_std</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span></span>
+<span>  <span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>,</span>
+<span>  data <span class="op">=</span> <span class="va">debate</span>,</span>
+<span>  std <span class="op">=</span> <span class="cn">TRUE</span></span>
+<span><span class="op">)</span></span>
+<span><span class="va">fit_std</span> <span class="op">&lt;-</span> <span class="va">mdl_std</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_std</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="推定のイメージ">推定のイメージ<a class="anchor" aria-label="anchor" href="#%E6%8E%A8%E5%AE%9A%E3%81%AE%E3%82%A4%E3%83%A1%E3%83%BC%E3%82%B8"></a>
 </h2>
 <p>ラッパー関数でモデルを作ったあとは、メソッドを選んで推定します。</p>
 <p>MCMC を使う場合は <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> です。</p>
-<div class="sourceCode" id="cb3"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>MAP推定を使う場合は <code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> です。</p>
-<div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>頻度主義的分析を使う場合は <code>classic()</code> です。</p>
-<div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>このように、モデルの書き方は同じで、推定方法だけを切り替えられます。</p>
+</div>
+<div class="section level2">
+<h2 id="事後予測チェック">事後予測チェック<a class="anchor" aria-label="anchor" href="#%E4%BA%8B%E5%BE%8C%E4%BA%88%E6%B8%AC%E3%83%81%E3%82%A7%E3%83%83%E3%82%AF"></a>
+</h2>
+<p>回帰系ラッパーのMAP、MCMC、変分推論の結果では、事後予測データを直接生成できます。
+<code>type = "auto"</code> は、観測モデルが <code>_lpdf</code>
+なら密度、<code>_lpmf</code> なら棒グラフを使います。
+MCMCと変分推論では事後標本を使います。サンプリング型の標準誤差を保存していない
+MAPでは、MAP点に条件づけて複製データを生成します。</p>
+<div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">yrep</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="fu">posterior_predict</span><span class="op">(</span>draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"auto"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>stat <span class="op">=</span> <span class="va">mean</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
+<p><code>x</code>
+にモデルデータの列名、または観測数と同じ長さのベクトルを指定すると、
+散布図形式のチェックになります。観測値と、事後予測平均および95%事後予測区間を
+同じ図に表示します。予測にはモデル内のすべての項が使われ、<code>x</code>
+は横軸だけを選びます。</p>
+<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">"talk"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">".fitted"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
+<p>予約値 <code>x = ".fitted"</code>
+を指定すると、各観測の事後予測平均を横軸に置きます。
+モデル全体のキャリブレーションを確認するための表示になり、45度線も追加されます。
+散布図の凡例は自動配置され、<code>legend_position</code>、<code>legend_cex</code>、または
+<code>show_legend = FALSE</code> で調整できます。
+予測区間はデフォルトで95%であり、<code>interval</code>
+で変更できます。</p>
+<p>階層モデルでは <code>random</code>
+で予測水準を選びます。<code>"conditional"</code> は推定された
+集団効果を使い、<code>"population"</code>
+は集団効果を除き、<code>"simulate"</code> は各事後標本から
+新しい集団効果を生成します。</p>
+<div class="sourceCode" id="cb9"><pre class="downlit sourceCode r">
+<code class="sourceCode R"><span><span class="va">fit_lmer</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>random <span class="op">=</span> <span class="st">"conditional"</span><span class="op">)</span></span>
+<span><span class="va">fit_lmer</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>random <span class="op">=</span> <span class="st">"population"</span><span class="op">)</span></span>
+<span><span class="va">fit_lmer</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>random <span class="op">=</span> <span class="st">"simulate"</span><span class="op">)</span></span></code></pre></div>
 </div>
 <div class="section level2">
 <h2 id="頻度主義的分析">頻度主義的分析<a class="anchor" aria-label="anchor" href="#%E9%A0%BB%E5%BA%A6%E4%B8%BB%E7%BE%A9%E7%9A%84%E5%88%86%E6%9E%90"></a>
 </h2>
 <p><code>classic()</code> は、BayesRTMB
 のラッパー関数を頻度主義的な分析として使うためのメソッドです。</p>
-<div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">sat</span>, <span class="va">perf</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p><code><a href="../reference/rtmb_corr.html">rtmb_corr()</a></code> のデフォルトは
 <code>method = "pearson"</code> なので、<code>classic()</code> は
@@ -246,7 +294,7 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 <span><span class="co">##           Estimate Std. Error Lower 95% Upper 95%  df t value     Pr    </span></span>
 <span><span class="co">## corr[rho]  0.29742         NA   0.19059   0.39728 298 5.37755 &lt;.0001 ***</span></span></code></pre>
 <p>統制変数を入れた場合は、共変量だけを統制した偏相関になります。</p>
-<div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb12"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">sat</span>, <span class="va">perf</span><span class="op">)</span>,</span>
 <span>          data <span class="op">=</span> <span class="va">debate</span>,</span>
 <span>          covariates <span class="op">=</span> <span class="op">~</span> <span class="va">skill</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
@@ -255,7 +303,7 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 <p><code>method = "spearman"</code> を指定すると Spearman
 相関を使います。<code>method = "reml"</code> を指定すると、RTMB
 のREML推定に基づく相関モデルとして推定されます。</p>
-<div class="sourceCode" id="cb10"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb14"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">sat</span>, <span class="va">perf</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">debate</span>, method <span class="op">=</span> <span class="st">"spearman"</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="fu"><a href="https://rdrr.io/r/base/cbind.html" class="external-link">cbind</a></span><span class="op">(</span><span class="va">sat</span>, <span class="va">perf</span><span class="op">)</span>, data <span class="op">=</span> <span class="va">debate</span>, method <span class="op">=</span> <span class="st">"reml"</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <div class="section level3">
@@ -266,7 +314,7 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 などのS3メソッドを使えます。</p>
 <p>クロス表分析では、1つの対象に対して <code><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova()</a></code>
 を使うと、独立性の検定を表示できます。</p>
-<div class="sourceCode" id="cb11"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">fit_tab</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_table.html">rtmb_table</a></span><span class="op">(</span><span class="va">skill</span>, <span class="va">cond</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/stats/anova.html" class="external-link">anova</a></span><span class="op">(</span><span class="va">fit_tab</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## Contingency Table Analysis Tests</span></span>
@@ -278,7 +326,7 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 <span><span class="co">## p-value =  0.54310 </span></span></code></pre>
 <p>複数のモデルを比較する場合は、<code>anova(fit1, fit2)</code>
 と書けます。たとえば、因子分析で因子数の異なるモデルを比較できます。</p>
-<div class="sourceCode" id="cb13"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span></span>
 <span><span class="va">items</span> <span class="op">&lt;-</span> <span class="va">BigFive</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">10</span><span class="op">]</span></span>
@@ -291,7 +339,7 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 <span><span class="co">## fit_fa1 30 -2485.5 5030.9 4970.9     NA     NA         NA</span></span>
 <span><span class="co">## fit_fa2 40 -2440.4 4960.9 4880.9 90.089     10 5.1421e-15</span></span></code></pre>
 <p><code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC()</a></code> や <code><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC()</a></code> も同じように使えます。</p>
-<div class="sourceCode" id="cb15"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span>AIC_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC</a></span><span class="op">(</span><span class="va">fit_fa1</span><span class="op">)</span>,</span>
 <span>  AIC_2 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">AIC</a></span><span class="op">(</span><span class="va">fit_fa2</span><span class="op">)</span>,</span>
 <span>  BIC_1 <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/stats/AIC.html" class="external-link">BIC</a></span><span class="op">(</span><span class="va">fit_fa1</span><span class="op">)</span>,</span>
@@ -307,13 +355,15 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 <code><a href="../reference/rtmb_code.html">rtmb_code()</a></code>
 に展開されています。どのようなモデルが生成されたかは
 <code>print_code()</code> で確認できます。</p>
-<div class="sourceCode" id="cb17"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_ttest.html">rtmb_ttest</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">cond</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span><span class="va">mdl</span><span class="op">$</span><span class="fu">print_code</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <pre class="text"><code><span><span class="co">## === RTMB Model Code ===</span></span>
 <span><span class="co">## </span></span>
 <span><span class="co">## rtmb_code(</span></span>
 <span><span class="co">##   setup = {</span></span>
+<span><span class="co">##     Y &lt;- as.numeric(.data$response)</span></span>
+<span><span class="co">##     G &lt;- as.integer(.data$group)</span></span>
 <span><span class="co">##     Y1 &lt;- as.numeric(na.omit(Y[G == 1]))</span></span>
 <span><span class="co">##     Y2 &lt;- as.numeric(na.omit(Y[G == 2]))</span></span>
 <span><span class="co">##   }, </span></span>
@@ -346,7 +396,7 @@ t検定に対応し、2群で共通の標準偏差を推定します。<code>var
 のラッパーで交互作用を含むモデルを推定した場合は、<code><a href="../reference/conditional_effects.html">conditional_effects()</a></code>
 や <code><a href="../reference/simple_effects.html">simple_effects()</a></code>
 を使って、予測値や単純効果を確認できます。</p>
-<div class="sourceCode" id="cb19"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb23"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl_int</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
 <span><span class="va">fit_int</span> <span class="op">&lt;-</span> <span class="va">mdl_int</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
 <span></span>
@@ -447,7 +497,7 @@ classic fit
 </h4>
 <p>データに一部の欠損が含まれている場合、<code>missing = "fiml"</code>
 を指定することで、一部しか回答していない参加者も含めた全データを用いて因子負荷量を頑健に推定できます。</p>
-<div class="sourceCode" id="cb20"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb24"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="fu"><a href="https://rdrr.io/r/utils/data.html" class="external-link">data</a></span><span class="op">(</span><span class="va">BigFive</span><span class="op">)</span></span>
 <span><span class="co"># 意図的にランダムな欠損を生成</span></span>
 <span><span class="fu"><a href="https://rdrr.io/r/base/Random.html" class="external-link">set.seed</a></span><span class="op">(</span><span class="fl">42</span><span class="op">)</span></span>
@@ -466,7 +516,7 @@ classic fit
 <p>R標準の <code><a href="https://rdrr.io/r/stats/cor.html" class="external-link">cor()</a></code> や <code><a href="https://rdrr.io/r/stats/cor.test.html" class="external-link">cor.test()</a></code>
 のペアワイズ削除の挙動と一致させたい場合は、<code>missing = "pairwise"</code>
 を指定して <code>classic()</code> を実行します。</p>
-<div class="sourceCode" id="cb21"><pre class="downlit sourceCode r">
+<div class="sourceCode" id="cb25"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="co"># ペアワイズ削除による古典的相関分析</span></span>
 <span><span class="va">mdl_corr</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_corr.html">rtmb_corr</a></span><span class="op">(</span><span class="va">BigFive_miss</span><span class="op">[</span>, <span class="fl">1</span><span class="op">:</span><span class="fl">5</span><span class="op">]</span>, method <span class="op">=</span> <span class="st">"pearson"</span>, missing <span class="op">=</span> <span class="st">"pairwise"</span><span class="op">)</span></span>
 <span><span class="va">fit_corr</span> <span class="op">&lt;-</span> <span class="va">mdl_corr</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>

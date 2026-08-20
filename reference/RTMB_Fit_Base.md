@@ -29,6 +29,10 @@ results.
 
 - [`RTMB_Fit_Base$rotate()`](#method-RTMB_Fit_Base-rotate)
 
+- [`RTMB_Fit_Base$posterior_predict()`](#method-RTMB_Fit_Base-posterior_predict)
+
+- [`RTMB_Fit_Base$pp_check()`](#method-RTMB_Fit_Base-pp_check)
+
 - [`RTMB_Fit_Base$fa_rotate()`](#method-RTMB_Fit_Base-fa_rotate)
 
 - [`RTMB_Fit_Base$clone()`](#method-RTMB_Fit_Base-clone)
@@ -255,6 +259,155 @@ Rotate sampled parameters.
 #### Returns
 
 The updated object invisibly.
+
+------------------------------------------------------------------------
+
+### Method [`posterior_predict()`](https://norimune.github.io/BayesRTMB/reference/posterior_predict.md)
+
+Generate posterior predictive replications.
+
+#### Usage
+
+    RTMB_Fit_Base$posterior_predict(
+      code = NULL,
+      variable = NULL,
+      draws = 100L,
+      seed = NULL,
+      random = c("conditional", "population", "simulate"),
+      chains = NULL,
+      best_chains = NULL,
+      observed = NULL
+    )
+
+#### Arguments
+
+- `code`:
+
+  Optional \`rtmb_code()\` object containing a \`generate\` block for
+  custom models. The block should create and report one replicated
+  outcome.
+
+- `variable`:
+
+  Name of the replicated quantity returned by \`code\`. If omitted,
+  \`y_rep\` or the only returned quantity is used.
+
+- `draws`:
+
+  Number of predictive draws, or \`NULL\` to use every available
+  posterior draw.
+
+- `seed`:
+
+  Optional random seed.
+
+- `random`:
+
+  Hierarchical prediction mode: \`"conditional"\` uses fitted random
+  effects, \`"population"\` omits them, and \`"simulate"\` draws new
+  random effects for the observed groups.
+
+- `chains`:
+
+  Optional chains to use.
+
+- `best_chains`:
+
+  Optional number of best chains to use.
+
+- `observed`:
+
+  Optional observed outcome or its name in model data. This is stored as
+  metadata when its length matches a prediction.
+
+#### Returns
+
+A matrix with predictive draws in rows and observations in columns.
+
+------------------------------------------------------------------------
+
+### Method [`pp_check()`](https://norimune.github.io/BayesRTMB/reference/pp_check.md)
+
+Plot a posterior predictive check.
+
+#### Usage
+
+    RTMB_Fit_Base$pp_check(
+      type = c("auto", "dens", "bars"),
+      stat = NULL,
+      x = NULL,
+      code = NULL,
+      observed = NULL,
+      variable = NULL,
+      draws = 100L,
+      seed = NULL,
+      random = c("conditional", "population", "simulate"),
+      chains = NULL,
+      best_chains = NULL,
+      plot = TRUE,
+      ...
+    )
+
+#### Arguments
+
+- `type`:
+
+  Plot type: \`"dens"\`, \`"bars"\`, or \`"auto"\`. Automatic mode uses
+  the observation likelihood's \`\_lpdf\` or \`\_lpmf\` implementation.
+
+- `stat`:
+
+  Optional scalar statistic function, or its name. When supplied, the
+  replicated statistic distribution is compared with its observed value.
+
+- `x`:
+
+  Optional predictor used for a scatter-based check. Supply a column
+  name from the model data or a vector with one value per observation.
+
+- `code`:
+
+  Optional custom generate block; see \`posterior_predict()\`.
+
+- `observed`:
+
+  Optional observed outcome or its name in model data.
+
+- `variable`:
+
+  Name of the replicated quantity returned by \`code\`.
+
+- `draws`:
+
+  Number of posterior predictive replications.
+
+- `seed`:
+
+  Optional random seed.
+
+- `random`:
+
+  Hierarchical prediction mode; see \`posterior_predict()\`.
+
+- `chains`:
+
+  Optional chains to use.
+
+- `best_chains`:
+
+  Optional number of best chains to use.
+
+- `plot`:
+
+  Logical; draw the check immediately.
+
+- `...`:
+
+  Graphical arguments passed to the plotting method.
+
+#### Returns
+
+An \`rtmb_pp_check\` object, invisibly.
 
 ------------------------------------------------------------------------
 

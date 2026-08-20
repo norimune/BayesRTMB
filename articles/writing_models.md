@@ -106,17 +106,58 @@ variable.
 ### 1-3. setup block
 
 This block is executed exactly once before the model computations begin.
-It is primarily used to extract data sizes (number of rows/columns) as
-variables from the `data` list passed from R, and to create constants
-required for computations.
+It is primarily used to extract data sizes (number of rows/columns),
+prepare model variables, and create constants required for computations.
+
+The reserved name `.data` refers to the original object supplied to the
+`data` argument of
+[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md).
+It can therefore be used with a matrix or data frame directly, or with
+elements of a named list. The `.data` binding is read-only, is available
+only while `setup` is evaluated, and is not retained in the model data
+afterward.
 
 **Example Code:**
 
 ``` r
 
 setup = {
-  N <- length(Y)  # Get the sample size of the observed data
-  P <- ncol(X)    # Get the number of columns in the design matrix (number of predictors)
+  # For data = list(Y = y, X = x)
+  Y <- as.numeric(.data$Y)
+  X <- as.matrix(.data$X)
+  N <- length(Y)
+  P <- ncol(X)
+}
+```
+
+When the object passed to `data` is itself a matrix or data frame, use
+`as.matrix(.data)`:
+
+``` r
+
+setup = {
+  Y <- as.matrix(.data)
+  N <- nrow(Y)
+  P <- ncol(Y)
+}
+```
+
+Columns of a data frame and elements of a named list also remain
+available directly by name inside `setup`. Using `.data` is useful when
+the generated code should show explicitly which values came from the
+original input object.
+
+For common data-only centering operations, BayesRTMB provides
+[`center_grand_mean()`](https://norimune.github.io/BayesRTMB/reference/center_grand_mean.md)
+and
+[`center_within_cluster()`](https://norimune.github.io/BayesRTMB/reference/center_within_cluster.md).
+These helpers can be used inside `setup` as well as in ordinary R code.
+
+``` r
+
+setup = {
+  x_gmc <- center_grand_mean(.data$x)
+  x_cwc <- center_within_cluster(.data$x, .data$group)
 }
 ```
 
@@ -326,6 +367,34 @@ fit_mcmc$WAIC()
 
 fit_vb <- mdl_exgaussian$variational()
 fit_vb
+```
+
+For a custom model, posterior predictions can be supplied after fitting
+by passing a `generate` block. The block must return one replicated
+outcome for each posterior draw. Because `exgaussian_lpdf()` ends in
+`_lpdf`, `type = "auto"` selects the continuous density check.
+
+``` r
+
+predict_exgaussian <- rtmb_code(
+  generate = {
+    y_rep <- rnorm(length(Y), mu, sigma) + rexp(length(Y), rate = lambda)
+    report(y_rep)
+  }
+)
+
+yrep <- fit_mcmc$posterior_predict(
+  code = predict_exgaussian,
+  draws = 100,
+  seed = 123
+)
+fit_mcmc$pp_check(
+  code = predict_exgaussian,
+  observed = "Y",
+  type = "auto",
+  draws = 100,
+  seed = 123
+)
 ```
 
 When WAIC is needed, the `generate` block should save an

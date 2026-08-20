@@ -26,8 +26,9 @@ rtmb_model(
 
 - data:
 
-  A named list containing observation data and constants (e.g., sample
-  size, matrices) used in the model.
+  A named list, data frame, matrix, or other object containing the
+  observations used in the model. The original object is available as
+  `.data` while the `setup` block is evaluated.
 
 - code:
 
@@ -85,6 +86,12 @@ indices, or incompatible matrix operations, before proceeding to the
 computationally expensive Automatic Differentiation (MakeADFun) phase.
 Cryptic backend errors are caught and translated into user-friendly
 hints.
+
+Inside the `setup` block, the read-only reserved name `.data` refers to
+the original object supplied to `data`. This allows setup code such as
+`Y <- as.matrix(.data)` for a matrix or data frame, and
+`S <- as.matrix(.data$sets)` for a named list. The temporary `.data`
+binding is removed after setup has finished.
 
 **Writing AD-Compatible Code (Important):** To ensure the model is
 differentiable, you must follow specific syntax rules when writing code

@@ -14,6 +14,7 @@ rtmb_lm(
   fixed = NULL,
   gmc = NULL,
   centering = NULL,
+  std = FALSE,
   view = NULL,
   factors = NULL,
   contrasts = "treatment",
@@ -64,6 +65,11 @@ rtmb_lm(
 - centering:
 
   Alias for \`gmc\`.
+
+- std:
+
+  Logical; if \`TRUE\`, also report post-hoc standardized fixed-effect
+  coefficients. All fixed-effect design-matrix columns are standardized.
 
 - view:
 

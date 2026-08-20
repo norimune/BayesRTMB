@@ -9,7 +9,7 @@ Base class for RTMB Fit objects"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -87,6 +87,8 @@ Base class for RTMB Fit objects"></head><body>
 <li><p><a href="#method-RTMB_Fit_Base-EAP"><code>RTMB_Fit_Base$EAP()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-MAP"><code>RTMB_Fit_Base$MAP()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-rotate"><code>RTMB_Fit_Base$rotate()</code></a></p></li>
+<li><p><a href="#method-RTMB_Fit_Base-posterior_predict"><code>RTMB_Fit_Base$posterior_predict()</code></a></p></li>
+<li><p><a href="#method-RTMB_Fit_Base-pp_check"><code>RTMB_Fit_Base$pp_check()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-fa_rotate"><code>RTMB_Fit_Base$fa_rotate()</code></a></p></li>
 <li><p><a href="#method-RTMB_Fit_Base-clone"><code>RTMB_Fit_Base$clone()</code></a></p></li>
 </ul></div><p></p><hr><a id="method-RTMB_Fit_Base-get_point_estimate"></a><div class="section">
@@ -306,10 +308,158 @@ same names are overwritten. If FALSE, a numeric suffix is appended.</p></dd>
 <p>The updated object invisibly.</p>
 </div>
 
+</div><p></p><hr><a id="method-RTMB_Fit_Base-posterior_predict"></a><div class="section">
+<h3 id="method-posterior-predict-">Method <code><a href="posterior_predict.html">posterior_predict()</a></code><a class="anchor" aria-label="anchor" href="#method-posterior-predict-"></a></h3>
+<p>Generate posterior predictive replications.</p><div class="section">
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">posterior_predict</span><span class="op">(</span></span>
+<span>  code <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  variable <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  draws <span class="op">=</span> <span class="fl">100L</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  random <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conditional"</span>, <span class="st">"population"</span>, <span class="st">"simulate"</span><span class="op">)</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  observed <span class="op">=</span> <span class="cn">NULL</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>code</code></dt>
+<dd><p>Optional `rtmb_code()` object containing a `generate` block
+for custom models. The block should create and report one replicated outcome.</p></dd>
+
+
+<dt><code>variable</code></dt>
+<dd><p>Name of the replicated quantity returned by `code`. If
+omitted, `y_rep` or the only returned quantity is used.</p></dd>
+
+
+<dt><code>draws</code></dt>
+<dd><p>Number of predictive draws, or `NULL` to use every available
+posterior draw.</p></dd>
+
+
+<dt><code>seed</code></dt>
+<dd><p>Optional random seed.</p></dd>
+
+
+<dt><code>random</code></dt>
+<dd><p>Hierarchical prediction mode: `"conditional"` uses fitted
+random effects, `"population"` omits them, and `"simulate"` draws new
+random effects for the observed groups.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Optional chains to use.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Optional number of best chains to use.</p></dd>
+
+
+<dt><code>observed</code></dt>
+<dd><p>Optional observed outcome or its name in model data. This
+is stored as metadata when its length matches a prediction.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<p>A matrix with predictive draws in rows and observations in columns.</p>
+</div>
+
+</div><p></p><hr><a id="method-RTMB_Fit_Base-pp_check"></a><div class="section">
+<h3 id="method-pp-check-">Method <code><a href="pp_check.html">pp_check()</a></code><a class="anchor" aria-label="anchor" href="#method-pp-check-"></a></h3>
+<p>Plot a posterior predictive check.</p><div class="section">
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span></span>
+<span>  type <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"dens"</span>, <span class="st">"bars"</span><span class="op">)</span>,</span>
+<span>  stat <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  x <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  code <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  observed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  variable <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  draws <span class="op">=</span> <span class="fl">100L</span>,</span>
+<span>  seed <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  random <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"conditional"</span>, <span class="st">"population"</span>, <span class="st">"simulate"</span><span class="op">)</span>,</span>
+<span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  best_chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  plot <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  <span class="va">...</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>type</code></dt>
+<dd><p>Plot type: `"dens"`, `"bars"`, or `"auto"`. Automatic mode
+uses the observation likelihood's `_lpdf` or `_lpmf` implementation.</p></dd>
+
+
+<dt><code>stat</code></dt>
+<dd><p>Optional scalar statistic function, or its name. When supplied,
+the replicated statistic distribution is compared with its observed value.</p></dd>
+
+
+<dt><code>x</code></dt>
+<dd><p>Optional predictor used for a scatter-based check. Supply a column
+name from the model data or a vector with one value per observation.</p></dd>
+
+
+<dt><code>code</code></dt>
+<dd><p>Optional custom generate block; see `posterior_predict()`.</p></dd>
+
+
+<dt><code>observed</code></dt>
+<dd><p>Optional observed outcome or its name in model data.</p></dd>
+
+
+<dt><code>variable</code></dt>
+<dd><p>Name of the replicated quantity returned by `code`.</p></dd>
+
+
+<dt><code>draws</code></dt>
+<dd><p>Number of posterior predictive replications.</p></dd>
+
+
+<dt><code>seed</code></dt>
+<dd><p>Optional random seed.</p></dd>
+
+
+<dt><code>random</code></dt>
+<dd><p>Hierarchical prediction mode; see `posterior_predict()`.</p></dd>
+
+
+<dt><code>chains</code></dt>
+<dd><p>Optional chains to use.</p></dd>
+
+
+<dt><code>best_chains</code></dt>
+<dd><p>Optional number of best chains to use.</p></dd>
+
+
+<dt><code>plot</code></dt>
+<dd><p>Logical; draw the check immediately.</p></dd>
+
+
+<dt><code>...</code></dt>
+<dd><p>Graphical arguments passed to the plotting method.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<p>An `rtmb_pp_check` object, invisibly.</p>
+</div>
+
 </div><p></p><hr><a id="method-RTMB_Fit_Base-fa_rotate"></a><div class="section">
 <h3 id="method-fa-rotate-">Method <code>fa_rotate()</code><a class="anchor" aria-label="anchor" href="#method-fa-rotate-"></a></h3>
 <p>Rotate factor loadings and optional factor scores.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">fa_rotate</span><span class="op">(</span></span>
 <span>  target <span class="op">=</span> <span class="st">"L"</span>,</span>
 <span>  linked <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -322,7 +472,7 @@ same names are overwritten. If FALSE, a numeric suffix is appended.</p></dd>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Character string specifying the target variable to base the rotation on.</p></dd>
 
@@ -356,19 +506,19 @@ same names are overwritten. If FALSE, a numeric suffix is appended.</p></dd>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>The updated object invisibly.</p>
 </div>
 
 </div><p></p><hr><a id="method-RTMB_Fit_Base-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">RTMB_Fit_Base</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

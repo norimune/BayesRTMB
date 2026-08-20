@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -74,6 +74,7 @@
 <span>  gmc <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  centering <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  cwc <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  std <span class="op">=</span> <span class="cn">FALSE</span>,</span>
 <span>  view <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  within <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  factors <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -143,6 +144,15 @@ continuous families. Default is `prior_flat()`.</p></dd>
 <dd><p>List for Centering Within Cluster (CWC). Should contain <code>cluster</code> (group variable) and <code>pars</code> (variable names to center).
 You can also use <code>cwc = list(ID, "x")</code> or <code>cwc = list(ID, "all")</code>;
 <code>"all"</code> centers all numeric fixed-effect variables within the cluster.</p></dd>
+
+
+<dt id="arg-std">std<a class="anchor" aria-label="anchor" href="#arg-std"></a></dt>
+<dd><p>Logical; if `TRUE`, add post-hoc standardized fixed-effect
+coefficients as `b_std`. Every column of the fixed-effect design matrix is
+standardized, including columns generated from factors and interactions.
+For Gaussian models, coefficients are scaled by both the predictor and
+response standard deviations. For other families, only the predictor
+standard deviations are used, so coefficients remain on the link scale.</p></dd>
 
 
 <dt id="arg-view">view<a class="anchor" aria-label="anchor" href="#arg-view"></a></dt>
@@ -291,16 +301,16 @@ You can also use <code>cwc = list(ID, "x")</code> or <code>cwc = list(ID, "all")
 <span class="r-out co"><span class="r-pr">#&gt;</span> sampling: 100%</span>
 <span class="r-in"><span>  <span class="va">mcmc_glmer</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> lp             -511.60  10.82  -512.93  -534.55  -491.59       219       477  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept         2.65   0.09     2.67     2.46     2.82      1215       754  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[cond]           0.75   0.13     0.72     0.49     1.00      1146       750  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.83   0.04     0.81     0.75     0.92       661       521  1.01 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> sd[group:Int]     0.40   0.08     0.41     0.23     0.55       322       467  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[1]          -0.73   0.76    -0.77    -2.24     0.79      1544       670  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[2]          -0.96   0.77    -0.96    -2.46     0.51      1962       724  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[3]           0.02   0.79    -0.27    -1.62     1.58      1835       804  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[4]           0.60   0.76     0.46    -0.91     2.06      1811       608  1.00 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[5]          -0.41   0.82    -0.14    -2.00     1.15      1755       809  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> lp             -513.26  12.98  -512.75  -543.41  -490.50       137        94  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Intercept         2.64   0.09     2.65     2.46     2.81      1147       730  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[cond]           0.76   0.13     0.77     0.51     0.99      1095       790  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sigma             0.83   0.05     0.81     0.75     0.93       328       368  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> sd[group:Int]     0.39   0.10     0.41     0.06     0.55       173        66  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[1]          -0.67   0.78    -0.61    -2.29     0.84      1421       617  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[2]          -0.94   0.79    -1.02    -2.48     0.60       977       714  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[3]           0.03   0.83     0.09    -1.48     1.64      1491       601  1.00 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[4]           0.59   0.85     0.67    -1.07     2.32      1181       634  1.01 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> r_re[5]          -0.36   0.78    -0.42    -1.86     1.21      1726       779  1.00 </span>
 <span class="r-in"><span>  <span class="co"># }</span></span></span>
 <span class="r-in"><span></span></span>
 <span class="r-in"><span>  <span class="co"># --- 4. Linear Mixed Model (rtmb_lmer) ---</span></span></span>
@@ -345,6 +355,7 @@ You can also use <code>cwc = list(ID, "x")</code> or <code>cwc = list(ID, "all")
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_rhs</span> <span class="op">&lt;-</span> <span class="va">fit_rhs</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
+<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.</span>
@@ -375,7 +386,6 @@ You can also use <code>cwc = list(ID, "x")</code> or <code>cwc = list(ID, "all")
 <span class="r-out co"><span class="r-pr">#&gt;</span> Checking RTMB setup...</span>
 <span class="r-in"><span>  <span class="va">map_ssp</span> <span class="op">&lt;-</span> <span class="va">fit_ssp</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span></span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Starting RTMB optimization...</span>
-<span class="r-wrn co"><span class="r-pr">#&gt;</span> <span class="warning">Warning: </span>Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.</span>
 <span class="r-in"><span>  <span class="va">map_ssp</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="st">"b"</span><span class="op">)</span></span></span>
@@ -383,14 +393,14 @@ You can also use <code>cwc = list(ID, "x")</code> or <code>cwc = list(ID, "all")
 <span class="r-out co"><span class="r-pr">#&gt;</span> Call:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> MAP Estimation via RTMB</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 390.80</span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> Negative Log-Posterior: 400.19</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Approx. Log Marginal Likelihood (Laplace): NA</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> Point Estimates and 95% Wald CI:</span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> variable  Estimate  Std. Error  Lower 95%  Upper 95% </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[talk]    0.26100     0.05297    0.15717    0.36483 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[perf]    0.15004     0.02966    0.09192    0.20817 </span>
-<span class="r-out co"><span class="r-pr">#&gt;</span> b[skill]   0.18076     0.06487    0.05362    0.30790 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[talk]    0.00000     0.00000    0.00000    0.00000 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[perf]    0.16011     0.03082    0.09970    0.22052 </span>
+<span class="r-out co"><span class="r-pr">#&gt;</span> b[skill]   0.22134     0.06679    0.09043    0.35225 </span>
 <span class="r-out co"><span class="r-pr">#&gt;</span> </span>
 </code></pre></div>
     </div>

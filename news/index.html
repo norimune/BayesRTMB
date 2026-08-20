@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.2.4</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,7 +56,24 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.2.4" id="bayesrtmb-024">BayesRTMB 0.2.4<a class="anchor" aria-label="anchor" href="#bayesrtmb-024"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.3.0" id="bayesrtmb-030">BayesRTMB 0.3.0<a class="anchor" aria-label="anchor" href="#bayesrtmb-030"></a></h2>
+<ul><li>Added posterior predictive simulation and checks through <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> and <code><a href="../reference/pp_check.html">pp_check()</a></code>. Regression wrappers automatically support continuous density checks, discrete binned-bar checks, scalar test statistics, predictor-based and fitted-value calibration scatter checks, and conditional, population-level, or newly simulated random effects. Custom models can provide replicated outcomes in a <code>generate</code> block.</li>
+<li>Added random-intercept mediation models to <code><a href="../reference/rtmb_mediation.html">rtmb_mediation()</a></code>. A random intercept can be included in one equation or in multiple equations; random intercepts sharing a grouping variable are modeled jointly with an estimated correlation matrix.</li>
+<li>Added grand-mean centering (<code>gmc</code>/<code>centering</code>) and centering within cluster (<code>cwc</code>) to <code><a href="../reference/rtmb_mediation.html">rtmb_mediation()</a></code>. Centering is applied to predictor uses while preserving response variables on their original scale; cluster means remain user-specified model terms.</li>
+<li>Corrected degrees of freedom for classical mediation models. Fixed Gaussian equations now use the rank of their own design matrix, derived effects inherit degrees of freedom from their contributing coefficients, and Gaussian random-intercept mediation models use Satterthwaite degrees of freedom by default.</li>
+<li>Added the setup-only <code>.data</code> binding for accessing the original object passed to <code><a href="../reference/rtmb_model.html">rtmb_model()</a></code>. Wrapper-generated setup code now reads matrices and data frames directly, or reads related inputs such as responses, IDs, covariates, and choice sets from one named data list. Structural options remain visible as fixed assignments in the generated code.</li>
+<li>Added <code>std = TRUE</code> to the regression wrappers. It reports post-hoc standardized fixed-effect coefficients as <code>b_std</code>, using every column of the fixed-effect design matrix, including factor and interaction columns.</li>
+<li>Added <code><a href="../reference/summary_mcmc.html">summary_mcmc()</a></code> for summarizing numeric MCMC arrays arranged as iterations by chains by variables. It provides the same summary columns and print format as <code>MCMC_Fit$summary()</code>, with parameter and chain selection.</li>
+<li>Added exported <code><a href="../reference/center_grand_mean.html">center_grand_mean()</a></code> and <code><a href="../reference/center_within_cluster.html">center_within_cluster()</a></code> helpers for generated wrapper code and hand-written models.</li>
+<li>Made regression-wrapper <code>print_code()</code> expose data-frame columns instead of a nested data/formula payload, with explicit formula preprocessing and readable grand-mean and within-cluster centering helpers.</li>
+<li>Fixed <code>rtmb_table(x, y, data = ...)</code> so unquoted column names are resolved from the supplied data frame while preserving reproducible generated code.</li>
+<li>Simplified factor-analysis and multidimensional-unfolding <code>print_code()</code> output by assigning <code>nfactors</code> and <code>ndim</code> values directly to the internal constants <code>K</code> and <code>D</code>.</li>
+<li>Updated <code><a href="../reference/rtmb_corr.html">rtmb_corr()</a></code> normal priors to use the model-specific <code>mean_sd</code> and <code>sd_rate</code> aliases and to add an LKJ prior with <code>lkj_eta = 1</code> by default.</li>
+<li>Corrected Jacobian adjustments for constrained parameters supplied through <code>fixed</code>, so elements removed from the free-parameter map no longer contribute to optimization or sampling target densities.</li>
+<li>Updated the English and Japanese vignettes to document <code>.data</code>, unified named data inputs, structural constants in <code>setup</code>, and reproducible wrapper-generated code.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.2.4" id="bayesrtmb-024">BayesRTMB 0.2.4<a class="anchor" aria-label="anchor" href="#bayesrtmb-024"></a></h2><p class="text-muted">CRAN release: 2026-07-24</p>
 <ul><li>Allowed <code><a href="../reference/rtmb_lm.html">rtmb_lm()</a></code>, <code><a href="../reference/rtmb_glm.html">rtmb_glm()</a></code>, <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code>, and <code><a href="../reference/rtmb_glmer.html">rtmb_glmer()</a></code> to resolve bare variable names from the formula environment when <code>data</code> is omitted. Formulas using <code>$</code>, <code>[[</code>, or <code>.</code> continue to require explicit data.</li>
 <li>Corrected JZS t-test priors to include the Jeffreys scale prior (p() /), including paired and unequal-variance models.</li>
 <li>Corrected exponential-prior scaling across wrappers. The default <code>sigma_rate</code> and <code>tau_rate</code> in <code><a href="../reference/prior_normal.html">prior_normal()</a></code> are now <code>1 / 5</code>, giving exponential priors with mean 5, and wrapper-specific aliases are applied consistently.</li>

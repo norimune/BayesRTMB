@@ -112,13 +112,49 @@ code <- rtmb_code(
 `setup`
 は、モデル評価の前に一度だけ実行される前処理ブロックです。データの次元、平均、標準偏差、デザイン行列など、推定中に何度も変わらないものをここで作ります。
 
+予約名 `.data`
+は、[`rtmb_model()`](https://norimune.github.io/BayesRTMB/reference/rtmb_model.md)
+の `data` 引数に渡した元のオブジェクトを参照します。そのため、行列やdata
+frameをそのまま参照することも、名前付きlistの要素を参照することもできます。`.data`
+は `setup`
+の評価中だけ利用できる読み取り専用の値で、評価後のモデルデータには保存されません。
+
 ``` r
 
 setup = {
+  # data = list(Y = y, X = x) とした場合
+  Y <- as.numeric(.data$Y)
+  X <- as.matrix(.data$X)
   N <- length(Y)
   P <- ncol(X)
   X_mean <- apply(X, 2, mean)
   X_sd <- apply(X, 2, sd)
+}
+```
+
+`data` に行列やdata frameそのものを渡した場合は、`as.matrix(.data)`
+と書けます。
+
+``` r
+
+setup = {
+  Y <- as.matrix(.data)
+  N <- nrow(Y)
+  P <- ncol(Y)
+}
+```
+
+data
+frameの列や名前付きlistの要素は、これまでどおり列名・要素名で直接参照することもできます。`.data`
+を使うと、元の入力オブジェクトから何を取り出したのかを生成コード上で明示できます。
+
+データだけから決まる一般的な中心化には、[`center_grand_mean()`](https://norimune.github.io/BayesRTMB/reference/center_grand_mean.md)と[`center_within_cluster()`](https://norimune.github.io/BayesRTMB/reference/center_within_cluster.md)を利用できます。通常のRコードだけでなく、`setup`内でも使用できます。
+
+``` r
+
+setup = {
+  x_gmc <- center_grand_mean(.data$x)
+  x_cwc <- center_within_cluster(.data$x, .data$group)
 }
 ```
 
@@ -428,6 +464,35 @@ fit_mcmc$WAIC()
 
 fit_vb <- mdl_exgaussian$variational()
 fit_vb
+```
+
+自作モデルでは、推定後に `generate`
+ブロックを渡して事後予測データを生成できます。
+ブロックは事後標本ごとに1組の複製データを返します。`exgaussian_lpdf()`
+は `_lpdf` で終わるため、`type = "auto"`
+は連続分布用の密度表示を選びます。
+
+``` r
+
+predict_exgaussian <- rtmb_code(
+  generate = {
+    y_rep <- rnorm(length(Y), mu, sigma) + rexp(length(Y), rate = lambda)
+    report(y_rep)
+  }
+)
+
+yrep <- fit_mcmc$posterior_predict(
+  code = predict_exgaussian,
+  draws = 100,
+  seed = 123
+)
+fit_mcmc$pp_check(
+  code = predict_exgaussian,
+  observed = "Y",
+  type = "auto",
+  draws = 100,
+  seed = 123
+)
 ```
 
 WAIC を使いたい場合は、`generate` ブロックで観測ごとの `log_lik`

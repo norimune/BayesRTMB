@@ -16,6 +16,7 @@ rtmb_lmer(
   gmc = NULL,
   centering = NULL,
   cwc = NULL,
+  std = FALSE,
   view = NULL,
   sigma_by = NULL,
   factors = NULL,
@@ -78,6 +79,11 @@ rtmb_lmer(
 - cwc:
 
   List for CWC
+
+- std:
+
+  Logical; if \`TRUE\`, also report post-hoc standardized fixed-effect
+  coefficients. All fixed-effect design-matrix columns are standardized.
 
 - view:
 

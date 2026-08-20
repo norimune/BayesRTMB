@@ -51,7 +51,11 @@ rtmb_corr(
 - prior:
 
   Prior configuration object: \`prior_flat()\`, \`prior_normal()\`, or
-  \`prior_weak()\`. Default is \`prior_flat()\`.
+  \`prior_weak()\`. Default is \`prior_flat()\`. For \`prior_normal()\`,
+  correlation models use the aliases \`mean_sd\` and \`sd_rate\`, which
+  override the common arguments \`mu_sd\` and \`sigma_rate\`. An LKJ
+  prior with \`lkj_eta = 1\` is added automatically unless \`lkj_eta\`
+  is supplied explicitly.
 
 - y_range:
 
@@ -144,11 +148,11 @@ rtmb_corr(
 #> sampling: 100%
 #> 
 #> --- Calculating marginal likelihood for the comparison model ---
-#> Bridge Sampling Converged: LogML = -1025.623 (Error = 0.0071, ESS = 394.8)
+#> Bridge Sampling Converged: LogML = -1024.930 (Error = 0.0066, ESS = 458.8)
   print(bf_corr)
 #> --- Bayes Factor Analysis (Bridge Sampling) ---
-#> Bayes Factor (BF12) : 259633.8 
-#> Log Bayes Factor    : 12.4670 (Approx. Error = 0.0113)
+#> Bayes Factor (BF12) : 129840.3 
+#> Log Bayes Factor    : 11.7741 (Approx. Error = 0.0110)
 #> Evidence            : Decisive evidence for Model 1 
 #> Comparison model    : Parameters fixed at list(corr = 0) 
 #> 

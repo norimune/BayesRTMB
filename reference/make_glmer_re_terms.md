@@ -10,13 +10,14 @@ generated \`setup\` block.
 ``` r
 make_glmer_re_terms(
   formula,
-  data,
+  data = NULL,
   family = "gaussian",
   resid_group = NULL,
   resid_time = NULL,
   within = NULL,
   factors = NULL,
-  missing = "listwise"
+  missing = "listwise",
+  contrasts = NULL
 )
 ```
 
@@ -28,7 +29,10 @@ make_glmer_re_terms(
 
 - data:
 
-  Data frame.
+  Optional data frame. If omitted, variables are resolved from the
+  formula environment. This is useful inside an \`rtmb_code()\`
+  \`setup\` block, where data-frame columns are available as individual
+  variables.
 
 - family:
 
@@ -54,6 +58,10 @@ make_glmer_re_terms(
 - missing:
 
   Missing value handling strategy: "listwise".
+
+- contrasts:
+
+  Optional contrast type, either \`"treatment"\` or \`"sum"\`.
 
 ## Value
 

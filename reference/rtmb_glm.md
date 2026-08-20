@@ -15,6 +15,7 @@ rtmb_glm(
   fixed = NULL,
   gmc = NULL,
   centering = NULL,
+  std = FALSE,
   view = NULL,
   factors = NULL,
   contrasts = "treatment",
@@ -70,6 +71,11 @@ rtmb_glm(
 - centering:
 
   Alias for \`gmc\`.
+
+- std:
+
+  Logical; if \`TRUE\`, also report post-hoc standardized fixed-effect
+  coefficients. All fixed-effect design-matrix columns are standardized.
 
 - view:
 
@@ -195,16 +201,16 @@ rtmb_glm(
 #> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -511.54  11.72  -509.71  -534.33  -490.37       121       308  1.01 
-#> Intercept         2.65   0.09     2.66     2.47     2.83      1429       433  1.00 
-#> b[cond]           0.75   0.13     0.73     0.52     1.01      1214       811  1.00 
-#> sigma             0.83   0.04     0.82     0.75     0.92       655       662  1.00 
-#> sd[group:Int]     0.41   0.08     0.40     0.25     0.56       184       292  1.01 
-#> r_re[1]          -0.70   0.72    -0.89    -2.04     0.68      2394       860  1.00 
-#> r_re[2]          -0.99   0.80    -0.99    -2.54     0.49      2188       709  1.00 
-#> r_re[3]           0.01   0.79     0.15    -1.53     1.55      1991       665  1.00 
-#> r_re[4]           0.63   0.79     0.66    -0.99     2.23      2584       538  1.00 
-#> r_re[5]          -0.40   0.75    -0.13    -1.87     0.99      2129       636  1.00 
+#> lp             -511.16  12.64  -510.50  -536.52  -488.32       180       278  1.00 
+#> Intercept         2.64   0.09     2.66     2.47     2.82      1283       809  1.00 
+#> b[cond]           0.76   0.13     0.79     0.51     1.00      1326       758  1.00 
+#> sigma             0.83   0.04     0.82     0.75     0.93       527       603  1.00 
+#> sd[group:Int]     0.41   0.09     0.42     0.22     0.55       247       298  1.00 
+#> r_re[1]          -0.71   0.78    -0.73    -2.21     0.81      2651       683  1.00 
+#> r_re[2]          -0.98   0.77    -1.09    -2.50     0.59      2122       817  1.00 
+#> r_re[3]           0.02   0.81     0.07    -1.55     1.67      2695       532  1.00 
+#> r_re[4]           0.61   0.74     0.69    -0.88     2.05      2835       759  1.00 
+#> r_re[5]          -0.41   0.76    -0.33    -1.93     1.04      2212       674  1.00 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -280,13 +286,15 @@ rtmb_glm(
 #> Checking RTMB setup...
   map_ssp <- fit_ssp$optimize()
 #> Starting RTMB optimization...
+#> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
+#> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   map_ssp$summary("b")
 #> 
 #> Call:
 #> MAP Estimation via RTMB
 #> 
 #> Negative Log-Posterior: 390.80
-#> Approx. Log Marginal Likelihood (Laplace): -441.38
+#> Approx. Log Marginal Likelihood (Laplace): NA
 #> 
 #> Point Estimates and 95% Wald CI:
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 

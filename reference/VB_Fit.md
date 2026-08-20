@@ -113,6 +113,8 @@ Automatic Differentiation Variational Inference (ADVI).
 Inherited methods
 
 - [`BayesRTMB::RTMB_Fit_Base$fa_rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-fa_rotate)
+- [`BayesRTMB::RTMB_Fit_Base$posterior_predict()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-posterior_predict)
+- [`BayesRTMB::RTMB_Fit_Base$pp_check()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-pp_check)
 - [`BayesRTMB::RTMB_Fit_Base$rotate()`](https://norimune.github.io/BayesRTMB/reference/RTMB_Fit_Base.html#method-rotate)
 
 ------------------------------------------------------------------------
