@@ -64,6 +64,45 @@ test_that("Mixed model metadata separation and profile() logic", {
   expect_false(is.null(prof_mm))
 })
 
+test_that("classic() lmer fixed-effect SE uses GLS covariance", {
+  old_silent <- options(BayesRTMB.silent = TRUE)
+  on.exit(options(old_silent), add = TRUE)
+
+  fit <- rtmb_lmer(sat ~ talk + perf + (1 | group), data = debate)$classic()
+
+  X <- cbind(Intercept = 1, fit$model$data$X)
+  sigma <- as.numeric(fit$par$sigma)
+  tau <- as.numeric(fit$par$sd)
+  group_idx <- as.integer(fit$model$data$group_idx)
+  Z <- as.matrix(fit$model$data$Z_mat)
+
+  V <- diag(rep(sigma^2, nrow(X)))
+  for (g in unique(group_idx)) {
+    idx <- which(group_idx == g)
+    Z_g <- Z[idx, , drop = FALSE]
+    V[idx, idx] <- V[idx, idx, drop = FALSE] + tau^2 * tcrossprod(Z_g)
+  }
+
+  V_beta <- solve(crossprod(X, solve(V, X)))
+  rows <- c("Intercept", "b[talk]", "b[perf]")
+
+  expect_equal(
+    unname(fit$fit[rows, "Std. Error"]),
+    unname(sqrt(diag(V_beta))),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(fit$vcov[rows, rows]),
+    unname(V_beta),
+    tolerance = 1e-6
+  )
+  expect_equal(
+    unname(fit$vcov_unc[seq_along(rows), seq_along(rows)]),
+    unname(V_beta),
+    tolerance = 1e-6
+  )
+})
+
 test_that("se_method = 'none' and df_method = 'bw' rejection", {
   Y1 <- rnorm(20); Y2 <- rnorm(20)
   mdl_tt <- rtmb_ttest(Y1, Y2)

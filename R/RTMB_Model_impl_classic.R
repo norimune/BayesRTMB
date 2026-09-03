@@ -207,7 +207,7 @@
     generate = comp$generate,
     se_samples = comp$se_samples,
     par_unc = raw$par_unc,
-    vcov_unc = raw$vcov_unc,
+    vcov_unc = comp$vcov_unc,
     ci_method = se_method,
     laplace = settings$use_laplace,
     map = raw$map,
@@ -441,6 +441,153 @@
   fit
 }
 
+.classic_unc_indices_for <- function(par_list, vars) {
+  out <- integer(0)
+  pos <- 1L
+  for (name in names(par_list)) {
+    L_u <- par_list[[name]]$unc_length
+    if (is.null(L_u)) L_u <- 0L
+    idx <- if (L_u > 0L) pos:(pos + L_u - 1L) else integer(0)
+    if (name %in% vars) out <- c(out, idx)
+    pos <- pos + L_u
+  }
+  out
+}
+
+.classic_lmer_fixed_vcov <- function(self, con_est_list, target_vars = NULL) {
+  if (!identical(self$type, "lmer")) return(NULL)
+
+  spec <- self$extra$posterior_predict
+  if (is.null(spec) ||
+      !identical(spec$kind, "glmer") ||
+      !identical(spec$family, "gaussian") ||
+      !is.null(spec$resid_corr)) {
+    return(NULL)
+  }
+
+  if (is.null(self$data$Y) || is.null(con_est_list$sigma)) return(NULL)
+  n_obs <- length(as.numeric(self$data$Y))
+  if (!is.finite(n_obs) || n_obs <= 0L) return(NULL)
+
+  include_var <- function(name) {
+    is.null(target_vars) || length(target_vars) == 0L || name %in% target_vars
+  }
+
+  X_parts <- list()
+  fixed_rows <- character(0)
+  fixed_vars <- character(0)
+
+  if ("Intercept" %in% names(con_est_list) && include_var("Intercept")) {
+    X_parts[[length(X_parts) + 1L]] <- matrix(1, nrow = n_obs, ncol = 1L)
+    fixed_rows <- c(fixed_rows, "Intercept")
+    fixed_vars <- c(fixed_vars, "Intercept")
+  } else if ("Intercept_c" %in% names(con_est_list) && include_var("Intercept_c")) {
+    X_parts[[length(X_parts) + 1L]] <- matrix(1, nrow = n_obs, ncol = 1L)
+    fixed_rows <- c(fixed_rows, "Intercept_c")
+    fixed_vars <- c(fixed_vars, "Intercept_c")
+  }
+
+  if ("b" %in% names(con_est_list) && include_var("b")) {
+    X <- self$data$X
+    if (is.null(X)) return(NULL)
+    X <- as.matrix(X)
+    if (nrow(X) != n_obs) return(NULL)
+
+    b_info <- self$par_list[["b"]]
+    b_rows <- generate_flat_names("b", b_info$dim, self$par_names[["b"]])
+    if (length(b_rows) != ncol(X)) return(NULL)
+
+    X_parts[[length(X_parts) + 1L]] <- X
+    fixed_rows <- c(fixed_rows, b_rows)
+    fixed_vars <- c(fixed_vars, "b")
+  }
+
+  if (length(X_parts) == 0L || length(fixed_rows) == 0L) return(NULL)
+
+  X_fixed <- do.call(cbind, X_parts)
+  if (ncol(X_fixed) != length(fixed_rows)) return(NULL)
+  colnames(X_fixed) <- fixed_rows
+
+  sigma <- as.numeric(con_est_list$sigma)
+  if (any(!is.finite(sigma)) || any(sigma <= 0)) return(NULL)
+
+  sigma_idx <- self$data$sigma_idx
+  resid_var <- if (!is.null(sigma_idx)) {
+    sigma_idx <- as.integer(sigma_idx)
+    if (length(sigma_idx) != n_obs ||
+        any(is.na(sigma_idx)) ||
+        any(sigma_idx < 1L) ||
+        any(sigma_idx > length(sigma))) {
+      return(NULL)
+    }
+    sigma[sigma_idx]^2
+  } else {
+    rep(sigma[1L]^2, n_obs)
+  }
+
+  V <- matrix(0, nrow = n_obs, ncol = n_obs)
+  diag(V) <- resid_var
+
+  for (term in spec$random_terms) {
+    Z <- self$data[[term$z_name]]
+    group_idx <- self$data[[term$group_name]]
+    sd_val <- con_est_list[[term$sd_name]]
+    if (is.null(Z) || is.null(group_idx) || is.null(sd_val)) return(NULL)
+
+    Z <- as.matrix(Z)
+    group_idx <- as.integer(group_idx)
+    q <- ncol(Z)
+    if (nrow(Z) != n_obs ||
+        length(group_idx) != n_obs ||
+        any(is.na(group_idx)) ||
+        q != term$num_ranef) {
+      return(NULL)
+    }
+
+    sd_val <- as.numeric(sd_val)
+    if (length(sd_val) != q || any(!is.finite(sd_val)) || any(sd_val < 0)) {
+      return(NULL)
+    }
+
+    corr <- diag(q)
+    if (q > 1L) {
+      CF <- con_est_list[[term$corr_name]]
+      if (is.null(CF)) return(NULL)
+      CF <- as.matrix(CF)
+      if (nrow(CF) != q || ncol(CF) != q || any(!is.finite(CF))) return(NULL)
+      corr <- CF %*% t(CF)
+    }
+
+    D <- diag(sd_val, nrow = q, ncol = q)
+    G <- D %*% corr %*% D
+
+    for (g in unique(group_idx)) {
+      idx <- which(group_idx == g)
+      Z_g <- Z[idx, , drop = FALSE]
+      V[idx, idx] <- V[idx, idx, drop = FALSE] + Z_g %*% G %*% t(Z_g)
+    }
+  }
+
+  V <- 0.5 * (V + t(V))
+  VinvX <- tryCatch(solve(V, X_fixed), error = function(e) NULL)
+  if (is.null(VinvX)) return(NULL)
+
+  XtVinvX <- crossprod(X_fixed, VinvX)
+  V_beta <- tryCatch(
+    solve(XtVinvX),
+    error = function(e) MASS::ginv(XtVinvX)
+  )
+  if (is.null(V_beta) || any(!is.finite(V_beta))) return(NULL)
+
+  V_beta <- 0.5 * (V_beta + t(V_beta))
+  rownames(V_beta) <- colnames(V_beta) <- fixed_rows
+
+  fixed_idx <- .classic_unc_indices_for(self$par_list, unique(fixed_vars))
+  if (length(fixed_idx) != ncol(V_beta)) return(NULL)
+
+  list(vcov = V_beta, indices = fixed_idx, rows = fixed_rows)
+}
+
 .build_classic_components <- function(self, private, raw, settings, se_method, num_samples, seed, info_log_lik = NULL) {
   # Extract components from raw
   ad_obj         <- raw$ad_obj
@@ -458,6 +605,18 @@
   unc_est_list   <- raw$par_unc_list
   unc_se_list    <- raw$se_unc_list
   L_u_total      <- raw$L_u_total
+
+  lmer_fixed_vcov <- if (isTRUE(settings$use_reml)) {
+    .classic_lmer_fixed_vcov(self, con_est_list, settings$target_vars)
+  } else {
+    NULL
+  }
+  if (!is.null(lmer_fixed_vcov)) {
+    fixed_idx <- lmer_fixed_vcov$indices
+    Cov_u[fixed_idx, fixed_idx] <- lmer_fixed_vcov$vcov
+    unc_se_vec[fixed_idx] <- sqrt(pmax(diag(lmer_fixed_vcov$vcov), 0))
+    unc_se_list <- unconstrained_vector_to_list(unc_se_vec, self$par_list)
+  }
   
   se_sampling <- (se_method == "sampling")
   
@@ -1018,6 +1177,10 @@
     V_fixed_full <- J_fixed %*% Cov_u %*% t(J_fixed)
   }
   rownames(V_fixed_full) <- colnames(V_fixed_full) <- rownames(df_fixed)
+  if (!is.null(lmer_fixed_vcov)) {
+    rows <- intersect(lmer_fixed_vcov$rows, rownames(V_fixed_full))
+    V_fixed_full[rows, rows] <- lmer_fixed_vcov$vcov[rows, rows, drop = FALSE]
+  }
 
   # 6. Additional test results (e.g. for table)
   test_results <- list()
@@ -1036,6 +1199,7 @@
     generate = gq_list,
     se_samples = if (se_sampling) list(con = samps_con, tran = samps_tran, gq = samps_gq) else NULL,
     vcov = V_fixed_full,
+    vcov_unc = Cov_u,
     log_lik = log_lik,
     rss = rss,
     df_residual = df_residual,
