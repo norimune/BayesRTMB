@@ -88,7 +88,8 @@ upgrade_fit <- function(fit, upgrade_model = TRUE) {
 
     for (field in c(
       "formula", "raw_data", "family", "type", "extra", "contrasts",
-      "requested_contrasts", "prior_correction", "fixed_prior_specs", "map"
+      "requested_contrasts", "prior_correction", "prior_correction_params",
+      "fixed_prior_specs", "map"
     )) {
       .upgrade_set_field(new_model, field, .upgrade_field(model, field))
     }

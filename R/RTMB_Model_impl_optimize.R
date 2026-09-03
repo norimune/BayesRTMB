@@ -385,7 +385,7 @@
       } else {
         calc_log_jacobian(unc_est_list, self$par_list, FALSE, map = target_map)
       }
-      log_ml <- -opt$objective + lj_missing + (length(opt$par) / 2) * log(2 * pi) + 0.5 * sum(log(eig$values)) - self$prior_correction
+      log_ml <- -opt$objective + lj_missing + (length(opt$par) / 2) * log(2 * pi) + 0.5 * sum(log(eig$values))
     }
   }
 

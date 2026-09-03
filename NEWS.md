@@ -42,6 +42,9 @@
   constants `K` and `D`.
 * Updated `rtmb_corr()` normal priors to use the model-specific `mean_sd` and
   `sd_rate` aliases and to add an LKJ prior with `lkj_eta = 1` by default.
+* Corrected `rtmb_corr(prior_flat())` marginal-likelihood normalization so
+  Bayes factors for correlations use the normalized LKJ(1)/uniform correlation
+  prior without changing the printed flat-prior model code.
 * Corrected Jacobian adjustments for constrained parameters supplied through
   `fixed`, so elements removed from the free-parameter map no longer contribute
   to optimization or sampling target densities.

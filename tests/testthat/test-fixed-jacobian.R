@@ -97,3 +97,34 @@ test_that("rtmb_corr removes its default LKJ prior when corr is fixed", {
     tolerance = 1e-12
   )
 })
+
+test_that("rtmb_corr normalizes flat correlation priors for marginal likelihood", {
+  dat <- data.frame(
+    y1 = c(-1.2, -0.7, -0.1, 0.3, 0.8, 1.4),
+    y2 = c(-0.8, -0.4, 0.2, 0.5, 1.1, 1.6),
+    y3 = c(0.4, -0.2, 0.7, 1.0, 0.1, 1.5)
+  )
+
+  two_var <- rtmb_corr(dat[c("y1", "y2")], prior = prior_flat())
+  expect_equal(two_var$prior_correction, log(2), tolerance = 1e-12)
+  expect_named(two_var$prior_correction_params, "corr")
+
+  fixed_corr <- two_var$fixed_model(list(corr = 0), silent = TRUE)
+  expect_equal(fixed_corr$prior_correction, 0, tolerance = 1e-12)
+  expect_null(fixed_corr$prior_correction_params)
+
+  fixed_corr_arg <- rtmb_corr(
+    dat[c("y1", "y2")],
+    prior = prior_flat(),
+    fixed = list(corr = 0)
+  )
+  expect_equal(fixed_corr_arg$prior_correction, 0, tolerance = 1e-12)
+
+  three_var <- rtmb_corr(dat, prior = prior_flat())
+  expect_equal(
+    three_var$prior_correction,
+    .rtmb_corr_lkj_uniform_correction(3),
+    tolerance = 1e-12
+  )
+  expect_named(three_var$prior_correction_params, "CF_corr")
+})

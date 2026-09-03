@@ -1,3 +1,18 @@
+.rtmb_corr_lkj_uniform_correction <- function(K) {
+  if (K <= 1L) return(0)
+
+  log_C <- 0
+  for (k in seq_len(K - 1L)) {
+    log_C <- log_C - (
+      lgamma(1 + (K - 1L - k) / 2) +
+        lgamma(k / 2) -
+        lgamma(1 + (K - 1L) / 2)
+    )
+  }
+
+  -log_C
+}
+
 #' Fit a Correlation Model using RTMB
 #'
 #' @description
@@ -515,7 +530,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
 
      view_order <- c("pcorr", "B_corr", "W_corr", "corr", "ICC", "mu", "sigma_between", "sigma_within", "sigma")
 
-     obj <- rtmb_model(model_data, mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_order)
+     obj <- rtmb_model(model_data, mdl_code, par_names = v_names, init = init_list, fixed = NULL, view = view_order)
      obj$raw_data <- data
 
      obj$type <- "corr"
@@ -526,6 +541,15 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
        corr_method = "reml",
        missing = missing
      )
+
+     if (is_flat && multivariate && is.null(prior_lkj_eta)) {
+       correction <- .rtmb_corr_lkj_uniform_correction(P)
+       obj$prior_correction_params <- c(
+         L_corr_between = correction,
+         L_corr_within = correction
+       )
+       obj$prior_correction <- sum(obj$prior_correction_params)
+     }
 
      # Set degrees of freedom map for BW method
      # Between: J, Within: N - J - P
@@ -545,6 +569,10 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      df_map$W_pcorr <- df_within
      
      obj$extra$df_map <- df_map
+
+     if (!is.null(fixed)) {
+       obj <- obj$fixed_model(fixed)
+     }
 
      return(obj)
   } else {
@@ -705,7 +733,7 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
      } else init
 
      view_vars <- if (P_x > 0) c("pcorr", "B_corr", "W_corr", "corr", "mean", "sd") else c("B_corr", "W_corr", "corr", "mean", "sd")
-     obj <- rtmb_model(data = model_data, code = mdl_code, par_names = v_names, init = init_list, fixed = fixed, view = view_vars)
+     obj <- rtmb_model(data = model_data, code = mdl_code, par_names = v_names, init = init_list, fixed = NULL, view = view_vars)
 
     obj$raw_data <- data
     obj$type <- "corr"
@@ -716,6 +744,19 @@ rtmb_corr <- function(x = NULL, data = NULL, ID = NULL,
       corr_method = method,
       missing = missing
     )
+
+    if (is_flat && P > 1L && is.null(prior_lkj_eta)) {
+      correction_name <- if (P == 2L) "corr" else "CF_corr"
+      obj$prior_correction_params <- stats::setNames(
+        .rtmb_corr_lkj_uniform_correction(P),
+        correction_name
+      )
+      obj$prior_correction <- sum(obj$prior_correction_params)
+    }
+
+    if (!is.null(fixed)) {
+      obj <- obj$fixed_model(fixed)
+    }
 
     return(obj)
   }

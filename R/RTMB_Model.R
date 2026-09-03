@@ -28,6 +28,8 @@
 #' @field map A list specifying parameter mappings for fixing values (e.g., via \code{fixed_model()}).
 #' @field prior_correction Numeric value for legacy or low-level marginal-likelihood correction.
 #' Fixed-parameter prior removal is handled during AD objective construction.
+#' @field prior_correction_params Named numeric vector linking marginal-likelihood
+#' corrections to the free parameters that require them.
 #' @field fixed_prior_specs Internal specification for removing fixed-parameter prior contributions during AD evaluation.
 #' @field type Character; the type of the model (e.g. 'lmer', 'glm', 'table', 'ttest', 'corr', 'mediation').
 #' @field extra List; used to store auxiliary data (like term assignments, factors, test results) needed by methods such as classic().
@@ -56,6 +58,7 @@ RTMB_Model <- R6::R6Class(
     contrasts = NULL,
     requested_contrasts = NULL,
     prior_correction = 0,
+    prior_correction_params = NULL,
     fixed_prior_specs = NULL,
 
     # 1. Constructor
@@ -1491,10 +1494,19 @@ RTMB_Model <- R6::R6Class(
       new_model$init <- new_init
       new_model$map <- new_map
       
-      # Dynamic prior correction for Bayes Factor (log-density of fixed parameters)
-      # Instead of wrapping log_prob (which is messy for printing), we store the specs
-      # and handle removal during AD objective construction in .build_f_ad.
-      new_model$prior_correction <- 0 # Explicitly reset scalar correction
+      # Parameter-linked marginal-likelihood corrections stay active unless the
+      # parameter they normalize is fixed in this restricted model.
+      correction_params <- self$prior_correction_params
+      if (!is.null(correction_params) && length(correction_params) > 0L) {
+        fixed_bases <- unique(sub("\\[.*$", "", names(fixed)))
+        keep_correction <- !names(correction_params) %in% fixed_bases
+        correction_params <- correction_params[keep_correction]
+        new_model$prior_correction_params <- if (length(correction_params) > 0L) correction_params else NULL
+        new_model$prior_correction <- sum(correction_params)
+      } else {
+        new_model$prior_correction_params <- NULL
+        new_model$prior_correction <- 0
+      }
       
       # Merge with existing fixed_prior_specs if any
       merged_specs <- self$fixed_prior_specs %||% list()
