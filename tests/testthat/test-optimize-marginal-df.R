@@ -81,6 +81,37 @@ test_that("se_method = 'none' and df_method = 'bw' rejection", {
   expect_error(mdl_tt$optimize(df_method = "bw"), "not supported")
 })
 
+test_that("sampling SE works with a one-dimensional covariance matrix", {
+  old_silent <- options(BayesRTMB.silent = TRUE)
+  on.exit(options(old_silent), add = TRUE)
+
+  code_binom <- rtmb_code(
+    parameters = {
+      theta <- Dim(lower = 0, upper = 1)
+    },
+    model = {
+      Y ~ binomial(Trial, theta)
+      theta ~ beta(1, 1)
+    }
+  )
+  mdl_binom <- rtmb_model(
+    data = list(Trial = 10, Y = 6),
+    code = code_binom,
+    silent = TRUE
+  )
+
+  fit_map <- mdl_binom$optimize(
+    se_method = "sampling",
+    num_samples = 20,
+    seed = 1
+  )
+
+  tab <- fit_map$summary()
+  expect_s3_class(fit_map, "map_fit")
+  expect_true("theta" %in% rownames(tab))
+  expect_true(is.finite(tab["theta", "Std. Error"]))
+})
+
 test_that("classic() regression and prior restriction", {
   mdl_lm <- rtmb_lm(mpg ~ wt, data = mtcars)
   fit_c <- mdl_lm$classic()

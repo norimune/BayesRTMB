@@ -6,6 +6,10 @@
   statistics, predictor-based and fitted-value calibration scatter checks, and conditional,
   population-level, or newly simulated random effects. Custom models can
   provide replicated outcomes in a `generate` block.
+* Made `posterior_predict()` and `pp_check()` report a clear error for
+  `classic()` results, which do not store posterior draws.
+* Fixed simulation-based standard errors for one-parameter models, including
+  `optimize(se_method = "sampling")` on scalar binomial models.
 * Added random-intercept mediation models to `rtmb_mediation()`. A random
   intercept can be included in one equation or in multiple equations; random
   intercepts sharing a grouping variable are modeled jointly with an estimated

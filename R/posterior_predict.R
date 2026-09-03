@@ -125,6 +125,22 @@ pp_check.RTMB_Fit_Base <- function(object, ...) {
     }
   }
 
+  if (!is.function(fit$draws)) {
+    if (inherits(fit, "Classic_Fit")) {
+      stop(
+        "posterior_predict() is not available for Classic_Fit objects because ",
+        "classic() does not store posterior draws. Use the fit returned by ",
+        "sample(), optimize(), or variational() instead.",
+        call. = FALSE
+      )
+    }
+    stop(
+      "This fit object does not provide a draws() method. If it was created ",
+      "with an older BayesRTMB version, run upgrade_fit(fit) or refit the model.",
+      call. = FALSE
+    )
+  }
+
   draw_array <- fit$draws(
     chains = chains,
     best_chains = best_chains,

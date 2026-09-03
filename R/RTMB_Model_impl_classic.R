@@ -632,7 +632,7 @@
     mu_valid <- unc_est_vec[idx_fix_active]
     eig <- eigen(Cov_u_valid, symmetric = TRUE)
     eig$values <- pmax(eig$values, 1e-8)
-    Cov_u_pd <- eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
+    Cov_u_pd <- eig$vectors %*% diag(eig$values, nrow = length(eig$values)) %*% t(eig$vectors)
     
     raw_samples <- MASS::mvrnorm(num_samples, mu = mu_valid, Sigma = Cov_u_pd)
     active_dfs <- est_dfs_all[idx_fix_active]

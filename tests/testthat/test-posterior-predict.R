@@ -68,6 +68,16 @@ test_that("regression wrappers provide automatic posterior predictions", {
 
   expect_equal(dim(yrep), c(3, nrow(dat)))
   expect_equal(attr(yrep, "variable"), "y_rep")
+
+  fit_classic <- model$classic()
+  expect_error(
+    fit_classic$posterior_predict(draws = 2, seed = 12),
+    "not available for Classic_Fit"
+  )
+  expect_error(
+    fit_classic$pp_check(draws = 2, seed = 12, plot = FALSE),
+    "not available for Classic_Fit"
+  )
 })
 
 test_that("hierarchical prediction modes use the requested random-effect level", {

@@ -130,7 +130,7 @@
     set.seed(seed)
     if (!getOption("BayesRTMB.silent", FALSE)) cat(sprintf("Using simulation-based error propagation (%d samples)...\n", num_samples))
     Cov_u_valid <- Cov_u[idx_fix_active, idx_fix_active, drop = FALSE]; mu_valid <- unc_est_vec[idx_fix_active]
-    eig <- eigen(Cov_u_valid, symmetric = TRUE); eig$values <- pmax(eig$values, 1e-8); Cov_u_pd <- eig$vectors %*% diag(eig$values) %*% t(eig$vectors)
+    eig <- eigen(Cov_u_valid, symmetric = TRUE); eig$values <- pmax(eig$values, 1e-8); Cov_u_pd <- eig$vectors %*% diag(eig$values, nrow = length(eig$values)) %*% t(eig$vectors)
     raw_samples <- MASS::mvrnorm(num_samples, mu = mu_valid, Sigma = Cov_u_pd); active_dfs <- est_dfs_all[idx_fix_active]
     for (j in 1:ncol(raw_samples)) {
       df_j <- active_dfs[j]
