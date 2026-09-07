@@ -11,7 +11,10 @@ NUTS_method <- function(model,
                         metric_regularization = TRUE,
                         metric_shrinkage = 5,
                         metric_min = 1e-6,
-                        metric_max = 1e6) {
+                        metric_max = 1e6,
+                        initial_metric = NULL,
+                        initial_eps = NULL,
+                        adapt = TRUE) {
 
   nuts_variant <- match.arg(nuts_variant)
   metric <- match.arg(metric)
@@ -21,6 +24,9 @@ NUTS_method <- function(model,
   metric_init <- match.arg(metric_init)
   metric_adaptation <- match.arg(metric_adaptation)
   metric_regularization <- isTRUE(metric_regularization)
+  if (!is.logical(adapt) || length(adapt) != 1L || is.na(adapt)) {
+    stop("'adapt' must be TRUE or FALSE.", call. = FALSE)
+  }
   if (!is.numeric(metric_shrinkage) || length(metric_shrinkage) != 1L || metric_shrinkage < 0) {
     stop("'metric_shrinkage' must be a non-negative scalar.", call. = FALSE)
   }
@@ -371,7 +377,33 @@ NUTS_method <- function(model,
   accept <- numeric(iter)
   accept[1] <- 1
 
-  M_inv <- if (identical(metric_init, "hessian")) {
+  validate_initial_metric <- function(x) {
+    if (identical(metric, "hybrid")) {
+      valid <- is.list(x) && identical(x$type, "hybrid") &&
+        identical(as.integer(x$dim), as.integer(P_fixed)) &&
+        is.matrix(x$dense) &&
+        identical(dim(x$dense), c(length(x$dense_idx), length(x$dense_idx))) &&
+        length(x$diag) == length(x$diag_idx) &&
+        all(is.finite(x$dense)) && all(is.finite(x$diag)) && all(x$diag > 0)
+      if (valid && length(x$dense_idx) > 0L) {
+        valid <- !inherits(try(chol(x$dense), silent = TRUE), "try-error")
+      }
+    } else if (identical(metric, "dense")) {
+      valid <- is.matrix(x) && identical(dim(x), c(P_fixed, P_fixed)) &&
+        all(is.finite(x)) && !inherits(try(chol(x), silent = TRUE), "try-error")
+    } else {
+      valid <- is.numeric(x) && length(x) == P_fixed &&
+        all(is.finite(x)) && all(x > 0)
+    }
+    if (!isTRUE(valid)) {
+      stop("The stored mass matrix is incompatible with the current model.", call. = FALSE)
+    }
+    x
+  }
+
+  M_inv <- if (!is.null(initial_metric)) {
+    validate_initial_metric(initial_metric)
+  } else if (identical(metric_init, "hessian")) {
     nuts_core$hessian_metric(q_fixed_init, metric, metric_min, metric_max, metric_layout)
   } else {
     NULL
@@ -386,7 +418,15 @@ NUTS_method <- function(model,
   }
   refresh_metric_cache()
   metric_condition_record[1] <- current_metric_condition
-  eps <- FindReasonableEpsilon(q_fixed_init, M_inv)
+  if (!is.null(initial_eps)) {
+    if (!is.numeric(initial_eps) || length(initial_eps) != 1L ||
+        !is.finite(initial_eps) || initial_eps <= 0) {
+      stop("The stored NUTS step size must be a positive finite scalar.", call. = FALSE)
+    }
+    eps <- as.numeric(initial_eps)
+  } else {
+    eps <- FindReasonableEpsilon(q_fixed_init, M_inv)
+  }
 
   # Dual Averaging parameters
   mu_DA <- log(10 * eps)
@@ -437,7 +477,7 @@ NUTS_method <- function(model,
     H_old <- calc_H(q_old, p_old, M_inv)
     energy_record[i] <- -H_old
     eps_record[i] <- eps
-    if (i <= warmup) {
+    if (isTRUE(adapt) && i <= warmup) {
       warmup_phase_record[i] <- if (base_window > 0 && i >= init_buffer && i <= warmup - term_buffer) {
         "slow"
       } else if (i < init_buffer) {
@@ -499,7 +539,7 @@ NUTS_method <- function(model,
     divergent_record[i] <- divergent
     accept[i] <- accept_stat
 
-    if (i <= warmup) {
+    if (isTRUE(adapt) && i <= warmup) {
       Hbar <- (1 - 1/(da_iter+t0))*Hbar + (1/(da_iter+t0))*(delta - accept_stat)
       log_eps <- mu_DA - sqrt(da_iter)/gamma_DA * Hbar
       log_eps_bar <- da_iter^-kappa*log_eps + (1 - da_iter^-kappa)*log_eps_bar
@@ -599,8 +639,10 @@ NUTS_method <- function(model,
         }
       }
       metric_condition_record[i] <- current_metric_condition
-    } else {
+    } else if (isTRUE(adapt)) {
       eps <- eps_bar
+      metric_condition_record[i] <- current_metric_condition
+    } else {
       metric_condition_record[i] <- current_metric_condition
     }
     metric_type_record[i] <- metric

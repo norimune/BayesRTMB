@@ -1,5 +1,9 @@
 # BayesRTMB 0.3.0
 
+* Added `MCMC_Fit$continue_sampling()` to extend existing NUTS chains without
+  another warmup. It resumes from each chain's final unconstrained state,
+  reuses the adapted step size and mass matrix, and can update the fit in place
+  or return an independently extended copy.
 * Added posterior predictive simulation and checks through
   `posterior_predict()` and `pp_check()`. Regression wrappers automatically
   support continuous density checks, discrete binned-bar checks, scalar test

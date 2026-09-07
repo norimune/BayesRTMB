@@ -6,7 +6,8 @@
                          metric_regularization,
                          metric_shrinkage, metric_min, metric_max,
                          parallel, laplace, init, init_jitter,
-                         save_csv, map, fixed, globals, progress) {
+                         save_csv, map, fixed, globals, progress,
+                         resume = NULL) {
   nuts_variant <- match.arg(nuts_variant, c("multinomial", "slice"))
   metric <- match.arg(metric, c("auto", "diag", "dense", "hybrid"))
   metric_init <- match.arg(metric_init, c("identity", "hessian"))
@@ -29,6 +30,14 @@
   }
 
   set.seed(seed)
+  is_resume <- !is.null(resume)
+  if (is_resume) {
+    if (!is.list(resume$chain_state) || length(resume$chain_state) != chains ||
+        !is.list(resume$metric) || length(resume$metric) != chains ||
+        length(resume$eps) != chains || length(resume$metric_type) != chains) {
+      stop("Invalid stored sampler state for continuation.", call. = FALSE)
+    }
+  }
   orig_pl <- self$par_list
   data_na_summary <- function(dat) {
     if (is.null(dat)) return(character(0))
@@ -153,9 +162,11 @@
       if (.Platform$OS.type == "unix") future::plan(future::multicore, workers = chains)
       else future::plan(future::multisession, workers = chains)
     }
-    .rtmb_progress_start_line(paste0("Starting parallel sampling (chains = ", chains, ")..."))
+    action <- if (is_resume) "Continuing" else "Starting"
+    .rtmb_progress_start_line(paste0(action, " parallel sampling (chains = ", chains, ")..."))
   } else {
-    .rtmb_progress_start_line(paste0("Starting sequential sampling (chains = ", chains, ")..."))
+    action <- if (is_resume) "Continuing" else "Starting"
+    .rtmb_progress_start_line(paste0(action, " sequential sampling (chains = ", chains, ")..."))
   }
 
   # --- [IMPORTANT] Data extraction to avoid serialization ---
@@ -227,7 +238,7 @@
     unc_init_list <- to_unconstrained(constrained_vector_to_list(base_init, local_par_list), local_par_list)
     unc_init_vec <- unlist(unc_init_list, use.names = FALSE)
 
-    if (init_jitter > 0) {
+    if (!is_resume && init_jitter > 0) {
       jitter_vec <- rnorm(length(unc_init_vec), mean = 0, sd = init_jitter)
       if (!is.null(local_map)) {
         idx <- 1
@@ -252,8 +263,25 @@
     }, error = function(e) stop(.rtmb_format_makeadfun_error(e$message, context = "MakeADFun in parallel worker"), call. = FALSE))
     ad_obj <- wrap_mcmc_pd_errors(ad_obj)
 
+    chain_metric <- metric
+    initial_metric <- NULL
+    initial_eps <- NULL
+    if (is_resume) {
+      q_resume <- as.numeric(resume$chain_state[[c]])
+      if (length(q_resume) != length(ad_obj$par) || any(!is.finite(q_resume))) {
+        stop(
+          sprintf("Stored sampler state for chain %d is incompatible with the current model.", c),
+          call. = FALSE
+        )
+      }
+      ad_obj$par <- q_resume
+      chain_metric <- as.character(resume$metric_type[c])
+      initial_metric <- resume$metric[[c]]
+      initial_eps <- as.numeric(resume$eps[c])
+    }
+
     metric_random_idx <- integer(0)
-    if (metric %in% c("auto", "hybrid") && !isTRUE(laplace)) {
+    if (chain_metric %in% c("auto", "hybrid") && !isTRUE(laplace)) {
       active_is_random <- rep(FALSE, length(ad_obj$par))
       active_pos <- 1L
       for (name in names(local_par_list)) {
@@ -283,7 +311,7 @@
       stop_nonfinite_lp(sprintf("MCMC initialization for chain %d", c))
     }
 
-    res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info, nuts_variant = nuts_variant, metric = metric, metric_random_idx = metric_random_idx, metric_init = metric_init, metric_adaptation = metric_adaptation, metric_regularization = metric_regularization, metric_shrinkage = metric_shrinkage, metric_min = metric_min, metric_max = metric_max)
+    res <- NUTS_method(model = ad_obj, sampling = sampling, warmup = warmup, delta = delta, max_treedepth = max_treedepth, chain = c, update_progress = p_callback, laplace = laplace, save_info = save_info, nuts_variant = nuts_variant, metric = chain_metric, metric_random_idx = metric_random_idx, metric_init = metric_init, metric_adaptation = metric_adaptation, metric_regularization = metric_regularization, metric_shrinkage = metric_shrinkage, metric_min = metric_min, metric_max = metric_max, initial_metric = initial_metric, initial_eps = initial_eps, adapt = !is_resume)
     if (is.null(res$lp) || all(!is.finite(res$lp))) {
       stop_nonfinite_lp(sprintf("MCMC sampling for chain %d", c))
     }
@@ -336,7 +364,9 @@
     thin = thin,
     local_pl_full = local_pl_full,
     local_data = local_data,
-    mcmc_pd_error_to_neginf = mcmc_pd_error_to_neginf
+    mcmc_pd_error_to_neginf = mcmc_pd_error_to_neginf,
+    resume = resume,
+    is_resume = is_resume
   ), parent = asNamespace("BayesRTMB"))
   environment(data_na_summary) <- worker_env
   worker_env$data_na_summary <- data_na_summary
@@ -507,6 +537,10 @@
     }
   }
 
+  chain_state <- lapply(results_list, function(res) {
+    as.numeric(res$para_fixed[nrow(res$para_fixed), , drop = TRUE])
+  })
+
   res_obj <- MCMC_Fit$new(
     model = self, fit = fit, random_fit = random_fit,
     eps = eps_chains, accept = accept_chains, treedepth = treedepth_chains,
@@ -524,7 +558,30 @@
     metric_init = metric_init,
     metric_adaptation = metric_adaptation,
     nuts_variant = nuts_variant,
-    warmup_diagnostics = warmup_diagnostics
+    warmup_diagnostics = warmup_diagnostics,
+    chain_state = chain_state,
+    sampler_config = list(
+      sampling = sampling,
+      warmup = warmup,
+      chains = chains,
+      thin = thin,
+      seed = seed,
+      delta = delta,
+      max_treedepth = max_treedepth,
+      nuts_variant = nuts_variant,
+      metric = metric,
+      metric_init = metric_init,
+      metric_adaptation = metric_adaptation,
+      metric_regularization = metric_regularization,
+      metric_shrinkage = metric_shrinkage,
+      metric_min = metric_min,
+      metric_max = metric_max,
+      laplace = laplace,
+      map = local_map,
+      retained_draws = length(mcmc_index),
+      continuations = 0L,
+      continuation_history = list()
+    )
   )
   if (!is.null(self$transform)) res_obj$transformed_draws(self$transform, progress = progress_mode)
   if (!is.null(self$generate)) res_obj$generated_quantities(self$code$generate, progress = progress_mode)

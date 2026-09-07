@@ -130,7 +130,9 @@ upgrade_fit <- function(fit, upgrade_model = TRUE) {
     metric_auto = .upgrade_field(fit, "metric_auto"),
     metric_adaptation = .upgrade_field(fit, "metric_adaptation"),
     nuts_variant = .upgrade_field(fit, "nuts_variant"),
-    warmup_diagnostics = .upgrade_field(fit, "warmup_diagnostics")
+    warmup_diagnostics = .upgrade_field(fit, "warmup_diagnostics"),
+    chain_state = .upgrade_field(fit, "chain_state"),
+    sampler_config = .upgrade_field(fit, "sampler_config")
   )
 
   for (field in c(

@@ -549,7 +549,8 @@ Draw posterior samples from the model.
   map = NULL,
   fixed = NULL,
   globals = FALSE,
-  progress = c("auto", "none", "bar", "message")
+  progress = c("auto", "none", "bar", "message"),
+  .resume = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -624,6 +625,9 @@ object components required by BayesRTMB workers are exported. Default is FALSE.}
 detailed progress but still prints the high-level start message unless
 \code{silent = TRUE} was used when creating the model. `"bar"` is
 accepted for backward compatibility. Default is `"auto"`.}
+
+\item{\code{.resume}}{Internal saved sampler state used by
+`MCMC_Fit$continue_sampling()`; users should leave this as `NULL`.}
 }
 \if{html}{\out{</div>}}
 }

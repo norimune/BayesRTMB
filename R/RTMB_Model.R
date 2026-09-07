@@ -579,6 +579,8 @@ RTMB_Model <- R6::R6Class(
     #'   detailed progress but still prints the high-level start message unless
     #'   \code{silent = TRUE} was used when creating the model. `"bar"` is
     #'   accepted for backward compatibility. Default is `"auto"`.
+    #' @param .resume Internal saved sampler state used by
+    #'   `MCMC_Fit$continue_sampling()`; users should leave this as `NULL`.
     #' @return A fitted `MCMC_Fit` object.
     sample = function(sampling = 1000, warmup = 1000, chains = 4,
                       thin = 1, seed = sample.int(1e6, 1),
@@ -595,7 +597,8 @@ RTMB_Model <- R6::R6Class(
                       init = NULL, init_jitter = 0.1, save_csv = NULL,
                       map = NULL, fixed = NULL,
                       globals = FALSE,
-                      progress = c("auto", "none", "bar", "message")) {
+                      progress = c("auto", "none", "bar", "message"),
+                      .resume = NULL) {
       if (isTRUE(self$extra$two_stage) && identical(self$type, "lrt")) {
         stop(
           "two_stage estimation for rtmb_lrt() is currently implemented only for optimize(). ",
@@ -618,7 +621,8 @@ RTMB_Model <- R6::R6Class(
                    metric_regularization,
                    metric_shrinkage, metric_min, metric_max,
                    parallel, laplace, init, init_jitter,
-                   save_csv, map, fixed, globals, progress)
+                   save_csv, map, fixed, globals, progress,
+                   resume = .resume)
     },
 
     #' @description Run Automatic Differentiation Variational Inference (ADVI).

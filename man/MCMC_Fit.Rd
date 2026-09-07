@@ -69,6 +69,10 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 
 \item{\code{warmup_diagnostics}}{Per-chain warmup diagnostics.}
 
+\item{\code{chain_state}}{Final unconstrained sampler position for each chain.}
+
+\item{\code{sampler_config}}{Sampling settings required to continue the chains.}
+
 \item{\code{laplace}}{Logical; whether Laplace approximation was used.}
 
 \item{\code{posterior_mean}}{Posterior mean estimates.}
@@ -89,6 +93,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.
 \item \href{#method-mcmc_fit-get_point_estimate}{\code{MCMC_Fit$get_point_estimate()}}
 \item \href{#method-mcmc_fit-new}{\code{MCMC_Fit$new()}}
 \item \href{#method-mcmc_fit-print}{\code{MCMC_Fit$print()}}
+\item \href{#method-mcmc_fit-continue_sampling}{\code{MCMC_Fit$continue_sampling()}}
 \item \href{#method-mcmc_fit-draws}{\code{MCMC_Fit$draws()}}
 \item \href{#method-mcmc_fit-summary}{\code{MCMC_Fit$summary()}}
 \item \href{#method-mcmc_fit-rhat_summary}{\code{MCMC_Fit$rhat_summary()}}
@@ -169,7 +174,9 @@ Create a new `MCMC_Fit` object.
   metric_auto = NULL,
   metric_adaptation = NULL,
   nuts_variant = NULL,
-  warmup_diagnostics = NULL
+  warmup_diagnostics = NULL,
+  chain_state = NULL,
+  sampler_config = NULL
 )}\if{html}{\out{</div>}}
 }
 
@@ -219,6 +226,10 @@ Create a new `MCMC_Fit` object.
 \item{\code{nuts_variant}}{NUTS proposal selection variant used for sampling.}
 
 \item{\code{warmup_diagnostics}}{Per-chain warmup diagnostics.}
+
+\item{\code{chain_state}}{Final unconstrained sampler position for each chain.}
+
+\item{\code{sampler_config}}{Sampling settings required to continue the chains.}
 }
 \if{html}{\out{</div>}}
 }
@@ -241,6 +252,59 @@ Print a brief summary of the fitted object.
 }
 \subsection{Returns}{
 The object itself, invisibly.
+}
+}
+\if{html}{\out{<hr>}}
+\if{html}{\out{<a id="method-mcmc_fit-continue_sampling"></a>}}
+\if{latex}{\out{\hypertarget{method-mcmc_fit-continue_sampling}{}}}
+\subsection{Method \code{continue_sampling()}}{
+Continue all NUTS chains from their saved final states.
+
+The adapted mass matrix and step size from each chain are reused, so no
+additional warmup is performed. New posterior draws and diagnostics are
+appended along the iteration dimension.
+\subsection{Usage}{
+\if{html}{\out{<div class="r">}}\preformatted{MCMC_Fit$continue_sampling(
+  sampling = 1000,
+  thin = NULL,
+  seed = sample.int(1e+06, 1),
+  max_treedepth = NULL,
+  parallel = FALSE,
+  inplace = TRUE,
+  globals = FALSE,
+  progress = c("auto", "none", "bar", "message")
+)}\if{html}{\out{</div>}}
+}
+
+\subsection{Arguments}{
+\if{html}{\out{<div class="arguments">}}
+\describe{
+\item{\code{sampling}}{Positive integer; number of additional post-warmup NUTS
+transitions per chain before thinning. Default is 1000.}
+
+\item{\code{thin}}{Optional positive integer thinning interval. `NULL` reuses
+the interval from the original sampling run.}
+
+\item{\code{seed}}{Integer random seed.}
+
+\item{\code{max_treedepth}}{Optional positive integer maximum tree depth. `NULL`
+reuses the value from the original sampling run.}
+
+\item{\code{parallel}}{Logical; whether to continue chains in parallel.}
+
+\item{\code{inplace}}{Logical; if `TRUE`, append draws to this object. If
+`FALSE`, return an independently cloned and extended object.}
+
+\item{\code{globals}}{Logical; if `TRUE`, let `future` discover globals when
+`parallel = TRUE`.}
+
+\item{\code{progress}}{Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`.}
+}
+\if{html}{\out{</div>}}
+}
+\subsection{Returns}{
+The extended `MCMC_Fit` object, invisibly when `inplace = TRUE`.
 }
 }
 \if{html}{\out{<hr>}}

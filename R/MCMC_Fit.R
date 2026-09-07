@@ -88,6 +88,8 @@ dmvnorm_log <- function(x, mean, sigma) {
 #' @field metric_adaptation Metric learning mode used during warmup.
 #' @field nuts_variant NUTS proposal selection variant used for sampling.
 #' @field warmup_diagnostics Per-chain warmup diagnostics.
+#' @field chain_state Final unconstrained sampler position for each chain.
+#' @field sampler_config Sampling settings required to continue the chains.
 #' @field laplace Logical; whether Laplace approximation was used.
 #' @field posterior_mean Posterior mean estimates.
 #' @field log_ml Numeric value storing the calculated log marginal likelihood from bridge sampling.
@@ -126,6 +128,8 @@ MCMC_Fit <- R6::R6Class(
     metric_adaptation = NULL,
     nuts_variant   = NULL,
     warmup_diagnostics = NULL,
+    chain_state    = NULL,
+    sampler_config = NULL,
     laplace        = NULL,
     posterior_mean = NULL,
     log_ml          = NULL,
@@ -192,6 +196,8 @@ MCMC_Fit <- R6::R6Class(
     #' @param metric_adaptation Metric learning mode used during warmup.
     #' @param nuts_variant NUTS proposal selection variant used for sampling.
     #' @param warmup_diagnostics Per-chain warmup diagnostics.
+    #' @param chain_state Final unconstrained sampler position for each chain.
+    #' @param sampler_config Sampling settings required to continue the chains.
     initialize = function(model, fit, random_fit, eps, accept, treedepth, laplace,
                           posterior_mean, max_treedepth = NULL, pd_error_count = NULL,
                           n_leapfrog = NULL, divergent = NULL, energy = NULL,
@@ -199,7 +205,8 @@ MCMC_Fit <- R6::R6Class(
                           metric_requested = NULL, metric_effective = NULL,
                           metric_auto = NULL, metric_adaptation = NULL,
                           nuts_variant = NULL,
-                          warmup_diagnostics = NULL) {
+                          warmup_diagnostics = NULL,
+                          chain_state = NULL, sampler_config = NULL) {
       self$model <- model
       self$fit <- fit
       self$random_fit <- random_fit
@@ -218,6 +225,8 @@ MCMC_Fit <- R6::R6Class(
       self$metric_adaptation <- metric_adaptation
       self$nuts_variant <- nuts_variant
       self$warmup_diagnostics <- warmup_diagnostics
+      self$chain_state <- chain_state
+      self$sampler_config <- sampler_config
       self$laplace <- laplace
       self$posterior_mean <- posterior_mean
       self$max_treedepth <- max_treedepth
@@ -235,6 +244,46 @@ MCMC_Fit <- R6::R6Class(
     print = function(...) {
       print(self$summary(...))
       invisible(self)
+    },
+
+    #' @description Continue all NUTS chains from their saved final states.
+    #'
+    #' The adapted mass matrix and step size from each chain are reused, so no
+    #' additional warmup is performed. New posterior draws and diagnostics are
+    #' appended along the iteration dimension.
+    #'
+    #' @param sampling Positive integer; number of additional post-warmup NUTS
+    #'   transitions per chain before thinning. Default is 1000.
+    #' @param thin Optional positive integer thinning interval. `NULL` reuses
+    #'   the interval from the original sampling run.
+    #' @param seed Integer random seed.
+    #' @param max_treedepth Optional positive integer maximum tree depth. `NULL`
+    #'   reuses the value from the original sampling run.
+    #' @param parallel Logical; whether to continue chains in parallel.
+    #' @param inplace Logical; if `TRUE`, append draws to this object. If
+    #'   `FALSE`, return an independently cloned and extended object.
+    #' @param globals Logical; if `TRUE`, let `future` discover globals when
+    #'   `parallel = TRUE`.
+    #' @param progress Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+    #'   or `"message"`.
+    #' @return The extended `MCMC_Fit` object, invisibly when `inplace = TRUE`.
+    continue_sampling = function(sampling = 1000, thin = NULL,
+                                 seed = sample.int(1e6, 1),
+                                 max_treedepth = NULL,
+                                 parallel = FALSE, inplace = TRUE,
+                                 globals = FALSE,
+                                 progress = c("auto", "none", "bar", "message")) {
+      .continue_mcmc_sampling(
+        self,
+        sampling = sampling,
+        thin = thin,
+        seed = seed,
+        max_treedepth = max_treedepth,
+        parallel = parallel,
+        inplace = inplace,
+        globals = globals,
+        progress = progress
+      )
     },
 
     #' @description Extract posterior draws for selected parameters.
