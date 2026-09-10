@@ -423,9 +423,9 @@ plot_forest <- function(x, prob = 0.95,
 #' @param circle_scale Numeric multiplier for item radii.
 #' @param alpha Circle transparency.
 #' @param contour_n Grid size passed to `MASS::kde2d()`.
-#' @param distance Character; `"auto"`, `"squared"`, or `"euclidean"`. Used
+#' @param distance Character; `"auto"`, `"euclidean"`, or `"squared"`. Used
 #'   to transform item alpha values into plotted radii. `"auto"` uses the fit's
-#'   stored distance when available.
+#'   stored distance when available and otherwise falls back to `"euclidean"`.
 #' @param point_estimate Character; point estimate used when `delta` is a fit
 #'   object. Passed to `estimate()`.
 #' @param prefer_rotated Logical; when `delta` is a fitted object, prefer
@@ -441,7 +441,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
                      dims = c(1, 2), radius = NULL, signs = c(1, 1),
                      item_labels = NULL, show_radius = TRUE, show_density = TRUE,
                      circle_scale = 1, alpha = 0.2, contour_n = 60,
-                     distance = c("auto", "squared", "euclidean"),
+                     distance = c("auto", "euclidean", "squared"),
                      point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
                      prefer_rotated = TRUE,
                      show_phi = NULL,
@@ -464,7 +464,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
       distance <- if (!is.null(fit_distance) && fit_distance %in% c("squared", "euclidean")) {
         fit_distance
       } else {
-        "squared"
+        "euclidean"
       }
     }
     est_type <- switch(
@@ -500,7 +500,7 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
     if (is.null(item_alpha)) item_alpha <- est$alpha
     if (is.null(item_alpha) && is.null(phi)) phi <- est$phi
   }
-  if (distance == "auto") distance <- "squared"
+  if (distance == "auto") distance <- "euclidean"
   if (is.null(item_alpha) && !is.null(phi)) {
     if (phi_supplied) {
       warning("'phi' is deprecated; use 'item_alpha' instead.", call. = FALSE)
@@ -606,7 +606,8 @@ plot_mdu <- function(delta, theta = NULL, item_alpha = NULL, phi = NULL,
     delta = cbind(x_delta, y_delta),
     theta = cbind(x_theta, y_theta),
     item_alpha = item_alpha,
-    item_labels = item_labels
+    item_labels = item_labels,
+    distance = distance
   ))
 }
 

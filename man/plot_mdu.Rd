@@ -18,7 +18,7 @@ plot_mdu(
   circle_scale = 1,
   alpha = 0.2,
   contour_n = 60,
-  distance = c("auto", "squared", "euclidean"),
+  distance = c("auto", "euclidean", "squared"),
   point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
   prefer_rotated = TRUE,
   show_phi = NULL,
@@ -61,9 +61,9 @@ numbers.}
 
 \item{contour_n}{Grid size passed to `MASS::kde2d()`.}
 
-\item{distance}{Character; `"auto"`, `"squared"`, or `"euclidean"`. Used
+\item{distance}{Character; `"auto"`, `"euclidean"`, or `"squared"`. Used
 to transform item alpha values into plotted radii. `"auto"` uses the fit's
-stored distance when available.}
+stored distance when available and otherwise falls back to `"euclidean"`.}
 
 \item{point_estimate}{Character; point estimate used when `delta` is a fit
 object. Passed to `estimate()`.}
