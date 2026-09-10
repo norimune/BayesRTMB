@@ -1,19 +1,32 @@
-# BayesRTMB 0.3.0
+# BayesRTMB 0.4.0
 
 * Added `MCMC_Fit$continue_sampling()` to extend existing NUTS chains without
   another warmup. It resumes from each chain's final unconstrained state,
   reuses the adapted step size and mass matrix, and can update the fit in place
   or return an independently extended copy.
+* Corrected fixed-effect standard errors for Gaussian `rtmb_lmer()` models
+  fitted with `classic()`. REML fits now use the generalized least-squares
+  covariance at the estimated variance components, matching `lmerTest`/`lme4`.
+* Corrected `rtmb_corr(prior_flat())` marginal-likelihood normalization so
+  Bayes factors for correlations use the normalized LKJ(1)/uniform correlation
+  prior without changing the printed flat-prior model code.
+* Made `posterior_predict()` and `pp_check()` report a clear error for
+  `classic()` results, which do not store posterior draws.
+* Fixed simulation-based standard errors for one-parameter models, including
+  `optimize(se_method = "sampling")` on scalar binomial models.
+* Changed `plot_mdu(distance = "auto")` to use Euclidean distance when no
+  distance metadata is available. Stored model distance settings continue to
+  take precedence.
+* Clarified posterior-prediction examples in the Japanese wrapper vignette.
+
+# BayesRTMB 0.3.0
+
 * Added posterior predictive simulation and checks through
   `posterior_predict()` and `pp_check()`. Regression wrappers automatically
   support continuous density checks, discrete binned-bar checks, scalar test
   statistics, predictor-based and fitted-value calibration scatter checks, and conditional,
   population-level, or newly simulated random effects. Custom models can
   provide replicated outcomes in a `generate` block.
-* Made `posterior_predict()` and `pp_check()` report a clear error for
-  `classic()` results, which do not store posterior draws.
-* Fixed simulation-based standard errors for one-parameter models, including
-  `optimize(se_method = "sampling")` on scalar binomial models.
 * Added random-intercept mediation models to `rtmb_mediation()`. A random
   intercept can be included in one equation or in multiple equations; random
   intercepts sharing a grouping variable are modeled jointly with an estimated
@@ -50,9 +63,6 @@
   constants `K` and `D`.
 * Updated `rtmb_corr()` normal priors to use the model-specific `mean_sd` and
   `sd_rate` aliases and to add an LKJ prior with `lkj_eta = 1` by default.
-* Corrected `rtmb_corr(prior_flat())` marginal-likelihood normalization so
-  Bayes factors for correlations use the normalized LKJ(1)/uniform correlation
-  prior without changing the printed flat-prior model code.
 * Corrected Jacobian adjustments for constrained parameters supplied through
   `fixed`, so elements removed from the free-parameter map no longer contribute
   to optimization or sampling target densities.
