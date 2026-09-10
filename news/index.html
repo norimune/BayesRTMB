@@ -7,7 +7,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -56,7 +56,17 @@
     </div>
 
     <div class="section level2">
-<h2 class="pkg-version" data-toc-text="0.3.0" id="bayesrtmb-030">BayesRTMB 0.3.0<a class="anchor" aria-label="anchor" href="#bayesrtmb-030"></a></h2>
+<h2 class="pkg-version" data-toc-text="0.4.0" id="bayesrtmb-040">BayesRTMB 0.4.0<a class="anchor" aria-label="anchor" href="#bayesrtmb-040"></a></h2>
+<ul><li>Added <code>MCMC_Fit$continue_sampling()</code> to extend existing NUTS chains without another warmup. It resumes from each chain’s final unconstrained state, reuses the adapted step size and mass matrix, and can update the fit in place or return an independently extended copy.</li>
+<li>Corrected fixed-effect standard errors for Gaussian <code><a href="../reference/rtmb_lmer.html">rtmb_lmer()</a></code> models fitted with <code>classic()</code>. REML fits now use the generalized least-squares covariance at the estimated variance components, matching <code>lmerTest</code>/<code>lme4</code>.</li>
+<li>Corrected <code>rtmb_corr(prior_flat())</code> marginal-likelihood normalization so Bayes factors for correlations use the normalized LKJ(1)/uniform correlation prior without changing the printed flat-prior model code.</li>
+<li>Made <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> and <code><a href="../reference/pp_check.html">pp_check()</a></code> report a clear error for <code>classic()</code> results, which do not store posterior draws.</li>
+<li>Fixed simulation-based standard errors for one-parameter models, including <code>optimize(se_method = "sampling")</code> on scalar binomial models.</li>
+<li>Changed <code>plot_mdu(distance = "auto")</code> to use Euclidean distance when no distance metadata is available. Stored model distance settings continue to take precedence.</li>
+<li>Clarified posterior-prediction examples in the Japanese wrapper vignette.</li>
+</ul></div>
+    <div class="section level2">
+<h2 class="pkg-version" data-toc-text="0.3.0" id="bayesrtmb-030">BayesRTMB 0.3.0<a class="anchor" aria-label="anchor" href="#bayesrtmb-030"></a></h2><p class="text-muted">CRAN release: 2026-08-20</p>
 <ul><li>Added posterior predictive simulation and checks through <code><a href="../reference/posterior_predict.html">posterior_predict()</a></code> and <code><a href="../reference/pp_check.html">pp_check()</a></code>. Regression wrappers automatically support continuous density checks, discrete binned-bar checks, scalar test statistics, predictor-based and fitted-value calibration scatter checks, and conditional, population-level, or newly simulated random effects. Custom models can provide replicated outcomes in a <code>generate</code> block.</li>
 <li>Added random-intercept mediation models to <code><a href="../reference/rtmb_mediation.html">rtmb_mediation()</a></code>. A random intercept can be included in one equation or in multiple equations; random intercepts sharing a grouping variable are modeled jointly with an estimated correlation matrix.</li>
 <li>Added grand-mean centering (<code>gmc</code>/<code>centering</code>) and centering within cluster (<code>cwc</code>) to <code><a href="../reference/rtmb_mediation.html">rtmb_mediation()</a></code>. Centering is applied to predictor uses while preserving response variables on their original scale; cluster means remain user-specified model terms.</li>

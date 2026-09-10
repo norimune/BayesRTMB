@@ -110,6 +110,14 @@ only by marginal-likelihood model comparison.
 
   Per-chain warmup diagnostics.
 
+- `chain_state`:
+
+  Final unconstrained sampler position for each chain.
+
+- `sampler_config`:
+
+  Sampling settings required to continue the chains.
+
 - `laplace`:
 
   Logical; whether Laplace approximation was used.
@@ -144,6 +152,8 @@ only by marginal-likelihood model comparison.
 - [`MCMC_Fit$new()`](#method-mcmc_fit-new)
 
 - [`MCMC_Fit$print()`](#method-mcmc_fit-print)
+
+- [`MCMC_Fit$continue_sampling()`](#method-mcmc_fit-continue_sampling)
 
 - [`MCMC_Fit$draws()`](#method-mcmc_fit-draws)
 
@@ -239,7 +249,9 @@ Create a new \`MCMC_Fit\` object.
       metric_auto = NULL,
       metric_adaptation = NULL,
       nuts_variant = NULL,
-      warmup_diagnostics = NULL
+      warmup_diagnostics = NULL,
+      chain_state = NULL,
+      sampler_config = NULL
     )
 
 #### Arguments
@@ -333,6 +345,14 @@ Create a new \`MCMC_Fit\` object.
 
   Per-chain warmup diagnostics.
 
+- `chain_state`:
+
+  Final unconstrained sampler position for each chain.
+
+- `sampler_config`:
+
+  Sampling settings required to continue the chains.
+
 ------------------------------------------------------------------------
 
 ### Method [`print()`](https://rdrr.io/r/base/print.html)
@@ -352,6 +372,73 @@ Print a brief summary of the fitted object.
 #### Returns
 
 The object itself, invisibly.
+
+------------------------------------------------------------------------
+
+### Method `continue_sampling()`
+
+Continue all NUTS chains from their saved final states.
+
+The adapted mass matrix and step size from each chain are reused, so no
+additional warmup is performed. New posterior draws and diagnostics are
+appended along the iteration dimension.
+
+#### Usage
+
+    MCMC_Fit$continue_sampling(
+      sampling = 1000,
+      thin = NULL,
+      seed = sample.int(1e+06, 1),
+      max_treedepth = NULL,
+      parallel = FALSE,
+      inplace = TRUE,
+      globals = FALSE,
+      progress = c("auto", "none", "bar", "message")
+    )
+
+#### Arguments
+
+- `sampling`:
+
+  Positive integer; number of additional post-warmup NUTS transitions
+  per chain before thinning. Default is 1000.
+
+- `thin`:
+
+  Optional positive integer thinning interval. \`NULL\` reuses the
+  interval from the original sampling run.
+
+- `seed`:
+
+  Integer random seed.
+
+- `max_treedepth`:
+
+  Optional positive integer maximum tree depth. \`NULL\` reuses the
+  value from the original sampling run.
+
+- `parallel`:
+
+  Logical; whether to continue chains in parallel.
+
+- `inplace`:
+
+  Logical; if \`TRUE\`, append draws to this object. If \`FALSE\`,
+  return an independently cloned and extended object.
+
+- `globals`:
+
+  Logical; if \`TRUE\`, let \`future\` discover globals when \`parallel
+  = TRUE\`.
+
+- `progress`:
+
+  Progress reporting style: \`"auto"\`, \`"none"\`, \`"bar"\`, or
+  \`"message"\`.
+
+#### Returns
+
+The extended \`MCMC_Fit\` object, invisibly when \`inplace = TRUE\`.
 
 ------------------------------------------------------------------------
 

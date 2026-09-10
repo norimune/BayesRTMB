@@ -740,7 +740,8 @@ Draw posterior samples from the model.
       map = NULL,
       fixed = NULL,
       globals = FALSE,
-      progress = c("auto", "none", "bar", "message")
+      progress = c("auto", "none", "bar", "message"),
+      .resume = NULL
     )
 
 #### Arguments
@@ -862,6 +863,12 @@ Draw posterior samples from the model.
   but still prints the high-level start message unless `silent = TRUE`
   was used when creating the model. \`"bar"\` is accepted for backward
   compatibility. Default is \`"auto"\`.
+
+- `.resume`:
+
+  Internal saved sampler state used by
+  \`MCMC_Fit\$continue_sampling()\`; users should leave this as
+  \`NULL\`.
 
 #### Returns
 

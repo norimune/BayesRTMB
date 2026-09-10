@@ -22,7 +22,7 @@
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -228,16 +228,16 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 <p>MCMC を使う場合は <code><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample()</a></code> です。</p>
 <div class="sourceCode" id="cb4"><pre class="downlit sourceCode r">
 <code class="sourceCode R"><span><span class="va">mdl</span> <span class="op">&lt;-</span> <span class="fu"><a href="../reference/rtmb_lm.html">rtmb_lm</a></span><span class="op">(</span><span class="va">sat</span> <span class="op">~</span> <span class="va">talk</span> <span class="op">*</span> <span class="va">perf</span>, data <span class="op">=</span> <span class="va">debate</span><span class="op">)</span></span>
-<span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<span><span class="va">fit_mcmc</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">sample</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_mcmc</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>MAP推定を使う場合は <code><a href="https://rdrr.io/r/stats/optimize.html" class="external-link">optimize()</a></code> です。</p>
 <div class="sourceCode" id="cb5"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">fit_map</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">optimize</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>頻度主義的分析を使う場合は <code>classic()</code> です。</p>
 <div class="sourceCode" id="cb6"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">fit_classic</span> <span class="op">&lt;-</span> <span class="va">mdl</span><span class="op">$</span><span class="fu">classic</span><span class="op">(</span><span class="op">)</span></span>
+<span><span class="va">fit_classic</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span><span class="op">)</span></span></code></pre></div>
 <p>このように、モデルの書き方は同じで、推定方法だけを切り替えられます。</p>
 </div>
 <div class="section level2">
@@ -249,17 +249,17 @@ rateを変更する場合は <code>prior_normal(a_rate = ...)</code>
 MCMCと変分推論では事後標本を使います。サンプリング型の標準誤差を保存していない
 MAPでは、MAP点に条件づけて複製データを生成します。</p>
 <div class="sourceCode" id="cb7"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">yrep</span> <span class="op">&lt;-</span> <span class="va">fit</span><span class="op">$</span><span class="fu">posterior_predict</span><span class="op">(</span>draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"auto"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>stat <span class="op">=</span> <span class="va">mean</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">yrep</span> <span class="op">&lt;-</span> <span class="va">fit_map</span><span class="op">$</span><span class="fu">posterior_predict</span><span class="op">(</span>draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>type <span class="op">=</span> <span class="st">"auto"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>stat <span class="op">=</span> <span class="va">mean</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
 <p><code>x</code>
 にモデルデータの列名、または観測数と同じ長さのベクトルを指定すると、
 散布図形式のチェックになります。観測値と、事後予測平均および95%事後予測区間を
 同じ図に表示します。予測にはモデル内のすべての項が使われ、<code>x</code>
 は横軸だけを選びます。</p>
 <div class="sourceCode" id="cb8"><pre class="downlit sourceCode r">
-<code class="sourceCode R"><span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">"talk"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
-<span><span class="va">fit</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">".fitted"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
+<code class="sourceCode R"><span><span class="va">fit_map</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">"talk"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span>
+<span><span class="va">fit_map</span><span class="op">$</span><span class="fu">pp_check</span><span class="op">(</span>x <span class="op">=</span> <span class="st">".fitted"</span>, draws <span class="op">=</span> <span class="fl">100</span>, seed <span class="op">=</span> <span class="fl">123</span><span class="op">)</span></span></code></pre></div>
 <p>予約値 <code>x = ".fitted"</code>
 を指定すると、各観測の事後予測平均を横軸に置きます。
 モデル全体のキャリブレーションを確認するための表示になり、45度線も追加されます。

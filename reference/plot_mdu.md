@@ -22,7 +22,7 @@ plot_mdu(
   circle_scale = 1,
   alpha = 0.2,
   contour_n = 60,
-  distance = c("auto", "squared", "euclidean"),
+  distance = c("auto", "euclidean", "squared"),
   point_estimate = c("EAP", "MAP", "mean", "marginal_map", "joint_map"),
   prefer_rotated = TRUE,
   show_phi = NULL,
@@ -94,9 +94,10 @@ plot_mdu(
 
 - distance:
 
-  Character; \`"auto"\`, \`"squared"\`, or \`"euclidean"\`. Used to
+  Character; \`"auto"\`, \`"euclidean"\`, or \`"squared"\`. Used to
   transform item alpha values into plotted radii. \`"auto"\` uses the
-  fit's stored distance when available.
+  fit's stored distance when available and otherwise falls back to
+  \`"euclidean"\`.
 
 - point_estimate:
 

@@ -13,7 +13,7 @@ posterior, and drawing posterior samples."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -727,7 +727,8 @@ Used only when `marginal` resolves to one or more parameters and `se_method != "
 <span>  map <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  globals <span class="op">=</span> <span class="cn">FALSE</span>,</span>
-<span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span></span>
+<span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span>,</span>
+<span>  .resume <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -848,6 +849,11 @@ object components required by BayesRTMB workers are exported. Default is FALSE.<
 detailed progress but still prints the high-level start message unless
 <code>silent = TRUE</code> was used when creating the model. `"bar"` is
 accepted for backward compatibility. Default is `"auto"`.</p></dd>
+
+
+<dt><code>.resume</code></dt>
+<dd><p>Internal saved sampler state used by
+`MCMC_Fit$continue_sampling()`; users should leave this as `NULL`.</p></dd>
 
 
 </dl><p></p></div>

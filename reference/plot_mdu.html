@@ -13,7 +13,7 @@ dimensional kernel density contour."></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -85,7 +85,7 @@ dimensional kernel density contour.</p>
 <span>  circle_scale <span class="op">=</span> <span class="fl">1</span>,</span>
 <span>  alpha <span class="op">=</span> <span class="fl">0.2</span>,</span>
 <span>  contour_n <span class="op">=</span> <span class="fl">60</span>,</span>
-<span>  distance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"squared"</span>, <span class="st">"euclidean"</span><span class="op">)</span>,</span>
+<span>  distance <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"euclidean"</span>, <span class="st">"squared"</span><span class="op">)</span>,</span>
 <span>  point_estimate <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"EAP"</span>, <span class="st">"MAP"</span>, <span class="st">"mean"</span>, <span class="st">"marginal_map"</span>, <span class="st">"joint_map"</span><span class="op">)</span>,</span>
 <span>  prefer_rotated <span class="op">=</span> <span class="cn">TRUE</span>,</span>
 <span>  show_phi <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -159,9 +159,9 @@ numbers.</p></dd>
 
 
 <dt id="arg-distance">distance<a class="anchor" aria-label="anchor" href="#arg-distance"></a></dt>
-<dd><p>Character; `"auto"`, `"squared"`, or `"euclidean"`. Used
+<dd><p>Character; `"auto"`, `"euclidean"`, or `"squared"`. Used
 to transform item alpha values into plotted radii. `"auto"` uses the fit's
-stored distance when available.</p></dd>
+stored distance when available and otherwise falls back to `"euclidean"`.</p></dd>
 
 
 <dt id="arg-point-estimate">point_estimate<a class="anchor" aria-label="anchor" href="#arg-point-estimate"></a></dt>

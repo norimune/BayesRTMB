@@ -1,6 +1,37 @@
 # Changelog
 
+## BayesRTMB 0.4.0
+
+- Added `MCMC_Fit$continue_sampling()` to extend existing NUTS chains
+  without another warmup. It resumes from each chain’s final
+  unconstrained state, reuses the adapted step size and mass matrix, and
+  can update the fit in place or return an independently extended copy.
+- Corrected fixed-effect standard errors for Gaussian
+  [`rtmb_lmer()`](https://norimune.github.io/BayesRTMB/reference/rtmb_lmer.md)
+  models fitted with `classic()`. REML fits now use the generalized
+  least-squares covariance at the estimated variance components,
+  matching `lmerTest`/`lme4`.
+- Corrected `rtmb_corr(prior_flat())` marginal-likelihood normalization
+  so Bayes factors for correlations use the normalized LKJ(1)/uniform
+  correlation prior without changing the printed flat-prior model code.
+- Made
+  [`posterior_predict()`](https://norimune.github.io/BayesRTMB/reference/posterior_predict.md)
+  and
+  [`pp_check()`](https://norimune.github.io/BayesRTMB/reference/pp_check.md)
+  report a clear error for `classic()` results, which do not store
+  posterior draws.
+- Fixed simulation-based standard errors for one-parameter models,
+  including `optimize(se_method = "sampling")` on scalar binomial
+  models.
+- Changed `plot_mdu(distance = "auto")` to use Euclidean distance when
+  no distance metadata is available. Stored model distance settings
+  continue to take precedence.
+- Clarified posterior-prediction examples in the Japanese wrapper
+  vignette.
+
 ## BayesRTMB 0.3.0
+
+CRAN release: 2026-08-20
 
 - Added posterior predictive simulation and checks through
   [`posterior_predict()`](https://norimune.github.io/BayesRTMB/reference/posterior_predict.md)

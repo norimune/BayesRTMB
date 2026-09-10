@@ -9,7 +9,7 @@ MCMC fit object"></head><body>
 
     <a class="navbar-brand me-2" href="../index.html">BayesRTMB</a>
 
-    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.3.0</small>
+    <small class="nav-text text-muted me-auto" data-bs-toggle="tooltip" data-bs-placement="bottom" title="">0.4.0</small>
 
 
     <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbar" aria-controls="navbar" aria-expanded="false" aria-label="Toggle navigation">
@@ -169,6 +169,14 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 <dd><p>Per-chain warmup diagnostics.</p></dd>
 
 
+<dt><code>chain_state</code></dt>
+<dd><p>Final unconstrained sampler position for each chain.</p></dd>
+
+
+<dt><code>sampler_config</code></dt>
+<dd><p>Sampling settings required to continue the chains.</p></dd>
+
+
 <dt><code>laplace</code></dt>
 <dd><p>Logical; whether Laplace approximation was used.</p></dd>
 
@@ -204,6 +212,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 <ul><li><p><a href="#method-mcmc_fit-get_point_estimate"><code>MCMC_Fit$get_point_estimate()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-new"><code>MCMC_Fit$new()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-print"><code>MCMC_Fit$print()</code></a></p></li>
+<li><p><a href="#method-mcmc_fit-continue_sampling"><code>MCMC_Fit$continue_sampling()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-draws"><code>MCMC_Fit$draws()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-summary"><code>MCMC_Fit$summary()</code></a></p></li>
 <li><p><a href="#method-mcmc_fit-rhat_summary"><code>MCMC_Fit$rhat_summary()</code></a></p></li>
@@ -278,7 +287,9 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 <span>  metric_auto <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  metric_adaptation <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  nuts_variant <span class="op">=</span> <span class="cn">NULL</span>,</span>
-<span>  warmup_diagnostics <span class="op">=</span> <span class="cn">NULL</span></span>
+<span>  warmup_diagnostics <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  chain_state <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  sampler_config <span class="op">=</span> <span class="cn">NULL</span></span>
 <span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
@@ -372,6 +383,14 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 <dd><p>Per-chain warmup diagnostics.</p></dd>
 
 
+<dt><code>chain_state</code></dt>
+<dd><p>Final unconstrained sampler position for each chain.</p></dd>
+
+
+<dt><code>sampler_config</code></dt>
+<dd><p>Sampling settings required to continue the chains.</p></dd>
+
+
 </dl><p></p></div>
 </div>
 
@@ -395,10 +414,76 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 <p>The object itself, invisibly.</p>
 </div>
 
+</div><p></p><hr><a id="method-mcmc_fit-continue_sampling"></a><div class="section">
+<h3 id="method-continue-sampling-">Method <code>continue_sampling()</code><a class="anchor" aria-label="anchor" href="#method-continue-sampling-"></a></h3>
+<p>Continue all NUTS chains from their saved final states.</p>
+<p>The adapted mass matrix and step size from each chain are reused, so no
+additional warmup is performed. New posterior draws and diagnostics are
+appended along the iteration dimension.</p><div class="section">
+<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">continue_sampling</span><span class="op">(</span></span>
+<span>  sampling <span class="op">=</span> <span class="fl">1000</span>,</span>
+<span>  thin <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  seed <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/sample.html" class="external-link">sample.int</a></span><span class="op">(</span><span class="fl">1e+06</span>, <span class="fl">1</span><span class="op">)</span>,</span>
+<span>  max_treedepth <span class="op">=</span> <span class="cn">NULL</span>,</span>
+<span>  parallel <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  inplace <span class="op">=</span> <span class="cn">TRUE</span>,</span>
+<span>  globals <span class="op">=</span> <span class="cn">FALSE</span>,</span>
+<span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span></span>
+<span><span class="op">)</span></span></code></pre></div><p></p></div>
+</div>
+
+<div class="section">
+<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<p></p><div class="arguments"><dl><dt><code>sampling</code></dt>
+<dd><p>Positive integer; number of additional post-warmup NUTS
+transitions per chain before thinning. Default is 1000.</p></dd>
+
+
+<dt><code>thin</code></dt>
+<dd><p>Optional positive integer thinning interval. `NULL` reuses
+the interval from the original sampling run.</p></dd>
+
+
+<dt><code>seed</code></dt>
+<dd><p>Integer random seed.</p></dd>
+
+
+<dt><code>max_treedepth</code></dt>
+<dd><p>Optional positive integer maximum tree depth. `NULL`
+reuses the value from the original sampling run.</p></dd>
+
+
+<dt><code>parallel</code></dt>
+<dd><p>Logical; whether to continue chains in parallel.</p></dd>
+
+
+<dt><code>inplace</code></dt>
+<dd><p>Logical; if `TRUE`, append draws to this object. If
+`FALSE`, return an independently cloned and extended object.</p></dd>
+
+
+<dt><code>globals</code></dt>
+<dd><p>Logical; if `TRUE`, let `future` discover globals when
+`parallel = TRUE`.</p></dd>
+
+
+<dt><code>progress</code></dt>
+<dd><p>Progress reporting style: `"auto"`, `"none"`, `"bar"`,
+or `"message"`.</p></dd>
+
+
+</dl><p></p></div>
+</div>
+<div class="section">
+<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<p>The extended `MCMC_Fit` object, invisibly when `inplace = TRUE`.</p>
+</div>
+
 </div><p></p><hr><a id="method-mcmc_fit-draws"></a><div class="section">
 <h3 id="method-draws-">Method <code>draws()</code><a class="anchor" aria-label="anchor" href="#method-draws-"></a></h3>
 <p>Extract posterior draws for selected parameters.</p><div class="section">
-<h4 id="usage-3">Usage<a class="anchor" aria-label="anchor" href="#usage-3"></a></h4>
+<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">draws</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -410,7 +495,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-3">Arguments<a class="anchor" aria-label="anchor" href="#arguments-3"></a></h4>
+<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to extract. If NULL, all available parameters are extracted.</p></dd>
 
@@ -438,14 +523,14 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-2">Returns<a class="anchor" aria-label="anchor" href="#returns-2"></a></h4>
+<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
 <p>Posterior draws.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-summary"></a><div class="section">
 <h3 id="method-summary-">Method <code><a href="https://rdrr.io/r/base/summary.html" class="external-link">summary()</a></code><a class="anchor" aria-label="anchor" href="#method-summary-"></a></h3>
 <p>Summarize posterior draws.</p><div class="section">
-<h4 id="usage-4">Usage<a class="anchor" aria-label="anchor" href="#usage-4"></a></h4>
+<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">summary</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -459,7 +544,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-4">Arguments<a class="anchor" aria-label="anchor" href="#arguments-4"></a></h4>
+<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying the names or indices of parameters to summarize. If NULL, all available parameters are summarized.</p></dd>
 
@@ -495,14 +580,14 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-3">Returns<a class="anchor" aria-label="anchor" href="#returns-3"></a></h4>
+<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
 <p>A summary object.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-rhat_summary"></a><div class="section">
 <h3 id="method-rhat-summary-">Method <code><a href="rhat_summary.html">rhat_summary()</a></code><a class="anchor" aria-label="anchor" href="#method-rhat-summary-"></a></h3>
 <p>Summarize R-hat values.</p><div class="section">
-<h4 id="usage-5">Usage<a class="anchor" aria-label="anchor" href="#usage-5"></a></h4>
+<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">rhat_summary</span><span class="op">(</span></span>
 <span>  pars <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  chains <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -516,7 +601,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-5">Arguments<a class="anchor" aria-label="anchor" href="#arguments-5"></a></h4>
+<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>pars</code></dt>
 <dd><p>Character or numeric vector specifying parameters to include.</p></dd>
 
@@ -552,31 +637,31 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-4">Returns<a class="anchor" aria-label="anchor" href="#returns-4"></a></h4>
+<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
 <p>A numeric vector of R-hat values with class <code>"rhat_summary"</code>.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-unconstrain_draws"></a><div class="section">
 <h3 id="method-unconstrain-draws-">Method <code>unconstrain_draws()</code><a class="anchor" aria-label="anchor" href="#method-unconstrain-draws-"></a></h3>
 <p>Transform posterior draws to the unconstrained scale.</p><div class="section">
-<h4 id="usage-6">Usage<a class="anchor" aria-label="anchor" href="#usage-6"></a></h4>
+<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">unconstrain_draws</span><span class="op">(</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="returns-5">Returns<a class="anchor" aria-label="anchor" href="#returns-5"></a></h4>
+<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
 <p>Posterior draws on the unconstrained scale.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-log_prob"></a><div class="section">
 <h3 id="method-log-prob-">Method <code>log_prob()</code><a class="anchor" aria-label="anchor" href="#method-log-prob-"></a></h3>
 <p>Evaluate log-probability values.</p><div class="section">
-<h4 id="usage-7">Usage<a class="anchor" aria-label="anchor" href="#usage-7"></a></h4>
+<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">log_prob</span><span class="op">(</span>safe <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-6">Arguments<a class="anchor" aria-label="anchor" href="#arguments-6"></a></h4>
+<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>safe</code></dt>
 <dd><p>Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.</p></dd>
 
@@ -584,14 +669,14 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-6">Returns<a class="anchor" aria-label="anchor" href="#returns-6"></a></h4>
+<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
 <p>Numeric vector of log-probability values.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-bridgesampling"></a><div class="section">
 <h3 id="method-bridgesampling-">Method <code>bridgesampling()</code><a class="anchor" aria-label="anchor" href="#method-bridgesampling-"></a></h3>
 <p>Estimate the marginal likelihood by bridge sampling.</p><div class="section">
-<h4 id="usage-8">Usage<a class="anchor" aria-label="anchor" href="#usage-8"></a></h4>
+<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">bridgesampling</span><span class="op">(</span></span>
 <span>  method <span class="op">=</span> <span class="st">"normal"</span>,</span>
 <span>  use_neff <span class="op">=</span> <span class="cn">TRUE</span>,</span>
@@ -601,7 +686,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-7">Arguments<a class="anchor" aria-label="anchor" href="#arguments-7"></a></h4>
+<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>method</code></dt>
 <dd><p>Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".</p></dd>
 
@@ -621,19 +706,19 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-7">Returns<a class="anchor" aria-label="anchor" href="#returns-7"></a></h4>
+<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
 <p>Bridge sampling result.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-WAIC"></a><div class="section">
 <h3 id="method-waic-">Method <code>WAIC()</code><a class="anchor" aria-label="anchor" href="#method-waic-"></a></h3>
 <p>Compute WAIC from pointwise generated log likelihood.</p><div class="section">
-<h4 id="usage-9">Usage<a class="anchor" aria-label="anchor" href="#usage-9"></a></h4>
+<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">WAIC</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-8">Arguments<a class="anchor" aria-label="anchor" href="#arguments-8"></a></h4>
+<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `draws()`, such as `chains` or `best_chains`.</p></dd>
 
@@ -641,19 +726,19 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-8">Returns<a class="anchor" aria-label="anchor" href="#returns-8"></a></h4>
+<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
 <p>A `waic_BayesRTMB` object.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-diagnose"></a><div class="section">
 <h3 id="method-diagnose-">Method <code>diagnose()</code><a class="anchor" aria-label="anchor" href="#method-diagnose-"></a></h3>
 <p>Run basic diagnostics for the MCMC fit.</p><div class="section">
-<h4 id="usage-10">Usage<a class="anchor" aria-label="anchor" href="#usage-10"></a></h4>
+<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">diagnose</span><span class="op">(</span><span class="va">...</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-9">Arguments<a class="anchor" aria-label="anchor" href="#arguments-9"></a></h4>
+<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>...</code></dt>
 <dd><p>Additional arguments passed to `diagnose_mcmc_fit()`.</p></dd>
 
@@ -661,14 +746,14 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-9">Returns<a class="anchor" aria-label="anchor" href="#returns-9"></a></h4>
+<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
 <p>A `diagnose_BayesRTMB` object.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-bayes_factor"></a><div class="section">
 <h3 id="method-bayes-factor-">Method <code><a href="bayes_factor.html">bayes_factor()</a></code><a class="anchor" aria-label="anchor" href="#method-bayes-factor-"></a></h3>
 <p>Calculate the Bayes factor by marginal-likelihood model comparison.</p><div class="section">
-<h4 id="usage-11">Usage<a class="anchor" aria-label="anchor" href="#usage-11"></a></h4>
+<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">bayes_factor</span><span class="op">(</span></span>
 <span>  fixed <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  comparison_fit <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -679,7 +764,7 @@ Bayes factors are computed only by marginal-likelihood model comparison.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-10">Arguments<a class="anchor" aria-label="anchor" href="#arguments-10"></a></h4>
+<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>fixed</code></dt>
 <dd><p>Named list of parameter values used to construct the comparison model.
 For example, <code>fixed = list(delta = 0)</code> or
@@ -705,14 +790,14 @@ For example, <code>fixed = list(delta = 0)</code> or
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-10">Returns<a class="anchor" aria-label="anchor" href="#returns-10"></a></h4>
+<h4 id="returns-11">Returns<a class="anchor" aria-label="anchor" href="#returns-11"></a></h4>
 <p>A list of class <code>bayes_factor_rtmb</code> containing Bayes factor results.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-transformed_draws"></a><div class="section">
 <h3 id="method-transformed-draws-">Method <code>transformed_draws()</code><a class="anchor" aria-label="anchor" href="#method-transformed-draws-"></a></h3>
 <p>Compute transformed parameters from posterior draws.</p><div class="section">
-<h4 id="usage-12">Usage<a class="anchor" aria-label="anchor" href="#usage-12"></a></h4>
+<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">transformed_draws</span><span class="op">(</span></span>
 <span>  tran_fn <span class="op">=</span> <span class="cn">NULL</span>,</span>
 <span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span>,</span>
@@ -721,7 +806,7 @@ For example, <code>fixed = list(delta = 0)</code> or
 </div>
 
 <div class="section">
-<h4 id="arguments-11">Arguments<a class="anchor" aria-label="anchor" href="#arguments-11"></a></h4>
+<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>tran_fn</code></dt>
 <dd><p>A function for transformed parameters.</p></dd>
 
@@ -740,14 +825,14 @@ R evaluation; `"force"` requires tape evaluation and errors if it fails.</p></dd
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-11">Returns<a class="anchor" aria-label="anchor" href="#returns-11"></a></h4>
+<h4 id="returns-12">Returns<a class="anchor" aria-label="anchor" href="#returns-12"></a></h4>
 <p>Transformed parameter draws.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-generated_quantities"></a><div class="section">
 <h3 id="method-generated-quantities-">Method <code>generated_quantities()</code><a class="anchor" aria-label="anchor" href="#method-generated-quantities-"></a></h3>
 <p>Compute generated quantities from posterior draws.</p><div class="section">
-<h4 id="usage-13">Usage<a class="anchor" aria-label="anchor" href="#usage-13"></a></h4>
+<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">generated_quantities</span><span class="op">(</span></span>
 <span>  <span class="va">code</span>,</span>
 <span>  progress <span class="op">=</span> <span class="fu"><a href="https://rdrr.io/r/base/c.html" class="external-link">c</a></span><span class="op">(</span><span class="st">"auto"</span>, <span class="st">"none"</span>, <span class="st">"bar"</span>, <span class="st">"message"</span><span class="op">)</span>,</span>
@@ -756,7 +841,7 @@ R evaluation; `"force"` requires tape evaluation and errors if it fails.</p></dd
 </div>
 
 <div class="section">
-<h4 id="arguments-12">Arguments<a class="anchor" aria-label="anchor" href="#arguments-12"></a></h4>
+<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>code</code></dt>
 <dd><p>An `rtmb_code({ ... })` or `{ ... }` block containing the logic
 to be calculated using posterior samples.</p></dd>
@@ -776,7 +861,7 @@ R evaluation; `"force"` requires tape evaluation and errors if it fails.</p></dd
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-12">Returns<a class="anchor" aria-label="anchor" href="#returns-12"></a></h4>
+<h4 id="returns-13">Returns<a class="anchor" aria-label="anchor" href="#returns-13"></a></h4>
 <p>The `MCMC_Fit` object itself (invisibly).
 Results are appended to the `generate_fit` field.</p>
 </div>
@@ -784,7 +869,7 @@ Results are appended to the `generate_fit` field.</p>
 </div><p></p><hr><a id="method-mcmc_fit-resolve_switching"></a><div class="section">
 <h3 id="method-resolve-switching-">Method <code>resolve_switching()</code><a class="anchor" aria-label="anchor" href="#method-resolve-switching-"></a></h3>
 <p>Resolve label switching in posterior draws.</p><div class="section">
-<h4 id="usage-14">Usage<a class="anchor" aria-label="anchor" href="#usage-14"></a></h4>
+<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">resolve_switching</span><span class="op">(</span></span>
 <span>  <span class="va">target</span>,</span>
 <span>  linked <span class="op">=</span> <span class="cn">NULL</span>,</span>
@@ -794,7 +879,7 @@ Results are appended to the `generate_fit` field.</p>
 </div>
 
 <div class="section">
-<h4 id="arguments-13">Arguments<a class="anchor" aria-label="anchor" href="#arguments-13"></a></h4>
+<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>target</code></dt>
 <dd><p>Character string specifying the target variable to base the relabeling on.</p></dd>
 
@@ -814,19 +899,19 @@ Results are appended to the `generate_fit` field.</p>
 </dl><p></p></div>
 </div>
 <div class="section">
-<h4 id="returns-13">Returns<a class="anchor" aria-label="anchor" href="#returns-13"></a></h4>
+<h4 id="returns-14">Returns<a class="anchor" aria-label="anchor" href="#returns-14"></a></h4>
 <p>Relabeled draws or updated object.</p>
 </div>
 
 </div><p></p><hr><a id="method-mcmc_fit-clone"></a><div class="section">
 <h3 id="method-clone-">Method <code>clone()</code><a class="anchor" aria-label="anchor" href="#method-clone-"></a></h3>
 <p>The objects of this class are cloneable with this method.</p><div class="section">
-<h4 id="usage-15">Usage<a class="anchor" aria-label="anchor" href="#usage-15"></a></h4>
+<h4 id="usage-16">Usage<a class="anchor" aria-label="anchor" href="#usage-16"></a></h4>
 <p></p><div class="r"><div class="sourceCode"><pre><code><span><span class="va">MCMC_Fit</span><span class="op">$</span><span class="fu">clone</span><span class="op">(</span>deep <span class="op">=</span> <span class="cn">FALSE</span><span class="op">)</span></span></code></pre></div><p></p></div>
 </div>
 
 <div class="section">
-<h4 id="arguments-14">Arguments<a class="anchor" aria-label="anchor" href="#arguments-14"></a></h4>
+<h4 id="arguments-15">Arguments<a class="anchor" aria-label="anchor" href="#arguments-15"></a></h4>
 <p></p><div class="arguments"><dl><dt><code>deep</code></dt>
 <dd><p>Whether to make a deep clone.</p></dd>
 

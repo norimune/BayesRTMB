@@ -95,8 +95,8 @@ MCMC を使う場合は [`sample()`](https://rdrr.io/r/base/sample.html)
 ``` r
 
 mdl <- rtmb_lm(sat ~ talk * perf, data = debate)
-fit <- mdl$sample()
-fit$summary()
+fit_mcmc <- mdl$sample()
+fit_mcmc$summary()
 ```
 
 MAP推定を使う場合は
@@ -104,16 +104,16 @@ MAP推定を使う場合は
 
 ``` r
 
-fit <- mdl$optimize()
-fit$summary()
+fit_map <- mdl$optimize()
+fit_map$summary()
 ```
 
 頻度主義的分析を使う場合は `classic()` です。
 
 ``` r
 
-fit <- mdl$classic()
-fit$summary()
+fit_classic <- mdl$classic()
+fit_classic$summary()
 ```
 
 このように、モデルの書き方は同じで、推定方法だけを切り替えられます。
@@ -128,9 +128,9 @@ MAPでは、MAP点に条件づけて複製データを生成します。
 
 ``` r
 
-yrep <- fit$posterior_predict(draws = 100, seed = 123)
-fit$pp_check(type = "auto", draws = 100, seed = 123)
-fit$pp_check(stat = mean, draws = 100, seed = 123)
+yrep <- fit_map$posterior_predict(draws = 100, seed = 123)
+fit_map$pp_check(type = "auto", draws = 100, seed = 123)
+fit_map$pp_check(stat = mean, draws = 100, seed = 123)
 ```
 
 `x` にモデルデータの列名、または観測数と同じ長さのベクトルを指定すると、
@@ -140,8 +140,8 @@ fit$pp_check(stat = mean, draws = 100, seed = 123)
 
 ``` r
 
-fit$pp_check(x = "talk", draws = 100, seed = 123)
-fit$pp_check(x = ".fitted", draws = 100, seed = 123)
+fit_map$pp_check(x = "talk", draws = 100, seed = 123)
+fit_map$pp_check(x = ".fitted", draws = 100, seed = 123)
 ```
 
 予約値 `x = ".fitted"`
