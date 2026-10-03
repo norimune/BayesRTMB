@@ -311,6 +311,9 @@ log1p_exp <- function(x) {
 #' @export
 log1m_exp <- function(x) {
   # Stable implementation of log(1 - exp(x)) for x < 0
+  if (.rtmb_is_ad_value(x)) {
+    return(RTMB::logspace_sub(0, x))
+  }
   ifelse(x > -0.6931472, log(-expm1(x)), log1p(-exp(x)))
 }
 

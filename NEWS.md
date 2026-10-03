@@ -1,5 +1,7 @@
 # BayesRTMB 0.4.0
 
+* Added AD-compatible `_lcdf()` and `_lccdf()` functions for supported
+  univariate continuous, discrete, ordered, and mixture distributions.
 * Added `MCMC_Fit$continue_sampling()` to extend existing NUTS chains without
   another warmup. It resumes from each chain's final unconstrained state,
   reuses the adapted step size and mass matrix, and can update the fit in place

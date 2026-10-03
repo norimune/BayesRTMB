@@ -61,5 +61,12 @@ In `rtmb_code`, you can specify distributions in two ways:
 Most univariate distributions are vectorized. If \code{y} and \code{mu} are vectors,
 \code{y ~ normal(mu, sigma)} will calculate the sum of log-densities for all elements
 efficiently.
+
+Log-CDF and log-CCDF functions for supported univariate distributions use
+the suffixes `_lcdf` and `_lccdf`; see \code{\link{distribution_cdf}}.
+}
+\seealso{
+Other distributions:
+\code{\link{distribution_cdf}}
 }
 \concept{distributions}

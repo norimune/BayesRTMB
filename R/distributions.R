@@ -59,6 +59,9 @@
 #' \code{y ~ normal(mu, sigma)} will calculate the sum of log-densities for all elements
 #' efficiently.
 #'
+#' Log-CDF and log-CCDF functions for supported univariate distributions use
+#' the suffixes `_lcdf` and `_lccdf`; see \code{\link{distribution_cdf}}.
+#'
 #' @name distributions
 #' @family distributions
 #' @import RTMB
