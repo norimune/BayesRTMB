@@ -204,6 +204,39 @@ generate_flat_names <- function(base_name, dims, names_def = NULL) {
 }
 
 
+# Merge generated quantities while replacing variables computed again.
+.rtmb_merge_generated_draws <- function(old_draws, new_draws, replace_names) {
+  if (is.null(old_draws)) return(new_draws)
+
+  if (!identical(dim(old_draws)[1:2], dim(new_draws)[1:2])) {
+    stop("Existing and new generated quantities have incompatible draw dimensions.",
+         call. = FALSE)
+  }
+
+  old_names <- dimnames(old_draws)[[3]]
+  new_names <- dimnames(new_draws)[[3]]
+  if (is.null(old_names) || is.null(new_names)) {
+    stop("Generated quantities must have variable names.", call. = FALSE)
+  }
+
+  old_base_names <- sub("\\[.*$", "", old_names)
+  keep <- !(old_base_names %in% replace_names)
+  kept_draws <- old_draws[, , keep, drop = FALSE]
+
+  n_kept <- dim(kept_draws)[3]
+  n_new <- dim(new_draws)[3]
+  merged <- array(NA_real_, dim = c(dim(old_draws)[1:2], n_kept + n_new))
+  if (n_kept > 0L) merged[, , seq_len(n_kept)] <- kept_draws
+  merged[, , n_kept + seq_len(n_new)] <- new_draws
+  dimnames(merged) <- list(
+    dimnames(old_draws)[[1]],
+    dimnames(old_draws)[[2]],
+    c(old_names[keep], new_names)
+  )
+  merged
+}
+
+
 
 # Function to restore a flat vector in constrained space to a list
 constrained_vector_to_list <- function(vec, par_list) {

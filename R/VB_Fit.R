@@ -703,7 +703,8 @@ VB_Fit <- R6::R6Class(
     #'   evaluation and falls back to R evaluation on error; `"none"` always uses
     #'   R evaluation; `"force"` requires tape evaluation and errors if it fails.
     #' @return The `VB_Fit` object itself (invisibly).
-    #' Results are appended to the `generate_fit` field.
+    #' Results are added to the `generate_fit` field. Existing generated
+    #' quantities with the same name are replaced.
     generated_quantities = function(code, progress = c("auto", "none", "bar", "message"),
                                     tape = c("auto", "none", "force")) {
       progress_mode <- .rtmb_resolve_progress(progress)
@@ -751,10 +752,13 @@ VB_Fit <- R6::R6Class(
         if (is.list(tran_res)) test_p_list <- c(test_p_list, tran_res)
       }
 
+      existing_generate_dims <- self$generate_dims
+      if (is.null(existing_generate_dims)) existing_generate_dims <- list()
+
       if (!is.null(self$generate_fit)) {
         existing_gq <- dimnames(self$generate_fit)[[3]]
-        for (g_name in names(self$generate_dims)) {
-          g_dim <- self$generate_dims[[g_name]]
+        for (g_name in names(existing_generate_dims)) {
+          g_dim <- existing_generate_dims[[g_name]]
           flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
           # Extract only those existing in generate_fit
           if (all(flat_nms %in% existing_gq)) {
@@ -790,8 +794,8 @@ VB_Fit <- R6::R6Class(
         if (is.null(self$generate_fit)) return(list())
         existing_gq <- dimnames(self$generate_fit)[[3]]
         out <- list()
-        for (g_name in names(self$generate_dims)) {
-          g_dim <- self$generate_dims[[g_name]]
+        for (g_name in names(existing_generate_dims)) {
+          g_dim <- existing_generate_dims[[g_name]]
           flat_nms <- generate_flat_names(g_name, g_dim, self$model$par_names[[g_name]])
           if (all(flat_nms %in% existing_gq)) {
             val <- self$generate_fit[i, c, flat_nms]
@@ -873,18 +877,13 @@ VB_Fit <- R6::R6Class(
       .rtmb_tape_fallback_message("generated quantities", tape_fallback_error, progress_mode)
 
       # 7. Merge with existing results
-      if (is.null(self$generate_fit)) {
-        self$generate_fit <- new_gq_array
-      } else {
-        old_gq <- self$generate_fit
-        merged_gq <- array(NA, dim = c(iter, chains, dim(old_gq)[3] + dim(new_gq_array)[3]))
-        merged_gq[,,1:dim(old_gq)[3]] <- old_gq
-        merged_gq[,,(dim(old_gq)[3]+1):dim(merged_gq)[3]] <- new_gq_array
-        dimnames(merged_gq) <- list(NULL, dimnames(old_gq)[[2]], c(dimnames(old_gq)[[3]], gq_names))
-        self$generate_fit <- merged_gq
-      }
+      self$generate_fit <- .rtmb_merge_generated_draws(
+        self$generate_fit,
+        new_gq_array,
+        names(test_gq)
+      )
 
-      .rtmb_progress_line("Generated quantities added to samples.", progress_mode)
+      .rtmb_progress_line("Generated quantities added or updated in samples.", progress_mode)
       invisible(self)
     },
 

@@ -468,7 +468,8 @@ R evaluation; `"force"` requires tape evaluation and errors if it fails.}
 }
 \subsection{Returns}{
 The `VB_Fit` object itself (invisibly).
-Results are appended to the `generate_fit` field.
+Results are added to the `generate_fit` field. Existing generated
+quantities with the same name are replaced.
 }
 }
 \if{html}{\out{<hr>}}
