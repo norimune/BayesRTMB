@@ -89,3 +89,12 @@ two ways:
 **Vectorization:** Most univariate distributions are vectorized. If `y`
 and `mu` are vectors, `y ~ normal(mu, sigma)` will calculate the sum of
 log-densities for all elements efficiently.
+
+Log-CDF and log-CCDF functions for supported univariate distributions
+use the suffixes \`\_lcdf\` and \`\_lccdf\`; see
+[`distribution_cdf`](https://norimune.github.io/BayesRTMB/reference/distribution_cdf.md).
+
+## See also
+
+Other distributions:
+[`distribution_cdf`](https://norimune.github.io/BayesRTMB/reference/distribution_cdf.md)

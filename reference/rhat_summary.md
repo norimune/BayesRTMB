@@ -94,7 +94,7 @@ A numeric vector of R-hat values with class `"rhat_summary"`.
   r
 #> R-hat summary
 #>  n min median  q90  q95  max n_gt_1.01 n_gt_1.05
-#>  5   1      1 1.03 1.03 1.03         2         0
+#>  5   1      1 1.01 1.01 1.01         0         0
   hist(r)
 
 # }

@@ -20,7 +20,7 @@ rtmb_lmer(
   view = NULL,
   sigma_by = NULL,
   factors = NULL,
-  contrasts = "treatment",
+  contrasts = "sum",
   resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL,
@@ -101,6 +101,8 @@ rtmb_lmer(
 - contrasts:
 
   Character string specifying the contrast type ("treatment" or "sum").
+  The default is \`"sum"\` for compatibility with ANOVA-style use of
+  \`rtmb_lmer()\`.
 
 - resid_corr:
 
@@ -241,16 +243,16 @@ RTMB_Model object
 #> sampling: 100%
   mcmc_glmer$summary()
 #>      variable     mean     sd      map     q2.5    q97.5  ess_bulk  ess_tail  rhat 
-#> lp             -510.23  12.54  -507.43  -535.93  -488.01       148       351  1.01 
-#> Intercept         2.64   0.09     2.62     2.47     2.81      1162       665  1.00 
-#> b[cond]           0.76   0.13     0.75     0.51     1.01      1232       525  1.00 
-#> sigma             0.83   0.04     0.82     0.75     0.91       538       648  1.00 
-#> sd[group:Int]     0.41   0.08     0.40     0.24     0.57       209       256  1.01 
-#> r_re[1]          -0.75   0.77    -0.79    -2.18     0.76      1578       704  1.00 
-#> r_re[2]          -0.98   0.66    -0.97    -2.36     0.30      1593       894  1.01 
-#> r_re[3]           0.02   0.77    -0.12    -1.50     1.54      2322       746  1.00 
-#> r_re[4]           0.60   0.77     0.63    -0.91     2.10      1945       756  1.01 
-#> r_re[5]          -0.39   0.75    -0.67    -1.78     1.05      2142       969  1.00 
+#> lp             -511.55  11.73  -508.38  -536.44  -489.72       196       439  1.02 
+#> Intercept         2.64   0.09     2.65     2.45     2.82      1263       604  1.00 
+#> b[cond]           0.76   0.13     0.77     0.52     1.00      1126       769  1.00 
+#> sigma             0.83   0.04     0.84     0.75     0.92       551       629  1.00 
+#> sd[group:Int]     0.40   0.08     0.39     0.23     0.56       298       312  1.01 
+#> r_re[1]          -0.77   0.71    -0.84    -2.07     0.60      1766       617  1.00 
+#> r_re[2]          -0.96   0.84    -1.01    -2.67     0.79      1840       804  1.01 
+#> r_re[3]           0.00   0.76    -0.02    -1.54     1.48      1807       695  1.00 
+#> r_re[4]           0.61   0.75     0.82    -0.94     2.07      2437       776  1.00 
+#> r_re[5]          -0.40   0.81    -0.54    -1.98     1.25      2641       641  1.01 
   # }
 
   # --- 4. Linear Mixed Model (rtmb_lmer) ---
@@ -295,7 +297,7 @@ RTMB_Model object
 #> Checking RTMB setup...
   map_rhs <- fit_rhs$optimize()
 #> Starting RTMB optimization...
-#> Warning: Best optimization run ended with singular convergence. Estimates may be usable, but check opt_history or try more starts.
+#> SE warning: sdreport() returned pdHess = FALSE; Hessian-based fallback will be attempted.
 #> SE warning: sdreport() produced non-finite standard errors; Hessian-based fallback will be attempted.
 #> SE warning: Hessian matrix was singular; using MASS::ginv() to approximate the covariance matrix.
   # Summarize only the fixed effects (slopes)
@@ -311,7 +313,7 @@ RTMB_Model object
 #> variable  Estimate  Std. Error  Lower 95%  Upper 95% 
 #> b[talk]    0.26657     0.05253    0.16361    0.36954 
 #> b[perf]    0.15374     0.02944    0.09605    0.21144 
-#> b[skill]   0.19129     0.06369    0.06646    0.31613 
+#> b[skill]   0.19129     0.06369    0.06645    0.31613 
 #> 
 
   # Fit a linear regression with the Spike-and-Slab prior

@@ -849,8 +849,9 @@ Compute generated quantities from posterior draws.
 
 #### Returns
 
-The \`MCMC_Fit\` object itself (invisibly). Results are appended to the
-\`generate_fit\` field.
+The \`MCMC_Fit\` object itself (invisibly). Results are added to the
+\`generate_fit\` field. Existing generated quantities with the same name
+are replaced.
 
 ------------------------------------------------------------------------
 

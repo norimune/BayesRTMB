@@ -14,7 +14,7 @@ BigFive
 
 ## Format
 
-A data frame with 10 rows and 20 columns:
+A data frame with 170 rows and 20 columns:
 
 - BF1:
 

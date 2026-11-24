@@ -114,16 +114,16 @@ rtmb_corr(
 #> sampling: 100%
   mcmc_corr$summary()
 #>   variable      mean    sd       map      q2.5     q97.5  ess_bulk  ess_tail  rhat 
-#> lp          -1006.41  1.59  -1005.29  -1010.46  -1004.44       570       864  1.00 
-#> corr[rho]       0.30  0.05      0.28      0.20      0.39      1092       977  1.01 
-#> mean[sat]       3.43  0.06      3.43      3.32      3.54       990       757  1.00 
-#> mean[perf]      4.69  0.10      4.69      4.48      4.89      1161       739  1.00 
-#> sd[sat]         1.00  0.04      0.99      0.92      1.08      1015       734  1.00 
-#> sd[perf]        1.77  0.07      1.78      1.64      1.91      1240       895  1.00 
+#> lp          -1006.51  1.63  -1005.82  -1010.63  -1004.39       577       653  1.00 
+#> corr[rho]       0.29  0.05      0.29      0.19      0.39       769       646  1.00 
+#> mean[sat]       3.43  0.06      3.43      3.32      3.55       949       749  1.00 
+#> mean[perf]      4.69  0.10      4.69      4.50      4.88       925       769  1.00 
+#> sd[sat]         1.00  0.04      0.99      0.92      1.08      1069       896  1.00 
+#> sd[perf]        1.77  0.08      1.76      1.63      1.93       945       858  1.00 
 
   bf_corr <- mcmc_corr$bayes_factor(fixed = list(corr = 0))
 #> Calculating marginal likelihood for the full model...
-#> Bridge Sampling Converged: LogML = -1013.849 (Error = 0.0088, ESS = 417.0)
+#> Bridge Sampling Converged: LogML = -1013.848 (Error = 0.0079, ESS = 414.0)
 #> 
 #> --- Sampling from the comparison model ---
 #> Starting sequential sampling (chains = 2)...
@@ -148,11 +148,11 @@ rtmb_corr(
 #> sampling: 100%
 #> 
 #> --- Calculating marginal likelihood for the comparison model ---
-#> Bridge Sampling Converged: LogML = -1024.930 (Error = 0.0066, ESS = 458.8)
+#> Bridge Sampling Converged: LogML = -1024.930 (Error = 0.0079, ESS = 396.4)
   print(bf_corr)
 #> --- Bayes Factor Analysis (Bridge Sampling) ---
-#> Bayes Factor (BF12) : 64920.14 
-#> Log Bayes Factor    : 11.0809 (Approx. Error = 0.0110)
+#> Bayes Factor (BF12) : 65004.7 
+#> Log Bayes Factor    : 11.0822 (Approx. Error = 0.0112)
 #> Evidence            : Decisive evidence for Model 1 
 #> Comparison model    : Parameters fixed at list(corr = 0) 
 #> 

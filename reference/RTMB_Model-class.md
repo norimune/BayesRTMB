@@ -80,6 +80,11 @@ samples.
   Fixed-parameter prior removal is handled during AD objective
   construction.
 
+- `prior_correction_params`:
+
+  Named numeric vector linking marginal-likelihood corrections to the
+  free parameters that require them.
+
 - `fixed_prior_specs`:
 
   Internal specification for removing fixed-parameter prior
