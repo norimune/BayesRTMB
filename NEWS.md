@@ -1,7 +1,19 @@
-# BayesRTMB 0.4.0
+# BayesRTMB 0.5.0
 
 * Added AD-compatible `_lcdf()` and `_lccdf()` functions for supported
   univariate continuous, discrete, ordered, and mixture distributions.
+* Updated `generated_quantities()` for MCMC and variational fits so quantities
+  computed again with the same name replace their previous values instead of
+  creating duplicate columns.
+* Fixed `conditional_effects()` and `simple_effects()` to preserve the contrast
+  coding used to fit regression and mixed models. `rtmb_lmer()` now explicitly
+  defaults to sum contrasts while honoring `contrasts = "treatment"` when
+  requested.
+* Corrected the documented dimensions of the `BigFive` data set to 170 rows
+  and 20 columns.
+
+# BayesRTMB 0.4.0
+
 * Added `MCMC_Fit$continue_sampling()` to extend existing NUTS chains without
   another warmup. It resumes from each chain's final unconstrained state,
   reuses the adapted step size and mass matrix, and can update the fit in place

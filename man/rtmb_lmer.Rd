@@ -66,8 +66,8 @@ coefficients. All fixed-effect design-matrix columns are standardized.}
 \item{factors}{Character vector of variable names to be treated as factors.}
 
 \item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").
-The default is \code{"sum"} for compatibility with ANOVA-style use of
-\code{rtmb_lmer()}.}
+The default is `"sum"` for compatibility with ANOVA-style use of
+`rtmb_lmer()`.}
 
 \item{resid_corr}{Residual correlation structure (e.g., "ar1", "cs", "un", "toep").}
 

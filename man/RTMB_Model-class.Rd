@@ -48,6 +48,9 @@ posterior, and drawing posterior samples.
 \item{\code{prior_correction}}{Numeric value for legacy or low-level marginal-likelihood correction.
 Fixed-parameter prior removal is handled during AD objective construction.}
 
+\item{\code{prior_correction_params}}{Named numeric vector linking marginal-likelihood
+corrections to the free parameters that require them.}
+
 \item{\code{fixed_prior_specs}}{Internal specification for removing fixed-parameter prior contributions during AD evaluation.}
 
 \item{\code{type}}{Character; the type of the model (e.g. 'lmer', 'glm', 'table', 'ttest', 'corr', 'mediation').}

@@ -227,7 +227,7 @@ and diffusion models do not have a single generally applicable scalar CDF
 and are therefore not included.
 }
 \seealso{
-Other distributions:
+Other distributions: 
 \code{\link{distributions}}
 }
 \concept{distributions}

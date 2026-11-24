@@ -66,7 +66,7 @@ Log-CDF and log-CCDF functions for supported univariate distributions use
 the suffixes `_lcdf` and `_lccdf`; see \code{\link{distribution_cdf}}.
 }
 \seealso{
-Other distributions:
+Other distributions: 
 \code{\link{distribution_cdf}}
 }
 \concept{distributions}
