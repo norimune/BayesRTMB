@@ -33,7 +33,7 @@
 #' The items are arranged in a cyclical order representing the five factors:
 #' Extraversion, Neuroticism, Openness, Agreeableness, and Conscientiousness.
 #'
-#' @format A data frame with 10 rows and 20 columns:
+#' @format A data frame with 170 rows and 20 columns:
 #' \describe{
 #'   \item{BF1}{Extraversion item 1}
 #'   \item{BF2}{Neuroticism item 1}
