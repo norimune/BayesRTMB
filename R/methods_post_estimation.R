@@ -66,7 +66,39 @@ conditional_effects.default <- function(fit, effect, prob = 0.95, sd_multiplier 
   rhs <- delete.response(terms(fixed_form))
   mf_raw <- model.frame(rhs, data = model_obj$raw_data, na.action = na.pass)
   xlev <- .getXlevels(terms(rhs), mf_raw)
-  model.matrix(rhs, data = newdata, xlev = xlev)
+
+  contrasts_arg <- model_obj$extra$X_contrasts
+  if (is.null(contrasts_arg) || length(contrasts_arg) == 0L) {
+    contrast_type <- model_obj$contrasts
+    if (!is.null(contrast_type) && contrast_type %in% c("treatment", "sum")) {
+      factor_vars <- names(mf_raw)[vapply(
+        mf_raw,
+        function(x) is.factor(x) || is.character(x),
+        logical(1)
+      )]
+      if (length(factor_vars) > 0L) {
+        contrasts_arg <- setNames(
+          lapply(mf_raw[factor_vars], function(x) {
+            if (is.ordered(x)) {
+              "contr.poly"
+            } else if (identical(contrast_type, "sum")) {
+              "contr.sum"
+            } else {
+              "contr.treatment"
+            }
+          }),
+          factor_vars
+        )
+      }
+    }
+  }
+
+  model.matrix(
+    rhs,
+    data = newdata,
+    xlev = xlev,
+    contrasts.arg = contrasts_arg
+  )
 }
 
 .ce_prepare_newdata <- function(fit, effect, sd_multiplier = 1, sd_slice = NULL, resolution = 100) {
@@ -370,7 +402,6 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
     stop("This model object does not contain a formula or the original data.")
   }
 
-  form <- model_obj$formula
   raw_data <- model_obj$raw_data
   fam <- model_obj$family
   X_mean <- model_obj$data$X_mean # For back-transforming Intercept_c if needed
@@ -433,12 +464,7 @@ conditional_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier
   }
 
   # 3. Create design matrix
-  fixed_form <- nobars(form)
-  rhs <- delete.response(terms(fixed_form))
-  # Ensure all factor levels are known to model.matrix
-  mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
-  xlev <- .getXlevels(terms(rhs), mf_raw)
-  X_new <- model.matrix(rhs, data = newdata, xlev = xlev)
+  X_new <- .ce_model_matrix(fit, newdata)
 
   # 4. Obtain posterior samples (fixed effects)
   # Handle both wrapper functions (b, Intercept_c) and custom models (beta)
@@ -872,16 +898,8 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
     # [Internal Helper] Get predicted samples (shared with categorical logic)
     get_pred_samples <- function(fit, newdata) {
       model_obj <- fit$model
-      form <- model_obj$formula
-      raw_data <- model_obj$raw_data
       X_mean <- model_obj$data$X_mean
-      fixed_form <- nobars(form)
-      rhs <- delete.response(terms(fixed_form))
-      
-      # Ensure all factor levels are known to model.matrix
-      mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
-      xlev <- .getXlevels(terms(rhs), mf_raw)
-      X_new <- model.matrix(rhs, data = newdata, xlev = xlev)
+      X_new <- .ce_model_matrix(fit, newdata)
       
       all_pars <- dimnames(fit$draws(inc_transform=TRUE))[[3]]
       if (any(grepl("^beta(\\[|$)", all_pars))) {
@@ -969,15 +987,8 @@ simple_effects.mcmc_fit <- function(fit, effect, prob = 0.95, sd_multiplier = 1,
     # [Internal Helper] Get predicted samples
     get_pred_samples <- function(fit, newdata) {
       model_obj <- fit$model
-      form <- model_obj$formula
       X_mean <- model_obj$data$X_mean
-      raw_data <- model_obj$raw_data
-      fixed_form <- nobars(form)
-      rhs <- delete.response(terms(fixed_form))
-
-      mf_raw <- model.frame(rhs, data = raw_data, na.action = na.pass)
-      xlev <- .getXlevels(terms(rhs), mf_raw)
-      X_new <- model.matrix(rhs, data = newdata, xlev = xlev)
+      X_new <- .ce_model_matrix(fit, newdata)
       
       all_pars <- dimnames(fit$draws(inc_transform=TRUE))[[3]]
       if (any(grepl("^beta(\\[|$)", all_pars))) {

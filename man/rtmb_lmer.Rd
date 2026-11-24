@@ -19,7 +19,7 @@ rtmb_lmer(
   view = NULL,
   sigma_by = NULL,
   factors = NULL,
-  contrasts = "treatment",
+  contrasts = "sum",
   resid_corr = NULL,
   resid_time = NULL,
   resid_group = NULL,
@@ -65,7 +65,9 @@ coefficients. All fixed-effect design-matrix columns are standardized.}
 
 \item{factors}{Character vector of variable names to be treated as factors.}
 
-\item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").}
+\item{contrasts}{Character string specifying the contrast type ("treatment" or "sum").
+The default is \code{"sum"} for compatibility with ANOVA-style use of
+\code{rtmb_lmer()}.}
 
 \item{resid_corr}{Residual correlation structure (e.g., "ar1", "cs", "un", "toep").}
 

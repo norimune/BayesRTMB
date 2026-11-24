@@ -21,6 +21,8 @@
 #' @param view Character vector of parameter names to prioritize in summary.
 #' @param factors Character vector of variable names to be treated as factors.
 #' @param contrasts Character string specifying the contrast type ("treatment" or "sum").
+#'   The default is `"sum"` for compatibility with ANOVA-style use of
+#'   `rtmb_lmer()`.
 #' @param sigma_by Character vector specifying variables to group residual variance by (heteroscedasticity).
 #' @param resid_corr Residual correlation structure (e.g., "ar1", "cs", "un", "toep").
 #' @param resid_time Variable name for time points in residual correlation.
@@ -49,7 +51,7 @@ rtmb_lmer <- function(formula, data = NULL, laplace = TRUE,
                        view = NULL,
                        sigma_by = NULL,
                        factors = NULL,
-                       contrasts = "treatment",
+                       contrasts = "sum",
                        resid_corr = NULL,
                        resid_time = NULL,
                        resid_group = NULL,
@@ -87,7 +89,6 @@ rtmb_lmer <- function(formula, data = NULL, laplace = TRUE,
              within = within,
              missing = missing,
              WAIC = WAIC,
-             .force_sum = TRUE,
              ...)
 }
 

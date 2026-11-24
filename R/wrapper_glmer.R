@@ -1901,6 +1901,7 @@ rtmb_glmer <- function(formula, data = NULL, family = "gaussian", laplace = FALS
     X_assign = X_assign, 
     X_terms = X_terms, 
     X_colnames = fixed_colnames,
+    X_contrasts = glmer_terms$X_contrasts,
     factors = factors,
     within = within,
     std = std
