@@ -1011,11 +1011,11 @@ centered_tri_multi_normal_lpdf <- function(x, sigma) {
 
   lp <- 0
   if (length(sigma) == 1) {
-    df <- sum(R - (1:max_d))
+    df <- sum(R - seq_len(max_d))
     lp <- -0.5 * df * log(2 * pi) - df * log(sigma) - 0.5 * sum(x^2) / sigma^2
   } else {
     # When specifying a different sigma for each dimension
-    for (d in 1:max_d) {
+    for (d in seq_len(max_d)) {
       x_d <- x[d:R, d]
       K <- length(x_d)
       sd_d <- sigma[d]

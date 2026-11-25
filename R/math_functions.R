@@ -400,7 +400,7 @@ quad_form_diag <- function(m, v) {
 #' @export
 stz_basis <- function(K) {
   Q <- matrix(0, nrow = K, ncol = K - 1)
-  for (j in 1:(K - 1)) {
+  for (j in seq_len(K - 1)) {
     Q[1:j, j] <- 1 / sqrt(j * (j + 1))
     Q[j + 1, j] <- -j / sqrt(j * (j + 1))
   }

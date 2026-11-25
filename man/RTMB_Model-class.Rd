@@ -790,7 +790,8 @@ Create a model with fixed parameters.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{fixed}}{A named list of parameter values to fix.}
+\item{\code{fixed}}{A named list of parameter values to fix. For a parameter
+with coupled or structural constraints, fix the entire parameter.}
 
 \item{\code{silent}}{Logical; whether to suppress informational messages. Default is FALSE.}
 }

@@ -753,7 +753,8 @@ RTMB_Model <- R6::R6Class(
     },
 
     #' @description Create a model with fixed parameters.
-    #' @param fixed A named list of parameter values to fix.
+    #' @param fixed A named list of parameter values to fix. For a parameter
+    #'   with coupled or structural constraints, fix the entire parameter.
     #' @param silent Logical; whether to suppress informational messages. Default is FALSE.
     #' @return A new RTMB_Model object.
     fixed_model = function(fixed = list(), silent = FALSE) {
@@ -1419,6 +1420,18 @@ RTMB_Model <- R6::R6Class(
 
         if (!(p_base %in% names(self$par_list))) stop("Parameter not found: ", p_base)
 
+        p_info <- self$par_list[[p_base]]
+        independent <- p_info$bounds %in% c("none", "lower", "upper", "interval")
+        if (has_index && !independent) {
+          stop(sprintf("Element-wise fixing is not supported for parameter '%s' (type = '%s'). ",
+                       p_base, p_info$type),
+               "Fix the entire parameter instead with fixed = list('", p_base, "' = ...).",
+               call. = FALSE)
+        }
+        if (!is.numeric(val) || !length(val) || any(!is.finite(val))) {
+          stop("Fixed values for '", name, "' must be finite numbers.", call. = FALSE)
+        }
+
         if (has_index && !is.null(self$code$model)) {
           if (private$.has_multivariate_prior_on(self$code$model, p_base)) {
             stop(
@@ -1433,7 +1446,6 @@ RTMB_Model <- R6::R6Class(
           }
         }
 
-        p_info <- self$par_list[[p_base]]
         L_u <- p_info$unc_length
 
         if (is.null(new_map[[p_base]])) {
@@ -1450,7 +1462,26 @@ RTMB_Model <- R6::R6Class(
         if (!grepl("\\[", name)) {
           # Fix the entire parameter
           val_vec <- if (length(val) == 1) rep(val, p_info$length) else val
-          new_init[start_idx:(start_idx + p_info$length - 1)] <- as.numeric(val_vec)
+          if (length(val_vec) != p_info$length) {
+            stop(sprintf("Expected %d fixed values for '%s'.", p_info$length, name),
+                 call. = FALSE)
+          }
+          val_vec <- as.numeric(val_vec)
+          if (!independent) {
+            param <- stats::setNames(list(p_info), p_base)
+            roundtrip <- tryCatch(suppressWarnings({
+              con <- constrained_vector_to_list(val_vec, param)
+              unc <- to_unconstrained(con, param)
+              if (all(is.finite(unc[[p_base]]))) as.numeric(to_constrained(unc, param)[[p_base]])
+            }), error = function(e) NULL)
+            if (!isTRUE(all.equal(val_vec, roundtrip, tolerance = 1e-10))) {
+              stop("Fixed values for '", name, "' do not satisfy its '", p_info$type,
+                   "' constraint.", call. = FALSE)
+            }
+          } else if (any(val_vec < p_info$lower) || any(val_vec > p_info$upper)) {
+            stop("Fixed values for '", name, "' are outside its bounds.", call. = FALSE)
+          }
+          new_init[start_idx:(start_idx + p_info$length - 1)] <- val_vec
 
           if (L_u > 0) {
             # IMPORTANT: Recreate as a factor with no levels instead of curr_map[] <- NA
@@ -1458,38 +1489,24 @@ RTMB_Model <- R6::R6Class(
           }
 
         } else {
-          # Fix specific elements
-          # Guard: element-wise fixing is not supported for structurally constrained types
-          # where constrained length != unconstrained length (simplex, corr_matrix, etc.)
-          constrained_types <- c("simplex", "centered", "corr_matrix", "cov_matrix",
-                                 "CF_corr", "CF_cov", "centered_matrix",
-                                 "centered_tri", "positive_centered_tri")
-          if (p_info$length != L_u && (p_info$type %in% constrained_types)) {
-            stop(sprintf(
-              "Element-wise fixing is not supported for parameter '%s' (type = '%s'). ",
-              p_base, p_info$type
-            ),
-            "Fix the entire parameter instead with fixed = list('", p_base, "' = ...).",
-            call. = FALSE)
-          }
-
           idx_str <- gsub(".*\\[(.*)\\].*", "\\1", name)
           p_names <- self$par_names[[p_base]]
-          idx <- suppressWarnings(as.integer(idx_str))
+          idx <- if (grepl("^[0-9]+$", idx_str)) suppressWarnings(as.integer(idx_str)) else NA_integer_
           if (is.na(idx) && !is.null(p_names)) idx <- which(p_names == idx_str)
 
-          if (length(idx) > 0) {
-            new_init[start_idx + idx - 1] <- as.numeric(val)
-
-            if (L_u > 0) {
-              # For types where length == unc_length, constrained index maps directly
-              if (idx <= L_u) {
-                curr_map[idx] <- NA
-              }
-              # Drop unused levels even in partial fixing
-              curr_map <- normalize_map(curr_map)
-            }
+          if (length(idx) != 1L || is.na(idx) || idx < 1L || idx > L_u) {
+            stop("Invalid fixed parameter index: '", name, "'.", call. = FALSE)
           }
+          if (length(val) != 1L) {
+            stop("Expected a single fixed value for '", name, "'.", call. = FALSE)
+          }
+          if ((!is.null(p_info$lower) && val < rep_len(p_info$lower, L_u)[idx]) ||
+              (!is.null(p_info$upper) && val > rep_len(p_info$upper, L_u)[idx])) {
+            stop("Fixed value for '", name, "' is outside its bounds.", call. = FALSE)
+          }
+          new_init[start_idx + idx - 1] <- val
+          curr_map[idx] <- NA
+          curr_map <- normalize_map(curr_map)
         }
 
         new_map[[p_base]] <- curr_map

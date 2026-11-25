@@ -55,6 +55,10 @@ NULL
 #'
 #' @export
 Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE) {
+  if (!is.numeric(dim) || length(dim) == 0L ||
+      any(!is.finite(dim) | dim < 1 | dim != floor(dim))) {
+    stop("'dim' must contain positive integers.", call. = FALSE)
+  }
   # 1. Basic Type Handling
   if (is.null(type)) {
     if (length(dim) == 1) type <- "vector"
@@ -73,10 +77,21 @@ Dim <- function(dim = 1, type = NULL, lower = NULL, upper = NULL, random = FALSE
   else if (is.null(lower) && !is.null(upper)) bounds_type <- "upper"
   else if (!is.null(lower) && !is.null(upper)) bounds_type <- "interval"
 
+  centered_types <- c("centered_matrix", "centered_tri", "positive_centered_tri")
+  matrix_types <- c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
+                    "lower_tri", "lower_tri_stz", "positive_lower_tri")
+  if (bounds_type %in% centered_types && length(dim) != 2L) {
+    stop(sprintf("Type '%s' requires two dimensions.", bounds_type), call. = FALSE)
+  }
+  if (bounds_type %in% matrix_types) {
+    if (length(dim) == 1L) dim <- rep(dim, 2L)
+    if (length(dim) > 3L) {
+      stop(sprintf("Type '%s' supports at most three dimensions.", bounds_type), call. = FALSE)
+    }
+  }
+
   # 2. Multi-dimensional recursion (K x P x P convention)
-  if (length(dim) > 2 && bounds_type %in% c("corr_matrix", "CF_corr", "cov_matrix", "CF_cov",
-                                          "lower_tri", "lower_tri_stz", "positive_lower_tri",
-                                          "centered_matrix", "centered_tri", "positive_centered_tri")) {
+  if (length(dim) == 3L && bounds_type %in% matrix_types) {
     K <- dim[1]
     sub_dim <- dim[-1]
     sub_p <- Dim(dim = sub_dim, type = type, lower = lower, upper = upper, random = random)
@@ -329,8 +344,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
     } else if (b_type == "upper") {
       para_unc[[name]] <- log(p$upper - val_orig)
     } else if (b_type == "interval") {
-      prob <- (val_orig - p$lower) / (p$upper - p$lower)
-      para_unc[[name]] <- log(prob / (1 - prob))
+      para_unc[[name]] <- log(val_orig - p$lower) - log(p$upper - val_orig)
     } else if (b_type == "ordered") {
       if (is.matrix(val_orig)) {
         y <- val_orig
@@ -374,18 +388,16 @@ to_unconstrained <- function(para_orig_list, par_list) {
     } else if (b_type == "simplex") {
       K <- p$length
       y <- numeric(K - 1)
-      stick_len <- 1
-      for (k in 1:(K - 1)) {
-        z_k <- if (stick_len > 1e-10) val_orig[k] / stick_len else 0
-        z_k <- min(max(z_k, 1e-10), 1 - 1e-10)
-        y[k] <- log(z_k / (1 - z_k)) + log(1 / (K - k))
-        stick_len <- stick_len - val_orig[k]
+      # Sum the remaining components directly to avoid subtracting nearly equal values.
+      remaining <- rev(cumsum(rev(as.numeric(val_orig))))
+      for (k in seq_len(K - 1)) {
+        y[k] <- log(val_orig[k]) - log(remaining[k + 1]) - log(K - k)
       }
       para_unc[[name]] <- y
     } else if (b_type == "centered") {
       K <- p$length
       Q <- stz_basis(K)
-      para_unc[[name]] <- as.numeric(crossprod(Q, val_orig))
+      para_unc[[name]] <- as.numeric(crossprod(Q, as.numeric(val_orig)))
 
     } else if (b_type == "centered_matrix") {
       R <- p$dim[1]
@@ -399,7 +411,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
       C <- p$dim[2]
       y <- numeric(p$unc_length)
       idx <- 1
-      for (d in 1:min(C, R - 1)) {
+      for (d in seq_len(min(C, R - 1))) {
         x_d <- val_orig[d:R, d]
         n_d <- length(x_d)
         Q_d <- stz_basis(n_d)
@@ -414,7 +426,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
       C <- p$dim[2]
       y <- numeric(p$unc_length)
       idx <- 1
-      for (d in 1:min(C, R - 1)) {
+      for (d in seq_len(min(C, R - 1))) {
         x_d <- val_orig[d:R, d]
         n_d <- length(x_d)
         u1 <- log(x_d[1])
@@ -435,34 +447,28 @@ to_unconstrained <- function(para_orig_list, par_list) {
       } else {
         R <- p$dim[1]; C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]; K <- 1
       }
-      z_all <- numeric(p$unc_length)
+      y <- numeric(p$unc_length)
       idx <- 1
       for (k in 1:K) {
-        # --- Logic for restoring parameter matrix dimensions ---
-        # Restores dimensions using info saved during model construction, as RTMB treats them as vectors internally.
-        val_slice <- if (K > 1) {
-          if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
-        } else {
-          val_orig
-        }
-        L <- if (b_type == "corr_matrix") t(chol(val_slice + diag(1e-8, R))) else val_slice
+        val_slice <- if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
+        L <- if (b_type == "corr_matrix") t(chol(val_slice)) else val_slice
         if (R >= 2) {
           for (i in 2:R) {
-            prod_term <- 1
             max_j <- min(i - 1, C - 1)
             if (max_j > 0) {
               for (j in 1:max_j) {
-                z_val <- L[i, j] / sqrt(prod_term)
-                z_val <- min(max(z_val, -0.999999), 0.999999)
-                z_all[idx] <- z_val
-                prod_term <- prod_term * (1 - z_val^2)
+                # The tail norm equals this residual stick times sech(y[j]).
+                other <- L[i, seq.int(j + 1, min(i, C))]
+                scale <- max(abs(other))
+                rem <- if (scale == 0) 0 else scale * sqrt(sum((other / scale)^2))
+                y[idx] <- asinh(L[i, j] / rem)
                 idx <- idx + 1
               }
             }
           }
         }
       }
-      para_unc[[name]] <- atanh(z_all)
+      para_unc[[name]] <- y
 
     } else if (b_type %in% c("cov_matrix", "CF_cov")) {
       if (length(p$dim) == 3) {
@@ -473,12 +479,8 @@ to_unconstrained <- function(para_orig_list, par_list) {
       y <- numeric(p$unc_length)
       idx <- 1
       for (k in 1:K) {
-        val_slice <- if (K > 1) {
-          if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
-        } else {
-          val_orig
-        }
-        L <- if (b_type == "cov_matrix") t(chol(val_slice + diag(1e-8, R))) else val_slice
+        val_slice <- if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
+        L <- if (b_type == "cov_matrix") t(chol(val_slice)) else val_slice
         for (i in 1:R) {
           max_j <- min(i, C)
           for (j in 1:max_j) {
@@ -523,11 +525,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
       y <- numeric(p$unc_length)
       idx <- 1
       for (k in 1:K) {
-        val_slice <- if (K > 1) {
-          if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
-        } else {
-          val_orig
-        }
+        val_slice <- if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
         last_i <- R
         last_j <- min(R, C)
         for (i in 1:R) {
@@ -547,6 +545,16 @@ to_unconstrained <- function(para_orig_list, par_list) {
   return(para_unc)
 }
 
+.parameter_softplus <- function(x) {
+  if (inherits(x, "advector")) return(RTMB::logspace_add(x, x * 0))
+  pmax(x, 0) + log1p(exp(-abs(x)))
+}
+
+.parameter_log_cosh <- function(x) {
+  if (inherits(x, "advector")) return(RTMB::logspace_add(x, -x) - log(2))
+  abs(x) + log1p(exp(-2 * abs(x))) - log(2)
+}
+
 to_constrained <- function(para_unc_list, par_list) {
   para <- para_unc_list
   for (name in names(par_list)) {
@@ -554,14 +562,14 @@ to_constrained <- function(para_unc_list, par_list) {
     val_unc <- para_unc_list[[name]]
     b_type <- p$bounds
 
-    ad_zero <- val_unc[1] * 0
+    ad_zero <- if (length(val_unc)) val_unc[1] * 0 else 0
 
     if (b_type == "lower") {
       para[[name]] <- p$lower + exp(val_unc)
     } else if (b_type == "upper") {
       para[[name]] <- p$upper - exp(val_unc)
     } else if (b_type == "interval") {
-      prob <- plogis(val_unc)
+      prob <- exp(-.parameter_softplus(-val_unc))
       para[[name]] <- p$lower + (p$upper - p$lower) * prob
     } else if (b_type == "ordered") {
       if (p$length > 1) {
@@ -595,12 +603,15 @@ to_constrained <- function(para_unc_list, par_list) {
       }
     } else if (b_type == "simplex") {
       K <- p$length
-      z <- 1 / (1 + exp(-(val_unc - log(1 / (K - seq_len(K - 1))))))
-      ad_one <- ad_zero + 1
-      rem_prev <- c(ad_one, cumprod(1 - z)[- (K - 1)])
-      x_first <- rem_prev * z
-      x_last <- cumprod(1 - z)[K - 1]
-      para[[name]] <- c(x_first, x_last)
+      if (K == 1L) {
+        para[[name]] <- 1
+      } else {
+        eta <- val_unc + log(K - seq_len(K - 1))
+        z <- exp(-.parameter_softplus(-eta))
+        remaining <- cumprod(exp(-.parameter_softplus(eta)))
+        rem_prev <- c(ad_zero + 1, remaining[-(K - 1)])
+        para[[name]] <- c(rem_prev * z, remaining[K - 1])
+      }
 
     } else if (b_type == "centered") {
       K <- p$length
@@ -609,22 +620,26 @@ to_constrained <- function(para_unc_list, par_list) {
 
     } else if (b_type == "centered_matrix") {
       R <- p$dim[1]; C <- p$dim[2]
-      Q <- stz_basis(R)
-      mat_unc <- rtmb_array(0, dim = c(R - 1, C), seed = ad_zero)
-      idx <- 1
-      for (j in 1:C) {
-        for (i in 1:(R - 1)) {
-          mat_unc[i, j] <- val_unc[idx]
-          idx <- idx + 1
+      if (R == 1L) {
+        para[[name]] <- matrix(0, R, C)
+      } else {
+        Q <- stz_basis(R)
+        mat_unc <- rtmb_array(0, dim = c(R - 1, C), seed = ad_zero)
+        idx <- 1
+        for (j in 1:C) {
+          for (i in seq_len(R - 1)) {
+            mat_unc[i, j] <- val_unc[idx]
+            idx <- idx + 1
+          }
         }
+        para[[name]] <- Q %*% mat_unc
       }
-      para[[name]] <- Q %*% mat_unc
 
     } else if (b_type == "centered_tri") {
       R <- p$dim[1]; C <- p$dim[2]
       L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
       idx <- 1
-      for (d in 1:min(C, R - 1)) {
+      for (d in seq_len(min(C, R - 1))) {
         n_d <- R - d + 1
         z_d <- val_unc[idx:(idx + n_d - 2)]
         Q_d <- stz_basis(n_d)
@@ -638,7 +653,7 @@ to_constrained <- function(para_unc_list, par_list) {
       R <- p$dim[1]; C <- p$dim[2]
       L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
       idx <- 1
-      for (d in 1:min(C, R - 1)) {
+      for (d in seq_len(min(C, R - 1))) {
         n_d <- R - d + 1
         x_d <- rep(ad_zero, n_d)
         u1 <- val_unc[idx]
@@ -664,12 +679,15 @@ to_constrained <- function(para_unc_list, par_list) {
         R <- p$dim[1]; C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]; K <- 1
       }
       z_all <- tanh(val_unc)
+      sech_all <- exp(-.parameter_log_cosh(val_unc))
 
-      if (K > 1) {
+      if (length(p$dim) == 3L) {
         res_list <- vector("list", K)
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
-          z <- z_all[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
+          at <- (k - 1) * unc_per_slice + seq_len(unc_per_slice)
+          z <- z_all[at]
+          sech <- sech_all[at]
           L <- rtmb_array(0, dim = c(R, C), seed = ad_zero)
           L[1, 1] <- 1
           idx <- 1
@@ -679,14 +697,14 @@ to_constrained <- function(para_unc_list, par_list) {
               max_j <- min(i - 1, C - 1)
               if (max_j > 0) {
                 for (j in 1:max_j) {
-                  L[i, j] <- z[idx] * sqrt(prod_term)
-                  prod_term <- prod_term * (1 - z[idx]^2)
+                  L[i, j] <- z[idx] * prod_term
+                  prod_term <- prod_term * sech[idx]
                   idx <- idx + 1
                 }
               }
               last_j <- min(i, C)
               if (last_j > max_j) {
-                L[i, last_j] <- sqrt(abs(prod_term))
+                L[i, last_j] <- prod_term
               }
             }
           }
@@ -715,14 +733,14 @@ to_constrained <- function(para_unc_list, par_list) {
             max_j <- min(i - 1, C - 1)
             if (max_j > 0) {
               for (j in 1:max_j) {
-                L[i, j] <- z[idx] * sqrt(prod_term)
-                prod_term <- prod_term * (1 - z[idx]^2)
+                L[i, j] <- z[idx] * prod_term
+                prod_term <- prod_term * sech_all[idx]
                 idx <- idx + 1
               }
             }
             last_j <- min(i, C)
             if (last_j > max_j) {
-              L[i, last_j] <- sqrt(abs(prod_term))
+              L[i, last_j] <- prod_term
             }
           }
         }
@@ -737,7 +755,7 @@ to_constrained <- function(para_unc_list, par_list) {
         R <- p$dim[1]; C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]; K <- 1
       }
 
-      if (K > 1) {
+      if (length(p$dim) == 3L) {
         res_list <- vector("list", K)
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
@@ -832,7 +850,7 @@ to_constrained <- function(para_unc_list, par_list) {
         R <- p$dim[1]; C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]; K <- 1
       }
 
-      if (K > 1) {
+      if (length(p$dim) == 3L) {
         res_list <- vector("list", K)
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
@@ -911,6 +929,24 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
         )
       }
       active <- !is.na(map_i)
+      tied <- active & duplicated(map_i)
+      if (any(tied) && b_type != "none") {
+        if (!b_type %in% c("lower", "upper", "interval")) {
+          stop(sprintf("Jacobian adjustment for tied map entries is not supported for '%s' (type '%s').",
+                       name, b_type), call. = FALSE)
+        }
+        first <- match(map_i[tied], map_i)
+        for (bound in list(p$lower, p$upper)) {
+          if (length(bound) > 1L) {
+            bound <- rep_len(bound, length(val_unc))
+            if (any(bound[tied] != bound[first])) {
+              stop(sprintf("Tied map entries for '%s' must have identical bounds.", name),
+                   call. = FALSE)
+            }
+          }
+        }
+        active[tied] <- FALSE
+      }
     }
 
     # Parameters removed from MakeADFun's free vector by map = NA are constants,
@@ -920,7 +956,8 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
     if (b_type == "lower" || b_type == "upper") {
       lj <- lj + sum(val_unc[active])
     } else if (b_type == "interval") {
-      terms <- log(p$upper - p$lower) - val_unc - 2 * log(1 + exp(-val_unc))
+      terms <- log(p$upper - p$lower) -
+        .parameter_softplus(val_unc) - .parameter_softplus(-val_unc)
       lj <- lj + sum(terms[active])
     } else if (b_type == "ordered") {
       if (p$length > 1) {
@@ -933,22 +970,17 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
       lj <- lj + sum(val_unc[active])
     } else if (b_type == "simplex") {
       K <- p$length
-      z <- 1 / (1 + exp(-(val_unc - log(1 / (K - seq_len(K - 1))))))
-      terms <- log(z) + (K - seq_len(K - 1)) * log(1 - z)
+      remaining <- K - seq_len(K - 1)
+      eta <- val_unc + log(remaining)
+      terms <- -.parameter_softplus(-eta) - remaining * .parameter_softplus(eta)
       lj <- lj + sum(terms[active])
-    } else if (b_type %in% c("centered", "centered_matrix", "centered_tri")) {
-      diff_dim <- p$length - p$unc_length
-      lj <- lj + (diff_dim / 2) * log(2 * pi)
     } else if (b_type == "positive_centered_tri") {
-      diff_dim <- p$length - p$unc_length
-      lj <- lj + (diff_dim / 2) * log(2 * pi)
       R <- p$dim[1]
       C <- p$dim[2]
       idx <- 1
-      for (d in 1:min(C, R - 1)) {
+      for (d in seq_len(min(C, R - 1))) {
         n_d <- R - d + 1
-        u1 <- val_unc[idx]
-        lj <- lj + u1 + 0.5 * log(n_d / (n_d - 1))
+        if (active[idx]) lj <- lj + val_unc[idx] + 0.5 * log(n_d / (n_d - 1))
         idx <- idx + n_d - 1
       }
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
@@ -967,7 +999,7 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
             pos_u <- (k - 1) * unc_per_slice + idx_u
             if (active[pos_u]) {
               exponent <- if (b_type == "corr_matrix") P_mat - j + 1 else row_size - j + 2
-              lj_term <- lj_term - exponent * log(cosh(v_u[idx_u]))
+              lj_term <- lj_term - exponent * .parameter_log_cosh(v_u[idx_u])
             }
             idx_u <- idx_u + 1
           }
