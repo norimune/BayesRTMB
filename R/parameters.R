@@ -378,7 +378,7 @@ to_unconstrained <- function(para_orig_list, par_list) {
       for (k in 1:(K - 1)) {
         z_k <- if (stick_len > 1e-10) val_orig[k] / stick_len else 0
         z_k <- min(max(z_k, 1e-10), 1 - 1e-10)
-        y[k] <- log(z_k / (1 - z_k)) - log(1 / (K - k))
+        y[k] <- log(z_k / (1 - z_k)) + log(1 / (K - k))
         stick_len <- stick_len - val_orig[k]
       }
       para_unc[[name]] <- y
