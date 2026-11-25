@@ -502,15 +502,12 @@ to_unconstrained <- function(para_orig_list, par_list) {
       y <- numeric(p$unc_length)
       idx <- 1
       for (k in 1:K) {
-        val_slice <- if (K > 1) {
-          if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
-        } else {
-          val_orig
-        }
+        val_slice <- if (length(p$dim) == 3) matrix(val_orig[k, , ], R, C) else val_orig
         for (i in 1:R) {
           max_j <- min(i, C)
           for (j in 1:max_j) {
-            y[idx] <- val_slice[i, j]
+            value <- val_slice[i, j]
+            y[idx] <- if (b_type == "positive_lower_tri" && i == j) log(value) else value
             idx <- idx + 1
           }
         }
@@ -790,7 +787,7 @@ to_constrained <- function(para_unc_list, par_list) {
         R <- p$dim[1]; C <- if (length(p$dim) > 1) p$dim[2] else p$dim[1]; K <- 1
       }
 
-      if (K > 1) {
+      if (length(p$dim) == 3) {
         res_list <- vector("list", K)
         unc_per_slice <- length(val_unc) / K
         for (k in 1:K) {
@@ -800,7 +797,8 @@ to_constrained <- function(para_unc_list, par_list) {
           for (i in 1:R) {
             max_j <- min(i, C)
             for (j in 1:max_j) {
-              L[i, j] <- v_u[idx]
+              if (b_type == "positive_lower_tri" && i == j) L[i, j] <- exp(v_u[idx])
+              else L[i, j] <- v_u[idx]
               idx <- idx + 1
             }
           }
@@ -819,7 +817,8 @@ to_constrained <- function(para_unc_list, par_list) {
         for (i in 1:R) {
           max_j <- min(i, C)
           for (j in 1:max_j) {
-            L[i, j] <- val_unc[idx]
+            if (b_type == "positive_lower_tri" && i == j) L[i, j] <- exp(val_unc[idx])
+            else L[i, j] <- val_unc[idx]
             idx <- idx + 1
           }
         }
@@ -955,6 +954,7 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
     } else if (b_type %in% c("corr_matrix", "CF_corr")) {
       K_rep <- if (length(p$dim) > 2) p$dim[1] else 1
       P_mat <- if (length(p$dim) > 2) p$dim[2] else p$dim[1]
+      C_mat <- p$dim[length(p$dim)]
 
       unc_per_slice <- length(val_unc) / K_rep
       for (k in 1:K_rep) {
@@ -962,15 +962,12 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
         lj_term <- 0
         idx_u <- 1
         for (i in 2:P_mat) {
-          for (j in 1:(i - 1)) {
-            # Fix: use the correct Jacobian for CF_corr and corr_matrix
+          row_size <- min(i - 1, C_mat - 1)
+          for (j in seq_len(row_size)) {
             pos_u <- (k - 1) * unc_per_slice + idx_u
             if (active[pos_u]) {
-              if (b_type == "corr_matrix") {
-                lj_term <- lj_term - 2 * (P_mat - i + 1) * log(cosh(v_u[idx_u]))
-              } else { # CF_corr
-                lj_term <- lj_term - (i - j + 1) * log(cosh(v_u[idx_u]))
-              }
+              exponent <- if (b_type == "corr_matrix") P_mat - j + 1 else row_size - j + 2
+              lj_term <- lj_term - exponent * log(cosh(v_u[idx_u]))
             }
             idx_u <- idx_u + 1
           }
@@ -980,16 +977,17 @@ calc_log_jacobian <- function(para_unc_list, par_list, only_random = FALSE, map 
     } else if (b_type %in% c("cov_matrix", "CF_cov")) {
       K_rep <- if (length(p$dim) > 2) p$dim[1] else 1
       P_mat <- if (length(p$dim) > 2) p$dim[2] else p$dim[1]
+      C_mat <- p$dim[length(p$dim)]
 
       unc_per_slice <- length(val_unc) / K_rep
       for (k in 1:K_rep) {
         v_u <- val_unc[((k-1)*unc_per_slice + 1):(k*unc_per_slice)]
         idx_u <- 1
         for (i in 1:P_mat) {
-          for (j in 1:i) {
+          for (j in seq_len(min(i, C_mat))) {
             pos_u <- (k - 1) * unc_per_slice + idx_u
             if (i == j && active[pos_u]) {
-              if (b_type == "cov_matrix") lj <- lj + (P_mat - i + 2) * v_u[idx_u]
+              if (b_type == "cov_matrix") lj <- lj + log(2) + (P_mat - i + 2) * v_u[idx_u]
               else lj <- lj + v_u[idx_u]
             }
             idx_u <- idx_u + 1

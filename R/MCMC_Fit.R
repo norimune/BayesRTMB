@@ -1,11 +1,10 @@
 #' @keywords internal
 #' @noRd
-dmvnorm_log <- function(x, mean, sigma) {
+dmvnorm_log <- function(x, mean, U) {
   if (is.vector(x)) {
     x <- matrix(x, nrow = 1)
   }
   k <- ncol(x)
-  U <- chol(sigma)
   log_det <- 2 * sum(log(diag(U)))
   
   x_centered <- sweep(x, 2, mean, "-")
@@ -563,23 +562,13 @@ MCMC_Fit <- R6::R6Class(
       target_par_list <- if (self$laplace && any(random_flags)) orig_pl[!random_flags] else orig_pl
       draws_ob <- self$fit[, , -1, drop = FALSE]
 
-      # --- Modified: Calculate the number of effective parameters considering map ---
-      map_list <- self$model$map
-      if (!is.null(map_list)) {
-        Q <- 0
-        for (name in names(target_par_list)) {
-          L <- target_par_list[[name]]$unc_length
-          if (L > 0) {
-            if (!is.null(map_list[[name]])) {
-              Q <- Q + sum(!is.na(map_list[[name]]))
-            } else {
-              Q <- Q + L
-            }
-          }
-        }
-      } else {
-        Q <- sum(vapply(target_par_list, function(x) x$unc_length, numeric(1)))
-      }
+      map_list <- self$sampler_config$map %||% self$model$map
+      Q <- sum(vapply(names(target_par_list), function(name) {
+        param_map <- map_list[[name]]
+        if (is.null(param_map)) return(target_par_list[[name]]$unc_length)
+        length(unique(param_map[!is.na(param_map)]))
+      }, numeric(1)))
+      if (Q == 0L) return(matrix(numeric(0), nrow = I * C, ncol = 0L))
 
       draws_uc <- array(NA, dim = c(I, C, Q))
 
@@ -589,23 +578,12 @@ MCMC_Fit <- R6::R6Class(
           con_list <- constrained_vector_to_list(con_vec, target_par_list)
           unc_list <- to_unconstrained(con_list, target_par_list)
 
-          # --- Modified: Extract only non-fixed parameters if map is specified ---
           if (!is.null(map_list)) {
-            unc_vec <- c()
-            for (name in names(target_par_list)) {
-              val <- unc_list[[name]]
-              if (length(val) > 0) {
-                if (!is.null(map_list[[name]])) {
-                  unc_vec <- c(unc_vec, val[!is.na(map_list[[name]])])
-                } else {
-                  unc_vec <- c(unc_vec, val)
-                }
-              }
-            }
-            draws_uc[i, j, ] <- unc_vec
-          } else {
-            draws_uc[i, j, ] <- unlist(unc_list, use.names = FALSE)
+            unc_list <- lapply(names(target_par_list), function(name) {
+              .rtmb_mcmc_map_values(unc_list[[name]], map_list[[name]])
+            })
           }
+          draws_uc[i, j, ] <- unlist(unc_list, use.names = FALSE)
         }
       }
       return(matrix(draws_uc, nrow = I * C, ncol = Q))
@@ -615,7 +593,21 @@ MCMC_Fit <- R6::R6Class(
     #' @param safe Logical; whether to wrap the evaluation in a tryCatch block. Default is FALSE for speed.
     #' @return Numeric vector of log-probability values.
     log_prob = function(safe = FALSE) {
-      ad_setup <- self$model$build_ad_obj(init = self$posterior_mean, laplace = self$laplace, jacobian_target = "all")
+      map <- self$sampler_config$map %||% self$model$map
+      init <- self$posterior_mean
+      if (length(map) && any(vapply(map, anyNA, logical(1)))) {
+        # Averaging constrained draws need not preserve a fixed unconstrained coordinate.
+        saved <- stats::setNames(as.numeric(self$fit[1, 1, -1]),
+                                 dimnames(self$fit)[[3]][-1])
+        if (!is.null(self$random_fit)) {
+          saved <- c(saved, stats::setNames(as.numeric(self$random_fit[1, 1, ]),
+                                           dimnames(self$random_fit)[[3]]))
+        }
+        keep <- names(init) %in% names(saved)
+        init[keep] <- saved[names(init)[keep]]
+      }
+      ad_setup <- self$model$build_ad_obj(init = init, laplace = self$laplace,
+                                          jacobian_target = "all", map = map)
       ad_obj <- ad_setup$ad_obj
 
       if (safe) {
@@ -635,13 +627,20 @@ MCMC_Fit <- R6::R6Class(
     },
 
     #' @description Estimate the marginal likelihood by bridge sampling.
-    #' @param method Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".
+    #' @param method Character; the method to use for bridge sampling ("normal" or "warp3"). Default is "normal".
     #' @param use_neff Logical; whether to use the effective sample size (ESS) to adjust for autocorrelation. Default is TRUE.
     #' @param seed Integer; random seed for reproducibility. Default is NULL.
     #' @param max_iter Integer; maximum number of iterations for the estimation algorithm. Default is 100.
-    #' @return Bridge sampling result.
-    # Calculation of log marginal likelihood for Bridge Sampling
+    #' @return Log marginal likelihood with error and ESS attributes. An error is
+    #'   raised and no new result is cached if bridge sampling does not converge.
     bridgesampling = function(method = "normal", use_neff = TRUE, seed = NULL, max_iter = 100) {
+      if (length(method) != 1L || !method %in% c("normal", "warp3")) {
+        stop("The 'method' argument must be either 'normal' or 'warp3'.", call. = FALSE)
+      }
+      if (!is.numeric(max_iter) || length(max_iter) != 1L || !is.finite(max_iter) ||
+          max_iter < 1 || max_iter != floor(max_iter)) {
+        stop("'max_iter' must be a positive integer.", call. = FALSE)
+      }
       if (!is.null(seed)) set.seed(seed)
 
       draws_uc <- self$unconstrain_draws()
@@ -653,6 +652,9 @@ MCMC_Fit <- R6::R6Class(
       # Handle models with no free parameters
       if (Q == 0) {
         logml.bs <- log_prob_fn(numeric(0))
+        if (!is.finite(logml.bs)) {
+          stop("Bridge sampling requires a finite log density at the fixed point.", call. = FALSE)
+        }
         
         correction <- self$model$prior_correction
         if (!is.null(correction) && correction != 0) {
@@ -667,6 +669,13 @@ MCMC_Fit <- R6::R6Class(
         return(invisible(res))
       }
 
+      if (N_total < 4L) {
+        stop("Bridge sampling requires at least four retained posterior draws.", call. = FALSE)
+      }
+      if (any(!is.finite(draws_uc))) {
+        stop("Bridge sampling requires finite unconstrained posterior draws.", call. = FALSE)
+      }
+
       index1 <- seq(1, N_total - 1, by = 2)
       index2 <- seq(2, N_total, by = 2)
       z_post <- draws_uc[index1, , drop = FALSE]
@@ -674,20 +683,29 @@ MCMC_Fit <- R6::R6Class(
 
       M1 <- nrow(z_post)
       M2 <- nrow(z_fit)
-      M  <- M1 + M2
-
-      # Pre-computation: parameter estimation of proposal distribution
-      meanz <- apply(z_fit, 2, mean)
+      meanz <- colMeans(z_fit)
       covz <- cov(z_fit)
+      if (any(!is.finite(covz))) {
+        stop("The bridge proposal covariance is not finite.", call. = FALSE)
+      }
+      if (method == "normal") {
+        U <- tryCatch(chol(covz), error = function(e) NULL)
+        if (is.null(U)) {
+          stop("The bridge proposal covariance is singular or not positive definite. ",
+               "Use more independent posterior draws or try method = 'warp3'.", call. = FALSE)
+        }
+      }
 
-      # Calculate log-posterior for posterior samples
       lp_post <- apply(z_post, 1, log_prob_fn)
+      if (any(!is.finite(lp_post))) {
+        stop("Bridge sampling found a non-finite log density at a posterior draw.", call. = FALSE)
+      }
 
       if (isTRUE(use_neff)) {
         n_eff <- tryCatch({
           ess_basic(lp_post)
         }, error = function(e) M1)
-        if (is.na(n_eff) || n_eff <= 0) n_eff <- M1
+        if (!is.finite(n_eff) || n_eff <= 0) n_eff <- M1
       } else {
         n_eff <- M1
       }
@@ -697,26 +715,13 @@ MCMC_Fit <- R6::R6Class(
       S2 <- M2 / (n_eff + M2)
 
       if (method == "normal") {
-        z_propose <- MASS::mvrnorm(M2, meanz, covz)
-        log_propose <- function(z) dmvnorm_log(z, meanz, covz)
+        z_propose <- sweep(matrix(rnorm(M2 * Q), nrow = M2) %*% U, 2, meanz, "+")
+        log_propose <- function(z) dmvnorm_log(z, meanz, U)
 
         # Reuse pre-calculated lp_post
         log_L1 <- lp_post - log_propose(z_post)
         log_L2 <- apply(z_propose, 1, log_prob_fn) - log_propose(z_propose)
-
-        valid_log_L1 <- log_L1[is.finite(log_L1)]
-        if (length(valid_log_L1) == 0) stop("No valid posterior samples found.")
-        log_Lm <- median(valid_log_L1)
-
-        L1 <- exp(log_L1 - log_Lm)
-        L2 <- exp(log_L2 - log_Lm)
-        L1[is.na(L1) | is.nan(L1)] <- 0
-        L2[is.na(L2) | is.nan(L2)] <- 0
-
-        ml_t <- exp(log_prob_fn(meanz) - log_Lm)
-        if (is.na(ml_t) || is.nan(ml_t) || ml_t == 0) ml_t <- 1e-10
-
-      } else if (method == "warp3") {
+      } else {
         L_chol <- t(chol(covz + diag(0.0001, Q)))
         log_det_L <- sum(log(diag(L_chol)))
 
@@ -735,7 +740,7 @@ MCMC_Fit <- R6::R6Class(
           lp_minus <- log_prob_fn(z_minus)
 
           max_lp <- max(lp_plus, lp_minus)
-          if (is.infinite(max_lp)) return(-Inf)
+          if (is.infinite(max_lp)) return(max_lp)
 
           log_mix <-
             log(0.5) + max_lp + log(exp(lp_plus - max_lp) + exp(lp_minus - max_lp))
@@ -744,43 +749,48 @@ MCMC_Fit <- R6::R6Class(
 
         log_L1 <- apply(eta_post, 1, log_target_warp3) - apply(eta_post, 1, log_propose_std)
         log_L2 <- apply(eta_prop, 1, log_target_warp3) - apply(eta_prop, 1, log_propose_std)
-
-        valid_log_L1 <- log_L1[is.finite(log_L1)]
-        if (length(valid_log_L1) == 0) stop("No valid posterior samples found.")
-        log_Lm <- median(valid_log_L1)
-
-        L1 <- exp(log_L1 - log_Lm)
-        L2 <- exp(log_L2 - log_Lm)
-        L1[is.na(L1) | is.nan(L1)] <- 0
-        L2[is.na(L2) | is.nan(L2)] <- 0
-
-        ml_t <- exp(log_target_warp3(rep(0, Q)) - log_Lm)
-        if (is.na(ml_t) || is.nan(ml_t) || ml_t == 0) ml_t <- 1e-10
-
-      } else {
-        stop("The 'method' argument must be either 'normal' or 'warp3'.")
       }
 
-      Trial <- max_iter
-      for(t in 1:Trial){
-        ml_t_old <- ml_t
-        bunbo <- 0
-        bunshi <- 0
-        for(m in 1:M1) bunbo <- bunbo + 1/(S1*L1[m] + S2*ml_t)
-        for(m in 1:M2) bunshi <- bunshi + L2[m] / (S1*L2[m] + S2*ml_t)
+      if (any(!is.finite(log_L1)) || anyNA(log_L2) || any(log_L2 == Inf)) {
+        stop("Bridge sampling encountered invalid log density ratios.", call. = FALSE)
+      }
+      if (!any(is.finite(log_L2))) {
+        stop("No bridge proposal draws had a finite target log density.", call. = FALSE)
+      }
+      log_Lm <- median(log_L1)
+      log_L1 <- log_L1 - log_Lm
+      log_L2 <- log_L2 - log_Lm
+      log_S1 <- log(S1)
+      log_S2 <- log(S2)
+      log_denom <- function(log_L, log_ml) {
+        a <- log_S1 + log_L
+        b <- log_S2 + log_ml
+        pmax(a, b) + log1p(exp(-abs(a - b)))
+      }
 
-        ml_t <- (bunshi/M2) / (bunbo/M1)
-
-        if (is.na(ml_t) || is.nan(ml_t) || ml_t <= 0) {
-          warning("ml_t became 0 or NA during calculation.")
-          break
+      # Iterate on the log scale, centered at the median posterior density ratio.
+      log_ml <- 0
+      converged <- FALSE
+      for (iter in seq_len(max_iter)) {
+        f1 <- log_ml - log_denom(log_L1, log_ml)
+        f2 <- log_L2 - log_denom(log_L2, log_ml)
+        change <- log_sum_exp(f2) - log(M2) - (log_sum_exp(f1) - log(M1))
+        log_ml <- log_ml + change
+        if (!is.finite(log_ml)) {
+          stop("Bridge sampling produced a non-finite marginal likelihood.", call. = FALSE)
         }
-        if(abs(log(ml_t) - log(ml_t_old)) < 0.000001){
+        if (abs(change) < 1e-6) {
+          converged <- TRUE
           break
         }
       }
+      if (!converged) {
+        stop(sprintf("Bridge sampling did not converge after %s iterations. ", max_iter),
+             "Try increasing 'max_iter', using more posterior draws, or changing 'method'.",
+             call. = FALSE)
+      }
 
-      logml.bs <- as.numeric(log(ml_t) + log_Lm)
+      logml.bs <- as.numeric(log_ml + log_Lm)
 
       correction <- self$model$prior_correction
       if (!is.null(correction) && correction != 0) {
@@ -791,8 +801,8 @@ MCMC_Fit <- R6::R6Class(
       res <- logml.bs
 
       if (method == "normal") {
-        f1_vec <- ml_t / (S1 * L1 + S2 * ml_t)
-        f2_vec <- L2 / (S1 * L2 + S2 * ml_t)
+        f1_vec <- exp(log_ml - log_denom(log_L1, log_ml))
+        f2_vec <- exp(log_L2 - log_denom(log_L2, log_ml))
 
         V1 <- var(f1_vec)
         V2 <- var(f2_vec)

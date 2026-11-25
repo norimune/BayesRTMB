@@ -480,7 +480,7 @@ Estimate the marginal likelihood by bridge sampling.
 \subsection{Arguments}{
 \if{html}{\out{<div class="arguments">}}
 \describe{
-\item{\code{method}}{Character; the method to use for bridge sampling (e.g., "warp3", "normal"). Default is "warp3".}
+\item{\code{method}}{Character; the method to use for bridge sampling ("normal" or "warp3"). Default is "normal".}
 
 \item{\code{use_neff}}{Logical; whether to use the effective sample size (ESS) to adjust for autocorrelation. Default is TRUE.}
 
@@ -491,7 +491,8 @@ Estimate the marginal likelihood by bridge sampling.
 \if{html}{\out{</div>}}
 }
 \subsection{Returns}{
-Bridge sampling result.
+Log marginal likelihood with error and ESS attributes. An error is
+raised and no new result is cached if bridge sampling does not converge.
 }
 }
 \if{html}{\out{<hr>}}
